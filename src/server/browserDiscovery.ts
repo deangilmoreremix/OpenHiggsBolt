@@ -1686,7 +1686,11 @@ export const CAPTURE_MAX_CROPS = 6
 export const CAPTURE_MAX_IMAGES = 6
 /** How far down the page site images are looked for (CSS px). */
 export const CAPTURE_MAX_IMAGE_Y = 4200
-export const CAPTURE_NAVIGATION_TIMEOUT = 15_000
+export const CAPTURE_NAVIGATION_TIMEOUT = 12_000
+/** Optional capture work (cutouts, images, extra routes) stops being started after this. */
+export const CAPTURE_DEADLINE_MS = 15_000
+/** The capture returns what it has by now: the host ends a function at ~30 s with nothing, and the images still have to be stored. */
+export const CAPTURE_HARD_MS = 20_000
 /** Upstream's settle: after `document.fonts.ready`, wait this long before shooting (no FOUT / skeletons). */
 export const CAPTURE_SETTLE_MS = 600
 /** Longest wait for web fonts before shooting anyway. */
@@ -1696,8 +1700,8 @@ export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
 /** Extra routes are only started while the run is younger than this. */
-export const CAPTURE_ROUTE_BUDGET_MS = 20_000
-export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 10_000
+export const CAPTURE_ROUTE_BUDGET_MS = 9_000
+export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 8_000
 // Media is never needed for a still capture; fonts and stylesheets are, so
 // unlike discovery they are allowed (each still passes the SSRF gate).
 const CAPTURE_BLOCKED_RESOURCE_TYPES = ['media'] as const
@@ -2083,7 +2087,7 @@ function readBrandStyles(): Record<string, string | null> {
  */
 export async function capturePageScreenshots(
   rawUrl: string,
-  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number } = {},
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number } = {},
 ): Promise<PageCapture> {
   const started = Date.now()
   const guard = options.guard ?? createSsrfGuard()
@@ -2105,6 +2109,13 @@ export async function capturePageScreenshots(
     },
     async (context) => {
       const page = await context.newPage()
+      const elapsed = () => Date.now() - started
+      /** Time left before optional work (cutouts, images, extra routes) is skipped. */
+      const left = () => CAPTURE_DEADLINE_MS - elapsed()
+      const timing: Record<string, number> = {}
+      const mark = (phase: string) => {
+        timing[phase] = elapsed()
+      }
       const clipShot = (rect: CaptureRect, png = false): Promise<Buffer | null> =>
         page
           .screenshot(png ? { type: 'png', omitBackground: true, fullPage: true, clip: rect } : { type: 'jpeg', quality: 88, fullPage: true, clip: rect })
@@ -2112,7 +2123,7 @@ export async function capturePageScreenshots(
 
       /** Load lazy content, settle, shoot the page band and cut out its cards. */
       const shootRoute = async (maxCards: number) => {
-        await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => undefined)
+        await page.waitForLoadState('networkidle', { timeout: 1_500 }).catch(() => undefined)
         // Nudge lazy-loaded content inside the captured band, then return to the top.
         await page.evaluate(async (maxY: number) => {
           for (let y = 0; y < maxY; y += 600) {
@@ -2121,7 +2132,7 @@ export async function capturePageScreenshots(
           }
           window.scrollTo(0, 0)
         }, CAPTURE_MAX_PAGE_HEIGHT)
-        await page.waitForLoadState('networkidle', { timeout: 2_000 }).catch(() => undefined)
+        await page.waitForLoadState('networkidle', { timeout: 1_000 }).catch(() => undefined)
         await page.evaluate(waitForFonts, CAPTURE_FONT_WAIT_MS).catch(() => undefined)
         if (settleMs) await new Promise((resolve) => setTimeout(resolve, settleMs))
 
@@ -2136,11 +2147,12 @@ export async function capturePageScreenshots(
         const rects: CaptureRect[] = semantic
           ? found!.cards
           : maxCards
-            ? ((await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCards })) ?? [])
+            ? ((await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCards }).catch(() => null)) ?? [])
             : []
         const crops: Buffer[] = []
         const cards: CaptureRect[] = []
         for (const rect of rects) {
+          if (left() < 5_000 && crops.length >= 2) break
           const crop = await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }).catch(() => null)
           if (!crop) continue
           crops.push(crop)
@@ -2150,77 +2162,41 @@ export async function capturePageScreenshots(
         return { shot, pageHeight, pageClip, found, semantic, crops, layout }
       }
 
-      try {
+      /** What has been captured so far: the capture can end at any step and still return this. */
+      let out: PageCapture | null = null
+
+      const work = async (): Promise<PageCapture> => {
         await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
         const finalTarget = await guard.validateNavigationTarget(page.url())
         if (finalTarget.hostname !== baseTarget.hostname) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
         }
+        mark('loaded')
 
         const home = await shootRoute(maxCrops)
+        mark('home')
         const read = await page.evaluate(readPageContent).catch(() => null)
         const content: PageContent = read
           ? { description: read.description, headline: read.headline, headings: read.headings, ctas: read.ctas, nav: read.nav }
           : { ...EMPTY_CONTENT }
-
-        // Floating UI cutouts: the nav bar, and transparent search pill / button.
-        const cutouts = {
-          nav: home.found?.nav ? await clipShot(home.found.nav) : null,
-          search: home.found?.search ? await clipShot(home.found.search, true) : null,
-          button: home.found?.button ? await clipShot(home.found.button, true) : null,
-        }
-
-        // The site's own assets: its logo (transparent PNG) and its largest images.
-        const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES })) ?? { logo: null, images: [] }
-        const logo = assets.logo ? await clipShot(assets.logo, true) : null
-        const images: Buffer[] = []
-        for (const rect of assets.images) {
-          const image = await clipShot(rect)
-          if (image) images.push(image)
-        }
-
-        // Empty plate: the same band with the cards hidden, for fly-in shots.
-        let emptyPlate: Buffer | null = null
-        if (home.semantic) {
-          const hidden = await page.evaluate(setCardsHidden, true).catch(() => 0)
-          if (hidden) emptyPlate = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: home.pageClip }).catch(() => null)
-          await page.evaluate(setCardsHidden, false).catch(() => undefined)
-        }
-
-        const styles = await page.evaluate(readBrandStyles)
-        const title = String((await page.title()) ?? '').slice(0, 200)
+        const styles = await page.evaluate(readBrandStyles).catch(() => ({}) as Record<string, string | null>)
         const url = page.url()
+        const title = String((await page.title().catch(() => '')) ?? '').slice(0, 200)
 
-        // More routes of the same site, captured the same way, inside the time budget.
-        const routes: CapturedRoute[] = []
-        let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
-        for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
-          if (Date.now() - started > CAPTURE_ROUTE_BUDGET_MS) break
-          try {
-            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
-            const landed = await guard.validateNavigationTarget(page.url())
-            if (landed.hostname !== finalTarget.hostname) continue
-            const shot = await shootRoute(Math.max(0, Math.min(3, cropBudget)))
-            cropBudget -= shot.crops.length
-            routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
-          } catch {
-            // A route that will not load (or leaves the site) is skipped; the capture stands without it.
-          }
-        }
-
-        return {
+        // From here a capture is usable: the page, its cards, its words and colours.
+        const result: PageCapture = {
           url,
           title,
           page: home.shot,
           pageHeight: home.pageHeight,
-          crops: [...home.crops, ...routes.flatMap((r) => r.crops)],
-          logo,
-          images,
+          crops: [...home.crops],
+          logo: null,
+          images: [],
           content,
           layout: home.layout,
-          cutouts,
-          emptyPlate,
-          routes,
+          cutouts: { nav: null, search: null, button: null },
+          emptyPlate: null,
+          routes: [],
           brand: {
             background: cssColorToHex(styles.background),
             text: cssColorToHex(styles.text),
@@ -2228,7 +2204,71 @@ export async function capturePageScreenshots(
             fontFamily: typeof styles.fontFamily === 'string' ? styles.fontFamily.slice(0, 120) : null,
           },
         }
+        out = result
+
+        // The site's own assets first (what the film shows): its logo (transparent PNG) and largest images.
+        const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
+        result.logo = assets.logo ? await clipShot(assets.logo, true) : null
+        for (const rect of assets.images) {
+          if (left() < 4_000) break
+          const image = await clipShot(rect)
+          if (image) result.images.push(image)
+        }
+        mark('assets')
+
+        // Optional pieces, only while there is time: floating UI cutouts and the empty plate.
+        if (left() > 6_000) {
+          result.cutouts = {
+            nav: home.found?.nav ? await clipShot(home.found.nav) : null,
+            search: home.found?.search ? await clipShot(home.found.search, true) : null,
+            button: home.found?.button ? await clipShot(home.found.button, true) : null,
+          }
+        }
+        if (home.semantic && left() > 5_000) {
+          const hidden = await page.evaluate(setCardsHidden, true).catch(() => 0)
+          if (hidden) result.emptyPlate = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: home.pageClip }).catch(() => null)
+          await page.evaluate(setCardsHidden, false).catch(() => undefined)
+        }
+        mark('extras')
+
+        // More routes of the same site, captured the same way, while time allows.
+        let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
+        for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
+          if (elapsed() > CAPTURE_ROUTE_BUDGET_MS || left() < 6_000) break
+          try {
+            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
+            const landed = await guard.validateNavigationTarget(page.url())
+            if (landed.hostname !== finalTarget.hostname) continue
+            const shot = await shootRoute(Math.max(0, Math.min(2, cropBudget)))
+            cropBudget -= shot.crops.length
+            result.routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
+            result.crops.push(...shot.crops)
+            mark(`route:${route.name}`)
+          } catch {
+            // A route that will not load (or leaves the site) is skipped; the capture stands without it.
+          }
+        }
+        return result
+      }
+
+      let hardTimer: ReturnType<typeof setTimeout> | undefined
+      try {
+        const running = work()
+        running.catch(() => undefined)
+        // The host cuts a function off at ~30 s with nothing returned: at the hard deadline hand back what was captured.
+        const deadline = new Promise<PageCapture>((resolve, reject) => {
+          hardTimer = setTimeout(() => {
+            mark('deadline')
+            const snapshot = out as PageCapture | null
+            if (!snapshot) return reject(new Error('The page took too long to load'))
+            resolve({ ...snapshot, crops: [...snapshot.crops], images: [...snapshot.images], routes: [...snapshot.routes] })
+          }, Math.max(options.hardMs === undefined ? 2_000 : 0, (options.hardMs ?? CAPTURE_HARD_MS) - elapsed()))
+        })
+        return await Promise.race([running, deadline])
       } finally {
+        if (hardTimer) clearTimeout(hardTimer)
+        // Which step took the time (host only, no address) — visible in the host's function logs.
+        console.warn(`[motion-studio/capture] ${baseTarget.hostname} total=${elapsed()}ms ${JSON.stringify(timing)}`)
         await page.close().catch(() => undefined)
       }
     },

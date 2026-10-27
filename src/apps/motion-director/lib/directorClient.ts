@@ -52,8 +52,19 @@ export class DirectorError extends Error {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+/** A request that never answers must not leave the chat waiting: give up after `timeoutMs`. */
+async function post<T>(path: string, body: unknown, timeoutMs = 0): Promise<T> {
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let res: Response;
+  try {
+    res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller?.signal });
+  } catch (error) {
+    if (controller?.signal.aborted) throw new DirectorError(`it took longer than ${Math.round(timeoutMs / 1000)} seconds`, 'TIMEOUT', 408);
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status);
@@ -63,7 +74,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 export { findSiteUrl } from './filmChat';
 
-export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url });
+/** The server ends a capture by ~25 s (the host cuts functions off at 30 s); give up a little after that. */
+export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url }, 32_000);
 
 export async function requestPlan(body: {
   prompt: string;
@@ -94,7 +106,7 @@ export async function requestPlan(body: {
     brandKit: body.brandKit ?? null,
     requiredRecipes: body.requiredRecipes ?? [],
     template: body.template ?? null,
-  });
+  }, 45_000);
   return validatePlan(plan, { targetSec: body.durationSec });
 }
 

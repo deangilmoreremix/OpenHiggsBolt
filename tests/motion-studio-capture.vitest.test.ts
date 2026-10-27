@@ -215,4 +215,19 @@ describe('capture the way upstream ShotCraft does', () => {
     expect(mod.pickCaptureRoutes(links, 'not a url')).toEqual([])
     expect(mod.pickCaptureRoutes(links, 'https://acme.example.com/', 0)).toEqual([])
   })
+
+  it('hands back what it has when the page is slow instead of running into the host timeout', async () => {
+    const { mod, guard } = await loadRich()
+    // The logo / images step never answers; a short hard deadline stands in for the host's cut-off.
+    const { chromium } = (await import('playwright')) as unknown as { chromium: { launch: () => Promise<{ newContext: () => Promise<{ newPage: () => Promise<{ evaluate: (...a: unknown[]) => Promise<unknown> }> }> }> } }
+    const page = await (await (await chromium.launch()).newContext()).newPage()
+    const real = page.evaluate
+    page.evaluate = (fn: unknown, ...rest: unknown[]) => ((fn as { name?: string }).name === 'findAssetRects' ? new Promise(() => undefined) : real(fn, ...rest))
+    const began = Date.now()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0, hardMs: 400 })
+    expect(Date.now() - began).toBeLessThan(5_000)
+    expect(result.page).toBeInstanceOf(Buffer)
+    expect(result.content.headline).toBe('Ship faster')
+    expect(result.images).toEqual([])
+  })
 })

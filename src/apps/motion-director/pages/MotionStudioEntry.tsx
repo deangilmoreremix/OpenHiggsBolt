@@ -234,7 +234,11 @@ export default function MotionStudioEntry() {
   const handleCreate = () => {
     // With only picks, the message names them for the chat; the picks themselves (exact shots,
     // variants included) reach the storyboard through `pickedRecipes`, not by re-reading this text.
-    const text = description.trim() || (selectedRecipes.length ? `Make a film with the shot cards I picked: ${selectedTemplates.map(motionTemplateTitle).join(', ')}` : '');
+    const text =
+      description.trim() ||
+      (selectedRecipes.length
+        ? `${director.stage === 'plan' ? 'Add' : 'Make a film with'} the shot cards I picked: ${selectedTemplates.map(motionTemplateTitle).join(', ')}`
+        : '');
     if (!text || busy) return;
     // The dev-only e2e auth bypass cookie honors create actions regardless of
     // paid entitlement. The StandaloneShell has already gated the route through
@@ -248,6 +252,8 @@ export default function MotionStudioEntry() {
       // answer to the Ink Press question, or a revision of the storyboard.
       director.send(text, { force: director.stage === 'idle' || director.stage === 'film' });
       setDescription('');
+      // The picks went into this film's storyboard (the chat keeps them for revisions); the next film starts clean.
+      setSelectedRecipes([]);
     };
     if (isE2E) run();
     else requireEntitlement(ENTITLEMENTS.SMARTVIDEO_GO, run);
@@ -270,7 +276,7 @@ export default function MotionStudioEntry() {
   };
 
   const selectedTemplates = selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean);
-  const canCreate = Boolean(description.trim()) || (director.stage === 'idle' && selectedRecipes.length > 0);
+  const canCreate = Boolean(description.trim()) || (['idle', 'plan', 'film'].includes(director.stage) && selectedRecipes.length > 0);
 
   /** 本地素材 → object URL（不上传）；生成工程时再接进新工程 */
   const handleFiles = (files: FileList | null) => {
@@ -401,7 +407,7 @@ export default function MotionStudioEntry() {
               onClick={() => selectClient('')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
               style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid var(--border-color)', color: '#86efac' }}
-              title="Clear selected client"
+              title="Brand Kit company — used for films with no site address (a site you give wins). Click to clear."
             >
               <Palette size={11} />
               {activeClient.businessName ?? 'Brand loaded'}

@@ -53,6 +53,36 @@ describe('useFilmDirector', () => {
     expect(calls[2].capture).toBeNull();
   });
 
+  it('a different company typed while a storyboard is open starts a new film; "New film" resets', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.stage).toBe('plan');
+    act(() => { result.current.send('make a promo for https://globex.com with the Ink Press template'); });
+    await flush();
+    // A new film: the earlier site's capture is not carried over, and the new URL is requested.
+    expect(calls).toHaveLength(2);
+    expect(calls[1].prompt).not.toContain('Revise:');
+    expect(calls[1].capture).toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.stage).toBe('idle');
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it('shots picked while the storyboard is open are added to it', async () => {
+    calls.length = 0;
+    const picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'HitCounter')!];
+    let picks: typeof picked = [];
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: picks }) }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    picks = picked;
+    act(() => { result.current.send('Add the shot cards I picked: Hit Counter'); });
+    await flush();
+    expect(calls[1].recipes).toContain('HitCounter');
+  });
+
   it('with editFallback, a non-answer to the Ink Press question goes back as an edit', async () => {
     const { result } = renderHook(() => useFilmDirector({ settings, editFallback: true }));
     act(() => { result.current.send('make a promo for my product'); });

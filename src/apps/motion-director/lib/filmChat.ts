@@ -170,6 +170,22 @@ export function isNewFilmRequest(text: string): boolean {
   return findNamedRecipes(t).length > 0 && /\bshot[\s-]*cards?\b|\binspired\s+by\b/i.test(t);
 }
 
+const bareHost = (u: string) => u.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/[/?#].*$/, '').toLowerCase();
+
+/**
+ * While a storyboard is on the table every message revises it — unless it plainly starts a
+ * different film: a "new / another film", a different site's URL, or "make a promo for <subject>".
+ * "make a video shorter" stays a revision.
+ */
+export function startsDifferentFilm(text: string, current: { siteUrl?: string | null }): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/\b(?:new|another|different|separate)\s+(?:[\w-]+\s+)?(?:film|video|promo|teaser|trailer|shot)\b/i.test(t)) return true;
+  const url = findSiteUrl(t);
+  if (url && current.siteUrl && bareHost(url) !== bareHost(current.siteUrl)) return true;
+  return CREATE_FILM_RE.test(t) && (Boolean(url) || /\b(?:for|about|of|called|named)\s+\S+/i.test(t));
+}
+
 /** Answer to the Ink Press question: yes / no / not an answer. */
 export function readTemplateAnswer(text: string): FilmTemplateChoice | null {
   const t = text.trim().toLowerCase();
@@ -364,6 +380,69 @@ export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTempla
     if (idx < 0) idx = scenes.findIndex((s) => s.kind === 'title');
     if (idx < 0) break;
     scenes.splice(idx, 1);
+  }
+  return validatePlan({ ...plan, scenes }, { targetSec });
+}
+
+/**
+ * Put the site's own words on the storyboard: its headline under the opening title card, its
+ * section headings as the shots' captions, its call to action under the closing card. Only
+ * fills what the plan left empty, so copy the director wrote stays.
+ */
+export function applySiteContent(plan: DirectorPlan, content: SiteContent | null | undefined): DirectorPlan {
+  if (!content) return plan;
+  const fit = (line: string | undefined) => (line ?? '').replace(/\s+/g, ' ').trim().slice(0, PLAN_LIMITS.captionChars);
+  let heading = 0;
+  const last = plan.scenes.length - 1;
+  const scenes = plan.scenes.map((scene, i) => {
+    if (scene.caption) {
+      if (scene.kind === 'shot') heading++;
+      return scene;
+    }
+    if (scene.kind === 'title') {
+      const line = fit(i === 0 ? content.headline || content.description : i === last ? content.ctas?.[0] : undefined);
+      return line ? { ...scene, caption: line } : scene;
+    }
+    const line = fit(content.headings?.[heading++]);
+    return line ? { ...scene, caption: line } : scene;
+  });
+  return { ...plan, scenes };
+}
+
+/**
+ * A film built from shots the user picked contains exactly those shots, each once, in the
+ * order they were picked — the director may frame them with one opening and one closing title
+ * card, but never adds other recipes. Scene lengths are re-fitted to the requested length.
+ */
+export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
+  if (!recipes.length) return plan;
+  const wanted = new Set(recipes.map((r) => r.id));
+  const seen = new Set<string>();
+  const kept: DirectorScene[] = [];
+  plan.scenes.forEach((scene, i) => {
+    if (scene.kind === 'title') {
+      // Only the framing cards: the first and the last scene of the plan.
+      if (i === 0 || i === plan.scenes.length - 1) kept.push(scene);
+    } else if (wanted.has(scene.recipeId) && !seen.has(scene.recipeId)) {
+      seen.add(scene.recipeId);
+      kept.push(scene);
+    }
+  });
+  // A picked shot the plan lost (e.g. the model skipped it) still plays.
+  const missing = recipes.filter((r) => !seen.has(r.id));
+  if (missing.length) {
+    const lastKept = kept[kept.length - 1];
+    const at = lastKept?.kind === 'title' && kept.length > 1 ? kept.length - 1 : kept.length;
+    kept.splice(at, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
+  }
+  // Order of the picks, framing cards stay first / last.
+  const order = (s: DirectorScene) => recipes.findIndex((r) => r.id === s.recipeId);
+  const shots = kept.filter((s) => s.kind === 'shot').sort((a, b) => order(a) - order(b));
+  const first = kept[0]?.kind === 'title' ? kept[0] : null;
+  const lastCard = kept.length > 1 && kept[kept.length - 1].kind === 'title' ? kept[kept.length - 1] : null;
+  const scenes = [...(first ? [first] : []), ...shots, ...(lastCard ? [lastCard] : [])];
+  if (scenes.length < PLAN_LIMITS.minScenes) {
+    scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
   }
   return validatePlan({ ...plan, scenes }, { targetSec });
 }

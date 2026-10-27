@@ -250,6 +250,13 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           </button>
         </div>
       )}
+      {(stage === 'offer' || stage === 'plan' || stage === 'film') && (
+        <div>
+          <button type="button" onClick={director.reset} className="px-3 py-1.5 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-new" title="Clear this conversation and start a different film">
+            ↺ New film
+          </button>
+        </div>
+      )}
       {activity.length > 0 && <ActivityList items={activity} />}
       {storyboard?.capture && (storyboard.capture.logo || storyboard.capture.images?.length) ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="site-assets">
