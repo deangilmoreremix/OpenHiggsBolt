@@ -7,6 +7,7 @@ import { Check, Palette } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { useT } from '../i18n';
 import { useStore } from '../store';
+import { projectToSession } from '../lib/sessionAdapter';
 import { useDemoPersonalize } from '@/shared/personalization/DemoPersonalizeProvider';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 import type { AspectRatio } from '../projectContract';
@@ -272,6 +273,11 @@ export default function MotionStudioEntry() {
   const editInWorkbench = () => {
     if (!director.film) return;
     setProject(director.film.project);
+    // One session per film, carrying this chat, so the workbench agent continues the same conversation and the film is listed under Recent.
+    const session = projectToSession(director.film.project, director.film.project.name || 'Untitled film', description.trim() || undefined);
+    session.messages = director.messages.map((m) => ({ role: m.role, content: m.content, ts: m.ts }));
+    session.messageCount = session.messages.length;
+    useStore.getState().addSession(session);
     openWorkbench();
   };
 
