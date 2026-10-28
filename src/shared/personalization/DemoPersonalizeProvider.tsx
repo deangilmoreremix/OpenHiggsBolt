@@ -2325,7 +2325,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
-    if (!apiKey) throw new Error('Missing API key')
+    // No MuAPI key is needed to save an asset: the upload service stores it
+    // durably and defers the MuAPI copy to generation time.
 
     // The local blob URL captured synchronously from the asset object this
     // upload was started with.  Ownership was registered when the asset was
