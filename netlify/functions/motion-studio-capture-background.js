@@ -3,7 +3,7 @@ const { timingSafeEqual } = require('node:crypto')
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
-const BUCKET = 'personalization-assets'
+const BUCKET = 'motion-capture'
 
 // Internal dispatch secret: the capture route forwards `x-internal-service-token`; this worker rejects calls
 // that lack it. Fail closed: with no secret configured nothing can prove a call came from the route.
