@@ -213,6 +213,8 @@ interface PersistedPreviewState {
 }
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
+/** The download route accepts at most this many URLs per request. */
+const DOWNLOAD_BATCH_SIZE = 20
 
 /**
  * Build the localStorage key for the preview mirror. The key is scoped to the
@@ -3283,41 +3285,47 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     let partialDownloadError: string | null = null
 
     if (remoteItems.length > 0) {
-      let downloadRes: Response
-      try {
-        downloadRes = await fetch('/api/personalization/download-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
-          credentials: 'same-origin',
-        })
-      } catch (err) {
-        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-        setDiscoveryStatus('reviewing')
-        return
-      }
-
-      if (!downloadRes.ok) {
-        let data: Record<string, unknown>
+      // The download route takes at most 20 URLs per request, so a full
+      // import goes out in batches.
+      const urls = remoteItems.map((a) => a.previewUrl)
+      const results: Array<{ ok?: boolean; url?: string; dataUrl?: string }> = []
+      for (let start = 0; start < urls.length; start += DOWNLOAD_BATCH_SIZE) {
+        let downloadRes: Response
         try {
-          data = await downloadRes.json()
-        } catch {
-          data = {}
+          downloadRes = await fetch('/api/personalization/download-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: urls.slice(start, start + DOWNLOAD_BATCH_SIZE) }),
+            credentials: 'same-origin',
+          })
+        } catch (err) {
+          setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+          setDiscoveryStatus('reviewing')
+          return
         }
-        const status = downloadRes.status
-        if (status === 401) {
-          setDiscoveryError('Authentication required. Please sign in to continue.')
-        } else if (status === 403) {
-          setDiscoveryError('You do not have access to this feature. Contact your administrator.')
-        } else {
-          setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
-        }
-        setDiscoveryStatus('reviewing')
-        return
-      }
 
-      const downloadData = await downloadRes.json()
-      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+        if (!downloadRes.ok) {
+          let data: Record<string, unknown>
+          try {
+            data = await downloadRes.json()
+          } catch {
+            data = {}
+          }
+          const status = downloadRes.status
+          if (status === 401) {
+            setDiscoveryError('Authentication required. Please sign in to continue.')
+          } else if (status === 403) {
+            setDiscoveryError('You do not have access to this feature. Contact your administrator.')
+          } else {
+            setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
+          }
+          setDiscoveryStatus('reviewing')
+          return
+        }
+
+        const downloadData = await downloadRes.json()
+        if (Array.isArray(downloadData?.results)) results.push(...downloadData.results)
+      }
       const failedDownloads: string[] = []
       for (const result of results) {
         if (result?.ok && result?.url && result?.dataUrl) {
@@ -3418,9 +3426,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const totalAttempted = createdAssets.length
     const successCount = totalAttempted - uploadErrors.length
     if (uploadErrors.length > 0) {
+      // Name the reason: a bare count left the user nothing to act on.
+      const reason = uploadErrors[0].replace(/^[^:]*:\s*/, '')
       const summary = uploadErrors.length === totalAttempted
-        ? `All ${totalAttempted} asset(s) failed to upload.`
-        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload. ${successCount} succeeded.`
+        ? `All ${totalAttempted} asset(s) failed to upload: ${reason}`
+        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload (${reason}). ${successCount} succeeded.`
       setDiscoveryError(partialDownloadError
         ? `${partialDownloadError} ${summary}`
         : summary)
