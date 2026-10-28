@@ -370,12 +370,12 @@ test.describe('Motion Studio director', () => {
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
   });
 
-  test('the Motion Director tab opens the chat; the workbench has its own URL and a way back', async ({ page }) => {
+  test('/studio/motion-director opens the chat; the workbench has its own URL and a way back', async ({ page }) => {
     await installStudioSession(page, { entrySeen: true });
     await page.route('**/api/motion-studio/director', (route) =>
       route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
     );
-    // Returning user: the tab still opens the chat, not the last film.
+    // Returning user: the studio URL still opens the chat, not the last film.
     await page.goto(`${BASE_URL}/studio/motion-director`);
     await expect(page.getByPlaceholder('Describe your motion video...')).toBeVisible({ timeout: 120_000 });
     await expect(page.locator('.topbar')).toHaveCount(0);
@@ -389,14 +389,15 @@ test.describe('Motion Studio director', () => {
     await page.reload();
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
 
-    // "← Back to chat" goes back, and so does clicking the Motion Director tab.
+    // "← Back to chat" goes back to the chat.
     await page.getByTestId('workbench-back-to-chat').click();
     await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
     await expect(page).toHaveURL(/\/studio\/motion-director\/?(\?.*)?$/);
     // The "Continue editing" tile (the current project) reopens the film.
     await page.getByRole('button', { name: /^Open project / }).first().click();
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
-    await page.locator('header nav').first().getByRole('button', { name: 'Motion Director', exact: true }).click();
+    // Motion Director has no menu tab, so leave the reopened film with "← Back to chat" again.
+    await page.getByTestId('workbench-back-to-chat').click();
     await expect(page.locator('.topbar')).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
     // Browser Back returns to the workbench URL, and the editor with it.

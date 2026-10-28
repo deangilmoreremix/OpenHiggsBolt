@@ -106,7 +106,6 @@ const TABS = [
   { id: 'storyboard', label: 'Storyboard' },
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'motion-studio', label: 'Motion Studio' },
-  { id: 'motion-director', label: 'Motion Director' },
   { id: 'recast', label: 'Body Swap' },
   { id: 'layers', label: 'Layers Studio' },
   { id: 'workflows', label: 'Workflows' },

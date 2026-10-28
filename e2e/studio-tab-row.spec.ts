@@ -13,7 +13,7 @@ test.describe('Studio tab row on desktop', () => {
     await installStudioSession(page);
     await page.goto(`${BASE_URL}/studio/image`);
     const nav = page.locator('header nav').first();
-    const tab = nav.getByRole('button', { name: 'Motion Director', exact: true });
+    const tab = nav.getByRole('button', { name: 'Social Publishing', exact: true });
     await expect(tab).toBeAttached({ timeout: 120_000 });
     expect(await nav.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
 
@@ -34,13 +34,13 @@ test.describe('Studio tab row on desktop', () => {
     }
     expect(await shownInRow()).toBe(true);
     await tab.click();
-    await expect(page).toHaveURL(/\/studio\/motion-director/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/studio\/social-publishing/, { timeout: 30_000 });
   });
 
   test('opening a studio scrolls its tab into view', async ({ page }) => {
     await installStudioSession(page);
-    await page.goto(`${BASE_URL}/studio/motion-director`);
-    const tab = page.locator('header nav').first().getByRole('button', { name: 'Motion Director', exact: true });
+    await page.goto(`${BASE_URL}/studio/social-publishing`);
+    const tab = page.locator('header nav').first().getByRole('button', { name: 'Social Publishing', exact: true });
     await expect(tab).toBeInViewport({ timeout: 120_000 });
   });
 });
