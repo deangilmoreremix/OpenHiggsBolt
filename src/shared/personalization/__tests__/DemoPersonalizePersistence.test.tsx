@@ -420,6 +420,35 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(writes[0].project.source).toMatchObject({ id: SOURCE_B.id })
   })
 
+  it('saves the first edit after reopening the same source', async () => {
+    await mount()
+    await open()
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    fetchMock.mockClear()
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('first edit after reopen')
+    })
+    await settle()
+    const writes = projectWrites()
+    expect(writes).toHaveLength(1)
+    expect(writes[0].project.prompt.personalized).toBe('first edit after reopen')
+  })
+
+  it('writes no local preview while the fresh session is untouched', async () => {
+    await mount()
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE })
+    })
+    // Past the 800ms mirror debounce: an untouched session must not overwrite
+    // the preview the user may still choose to continue.
+    await settle(1000)
+    expect(Object.keys(localStorage).filter((k) => k.includes(SOURCE.id))).toEqual([])
+  })
+
   it('anonymous sessions never persist', async () => {
     await mount('anonymous')
     await open()

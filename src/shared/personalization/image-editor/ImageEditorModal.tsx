@@ -399,8 +399,13 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
   }, [asset?.file])
 
   // Every source goes to the image models as PNG: websites serve SVG, ICO and
-  // AVIF files the models reject as "not a valid image".
-  const prepareDataUrl = useCallback(async (url: string) => normalizeImageDataUrl(await readDataUrl(url)), [readDataUrl])
+  // AVIF files the models reject as "not a valid image". The size is kept:
+  // MaskEditor draws its mask at the image's natural dimensions, and a
+  // downscaled source would no longer match it.
+  const prepareDataUrl = useCallback(
+    async (url: string) => normalizeImageDataUrl(await readDataUrl(url), Number.POSITIVE_INFINITY),
+    [readDataUrl],
+  )
 
   const analyzeCurrentImage = useCallback(async (sourceUrl = displayUrl) => {
     if (!asset) return undefined

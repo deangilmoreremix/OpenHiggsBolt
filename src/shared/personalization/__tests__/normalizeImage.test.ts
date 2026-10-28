@@ -70,3 +70,14 @@ describe('normalizeImageDataUrl', () => {
     await expect(normalizeImageDataUrl('data:image/png;base64,bm90IGFuIGltYWdl')).rejects.toThrow('could not be read')
   })
 })
+
+describe('normalizeImageDataUrl without a size cap (masked edits)', () => {
+  it('keeps the natural size so a mask drawn at that size still matches', async () => {
+    stubImage(4000, 3000)
+    const canvas = stubCanvas()
+
+    await normalizeImageDataUrl('data:image/jpeg;base64,AAAA', Number.POSITIVE_INFINITY)
+
+    expect([canvas.width, canvas.height]).toEqual([4000, 3000])
+  })
+})

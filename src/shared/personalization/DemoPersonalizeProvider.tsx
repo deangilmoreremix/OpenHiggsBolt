@@ -1307,8 +1307,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // While true the modal shows a fresh form and autosave holds off, so an empty
   // session never replaces the saved project the user may still resume.
   const freshStartRef = useRef(false)
-  /** The untouched session's payload; autosave resumes once it differs. */
-  const freshBaselineRef = useRef<string | null>(null)
   /** Mirror of the restored project's id, readable from the run callbacks. */
   const loadedProjectIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
@@ -1605,17 +1603,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
     if (!source || access !== 'authenticated') return
-    // A fresh session saves nothing until the user starts on a business, so
+    // A fresh session saves nothing until the user starts on something, so
     // opening the modal never replaces the project they may want to resume.
-    const payload = buildProjectPayload()
     if (freshStartRef.current) {
-      const snapshot = JSON.stringify(payload)
-      if (freshBaselineRef.current === null) freshBaselineRef.current = snapshot
-      if (snapshot === freshBaselineRef.current) return
+      const hasAssets = Object.values(assets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
+      const started =
+        Boolean(clientForm.businessName || clientForm.website || promptState.personalized || promptState.edited) ||
+        hasAssets ||
+        Boolean(previewVideo) ||
+        Boolean(result?.url || result?.urls?.length)
+      if (!started) return
       freshStartRef.current = false
       setResumableProject(null)
     }
-    projectPersistence.current.persist(payload)
+    projectPersistence.current.persist(buildProjectPayload())
   }, [
     source?.id,
     source,
@@ -1629,6 +1630,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     generation.status,
     result?.url,
     result?.urls,
+    clientForm.businessName,
+    clientForm.website,
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
@@ -1645,7 +1648,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // project persistence above: anonymous sessions write nothing).
   useEffect(() => {
     if (!source?.id || access !== 'authenticated') return
+    // Keep the saved preview intact while "Continue" is still on offer.
+    if (freshStartRef.current) return
     const timer = setTimeout(() => {
+      if (freshStartRef.current) return
       writePreviewStorage(source.id, previewUserScope, {
         previewSettings,
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
@@ -1983,7 +1989,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // The modal opens with an empty form. The last saved project is only
     // offered ("Continue with …"); loading it happens on the user's request.
     freshStartRef.current = true
-    freshBaselineRef.current = null
     projectPersistence.current.cancel()
     projectPersistence.current.setProjectId(null)
 
