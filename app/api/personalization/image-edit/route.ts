@@ -14,6 +14,7 @@ const ALLOWED_QUALITIES = new Set(['low', 'medium', 'high', 'xhigh', 'max', 'aut
 const ALLOWED_FORMATS = new Set(['png', 'jpeg', 'webp'])
 const ALLOWED_BACKGROUNDS = new Set(['transparent', 'opaque', 'auto'])
 const ALLOWED_FIDELITY = new Set(['high', 'low'])
+const MODELS_WITH_INPUT_FIDELITY = new Set(['gpt-image-1', 'gpt-image-1.5'])
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024
 const MAX_MASK_BYTES = 4 * 1024 * 1024
 const MAX_PROMPT_LENGTH = 32_000
@@ -151,7 +152,8 @@ export async function POST(req: NextRequest) {
       upstream.append('output_compression', String(Math.round(outputCompression)))
     }
     upstream.append('background', background)
-    upstream.append('input_fidelity', inputFidelity)
+    // gpt-image-2.5 models reject input_fidelity; only older models accept it.
+    if (MODELS_WITH_INPUT_FIDELITY.has(model)) upstream.append('input_fidelity', inputFidelity)
 
     if (mask instanceof File) {
       upstream.append('mask', mask, mask.name || 'mask.png')
