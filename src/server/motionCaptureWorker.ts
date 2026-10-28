@@ -28,25 +28,41 @@ export interface MotionCaptureJobRequest {
 
 /** A capture that fails this fast (browser start, first navigation) is tried once more within the same budget. */
 const RETRY_WITHIN_MS = 15_000
+/** How long a new record waits for one that is still being saved. */
+const WRITE_WAIT_MS = 10_000
 
 /** Why a capture failed, safe to show: the first line of the error, no addresses, short. */
 const reasonOf = (err: unknown): string =>
   (err instanceof Error ? err.message : String(err)).split('\n')[0].replace(/https?:\/\/\S+/gi, 'the address').slice(0, 160)
 
-/** Runs one capture job and always leaves exactly one `done` or `error` record behind. */
+/** Runs one capture job and always leaves a `done` or `error` record behind. */
 export async function runMotionCapture(job: MotionCaptureJobRequest, storage: CaptureStorage, opts: { watchdogMs?: number } = {}): Promise<void> {
   const { jobId, userId, url } = job
   const started = Date.now()
-  let written = false
-  // One record wins: a late capture never overwrites the watchdog's error, nor the other way round.
+  let saved = false
+  let saving: Promise<void> | null = null
+  // One record wins: once a record is saved, a later one is dropped. A record still being saved is waited for
+  // (up to WRITE_WAIT_MS), so the watchdog never returns while the only final record is stuck or about to fail.
   const write = async (record: CaptureJob) => {
-    if (written) return
-    written = true
+    const pending = saving
+    if (pending) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, WRITE_WAIT_MS)
+        pending.catch(() => undefined).then(() => {
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    }
+    if (saved) return
+    const attempt = writeCaptureJob(storage, userId, jobId, record).then(() => {
+      saved = true
+    })
+    saving = attempt
     try {
-      await writeCaptureJob(storage, userId, jobId, record)
-    } catch (err) {
-      written = false
-      throw err
+      await attempt
+    } finally {
+      if (saving === attempt) saving = null
     }
   }
   const fail = (code: string, message: string, timing?: unknown) =>

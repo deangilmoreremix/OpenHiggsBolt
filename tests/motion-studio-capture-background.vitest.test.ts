@@ -205,6 +205,30 @@ describe('the background worker', () => {
     expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
   })
 
+  it('the watchdog waits for a final record still being saved: kept when it lands, replaced when it fails', async () => {
+    const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
+    const slowDone = (outcome: 'ok' | 'fail') =>
+      storage.upload.mockImplementation(async (path: string, body: string | Buffer) => {
+        if (String(body).includes('"state":"done"')) {
+          await new Promise((r) => setTimeout(r, 40))
+          if (outcome === 'fail') return { error: { message: 'storage down' } }
+        }
+        files.set(path, body)
+        return { error: null }
+      })
+    slowDone('ok')
+    await runMotionCapture(job, storage, { watchdogMs: 10 })
+    expect(recordOf().state).toBe('done')
+    files.clear()
+    slowDone('fail')
+    await runMotionCapture(job, storage, { watchdogMs: 10 })
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
+    storage.upload.mockImplementation(async (path: string, body: string | Buffer) => {
+      files.set(path, body)
+      return { error: null }
+    })
+  })
+
   it('accepts only well-formed jobs', async () => {
     const { parseJobRequest } = await import('@/src/server/motionCaptureWorker')
     expect(parseJobRequest(job)).toEqual(job)
