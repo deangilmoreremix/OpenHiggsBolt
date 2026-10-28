@@ -32,6 +32,7 @@ import type {
   PersonalizationVisionValidation,
 } from '../types'
 import MaskEditor from './MaskEditor'
+import { ensureModelSupportedImage } from './normalizeImage'
 import {
   getAssetRecipe,
   getSourceAssetRecipe,
@@ -364,7 +365,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
       : 'gpt-image-2.5-flare' as const
   }, [modelMode, recipe.precisionRecommended, sourceRecipe.precisionRecommended, visionAnalysis?.precisionRecommended])
 
-  const prepareDataUrl = useCallback(async (url: string) => {
+  const readDataUrl = useCallback(async (url: string) => {
     if (url.startsWith('data:')) return url
     if (url.startsWith('blob:')) {
       const sourceFile = asset?.file
@@ -396,6 +397,14 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     if (!result?.ok || !result?.dataUrl) throw new Error(typeof result?.error === 'string' ? result.error : 'Unable to download image')
     return result.dataUrl as string
   }, [asset?.file])
+
+  // Websites serve SVG, ICO and AVIF files the models reject as "not a valid
+  // image"; those are re-encoded as PNG. Supported images pass through at
+  // their natural size, which MaskEditor's masks are drawn at.
+  const prepareDataUrl = useCallback(
+    async (url: string) => ensureModelSupportedImage(await readDataUrl(url)),
+    [readDataUrl],
+  )
 
   const analyzeCurrentImage = useCallback(async (sourceUrl = displayUrl) => {
     if (!asset) return undefined

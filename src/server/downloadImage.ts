@@ -161,7 +161,7 @@ export async function downloadImageAsDataUrl(url: string, maxBytes = 5 * 1024 * 
 
   const buffer = Buffer.from(response.data)
   if (buffer.length > maxBytes) {
-    throw new Error(`Image exceeds maximum size of ${maxBytes} bytes`)
+    throw new Error(`This image is larger than ${Math.round(maxBytes / (1024 * 1024))} MB, so it cannot be edited here. Upload a smaller copy instead.`)
   }
 
   const contentType = String(response.headers['content-type'] || 'application/octet-stream')

@@ -252,6 +252,16 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     await settle()
 
     expect(persistenceSpy.loadProject).toHaveBeenCalledTimes(1)
+    // The modal opens fresh: the saved project is offered, not loaded, and the
+    // untouched session writes nothing over it.
+    expect(ctx().resumableProject).not.toBeNull()
+    expect(ctx().promptState.personalized).toBe('')
+    expect(projectWrites()).toHaveLength(0)
+
+    await act(async () => {
+      await ctx().resumeLastProject()
+    })
+    await settle()
     // The restore guard: the in-flight debounce is cancelled before loading.
     expect(persistenceSpy.cancel).toHaveBeenCalled()
     const writes = projectWrites()
@@ -330,6 +340,13 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     }))
     await mount()
     await open()
+    // An untouched fresh session saves nothing.
+    expect(projectWrites()).toHaveLength(0)
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('first save')
+    })
+    await settle()
     const first = projectWrites()
     expect(first).toHaveLength(1)
     expect(first[0].project.id).toBeNull() // no saved project yet: insert
@@ -380,6 +397,10 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
       ctx().openPersonalize({ source: SOURCE_B })
     })
     await settle()
+    await act(async () => {
+      await ctx().resumeLastProject()
+    })
+    await settle()
     fetchMock.mockClear()
 
     // Source A's restore finally answers — after B is open and restored.
@@ -397,6 +418,88 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(writes).toHaveLength(1)
     expect(writes[0].project.id).toBe(ROW_B)
     expect(writes[0].project.source).toMatchObject({ id: SOURCE_B.id })
+  })
+
+  it('saves the first edit after reopening the same source', async () => {
+    await mount()
+    await open()
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    fetchMock.mockClear()
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('first edit after reopen')
+    })
+    await settle()
+    const writes = projectWrites()
+    expect(writes).toHaveLength(1)
+    expect(writes[0].project.prompt.personalized).toBe('first edit after reopen')
+  })
+
+  it('reopening the same source starts from an empty form again', async () => {
+    await mount()
+    await open()
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('typed in the first session')
+    })
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    expect(ctx().promptState.personalized).toBe('')
+  })
+
+  it('a fresh session is not attached to the last selected client', async () => {
+    await mount()
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE })
+    })
+    await act(async () => {
+      ctx().selectClient('client-from-last-time')
+    })
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    // Saving a new business now creates a client instead of updating the old one.
+    expect(ctx().selectedClientId).toBe('')
+  })
+
+  it('saves a preview edit made before any business is entered', async () => {
+    await mount()
+    await open()
+    fetchMock.mockClear()
+
+    await act(async () => {
+      ctx().updatePreviewBrandColors({ primary: '#123456' })
+    })
+    await settle()
+    expect(projectWrites()).toHaveLength(1)
+  })
+
+  it('saves generation settings and output choices made before any business is entered', async () => {
+    await mount()
+    await open()
+    fetchMock.mockClear()
+
+    await act(async () => {
+      ctx().updateGenOptions({ aspectRatio: '9:16' })
+    })
+    await settle()
+    expect(projectWrites()).toHaveLength(1)
+  })
+
+  it('writes no local preview while the fresh session is untouched', async () => {
+    await mount()
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE })
+    })
+    // Past the 800ms mirror debounce: an untouched session must not overwrite
+    // the preview the user may still choose to continue.
+    await settle(1000)
+    expect(Object.keys(localStorage).filter((k) => k.includes(SOURCE.id))).toEqual([])
   })
 
   it('anonymous sessions never persist', async () => {

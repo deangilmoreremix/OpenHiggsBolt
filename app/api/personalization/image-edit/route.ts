@@ -151,7 +151,8 @@ export async function POST(req: NextRequest) {
       upstream.append('output_compression', String(Math.round(outputCompression)))
     }
     upstream.append('background', background)
-    upstream.append('input_fidelity', inputFidelity)
+    // input_fidelity is validated for compatibility but never forwarded: the
+    // only allowed models (gpt-image-2.5) reject it.
 
     if (mask instanceof File) {
       upstream.append('mask', mask, mask.name || 'mask.png')

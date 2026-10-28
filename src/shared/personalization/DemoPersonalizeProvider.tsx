@@ -213,6 +213,8 @@ interface PersistedPreviewState {
 }
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
+/** The download route accepts at most this many URLs per request. */
+const DOWNLOAD_BATCH_SIZE = 20
 
 /**
  * Build the localStorage key for the preview mirror. The key is scoped to the
@@ -695,6 +697,13 @@ export type DemoPersonalizeContextValue = {
     updatedAt: string
   } | null
   restoring: boolean
+  /**
+   * The last saved project for this source, offered instead of restored: the
+   * modal opens with an empty form and the user picks "Continue" to load it.
+   */
+  resumableProject: { label: string } | null
+  resumeLastProject: () => Promise<void>
+  dismissResumableProject: () => void
 
   // Guided Simple Mode + free Remotion preview
   viewMode: PersonalizationViewMode
@@ -1294,6 +1303,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatedAt: string
   } | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [resumableProject, setResumableProject] = useState<{ label: string } | null>(null)
+  // While true the modal shows a fresh form and autosave holds off, so an empty
+  // session never replaces the saved project the user may still resume.
+  const freshStartRef = useRef(false)
+  /** An explicit edit ends the fresh start, so it is saved like any other work. */
+  const markSessionStarted = useCallback(() => {
+    if (!freshStartRef.current) return
+    freshStartRef.current = false
+    setResumableProject(null)
+  }, [])
   /** Mirror of the restored project's id, readable from the run callbacks. */
   const loadedProjectIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
@@ -1590,6 +1609,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
     if (!source || access !== 'authenticated') return
+    // A fresh session saves nothing until the user starts on something, so
+    // opening the modal never replaces the project they may want to resume.
+    if (freshStartRef.current) {
+      const hasAssets = Object.values(assets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
+      const started =
+        Boolean(clientForm.businessName || clientForm.website || clientForm.ctaHeadline || clientForm.callToAction || promptState.personalized || promptState.edited) ||
+        hasAssets ||
+        Boolean(previewVideo) ||
+        Boolean(result?.url || result?.urls?.length)
+      if (!started) return
+      freshStartRef.current = false
+      setResumableProject(null)
+    }
     projectPersistence.current.persist(buildProjectPayload())
   }, [
     source?.id,
@@ -1604,6 +1636,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     generation.status,
     result?.url,
     result?.urls,
+    clientForm.businessName,
+    clientForm.website,
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
@@ -1620,7 +1654,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // project persistence above: anonymous sessions write nothing).
   useEffect(() => {
     if (!source?.id || access !== 'authenticated') return
+    // Keep the saved preview intact while "Continue" is still on offer.
+    if (freshStartRef.current) return
     const timer = setTimeout(() => {
+      if (freshStartRef.current) return
       writePreviewStorage(source.id, previewUserScope, {
         previewSettings,
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
@@ -1934,15 +1971,56 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     restoreProjectRef.current = restoreProject
   }, [restoreProject])
 
+  const resumeLastProject = useCallback(async () => {
+    if (!source) return
+    freshStartRef.current = false
+    setResumableProject(null)
+    setRestoring(true)
+    try {
+      await restoreProjectRef.current(source)
+    } finally {
+      setRestoring(false)
+    }
+  }, [source])
+
+  const dismissResumableProject = useCallback(() => {
+    setResumableProject(null)
+  }, [])
+
   useEffect(() => {
     if (!source?.id || !isOpen || access !== 'authenticated') return
     let cancelled = false
-    setRestoring(true)
     setLoadedProject(null)
+    setResumableProject(null)
+    // The modal opens with an empty form. The last saved project is only
+    // offered ("Continue with …"); loading it happens on the user's request.
+    freshStartRef.current = true
+    // A fresh form must not stay attached to the last saved client, or saving
+    // a new business would overwrite that client's profile. Continue (or
+    // picking a saved client) re-attaches it.
+    setSelectedClientId('')
+    setCurrentClientId(null)
+    projectPersistence.current.cancel()
+    projectPersistence.current.setProjectId(null)
 
-    restoreProjectRef.current(source).finally(() => {
-      if (!cancelled) setRestoring(false)
-    })
+    loadProject({ sourceId: source.id })
+      .then((result) => {
+        if (cancelled || !freshStartRef.current) return
+        if (!result.ok || !result.data) {
+          // No saved row, but this browser kept the visitor's preview.
+          if (readPreviewStorage(source.id, previewUserScope)) setResumableProject({ label: 'your last project' })
+          return
+        }
+        const entry = result.data
+        const savedClient = entry.clientId
+          ? clients.find((c) => c.id === entry.clientId) ?? loadClients().find((c) => c.id === entry.clientId)
+          : null
+        const label = savedClient?.businessName || savedClient?.website || 'your last project'
+        setResumableProject({ label })
+      })
+      .catch(() => {
+        // No offer when the saved project cannot be read; the fresh form stands.
+      })
 
     return () => {
       cancelled = true
@@ -1993,6 +2071,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const closePersonalize = useCallback(() => {
     // Invalidate any restore still loading for the session being closed.
     restoreSessionRef.current += 1
+    // Reopening the same source must reset the form again: the personalizer
+    // always opens empty, with the last project offered rather than kept.
+    resetSourceIdRef.current = undefined
     // Revoke outstanding blob URLs (reference-counted, idempotent;
     // outside the state updater — updaters must stay pure for Strict Mode replay)
     releaseAllBlobUrls()
@@ -3223,41 +3304,47 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     let partialDownloadError: string | null = null
 
     if (remoteItems.length > 0) {
-      let downloadRes: Response
-      try {
-        downloadRes = await fetch('/api/personalization/download-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
-          credentials: 'same-origin',
-        })
-      } catch (err) {
-        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-        setDiscoveryStatus('reviewing')
-        return
-      }
-
-      if (!downloadRes.ok) {
-        let data: Record<string, unknown>
+      // The download route takes at most 20 URLs per request, so a full
+      // import goes out in batches.
+      const urls = remoteItems.map((a) => a.previewUrl)
+      const results: Array<{ ok?: boolean; url?: string; dataUrl?: string }> = []
+      for (let start = 0; start < urls.length; start += DOWNLOAD_BATCH_SIZE) {
+        let downloadRes: Response
         try {
-          data = await downloadRes.json()
-        } catch {
-          data = {}
+          downloadRes = await fetch('/api/personalization/download-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: urls.slice(start, start + DOWNLOAD_BATCH_SIZE) }),
+            credentials: 'same-origin',
+          })
+        } catch (err) {
+          setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+          setDiscoveryStatus('reviewing')
+          return
         }
-        const status = downloadRes.status
-        if (status === 401) {
-          setDiscoveryError('Authentication required. Please sign in to continue.')
-        } else if (status === 403) {
-          setDiscoveryError('You do not have access to this feature. Contact your administrator.')
-        } else {
-          setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
-        }
-        setDiscoveryStatus('reviewing')
-        return
-      }
 
-      const downloadData = await downloadRes.json()
-      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+        if (!downloadRes.ok) {
+          let data: Record<string, unknown>
+          try {
+            data = await downloadRes.json()
+          } catch {
+            data = {}
+          }
+          const status = downloadRes.status
+          if (status === 401) {
+            setDiscoveryError('Authentication required. Please sign in to continue.')
+          } else if (status === 403) {
+            setDiscoveryError('You do not have access to this feature. Contact your administrator.')
+          } else {
+            setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
+          }
+          setDiscoveryStatus('reviewing')
+          return
+        }
+
+        const downloadData = await downloadRes.json()
+        if (Array.isArray(downloadData?.results)) results.push(...downloadData.results)
+      }
       const failedDownloads: string[] = []
       for (const result of results) {
         if (result?.ok && result?.url && result?.dataUrl) {
@@ -3358,9 +3445,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const totalAttempted = createdAssets.length
     const successCount = totalAttempted - uploadErrors.length
     if (uploadErrors.length > 0) {
+      // Name the reason: a bare count left the user nothing to act on.
+      const reason = uploadErrors[0].replace(/^[^:]*:\s*/, '')
       const summary = uploadErrors.length === totalAttempted
-        ? `All ${totalAttempted} asset(s) failed to upload.`
-        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload. ${successCount} succeeded.`
+        ? `All ${totalAttempted} asset(s) failed to upload: ${reason}`
+        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload (${reason}). ${successCount} succeeded.`
       setDiscoveryError(partialDownloadError
         ? `${partialDownloadError} ${summary}`
         : summary)
@@ -4347,6 +4436,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const setPreviewLayout = useCallback((layout: PreviewLayoutId) => {
+    markSessionStarted()
     setPreviewSettings((prev) => applyLayoutPreset(prev, layout, previewSeedRef.current))
   }, [])
 
@@ -4360,6 +4450,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * silently doing nothing.
    */
   const setRemotionDesign = useCallback((designId: string | null) => {
+    markSessionStarted()
     if (designId === null) {
       remotionDesignErrorIdRef.current = null
       setRemotionDesignError(null)
@@ -4377,6 +4468,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) =>
@@ -4386,6 +4478,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       brandColors: { ...prev.brandColors, ...patch },
@@ -4394,6 +4487,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewComposition = useCallback(
     (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
+      markSessionStarted()
       setPreviewSettings((prev) => {
         const next = { ...prev, ...patch }
         if (patch.aspectRatio) {
@@ -4411,8 +4505,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // "Restore default layout" must undo per-layer position/scale/visibility
     // edits, not only re-seed layers that are missing from the layout. Brand
     // content stays — it is re-derived from the form/asset seed below.
+    markSessionStarted()
     setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
-  }, [])
+  }, [markSessionStarted])
+
+  // The user-facing setters for the saved project's other fields: each change
+  // ends the fresh start, like the preview edits above.
+  const chooseOutputType = useCallback((type: OutputType) => {
+    markSessionStarted()
+    setOutputType(type)
+  }, [markSessionStarted])
+
+  const chooseMode = useCallback((next: VideoPersonalizationMode | ImagePersonalizationMode | null) => {
+    markSessionStarted()
+    setMode(next)
+  }, [markSessionStarted])
+
+  const updateGenOptions = useCallback((patch: Partial<GenerationOptions>) => {
+    markSessionStarted()
+    setGenOptions((prev) => ({ ...prev, ...patch }))
+  }, [markSessionStarted])
 
   const approvePersonalization = useCallback(() => {
     setPreviewApproved(true)
@@ -4592,6 +4704,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const setPreviewAudio = useCallback(async (file: File) => {
+    markSessionStarted()
     setPreviewAudioError(null)
 
     const blobUrl = URL.createObjectURL(file)
@@ -4741,6 +4854,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // after pane and the export path all see it without further wiring).
   const useMotionTemplate = useCallback((template: MotionTemplate) => {
     if (!template || !template.componentName) return
+    markSessionStarted()
     setMotionTemplate(template)
     // `template.preview` is the real ShotCraft MP4 clip (an absolute URL);
     // `template.poster` is the optional still frame. They are distinct
@@ -4914,11 +5028,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
     // Output / mode / options
     outputType,
-    setOutputType,
+    setOutputType: chooseOutputType,
     mode,
-    setMode,
+    setMode: chooseMode,
     genOptions,
-    updateGenOptions: (patch: Partial<GenerationOptions>) => setGenOptions((prev) => ({ ...prev, ...patch })),
+    updateGenOptions,
     consent,
     setConsent,
 
@@ -4945,6 +5059,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Project restore (Phase 14)
     loadedProject,
     restoring,
+    resumableProject,
+    resumeLastProject,
+    dismissResumableProject,
 
     // Guided Simple Mode + free Remotion preview
     viewMode,

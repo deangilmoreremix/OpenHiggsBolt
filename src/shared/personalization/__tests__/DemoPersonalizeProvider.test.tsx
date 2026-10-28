@@ -1262,6 +1262,43 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     fetchSpy.mockRestore()
   })
 
+  it('imports more than 20 assets in batches the download route accepts', async () => {
+    const batchSizes: number[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        batchSizes.push(urls.length)
+        if (urls.length > 20) {
+          return { ok: false, status: 400, json: async () => ({ error: 'Maximum 20 URLs allowed per request' }) } as Response
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: true, dataUrl: 'data:image/png;base64,iVBORw0KGgo=' })) }),
+        } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      id: `d${i}`, sourceUrl: `https://example.com/${i}.jpg`, previewUrl: `https://example.com/${i}.jpg`, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: `https://example.com/${i}.jpg`, edited: false, videoReady: false, hasTransparency: false,
+    }))
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets(many)
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    expect(batchSizes).toEqual([20, 5])
+    expect((window as any).__personalizationCtx.discoveryError ?? '').not.toMatch(/Maximum 20 URLs/)
+
+    fetchSpy.mockRestore()
+  })
+
   it('shows actionable message for 401 auth error on download-image', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
@@ -2266,10 +2303,11 @@ describe('DemoPersonalizeProvider persistence dedup (Phase 3 review finding 1)',
     expect(persistCalls!.length).toBe(1)
   })
 
-  it('has exactly two cancel calls in cleanup effects', () => {
+  // Unmount cleanup, the restore, and the fresh-start reset when the modal opens.
+  it('has exactly three cancel calls: unmount, restore and fresh start', () => {
     const source = readFileSync(PROVIDER_PATH, 'utf-8')
     const cancelCalls = source.match(/projectPersistence\.current\.cancel\(/g)
     expect(cancelCalls).not.toBeNull()
-    expect(cancelCalls!.length).toBe(2)
+    expect(cancelCalls!.length).toBe(3)
   })
 })
