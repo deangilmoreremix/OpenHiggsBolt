@@ -60,6 +60,8 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
             status: 'inactive',
             source: 'manual',
             hasSmartVideoGo: false,
+            hasSmartVideoViral: false,
+            isSuperUser: false,
           },
         });
       }
@@ -74,6 +76,8 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
           status: 'inactive',
           source: 'manual',
           hasSmartVideoGo: false,
+          hasSmartVideoViral: false,
+          isSuperUser: false,
         },
       });
     } finally {
