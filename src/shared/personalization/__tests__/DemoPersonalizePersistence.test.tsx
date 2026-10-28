@@ -467,6 +467,18 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(ctx().selectedClientId).toBe('')
   })
 
+  it('saves a preview edit made before any business is entered', async () => {
+    await mount()
+    await open()
+    fetchMock.mockClear()
+
+    await act(async () => {
+      ctx().updatePreviewBrandColors({ primary: '#123456' })
+    })
+    await settle()
+    expect(projectWrites()).toHaveLength(1)
+  })
+
   it('writes no local preview while the fresh session is untouched', async () => {
     await mount()
     await act(async () => {

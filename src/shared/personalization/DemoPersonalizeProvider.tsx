@@ -1307,6 +1307,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // While true the modal shows a fresh form and autosave holds off, so an empty
   // session never replaces the saved project the user may still resume.
   const freshStartRef = useRef(false)
+  /** An explicit edit ends the fresh start, so it is saved like any other work. */
+  const markSessionStarted = useCallback(() => {
+    if (!freshStartRef.current) return
+    freshStartRef.current = false
+    setResumableProject(null)
+  }, [])
   /** Mirror of the restored project's id, readable from the run callbacks. */
   const loadedProjectIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
@@ -4430,6 +4436,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const setPreviewLayout = useCallback((layout: PreviewLayoutId) => {
+    markSessionStarted()
     setPreviewSettings((prev) => applyLayoutPreset(prev, layout, previewSeedRef.current))
   }, [])
 
@@ -4443,6 +4450,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * silently doing nothing.
    */
   const setRemotionDesign = useCallback((designId: string | null) => {
+    markSessionStarted()
     if (designId === null) {
       remotionDesignErrorIdRef.current = null
       setRemotionDesignError(null)
@@ -4460,6 +4468,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) =>
@@ -4469,6 +4478,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       brandColors: { ...prev.brandColors, ...patch },
@@ -4477,6 +4487,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewComposition = useCallback(
     (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
+      markSessionStarted()
       setPreviewSettings((prev) => {
         const next = { ...prev, ...patch }
         if (patch.aspectRatio) {
@@ -4494,8 +4505,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // "Restore default layout" must undo per-layer position/scale/visibility
     // edits, not only re-seed layers that are missing from the layout. Brand
     // content stays — it is re-derived from the form/asset seed below.
+    markSessionStarted()
     setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
-  }, [])
+  }, [markSessionStarted])
 
   const approvePersonalization = useCallback(() => {
     setPreviewApproved(true)
@@ -4675,6 +4687,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const setPreviewAudio = useCallback(async (file: File) => {
+    markSessionStarted()
     setPreviewAudioError(null)
 
     const blobUrl = URL.createObjectURL(file)
@@ -4824,6 +4837,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // after pane and the export path all see it without further wiring).
   const useMotionTemplate = useCallback((template: MotionTemplate) => {
     if (!template || !template.componentName) return
+    markSessionStarted()
     setMotionTemplate(template)
     // `template.preview` is the real ShotCraft MP4 clip (an absolute URL);
     // `template.poster` is the optional still frame. They are distinct
