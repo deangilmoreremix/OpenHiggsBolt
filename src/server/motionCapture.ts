@@ -6,7 +6,8 @@
 import { randomUUID } from 'node:crypto'
 import { captureHasWords, CAPTURE_DEVICE_SCALE, CAPTURE_VIEWPORT, type PageCapture } from './browserDiscovery'
 
-export const CAPTURE_BUCKET = 'personalization-assets'
+/** Public bucket for captured pages and job records; created by supabase/migrations/20261028000000_motion_capture_storage_bucket.sql. */
+export const CAPTURE_BUCKET = 'motion-capture'
 
 export const sanitizeName = (value: string) => value.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 96) || 'x'
 
