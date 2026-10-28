@@ -261,7 +261,11 @@ describe('POST /api/motion-studio/director', () => {
     const dir = await ask('direction', { directions: [{ name: 'Clean', claim: 'Quiet', keywords: [], look: '', motion: '', why: '', tradeoff: '' }], recommended: 0 })
     expect((await dir.json()).options.directions[0].name).toBe('Clean')
     const map = await ask('mapping', { rows: [{ feature: 'Speed', firstShot: shot.id, altShot: 'fake/none/X', expresses: '', pageState: 'hero' }, { feature: 'Bad', firstShot: 'fake/none/X', altShot: '', expresses: '', pageState: '' }] }, { requiredRecipes: [shot.id] })
-    expect((await map.json()).mapping).toEqual([{ feature: 'Speed', firstShot: shot.id, altShot: '', expresses: '', pageState: 'hero' }])
+    // With picks, a row on an unknown or unpicked shot takes a pick (repeats allowed) instead of being dropped.
+    expect((await map.json()).mapping).toEqual([
+      { feature: 'Speed', firstShot: shot.id, altShot: '', expresses: '', pageState: 'hero' },
+      { feature: 'Bad', firstShot: shot.id, altShot: '', expresses: '', pageState: '' },
+    ])
     const none = await ask('brief', {}, { prompt: '  ' })
     expect(none.status).toBe(400)
   })

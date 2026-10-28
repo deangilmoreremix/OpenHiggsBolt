@@ -362,24 +362,41 @@ export function validateDirections(raw: unknown): DirectionOptions {
   return { directions, recommended: rec >= 0 && rec < directions.length ? rec : 0 };
 }
 
-/** Rows whose shots exist in the catalog; the first choice is required, the alternate dropped when unknown. */
-export function validateMapping(raw: unknown): MappingRow[] {
+/** About one scene per 4 s of film: 30 s → 8 scenes, 60 s → 14. */
+export const targetSceneCount = (durationSec: number): number =>
+  Math.min(PLAN_LIMITS.maxScenes, Math.max(3, Math.round(durationSec / 4)));
+
+/**
+ * Rows whose shots exist in the catalog; the first choice is required, the alternate dropped when unknown.
+ * With `allowed` (the shots the person picked) every row uses only those shots, repeats included:
+ * a row on another shot takes the next pick in turn.
+ */
+export function validateMapping(raw: unknown, allowed: readonly string[] = []): MappingRow[] {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const shot = (v: unknown): string => {
     const t = typeof v === 'string' ? resolveMotionTemplate(v.trim()) : undefined;
     return t && MOTION_TEMPLATES.includes(t) ? t.id : '';
   };
+  const picks = allowed.map(shot).filter(Boolean);
+  let turn = 0;
   const rows: MappingRow[] = [];
   const used = new Set<string>();
   for (const r of Array.isArray(input.rows) ? input.rows : []) {
     if (rows.length >= 10) break;
     const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>;
-    const firstShot = shot(o.firstShot);
     const feature = text(o.feature, 120);
-    // One shot leads once: a repeated first choice is a repeated technique.
-    if (!firstShot || !feature || used.has(firstShot)) continue;
+    let firstShot = shot(o.firstShot);
+    let altShot = shot(o.altShot);
+    if (picks.length) {
+      if (!picks.includes(firstShot)) firstShot = picks[turn++ % picks.length];
+      if (!picks.includes(altShot)) altShot = '';
+    } else if (used.has(firstShot)) {
+      // One shot leads once: a repeated first choice is a repeated technique.
+      continue;
+    }
+    if (!firstShot || !feature) continue;
     used.add(firstShot);
-    rows.push({ feature, firstShot, altShot: shot(o.altShot), expresses: text(o.expresses, 200), pageState: text(o.pageState, 140) });
+    rows.push({ feature, firstShot, altShot, expresses: text(o.expresses, 200), pageState: text(o.pageState, 140) });
   }
   if (!rows.length) throw new Error('The director returned no usable shot mapping');
   return rows;

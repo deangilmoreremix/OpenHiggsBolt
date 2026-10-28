@@ -198,7 +198,7 @@ export const requestBrief = async (c: GuidedContext): Promise<DirectorBrief> =>
 export const requestDirections = async (c: GuidedContext): Promise<DirectionOptions> =>
   validateDirections((await post<{ options: unknown }>('/api/motion-studio/director', guidedBody('direction', c), 45_000)).options);
 export const requestMapping = async (c: GuidedContext): Promise<MappingRow[]> =>
-  validateMapping({ rows: (await post<{ mapping: unknown }>('/api/motion-studio/director', guidedBody('mapping', c), 45_000)).mapping });
+  validateMapping({ rows: (await post<{ mapping: unknown }>('/api/motion-studio/director', guidedBody('mapping', c), 45_000)).mapping }, c.requiredRecipes ?? []);
 
 /** Ask the director about the storyboard on the table. `revise` is true when the message asks for a change. */
 export async function askDirector(body: { message: string; plan: DirectorPlan; capture?: SiteCapture | null }): Promise<{ reply: string; revise: boolean }> {

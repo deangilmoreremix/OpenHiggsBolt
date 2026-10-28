@@ -455,7 +455,7 @@ test.describe('Motion Studio director', () => {
     const calls = await mockDirector(page);
     await page.goto(`${BASE_URL}/studio/motion-director/new`);
     await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
-    await setEntryDuration(page, '15s');
+    await setEntryDuration(page, '30s');
     // Pick two shots in Templates.
     for (const name of ['Deck Deal Flyin', 'Row Embed']) {
       await page.getByRole('button', { name: /Templates/ }).first().click();
@@ -473,6 +473,8 @@ test.describe('Motion Studio director', () => {
     await expect(plan).toContainText('Row Embed');
     await expect(plan).not.toContainText('Crash Impact Real');
     await expect(plan).not.toContainText('Hit Counter');
+    // The picks repeat to fill the length (about one scene per 4 s), not one scene each.
+    await expect(plan).toContainText('8 scenes · 30s');
     expect(calls.planCapture).toMatchObject({ content: { headline: 'Ship faster with Acme' } });
     // The picks were used up: the next film starts with none.
     await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toHaveCount(0);

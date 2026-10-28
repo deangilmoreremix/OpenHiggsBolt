@@ -18,7 +18,7 @@ import {
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
-import { PLAN_LIMITS, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
+import { PLAN_LIMITS, targetSceneCount, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
 
 /** Shots of the Ink Press template, in film order: real pages throughout, launch outro. */
 export const INK_PRESS_SHOTS: readonly string[] = [
@@ -356,43 +356,6 @@ export function reviseRecipes(prev: readonly MotionTemplate[], text: string): Mo
 }
 
 /**
- * Make sure every shot the user named is in the plan, in their order, then
- * re-fit the length. The director is asked to use them, but its output is
- * checked rather than trusted.
- */
-export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
-  if (!recipes.length) return plan;
-  const named = (s: DirectorScene) => s.kind === 'shot' && recipes.some((r) => r.id === s.recipeId);
-  const missing = recipes.filter((r) => !plan.scenes.some((s) => s.recipeId === r.id));
-  const scenes = plan.scenes.slice();
-  // Insert before a closing title / outro so the call to action stays last.
-  const last = scenes[scenes.length - 1];
-  const closing = last && (last.kind === 'title' || resolveMotionTemplate(last.recipeId)?.category === 'outro') ? 1 : 0;
-  if (missing.length) scenes.splice(scenes.length - closing, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
-  // The named shots play in the order they were named: the slots they hold keep
-  // their places in the film, and the shots are dealt into those slots in order.
-  const slots = scenes.map((s, i) => (named(s) ? i : -1)).filter((i) => i >= 0);
-  const inOrder = slots
-    .map((i) => scenes[i])
-    .sort((a, b) => recipes.findIndex((r) => r.id === a.recipeId) - recipes.findIndex((r) => r.id === b.recipeId));
-  slots.forEach((slot, k) => {
-    scenes[slot] = inOrder[k];
-  });
-  const unchanged = !missing.length && scenes.every((s, i) => s === plan.scenes[i]);
-  if (unchanged) return plan;
-  // Drop unnamed shots first if the plan is now too long.
-  while (scenes.length > PLAN_LIMITS.maxScenes) {
-    // Unnamed shots go first, then title cards: validation keeps only the first maxScenes,
-    // so anything left over would cut named shots off the end.
-    let idx = scenes.findIndex((s) => s.kind === 'shot' && !recipes.some((r) => r.id === s.recipeId));
-    if (idx < 0) idx = scenes.findIndex((s) => s.kind === 'title');
-    if (idx < 0) break;
-    scenes.splice(idx, 1);
-  }
-  return validatePlan({ ...plan, scenes }, { targetSec });
-}
-
-/**
  * Put the site's own words on the storyboard: its headline under the opening title card, its
  * section headings as the shots' captions, its call to action under the closing card. The
  * framing cards always take the site's words; a shot keeps a caption the director wrote.
@@ -417,43 +380,38 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
 }
 
 /**
- * A film built from shots the user picked contains exactly those shots, each once, in the
- * order they were picked — the director may frame them with one opening and one closing title
- * card, but never adds other recipes. Scene lengths are re-fitted to the requested length.
+ * A film built from shots the user picked uses only those shots — they set the look, not the
+ * scene count. The model's scenes keep their order and their message; a scene on any other recipe
+ * takes the next pick in turn, every pick plays at least once, and the shot count follows the
+ * length (about one scene per 4 s) by repeating the picks. At most an opening and a closing
+ * title card frame them. Scene lengths are re-fitted to the requested length.
  */
 export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
   if (!recipes.length) return plan;
-  const wanted = new Set(recipes.map((r) => r.id));
-  const seen = new Set<string>();
-  const kept: DirectorScene[] = [];
-  plan.scenes.forEach((scene, i) => {
-    if (scene.kind === 'title') {
-      // Only the framing cards: the first and the last scene of the plan.
-      if (i === 0 || i === plan.scenes.length - 1) kept.push(scene);
-    } else if (wanted.has(scene.recipeId) && !seen.has(scene.recipeId)) {
-      seen.add(scene.recipeId);
-      kept.push(scene);
-    }
-  });
+  const filmSec = Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec));
+  const picked = (s: DirectorScene) => recipes.some((r) => r.id === s.recipeId);
+  let turn = 0;
+  const nextPick = () => recipes[turn++ % recipes.length];
+  const shots = plan.scenes.filter((s) => s.kind === 'shot').map((s) => (picked(s) ? s : { ...s, recipeId: nextPick().id }));
   // A picked shot the plan lost (e.g. the model skipped it) still plays.
-  const missing = recipes.filter((r) => !seen.has(r.id));
-  if (missing.length) {
-    const lastKept = kept[kept.length - 1];
-    const at = lastKept?.kind === 'title' && kept.length > 1 ? kept.length - 1 : kept.length;
-    kept.splice(at, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
+  for (const r of recipes) if (!shots.some((s) => s.recipeId === r.id)) shots.push(sceneFor(r, r.durationSec || 4, 'cut'));
+  // Every scene needs its minimum time and the film its scene cap: repeats go first when there are too many.
+  const maxTotal = Math.min(PLAN_LIMITS.maxScenes, Math.floor(filmSec / PLAN_LIMITS.minSceneSec));
+  for (let i = shots.length - 1; i >= 0 && shots.length > maxTotal; i--) {
+    if (shots.findIndex((s) => s.recipeId === shots[i].recipeId) < i) shots.splice(i, 1);
   }
-  // Order of the picks, framing cards stay first / last.
-  const order = (s: DirectorScene) => recipes.findIndex((r) => r.id === s.recipeId);
-  const shots = kept.filter((s) => s.kind === 'shot').sort((a, b) => order(a) - order(b));
-  // Framing cards are optional: keep one only while every scene still gets its minimum time in the requested length.
-  const room = Math.floor(Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec)) / PLAN_LIMITS.minSceneSec) - shots.length;
-  const first = room >= 1 && kept[0]?.kind === 'title' ? kept[0] : null;
-  const lastCard = room >= 2 && kept.length > 1 && kept[kept.length - 1].kind === 'title' ? kept[kept.length - 1] : null;
-  const scenes = [...(first ? [first] : []), ...shots, ...(lastCard ? [lastCard] : [])];
+  // Framing cards are optional: keep one only while it still fits.
+  const last = plan.scenes.length - 1;
+  const room = maxTotal - shots.length;
+  const first = room >= 1 && plan.scenes[0]?.kind === 'title' ? plan.scenes[0] : null;
+  const closing = room >= 2 && last > 0 && plan.scenes[last].kind === 'title' ? plan.scenes[last] : null;
+  const cards = (first ? 1 : 0) + (closing ? 1 : 0);
+  // Fill the length: repeats of the picks, each left without copy so the site's next section heading becomes its caption.
+  while (shots.length + cards < Math.min(maxTotal, targetSceneCount(filmSec))) shots.push({ ...sceneFor(nextPick(), 4, 'cut'), caption: '' });
+  const scenes = [...(first ? [first] : []), ...shots, ...(closing ? [closing] : [])];
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
   }
-  // Few picked shots stretch to the requested length instead of stopping at the usual per-scene cap.
-  const filmSec = Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec));
+  // Held picked shots stretch to the requested length instead of stopping at the usual per-scene cap.
   return validatePlan({ ...plan, scenes }, { targetSec, maxSceneSec: Math.ceil(filmSec / scenes.length) });
 }

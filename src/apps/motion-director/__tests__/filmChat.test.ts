@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_SHOTS,
-  ensureRecipes,
   reviseRecipes,
   MAX_PICKED_SHOTS,
   findNamedRecipes,
@@ -20,6 +19,7 @@ import {
   startsDifferentFilm,
 } from '../lib/filmChat';
 import { planToProject } from '../lib/buildFilm';
+import { PLAN_LIMITS, targetSceneCount } from '../lib/directorPlan';
 import { checkFilmStructure } from '../lib/filmPipeline';
 import { CARDS } from '../cards/registry';
 
@@ -116,27 +116,7 @@ describe('Ink Press storyboard', () => {
     expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual(picked.map((p) => p.id));
   });
 
-  it('puts missing named shots back into a director plan before the closing card', () => {
-    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
-    const named = byComponent('HitCounter');
-    const fixed = ensureRecipes(plan, [named], 20);
-    expect(fixed.scenes.some((s) => s.recipeId === named.id)).toBe(true);
-    expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
-  });
 
-  it('puts the named shots in the order they were named, even when the director swapped them', () => {
-    const deck = byComponent('DeckDealFlyin');
-    const row = byComponent('RowEmbed');
-    const plan = inkPressPlan({ prompt: 'x', durationSec: 16, recipes: [row, deck] });
-    expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([row.id, deck.id]);
-    const fixed = ensureRecipes(plan, [deck, row], 16);
-    expect(fixed.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([deck.id, row.id]);
-    // Titles stay where they were.
-    expect(fixed.scenes[0].kind).toBe('title');
-    expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
-    // Already in order: the plan comes back untouched.
-    expect(ensureRecipes(fixed, [deck, row], 16)).toBe(fixed);
-  });
 
   it('never drops a named shot for a title card when the storyboard is full', () => {
     const shots = MOTION_TEMPLATES.slice(0, 14);
@@ -146,9 +126,6 @@ describe('Ink Press storyboard', () => {
     expect(twelve.scenes[0].kind).toBe('title');
     const fourteen = inkPressPlan({ prompt: 'x', durationSec: 60, recipes: shots });
     expect(ids(fourteen)).toEqual(shots.map((t) => t.id));
-    // ensureRecipes on a plan with titles makes room by dropping the titles, not the named shots.
-    const repaired = ensureRecipes(twelve, shots, 60);
-    expect(ids(repaired)).toEqual(shots.map((t) => t.id));
   });
 
   it('revisions replace shots when asked to, and add them otherwise', () => {
@@ -211,36 +188,65 @@ describe('a film made of picked shots', () => {
   const row = byComponent('RowEmbed');
   const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
 
-  it('keeps only the picked shots, once each, in pick order, with framing titles', () => {
-    // The model added other shots, repeated one, and put a title card in the middle.
+  const total = (p: { scenes: { durationSec: number }[] }) => p.scenes.reduce((sum, s) => sum + s.durationSec, 0);
+
+  it('uses only the picked shots, repeated so the scene count follows the length, with framing titles', () => {
+    // The model added other shots and put a title card in the middle.
     const noisy = inkPressPlan({ prompt: 'x', durationSec: 30 });
-    const other = noisy.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
-    expect(other.length).toBeGreaterThan(2);
+    expect(shotIds(noisy).some((id) => id !== row.id && id !== deck.id)).toBe(true);
     const plan = { ...noisy, scenes: [noisy.scenes[0], ...noisy.scenes.filter((s) => s.kind === 'shot'), { ...noisy.scenes[0], headline: 'Middle' }, noisy.scenes[noisy.scenes.length - 1]] };
-    const fitted = restrictToRecipes(plan, [row, deck], 20);
-    expect(shotIds(fitted)).toEqual([row.id, deck.id]);
+    const fitted = restrictToRecipes(plan, [row, deck], 30);
+    expect(new Set(shotIds(fitted))).toEqual(new Set([row.id, deck.id]));
+    expect(fitted.scenes).toHaveLength(targetSceneCount(30));
     expect(fitted.scenes[0].kind).toBe('title');
     expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
     expect(fitted.scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
-    expect(Math.round(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
+    expect(Math.round(total(fitted))).toBe(30);
+  });
+
+  it('one picked shot in a 30 s film gives about 8 scenes, not 3 long ones', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 30 });
+    const fitted = restrictToRecipes(plan, [deck], 30);
+    expect(fitted.scenes).toHaveLength(8);
+    expect(shotIds(fitted).every((id) => id === deck.id)).toBe(true);
+    expect(Math.max(...fitted.scenes.map((s) => s.durationSec))).toBeLessThanOrEqual(6);
+  });
+
+  it("a scene on another recipe keeps the model's message and takes the next pick", () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
+    const i = plan.scenes.findIndex((s) => s.kind === 'shot');
+    const marked = { ...plan, scenes: plan.scenes.map((s, k) => (k === i ? { ...s, headline: 'See the pricing' } : s)) };
+    const fitted = restrictToRecipes(marked, [row, deck], 20);
+    expect(fitted.scenes.find((s) => s.headline === 'See the pricing')?.recipeId).toBe(row.id);
   });
 
   it('puts back a picked shot the model skipped, and does nothing when none are picked', () => {
     const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
-    expect(shotIds(restrictToRecipes(plan, [byComponent('HitCounter')], 20))).toEqual([byComponent('HitCounter').id]);
+    const counter = byComponent('HitCounter');
+    expect(shotIds(restrictToRecipes(plan, [counter], 20)).every((id) => id === counter.id)).toBe(true);
     expect(restrictToRecipes(plan, [], 20)).toBe(plan);
   });
 
-  it('stretches a few picked shots to the requested length', () => {
+  it('a 60 s film stays within the scene cap and keeps its closing card', () => {
     const plan = inkPressPlan({ prompt: 'x', durationSec: 60 });
     const fitted = restrictToRecipes(plan, [row, deck], 60);
-    expect(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0)).toBeGreaterThan(58);
+    expect(fitted.scenes).toHaveLength(PLAN_LIMITS.maxScenes);
+    expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
+    expect(total(fitted)).toBeGreaterThan(58);
+  });
+
+  it('every pick plays even when there are more picks than the length fits: the film runs longer', () => {
+    const picks = MOTION_TEMPLATES.slice(0, 8);
+    const fitted = restrictToRecipes(inkPressPlan({ prompt: 'x', durationSec: 20 }), picks, 10);
+    expect(new Set(shotIds(fitted))).toEqual(new Set(picks.map((p) => p.id)));
+    expect(fitted.scenes).toHaveLength(8);
+    expect(Math.round(total(fitted))).toBe(12);
   });
 
   it('a single picked shot is still a valid storyboard', () => {
     const plan = { ...inkPressPlan({ prompt: 'x', durationSec: 20 }), title: 'Acme — shot film' };
     const fitted = restrictToRecipes({ ...plan, scenes: plan.scenes.filter((s) => s.kind === 'shot') }, [deck], 8);
-    expect(shotIds(fitted)).toEqual([deck.id]);
+    expect(shotIds(fitted).every((id) => id === deck.id)).toBe(true);
     expect(fitted.scenes.length).toBeGreaterThanOrEqual(2);
   });
 });

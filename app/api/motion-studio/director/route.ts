@@ -12,6 +12,7 @@ import {
   validateBrief,
   validateDirections,
   validateEditOps,
+  targetSceneCount,
   validateMapping,
   validatePlan,
 } from '@/apps/motion-director/lib/directorPlan'
@@ -50,15 +51,15 @@ Return a storyboard as JSON. Rules:
 - Open with a title or an Opening shot; end with an Outro shot or a title card with the call to action.
 - When a product capture is provided, use several PRODUCT-PAGE recipes: they show the captured site.
 - productCapture.content is what the site says about itself (its headline, section headings, calls to action). Write headlines and captions from those words; never claim features the site does not mention. End on its call to action when it has one.
-- One motion idea per scene; do not repeat a recipe. Let key moments breathe (hold ≥ 1s after a reveal).
+- One motion idea per scene; do not repeat a recipe (except picked requiredRecipes, below). Let key moments breathe (hold ≥ 1s after a reveal).
 - headline: short, punchy on-screen line (≤ ${PLAN_LIMITS.headlineChars} chars). caption: optional small strip (≤ ${PLAN_LIMITS.captionChars} chars) or "".
 - transition: "flash" for a beat-like white flash before the next scene, otherwise "cut". Use "flash" sparingly (≤ 3).
 - palette: hex colours taken from the brand when given (background, text, accent).
-- Scene durations in seconds should sum to the requested length. Keep scenes short: 2–6 s each (a title card ≤ 3 s), and use one shot for each part of the page the person asked to show.
+- Scene durations in seconds should sum to the requested length. Use about sceneCount scenes, each 2–6 s (a title card ≤ 3 s): one scene for each feature or part of the page the person asked to show.
 - Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
 - When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
 - Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
-- requiredRecipes: when this list is NOT empty the user picked these shots by name. The film is made of ONLY these shots: use every one, exactly once, in that order, and add NO other shot recipe. You may add one opening title card and one closing call-to-action title card. Spread the requested length across them. When the list is empty, choose the shots yourself from the catalog.
+- requiredRecipes: when this list is NOT empty the user picked these shots by name. The film uses ONLY these shots and NO other shot recipe: use every one at least once, and repeat them for as many scenes as the length needs (about sceneCount), each repeat with different copy and a different part of the site's page. You may add one opening title card and one closing call-to-action title card. When the list is empty, choose the shots yourself from the catalog.
 - Upstream craft rules: prefer real captured pages over mock UI; one hero per opening shot; stable camera; captions legible; give key moments a ≥ 1 s hold; at most 3 flash cuts; end with a call to action.
 - template "inkpress": follow the Ink Press structure — a title card, real-page PRODUCT-PAGE shots with caption strips, flash cuts on key beats, a call-to-action title, and an Outro shot. Keep the paper/ink palette (#f7f4ee background, #1c1a17 text, #b5651d accent) unless brand colours are given.
 
@@ -77,7 +78,7 @@ const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short prod
 Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff. Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
 
 const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
-Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
+Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, firstShot and altShot use ONLY those shots: every one at least once, repeated across rows as needed.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -257,7 +258,7 @@ export async function POST(req: NextRequest) {
       if (body.mode === 'direction') {
         return NextResponse.json({ options: validateDirections(await callDirector(key, DIRECTION_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_direction', DIRECTION_JSON_SCHEMA)) })
       }
-      return NextResponse.json({ mapping: validateMapping(await callDirector(key, MAPPING_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_mapping', MAPPING_JSON_SCHEMA)) })
+      return NextResponse.json({ mapping: validateMapping(await callDirector(key, MAPPING_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_mapping', MAPPING_JSON_SCHEMA), context.requiredRecipes) })
     }
 
     const prompt = str(body.prompt, 4000).trim()
@@ -280,6 +281,7 @@ export async function POST(req: NextRequest) {
         : null,
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
+      sceneCount: targetSceneCount(durationSec),
       template: body.template === 'inkpress' ? 'inkpress' : null,
     }
     const raw = await callDirector(key, PLAN_INSTRUCTIONS, JSON.stringify(brief), 'motion_studio_plan', PLAN_JSON_SCHEMA)
