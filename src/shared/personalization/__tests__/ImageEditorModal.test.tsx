@@ -4,7 +4,10 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import ImageEditorModal from '../image-editor/ImageEditorModal'
 
 // jsdom cannot decode images; the PNG re-encode is covered in normalizeImage.test.ts.
-vi.mock('../image-editor/normalizeImage', () => ({ normalizeImageDataUrl: async (dataUrl: string) => dataUrl }))
+vi.mock('../image-editor/normalizeImage', () => ({
+  normalizeImageDataUrl: async (dataUrl: string) => dataUrl,
+  ensureModelSupportedImage: async (dataUrl: string) => dataUrl,
+}))
 
 vi.mock('@/src/shared/api/openaiImage', () => ({
   editImage: vi.fn(),

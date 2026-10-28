@@ -1989,6 +1989,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // The modal opens with an empty form. The last saved project is only
     // offered ("Continue with …"); loading it happens on the user's request.
     freshStartRef.current = true
+    // A fresh form must not stay attached to the last saved client, or saving
+    // a new business would overwrite that client's profile. Continue (or
+    // picking a saved client) re-attaches it.
+    setSelectedClientId('')
+    setCurrentClientId(null)
     projectPersistence.current.cancel()
     projectPersistence.current.setProjectId(null)
 

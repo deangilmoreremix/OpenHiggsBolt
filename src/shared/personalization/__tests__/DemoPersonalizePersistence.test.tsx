@@ -451,6 +451,22 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(ctx().promptState.personalized).toBe('')
   })
 
+  it('a fresh session is not attached to the last selected client', async () => {
+    await mount()
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE })
+    })
+    await act(async () => {
+      ctx().selectClient('client-from-last-time')
+    })
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    // Saving a new business now creates a client instead of updating the old one.
+    expect(ctx().selectedClientId).toBe('')
+  })
+
   it('writes no local preview while the fresh session is untouched', async () => {
     await mount()
     await act(async () => {

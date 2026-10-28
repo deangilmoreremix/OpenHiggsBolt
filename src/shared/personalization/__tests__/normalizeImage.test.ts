@@ -4,7 +4,7 @@
  * longest side is at most NORMALIZED_MAX_DIMENSION.
  */
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { normalizeImageDataUrl, NORMALIZED_MAX_DIMENSION } from '../image-editor/normalizeImage'
+import { ensureModelSupportedImage, normalizeImageDataUrl, NORMALIZED_MAX_DIMENSION } from '../image-editor/normalizeImage'
 
 function stubImage(width: number, height: number, fail = false) {
   class FakeImage {
@@ -79,5 +79,26 @@ describe('normalizeImageDataUrl without a size cap (masked edits)', () => {
     await normalizeImageDataUrl('data:image/jpeg;base64,AAAA', Number.POSITIVE_INFINITY)
 
     expect([canvas.width, canvas.height]).toEqual([4000, 3000])
+  })
+})
+
+describe('ensureModelSupportedImage', () => {
+  it('leaves a supported JPEG untouched so it keeps its size and compression', async () => {
+    const jpeg = 'data:image/jpeg;base64,AAAA'
+    stubImage(4000, 3000)
+    const canvas = stubCanvas()
+
+    expect(await ensureModelSupportedImage(jpeg)).toBe(jpeg)
+    expect(canvas.toDataURL).not.toHaveBeenCalled()
+  })
+
+  it('re-encodes an SVG at its natural size', async () => {
+    stubImage(800, 200)
+    const canvas = stubCanvas()
+
+    const out = await ensureModelSupportedImage('data:image/svg+xml;base64,PHN2Zy8+')
+
+    expect(out.startsWith('data:image/png')).toBe(true)
+    expect([canvas.width, canvas.height]).toEqual([800, 200])
   })
 })

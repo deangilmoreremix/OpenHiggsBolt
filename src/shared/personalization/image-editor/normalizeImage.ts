@@ -11,6 +11,21 @@
  */
 export const NORMALIZED_MAX_DIMENSION = 1536
 
+/** Formats the vision and edit APIs accept as-is. */
+const MODEL_SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+
+/**
+ * Re-encodes only what the models would reject (SVG, ICO, AVIF, …) and leaves
+ * a supported image untouched, keeping its size and compression. The image
+ * editor uses this: its masks are drawn at the natural size, and a full-size
+ * PNG of a large photo can outgrow the request limits a JPEG fits.
+ */
+export async function ensureModelSupportedImage(dataUrl: string): Promise<string> {
+  const mime = dataUrl.slice(5, dataUrl.indexOf(';')).toLowerCase()
+  if (MODEL_SUPPORTED_TYPES.includes(mime)) return dataUrl
+  return normalizeImageDataUrl(dataUrl, Number.POSITIVE_INFINITY)
+}
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
