@@ -19,7 +19,9 @@ import {
   type FilmTemplateChoice,
 } from '../lib/filmChat';
 import { videoSceneSec } from '../lib/buildFilm';
-import { askDirector } from '../lib/directorClient';
+import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, type GuidedContext, type SiteCapture } from '../lib/directorClient';
+import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
+import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
@@ -50,7 +52,19 @@ export interface FilmChatMessage {
   ts: string;
 }
 
-export type FilmStage = 'idle' | 'offer' | 'storyboarding' | 'plan' | 'building' | 'film';
+/** `brief` → `direction` → `mapping` are the co-creation steps the person confirms before the storyboard. */
+export type FilmStage = 'idle' | 'offer' | 'brief' | 'direction' | 'mapping' | 'storyboarding' | 'plan' | 'building' | 'film';
+
+/** What a co-creation conversation has settled so far. */
+interface GuidedState {
+  req: FilmRequest;
+  capture: SiteCapture | null;
+  notes: string[];
+  brief?: DirectorBrief;
+  options?: DirectionOptions;
+  direction?: string;
+  mapping?: MappingRow[];
+}
 
 export interface FilmSettings {
   aspectRatio: AspectRatio;
@@ -101,6 +115,7 @@ export function useFilmDirector(opts: {
   const mark = useCallback((id: FilmStepId, state: FilmStepState, detail?: string) => setSteps((prev) => markStep(prev, id, state, detail)), []);
   const pending = useRef<{ req: FilmRequest; template: FilmTemplateChoice } | null>(null);
   const offerReq = useRef<FilmRequest | null>(null);
+  const guided = useRef<GuidedState | null>(null);
   const optsRef = useRef(opts);
   optsRef.current = opts;
   /**
@@ -130,7 +145,7 @@ export function useFilmDirector(opts: {
 
   const runStoryboard = useCallback(
     /** `reuseCapture`: only a revision of the storyboard on the table keeps its site capture. */
-    async (req: FilmRequest, template: FilmTemplateChoice, reuseCapture = false) => {
+    async (req: FilmRequest, template: FilmTemplateChoice, reuseCapture = false, known: SiteCapture | null = null) => {
       const my = gen.current;
       const live = () => gen.current === my;
       const glog: typeof log = (label, status) => {
@@ -165,7 +180,7 @@ export function useFilmDirector(opts: {
       setActivity([]);
       const images = media.filter((m) => m.kind === 'image').length;
       let next = markStep(initialSteps(), 'product', 'done', req.siteUrl ?? 'From your message');
-      next = reuseCapture && storyboard?.capture
+      next = known || (reuseCapture && storyboard?.capture)
         ? markStep(next, 'capture', 'done', 'Reusing the captured pages')
         : req.siteUrl
           ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`)
@@ -182,7 +197,7 @@ export function useFilmDirector(opts: {
             durationSec: req.durationSec ?? s.durationSec,
             aspectRatio: s.aspectRatio,
             brandKit: s.brandKit,
-            capture: reuseCapture ? storyboard?.capture ?? null : null,
+            capture: known ?? (reuseCapture ? storyboard?.capture ?? null : null),
             reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
           },
           glog,
@@ -213,7 +228,12 @@ export function useFilmDirector(opts: {
             `I read ${c.title || c.url}${headline ? ` — it says “${headline.slice(0, 120)}”` : ''}${ctas.length ? `, with calls to action ${ctas.map((x) => `“${x}”`).join(', ')}` : ''}. I captured ${found.join(', ')} to use in the film.`,
           );
         }
-        const lines = result.plan.scenes.map((sc) => `${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
+        let clockAt = 0;
+        const lines = result.plan.scenes.map((sc) => {
+          const line = sceneLine(sc, clockAt);
+          clockAt += sc.durationSec;
+          return line;
+        });
         // Attached videos play just before the closing scene (after a one-scene film), as the build places them.
         lines.splice(lines.length > 1 ? lines.length - 1 : lines.length, 0, ...videos.map((v) => `Your video ${v.name} · ${v.sec}s`));
         const numbered = lines.map((line, i) => `${i + 1}. ${line}`);
@@ -231,6 +251,162 @@ export function useFilmDirector(opts: {
     [log, mark, say, storyboard?.capture],
   );
 
+
+  /** Co-creation (video-shotcraft's guided flow): brief → visual direction → feature-to-shot mapping → storyboard. */
+  const guidedContext = useCallback((g: GuidedState, extra: Partial<GuidedContext> = {}): GuidedContext => {
+    const set = optsRef.current.settings();
+    return {
+      prompt: g.req.prompt,
+      durationSec: g.req.durationSec ?? set.durationSec,
+      aspectRatio: set.aspectRatio,
+      capture: g.capture,
+      brandKit: (set.brandKit as Record<string, unknown> | null | undefined) ?? null,
+      notes: g.notes,
+      requiredRecipes: g.req.recipes.map((r) => r.id),
+      ...extra,
+    };
+  }, []);
+
+  /** Run one co-creation step; its result is the next thing the person confirms. */
+  const guidedStep = useCallback(
+    async (step: 'brief' | 'direction' | 'mapping') => {
+      const g = guided.current;
+      if (!g) return;
+      const my = gen.current;
+      const live = () => gen.current === my && guided.current === g;
+      setStage('storyboarding');
+      try {
+        if (step === 'brief') {
+          const brief = await requestBrief(guidedContext(g));
+          if (!live()) return;
+          g.brief = brief;
+          say('assistant', briefMessage(brief, !g.capture));
+        } else if (step === 'direction') {
+          const options = await requestDirections(guidedContext(g, { brief: g.brief ? briefText(g.brief) : '' }));
+          if (!live()) return;
+          g.options = options;
+          say('assistant', directionMessage(options));
+        } else {
+          const mapping = await requestMapping(guidedContext(g, { brief: g.brief ? briefText(g.brief) : '', direction: g.direction ?? '' }));
+          if (!live()) return;
+          g.mapping = mapping;
+          say('assistant', mappingMessage(mapping));
+        }
+        setStage(step);
+      } catch (error) {
+        if (!live()) return;
+        guided.current = null;
+        const noKey = error instanceof DirectorError && (error.code === 'OPENAI_KEY_REQUIRED' || error.code === 'OPENAI_KEY_REJECTED');
+        if (noKey) {
+          say('assistant', 'Working it out together needs your OpenAI API key (add it in SmartVideo GO Settings). I used the Ink Press template instead.');
+          void runStoryboard(g.req, 'inkpress', false, g.capture);
+        } else {
+          setStage('idle');
+          mark('storyboard', 'error', error instanceof Error ? error.message : 'failed');
+          say('assistant', `I could not do that step: ${error instanceof Error ? error.message : 'unknown error'}. Send your request again, or choose Ink Press.`);
+        }
+      }
+    },
+    [guidedContext, mark, runStoryboard, say],
+  );
+
+  /** The person confirmed the shot mapping (or handed the choices over): write the storyboard from everything settled. */
+  const guidedFinish = useCallback(() => {
+    const g = guided.current;
+    if (!g) return;
+    guided.current = null;
+    const decisions = [
+      g.brief ? `Brief:\n${briefText(g.brief)}` : '',
+      g.direction ? `Direction: ${g.direction}` : '',
+      g.mapping ? `Shot mapping (first choices, in film order):\n${mappingText(g.mapping)}` : '',
+      g.notes.length ? `The person's notes:\n${g.notes.join('\n')}` : '',
+    ].filter(Boolean);
+    const lead = g.mapping
+      ? g.mapping.map((m) => resolveMotionTemplate(m.firstShot)).filter((t): t is MotionTemplate => !!t)
+      : [];
+    const recipes = g.req.recipes.length ? g.req.recipes : lead;
+    void runStoryboard(
+      // Without a captured site the pages are sample pages; the site address is not captured a second time.
+      { ...g.req, prompt: `${g.req.prompt}\n\n${decisions.join('\n\n')}`.slice(0, 3900), recipes, siteUrl: g.capture ? g.req.siteUrl : null },
+      'director',
+      false,
+      g.capture,
+    );
+  }, [runStoryboard]);
+
+  /** Start co-creation for the film asked for: read the site, then run the product check. */
+  const startCoCreate = useCallback(
+    async (req: FilmRequest) => {
+      const my = gen.current;
+      const live = () => gen.current === my;
+      const g: GuidedState = { req, capture: null, notes: [] };
+      guided.current = g;
+      setStage('storyboarding');
+      setStoryboard(null);
+      setFilm(null);
+      setActivity([]);
+      let next = markStep(initialSteps(), 'product', 'done', req.siteUrl ?? 'From your message');
+      next = req.siteUrl ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`) : markStep(next, 'capture', 'skipped', 'No URL — sample pages');
+      setSteps(markStep(next, 'storyboard', 'active', 'Product check'));
+      if (req.siteUrl) {
+        log(`Capturing ${req.siteUrl}`, 'running');
+        try {
+          const capture = await captureSite(req.siteUrl);
+          if (!live()) return;
+          g.capture = capture;
+          log(`Captured ${capture.title || req.siteUrl}`, 'done');
+          mark('capture', 'done', `${capture.pages?.length || 1} page${(capture.pages?.length || 1) === 1 ? '' : 's'} · ${capture.crops.length} card crops`);
+        } catch (error) {
+          if (!live()) return;
+          const label = `Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`;
+          log(label, 'error');
+          mark('capture', 'error', label);
+          say('assistant', `${label}. I'll work from your message and sample pages — send the address again (or attach screenshots) and I'll re-capture.`);
+        }
+      }
+      if (!live()) return;
+      await guidedStep('brief');
+    },
+    [guidedStep, log, mark, say],
+  );
+
+  /** An answer during co-creation. Returns false when it is a new film instead (the caller handles it). */
+  const answerGuided = useCallback(
+    (text: string): boolean => {
+      const g = guided.current;
+      if (!g) return false;
+      if (startsDifferentFilm(text, g.req)) {
+        guided.current = null;
+        return false;
+      }
+      say('user', text);
+      if (YOU_DECIDE_RE.test(text)) {
+        say('assistant', 'Understood — I’ll decide the rest and show you the storyboard to approve.');
+        guidedFinish();
+        return true;
+      }
+      if (stage === 'brief') {
+        if (!ACCEPT_RE.test(text)) g.notes.push(`Brief: ${text}`);
+        void guidedStep('direction');
+      } else if (stage === 'direction') {
+        const options = g.options;
+        const i = options ? pickDirection(text, options) : -1;
+        if (options && i >= 0) g.direction = directionText(options.directions[i]);
+        else if (options && ACCEPT_RE.test(text)) g.direction = directionText(options.directions[options.recommended]);
+        else g.direction = `Own direction: ${text}`;
+        void guidedStep('mapping');
+      } else {
+        if (ACCEPT_RE.test(text)) guidedFinish();
+        else {
+          g.notes.push(`Mapping: ${text}`);
+          void guidedStep('mapping');
+        }
+      }
+      return true;
+    },
+    [guidedFinish, guidedStep, say, stage],
+  );
+
   /** Handle a chat message. Returns false when it is not a film request (the caller treats it as an edit). */
   const send = useCallback(
     (raw: string, sendOpts: { force?: boolean } = {}): boolean => {
@@ -239,6 +415,10 @@ export function useFilmDirector(opts: {
       if (stage === 'storyboarding' || stage === 'building') {
         say('assistant', `I'm still ${stage === 'building' ? 'building the film' : 'working on the storyboard'} — press Stop to cancel it, then send that again.`);
         return true;
+      }
+
+      if ((stage === 'brief' || stage === 'direction' || stage === 'mapping') && guided.current) {
+        if (answerGuided(text)) return true;
       }
 
       if (stage === 'offer' && offerReq.current) {
@@ -338,7 +518,7 @@ export function useFilmDirector(opts: {
       }
       return true;
     },
-    [runStoryboard, say, stage],
+    [answerGuided, runStoryboard, say, stage],
   );
 
   const chooseTemplate = useCallback(
@@ -351,6 +531,15 @@ export function useFilmDirector(opts: {
     },
     [runStoryboard, say],
   );
+
+  /** The offer's "Work it out together" button. */
+  const coCreate = useCallback(() => {
+    const req = offerReq.current;
+    if (!req) return;
+    offerReq.current = null;
+    say('user', 'Work it out together.');
+    void startCoCreate(req);
+  }, [say, startCoCreate]);
 
   const approve = useCallback(async () => {
     if (!storyboard) return;
@@ -420,6 +609,7 @@ export function useFilmDirector(opts: {
     setSteps((prev) => prev.map((st) => (st.state === 'active' ? { ...st, state: 'todo', detail: 'Stopped' } : st)));
     if (stage === 'storyboarding') {
       pending.current = null;
+      guided.current = null;
       setStoryboard(null);
       setStage('idle');
       say('assistant', 'Stopped. Tell me what to make next.');
@@ -434,6 +624,7 @@ export function useFilmDirector(opts: {
     gen.current++;
     pending.current = null;
     offerReq.current = null;
+    guided.current = null;
     setStage('idle');
     setStoryboard(null);
     setFilm(null);
@@ -442,7 +633,7 @@ export function useFilmDirector(opts: {
     setSteps(initialSteps());
   }, []);
 
-  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, approve, revise, stop, reset };
+  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, coCreate, approve, revise, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

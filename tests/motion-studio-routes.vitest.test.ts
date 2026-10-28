@@ -225,6 +225,25 @@ describe('POST /api/motion-studio/director', () => {
     expect(empty.status).toBe(400)
   })
 
+  it('runs the co-creation steps: brief, directions and a catalog-only shot mapping', async () => {
+    vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-user' }))
+    const { MOTION_TEMPLATES } = await import('@/data/motionRecipeCatalog')
+    const shot = MOTION_TEMPLATES[3]
+    const ask = (mode: string, raw: unknown, extra: Record<string, unknown> = {}) => {
+      mockOpenAi(raw)
+      return import('@/app/api/motion-studio/director/route').then(({ POST }) => POST(post('/api/motion-studio/director', { mode, prompt: 'Launch film for Acme', ...extra })))
+    }
+    const brief = await ask('brief', { rows: [{ item: 'Positioning', judgment: 'Fast', evidence: 'headline' }], questions: ['a', 'b', 'c', 'd'] })
+    expect(brief.status).toBe(200)
+    expect((await brief.json()).brief.questions).toHaveLength(3)
+    const dir = await ask('direction', { directions: [{ name: 'Clean', claim: 'Quiet', keywords: [], look: '', motion: '', why: '', tradeoff: '' }], recommended: 0 })
+    expect((await dir.json()).options.directions[0].name).toBe('Clean')
+    const map = await ask('mapping', { rows: [{ feature: 'Speed', firstShot: shot.id, altShot: 'fake/none/X', expresses: '', pageState: 'hero' }, { feature: 'Bad', firstShot: 'fake/none/X', altShot: '', expresses: '', pageState: '' }] }, { requiredRecipes: [shot.id] })
+    expect((await map.json()).mapping).toEqual([{ feature: 'Speed', firstShot: shot.id, altShot: '', expresses: '', pageState: 'hero' }])
+    const none = await ask('brief', {}, { prompt: '  ' })
+    expect(none.status).toBe(400)
+  })
+
   it('maps a rejected OpenAI key to 401', async () => {
     vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-bad' }))
     mockOpenAi({}, 401)

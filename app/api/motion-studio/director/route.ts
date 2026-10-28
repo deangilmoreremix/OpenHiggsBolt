@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import {
+  BRIEF_JSON_SCHEMA,
+  DIRECTION_JSON_SCHEMA,
   EDIT_JSON_SCHEMA,
+  MAPPING_JSON_SCHEMA,
   PLAN_JSON_SCHEMA,
   PLAN_LIMITS,
   buildCatalogBrief,
+  validateBrief,
+  validateDirections,
   validateEditOps,
+  validateMapping,
   validatePlan,
 } from '@/apps/motion-director/lib/directorPlan'
 import { requireMotionStudioUser } from '../lib/auth'
@@ -20,6 +26,8 @@ export const maxDuration = 60
  *
  *   { mode: 'plan', prompt, durationSec, aspectRatio, capture?: { title, url, brand, cropCount }, brandKit? }
  *     → { plan }   a storyboard of existing ShotCraft recipes + copy + timing
+ *   { mode: 'brief' | 'direction' | 'mapping', prompt, capture?, notes?, brief?, direction?, requiredRecipes? }
+ *     → { brief } | { options } | { mapping }   the co-creation steps (video-shotcraft's guided flow)
  *   { mode: 'chat', message, plan, capture? }
  *     → { reply, revise }   the director answers a question about the storyboard
  *   { mode: 'edit', instruction, clips: [{ id, recipe, label, text, seconds }] }
@@ -46,10 +54,30 @@ Return a storyboard as JSON. Rules:
 - headline: short, punchy on-screen line (≤ ${PLAN_LIMITS.headlineChars} chars). caption: optional small strip (≤ ${PLAN_LIMITS.captionChars} chars) or "".
 - transition: "flash" for a beat-like white flash before the next scene, otherwise "cut". Use "flash" sparingly (≤ 3).
 - palette: hex colours taken from the brand when given (background, text, accent).
-- Scene durations in seconds should sum to the requested length.
+- Scene durations in seconds should sum to the requested length. Keep scenes short: 2–6 s each (a title card ≤ 3 s), and use one shot for each part of the page the person asked to show.
+- Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
+- When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
+- Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
 - requiredRecipes: when this list is NOT empty the user picked these shots by name. The film is made of ONLY these shots: use every one, exactly once, in that order, and add NO other shot recipe. You may add one opening title card and one closing call-to-action title card. Spread the requested length across them. When the list is empty, choose the shots yourself from the catalog.
 - Upstream craft rules: prefer real captured pages over mock UI; one hero per opening shot; stable camera; captions legible; give key moments a ≥ 1 s hold; at most 3 flash cuts; end with a call to action.
 - template "inkpress": follow the Ink Press structure — a title card, real-page PRODUCT-PAGE shots with caption strips, flash cuts on key beats, a call-to-action title, and an Outro shot. Keep the paper/ink palette (#f7f4ee background, #1c1a17 text, #b5651d accent) unless brand colours are given.
+
+Catalog (id | title | category | native length | flags | what it does):
+${CATALOG_BRIEF}`
+
+
+const COCREATE_RULES = `Method: video-shotcraft. Work only from evidence in the request: the person's words and productCapture (what the site says about itself, its brand colours and fonts, its pages). Never claim features the site does not mention. If nothing was captured, say what is missing instead of guessing.`
+
+const BRIEF_INSTRUCTIONS = `You run the product check that opens a short product film. ${COCREATE_RULES}
+Return JSON {rows, questions}.
+- rows: one per item, in this order when you can: Positioning, Target user, Purpose of the video, Core selling points, Features to show, Pages and states available, First-screen claim, Length / aspect / language, Music, Data rules, Visual cues. judgment = your call in one sentence (or "Can't tell from what I have"); evidence = what in the site or the request supports it.
+- questions: at most 3, only what cannot be decided from the material, each starting with your recommendation and why (e.g. "Open on the headline "…"? I'd recommend yes because the site leads with it."). Empty when nothing needs confirming.`
+
+const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short product film. ${COCREATE_RULES}
+Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff. Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
+
+const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
+Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -200,7 +228,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ reply: str(raw?.reply, 700), revise: raw?.revise === true })
     }
 
-    const prompt = str(body.prompt, 2000).trim()
+    if (body.mode === 'brief' || body.mode === 'direction' || body.mode === 'mapping') {
+      const prompt = str(body.prompt, 2000).trim()
+      if (!prompt) return NextResponse.json({ error: 'Describe the film first', code: 'BAD_REQUEST' }, { status: 400 })
+      const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
+      const context = {
+        prompt,
+        durationSec: typeof body.durationSec === 'number' ? body.durationSec : 20,
+        aspectRatio: str(body.aspectRatio, 8) || '16:9',
+        productCapture: capture
+          ? {
+              title: str(capture.title, 200),
+              url: str(capture.url, 300),
+              brand: capture.brand ?? null,
+              pages: (Array.isArray(capture.pages) ? capture.pages : []).slice(0, 4).map((p) => str(p, 120)),
+              content: siteContent(capture.content),
+            }
+          : null,
+        brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
+        notes: (Array.isArray(body.notes) ? body.notes : []).slice(0, 8).map((n) => str(n, 400)).filter(Boolean),
+        brief: str(body.brief, 2000),
+        direction: str(body.direction, 600),
+        requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
+      }
+      if (body.mode === 'brief') {
+        return NextResponse.json({ brief: validateBrief(await callDirector(key, BRIEF_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_brief', BRIEF_JSON_SCHEMA)) })
+      }
+      if (body.mode === 'direction') {
+        return NextResponse.json({ options: validateDirections(await callDirector(key, DIRECTION_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_direction', DIRECTION_JSON_SCHEMA)) })
+      }
+      return NextResponse.json({ mapping: validateMapping(await callDirector(key, MAPPING_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_mapping', MAPPING_JSON_SCHEMA)) })
+    }
+
+    const prompt = str(body.prompt, 4000).trim()
     if (!prompt) return NextResponse.json({ error: 'Describe the film first', code: 'BAD_REQUEST' }, { status: 400 })
     const durationSec = typeof body.durationSec === 'number' ? body.durationSec : 20
     const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
