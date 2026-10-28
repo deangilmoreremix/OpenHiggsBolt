@@ -60,6 +60,8 @@ export async function storyboardFilm(
     capture?: SiteCapture | null;
     /** Seconds the film already gives to attached videos; the storyboard fills the rest. */
     reservedSec?: number;
+    /** Returns true once the person has stopped this storyboard (a capture in progress stops waiting). */
+    cancelled?: () => boolean;
   },
   log: ActivityLog,
 ): Promise<StoryboardResult> {
@@ -68,7 +70,10 @@ export async function storyboardFilm(
   if (!capture && req.siteUrl) {
     log(`Capturing ${req.siteUrl}`, 'running');
     try {
-      capture = await captureSite(req.siteUrl);
+      capture = await captureSite(req.siteUrl, {
+        cancelled: opts.cancelled,
+        onProgress: (sec) => log(`Capturing ${req.siteUrl} · ${sec}s (reading the page and taking screenshots)`, 'running'),
+      });
       const pages = capture.pages?.length || 1;
       const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(

@@ -93,8 +93,41 @@ async function post<T>(path: string, body: unknown, timeoutMs = 0): Promise<T> {
 
 export { findSiteUrl } from './filmChat';
 
-/** The server ends a capture by ~25 s (the host cuts functions off at 30 s); give up a little after that. */
-export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url }, 32_000);
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Capture a site. On the host the server starts a background capture (a web request lasts only ~30 s, too
+ * little to photograph a heavy page) and answers with a job id; this polls the job until it is done. Where the
+ * capture runs inside the request (local development) the answer is the capture itself.
+ */
+export async function captureSite(
+  url: string,
+  opts: { onProgress?: (elapsedSec: number) => void; cancelled?: () => boolean; pollMs?: number; maxWaitMs?: number } = {},
+): Promise<SiteCapture> {
+  const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url }, 32_000);
+  if (!first.jobId) return first;
+  const started = Date.now();
+  const maxWait = opts.maxWaitMs ?? 150_000;
+  let failures = 0;
+  while (Date.now() - started < maxWait) {
+    await sleep(opts.pollMs ?? 2_000);
+    if (opts.cancelled?.()) throw new DirectorError('Stopped', 'CANCELLED', 0);
+    opts.onProgress?.(Math.round((Date.now() - started) / 1000));
+    try {
+      const res = await fetch(`/api/motion-studio/capture/status?jobId=${encodeURIComponent(first.jobId)}`, { cache: 'no-store' });
+      const job = (await res.json().catch(() => ({}))) as { state?: string; capture?: SiteCapture; code?: string; error?: string };
+      if (!res.ok) throw new DirectorError(String(job.error || `Request failed (${res.status})`), String(job.code || 'FAILED'), res.status);
+      if (job.state === 'done' && job.capture) return job.capture;
+      if (job.state === 'error') throw new DirectorError(job.error || 'The page could not be captured', job.code || 'CAPTURE_FAILED', 422);
+      failures = 0;
+    } catch (error) {
+      // A poll that fails (network blip, record not visible yet) is tried again a few times; the capture goes on without it.
+      if (error instanceof DirectorError && error.code !== 'NOT_FOUND' && error.status !== 0 && error.status < 500) throw error;
+      if (++failures > 5) throw error;
+    }
+  }
+  throw new DirectorError('it took longer than 2½ minutes', 'TIMEOUT', 408);
+}
 
 export async function requestPlan(body: {
   prompt: string;

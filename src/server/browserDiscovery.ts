@@ -2100,7 +2100,7 @@ function readBrandStyles(): Record<string, string | null> {
  */
 export async function capturePageScreenshots(
   rawUrl: string,
-  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number } = {},
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number; budgetMs?: number; navigationMs?: number } = {},
 ): Promise<PageCapture> {
   const started = Date.now()
   const guard = options.guard ?? createSsrfGuard()
@@ -2124,7 +2124,8 @@ export async function capturePageScreenshots(
       const page = await context.newPage()
       const elapsed = () => Date.now() - started
       /** Time left before optional work (cutouts, images, extra routes) is skipped. */
-      const left = () => CAPTURE_DEADLINE_MS - elapsed()
+      const budgetMs = options.budgetMs ?? CAPTURE_DEADLINE_MS
+      const left = () => budgetMs - elapsed()
       const timing: Record<string, number> = {}
       const mark = (phase: string) => {
         timing[phase] = elapsed()
@@ -2201,7 +2202,7 @@ export async function capturePageScreenshots(
       let out: PageCapture | null = null
 
       const work = async (): Promise<PageCapture> => {
-        await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_NAVIGATION_TIMEOUT })
+        await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: options.navigationMs ?? CAPTURE_NAVIGATION_TIMEOUT })
         const finalTarget = await guard.validateNavigationTarget(page.url())
         if (finalTarget.hostname !== baseTarget.hostname) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
@@ -2323,7 +2324,7 @@ export async function capturePageScreenshots(
         // More routes of the same site, captured the same way, while time allows.
         let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
-          if (elapsed() > CAPTURE_ROUTE_BUDGET_MS || left() < 6_000) break
+          if (elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
           try {
             await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
             const landed = await guard.validateNavigationTarget(page.url())
