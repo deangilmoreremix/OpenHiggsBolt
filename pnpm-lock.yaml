@@ -16,6 +16,9 @@ importers:
 
   .:
     dependencies:
+      '@clerk/backend':
+        specifier: 3.23.0
+        version: 3.23.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@clerk/nextjs':
         specifier: ^7.5.13
         version: 7.9.11(next@15.5.15(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
