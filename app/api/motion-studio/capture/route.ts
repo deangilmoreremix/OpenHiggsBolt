@@ -39,7 +39,7 @@ const INTERNAL_FUNCTION_SECRET = process.env.INTERNAL_FUNCTION_SECRET || ''
  * capture runs in a background function (minutes) and the client polls for it. Anywhere else (local
  * development, tests) the capture runs inside the request as it always has.
  */
-const backgroundCaptureEnabled = () => process.env.NETLIFY === 'true' && Boolean(INTERNAL_FUNCTION_SECRET)
+const backgroundCaptureEnabled = () => (process.env.NETLIFY === 'true' || process.env.NODE_ENV === 'production') && Boolean(INTERNAL_FUNCTION_SECRET)
 
 /** Starts the background capture; returns its job id, or null when it could not be started. */
 async function startBackgroundCapture(req: NextRequest, userId: string, url: string): Promise<string | null> {

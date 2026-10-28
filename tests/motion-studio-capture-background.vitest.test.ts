@@ -89,6 +89,16 @@ describe('POST /api/motion-studio/capture on the host', () => {
     expect(JSON.parse(String(files.get(`user_1/motion-capture-jobs/${jobId}.json`)))).toMatchObject({ state: 'running' })
   })
 
+  it('starts it in production even when the host does not set NETLIFY', async () => {
+    delete process.env.NETLIFY
+    vi.stubEnv('NODE_ENV', 'production')
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 202 })) as unknown as typeof fetch
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))
+    vi.unstubAllEnvs()
+    expect(res.status).toBe(202)
+  })
+
   it('captures inside the request when the background function cannot be started', async () => {
     globalThis.fetch = vi.fn(async () => new Response(null, { status: 500 })) as unknown as typeof fetch
     const { POST } = await import('@/app/api/motion-studio/capture/route')
