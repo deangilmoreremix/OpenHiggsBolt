@@ -199,6 +199,7 @@ export function useFilmDirector(opts: {
             brandKit: s.brandKit,
             capture: known ?? (reuseCapture ? storyboard?.capture ?? null : null),
             reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
+            cancelled: () => !live(),
           },
           glog,
         );
@@ -355,7 +356,10 @@ export function useFilmDirector(opts: {
       if (req.siteUrl) {
         log(`Capturing ${req.siteUrl}`, 'running');
         try {
-          const capture = await captureSite(req.siteUrl);
+          const capture = await captureSite(req.siteUrl, {
+            cancelled: () => !live(),
+            onProgress: (sec) => log(`Capturing ${req.siteUrl} · ${sec}s (reading the page and taking screenshots)`, 'running'),
+          });
           if (!live()) return;
           g.capture = capture;
           log(`Captured ${capture.title || req.siteUrl}`, 'done');
