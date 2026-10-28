@@ -39,14 +39,14 @@ export default function SceneAnalysis() {
               {projectName ? (
                 <p className="font-medium">{projectName}</p>
               ) : (
-                <p className="text-sm" style={{ color: semantic.textMuted }}>No project name set. Add one in the Composer.</p>
+                <p className="text-sm" style={{ color: semantic.textMuted }}>No project name set. Add one on the Storyboard page.</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {stat('Scenes', `${shots.length} scene(s) defined.`)}
               {stat('Total Shot Time', `${totalSeconds.toFixed(1)}s across scenes.`)}
-              {stat('Episode Length', `${episodeDuration}s target.`)}
+              {stat('Clip Length', `${episodeDuration}s target.`)}
               {stat('Aspect Ratio', aspectRatio)}
               {stat('Frames', `${framesGenerated}/${shots.length} generated.`)}
               {stat('Characters', `${characters.length} defined.`)}
@@ -71,8 +71,8 @@ export default function SceneAnalysis() {
               <h2 className="text-sm font-semibold mb-2">Status</h2>
               <p className="text-sm" style={{ color: semantic.textMuted }}>
                 {result?.url
-                  ? 'Storyboard video generated. View it in the Composer.'
-                  : 'No storyboard generated yet. Use the Composer to generate one.'}
+                  ? 'Storyboard video generated. View it on the Storyboard page.'
+                  : 'No storyboard generated yet. Generate one from the Storyboard page.'}
               </p>
             </div>
           </div>
