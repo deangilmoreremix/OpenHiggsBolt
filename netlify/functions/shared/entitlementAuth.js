@@ -198,29 +198,88 @@ async function verifyClerkSessionToken(token, options = {}) {
   return { userId: payload.sub, payload };
 }
 
+/** Clerk email that receives full access to every feature (super user). */
+const SUPER_USER_EMAIL = 'deanvideoremix.io@gmail.com';
+
+function isSuperUserEmail(email) {
+  return typeof email === 'string' && email.toLowerCase().trim() === SUPER_USER_EMAIL.toLowerCase();
+}
+
 /**
- * Same entitlement logic as hasSmartVideoGo() in src/access/resolveAccess.ts:
- * active (or unset) status AND (smartvideo_go OR founders).
+ * Base SmartVideo GO access. Every signed-in Clerk user gets this by default
+ * — no purchase required. A non-qualifying entitlement status (expired /
+ * revoked) removes it unless the user is a super user.
  */
 function hasSmartVideoGo(entitlements, status) {
-  const isActive = status === 'active' || status === undefined || status === '';
+  if (status === undefined || status === null || status === '') {
+    return true;
+  }
   const ents = entitlements || {};
-  return isActive && (ents.smartvideo_go === true || ents.founders === true);
+  return ents.smartvideo_go === true || ents.founders === true;
+}
+
+/**
+ * go-ai-viral requires a paid smartvideo_viral entitlement with a qualifying
+ * status. Not granted by default.
+ */
+function hasSmartVideoViral(entitlements, status) {
+  if (status !== 'active' && status !== 'lifetime' && status !== undefined && status !== null && status !== '') {
+    return false;
+  }
+  const ents = entitlements || {};
+  return ents.smartvideo_viral === true || ents.founders === true;
 }
 
 /**
  * Replicates resolveSmartVideoAccessForUser() from src/access/resolveAccess.ts
  * against the Supabase user_entitlements table via the service-role client.
+ *
+ * Falls back to email-only placeholder rows (`clerk_user_id = 'email:<email>'`)
+ * created when a buyer paid without a Clerk account. If a matching placeholder
+ * is found for the user's email, it is adopted (clerk_user_id repointed
+ * to the real Clerk userId) so paid status becomes visible.
+ *
+ * Returns { hasSmartVideoGo, hasSmartVideoViral, isSuperUser }.
  */
-async function resolveHasSmartVideoGo(supabase, userId) {
+async function resolveHasSmartVideoGo(supabase, userId, email) {
+  // Super user bypass via Clerk email.
+  const isSuperUser = isSuperUserEmail(email);
+
   const { data } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', userId)
     .maybeSingle();
 
-  if (!data) return false;
-  return hasSmartVideoGo(data.entitlements || {}, data.status);
+  // If no clerk_user_id row, check for an email-only placeholder row recorded
+  // by Stripe webhooks for this user's email.
+  let row = data;
+  if (!row && email && typeof email === 'string') {
+    const normalizedEmail = email.toLowerCase().trim();
+    const { data: emailRow } = await supabase
+      .from('user_entitlements')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (emailRow && emailRow.clerk_user_id && String(emailRow.clerk_user_id).startsWith('email:')) {
+      // Adopt the placeholder: repoint clerk_user_id to the real Clerk userId.
+      await supabase
+        .from('user_entitlements')
+        .update({ clerk_user_id: userId, status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', emailRow.id);
+      row = { ...emailRow, clerk_user_id: userId, status: 'active' };
+    }
+  }
+
+  const entitlements = (row?.entitlements || {}) as any;
+  const status = row?.status || 'inactive';
+
+  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+
+  return { hasSmartVideoGo: baseAccess, hasSmartVideoViral: viralAccess, isSuperUser };
 }
 
 function unauthorized() {
@@ -249,7 +308,7 @@ async function requirePaidEntitlement(event, options = {}) {
   });
   if (!verified) return unauthorized();
 
-  const entitled = await resolveHasSmartVideoGo(options.supabase, verified.userId);
+  const entitled = await resolveHasSmartVideoGo(options.supabase, verified.userId, verified.payload?.email);
   if (!entitled) {
     return { ok: false, status: 403, body: { error: 'PAYMENT_REQUIRED', upgradeRequired: true } };
   }

@@ -14,6 +14,8 @@ interface SmartVideoAccessContextValue {
   isAuthenticatedUnpaid: boolean;
   isSignedOut: boolean;
   isSignedIn: boolean | undefined;
+  hasSmartVideoViral: boolean;
+  isSuperUser: boolean;
   requireEntitlement: <T>(
     entitlement: string,
     onAllowed: () => T | Promise<T>,
@@ -90,6 +92,8 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
   const isAuthenticatedUnpaid = accessResult.state === 'authenticated_unpaid';
   const isSignedOut = accessResult.state === 'signed_out';
   const isSignedInBoolean = Boolean(isSignedIn);
+  const hasSmartVideoViral = Boolean(accessState?.hasSmartVideoViral);
+  const isSuperUser = Boolean(accessState?.isSuperUser);
 
   const requireEntitlement = useCallback(
     async function requireEntitlement<T>(
@@ -143,6 +147,8 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         isAuthenticatedUnpaid,
         isSignedOut,
         isSignedIn: isSignedInBoolean,
+        hasSmartVideoViral,
+        isSuperUser,
         requireEntitlement,
         openUpgradeModal,
         restoreAccess,
@@ -164,6 +170,8 @@ export function NoClerkSmartVideoAccessProvider({ children }: { children: React.
     isAuthenticatedUnpaid: false,
     isSignedOut: true,
     isSignedIn: false,
+    hasSmartVideoViral: false,
+    isSuperUser: false,
     requireEntitlement: async (_entitlement, onAllowed) => {
       return await onAllowed();
     },
@@ -195,6 +203,8 @@ export function useSmartVideoAccess(): SmartVideoAccessContextValue {
     isAuthenticatedUnpaid: false,
     isSignedOut: true,
     isSignedIn: false,
+    hasSmartVideoViral: false,
+    isSuperUser: false,
     requireEntitlement: async (_entitlement, onAllowed) => onAllowed(),
     openUpgradeModal: () => {},
     restoreAccess: async () => ({ status: 'error', message: 'Access provider unavailable.' }),

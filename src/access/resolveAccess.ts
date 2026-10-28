@@ -1,6 +1,16 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { getSupabaseAdmin } from '@/lib/supabaseServer';
-import { ENTITLEMENTS, isQualifyingStatus, type AccessState, type AccessResult, type EntitlementStatus, type UserEntitlements } from './entitlements';
+import {
+  ENTITLEMENTS,
+  hasSmartVideoGo,
+  hasSmartVideoViral,
+  isSuperUserEmail,
+  isQualifyingStatus,
+  type AccessState,
+  type AccessResult,
+  type EntitlementStatus,
+  type UserEntitlements,
+} from './entitlements';
 
 export const EMAIL_ONLY_CLERK_ID_PREFIX = 'email:';
 
@@ -10,13 +20,6 @@ export function emailOnlyClerkId(email: string): string {
 
 export function isEmailOnlyClerkId(clerkUserId: string | null | undefined): boolean {
   return typeof clerkUserId === 'string' && clerkUserId.startsWith(EMAIL_ONLY_CLERK_ID_PREFIX);
-}
-
-function hasSmartVideoGo(entitlements: UserEntitlements, status?: string): boolean {
-  if (!isQualifyingStatus(status)) {
-    return false;
-  }
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
 }
 
 async function getVerifiedEmailsForUser(userId: string): Promise<string[]> {
@@ -33,6 +36,61 @@ async function getVerifiedEmailsForUser(userId: string): Promise<string[]> {
   }
 }
 
+/**
+ * When a buyer paid without a Clerk account, the webhook records the purchase
+ * under an `email:<email>` placeholder row (see recordEmailOnlyPurchase).
+ * That placeholder can never satisfy hasSmartVideoGo for a real Clerk user,
+ * because isEmailOnlyClerkId() never matches a genuine Clerk userId.
+ *
+ * This helper adopts the placeholder: it repoints clerk_user_id to the real
+ * Clerk userId so the purchase becomes visible to resolveSmartVideoAccess.
+ * It is safe to call repeatedly — subsequent calls find no placeholder and
+ * return null.
+ */
+async function adoptEmailOnlyPlaceholder(userId: string): Promise<{ clerk_user_id: string; email: string; entitlements: any; status: string; source: string } | null> {
+  const verifiedEmails = await getVerifiedEmailsForUser(userId);
+  const supabase = getSupabaseAdmin();
+
+  for (const email of verifiedEmails) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const { data: emailRow } = await supabase
+      .from('user_entitlements')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (!emailRow || !isEmailOnlyClerkId(emailRow.clerk_user_id)) {
+      continue;
+    }
+
+    const merged = (emailRow.entitlements || {}) as Record<string, boolean>;
+    const { error } = await supabase
+      .from('user_entitlements')
+      .update({
+        clerk_user_id: userId,
+        email: normalizedEmail,
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', emailRow.id);
+
+    if (error) {
+      console.error('[adoptEmailOnlyPlaceholder] failed:', error);
+      continue;
+    }
+
+    return {
+      clerk_user_id: userId,
+      email: normalizedEmail,
+      entitlements: merged,
+      status: 'active',
+      source: emailRow.source || 'stripe',
+    };
+  }
+
+  return null;
+}
+
 export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   const { userId } = await auth();
 
@@ -41,69 +99,93 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   }
 
   const supabase = getSupabaseAdmin();
-  const { data } = await supabase
+  let { data } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', userId)
     .maybeSingle();
 
+  // Super user bypass: deanvideoremix.io@gmail.com gets full access to
+  // everything (SmartVideo GO + go-ai-viral + reseller).
+  const verifiedEmails = await getVerifiedEmailsForUser(userId);
+  const isSuperUser = verifiedEmails.some((email) => isSuperUserEmail(email));
+
+  // Auto-adopt an email-only placeholder row if one exists for this user's
+  // verified email. Paid buyers who purchased before signing into Clerk are
+  // otherwise misclassified as unpaid/demo users.
   if (!data) {
-    return {
-      state: 'authenticated_unpaid',
-      access: {
-        clerkUserId: userId,
-        email: '',
-        entitlements: { smartvideo_go: false },
-        status: 'inactive',
-        source: 'manual',
-        hasSmartVideoGo: false,
-      },
-    };
+    const adopted = await adoptEmailOnlyPlaceholder(userId);
+    if (adopted) {
+      data = adopted as any;
+    }
   }
 
-  const entitlements = (data.entitlements || {}) as UserEntitlements;
-  const hasAccess = hasSmartVideoGo(entitlements, data.status);
+  const entitlements = (data?.entitlements || {}) as UserEntitlements;
+  const status = data?.status || 'inactive';
+  const email = data?.email || '';
+
+  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  // A purchased row only needs to confirm it; it is never required.
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+
+  // go-ai-viral requires a paid smartvideo_viral entitlement (or super user).
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+
+  const hasAccess = baseAccess;
 
   return {
     state: hasAccess ? 'paid' : 'authenticated_unpaid',
     access: {
       clerkUserId: userId,
-      email: data.email || '',
+      email,
       entitlements,
-      status: data.status || 'inactive',
-      source: data.source || 'manual',
-      hasSmartVideoGo: hasAccess,
+      status,
+      source: data?.source || 'manual',
+      hasSmartVideoGo: baseAccess,
+      hasSmartVideoViral: viralAccess,
+      isSuperUser,
     },
   };
 }
 
 export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promise<AccessState | null> {
   const supabase = getSupabaseAdmin();
-  const { data } = await supabase
+  let { data } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', clerkUserId)
     .maybeSingle();
 
+  // Super user bypass via Clerk-verified email.
+  const verifiedEmails = await getVerifiedEmailsForUser(clerkUserId);
+  const isSuperUser = verifiedEmails.some((email) => isSuperUserEmail(email));
+
+  // Auto-adopt an email-only placeholder row if one exists for this user's
+  // verified email.
   if (!data) {
-    return {
-      clerkUserId,
-      email: '',
-      entitlements: { smartvideo_go: false },
-      status: 'inactive',
-      source: 'manual',
-      hasSmartVideoGo: false,
-    };
+    const adopted = await adoptEmailOnlyPlaceholder(clerkUserId);
+    if (adopted) {
+      data = adopted as any;
+    }
   }
 
-  const entitlements = (data.entitlements || {}) as UserEntitlements;
+  const entitlements = (data?.entitlements || {}) as UserEntitlements;
+  const status = data?.status || 'inactive';
+  const email = data?.email || '';
+
+  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+
   return {
     clerkUserId,
-    email: data.email || '',
+    email,
     entitlements,
-    status: data.status || 'inactive',
-    source: data.source || 'manual',
-    hasSmartVideoGo: hasSmartVideoGo(entitlements, data.status),
+    status,
+    source: data?.source || 'manual',
+    hasSmartVideoGo: baseAccess,
+    hasSmartVideoViral: viralAccess,
+    isSuperUser,
   };
 }
 
@@ -297,6 +379,21 @@ export async function setEntitlementStatus(
   status: EntitlementStatus
 ): Promise<void> {
   const supabase = getSupabaseAdmin();
+
+  // Never downgrade a row that already holds a permanent grant
+  // (smartvideo_go or founders). Subscription refunds and
+  // non-active subscription events would otherwise flip status to
+  // 'expired'/'revoked' on every Stripe event, revoking access
+  // for paid users on a recurring basis.
+  const { data: current } = await supabase
+    .from('user_entitlements')
+    .select('entitlements')
+    .eq('clerk_user_id', clerkUserId)
+    .maybeSingle();
+  const ents = current?.entitlements as Record<string, boolean> | undefined;
+  const isPermanent = ents?.smartvideo_go === true || ents?.founders === true;
+  const qualifying = status === 'active' || status === 'lifetime';
+  if (isPermanent && !qualifying) return;
 
   const { error } = await supabase
     .from('user_entitlements')
