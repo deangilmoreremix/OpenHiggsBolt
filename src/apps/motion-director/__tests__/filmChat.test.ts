@@ -15,6 +15,7 @@ import {
   readTemplateAnswer,
   applySiteContent,
   restrictToRecipes,
+  isQuestion,
   singleShotPlan,
   startsDifferentFilm,
 } from '../lib/filmChat';
@@ -278,5 +279,14 @@ describe('a message while a storyboard is on the table', () => {
     for (const edit of ['use crash-zoom-punch instead', 'make it 20 seconds', 'make a video shorter', 'swap row-embed for deck-deal-flyin', 'also look at acme.io/pricing']) {
       expect(startsDifferentFilm(edit, current)).toBe(false);
     }
+  });
+});
+
+describe('questions about the storyboard', () => {
+  it('tells a question from a change request', () => {
+    expect(isQuestion('why did you pick that opening?')).toBe(true);
+    expect(isQuestion('What will the closing card say')).toBe(true);
+    expect(isQuestion('make the ending shorter')).toBe(false);
+    expect(isQuestion('use deck-deal-flyin instead?')).toBe(false);
   });
 });

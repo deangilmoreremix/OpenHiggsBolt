@@ -284,7 +284,16 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
               key: `${i}-${scene.recipeId || 'title'}`,
               label: template ? motionTemplateTitle(template) : 'Title card',
               detail: [`${scene.durationSec}s`, scene.headline && `“${scene.headline.replace(/\*/g, '')}”`, scene.caption && `caption: ${scene.caption}`, onSite && 'shows your site', scene.transition === 'flash' && 'flash cut'].filter(Boolean).join(' · '),
-              media: template ? <RecipePreview recipe={template} playing={false} /> : undefined,
+              media: template ? (
+                <RecipePreview recipe={template} playing={false} />
+              ) : (
+                // A title card shows its words on the film's colours, so it is not an empty tile beside a shot preview.
+                <div
+                  style={{ aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, textAlign: 'center', borderRadius: 8, background: plan.palette.background, color: plan.palette.text, fontWeight: 700, fontSize: 18 }}
+                >
+                  {scene.headline.replace(/\*/g, '') || 'Title card'}
+                </div>
+              ),
             };
           }))}
           onApprove={() => void director.approve()}

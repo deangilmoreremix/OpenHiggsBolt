@@ -116,6 +116,17 @@ export async function requestPlan(body: {
   return validatePlan(plan, { targetSec: body.durationSec });
 }
 
+/** Ask the director about the storyboard on the table. `revise` is true when the message asks for a change. */
+export async function askDirector(body: { message: string; plan: DirectorPlan; capture?: SiteCapture | null }): Promise<{ reply: string; revise: boolean }> {
+  const res = await post<{ reply?: unknown; revise?: unknown }>('/api/motion-studio/director', {
+    mode: 'chat',
+    message: body.message,
+    plan: body.plan,
+    capture: body.capture ? { title: body.capture.title, url: body.capture.url, content: body.capture.content ?? null } : null,
+  }, 30_000);
+  return { reply: typeof res.reply === 'string' ? res.reply : '', revise: res.revise === true };
+}
+
 /** The editable text prop of a card, if it has one. */
 const textKey = (cardId: string): string | null => {
   if (cardId === 'inkpress-title-card' || cardId === 'inkpress-caption') return 'text';

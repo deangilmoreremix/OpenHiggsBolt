@@ -27,6 +27,13 @@ vi.mock('../lib/filmPipeline', async (orig) => {
   };
 });
 
+/** What the director answers to a question about the storyboard (null = no director to ask). */
+let answer: { reply: string; revise: boolean } | null = { reply: 'I opened on your headline because it is what the site leads with.', revise: false };
+vi.mock('../lib/directorClient', async (orig) => {
+  const real = await orig<typeof import('../lib/directorClient')>();
+  return { ...real, askDirector: vi.fn(async () => { if (!answer) throw new Error('no key'); return answer; }) };
+});
+
 import { useFilmDirector } from '../components/useFilmDirector';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
@@ -69,6 +76,44 @@ describe('useFilmDirector', () => {
     act(() => { result.current.reset(); });
     expect(result.current.stage).toBe('idle');
     expect(result.current.messages).toEqual([]);
+  });
+
+  it('a question about the storyboard is answered by the director without re-planning', async () => {
+    calls.length = 0;
+    answer = { reply: 'I opened on your headline because it is what the site leads with.', revise: false };
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    act(() => { result.current.send('why did you open with that?'); });
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(result.current.stage).toBe('plan');
+    expect(result.current.messages.some((m) => m.role === 'assistant' && /opened on your headline/.test(m.content))).toBe(true);
+  });
+
+  it('a question that asks for a change is answered and then revises the storyboard', async () => {
+    calls.length = 0;
+    answer = { reply: 'Sure, I will make it longer.', revise: true };
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    act(() => { result.current.send('can you make it 20 seconds?'); });
+    await flush();
+    expect(calls).toHaveLength(2);
+    expect(calls[1].prompt).toContain('Revise:');
+    expect(result.current.messages.some((m) => /make it longer/.test(m.content))).toBe(true);
+  });
+
+  it('with no director to ask, a question is treated as feedback and revises the storyboard', async () => {
+    calls.length = 0;
+    answer = null;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    act(() => { result.current.send('could the ending be shorter?'); });
+    await flush();
+    expect(calls).toHaveLength(2);
+    answer = { reply: 'I opened on your headline because it is what the site leads with.', revise: false };
   });
 
   it('a bare new-site message ("now beta.dev") with a storyboard open starts a film instead of being dropped', async () => {
