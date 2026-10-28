@@ -51,6 +51,7 @@ beforeEach(() => {
   vi.doMock('@/src/server/browserDiscovery', () => ({
     BrowserSsrfError: FakeSsrfError,
     capturePageScreenshots: capture,
+    captureHasWords: (c: { title?: string; content?: { headline?: string } }) => Boolean(c.title || c.content?.headline),
     CAPTURE_VIEWPORT: { width: 1920, height: 1080 },
     CAPTURE_DEVICE_SCALE: 2,
   }))
@@ -71,6 +72,27 @@ afterEach(() => {
 })
 
 describe('POST /api/motion-studio/capture', () => {
+  it('answers 200 with the site\'s words and no picture when the page could not be photographed in time', async () => {
+    capture.mockResolvedValue({
+      url: 'https://acme.test/', title: 'Acme', page: null, pageHeight: 1080, crops: [], images: [], logo: null,
+      content: { headline: 'Ship faster', description: '', headings: [], ctas: ['Start free'], nav: [] },
+      brand: { background: '#ffffff', text: '#111111', accent: null, fontFamily: null },
+    })
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ partial: true, page: { url: '' }, pages: [], title: 'Acme', content: { headline: 'Ship faster' } })
+    expect(upload).not.toHaveBeenCalledWith(expect.stringContaining('page.jpg'), expect.anything(), expect.anything())
+  })
+
+  it('answers 502 when there is neither a picture nor any words', async () => {
+    capture.mockResolvedValue({ url: 'https://acme.test/', title: '', page: null, pageHeight: 1080, crops: [], images: [], logo: null, content: { headline: '', description: '', headings: [], ctas: [], nav: [] }, brand: {} })
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))
+    expect(res.status).toBe(502)
+  })
+
   it('captures the page and returns stored URLs under the caller prefix', async () => {
     const { POST } = await import('@/app/api/motion-studio/capture/route')
     const res = await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))

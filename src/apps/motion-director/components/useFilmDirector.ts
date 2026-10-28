@@ -225,7 +225,11 @@ export function useFilmDirector(opts: {
           ].filter(Boolean);
           say(
             'assistant',
-            `I read ${c.title || c.url}${headline ? ` — it says “${headline.slice(0, 120)}”` : ''}${ctas.length ? `, with calls to action ${ctas.map((x) => `“${x}”`).join(', ')}` : ''}. I captured ${found.join(', ')} to use in the film.`,
+            `I read ${c.title || c.url}${headline ? ` — it says “${headline.slice(0, 120)}”` : ''}${ctas.length ? `, with calls to action ${ctas.map((x) => `“${x}”`).join(', ')}` : ''}. ${
+              c.partial
+                ? 'The page was too slow to screenshot in time, so the film uses sample pages with your site’s own words. Try again later, or attach screenshots, to use your real pages.'
+                : `I captured ${found.join(', ')} to use in the film.`
+            }`,
           );
         }
         let clockAt = 0;

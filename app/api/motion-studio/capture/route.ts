@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { BrowserSsrfError, capturePageScreenshots, CAPTURE_DEVICE_SCALE, CAPTURE_VIEWPORT } from '@/src/server/browserDiscovery'
+import { BrowserSsrfError, capturePageScreenshots, captureHasWords, CAPTURE_DEVICE_SCALE, CAPTURE_VIEWPORT } from '@/src/server/browserDiscovery'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 import { requireMotionStudioUser } from '../lib/auth'
 
@@ -77,13 +77,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'The page could not be captured', code: 'CAPTURE_FAILED' }, { status: 502 })
   }
 
+  // Neither a picture nor any words: nothing to build a film from.
+  if (!capture.page && !captureHasWords(capture)) {
+    return NextResponse.json({ error: 'The page could not be captured', code: 'CAPTURE_FAILED' }, { status: 502 })
+  }
+  const partial = !capture.page
+
   // Every image, by name: pages, card crops, the site's own images, cutouts, the empty plate and the logo.
   const jpeg = 'image/jpeg'
   const png = 'image/png'
   const siteImages = capture.images ?? []
   const routes = capture.routes ?? []
   const images: StoredImage[] = [
-    { name: 'page.jpg', body: capture.page, contentType: jpeg },
+    ...(capture.page ? [{ name: 'page.jpg', body: capture.page, contentType: jpeg }] : []),
     ...routes.map((r) => ({ name: `page-${sanitize(r.name)}.jpg`, body: r.page, contentType: jpeg })),
     ...capture.crops.map((body, i) => ({ name: `crop-${i + 1}.jpg`, body, contentType: jpeg })),
     ...siteImages.map((body, i) => ({ name: `image-${i + 1}.jpg`, body, contentType: jpeg })),
@@ -116,14 +122,16 @@ export async function POST(req: NextRequest) {
     // keep '/'
   }
   const pages = [
-    { name: 'home', path: homePath, url: at('page.jpg')!, width, height: capture.pageHeight * CAPTURE_DEVICE_SCALE, layout: capture.layout ?? null },
+    ...(capture.page ? [{ name: 'home', path: homePath, url: at('page.jpg')!, width, height: capture.pageHeight * CAPTURE_DEVICE_SCALE, layout: capture.layout ?? null }] : []),
     ...routes.map((r) => ({ name: r.name, path: r.path, url: at(`page-${sanitize(r.name)}.jpg`)!, width, height: r.pageHeight * CAPTURE_DEVICE_SCALE, layout: r.layout })),
   ]
 
   return NextResponse.json({
     url: capture.url,
     title: capture.title,
-    page: { url: pages[0].url, width, height: pages[0].height },
+    // No picture in time: the page is empty and `partial` says so (the words and colours are still here).
+    page: pages[0] ? { url: pages[0].url, width, height: pages[0].height } : { url: '', width: 0, height: 0 },
+    partial,
     pages,
     crops: capture.crops.map((_, i) => at(`crop-${i + 1}.jpg`)!),
     images: siteImages.map((_, i) => at(`image-${i + 1}.jpg`)!),

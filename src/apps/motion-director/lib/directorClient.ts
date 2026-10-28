@@ -25,6 +25,8 @@ import type { SiteContent } from './filmChat';
 export interface SiteCapture {
   url: string;
   title: string;
+  /** True when the host ran out of time before a picture was taken: only the site's words and colours came back. */
+  partial?: boolean;
   page: { url: string; width: number; height: number };
   crops: string[];
   /** The site's own images (product shots, hero art), largest first. */

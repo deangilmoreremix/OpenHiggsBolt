@@ -258,4 +258,19 @@ describe('capture the way upstream ShotCraft does', () => {
     expect(Date.now() - began).toBeLessThan(8_000)
     expect(result.page).toBeInstanceOf(Buffer)
   })
+  it('hands back the page\'s words when no picture can be taken in time', async () => {
+    const { mod, guard } = await loadRich()
+    const { chromium } = (await import('playwright')) as unknown as { chromium: { launch: () => Promise<{ newContext: () => Promise<{ newPage: () => Promise<{ screenshot: (...a: unknown[]) => Promise<unknown> }> }> }> } }
+    const page = await (await (await chromium.launch()).newContext()).newPage()
+    page.screenshot = () => new Promise(() => undefined)
+    const began = Date.now()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0, firstShotMs: 300 })
+    // It does not wait for the hard deadline: a page that cannot be photographed is answered at once with what it says.
+    expect(Date.now() - began).toBeLessThan(5_000)
+    expect(result.page).toBeNull()
+    expect(result.content.headline).toBe('Ship faster')
+    expect(result.title).toBe('Acme')
+    expect(result.brand.background).toBe('#ffffff')
+    expect(mod.captureHasWords(result)).toBe(true)
+  })
 })

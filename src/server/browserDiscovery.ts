@@ -1701,6 +1701,8 @@ export const CAPTURE_SETTLE_MS = 600
 export const CAPTURE_FONT_WAIT_MS = 2_000
 /** Longest the browser teardown may delay the reply (the host cuts a request off at about 30 s). */
 const CAPTURE_CLOSE_MS = 1_500
+/** Longest the first picture of the page may take before the capture goes on with the site's words alone. */
+const CAPTURE_FIRST_SHOT_MS = 7_000
 /** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
@@ -1729,8 +1731,8 @@ export interface PageCaptureBrand {
 export interface PageCapture {
   url: string
   title: string
-  /** JPEG of the page, CAPTURE_VIEWPORT.width CSS px wide at CAPTURE_DEVICE_SCALE. */
-  page: Buffer
+  /** JPEG of the page, CAPTURE_VIEWPORT.width CSS px wide at CAPTURE_DEVICE_SCALE. Null when the host ran out of time before a picture was taken: the words and colours are still returned. */
+  page: Buffer | null
   pageHeight: number
   /** JPEG element crops (card-sized blocks), largest first. */
   crops: Buffer[]
@@ -1749,6 +1751,11 @@ export interface PageCapture {
   emptyPlate: Buffer | null
   /** More routes of the same site (features, pricing…), each captured the same way. */
   routes: CapturedRoute[]
+}
+
+/** True when a capture read anything the page says (title, headline, sections, calls to action). */
+export function captureHasWords(c: Pick<PageCapture, 'title' | 'content'>): boolean {
+  return Boolean(c.title || c.content?.headline || c.content?.description || c.content?.headings?.length || c.content?.ctas?.length)
 }
 
 export interface PageContent {
@@ -2093,7 +2100,7 @@ function readBrandStyles(): Record<string, string | null> {
  */
 export async function capturePageScreenshots(
   rawUrl: string,
-  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number } = {},
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number } = {},
 ): Promise<PageCapture> {
   const started = Date.now()
   const guard = options.guard ?? createSsrfGuard()
@@ -2122,6 +2129,26 @@ export async function capturePageScreenshots(
       const mark = (phase: string) => {
         timing[phase] = elapsed()
       }
+      /** A step that failed: say why in the host's logs (host only, no address) and carry on. */
+      const warnStep = (step: string, error: unknown): undefined => {
+        console.warn(`[motion-studio/capture] ${baseTarget.hostname} ${step} failed after ${elapsed()}ms: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`)
+        return undefined
+      }
+      /** Reject when `promise` has not settled in `ms` (the promise itself keeps running). */
+      const withinMs = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+        new Promise<T>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(`took longer than ${ms} ms`)), ms)
+          promise.then(
+            (v) => {
+              clearTimeout(timer)
+              resolve(v)
+            },
+            (e) => {
+              clearTimeout(timer)
+              reject(e)
+            },
+          )
+        })
       const clipShot = (rect: CaptureRect, png = false): Promise<Buffer | null> =>
         page
           .screenshot(png ? { type: 'png', omitBackground: true, fullPage: true, clip: rect } : { type: 'jpeg', quality: 88, fullPage: true, clip: rect })
@@ -2182,33 +2209,48 @@ export async function capturePageScreenshots(
         mark('loaded')
 
         const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[] }
-        // A first screenshot of what is on screen, before the slower steps (idle waits, scrolling,
-        // the tall page shot): a slow site still hands back a page when the deadline comes.
-        await page.waitForLoadState('load', { timeout: 2_500 }).catch(() => undefined)
-        const first: Buffer | null = await page
-          .screenshot({ type: 'jpeg', quality: 82, clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: CAPTURE_VIEWPORT.height } })
-          .catch(() => null)
-        if (first) {
-          const read0 = await page.evaluate(readPageContent).catch(() => null)
-          out = {
-            url: page.url(),
-            title: String((await page.title().catch(() => '')) ?? '').slice(0, 200),
-            page: first,
-            pageHeight: CAPTURE_VIEWPORT.height,
-            crops: homeAcc.crops,
-            logo: null,
-            images: [],
-            content: read0
-              ? { description: read0.description, headline: read0.headline, headings: read0.headings, ctas: read0.ctas, nav: read0.nav }
-              : { ...EMPTY_CONTENT },
-            layout: { pageH: CAPTURE_VIEWPORT.height, sections: [], cards: homeAcc.cards },
-            cutouts: { nav: null, search: null, button: null },
-            emptyPlate: null,
-            routes: [],
-            brand: { background: null, text: null, accent: null, fontFamily: null },
-          }
-          mark('first')
+        // The words and colours first: reading the page text needs no rendering, so even a page too heavy to
+        // photograph in time still gives the film the site's own headline, sections and calls to action.
+        await page.waitForLoadState('load', { timeout: 1_500 }).catch(() => undefined)
+        const read0 = await page.evaluate(readPageContent).catch((e) => warnStep('content', e))
+        const styles0 = await page.evaluate(readBrandStyles).catch((e) => warnStep('brand', e) ?? ({} as Record<string, string | null>))
+        const snapshot: PageCapture = {
+          url: page.url(),
+          title: String((await page.title().catch(() => '')) ?? '').slice(0, 200),
+          page: null,
+          pageHeight: CAPTURE_VIEWPORT.height,
+          crops: homeAcc.crops,
+          logo: null,
+          images: [],
+          content: read0
+            ? { description: read0.description, headline: read0.headline, headings: read0.headings, ctas: read0.ctas, nav: read0.nav }
+            : { ...EMPTY_CONTENT },
+          layout: { pageH: CAPTURE_VIEWPORT.height, sections: [], cards: homeAcc.cards },
+          cutouts: { nav: null, search: null, button: null },
+          emptyPlate: null,
+          routes: [],
+          brand: {
+            background: cssColorToHex(styles0?.background),
+            text: cssColorToHex(styles0?.text),
+            accent: cssColorToHex(styles0?.accent),
+            fontFamily: typeof styles0?.fontFamily === 'string' ? styles0.fontFamily.slice(0, 120) : null,
+          },
         }
+        out = snapshot
+        mark('content')
+        // A first, cheap picture of what is on screen (CSS pixels: a quarter of the work of the 2x shots),
+        // with its own time limit: a page that cannot be rendered in time must not use up the whole capture.
+        const first: Buffer | undefined = await withinMs<Buffer>(
+          page.screenshot({ type: 'jpeg', quality: 82, scale: 'css', animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: CAPTURE_VIEWPORT.height } }),
+          options.firstShotMs ?? CAPTURE_FIRST_SHOT_MS,
+        ).catch((e) => warnStep('first picture', e) as unknown as Buffer | undefined)
+        if (!first) {
+          // The page cannot be rendered in time (a very heavy page on a small host): hand back what the page says.
+          mark('words-only')
+          return snapshot
+        }
+        snapshot.page = first
+        mark('first')
         const home = await shootRoute(
           maxCrops,
           (shot, pageHeight) => {
@@ -2307,7 +2349,8 @@ export async function capturePageScreenshots(
           hardTimer = setTimeout(() => {
             mark('deadline')
             const snapshot = out as PageCapture | null
-            if (!snapshot) return reject(new Error('The page took too long to load'))
+            // A snapshot with neither a picture nor any words is nothing to hand back.
+            if (!snapshot || (!snapshot.page && !captureHasWords(snapshot))) return reject(new Error('The page took too long to load'))
             resolve({ ...snapshot, crops: [...snapshot.crops], images: [...snapshot.images], routes: [...snapshot.routes] })
           }, Math.max(options.hardMs === undefined ? 2_000 : 0, (options.hardMs ?? CAPTURE_HARD_MS) - elapsed()))
         })
