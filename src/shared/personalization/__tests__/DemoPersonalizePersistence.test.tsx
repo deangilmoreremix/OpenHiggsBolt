@@ -252,6 +252,16 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     await settle()
 
     expect(persistenceSpy.loadProject).toHaveBeenCalledTimes(1)
+    // The modal opens fresh: the saved project is offered, not loaded, and the
+    // untouched session writes nothing over it.
+    expect(ctx().resumableProject).not.toBeNull()
+    expect(ctx().promptState.personalized).toBe('')
+    expect(projectWrites()).toHaveLength(0)
+
+    await act(async () => {
+      await ctx().resumeLastProject()
+    })
+    await settle()
     // The restore guard: the in-flight debounce is cancelled before loading.
     expect(persistenceSpy.cancel).toHaveBeenCalled()
     const writes = projectWrites()
@@ -330,6 +340,13 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     }))
     await mount()
     await open()
+    // An untouched fresh session saves nothing.
+    expect(projectWrites()).toHaveLength(0)
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('first save')
+    })
+    await settle()
     const first = projectWrites()
     expect(first).toHaveLength(1)
     expect(first[0].project.id).toBeNull() // no saved project yet: insert
@@ -378,6 +395,10 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     })
     await act(async () => {
       ctx().openPersonalize({ source: SOURCE_B })
+    })
+    await settle()
+    await act(async () => {
+      await ctx().resumeLastProject()
     })
     await settle()
     fetchMock.mockClear()

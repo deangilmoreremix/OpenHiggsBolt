@@ -2266,10 +2266,11 @@ describe('DemoPersonalizeProvider persistence dedup (Phase 3 review finding 1)',
     expect(persistCalls!.length).toBe(1)
   })
 
-  it('has exactly two cancel calls in cleanup effects', () => {
+  // Unmount cleanup, the restore, and the fresh-start reset when the modal opens.
+  it('has exactly three cancel calls: unmount, restore and fresh start', () => {
     const source = readFileSync(PROVIDER_PATH, 'utf-8')
     const cancelCalls = source.match(/projectPersistence\.current\.cancel\(/g)
     expect(cancelCalls).not.toBeNull()
-    expect(cancelCalls!.length).toBe(2)
+    expect(cancelCalls!.length).toBe(3)
   })
 })

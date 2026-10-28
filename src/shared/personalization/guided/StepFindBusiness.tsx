@@ -7,6 +7,7 @@ import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
 import type { BusinessOwnership, DiscoveredAsset } from '../types'
 import { DiscoveredAssetGrid, type DiscoveredAssetDropZone } from '../DiscoveredAssetGrid'
+import { ResumeProjectBanner } from '../ResumeProjectBanner'
 
 // Simple mode has no client-asset section cards on screen, so the grid shows
 // its own drop zones; dropping an asset imports it into that section.
@@ -150,6 +151,7 @@ export function StepFindBusiness({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <ResumeProjectBanner />
       <div>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Find your business</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>

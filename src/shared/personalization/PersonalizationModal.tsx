@@ -57,6 +57,7 @@ import ImageEditorModal, {
 import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 import { isImageEditSupported } from './image-editor/imageEditSupport'
 import { DiscoveredAssetGrid } from './DiscoveredAssetGrid'
+import { ResumeProjectBanner } from './ResumeProjectBanner'
 import { SimpleModeWizard } from './guided/SimpleModeWizard'
 import { OverlayEditor } from './guided/OverlayEditor'
 import { buildPreviewInput } from './guided/buildPreviewInput'
@@ -3166,6 +3167,7 @@ function ConfigurationView(props: any) {
             </div>
           )}
 
+          <ResumeProjectBanner />
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
             <div className="col-span-full">

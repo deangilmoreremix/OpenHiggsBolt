@@ -149,6 +149,17 @@ async function mountAndOpen(savedEntry: unknown) {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 80))
   })
+
+  // The modal opens fresh and offers the saved project; continue with it.
+  const opened = (window as any).__personalizationCtx
+  if (opened.resumableProject) {
+    await act(async () => {
+      await opened.resumeLastProject()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 80))
+    })
+  }
 }
 
 describe('DemoPersonalizeProvider durable field save/restore roundtrip', () => {

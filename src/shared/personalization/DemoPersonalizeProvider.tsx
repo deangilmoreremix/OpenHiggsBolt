@@ -695,6 +695,13 @@ export type DemoPersonalizeContextValue = {
     updatedAt: string
   } | null
   restoring: boolean
+  /**
+   * The last saved project for this source, offered instead of restored: the
+   * modal opens with an empty form and the user picks "Continue" to load it.
+   */
+  resumableProject: { label: string } | null
+  resumeLastProject: () => Promise<void>
+  dismissResumableProject: () => void
 
   // Guided Simple Mode + free Remotion preview
   viewMode: PersonalizationViewMode
@@ -1294,6 +1301,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatedAt: string
   } | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [resumableProject, setResumableProject] = useState<{ label: string } | null>(null)
+  // While true the modal shows a fresh form and autosave holds off, so an empty
+  // session never replaces the saved project the user may still resume.
+  const freshStartRef = useRef(false)
+  /** The untouched session's payload; autosave resumes once it differs. */
+  const freshBaselineRef = useRef<string | null>(null)
   /** Mirror of the restored project's id, readable from the run callbacks. */
   const loadedProjectIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
@@ -1590,7 +1603,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
     if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist(buildProjectPayload())
+    // A fresh session saves nothing until the user starts on a business, so
+    // opening the modal never replaces the project they may want to resume.
+    const payload = buildProjectPayload()
+    if (freshStartRef.current) {
+      const snapshot = JSON.stringify(payload)
+      if (freshBaselineRef.current === null) freshBaselineRef.current = snapshot
+      if (snapshot === freshBaselineRef.current) return
+      freshStartRef.current = false
+      setResumableProject(null)
+    }
+    projectPersistence.current.persist(payload)
   }, [
     source?.id,
     source,
@@ -1934,15 +1957,52 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     restoreProjectRef.current = restoreProject
   }, [restoreProject])
 
+  const resumeLastProject = useCallback(async () => {
+    if (!source) return
+    freshStartRef.current = false
+    setResumableProject(null)
+    setRestoring(true)
+    try {
+      await restoreProjectRef.current(source)
+    } finally {
+      setRestoring(false)
+    }
+  }, [source])
+
+  const dismissResumableProject = useCallback(() => {
+    setResumableProject(null)
+  }, [])
+
   useEffect(() => {
     if (!source?.id || !isOpen || access !== 'authenticated') return
     let cancelled = false
-    setRestoring(true)
     setLoadedProject(null)
+    setResumableProject(null)
+    // The modal opens with an empty form. The last saved project is only
+    // offered ("Continue with …"); loading it happens on the user's request.
+    freshStartRef.current = true
+    freshBaselineRef.current = null
+    projectPersistence.current.cancel()
+    projectPersistence.current.setProjectId(null)
 
-    restoreProjectRef.current(source).finally(() => {
-      if (!cancelled) setRestoring(false)
-    })
+    loadProject({ sourceId: source.id })
+      .then((result) => {
+        if (cancelled || !freshStartRef.current) return
+        if (!result.ok || !result.data) {
+          // No saved row, but this browser kept the visitor's preview.
+          if (readPreviewStorage(source.id, previewUserScope)) setResumableProject({ label: 'your last project' })
+          return
+        }
+        const entry = result.data
+        const savedClient = entry.clientId
+          ? clients.find((c) => c.id === entry.clientId) ?? loadClients().find((c) => c.id === entry.clientId)
+          : null
+        const label = savedClient?.businessName || savedClient?.website || 'your last project'
+        setResumableProject({ label })
+      })
+      .catch(() => {
+        // No offer when the saved project cannot be read; the fresh form stands.
+      })
 
     return () => {
       cancelled = true
@@ -4945,6 +5005,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Project restore (Phase 14)
     loadedProject,
     restoring,
+    resumableProject,
+    resumeLastProject,
+    dismissResumableProject,
 
     // Guided Simple Mode + free Remotion preview
     viewMode,
