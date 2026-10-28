@@ -31,7 +31,7 @@ function checkEntitlementKey(entitlementKey: EntitlementKey | string, access: Ac
       return access.entitlements.founders === true;
     default:
       // Unknown keys fall back to checking the entitlements blob directly.
-      return (access.entitlements as Record<string, boolean>)[entitlementKey] === true;
+      return (access.entitlements as unknown as Record<string, boolean>)[entitlementKey] === true;
   }
 }
 
