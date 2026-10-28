@@ -71,21 +71,26 @@ export default function StoryboardPlanner() {
   const durationMismatch = shots.length > 0 && Math.abs(totalShotSeconds - clipLength) > 0.05
   const inputStyle = { ...panels.card, color: 'white' as const }
 
-  /** Scale every scene's duration so they add up to the clip length (0.5s steps). */
+  /**
+   * Scale every scene's duration so they add up to the clip length. Works in
+   * half-second units: each scene gets at least one, and the rest are shared
+   * by weight (largest remainder), so the total is exact whenever it can be.
+   */
   const handleFitDurations = () => {
     if (shots.length === 0) return
     const weights = shots.map((s) => Number(s.duration) || 1)
     const weightSum = weights.reduce((a, b) => a + b, 0)
-    let assigned = 0
-    shots.forEach((s, i) => {
-      if (!s.id) return
-      const isLast = i === shots.length - 1
-      const duration = isLast
-        ? Math.max(0.5, clipLength - assigned)
-        : Math.max(0.5, Math.round(((weights[i] / weightSum) * clipLength) * 2) / 2)
-      assigned += duration
-      updateShot(s.id, { duration })
-    })
+    const spare = Math.max(0, clipLength * 2 - shots.length)
+    const shares = weights.map((w) => (w / weightSum) * spare)
+    const units = shares.map((x) => 1 + Math.floor(x))
+    let left = spare - shares.reduce((sum, x) => sum + Math.floor(x), 0)
+    shares
+      .map((x, i) => ({ i, rem: x - Math.floor(x) }))
+      .sort((a, b) => b.rem - a.rem)
+      .forEach(({ i }) => {
+        if (left > 0) { units[i] += 1; left -= 1 }
+      })
+    shots.forEach((s, i) => s.id && updateShot(s.id, { duration: units[i] / 2 }))
   }
 
   const handleSplitBrief = () => {
@@ -170,7 +175,7 @@ export default function StoryboardPlanner() {
           >
             <FileText size={14} /> PDF
           </button>
-          <SendToMenu />
+          <SendToMenu disabled={isGenerating} />
         </div>
       </div>
 

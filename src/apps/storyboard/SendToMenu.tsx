@@ -84,12 +84,14 @@ function buildAndSend(opts: {
   emitSendTo(target)
 }
 
-export default function SendToMenu() {
+// `disabled` lets the planner lock hand-off while a generation runs: switching
+// studios unmounts the storyboard and the result would be lost.
+export default function SendToMenu({ disabled: lockedByParent = false }: { disabled?: boolean } = {}) {
   const { shots, characters, projectName, aspectRatio, episodeDuration, result } = useStoryboard()
   const [open, setOpen] = useState(false)
   const [sentTo, setSentTo] = useState<StudioTarget | null>(null)
 
-  const disabled = shots.length === 0
+  const disabled = lockedByParent || shots.length === 0
 
   const targets: StudioTarget[] = ['video', 'cinema', 'vfx-studio']
 
@@ -120,7 +122,7 @@ export default function SendToMenu() {
         <Send size={14} /> Send to {open ? <ChevronDown size={12} /> : <ChevronDown size={12} className="opacity-60" />}
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div
           className="absolute right-0 mt-2 w-52 rounded-xl p-2 z-30 shadow-xl"
           style={panels.card}
