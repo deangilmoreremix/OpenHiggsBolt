@@ -72,7 +72,9 @@ export async function storyboardFilm(
       const pages = capture.pages?.length || 1;
       const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(
-        `Captured ${capture.title || req.siteUrl} · ${pages} page${pages === 1 ? '' : 's'} (${(capture.pages ?? []).map((p) => p.path).join(', ') || '/'}) · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`,
+        capture.partial
+          ? `Captured ${capture.title || req.siteUrl} · its words only (no screenshots in time)`
+          : `Captured ${capture.title || req.siteUrl} · ${pages} page${pages === 1 ? '' : 's'} (${(capture.pages ?? []).map((p) => p.path).join(', ') || '/'}) · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`,
         'done',
       );
       const said = capture.content?.headline || capture.content?.description;
@@ -137,7 +139,7 @@ export async function buildFilmProject(
   const film: FilmCapture | null = opts.capture
     ? {
         // Every captured route of the site, the page asked for first.
-        screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images],
+        screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images].filter(Boolean),
         crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
         title: opts.capture.title,
         // Where each section of the home page starts, so the insets can show them one at a time.

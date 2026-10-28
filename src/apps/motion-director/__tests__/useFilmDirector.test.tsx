@@ -15,7 +15,7 @@ vi.mock('../lib/filmPipeline', async (orig) => {
     storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; durationSec: number | null; recipes: { componentName: string }[]; single: Parameters<typeof singleShotPlan>[0] | null }, opts: { capture: unknown; durationSec: number }) => {
       calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec, recipes: req.recipes.map((t) => t.componentName) });
       if (gate) await gate;
-      const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {} } : opts.capture;
+      const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {}, partial: /slowsite/.test(req.siteUrl) } : opts.capture;
       const plan = req.single ? singleShotPlan(req.single, { prompt: req.prompt, durationSec: req.durationSec }) : inkPressPlan({ prompt: req.prompt, durationSec: 10 });
       return { plan, capture, source: 'inkpress' };
     }),
@@ -176,6 +176,15 @@ describe('useFilmDirector', () => {
     expect(calls).toHaveLength(1);
     expect(result.current.messages.some((m) => /needs your OpenAI API key/.test(m.content))).toBe(true);
     guidedOn = true;
+  });
+
+  it('says so when only the site\'s words could be read, and still builds the storyboard', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for slowsite.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.stage).toBe('plan');
+    expect(result.current.messages.some((m) => /too slow to screenshot/.test(m.content) && /your site’s own words/.test(m.content))).toBe(true);
   });
 
   it('a bare new-site message ("now beta.dev") with a storyboard open starts a film instead of being dropped', async () => {
