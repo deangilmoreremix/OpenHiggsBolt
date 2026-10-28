@@ -32,16 +32,21 @@ const WorkflowUI = dynamic(() => import("./WorkflowUI"), {
 
 function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
+  // Some upstream thumbnails are gone from the CDN (403); show the placeholder
+  // instead of a broken image.
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  useEffect(() => setThumbnailFailed(false), [workflow.thumbnail]);
 
   return (
     <div
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
-      {workflow.thumbnail ? (
+      {workflow.thumbnail && !thumbnailFailed ? (
         <img
           src={workflow.thumbnail}
           alt={workflow.name}
+          onError={() => setThumbnailFailed(true)}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
       ) : (
