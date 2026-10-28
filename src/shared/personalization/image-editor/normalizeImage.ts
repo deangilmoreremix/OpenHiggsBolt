@@ -37,9 +37,11 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 
 export async function normalizeImageDataUrl(dataUrl: string, maxDimension = NORMALIZED_MAX_DIMENSION): Promise<string> {
   const img = await loadImage(dataUrl)
-  // SVGs without intrinsic dimensions report 0; give them a usable size.
-  const width = img.naturalWidth || maxDimension
-  const height = img.naturalHeight || maxDimension
+  // SVGs without intrinsic dimensions report 0; give them a usable size that
+  // stays finite even when resizing is off (maxDimension = Infinity).
+  const fallback = Number.isFinite(maxDimension) ? maxDimension : NORMALIZED_MAX_DIMENSION
+  const width = img.naturalWidth || fallback
+  const height = img.naturalHeight || fallback
   const scale = Math.min(1, maxDimension / Math.max(width, height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(width * scale))

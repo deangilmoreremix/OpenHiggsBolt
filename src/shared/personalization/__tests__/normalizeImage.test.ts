@@ -102,3 +102,14 @@ describe('ensureModelSupportedImage', () => {
     expect([canvas.width, canvas.height]).toEqual([800, 200])
   })
 })
+
+describe('an SVG with no intrinsic size and no size cap', () => {
+  it('still gets a finite canvas', async () => {
+    stubImage(0, 0)
+    const canvas = stubCanvas()
+
+    await ensureModelSupportedImage('data:image/svg+xml;base64,PHN2Zy8+')
+
+    expect([canvas.width, canvas.height]).toEqual([NORMALIZED_MAX_DIMENSION, NORMALIZED_MAX_DIMENSION])
+  })
+})
