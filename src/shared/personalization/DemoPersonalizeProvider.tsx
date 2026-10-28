@@ -1614,7 +1614,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (freshStartRef.current) {
       const hasAssets = Object.values(assets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
       const started =
-        Boolean(clientForm.businessName || clientForm.website || promptState.personalized || promptState.edited) ||
+        Boolean(clientForm.businessName || clientForm.website || clientForm.ctaHeadline || clientForm.callToAction || promptState.personalized || promptState.edited) ||
         hasAssets ||
         Boolean(previewVideo) ||
         Boolean(result?.url || result?.urls?.length)
@@ -4509,6 +4509,23 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
   }, [markSessionStarted])
 
+  // The user-facing setters for the saved project's other fields: each change
+  // ends the fresh start, like the preview edits above.
+  const chooseOutputType = useCallback((type: OutputType) => {
+    markSessionStarted()
+    setOutputType(type)
+  }, [markSessionStarted])
+
+  const chooseMode = useCallback((next: VideoPersonalizationMode | ImagePersonalizationMode | null) => {
+    markSessionStarted()
+    setMode(next)
+  }, [markSessionStarted])
+
+  const updateGenOptions = useCallback((patch: Partial<GenerationOptions>) => {
+    markSessionStarted()
+    setGenOptions((prev) => ({ ...prev, ...patch }))
+  }, [markSessionStarted])
+
   const approvePersonalization = useCallback(() => {
     setPreviewApproved(true)
     // Write the approved preview through immediately instead of waiting for the
@@ -5011,11 +5028,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
     // Output / mode / options
     outputType,
-    setOutputType,
+    setOutputType: chooseOutputType,
     mode,
-    setMode,
+    setMode: chooseMode,
     genOptions,
-    updateGenOptions: (patch: Partial<GenerationOptions>) => setGenOptions((prev) => ({ ...prev, ...patch })),
+    updateGenOptions,
     consent,
     setConsent,
 
