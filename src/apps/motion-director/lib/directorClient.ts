@@ -8,7 +8,18 @@ import { findClip, useStore } from '../store';
 import { CARDS } from '../cards/registry';
 import type { ProjectData } from '../types';
 import { motionCardId, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
-import { validateEditOps, validatePlan, type DirectorEditOp, type DirectorPlan } from './directorPlan';
+import {
+  validateBrief,
+  validateDirections,
+  validateEditOps,
+  validateMapping,
+  validatePlan,
+  type DirectionOptions,
+  type DirectorBrief,
+  type DirectorEditOp,
+  type DirectorPlan,
+  type MappingRow,
+} from './directorPlan';
 import type { SiteContent } from './filmChat';
 
 export interface SiteCapture {
@@ -115,6 +126,44 @@ export async function requestPlan(body: {
   }, 45_000);
   return validatePlan(plan, { targetSec: body.durationSec });
 }
+
+/** What the co-creation steps are asked with: the request, the site, and what the person has confirmed so far. */
+export interface GuidedContext {
+  prompt: string;
+  durationSec: number;
+  aspectRatio: string;
+  capture?: SiteCapture | null;
+  brandKit?: Record<string, unknown> | null;
+  /** The person's answers and corrections, in order. */
+  notes?: string[];
+  /** The confirmed brief and chosen direction, as plain text. */
+  brief?: string;
+  direction?: string;
+  /** Shots that must lead the mapping (named in chat or picked in Templates). */
+  requiredRecipes?: string[];
+}
+
+const guidedBody = (mode: 'brief' | 'direction' | 'mapping', c: GuidedContext) => ({
+  mode,
+  prompt: c.prompt,
+  durationSec: c.durationSec,
+  aspectRatio: c.aspectRatio,
+  capture: c.capture
+    ? { title: c.capture.title, url: c.capture.url, brand: c.capture.brand, pages: (c.capture.pages ?? []).map((p) => p.path), content: c.capture.content ?? null }
+    : null,
+  brandKit: c.brandKit ?? null,
+  notes: c.notes ?? [],
+  brief: c.brief ?? '',
+  direction: c.direction ?? '',
+  requiredRecipes: c.requiredRecipes ?? [],
+});
+
+export const requestBrief = async (c: GuidedContext): Promise<DirectorBrief> =>
+  validateBrief((await post<{ brief: unknown }>('/api/motion-studio/director', guidedBody('brief', c), 45_000)).brief);
+export const requestDirections = async (c: GuidedContext): Promise<DirectionOptions> =>
+  validateDirections((await post<{ options: unknown }>('/api/motion-studio/director', guidedBody('direction', c), 45_000)).options);
+export const requestMapping = async (c: GuidedContext): Promise<MappingRow[]> =>
+  validateMapping({ rows: (await post<{ mapping: unknown }>('/api/motion-studio/director', guidedBody('mapping', c), 45_000)).mapping });
 
 /** Ask the director about the storyboard on the table. `revise` is true when the message asks for a change. */
 export async function askDirector(body: { message: string; plan: DirectorPlan; capture?: SiteCapture | null }): Promise<{ reply: string; revise: boolean }> {

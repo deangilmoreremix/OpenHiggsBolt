@@ -10,12 +10,13 @@ import type { CardDef } from "./types";
  */
 const src = (file: string): string => (/^(?:blob:|data:|https?:\/\/)/i.test(file) ? file : staticFile(file));
 
-const SiteInset: React.FC<{ file?: string; side?: string; sizePct?: number; label?: string; accent?: string }> = ({
+const SiteInset: React.FC<{ file?: string; side?: string; sizePct?: number; label?: string; accent?: string; focusY?: number }> = ({
   file = "",
   side = "right",
   sizePct = 32,
   label = "",
   accent = "#b5651d",
+  focusY = 0,
 }) => {
   const frame = useCurrentFrame();
   if (!file) return null;
@@ -39,7 +40,7 @@ const SiteInset: React.FC<{ file?: string; side?: string; sizePct?: number; labe
           transform: `translateX(${(1 - enter) * from * 60}px) scale(${0.96 + enter * 0.04})`,
         }}
       >
-        <Img src={src(file)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+        <Img src={src(file)} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `50% ${focusY}%` }} />
         {label ? (
           <div
             style={{
@@ -89,6 +90,7 @@ export const siteInsetCard: CardDef = {
     },
     { type: "slider", key: "sizePct", label: "宽度", default: 32, min: 18, max: 60, step: 1, unit: "%" },
     { type: "text", key: "label", label: "角标", default: "" },
+    { type: "slider", key: "focusY", label: "页面位置", default: 0, min: 0, max: 100, step: 1, unit: "%" },
     { type: "color", key: "accent", label: "强调色", default: "#b5651d" },
   ],
 };

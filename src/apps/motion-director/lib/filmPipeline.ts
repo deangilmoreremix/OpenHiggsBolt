@@ -140,6 +140,10 @@ export async function buildFilmProject(
         screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images],
         crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
         title: opts.capture.title,
+        // Where each section of the home page starts, so the insets can show them one at a time.
+        sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),
+        pageH: opts.capture.pages?.[0]?.layout?.pageH ?? opts.capture.page.height,
+        sectionNames: opts.capture.content?.headings ?? [],
       }
     : images.length
       ? { screens: images, crops: images }

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
+import { sceneDetail } from '../lib/coCreate';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
@@ -239,7 +240,21 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         <div className="flex flex-wrap gap-2" data-testid="inkpress-offer">
           <button type="button" onClick={() => director.chooseTemplate('inkpress')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)}>Use Ink Press</button>
           <button type="button" onClick={() => director.chooseTemplate('director')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Let the director pick shots</button>
+          <button type="button" onClick={director.coCreate} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="cocreate-start" title="The director proposes a product check, a look and a shot plan; you confirm each step">Work it out together</button>
           {onPickShots && <button type="button" onClick={onPickShots} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Choose shot cards…</button>}
+        </div>
+      )}
+      {(stage === 'brief' || stage === 'direction' || stage === 'mapping') && (
+        <div className="flex flex-wrap gap-2" data-testid="guided-choices" data-step={stage}>
+          {stage === 'direction'
+            ? ['A', 'B', 'C'].slice(0, 3).map((letter) => (
+                <button key={letter} type="button" onClick={() => director.send(letter)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Use {letter}</button>
+              ))
+            : null}
+          <button type="button" onClick={() => director.send('looks right')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="guided-accept">
+            {stage === 'brief' ? 'Looks right — next' : stage === 'direction' ? 'Use my recommendation' : 'Looks right — write the storyboard'}
+          </button>
+          <button type="button" onClick={() => director.send('you decide')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="guided-decide">You decide</button>
         </div>
       )}
       {(stage === 'storyboarding' || stage === 'building') && (
@@ -252,7 +267,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           </button>
         </div>
       )}
-      {(stage === 'offer' || stage === 'plan' || stage === 'film') && (
+      {(stage === 'offer' || stage === 'brief' || stage === 'direction' || stage === 'mapping' || stage === 'plan' || stage === 'film') && (
         <div>
           <button type="button" onClick={() => { director.reset(); onNewFilm?.(); }} className="px-3 py-1.5 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-new" title="Clear this conversation and start a different film">
             ↺ New film
@@ -278,12 +293,13 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           title={plan.title}
           meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${storyboard?.capture ? ' · uses your site' : ''}`}
           steps={withVideos(plan.scenes.map((scene, i) => {
+            const startSec = plan.scenes.slice(0, i).reduce((sum, sc) => sum + sc.durationSec, 0);
             const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
             const onSite = Boolean(template && storyboard?.capture && isProductTextureShot(template.componentName));
             return {
               key: `${i}-${scene.recipeId || 'title'}`,
               label: template ? motionTemplateTitle(template) : 'Title card',
-              detail: [`${scene.durationSec}s`, scene.headline && `“${scene.headline.replace(/\*/g, '')}”`, scene.caption && `caption: ${scene.caption}`, onSite && 'shows your site', scene.transition === 'flash' && 'flash cut'].filter(Boolean).join(' · '),
+              detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site'].filter(Boolean).join(' · '),
               media: template ? (
                 <RecipePreview recipe={template} playing={false} />
               ) : (

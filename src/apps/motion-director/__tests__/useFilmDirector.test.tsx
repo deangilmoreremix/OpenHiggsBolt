@@ -31,8 +31,17 @@ vi.mock('../lib/filmPipeline', async (orig) => {
 let answer: { reply: string; revise: boolean } | null = { reply: 'I opened on your headline because it is what the site leads with.', revise: false };
 vi.mock('../lib/directorClient', async (orig) => {
   const real = await orig<typeof import('../lib/directorClient')>();
-  return { ...real, askDirector: vi.fn(async () => { if (!answer) throw new Error('no key'); return answer; }) };
+  const shot = (name: string) => MOTION_TEMPLATES.find((t) => t.componentName === name)!.id;
+  return {
+    ...real,
+    askDirector: vi.fn(async () => { if (!answer) throw new Error('no key'); return answer; }),
+    captureSite: vi.fn(async (url: string) => ({ url, title: 'Acme', page: { url: 'p', width: 1920, height: 4000 }, crops: ['c1'], brand: {}, content: { headline: 'Ship faster', ctas: ['Start free'] } })),
+    requestBrief: vi.fn(async () => { if (!guidedOn) throw new real.DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401); return { rows: [{ item: 'Positioning', judgment: 'Fast shipping tool', evidence: 'headline' }], questions: ['Lead with the headline? I would recommend yes.'] }; }),
+    requestDirections: vi.fn(async () => ({ directions: [{ name: 'Clean product', claim: 'Quiet and precise', keywords: ['calm'], look: 'light', motion: 'slow pushes', why: 'fits', tradeoff: 'less energy' }, { name: 'Bold launch', claim: 'Loud', keywords: [], look: 'dark', motion: 'fast', why: 'x', tradeoff: 'y' }], recommended: 0 })),
+    requestMapping: vi.fn(async () => [{ feature: 'Ship faster', firstShot: shot('DeckDealFlyin'), altShot: '', expresses: 'speed', pageState: 'hero' }, { feature: 'Rows', firstShot: shot('RowEmbed'), altShot: '', expresses: 'depth', pageState: 'features' }]),
+  };
 });
+let guidedOn = true;
 
 import { useFilmDirector } from '../components/useFilmDirector';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
@@ -114,6 +123,59 @@ describe('useFilmDirector', () => {
     await flush();
     expect(calls).toHaveLength(2);
     answer = { reply: 'I opened on your headline because it is what the site leads with.', revise: false };
+  });
+
+  it('co-creation: brief → direction → mapping → storyboard, each confirmed by the person', async () => {
+    calls.length = 0;
+    guidedOn = true;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('make a promo for https://acme.io'); });
+    expect(result.current.stage).toBe('offer');
+    act(() => { result.current.coCreate(); });
+    await flush();
+    expect(result.current.stage).toBe('brief');
+    expect(result.current.messages.some((m) => /Product check/.test(m.content) && /Positioning/.test(m.content))).toBe(true);
+    act(() => { result.current.send('looks right'); });
+    await flush();
+    expect(result.current.stage).toBe('direction');
+    expect(result.current.messages.some((m) => /Visual directions/.test(m.content))).toBe(true);
+    act(() => { result.current.send('B'); });
+    await flush();
+    expect(result.current.stage).toBe('mapping');
+    expect(result.current.messages.some((m) => /mapped to shots/.test(m.content) && /Deck Deal Flyin/.test(m.content))).toBe(true);
+    expect(calls).toHaveLength(0);
+    act(() => { result.current.send('looks right'); });
+    await flush();
+    // The storyboard is written from the confirmed mapping and the chosen direction, on the captured site.
+    expect(calls).toHaveLength(1);
+    expect(calls[0].recipes).toEqual(['DeckDealFlyin', 'RowEmbed']);
+    expect(calls[0].prompt).toContain('Bold launch');
+    expect(result.current.stage).toBe('plan');
+  });
+
+  it('co-creation: "you decide" skips the remaining confirmations', async () => {
+    calls.length = 0;
+    guidedOn = true;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('make a promo for https://acme.io'); });
+    act(() => { result.current.coCreate(); });
+    await flush();
+    act(() => { result.current.send('you decide'); });
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(result.current.stage).toBe('plan');
+  });
+
+  it('co-creation without an OpenAI key falls back to the Ink Press template and says why', async () => {
+    calls.length = 0;
+    guidedOn = false;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('make a promo for https://acme.io'); });
+    act(() => { result.current.coCreate(); });
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(result.current.messages.some((m) => /needs your OpenAI API key/.test(m.content))).toBe(true);
+    guidedOn = true;
   });
 
   it('a bare new-site message ("now beta.dev") with a storyboard open starts a film instead of being dropped', async () => {

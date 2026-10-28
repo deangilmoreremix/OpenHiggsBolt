@@ -24,6 +24,11 @@ export interface FilmCapture {
   crops: string[];
   /** The site's name, shown on the inset pictures. */
   title?: string;
+  /** Where the page's sections start (CSS px from the top of `screens[0]`) and its height; the insets show them one by one. */
+  sections?: number[];
+  pageH?: number;
+  /** Section headings, best effort in page order, used as the inset labels. */
+  sectionNames?: string[];
 }
 
 /** A video the user attached; it plays as its own scene before the closing card. */
@@ -126,7 +131,9 @@ export function planToProject(
   const durations = snapToBeats(plan.scenes.map((s) => s.durationSec), opts.music?.beats ?? []);
   const screens = opts.capture?.screens ?? [];
   const crops = opts.capture?.crops ?? [];
-  /** Pictures of the user's site for the shots that cannot draw captured pages themselves. */
+  /** CSS px of a 1920-wide page that a 16:10 inset shows. */
+const INSET_PAGE_H = 1200;
+/** Pictures of the user's site for the shots that cannot draw captured pages themselves. */
   const insetPool = [...crops, ...screens];
 
   const shots: ClipData[] = [];
@@ -182,8 +189,14 @@ export function planToProject(
       // A shot that draws its own sample UI still shows the user's site: a framed picture in a corner.
       if (!usesCapture && insetPool.length) {
         const k = insets.length;
+        // One section of the page per scene when the page is tall enough to have them: hero, features, pricing…
+        const ys = opts.capture?.sections ?? [];
+        const pageH = opts.capture?.pageH ?? 0;
+        const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
+        const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
+        const label = (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || opts.capture?.title || '';
         insets.push(
-          clip('site-inset', at, frames, { file: insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: (opts.capture?.title ?? '').slice(0, 40) }, { label: 'Site' }),
+          clip('site-inset', at, frames, { file: bySection ? screens[0] : insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
         );
       }
       const line = scene.caption || scene.headline;

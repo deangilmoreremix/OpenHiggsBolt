@@ -48,7 +48,8 @@ export const INK_PRESS_INTRO =
   'page-waterfall-wall), caption strips, flash cuts on the beat, whoosh and impact sound design, and a launch outro. ' +
   'It is the fastest path: your screenshots, copy and logo dropped into a template that is already tuned.\n\n' +
   'Use Ink Press? Or I can let the director pick shots from the whole library — or name the shot cards you want ' +
-  '(e.g. “use deck-deal-flyin and row-embed”).';
+  '(e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product ' +
+  'check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.';
 
 export type FilmTemplateChoice = 'inkpress' | 'director';
 

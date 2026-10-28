@@ -24,6 +24,11 @@ export interface DirectorScene {
   /** Small caption strip under the scene; empty for none. */
   caption: string;
   transition: SceneTransition;
+  /** Storyboard table: the message this scene carries, its main motion, the picture of the site it shows, its sound cue. */
+  feature?: string;
+  action?: string;
+  asset?: string;
+  sfx?: string;
 }
 
 export interface DirectorPalette {
@@ -71,8 +76,12 @@ export function buildCatalogBrief(): string {
 const sceneSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['kind', 'recipeId', 'durationSec', 'headline', 'caption', 'transition'],
+  required: ['kind', 'recipeId', 'durationSec', 'headline', 'caption', 'transition', 'feature', 'action', 'asset', 'sfx'],
   properties: {
+    feature: { type: 'string' },
+    action: { type: 'string' },
+    asset: { type: 'string' },
+    sfx: { type: 'string' },
     kind: { type: 'string', enum: ['shot', 'title'] },
     recipeId: { type: 'string' },
     durationSec: { type: 'number' },
@@ -133,6 +142,10 @@ export function validatePlan(raw: unknown, opts: { targetSec: number; maxSceneSe
       headline,
       caption: text(s.caption, PLAN_LIMITS.captionChars),
       transition: s.transition === 'flash' ? 'flash' : 'cut',
+      ...(text(s.feature, 120) ? { feature: text(s.feature, 120) } : {}),
+      ...(text(s.action, 120) ? { action: text(s.action, 120) } : {}),
+      ...(text(s.asset, 100) ? { asset: text(s.asset, 100) } : {}),
+      ...(text(s.sfx, 80) ? { sfx: text(s.sfx, 80) } : {}),
     });
   }
   if (scenes.length < PLAN_LIMITS.minScenes) throw new Error('The director returned too few usable scenes');
@@ -240,4 +253,134 @@ export function validateEditOps(raw: unknown, clipIds: ReadonlySet<string>): { r
     }
   }
   return { reply: text(input.reply, 600) || (ops.length ? 'Done.' : 'I could not turn that into a change.'), ops };
+}
+
+// ── Co-creation steps (upstream's guided flow) ─────────────────────────────
+
+export interface BriefRow { item: string; judgment: string; evidence: string }
+export interface DirectorBrief { rows: BriefRow[]; questions: string[] }
+export interface VisualDirection { name: string; claim: string; keywords: string[]; look: string; motion: string; why: string; tradeoff: string }
+export interface DirectionOptions { directions: VisualDirection[]; recommended: number }
+export interface MappingRow { feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }
+
+export const BRIEF_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['rows', 'questions'],
+  properties: {
+    rows: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['item', 'judgment', 'evidence'],
+        properties: { item: { type: 'string' }, judgment: { type: 'string' }, evidence: { type: 'string' } },
+      },
+    },
+    questions: { type: 'array', items: { type: 'string' } },
+  },
+} as const;
+
+export const DIRECTION_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['directions', 'recommended'],
+  properties: {
+    directions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'claim', 'keywords', 'look', 'motion', 'why', 'tradeoff'],
+        properties: {
+          name: { type: 'string' },
+          claim: { type: 'string' },
+          keywords: { type: 'array', items: { type: 'string' } },
+          look: { type: 'string' },
+          motion: { type: 'string' },
+          why: { type: 'string' },
+          tradeoff: { type: 'string' },
+        },
+      },
+    },
+    recommended: { type: 'number' },
+  },
+} as const;
+
+export const MAPPING_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['rows'],
+  properties: {
+    rows: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['feature', 'firstShot', 'altShot', 'expresses', 'pageState'],
+        properties: {
+          feature: { type: 'string' },
+          firstShot: { type: 'string' },
+          altShot: { type: 'string' },
+          expresses: { type: 'string' },
+          pageState: { type: 'string' },
+        },
+      },
+    },
+  },
+} as const;
+
+const list = (v: unknown, max: number, len: number): string[] =>
+  (Array.isArray(v) ? v : []).slice(0, max).map((x) => text(x, len)).filter(Boolean);
+
+/** Trim a model brief: a handful of rows and at most three questions. */
+export function validateBrief(raw: unknown): DirectorBrief {
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const rows = (Array.isArray(input.rows) ? input.rows : []).slice(0, 12).flatMap((r) => {
+    const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>;
+    const item = text(o.item, 60);
+    const judgment = text(o.judgment, 240);
+    return item && judgment ? [{ item, judgment, evidence: text(o.evidence, 200) }] : [];
+  });
+  if (!rows.length) throw new Error('The director returned an empty brief');
+  return { rows, questions: list(input.questions, 3, 260) };
+}
+
+/** At most three directions; `recommended` always points at one of them. */
+export function validateDirections(raw: unknown): DirectionOptions {
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const directions = (Array.isArray(input.directions) ? input.directions : []).slice(0, 3).flatMap((d) => {
+    const o = (d && typeof d === 'object' ? d : {}) as Record<string, unknown>;
+    const name = text(o.name, 50);
+    const claim = text(o.claim, 200);
+    return name && claim
+      ? [{ name, claim, keywords: list(o.keywords, 5, 24), look: text(o.look, 220), motion: text(o.motion, 200), why: text(o.why, 220), tradeoff: text(o.tradeoff, 200) }]
+      : [];
+  });
+  if (!directions.length) throw new Error('The director returned no visual directions');
+  const rec = typeof input.recommended === 'number' ? Math.round(input.recommended) : 0;
+  return { directions, recommended: rec >= 0 && rec < directions.length ? rec : 0 };
+}
+
+/** Rows whose shots exist in the catalog; the first choice is required, the alternate dropped when unknown. */
+export function validateMapping(raw: unknown): MappingRow[] {
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const shot = (v: unknown): string => {
+    const t = typeof v === 'string' ? resolveMotionTemplate(v.trim()) : undefined;
+    return t && MOTION_TEMPLATES.includes(t) ? t.id : '';
+  };
+  const rows: MappingRow[] = [];
+  const used = new Set<string>();
+  for (const r of Array.isArray(input.rows) ? input.rows : []) {
+    if (rows.length >= 10) break;
+    const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>;
+    const firstShot = shot(o.firstShot);
+    const feature = text(o.feature, 120);
+    // One shot leads once: a repeated first choice is a repeated technique.
+    if (!firstShot || !feature || used.has(firstShot)) continue;
+    used.add(firstShot);
+    rows.push({ feature, firstShot, altShot: shot(o.altShot), expresses: text(o.expresses, 200), pageState: text(o.pageState, 140) });
+  }
+  if (!rows.length) throw new Error('The director returned no usable shot mapping');
+  return rows;
 }

@@ -54,7 +54,7 @@ function solidPng(width: number, height: number, rgb: [number, number, number]):
 }
 
 async function mockDirector(page: Page) {
-  const calls = { capture: 0, plan: 0, edit: 0, planCapture: null as Record<string, unknown> | null };
+  const calls = { capture: 0, plan: 0, edit: 0, planCapture: null as Record<string, unknown> | null, planPrompt: '' };
   const png = solidPng(480, 436, [236, 0, 140]);
   await page.route('https://captures.example.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
   await page.route('**/api/motion-studio/capture', async (route) => {
@@ -97,8 +97,21 @@ async function mockDirector(page: Page) {
       });
       return;
     }
+    if (body.mode === 'brief') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ brief: { rows: [{ item: 'Positioning', judgment: 'A tool that ships releases faster', evidence: 'the site headline' }, { item: 'Features to show', judgment: 'Planning and releasing', evidence: 'section headings' }], questions: ['Open on the headline “Ship faster with Acme”? I would recommend yes because it is what the site leads with.'] } }) });
+      return;
+    }
+    if (body.mode === 'direction') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ options: { directions: [{ name: 'Clean product', claim: 'Quiet and precise', keywords: ['calm', 'light'], look: 'Inter on near-black', motion: 'slow pushes', why: 'it matches the site', tradeoff: 'less energy' }, { name: 'Bold launch', claim: 'Loud and fast', keywords: ['punchy'], look: 'magenta accents', motion: 'whip cuts', why: 'launch energy', tradeoff: 'busier' }], recommended: 0 } }) });
+      return;
+    }
+    if (body.mode === 'mapping') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ mapping: [{ feature: 'Plan in minutes', firstShot: 'ui-entrance/deck-deal-flyin/DeckDealFlyin', altShot: '', expresses: 'cards dealt onto the page', pageState: 'hero section' }, { feature: 'Release with confidence', firstShot: 'ui-entrance/row-embed/RowEmbed', altShot: '', expresses: 'rows embed into the layout', pageState: 'features section' }] }) });
+      return;
+    }
     calls.plan++;
     calls.planCapture = body.capture ?? null;
+    calls.planPrompt = String(body.prompt ?? '');
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -109,7 +122,7 @@ async function mockDirector(page: Page) {
           palette: { background: '#111111', text: '#fafafa', accent: '#ec008c' },
           scenes: [
             { kind: 'title', recipeId: '', durationSec: 2.5, headline: 'Meet *Acme*', caption: 'The new way to ship', transition: 'cut' },
-            { kind: 'shot', recipeId: 'camera/crash-zoom-punch/CrashImpactReal', durationSec: 4.5, headline: 'Your real product', caption: 'LIVE PAGES', transition: 'flash' },
+            { kind: 'shot', recipeId: 'camera/crash-zoom-punch/CrashImpactReal', durationSec: 4.5, headline: 'Your real product', caption: 'LIVE PAGES', transition: 'flash', feature: 'Plan in minutes', action: 'cards deal in', asset: 'hero section of your page', sfx: 'impact on the flash' },
             { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 5, headline: 'Every release counts', caption: '', transition: 'cut' },
             { kind: 'title', recipeId: '', durationSec: 3, headline: 'Try *Acme* today', caption: 'acme.example.com', transition: 'cut' },
           ],
@@ -140,7 +153,9 @@ test.describe('Motion Studio director', () => {
     await expect(plan).toBeVisible({ timeout: 60_000 });
     await expect(plan).toContainText('Acme launch film');
     await expect(plan).toContainText('Crash Zoom Punch · Crash Impact Real');
-    await expect(plan).toContainText('shows your site');
+    // Each storyboard row says what the scene shows and does.
+    await expect(plan).toContainText('shows: hero section of your page');
+    await expect(plan).toContainText('sound: impact on the flash');
     await expect(page.getByText('Captured Acme · 2 pages (/, /pricing) · 1 card crops · logo · 1 site image')).toBeVisible();
     await expect(page.getByText('Read the site: "Ship faster with Acme" · 2 sections')).toBeVisible();
     // The director is given the site's own words and every captured route.
@@ -532,6 +547,44 @@ test.describe('Motion Studio director', () => {
     await page.getByTestId('library-recipe-card').first().focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('button', { name: /Remove Row Embed/i })).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('work it out together: brief → direction → shot mapping → storyboard, each confirmed', async ({ page }) => {
+    await installStudioSession(page);
+    const calls = await mockDirector(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await assertNoOnboardingModal(page);
+    await page.getByPlaceholder('Describe your motion video...').fill('I want a promo for https://acme.example.com with a screenshot for each part of the page');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await page.getByTestId('cocreate-start').click();
+
+    const chat = page.getByTestId('film-chat');
+    const choices = page.getByTestId('guided-choices');
+    await expect(choices).toHaveAttribute('data-step', 'brief', { timeout: 60_000 });
+    await expect(chat).toContainText('Product check');
+    await expect(chat).toContainText('Positioning: A tool that ships releases faster');
+    await expect(chat).toContainText('To confirm');
+    await page.getByTestId('guided-accept').click();
+
+    await expect(choices).toHaveAttribute('data-step', 'direction', { timeout: 60_000 });
+    await expect(chat).toContainText('Visual directions');
+    await expect(chat).toContainText('B. Bold launch');
+    await choices.getByRole('button', { name: 'Use B' }).click();
+
+    await expect(choices).toHaveAttribute('data-step', 'mapping', { timeout: 60_000 });
+    await expect(chat).toContainText('Plan in minutes → Deck Deal Flyin');
+    await expect(chat).toContainText('Release with confidence → Row Embed');
+    await page.getByTestId('guided-accept').click();
+
+    const plan = page.getByTestId('director-plan');
+    await expect(plan).toBeVisible({ timeout: 60_000 });
+    // Only the mapped shots; the storyboard rows say what each scene shows and does.
+    await expect(plan).toContainText('Deck Deal Flyin');
+    await expect(plan).toContainText('Row Embed');
+    await expect(plan).not.toContainText('Crash Impact Real');
+    expect(calls.planPrompt).toContain('Bold launch');
+    expect(calls.planPrompt).toContain('Plan in minutes');
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {

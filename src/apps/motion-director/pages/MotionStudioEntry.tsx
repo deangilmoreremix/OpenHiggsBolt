@@ -457,7 +457,7 @@ export default function MotionStudioEntry() {
               onChange={setDescription}
               onSubmit={() => { if (canCreate && !busy) handleCreate(); }}
               typingText={placeholder}
-              placeholder={director.stage === 'offer' ? 'Answer: use Ink Press, let the director pick, or name shot cards…' : director.stage === 'plan' ? 'Tell me what to change in the storyboard…' : director.stage === 'film' ? 'Describe another film…' : 'Describe your motion video...'}
+              placeholder={director.stage === 'offer' ? 'Answer: use Ink Press, let the director pick, or name shot cards…' : director.stage === 'brief' ? 'Answer the questions, or say “looks right” / “you decide”…' : director.stage === 'direction' ? 'Pick A, B or C, describe your own, or say “you decide”…' : director.stage === 'mapping' ? 'Say “looks right”, or tell me what to change…' : director.stage === 'plan' ? 'Tell me what to change in the storyboard…' : director.stage === 'film' ? 'Describe another film…' : 'Describe your motion video...'}
               aria-label="Describe your motion video"
               disabled={busy}
               rows={3}
