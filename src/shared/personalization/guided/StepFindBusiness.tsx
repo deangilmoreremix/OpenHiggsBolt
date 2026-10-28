@@ -497,11 +497,10 @@ export function StepFindBusiness({
                     : 'The selected assets could not be added.'}
                 </p>
               )}
-              {discoveryError && /failed to upload|Missing API key/i.test(discoveryError) && (
+              {discoveryError && /failed to upload/i.test(discoveryError) && (
                 <p style={{ margin: '6px 0 0', color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
-                  The selected assets are in this session and can be used to personalize the video. Saving them
-                  durably to your library needs your own MuAPI key (BYOK) — add it under your account settings and
-                  re-import to store them permanently.
+                  The selected assets are in this session and can still be used to personalize the video. Retry to
+                  save them to your library.
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>

@@ -93,7 +93,6 @@ export async function uploadPersonalizationAsset(
   // adapter and nothing else; it never stores it, logs it, or derives a
   // server-side fallback for it.
   const resolvedWorkspace = workspaceId?.trim() || getStableUserId()
-  console.log('[DBG] svc enter', resolvedWorkspace);
   const resolvedAssetId = assetId?.trim() || (await deriveContentAssetId(file));
 
   const authContext: MuAPIAuthContext = {
@@ -110,10 +109,24 @@ export async function uploadPersonalizationAsset(
   try {
     durable = await persistMuAPIAssetOriginal({ file, assetId: resolvedAssetId, authContext });
   } catch (error) {
-    console.log('[DBG] persist failed', handleMuAPIUploadError(error).class)
     const info = handleMuAPIUploadError(error);
     if (onProgress) onProgress(0);
     throw new Error(info.message);
+  }
+
+  // Saving needs no MuAPI key: without one the asset is stored durably and the
+  // MuAPI copy is made later, from storage, when a generation needs it
+  // (`resolvePersonalizationAssetMuAPIUrl`).
+  if (!authContext.apiKey) {
+    if (onProgress) onProgress(100);
+    return {
+      url: durable.durableUrl || durable.durableRef,
+      durableRef: durable.durableRef,
+      durableUrl: durable.durableUrl || durable.durableRef,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    };
   }
 
   // 2. Then the adapter obtains a MuAPI URL — straight from bytes for small
@@ -126,13 +139,10 @@ export async function uploadPersonalizationAsset(
       ? await uploadVideoToMuAPI(file, authContext)
       : await uploadImageToMuAPI(file, authContext);
   } catch (error) {
-    console.log('[DBG] upload failed', handleMuAPIUploadError(error).class)
     const info = handleMuAPIUploadError(error);
     if (onProgress) onProgress(0);
     throw new Error(info.message);
   }
-
-  console.log('[DBG] upload ok')
   if (onProgress) onProgress(100);
 
   return {
