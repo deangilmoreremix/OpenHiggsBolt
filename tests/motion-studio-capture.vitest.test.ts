@@ -72,7 +72,9 @@ describe('capturePageScreenshots', () => {
     expect(h.gotos).toEqual(['https://acme.example.com/'])
     expect(h.contextOptions).toMatchObject({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2, serviceWorkers: 'block' })
     // The page is cut at the sample page height the shots were tuned on.
-    expect(h.screenshots[0]).toMatchObject({ type: 'jpeg', clip: { x: 0, y: 0, width: 1920, height: mod.CAPTURE_MAX_PAGE_HEIGHT } })
+    // A first shot of what is on screen is taken at once, then the full-height one replaces it.
+    expect(h.screenshots[0]).toMatchObject({ type: 'jpeg', clip: { x: 0, y: 0, width: 1920, height: 1080 } })
+    expect(h.screenshots[1]).toMatchObject({ type: 'jpeg', clip: { x: 0, y: 0, width: 1920, height: mod.CAPTURE_MAX_PAGE_HEIGHT } })
     expect(result.crops).toHaveLength(2)
     expect(result.pageHeight).toBe(mod.CAPTURE_MAX_PAGE_HEIGHT)
     expect(result.title).toBe('Acme — ship faster')
@@ -239,6 +241,21 @@ describe('capture the way upstream ShotCraft does', () => {
     // The full-page shot answers; every later screenshot (crops, logo, images) never does.
     page.screenshot = (...a: unknown[]) => (shots++ === 0 ? real(...a) : new Promise(() => undefined))
     const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0, hardMs: 400 })
+    expect(result.page).toBeInstanceOf(Buffer)
+  })
+  it('replies without waiting for a page, context or browser that will not close', async () => {
+    const { mod, guard } = await loadRich()
+    const { chromium } = (await import('playwright')) as unknown as { chromium: { launch: () => Promise<{ close: () => Promise<void>; newContext: () => Promise<{ close: () => Promise<void>; newPage: () => Promise<{ close: () => Promise<void> }> }> }> } }
+    const browser = await chromium.launch()
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const never = () => new Promise<void>(() => undefined)
+    page.close = never
+    context.close = never
+    browser.close = never
+    const began = Date.now()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })
+    expect(Date.now() - began).toBeLessThan(8_000)
     expect(result.page).toBeInstanceOf(Buffer)
   })
 })

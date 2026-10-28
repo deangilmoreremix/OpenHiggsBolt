@@ -10,6 +10,7 @@ import {
   INK_PRESS_INTRO,
   MAX_PICKED_SHOTS,
   isFilmRequest,
+  isQuestion,
   parseFilmRequest,
   readTemplateAnswer,
   reviseRecipes,
@@ -18,6 +19,7 @@ import {
   type FilmTemplateChoice,
 } from '../lib/filmChat';
 import { videoSceneSec } from '../lib/buildFilm';
+import { askDirector } from '../lib/directorClient';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
@@ -196,13 +198,28 @@ export function useFilmDirector(opts: {
           'done',
           `${result.plan.scenes.length + videos.length} scene${result.plan.scenes.length + videos.length === 1 ? '' : 's'} · ${Math.round(secs(result.plan) + videoSec)}s · ${result.source === 'director' ? 'AI director' : 'Ink Press'}`,
         );
+        if (result.capture) {
+          const c = result.capture;
+          const headline = c.content?.headline?.replace(/\s+/g, ' ').trim();
+          const ctas = (c.content?.ctas ?? []).slice(0, 3);
+          const found = [
+            `${(c.pages?.length ?? 1)} page${(c.pages?.length ?? 1) === 1 ? '' : 's'}`,
+            c.crops.length ? `${c.crops.length} card crop${c.crops.length === 1 ? '' : 's'}` : '',
+            c.images?.length ? `${c.images.length} site image${c.images.length === 1 ? '' : 's'}` : '',
+            c.logo ? 'the logo' : '',
+          ].filter(Boolean);
+          say(
+            'assistant',
+            `I read ${c.title || c.url}${headline ? ` — it says “${headline.slice(0, 120)}”` : ''}${ctas.length ? `, with calls to action ${ctas.map((x) => `“${x}”`).join(', ')}` : ''}. I captured ${found.join(', ')} to use in the film.`,
+          );
+        }
         const lines = result.plan.scenes.map((sc) => `${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
         // Attached videos play just before the closing scene (after a one-scene film), as the build places them.
         lines.splice(lines.length > 1 ? lines.length - 1 : lines.length, 0, ...videos.map((v) => `Your video ${v.name} · ${v.sec}s`));
         const numbered = lines.map((line, i) => `${i + 1}. ${line}`);
         say(
           'assistant',
-          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${result.capture ? ', using your captured pages' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, or tell me what to change.`,
+          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}${result.source === 'director' && result.plan.summary ? `${result.plan.summary}\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${result.capture ? ', using your captured pages' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, ask me why I chose something, or tell me what to change.`,
         );
       } catch (error) {
         if (!live()) return;
@@ -267,19 +284,36 @@ export function useFilmDirector(opts: {
           : prev.req.recipes;
         const base = reviseRecipes(open, text);
         const revised = [...base, ...picks.filter((p) => !base.includes(p))];
-        void runStoryboard(
-          {
-            ...prev.req,
-            prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
-            recipes: revised,
-            // A one-shot film follows its revision: "use crash-zoom-punch instead" builds that shot.
-            single: prev.req.single ? (revised.length === 1 ? revised[0] : null) : null,
-            durationSec: extra.durationSec ?? prev.req.durationSec,
-            siteUrl: extra.siteUrl ?? prev.req.siteUrl,
-          },
-          extra.template ?? (extra.recipes.length ? 'director' : prev.template),
-          true,
-        );
+        const revise = () =>
+          void runStoryboard(
+            {
+              ...prev.req,
+              prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
+              recipes: revised,
+              // A one-shot film follows its revision: "use crash-zoom-punch instead" builds that shot.
+              single: prev.req.single ? (revised.length === 1 ? revised[0] : null) : null,
+              durationSec: extra.durationSec ?? prev.req.durationSec,
+              siteUrl: extra.siteUrl ?? prev.req.siteUrl,
+            },
+            extra.template ?? (extra.recipes.length ? 'director' : prev.template),
+            true,
+          );
+        // A question about the storyboard gets an answer from the director; a request for a change revises it.
+        if (storyboard && !picks.length && isQuestion(text)) {
+          const my = gen.current;
+          void askDirector({ message: text, plan: storyboard.plan, capture: storyboard.capture ?? null })
+            .then((answer) => {
+              if (gen.current !== my) return;
+              if (answer.reply) say('assistant', answer.reply);
+              if (answer.revise) revise();
+            })
+            .catch(() => {
+              // No director to ask (no key, offline): treat it as feedback on the plan.
+              if (gen.current === my) revise();
+            });
+          return true;
+        }
+        revise();
         return true;
       }
 

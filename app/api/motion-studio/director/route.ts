@@ -20,6 +20,8 @@ export const maxDuration = 60
  *
  *   { mode: 'plan', prompt, durationSec, aspectRatio, capture?: { title, url, brand, cropCount }, brandKit? }
  *     → { plan }   a storyboard of existing ShotCraft recipes + copy + timing
+ *   { mode: 'chat', message, plan, capture? }
+ *     → { reply, revise }   the director answers a question about the storyboard
  *   { mode: 'edit', instruction, clips: [{ id, recipe, label, text, seconds }] }
  *     → { reply, ops }   data edits against the current project
  *
@@ -51,6 +53,19 @@ Return a storyboard as JSON. Rules:
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
+
+const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
+You receive their message, the storyboard on the table (title, summary, scenes) and what the product's site says (productCapture.content, when present).
+Return JSON {reply, revise}.
+- reply: one to three friendly sentences, in plain words. Answer their question or explain why the shots, order and copy were chosen, using the site's own words when you have them. Never invent features the site does not mention.
+- revise: true only when the message asks you to CHANGE the film (different shots, copy, length, colours, order). Then reply says in one sentence what you will change. For a question or comment, revise is false.`
+
+const CHAT_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['reply', 'revise'],
+  properties: { reply: { type: 'string' }, revise: { type: 'boolean' } },
+} as const
 
 const EDIT_INSTRUCTIONS = `You edit a Motion Studio film. You receive the instruction and the current clips.
 Return JSON {reply, ops}. Each op has every field; fill unused ones with "" or 0.
@@ -157,6 +172,32 @@ export async function POST(req: NextRequest) {
         EDIT_JSON_SCHEMA,
       )
       return NextResponse.json(validateEditOps(raw, new Set(clips.map((c) => c.id))))
+    }
+
+    if (body.mode === 'chat') {
+      const message = str(body.message, 1000).trim()
+      if (!message) return NextResponse.json({ error: 'A message is required', code: 'BAD_REQUEST' }, { status: 400 })
+      const plan = body.plan && typeof body.plan === 'object' ? (body.plan as Record<string, unknown>) : {}
+      const scenes = (Array.isArray(plan.scenes) ? plan.scenes : []).slice(0, PLAN_LIMITS.maxScenes).map((sc: any) => ({
+        kind: str(sc?.kind, 8),
+        recipe: str(sc?.recipeId, 120),
+        seconds: typeof sc?.durationSec === 'number' ? Math.round(sc.durationSec * 10) / 10 : 0,
+        headline: str(sc?.headline, 90),
+        caption: str(sc?.caption, 110),
+      }))
+      const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
+      const raw = await callDirector(
+        key,
+        CHAT_INSTRUCTIONS,
+        JSON.stringify({
+          message,
+          storyboard: { title: str(plan.title, 120), summary: str(plan.summary, 400), scenes },
+          productCapture: capture ? { title: str(capture.title, 200), url: str(capture.url, 300), content: siteContent(capture.content) } : null,
+        }),
+        'motion_studio_chat',
+        CHAT_JSON_SCHEMA,
+      )
+      return NextResponse.json({ reply: str(raw?.reply, 700), revise: raw?.revise === true })
     }
 
     const prompt = str(body.prompt, 2000).trim()

@@ -205,6 +205,26 @@ describe('POST /api/motion-studio/director', () => {
     expect(await res.json()).toEqual({ reply: 'Renamed it.', ops: [{ op: 'set_text', clipId: 'c1', text: 'New headline' }] })
   })
 
+  it('answers a question about the storyboard and says whether it asks for a change', async () => {
+    vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-user' }))
+    const fetchMock = mockOpenAi({ reply: 'I opened on your headline.', revise: false })
+    const { POST } = await import('@/app/api/motion-studio/director/route')
+    const res = await POST(
+      post('/api/motion-studio/director', {
+        mode: 'chat',
+        message: 'why this opening?',
+        plan: { title: 'Acme film', summary: 's', scenes: [{ kind: 'title', recipeId: '', durationSec: 3, headline: 'Ship faster', caption: '' }] },
+        capture: { title: 'Acme', url: 'https://acme.io', content: { headline: 'Ship faster' } },
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ reply: 'I opened on your headline.', revise: false })
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(JSON.parse(String(init.body)).input[0].content[0].text).toContain('why this opening?')
+    const empty = await POST(post('/api/motion-studio/director', { mode: 'chat', message: '  ' }))
+    expect(empty.status).toBe(400)
+  })
+
   it('maps a rejected OpenAI key to 401', async () => {
     vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-bad' }))
     mockOpenAi({}, 401)

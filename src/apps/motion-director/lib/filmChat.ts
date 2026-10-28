@@ -146,6 +146,13 @@ export function parseFilmRequest(text: string): FilmRequest {
   return { prompt, recipes, single, template, durationSec, siteUrl: findSiteUrl(prompt) };
 }
 
+/** A question about the storyboard ("why this shot?", "what will the opening say?") rather than a change to it. */
+export function isQuestion(text: string): boolean {
+  const t = text.trim();
+  if (!t || findNamedRecipes(t).length) return false;
+  return /\?\s*$/.test(t) || /^(?:why|how|what|which|who|where|when|explain|tell me|walk me through)\b/i.test(t);
+}
+
 /** True when a message asks for a new film or shot rather than an edit to the current one. */
 export function isFilmRequest(text: string): boolean {
   const t = text.trim();

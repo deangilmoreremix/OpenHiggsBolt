@@ -1388,7 +1388,11 @@ async function withGuardedContext<T>(
   options: GuardedContextOptions,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fn: (context: any, counters: { readonly blockedSubrequests: number }) => Promise<T>,
+  /** When set, teardown waits at most this long for each close (default: wait for it). */
+  closeTimeoutMs?: number,
 ): Promise<T> {
+  const closing = <R,>(p: Promise<R>): Promise<R | void> =>
+    closeTimeoutMs ? Promise.race([p, new Promise<void>((resolve) => setTimeout(resolve, closeTimeoutMs))]) : p
   let browser: any = null
   let ownedBrowser = false
   let context: any = null
@@ -1483,14 +1487,14 @@ async function withGuardedContext<T>(
     // process itself is kept for warm-server reuse.
     try {
       if (context) {
-        await context.close()
+        await closing(context.close())
       }
     } catch {
       // ignore context close errors
     }
     if (ownedBrowser && browser) {
       try {
-        await browser.close()
+        await closing(browser.close())
       } catch {
         // ignore
       }
@@ -1500,7 +1504,7 @@ async function withGuardedContext<T>(
     // would keep rejected hosts memoised for the next business.
     if (allowlistProxy) {
       try {
-        await allowlistProxy.close()
+        await closing(allowlistProxy.close())
       } catch {
         // ignore proxy close errors
       }
@@ -1695,6 +1699,8 @@ export const CAPTURE_HARD_MS = 20_000
 export const CAPTURE_SETTLE_MS = 600
 /** Longest wait for web fonts before shooting anyway. */
 export const CAPTURE_FONT_WAIT_MS = 2_000
+/** Longest the browser teardown may delay the reply (the host cuts a request off at about 30 s). */
+const CAPTURE_CLOSE_MS = 1_500
 /** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
@@ -2168,7 +2174,7 @@ export async function capturePageScreenshots(
       let out: PageCapture | null = null
 
       const work = async (): Promise<PageCapture> => {
-        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
+        await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_NAVIGATION_TIMEOUT })
         const finalTarget = await guard.validateNavigationTarget(page.url())
         if (finalTarget.hostname !== baseTarget.hostname) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
@@ -2176,26 +2182,42 @@ export async function capturePageScreenshots(
         mark('loaded')
 
         const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[] }
-        let early: PageCapture | null = null
+        // A first screenshot of what is on screen, before the slower steps (idle waits, scrolling,
+        // the tall page shot): a slow site still hands back a page when the deadline comes.
+        await page.waitForLoadState('load', { timeout: 2_500 }).catch(() => undefined)
+        const first: Buffer | null = await page
+          .screenshot({ type: 'jpeg', quality: 82, clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: CAPTURE_VIEWPORT.height } })
+          .catch(() => null)
+        if (first) {
+          const read0 = await page.evaluate(readPageContent).catch(() => null)
+          out = {
+            url: page.url(),
+            title: String((await page.title().catch(() => '')) ?? '').slice(0, 200),
+            page: first,
+            pageHeight: CAPTURE_VIEWPORT.height,
+            crops: homeAcc.crops,
+            logo: null,
+            images: [],
+            content: read0
+              ? { description: read0.description, headline: read0.headline, headings: read0.headings, ctas: read0.ctas, nav: read0.nav }
+              : { ...EMPTY_CONTENT },
+            layout: { pageH: CAPTURE_VIEWPORT.height, sections: [], cards: homeAcc.cards },
+            cutouts: { nav: null, search: null, button: null },
+            emptyPlate: null,
+            routes: [],
+            brand: { background: null, text: null, accent: null, fontFamily: null },
+          }
+          mark('first')
+        }
         const home = await shootRoute(
           maxCrops,
           (shot, pageHeight) => {
-            early = {
-              url: page.url(),
-              title: '',
-              page: shot,
-              pageHeight,
-              crops: homeAcc.crops,
-              logo: null,
-              images: [],
-              content: { ...EMPTY_CONTENT },
-              layout: { pageH: pageHeight, sections: [], cards: homeAcc.cards },
-              cutouts: { nav: null, search: null, button: null },
-              emptyPlate: null,
-              routes: [],
-              brand: { background: null, text: null, accent: null, fontFamily: null },
+            // The full-height shot replaces the first one.
+            if (out) {
+              out.page = shot
+              out.pageHeight = pageHeight
+              out.layout = { pageH: pageHeight, sections: [], cards: homeAcc.cards }
             }
-            out = early
           },
           homeAcc,
         )
@@ -2294,8 +2316,10 @@ export async function capturePageScreenshots(
         if (hardTimer) clearTimeout(hardTimer)
         // Which step took the time (host only, no address) — visible in the host's function logs.
         console.warn(`[motion-studio/capture] ${baseTarget.hostname} total=${elapsed()}ms ${JSON.stringify(timing)}`)
-        await page.close().catch(() => undefined)
+        // A page stuck mid-screenshot can take a long time to close: the reply must not wait for it.
+        void page.close().catch(() => undefined)
       }
     },
+    CAPTURE_CLOSE_MS,
   )
 }
