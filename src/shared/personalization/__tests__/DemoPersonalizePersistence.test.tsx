@@ -438,6 +438,19 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(writes[0].project.prompt.personalized).toBe('first edit after reopen')
   })
 
+  it('reopening the same source starts from an empty form again', async () => {
+    await mount()
+    await open()
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('typed in the first session')
+    })
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await open()
+    expect(ctx().promptState.personalized).toBe('')
+  })
+
   it('writes no local preview while the fresh session is untouched', async () => {
     await mount()
     await act(async () => {

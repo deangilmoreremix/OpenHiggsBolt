@@ -2060,6 +2060,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const closePersonalize = useCallback(() => {
     // Invalidate any restore still loading for the session being closed.
     restoreSessionRef.current += 1
+    // Reopening the same source must reset the form again: the personalizer
+    // always opens empty, with the last project offered rather than kept.
+    resetSourceIdRef.current = undefined
     // Revoke outstanding blob URLs (reference-counted, idempotent;
     // outside the state updater — updaters must stay pure for Strict Mode replay)
     releaseAllBlobUrls()
