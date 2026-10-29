@@ -59,3 +59,16 @@ describe('seam transitions in the film', () => {
     for (const c of seams) expect(c.duration).toBeGreaterThanOrEqual(14);
   });
 });
+
+describe('more seam kinds', () => {
+  it('keeps whip, ink and leak through validation and lays their cards, with one light leak at most', () => {
+    const p = plan([scene('title', '', 'whip'), scene('title', '', 'ink'), scene('title', '', 'leak'), scene('title', '', 'leak'), scene('title', '')]);
+    const checked = validatePlan(p, { targetSec: 15 });
+    expect(checked.scenes.slice(0, 4).map((s) => s.transition)).toEqual(['whip', 'ink', 'leak', 'leak']);
+    const chosen = chooseSeams(checked);
+    expect(chosen.scenes.filter((s) => s.transition === 'leak').length).toBeLessThanOrEqual(1);
+    const project = planToProject(plan([scene('title', '', 'whip'), scene('title', '', 'ink'), scene('title', '', 'leak'), scene('title', '')]), {} as never);
+    const ids = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId.startsWith('inkpress-seam-')).map((c) => c.cardId);
+    expect(ids).toEqual(['inkpress-seam-whip', 'inkpress-seam-ink', 'inkpress-seam-leak']);
+  });
+});

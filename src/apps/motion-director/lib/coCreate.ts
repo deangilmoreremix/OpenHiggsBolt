@@ -79,7 +79,7 @@ function sceneParts(scene: DirectorScene, startSec: number): string[] {
     scene.asset && `shows: ${scene.asset}`,
     scene.caption && `caption: ${scene.caption}`,
     scene.sfx && `sound: ${scene.sfx}`,
-    scene.transition !== 'cut' && scene.transition && ({ flash: 'flash cut', wipe: 'wipe cut', barn: 'barn-door cut', dip: 'dip cut' } as const)[scene.transition],
+    scene.transition !== 'cut' && scene.transition && ({ flash: 'flash cut', wipe: 'wipe cut', barn: 'barn-door cut', dip: 'dip cut', whip: 'whip-pan', ink: 'ink-bleed cut', leak: 'light-leak cut' } as const)[scene.transition],
   ].filter((p): p is string => Boolean(p));
 }
 

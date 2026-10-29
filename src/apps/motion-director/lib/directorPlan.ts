@@ -24,8 +24,8 @@ export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id 
 
 export type SceneKind = 'shot' | 'title';
 /** How a scene hands over to the next: a plain cut, or one of the cards' seam transitions. */
-export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip';
-export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip'];
+export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip' | 'whip' | 'ink' | 'leak';
+export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak'];
 
 export interface DirectorScene {
   kind: SceneKind;
@@ -112,7 +112,7 @@ const sceneSchema = {
     durationSec: { type: 'number' },
     headline: { type: 'string' },
     caption: { type: 'string' },
-    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip'] },
+    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak'] },
   },
 } as const;
 
