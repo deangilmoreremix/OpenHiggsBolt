@@ -13,6 +13,10 @@ vi.mock('../assetUploadService', () => ({
   uploadPersonalizationAsset: vi.fn(),
 }))
 
+// jsdom cannot load images; each test decides which addresses "load".
+const imageProbe = vi.hoisted(() => ({ loads: vi.fn(async (_url: string) => false) }))
+vi.mock('../imageLoadProbe', () => ({ imageLoadsInBrowser: imageProbe.loads }))
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -1259,6 +1263,95 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     expect(failedAsset).toBeTruthy()
     expect(failedAsset.uploadError).toBeTruthy()
 
+    fetchSpy.mockRestore()
+  })
+
+  it('links a discovered website image by its address: no download, no storage upload', async () => {
+    imageProbe.loads.mockResolvedValue(true)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
+    const { uploadPersonalizationAsset } = await import('../assetUploadService')
+    vi.mocked(uploadPersonalizationAsset).mockClear()
+
+    await renderProvider()
+    await openSource()
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'w1', sourceUrl: 'https://biz.example/logo.png', previewUrl: 'https://biz.example/logo.png', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://biz.example/logo.png', edited: false, videoReady: false, hasTransparency: false },
+      ])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(fetchSpy.mock.calls.some(([u]) => String(u).includes('/api/personalization/download-image'))).toBe(false)
+    expect(uploadPersonalizationAsset).not.toHaveBeenCalled()
+    expect(ctx.assets.primaryLogo?.url).toBe('https://biz.example/logo.png')
+    expect(ctx.assets.primaryLogo?.uploadStatus).toBe('ready')
+    expect(ctx.discoveryError ?? '').not.toMatch(/failed to upload/)
+
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('downloads and stores only the image its site blocks from loading here', async () => {
+    imageProbe.loads.mockImplementation(async (url: string) => !url.includes('blocked'))
+    const requested: string[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        requested.push(...urls)
+        return { ok: true, status: 200, json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: true, dataUrl: 'data:image/png;base64,iVBORw0KGgo=' })) }) } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+    const asset = (id: string, url: string) => ({ id, sourceUrl: url, previewUrl: url, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: url, edited: false, videoReady: false, hasTransparency: false })
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([asset('ok', 'https://biz.example/a.jpg'), asset('bl', 'https://blocked.example/b.jpg')])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    expect(requested).toEqual(['https://blocked.example/b.jpg'])
+    const products = (window as any).__personalizationCtx.assets.products
+    expect(products.map((p: any) => p.originalUrl).sort()).toEqual(['https://biz.example/a.jpg', 'https://blocked.example/b.jpg'])
+
+    imageProbe.loads.mockReset()
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('reports and keeps blocked images whose download fails, alongside linked ones', async () => {
+    imageProbe.loads.mockImplementation(async (url: string) => !url.includes('blocked'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        return { ok: true, status: 200, json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: false, error: 'blocked' })) }) } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+    const asset = (id: string, url: string) => ({ id, sourceUrl: url, previewUrl: url, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: url, edited: false, videoReady: false, hasTransparency: false })
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([asset('ok', 'https://biz.example/a.jpg'), asset('bl', 'https://blocked.example/b.jpg')])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/1 of 2 assets failed to download/)
+    expect(ctx.discoveredAssets.map((a: any) => a.id)).toEqual(['bl'])
+    expect(ctx.assets.products).toHaveLength(1)
+
+    imageProbe.loads.mockReset()
+    imageProbe.loads.mockResolvedValue(false)
     fetchSpy.mockRestore()
   })
 

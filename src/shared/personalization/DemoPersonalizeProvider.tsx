@@ -94,6 +94,7 @@ import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -3297,10 +3298,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       brand: 'brand_reference',
     }
 
-    // 1. Download only untouched remote assets. Edited assets already carry
-    // an in-memory data URL produced by the editor and should not be sent to
-    // the server-side downloader.
-    const remoteItems = toImport.filter((item) => !item.editedDataUrl)
+    // 1. Discovered website images are linked by their web address: nothing
+    // is downloaded or copied to storage. Only an image the browser cannot
+    // load from its site (the site blocks it) is downloaded and stored, and
+    // edited images keep their in-memory edit.
+    const untouched = toImport.filter((item) => !item.editedDataUrl)
+    const loads = await Promise.all(untouched.map((item) => imageLoadsInBrowser(item.originalPreviewUrl || item.previewUrl)))
+    const linkedItems = untouched.filter((_, index) => loads[index])
+    const remoteItems = untouched.filter((_, index) => !loads[index])
     const downloadedByUrl = new Map<string, string>()
     let partialDownloadError: string | null = null
 
@@ -3354,27 +3359,32 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           failedDownloads.push(result.url)
         }
       }
-      if (failedDownloads.length > 0 && failedDownloads.length < remoteItems.length) {
-        partialDownloadError = `${failedDownloads.length} of ${remoteItems.length} assets failed to download. ${downloadedByUrl.size} assets were imported.`
-      } else if (failedDownloads.length === remoteItems.length) {
+      const importedCount = downloadedByUrl.size + linkedItems.length
+      if (failedDownloads.length > 0 && importedCount > 0) {
+        partialDownloadError = `${failedDownloads.length} of ${untouched.length} assets failed to download. ${importedCount} assets were imported.`
+      } else if (failedDownloads.length > 0) {
         setDiscoveryError('All assets failed to download. Please try again.')
         setDiscoveryStatus('reviewing')
         return
       }
     }
 
-    // 2. Build assets from either edited data URLs or downloaded originals.
-    const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    // 2. Build assets: linked website images carry no file; edited and
+    // downloaded images carry the bytes to store.
+    const assetsToCreate: { item: DiscoveredAsset; blob: Blob | null; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    const linkedIds = new Set(linkedItems.map((item) => item.id))
 
     for (const item of toImport) {
-      const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
-      if (!dataUrl) continue
-
       const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
-      const blob = dataUrlToBlob(dataUrl)
-      if (!blob) continue
+      let blob: Blob | null = null
+      if (!linkedIds.has(item.id)) {
+        const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
+        if (!dataUrl) continue
+        blob = dataUrlToBlob(dataUrl)
+        if (!blob) continue
+      }
 
       const isPrimary =
         role === 'presenter_identity' ? true :
@@ -3393,10 +3403,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // 3. Build asset objects before updating library so upload can reference them.
     const createdAssets: PersonalizationAsset[] = []
     for (const { item, blob, role, isPrimary } of assetsToCreate) {
-      const asset = createOwnedAsset(blob, role, {
+      const websiteUrl = item.originalPreviewUrl || item.previewUrl
+      const shared = {
         isPrimary,
-        name: `discovered_${Date.now()}`,
-        originalUrl: item.originalPreviewUrl || item.previewUrl,
+        name: blob ? `discovered_${Date.now()}` : websiteUrl.split('/').pop() || 'discovered',
+        originalUrl: websiteUrl,
         edited: Boolean(item.edited || item.editedDataUrl),
         editedDataUrl: item.editedDataUrl,
         videoReady: item.videoReady || false,
@@ -3407,7 +3418,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         sourceCategory: item.category,
         sourceType: item.sourceType,
         sourceDiscoveredAssetId: item.id,
-      })
+      }
+      // A linked image's permanent address is its address on the site.
+      const asset = blob ? createOwnedAsset(blob, role, shared) : createAssetFromUrl(websiteUrl, role, shared)
       createdAssets.push(asset)
     }
 
@@ -3420,9 +3433,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return next
     })
 
-    // 4. Upload each asset to get durable URLs
+    // 4. Store the assets that carry bytes; linked website images are ready.
     const uploadErrors: string[] = []
-    for (const asset of createdAssets) {
+    const storedAssets = createdAssets.filter((asset) => asset.file)
+    for (const asset of storedAssets) {
       try {
         await uploadAsset(asset)
       } catch (e) {
@@ -3432,10 +3446,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
-    if (ids) {
-      // Only assets that actually imported leave the review; failed ones stay
-      // so they can be retried.
-      const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+    // Only assets that actually imported leave the review; failed ones stay
+    // so they can be retried.
+    const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+    const anyFailed = toImport.some((item) => !importedIds.has(item.id))
+    if (ids || anyFailed) {
       setDiscoveredAssetsState((prev) => prev.filter((a) => !importedIds.has(a.id)))
       setDiscoveryStatus('reviewing')
     } else {
@@ -3443,7 +3458,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setDiscoveryStatus('idle')
     }
 
-    const totalAttempted = createdAssets.length
+    const totalAttempted = storedAssets.length
     const successCount = totalAttempted - uploadErrors.length
     if (uploadErrors.length > 0) {
       // Name the reason: a bare count left the user nothing to act on.
@@ -4249,7 +4264,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Pre-generate CTA end card if exact end-card handling is requested
       if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
         setGeneration((prev) => ({ ...prev, progress: 3, progressMessage: 'Preparing branding assets...' }))
-        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || null, apiKey)
+        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || null, apiKey)
         if (endCardUrl) {
           resolved = {
             ...resolved,
