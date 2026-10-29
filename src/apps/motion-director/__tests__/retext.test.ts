@@ -22,6 +22,16 @@ describe('retext', () => {
     expect(out[0]['Every shot, within reach.']).toBe('Finally, a cure for your IT');
   });
 
+  it('gives each scene of a repeated recipe its own words', () => {
+    const lines = ['Your product,', 'in motion.'];
+    const used = new Set<string>();
+    const a = fallbackTexts(lines, content, 'Acme', { index: 1, headline: 'Stop downtime', caption: 'Help desk' }, used);
+    const b = fallbackTexts(lines, content, 'Acme', { index: 2, headline: 'Virtual CIO', caption: 'Firewalls' }, used);
+    expect(a).toEqual({ 'Your product,': 'Stop downtime', 'in motion.': 'Help desk' });
+    expect(b).toEqual({ 'Your product,': 'Virtual CIO', 'in motion.': 'Firewalls' });
+    expect(fallbackTexts(['Arial, sans-serif'], content, 'Acme', { index: 0, headline: 'x y z' })).toEqual({});
+  });
+
   it('fills sentences with the site headline and labels with its menu, in similar lengths', () => {
     const map = fallbackTexts(['Every shot, within reach.', 'Renders', 'Settings', 'Acme Studio'], content, 'Acme Studio');
     expect(map['Every shot, within reach.']).toBe('Stop downtime');
@@ -61,6 +71,8 @@ describe('writeShotWords', () => {
     const cap = { title: 'Acme', url: 'https://acme.com', content } as never;
     const out = await b.writeShotWords(plan, cap, 'Acme', () => undefined);
     expect(['Stop downtime', 'Help desk support']).toContain(out[0]?.['Every shot, within reach.']);
-    expect(await b.writeShotWords(plan, null, 'Acme', () => undefined)).toEqual({});
+    // With no site, the scene's own headline still goes into the recipe's first line.
+    const bare = await b.writeShotWords({ ...plan, scenes: [{ ...plan.scenes[0], headline: 'Stop downtime' }] }, null, 'Acme', () => undefined);
+    expect(Object.values(bare[0] ?? {})).toContain('Stop downtime');
   });
 });

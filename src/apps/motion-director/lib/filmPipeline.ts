@@ -184,9 +184,10 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
     /* fall through to the site's own words */
   }
   const out: Record<number, Record<string, string>> = {};
+  const used = new Set<string>();
   plan.scenes.forEach((sc, i) => {
     if (sc.kind !== 'shot') return;
-    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product);
+    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used);
     if (Object.keys(map).length) out[i] = map;
   });
   log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');

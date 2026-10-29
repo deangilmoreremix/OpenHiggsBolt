@@ -248,6 +248,17 @@ export default function MotionStudioEntry() {
     const el = chatRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [director.messages.length, director.stage, director.activity.length]);
+  /** A finished film is shown whole: its card is brought to the top of the view once the player has its size (it grows after mounting). */
+  useEffect(() => {
+    if (director.stage !== 'film') return;
+    const show = () => chatRef.current?.querySelector('[data-testid="film-result"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const frame = requestAnimationFrame(show);
+    const later = [250, 800].map((ms) => window.setTimeout(show, ms));
+    return () => {
+      cancelAnimationFrame(frame);
+      later.forEach((id) => window.clearTimeout(id));
+    };
+  }, [director.stage]);
   const busy = director.stage === 'storyboarding' || director.stage === 'building';
 
   const handleCreate = () => {

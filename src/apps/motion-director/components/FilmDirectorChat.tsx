@@ -10,6 +10,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
+import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
@@ -99,7 +100,6 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
           compositionHeight={project.height}
           fps={project.fps}
           controls
-          loop
           numberOfSharedAudioTags={32}
           style={{ width: '100%', height: '100%' }}
         />
@@ -138,6 +138,9 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             >
               Fast draft · {draftSize}
             </button>
+            <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-estimate" title="Rough export time on a slow computer; most machines are faster.">
+              ~{Math.max(1, Math.round(estimateExportSec(project) / 60))} min to render
+            </span>
           </>
         )}
         {onOpenWorkbench && (

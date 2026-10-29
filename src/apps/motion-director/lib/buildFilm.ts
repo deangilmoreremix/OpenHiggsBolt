@@ -129,6 +129,41 @@ export function snapToBeats(durations: number[], beats: number[], window = 0.35,
   return out;
 }
 
+/** The logo reveal holds this long: the brand name stays on screen for a beat before the film ends. */
+const CLOSING_MIN_SEC = 3;
+
+/**
+ * A film of a captured site closes on the site's logo, call to action and address: a closing title
+ * card becomes the logo reveal, and a film that ends on a shot gets one (its time taken from the
+ * last shot). The reveal always holds at least CLOSING_MIN_SEC, borrowing from the scene before it.
+ */
+function withClosingScene(plan: DirectorPlan, opts: { brand?: BrandInput | null; capture?: FilmCapture | null }): { scenes: DirectorPlan['scenes']; seconds: number[] } {
+  const scenes = plan.scenes.map((sc) => ({ ...sc }));
+  const seconds = scenes.map((sc) => sc.durationSec);
+  if (!opts.brand || !opts.capture || scenes.length < 2) return { scenes, seconds };
+  const last = scenes.length - 1;
+  if (scenes[last].recipeId !== 'brand/logo-reveal') {
+    if (scenes[last].kind === 'title') {
+      scenes[last] = { ...scenes[last], kind: 'shot', recipeId: 'brand/logo-reveal' };
+    } else {
+      scenes.push({ kind: 'shot', recipeId: 'brand/logo-reveal', durationSec: CLOSING_MIN_SEC, headline: opts.capture.ctas?.[0] ?? '', caption: '', transition: 'cut' });
+      seconds.push(0);
+    }
+  }
+  const end = scenes.length - 1;
+  const need = CLOSING_MIN_SEC - seconds[end];
+  if (need > 0) {
+    const give = Math.min(need, Math.max(0, seconds[end - 1] - 1.5));
+    seconds[end - 1] -= give;
+    seconds[end] += give;
+    // Whatever the previous scene could not give is added: a closing scene is never cut short.
+    seconds[end] += need - give;
+  }
+  return { scenes, seconds };
+}
+
+const rotated = <T,>(list: T[], by: number): T[] => (list.length > 1 ? [...list.slice(by % list.length), ...list.slice(0, by % list.length)] : list);
+
 export function planToProject(
   plan: DirectorPlan,
   opts: {
@@ -146,7 +181,8 @@ export function planToProject(
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
   const palette = plan.palette;
-  const durations = snapToBeats(plan.scenes.map((s) => s.durationSec), opts.music?.beats ?? []);
+  const { scenes, seconds } = withClosingScene(plan, opts);
+  const durations = snapToBeats(seconds, opts.music?.beats ?? []);
   const screens = opts.capture?.screens ?? [];
   const crops = opts.capture?.crops ?? [];
   /** CSS px of a 1920-wide page that a 16:10 inset shows. */
@@ -162,19 +198,13 @@ const INSET_PAGE_H = 1200;
   let at = 0;
   let featureZooms = 0;
   const videos = opts.videos ?? [];
-  const lastIndex = plan.scenes.length - 1;
+  const lastIndex = scenes.length - 1;
   /** A scene change: whoosh on every cut, impact + white flash on flash cuts. */
   const cut = (flash: boolean) => {
     if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
     sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
   };
 
-  // A film of a captured site closes on the site's logo, call to action and address.
-  const scenes = plan.scenes.map((sc, i) =>
-    opts.brand && opts.capture && sc.kind === 'title' && i === plan.scenes.length - 1 && i > 0
-      ? { ...sc, kind: 'shot' as const, recipeId: 'brand/logo-reveal' }
-      : sc,
-  );
   scenes.forEach((scene, i) => {
     // Attached videos play just before the closing scene (or at the end of a one-scene film).
     if (i === lastIndex && lastIndex > 0) {
@@ -233,7 +263,8 @@ const INSET_PAGE_H = 1200;
         // strip rather than over the shot.
         clip(cardId, at, frames, {
           accent: palette.accent,
-          ...(usesCapture ? { screens, crops } : {}),
+          // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
+          ...(usesCapture ? { screens: rotated(screens, i), crops: rotated(crops, i * 3) } : {}),
           ...(opts.texts?.[i] && Object.keys(opts.texts[i]).length ? { texts: opts.texts[i] } : {}),
         }, { speed: fitSpeed(card, frames) }),
       );

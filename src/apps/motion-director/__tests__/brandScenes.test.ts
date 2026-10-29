@@ -73,4 +73,27 @@ describe('brand scenes', () => {
     const labels = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip').map((c) => c.label);
     expect(labels).toEqual(expect.arrayContaining(['Typing', 'Scan', 'Impact', 'Sparkle', 'Stamp']));
   });
+
+  it('always closes a site film on the logo reveal, holding it at least 3 s', () => {
+    const shot = MOTION_TEMPLATES[0];
+    const endOnShot: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene(shot.id), scene(shot.id), scene(shot.id)] };
+    const endOnTitle: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene(shot.id), scene(shot.id), { ...scene('', 'title', 'Call us'), durationSec: 2 }] };
+    for (const plan of [endOnShot, endOnTitle]) {
+      const project = planToProject(plan, { aspectRatio: '16:9', capture, brand: { name: 'Acme' } });
+      const reveal = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'brand-logo-reveal')!;
+      expect(reveal.duration).toBeGreaterThanOrEqual(90);
+      const end = project.tracks.flatMap((t) => t.clips).filter((c) => !c.cardId.startsWith('audio')).reduce((m, c) => Math.max(m, c.start + c.duration), 0);
+      expect(reveal.start + reveal.duration).toBe(end);
+    }
+    const noSite = planToProject(endOnTitle, { aspectRatio: '16:9' });
+    expect(noSite.tracks.flatMap((t) => t.clips).some((c) => c.cardId === 'brand-logo-reveal')).toBe(false);
+  });
+
+  it('starts each repeat of a page recipe further along the site pictures', () => {
+    const ids = MOTION_TEMPLATES.filter((t) => t.componentName === 'DeckDealFlyin');
+    const plan: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene(ids[0].id), scene(ids[0].id)] };
+    const project = planToProject(plan, { aspectRatio: '16:9', capture: { ...capture, crops: ['a', 'b', 'c', 'd', 'e', 'f'] } });
+    const crops = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId.startsWith('demo:')).map((c) => (c.props.crops as string[])[0]);
+    expect(new Set(crops).size).toBe(2);
+  });
 });

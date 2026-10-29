@@ -731,7 +731,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Camera moves I would have keyframed for a week."
  ],
  "CornerSpotlightReveal": [
-  "\"Avenir Next\", \"Helvetica Neue\", Helvetica, sans-serif",
   "Shots",
   "All",
   "Camera",
@@ -837,7 +836,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "· speak or type"
  ],
  "HashtagToPillMaterialize": [
-  "Futura, 'Century Gothic', 'Avenir Next', 'Trebuchet MS', sans-serif",
   "#shots",
   "Notes",
   "Shots",
@@ -1002,7 +1000,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Let the shot cards do the thinking",
   "Every motion",
   "SHOT RECIPE CARDS",
-  "Arial, sans-serif",
   "RELEASE NOTES · 4.2",
   "Motion, considered.",
   "Every card ships with timing, easing",
@@ -1034,7 +1031,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  ],
  "TextAsMask": [
   "SCALE",
-  "system-ui, -apple-system, Helvetica Neue, Arial, sans-serif",
   "Overview",
   "Renders",
   "Shots",
@@ -1051,13 +1047,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "a finished launch film"
  ],
  "NeonTripleMarquee": [
-  "\"Avenir Next Condensed\", \"DIN Condensed\", \"Arial Narrow\", Impact, sans-serif",
   "FRAME",
   "CRAFT",
   "SHIP"
- ],
- "OutroGroupPhotoLaunch": [
-  "ui-monospace, SFMono-Regular, Menlo, monospace"
  ],
  "UiStripAwayOutro": [
   "M12 19l7-7-3-3-7 7-1 4zM14 7l3 3",
@@ -1231,9 +1223,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Before"
  ],
  "CardFlockTumble": [
-  "\"Avenir Next\", \"SF Pro Display\", \"Helvetica Neue\", sans-serif",
   "CRAFT THE SHOT · CRAFT THE SHOT · CRAFT THE SHOT ·",
-  "-apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"Helvetica Neue\", Inter, Arial, sans-serif",
   "Home",
   "Inbox",
   "Shots",
@@ -1482,11 +1472,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "// shot recipes for your agent"
  ],
  "BrandInkOpen": [
-  "ui-serif, Georgia, \"Times New Roman\", serif",
-  "ui-monospace, SFMono-Regular, Menlo, monospace"
+  "ui-serif, Georgia, \"Times New Roman\", serif"
  ],
  "CountdownArcScatter": [
-  "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
   "SETUP TIME"
  ],
  "FlyingWords": [
@@ -1524,14 +1512,12 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Crafted with"
  ],
  "GradientWordSweep": [
-  "\"Avenir Next\", Futura, \"Helvetica Neue\", sans-serif",
   "Supercharged",
   "product films",
   "made with"
  ],
  "LeadWordZoomAssemble": [
   "One shot card, one motion recipe — copy, paste, render.",
-  "-apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"Helvetica Neue\", \"PingFang SC\", Inter, Arial, sans-serif",
   "lead-word-zoom-assemble: measure line"
  ],
  "MarkerUnderlineTitle": [
@@ -1539,7 +1525,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  ],
  "OutlineWordFill": [
   "Faster",
-  "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
   "BEFORE",
   "1 week",
   "AFTER",
@@ -1548,7 +1533,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  ],
  "PaperTitleCard": [
   "ui-serif, Georgia, \"Times New Roman\", serif",
-  "ui-monospace, SFMono-Regular, Menlo, monospace",
   "Direct",
   "film.",
   "Let",
@@ -1728,7 +1712,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "\"Didot\", \"Bodoni 72\", \"Playfair Display\", Georgia, serif"
  ],
  "WordRelayGeometry": [
-  "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
   "Faster",
   "One prompt to a finished promo.",
   "Tighter",
@@ -1827,7 +1810,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Sting ends on the brand mark"
  ],
  "DocumentTypewriterReveal": [
-  "ui-sans-serif, system-ui, -apple-system, sans-serif",
   "2026 · Week 27",
   "Jul 3",
   "2026-W27 · Motion Studio Weekly",
@@ -1864,7 +1846,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "SHOT RECIPES · LAUNCH FILM"
  ],
  "IntegrationHubMap": [
-  "-apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"Helvetica Neue\", Inter, Arial, sans-serif",
   "Launch Film v3",
   "Storyboard · 12 shots · 0:45",
   "Shot 04 · Crash Zoom Punch",
@@ -2027,7 +2008,6 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "AUTOFILL"
  ],
  "ResearchCardStackScroll": [
-  "-apple-system,system-ui,\"SF Pro Text\",\"PingFang SC\",sans-serif",
   "Sparse Attention Mechanisms for Long-Context Reasoning",
   "Retrieval Drift in Multi-Hop Agent Pipelines",
   "On the Calibration of Preference Reward Models",

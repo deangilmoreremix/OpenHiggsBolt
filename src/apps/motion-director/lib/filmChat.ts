@@ -490,7 +490,21 @@ export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTe
   const room = Math.floor(filmSec / PLAN_LIMITS.minSceneSec) - shots.length;
   const first = room >= 1 && isFraming(kept[0]) ? kept[0] : null;
   const lastCard = room >= 2 && kept.length > 1 && isFraming(kept[kept.length - 1]) ? kept[kept.length - 1] : null;
-  const scenes = [...(first ? [first] : []), ...shots, ...(lastCard ? [lastCard] : [])];
+  const body: DirectorScene[] = [...shots];
+  // One or two picks repeated for the whole length look the same each time: brand scenes (the site as a hub,
+  // a push-in on a real section) sit between the repeats, at most one for every two shots and only as far as
+  // the length leaves every scene its minimum time.
+  if (recipes.length <= 2 && shots.length >= 4) {
+    const model = plan.scenes.filter((s, i) => isBrandScene(s.recipeId) && i !== 0 && i !== plan.scenes.length - 1 && s.recipeId !== 'brand/logo-reveal');
+    const fresh = (id: 'brand/hub' | 'brand/feature-zoom', next: DirectorScene): DirectorScene => ({ kind: 'shot', recipeId: id, durationSec: 3, headline: next.headline, caption: '', transition: 'cut', feature: next.feature, asset: 'your page' });
+    const budget = Math.min(Math.floor(shots.length / 2), Math.max(0, room - (first ? 1 : 0) - (lastCard ? 1 : 0)));
+    let made = 0;
+    for (let at = 2; made < budget && at <= body.length; at += 3, made++) {
+      const next = body[at] ?? body[at - 1];
+      body.splice(at, 0, model[made] ?? fresh(made === 0 ? 'brand/hub' : 'brand/feature-zoom', next));
+    }
+  }
+  const scenes = [...(first ? [first] : []), ...body, ...(lastCard ? [lastCard] : [])];
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
   }
