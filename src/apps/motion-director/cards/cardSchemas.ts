@@ -85,6 +85,11 @@ export const SEAM_WIPE_SCHEMA: PropField[] = [
 export const SEAM_BARN_SCHEMA: PropField[] = [{ type: "color", key: "color", label: "Panel colour", default: "#14110f" }];
 export const SEAM_DIP_SCHEMA: PropField[] = [{ type: "color", key: "color", label: "Dip colour", default: "#14110f" }];
 
+export const SEAM_LEAK_SCHEMA: PropField[] = [
+  { type: "color", key: "color", label: "Glow colour", default: "#ffb45a" },
+  { type: "slider", key: "peak", label: "Peak opacity", default: 0.9, min: 0.3, max: 1, step: 0.05 },
+];
+
 /** 暖白闪转场 · Ink Press */
 export const FLASH_CUT_SCHEMA: PropField[] = [
   { type: "slider", key: "peak", label: "峰值不透明度", default: 0.85, min: 0.2, max: 1, step: 0.05 },
@@ -116,6 +121,9 @@ export const NATIVE_CARD_SCHEMAS: Record<string, PropField[]> = {
   "inkpress-seam-wipe": SEAM_WIPE_SCHEMA,
   "inkpress-seam-barn": SEAM_BARN_SCHEMA,
   "inkpress-seam-dip": SEAM_DIP_SCHEMA,
+  "inkpress-seam-whip": SEAM_DIP_SCHEMA,
+  "inkpress-seam-ink": SEAM_DIP_SCHEMA,
+  "inkpress-seam-leak": SEAM_LEAK_SCHEMA,
 };
 
 /**

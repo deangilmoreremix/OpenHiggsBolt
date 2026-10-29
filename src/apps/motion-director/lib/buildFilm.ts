@@ -56,7 +56,7 @@ export interface FilmMusic {
 const FPS = 30;
 const FLASH_FRAMES = 10;
 /** Length of each seam card in frames; the cut sits in its middle. */
-const SEAM_FRAMES: Partial<Record<SceneTransition, number>> = { wipe: 16, barn: 16, dip: 14 };
+const SEAM_FRAMES: Partial<Record<SceneTransition, number>> = { wipe: 16, barn: 16, dip: 14, whip: 12, ink: 18, leak: 20 };
 const WIPE_DIRS = ['right', 'left', 'up', 'down'] as const;
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 const SFX_CUT = 'transition/swoosh-quick';
@@ -239,7 +239,7 @@ const INSET_PAGE_H = 1200;
     const seam = SEAM_FRAMES[kind];
     if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
     else if (seam) {
-      const color = kind === 'dip' ? palette.background : kind === 'wipe' ? palette.accent : palette.text;
+      const color = kind === 'dip' ? palette.background : kind === 'wipe' || kind === 'ink' ? palette.accent : kind === 'leak' ? '#ffb45a' : palette.text;
       const props = kind === 'wipe' ? { color, dir: WIPE_DIRS[wipeIndex % WIPE_DIRS.length] } : { color };
       flashes.push(clip(`inkpress-seam-${kind}`, Math.max(0, at - Math.round(seam / 2)), seam, props));
     }
