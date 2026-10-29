@@ -709,6 +709,35 @@ describe('zz-stripe: webhook entitlement lifecycle', () => {
       expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
     });
 
+    it('an unrelated (unmapped-price) subscription ending does not revoke the buyer', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_unrelated_sub')));
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+
+      const res = await route.POST(makeRequest(
+        subscriptionEvent('evt_unrelated_sub_deleted', 'customer.subscription.deleted', 'canceled', {
+          id: 'sub_other_product_9',
+          items: { data: [{ price: { id: 'price_some_other_product' } }] },
+        })
+      ));
+      expect(res.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+    });
+
+    it('a subscription revokes the row it granted even after its price left the product map', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_own_sub')));
+      const row = rowFor('user_rebuild_buyer')!;
+      row.stripe_subscription_id = 'sub_own_retired_price';
+
+      const res = await route.POST(makeRequest(
+        subscriptionEvent('evt_own_sub_deleted', 'customer.subscription.deleted', 'canceled', {
+          id: 'sub_own_retired_price',
+          items: { data: [{ price: { id: 'price_retired_from_map' } }] },
+        })
+      ));
+      expect(res.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('inactive');
+    });
+
     it('revocation with no matching row is acked rather than failing the delivery', async () => {
       const res = await route.POST(makeRequest(chargeRefundedEvent('evt_rebuild_refund_nomatch')));
 

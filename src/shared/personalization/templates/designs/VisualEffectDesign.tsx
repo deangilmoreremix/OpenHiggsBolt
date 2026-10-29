@@ -54,6 +54,9 @@ import { DesignStage, pickColor, type DesignAdapterProps } from './shared'
  */
 const CIRCLE_COUNT = 16
 
+/** The upstream palette has four slots: accent, primary, accent, text. */
+const PALETTE_SIZE = 4
+
 /** The same pseudo-random the upstream uses, so the layout is identical. */
 function seededRandom(seed: number): number {
   const x = Math.sin(seed * 9301 + 49297) * 49297
@@ -66,7 +69,10 @@ export const VisualEffectDesign: React.FC<DesignAdapterProps> = (props) => {
   const text = pickColor([props.colors?.text], '#fff3d6')
   const frame = props.frame ?? 0
 
-  // The upstream assigns a palette entry to each disc pseudo-randomly.
+  // The upstream assigns a palette entry to each disc pseudo-randomly. Only
+  // the seeded geometry and the palette SLOT are memoized: the colour itself
+  // is resolved every render, so a brand-colour change repaints the discs in
+  // the preview exactly as a freshly mounted export would draw them.
   const palette = [accent, primary, accent, text]
 
   // Identical disc generation to the upstream: same seed formulas, same
@@ -78,13 +84,9 @@ export const VisualEffectDesign: React.FC<DesignAdapterProps> = (props) => {
       sizeBase: 80 + seededRandom(i * 7 + 3) * 240,
       speed: 0.4 + seededRandom(i * 11 + 4) * 0.8,
       phase: seededRandom(i * 13 + 5) * Math.PI * 2,
-      color: palette[Math.floor(seededRandom(i * 17 + 6) * palette.length)],
+      paletteSlot: Math.floor(seededRandom(i * 17 + 6) * PALETTE_SIZE),
       opacity: 0.25 + seededRandom(i * 19 + 7) * 0.45,
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the palette is a
-    // stable tuple derived from props.colors; rebuilding it per frame would
-    // re-seed the discs every frame. The upstream has the same behaviour with
-    // its own `colors` prop.
   }, [])
 
   return (
@@ -97,6 +99,7 @@ export const VisualEffectDesign: React.FC<DesignAdapterProps> = (props) => {
           const y = c.seedY * 100 + Math.cos(t * 0.8) * 8
           const pulse = 1 + Math.sin(t * 1.2) * 0.15
           const size = c.sizeBase * pulse
+          const color = palette[c.paletteSlot]
           return (
             <div
               key={i}
@@ -114,8 +117,8 @@ export const VisualEffectDesign: React.FC<DesignAdapterProps> = (props) => {
                 // visible in the encoded output. This replaces the upstream's
                 // radial-gradient + blur + screen-blend trio, none of which
                 // the rasteriser draws (F1).
-                backgroundColor: c.color,
-                boxShadow: `0 0 ${size * 0.45}px ${size * 0.22}px ${c.color}`,
+                backgroundColor: color,
+                boxShadow: `0 0 ${size * 0.45}px ${size * 0.22}px ${color}`,
                 opacity: c.opacity,
               }}
             />

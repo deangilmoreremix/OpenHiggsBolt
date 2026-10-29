@@ -1365,6 +1365,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [remotionDesignTemplates])
   // Debounced Supabase project persistence
   const projectPersistence = useRef(createProjectPersistence({ debounceMs: 1500 }))
+  // Bumped by every restore and by closing the modal. A restore response that
+  // arrives after the session moved on (another source opened, or the modal
+  // closed) is discarded, so a late source-A response can never apply A's data
+  // to source B or point B's autosaves at A's row.
+  const restoreSessionRef = useRef(0)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -1692,18 +1697,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
     if (!src?.id) return
+    const session = ++restoreSessionRef.current
     projectPersistence.current.cancel() // don't race with an in-flight save
+    // A new source writes to its own row: forget the previous source's row id
+    // until this source's saved project (if any) is known.
+    projectPersistence.current.setProjectId(null)
 
     let result: LoadProjectResult
     try {
       result = await loadProject({ sourceId: src.id })
     } catch {
+      if (session !== restoreSessionRef.current) return
       // Network/parse failure: Supabase is unreachable but the visitor's
       // per-user localStorage mirror may still have their in-progress
       // preview, so fall through to it instead of abandoning the session.
       applyLocalPreviewState(src.id)
       return
     }
+    // A newer restore started, or the modal closed, while this one loaded.
+    if (session !== restoreSessionRef.current) return
 
     if (!result.ok || !result.data) {
       // Supabase returned no durable row for this source. The localStorage
@@ -1886,6 +1898,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
+    // Later autosaves update the restored row rather than inserting a new one.
+    projectPersistence.current.setProjectId(entry.id)
+
     // Expose restore summary to the UI
     setLoadedProject({
       id: entry.id || '',
@@ -1973,6 +1988,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [accessProp])
 
   const closePersonalize = useCallback(() => {
+    // Invalidate any restore still loading for the session being closed.
+    restoreSessionRef.current += 1
     // Revoke outstanding blob URLs (reference-counted, idempotent;
     // outside the state updater — updaters must stay pure for Strict Mode replay)
     releaseAllBlobUrls()

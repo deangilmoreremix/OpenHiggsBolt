@@ -584,8 +584,37 @@ async function revokeForSubscription(event: Stripe.Event): Promise<void> {
     return;
   }
 
+  // Revoke what this subscription granted, and only that:
+  //  1. rows recorded with this subscription id;
+  //  2. otherwise, unless the price is a known non-SmartVideo price, the
+  //     customer's rows (legacy rows granted before the subscription id was
+  //     recorded must still not outlive their subscription);
+  //  3. a subscription whose price is present but unmapped is unrelated and
+  //     must not revoke a lifetime purchase or another active subscription.
   const target = subscriptionRevocationTarget(subscription);
-  let result = await revokeEntitlement(target, { reason: event.type });
+  const subscriptionId = idOf(subscription?.id) || '';
+  let result = subscriptionId
+    ? await revokeEntitlement({ ...target, stripeSubscriptionId: subscriptionId }, { reason: event.type })
+    : { revoked: false, matched: 0, reason: event.type };
+  if (result.revoked) {
+    console.log(`[stripe webhook] revoked ${result.matched} entitlement row(s) for ${event.type}:`, subscription.id);
+    return;
+  }
+
+  const priceId = (subscription as { items?: { data?: Array<{ price?: { id?: string } }> } })
+    ?.items?.data?.[0]?.price?.id || '';
+  // A present-but-unmapped price identifies a subscription that is not a
+  // SmartVideo product. A payload with no price at all is ambiguous, so it
+  // keeps the fail-closed customer revocation below.
+  if (priceId && !getStripeProductMap()[priceId]) {
+    console.warn(
+      `[stripe webhook] ${event.type} for an unmapped subscription with no entitlement of its own; nothing revoked:`,
+      subscription.id
+    );
+    return;
+  }
+
+  result = await revokeEntitlement(target, { reason: event.type });
 
   // A subscription can outlive the customer-id link on the entitlement row.
   // Fall back to the purchase ledger, same as the grant/status path.

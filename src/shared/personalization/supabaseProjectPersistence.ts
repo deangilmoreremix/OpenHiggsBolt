@@ -371,10 +371,29 @@ export function projectRowFromState(state: PersonalizationProjectState): SavedPr
   }
 }
 
+/** The saved row id from a POST response (`project` is a row or a one-row array). */
+function upsertedProjectId(body: unknown): string | null {
+  const project = asRecord(body).project
+  const row = Array.isArray(project) ? project[0] : project
+  const id = asString(asRecord(row).id)
+  return id && UUID_PATTERN.test(id) ? id : null
+}
+
 export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   const debounceMs = opts.debounceMs ?? 1500
   let timer: ReturnType<typeof setTimeout> | null = null
   let pendingState: PersonalizationProjectState | null = null
+  // The row this session writes to. Every save carries it, so autosaves update
+  // one row instead of inserting a new row each time (the upsert RPC inserts
+  // whenever `p_id` is null). It is set by the restore, adopted from the
+  // server's response to the first insert, and reset by `setProjectId` when
+  // the modal moves to another source; `epoch` makes a late response from
+  // before that reset harmless.
+  let projectId: string | null = null
+  let epoch = 0
+  // Saves run one after another, so a second save cannot race the first
+  // insert's response and insert a duplicate row.
+  let queue: Promise<unknown> = Promise.resolve()
 
   function flush(state: PersonalizationProjectState): void {
     pendingState = null
@@ -388,7 +407,25 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   }
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-    const sanitized = stripSessionScopedUrls(state)
+    // The session is captured when the save is QUEUED: a save still waiting
+    // behind an in-flight one when the modal switches source belongs to the
+    // old session and must be dropped, or it would be sent with the new
+    // session's row id and overwrite that project.
+    const queuedEpoch = epoch
+    const run = queue.then(() =>
+      queuedEpoch === epoch
+        ? send(state, queuedEpoch)
+        : { ok: false, error: 'Superseded by a newer project session' },
+    )
+    queue = run.catch(() => undefined)
+    return run
+  }
+
+  function send(
+    state: PersonalizationProjectState,
+    sentEpoch: number,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const sanitized = stripSessionScopedUrls({ ...state, id: state.id || projectId || undefined })
     // Route the fetch through a promise step so a synchronous throw (e.g. fetch
     // missing after environment teardown) or a non-thenable return (e.g. a mock
     // returning undefined) becomes an ordinary rejected-promise flow handled by
@@ -408,6 +445,10 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
           return { ok: false, error: data?.error || `HTTP ${res.status}` }
+        }
+        if (sentEpoch === epoch && !projectId && typeof res.json === 'function') {
+          const savedId = upsertedProjectId(await res.json().catch(() => null))
+          if (savedId && sentEpoch === epoch) projectId = savedId
         }
         return { ok: true }
       })
@@ -429,6 +470,20 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
     /** Immediately persist without waiting for debounce */
     flush(state: PersonalizationProjectState): void {
       flush(state)
+    },
+
+    /**
+     * Point subsequent saves at an existing row (a restored project) or, with
+     * `null`, at a fresh row (a different source, or no saved project yet).
+     */
+    setProjectId(id: string | null | undefined): void {
+      epoch += 1
+      projectId = id && UUID_PATTERN.test(id) ? id : null
+    },
+
+    /** The row id saves are currently written to (`null` until the first insert). */
+    getProjectId(): string | null {
+      return projectId
     },
 
     /** Cancel any pending debounced persist */

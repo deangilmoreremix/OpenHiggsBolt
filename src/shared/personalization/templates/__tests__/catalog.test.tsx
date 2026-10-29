@@ -431,6 +431,27 @@ describe('Remotion design adapters', () => {
     }
   })
 
+  it('repaints the bokeh discs when the brand colours change (no stale memo)', () => {
+    const discColors = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll<HTMLElement>('[style*="border-radius: 50%"]')).map(
+        (el) => el.style.backgroundColor,
+      )
+    const Component = visualEffectTemplate.component
+    const { container, rerender } = render(<Component {...makeProps()} />)
+    const before = discColors(container)
+    rerender(
+      <Component
+        {...makeProps({ colors: { primary: '#ff0000', accent: '#00ff00', text: '#0000ff', backgroundDim: 0.18 } })}
+      />,
+    )
+    const after = discColors(container)
+    expect(after).toHaveLength(before.length)
+    expect(after).not.toEqual(before)
+    for (const color of after) {
+      expect(['rgb(255, 0, 0)', 'rgb(0, 255, 0)', 'rgb(0, 0, 255)']).toContain(color)
+    }
+  })
+
   it('draws the MIT credit line inside every design', () => {
     for (const template of REMOTION_DESIGN_TEMPLATES) {
       const { container, unmount } = renderTemplate(template)
