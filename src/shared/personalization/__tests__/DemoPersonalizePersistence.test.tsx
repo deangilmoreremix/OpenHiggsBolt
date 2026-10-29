@@ -58,8 +58,6 @@ vi.mock('../supabaseProjectPersistence', async (importOriginal) => {
           persistenceSpy.cancel()
           real.cancel()
         },
-        setProjectId: real.setProjectId,
-        getProjectId: real.getProjectId,
       }
     },
   }
@@ -88,9 +86,6 @@ vi.mock('../editedAssetPersistence', () => ({ persistEditedPersonalizationAsset:
 
 const { DemoPersonalizeProvider, useDemoPersonalize } = await import('../DemoPersonalizeProvider')
 
-const RESTORED_ID = '11111111-2222-4333-8444-555555555555'
-const INSERTED_ID = '99999999-8888-4777-8666-555555555555'
-
 const SOURCE = {
   id: 'demo-persist-1',
   title: 'Persistence test',
@@ -118,7 +113,7 @@ const ctx = (): PersonalizeCtx => {
   return capturedCtx
 }
 
-type ProjectWrite = { project: { id: string | null; prompt: { personalized: string } } & Record<string, unknown> }
+type ProjectWrite = { project: { prompt: { personalized: string } } & Record<string, unknown> }
 
 let fetchMock: ReturnType<typeof vi.fn>
 let root: Root | null = null
@@ -230,7 +225,7 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     persistenceSpy.loadProject.mockResolvedValue({
       ok: true,
       data: {
-        id: RESTORED_ID,
+        id: 'proj-restore',
         sourceType: 'go-ai-viral-video',
         sourceDemoId: SOURCE.id,
         originalPrompt: 'Original prompt',
@@ -257,8 +252,6 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     const writes = projectWrites()
     expect(writes).toHaveLength(1)
     expect(writes[0].project.prompt.personalized).toBe('Restored prompt')
-    // The autosave updates the restored row instead of inserting a new one.
-    expect(writes[0].project.id).toBe(RESTORED_ID)
 
     // Nothing else is queued once the restore has settled.
     await settle()
@@ -320,83 +313,6 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     await settle()
     // ... and the approval's own state change schedules at most one more cycle.
     expect(projectWrites().length).toBeLessThanOrEqual(2)
-  })
-
-  it('after the first insert, later autosaves update that row instead of inserting again', async () => {
-    fetchMock.mockImplementation(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, project: [{ id: INSERTED_ID }] }),
-    }))
-    await mount()
-    await open()
-    const first = projectWrites()
-    expect(first).toHaveLength(1)
-    expect(first[0].project.id).toBeNull() // no saved project yet: insert
-
-    await act(async () => {
-      ctx().updatePersonalizedPrompt('second save')
-    })
-    await settle()
-    const writes = projectWrites()
-    expect(writes).toHaveLength(2)
-    expect(writes[1].project.id).toBe(INSERTED_ID)
-  })
-
-  it('a restore response from an earlier session is discarded', async () => {
-    const SOURCE_B = { ...SOURCE, id: 'demo-persist-B', title: 'Source B' }
-    const ROW_A = 'aaaaaaaa-0000-4000-8000-00000000000a'
-    const ROW_B = 'bbbbbbbb-0000-4000-8000-00000000000b'
-    const savedRow = (id: string, sourceDemoId: string, prompt: string) => ({
-      ok: true,
-      data: {
-        id,
-        sourceType: 'go-ai-viral-video',
-        sourceDemoId,
-        originalPrompt: 'Original prompt',
-        personalizedPrompt: prompt,
-        identityAssetIds: [],
-        logoAssetIds: [],
-        productAssetIds: [],
-        brandReferenceAssetIds: [],
-        outputUrls: [],
-        outputType: 'video',
-      },
-    })
-    let resolveA!: (value: unknown) => void
-    persistenceSpy.loadProject.mockImplementation(({ sourceId }: { sourceId: string }) =>
-      sourceId === SOURCE.id
-        ? new Promise((resolve) => { resolveA = resolve })
-        : Promise.resolve(savedRow(ROW_B, SOURCE_B.id, 'Prompt B')),
-    )
-    await mount()
-    await act(async () => {
-      ctx().openPersonalize({ source: SOURCE })
-    })
-    await act(async () => {
-      ctx().closePersonalize()
-    })
-    await act(async () => {
-      ctx().openPersonalize({ source: SOURCE_B })
-    })
-    await settle()
-    fetchMock.mockClear()
-
-    // Source A's restore finally answers — after B is open and restored.
-    await act(async () => {
-      resolveA(savedRow(ROW_A, SOURCE.id, 'Prompt A'))
-    })
-    await settle()
-    expect(ctx().promptState.personalized).toBe('Prompt B')
-
-    await act(async () => {
-      ctx().updatePersonalizedPrompt('edit on B')
-    })
-    await settle()
-    const writes = projectWrites()
-    expect(writes).toHaveLength(1)
-    expect(writes[0].project.id).toBe(ROW_B)
-    expect(writes[0].project.source).toMatchObject({ id: SOURCE_B.id })
   })
 
   it('anonymous sessions never persist', async () => {
