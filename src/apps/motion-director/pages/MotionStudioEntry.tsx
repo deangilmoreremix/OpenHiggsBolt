@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motionTemplateVariants, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
-import { Check, Palette } from 'lucide-react';
+import { ArrowRightLeft, BarChart3, Camera, Check, Hand, Layers, LogIn, Music, Palette, Sparkle, Sparkles, Type as TypeIcon } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { useT } from '../i18n';
 import { useStore } from '../store';
@@ -69,6 +69,20 @@ const RECIPE_CATEGORIES = MOTION_CATEGORIES.map((cat) => ({
   label: cat.labelEn,
   recipes: MOTION_TEMPLATES.filter((t) => t.category === cat.key),
 }));
+
+/** A small icon per category, so the category chips read at a glance (as in the personalization template browser). */
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  opening: Sparkles,
+  typography: TypeIcon,
+  'ui-entrance': Layers,
+  camera: Camera,
+  data: BarChart3,
+  interaction: Hand,
+  transition: ArrowRightLeft,
+  rhythm: Music,
+  effects: Sparkle,
+  outro: LogIn,
+};
 
 /** Look up a template by id (used to show the selected recipe name/description) */
 const TEMPLATE_BY_ID: Record<string, MotionTemplate> = {};
@@ -175,6 +189,8 @@ export default function MotionStudioEntry() {
   const [duration, setDuration] = useState(20);
   const [selectedRecipes, setSelectedRecipes] = useState<string[]>([]);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
+  /** The category chip chosen in the template picker ('all' shows every category, grouped). */
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   /** Recipe under the pointer / keyboard focus in the picker — the one live Remotion preview. */
   const [previewRecipe, setPreviewRecipe] = useState<string | null>(null);
@@ -303,6 +319,7 @@ export default function MotionStudioEntry() {
   const closePicker = () => {
     setShowRecipePicker(false);
     setSearchQuery('');
+    setActiveCategory('all');
     setPreviewRecipe(null);
   };
 
@@ -371,7 +388,28 @@ export default function MotionStudioEntry() {
           </div>
         ) : (
           <div className="space-y-5">
-            {RECIPE_CATEGORIES.map((cat) => (
+            <div role="tablist" aria-label="Template categories" className="flex flex-wrap gap-2" data-testid="recipe-categories">
+              {[{ key: 'all', label: 'All', count: MOTION_TEMPLATES.length }, ...RECIPE_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: c.recipes.length }))].map((chip) => {
+                const Icon = CATEGORY_ICONS[chip.key] ?? Sparkles;
+                const active = activeCategory === chip.key;
+                return (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveCategory(chip.key)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 text-[11px] font-bold"
+                    style={{ minHeight: 32, border: `1px solid ${active ? 'rgba(34,211,238,0.55)' : 'var(--border-color)'}`, background: active ? 'rgba(34,211,238,0.12)' : 'transparent', color: active ? '#22d3ee' : semantic.textMuted }}
+                  >
+                    <Icon size={12} />
+                    {chip.label}
+                    <span className="rounded-full px-1.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.08)' }}>{chip.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {RECIPE_CATEGORIES.filter((cat) => activeCategory === 'all' || cat.key === activeCategory).map((cat) => (
               <div key={cat.key} className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: semantic.textMuted }}>{cat.label}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
