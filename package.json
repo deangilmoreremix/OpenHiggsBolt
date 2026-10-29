@@ -57,7 +57,8 @@
     "build:fast-discovery": "node scripts/build-fast-discovery.mjs",
     "build:motion-capture": "node scripts/build-motion-capture.mjs",
     "gen:demo-texts": "node scripts/gen-demo-texts.mjs",
-    "gen:shot-facts": "node scripts/gen-shot-facts.mjs"
+    "gen:shot-facts": "node scripts/gen-shot-facts.mjs",
+    "gen:sfx-peaks": "node scripts/gen-sfx-peaks.mjs"
   },
   "build": {
     "appId": "ai.generative.open",

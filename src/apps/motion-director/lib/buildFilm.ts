@@ -9,6 +9,7 @@
  * card with props, so the whole film stays editable in the Workbench.
  */
 import { CARDS } from '../cards/registry';
+import { SFX_PEAKS } from '../demosrc/_generated/sfxPeaks';
 import { CARD_FPS, type CardDef } from '../cards/types';
 import type { AspectRatio } from '../projectContract';
 import { t } from '../i18n';
@@ -54,18 +55,44 @@ export interface FilmMusic {
 
 const FPS = 30;
 const FLASH_FRAMES = 10;
-/** Sound effects served from public/ (copied from the ShotCraft SFX library). */
-const SFX_CUT = 'motion-studio/sfxlib/transition/swoosh-quick.mp3';
-const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
-const SFX_FRAMES = 24;
+/** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
+const SFX_CUT = 'transition/swoosh-quick';
+const SFX_FLASH = 'impact/impact-transition';
 const sfxFile = (name: string) => `motion-studio/sfxlib/${name}.mp3`;
-/** The sound cues of each brand scene: [file, frames after the scene starts, length, volume, label]. */
-const BRAND_SOUNDS: Record<string, ReadonlyArray<readonly [string, number, number, number, string]>> = {
-  'brand/url-scan': [['text/typewriter-digital', 4, 54, 0.45, 'Typing'], ['data/data-scan', 54, 60, 0.5, 'Scan']],
-  'brand/hub': [['light/light-sweep-magic', 6, 40, 0.45, 'Sweep'], ['ui/ui-message-pop', 34, 20, 0.35, 'Node pop']],
-  'brand/feature-zoom': [['camera/zoom-air-fast', 0, 30, 0.45, 'Push-in']],
-  'brand/logo-reveal': [['impact/impact-cine-big', 2, 60, 0.7, 'Impact'], ['light/stardust-swish', 12, 48, 0.5, 'Sparkle']],
+/**
+ * The output's audio runs late by a fixed amount (the encoder's priming), so a sound pinned at its
+ * target frame is heard late. Measured on this pipeline (Remotion web renderer 4.0.499, AAC 48 kHz,
+ * mp4): a click pinned at 1.000 s and at 2.500 s came out 46.4 ms late on both = 1.39 frames at 30 fps
+ * (upstream's AAC priming figure is 1.28). Recorded per pipeline: re-measure when any of the four changes.
+ */
+export const OUTPUT_AUDIO_OFFSET_F = 1.4;
+const peakLagF = (name: string): number => ((SFX_PEAKS[name]?.peakMs ?? 0) / 1000) * FPS;
+/**
+ * A sound pinned by its PEAK: `peakFrame` is the frame the hit belongs to; the clip starts early by the file's
+ * own peak lag and the output offset (sound-design 4.6). A hit that would have to start before frame 0 is
+ * trimmed at its head instead. `tailMs` is how much after the peak is heard (long samples are cut, never played whole).
+ */
+const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string } = {}): ClipData => {
+  const lag = peakLagF(name);
+  const raw = peakFrame - lag - OUTPUT_AUDIO_OFFSET_F;
+  const start = Math.max(0, Math.round(raw));
+  const trim = raw < 0 ? Math.round(-raw) : 0;
+  const frames = Math.max(2, Math.ceil(((o.tailMs ?? 700) / 1000) * FPS + (lag - trim)));
+  const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
+  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: o.volume ?? 0.6 }, { label: o.label, inOffset: trim });
 };
+/** Sound cues of each brand scene: [file, peak frame after the scene starts, tail after the peak (ms), volume, label]. Typing is a run of single key hits. */
+type Cue = readonly [string, number, number, number, string];
+const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {
+  'brand/url-scan': [['data/data-scan', 56, 900, 0.5, 'Scan']],
+  'brand/hub': [['light/light-sweep-magic', 14, 900, 0.45, 'Sweep']],
+  'brand/feature-zoom': [['camera/zoom-air-fast', 14, 700, 0.45, 'Push-in']],
+  // Closing phrase (sound-design 4.3): a build, the hit on the logo, then the shimmer.
+  'brand/logo-reveal': [['transition/whoosh-big', 4, 500, 0.5, 'Build'], ['impact/impact-deep-whoosh', 12, 1400, 0.7, 'Impact'], ['light/stardust-swish', 38, 1200, 0.5, 'Sparkle']],
+};
+/** Key hits under a typed address: two different samples alternate and the level steps down (sound-design 4.2). */
+const typingCues = (chars: number): Cue[] =>
+  Array.from({ length: Math.min(14, Math.max(0, chars)) }, (_, i) => [i % 2 ? 'text/typewriter-hit-hard' : 'text/typewriter-hit-soft', 6 + i * 3, 220, Math.max(0.2, 0.45 - i * 0.015), 'Key'] as const);
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Screen time an attached video gets as its own scene: its length, kept between 2 and 8 seconds. */
@@ -204,7 +231,7 @@ const INSET_PAGE_H = 1200;
   /** A scene change: whoosh on every cut, impact + white flash on flash cuts. */
   const cut = (flash: boolean) => {
     if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
-    sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
+    sfx.push(pinSfx(flash ? SFX_FLASH : SFX_CUT, at, { tailMs: flash ? 900 : 500, volume: 0.6, label: flash ? 'Impact' : 'Whoosh' }));
   };
 
   scenes.forEach((scene, i) => {
@@ -219,7 +246,7 @@ const INSET_PAGE_H = 1200;
     }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
     if (scene.kind === 'title') {
-      sfx.push(clip('audio-clip', at + 4, Math.min(20, frames - 4), { file: sfxFile('text/typewriter-hit-soft'), volume: 0.4 }, { label: 'Stamp' }));
+      sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp' }));
       shots.push(
         clip('inkpress-title-card', at, frames, {
           text: scene.headline,
@@ -250,8 +277,10 @@ const INSET_PAGE_H = 1200;
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
       }
-      for (const [file, offset, len, volume, label] of BRAND_SOUNDS[scene.recipeId] ?? []) {
-        if (offset < frames) sfx.push(clip('audio-clip', at + offset, Math.min(len, frames - offset), { file: sfxFile(file), volume }, { label }));
+      const url = String(props.url ?? '');
+      const cues = [...(scene.recipeId === 'brand/url-scan' ? typingCues(url.length) : []), ...(BRAND_SOUNDS[scene.recipeId] ?? [])];
+      for (const [file, peak, tail, volume, label] of cues) {
+        if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label }));
       }
       shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));
     } else {

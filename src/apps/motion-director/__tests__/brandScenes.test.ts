@@ -71,7 +71,7 @@ describe('brand scenes', () => {
     const plan: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene('brand/url-scan'), scene('', 'title', 'Hello'), scene('', 'title', 'Go')] };
     const project = planToProject(plan, { aspectRatio: '16:9', capture, brand: { name: 'Acme' } });
     const labels = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip').map((c) => c.label);
-    expect(labels).toEqual(expect.arrayContaining(['Typing', 'Scan', 'Impact', 'Sparkle', 'Stamp']));
+    expect(labels).toEqual(expect.arrayContaining(['Key', 'Scan', 'Build', 'Impact', 'Sparkle', 'Stamp']));
   });
 
   it('always closes a site film on the logo reveal, holding it at least 3 s', () => {
