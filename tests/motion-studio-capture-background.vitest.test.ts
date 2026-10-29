@@ -167,9 +167,10 @@ describe('the background worker', () => {
     capture.mockResolvedValueOnce({ ...fullCapture, page: null, title: '', content: { headline: '', description: '', headings: [], ctas: [], nav: [] } })
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED' })
-    capture.mockRejectedValueOnce(new Error('boom'))
+    capture.mockRejectedValueOnce(new Error('Navigation to https://secret.test/x timed out\n    at stack'))
     await runMotionCapture(job, storage)
-    expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED' })
+    // The reason reaches the chat, without the address.
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED', error: 'The page could not be captured (Navigation to timed out)' })
     capture.mockRejectedValueOnce(new FakeSsrfError('private'))
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'URL_REJECTED' })

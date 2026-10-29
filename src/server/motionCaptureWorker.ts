@@ -18,6 +18,13 @@ import {
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
 export const WORKER_CAPTURE_OPTIONS = { hardMs: 90_000, budgetMs: 60_000, firstShotMs: 25_000, navigationMs: 30_000 } as const
 
+/** Longest the whole job may take (the capture itself stops at 90 s). */
+const WORKER_WATCHDOG_MS = 110_000
+
+/** A short reason for the chat and the job record: the first line of the error, without addresses. */
+const reasonOf = (err: unknown): string =>
+  (err instanceof Error ? err.message : String(err)).split('\n')[0].replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 140) || 'unknown error'
+
 export interface MotionCaptureJobRequest {
   jobId: string
   userId: string
@@ -30,8 +37,13 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
   const finish = (error: { code: string; message: string }) =>
     writeCaptureJob(storage, userId, jobId, { state: 'error', finishedAt: new Date().toISOString(), code: error.code, error: error.message })
   try {
-    const capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
-    if (captureIsEmpty(capture)) return await finish({ code: 'CAPTURE_FAILED', message: 'The page could not be captured' })
+    // A record is always written: if the browser hangs, the watchdog ends the job instead of leaving it `running`.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const watchdog = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('the capture took too long')), WORKER_WATCHDOG_MS)
+    })
+    const capture = await Promise.race([capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS }), watchdog]).finally(() => clearTimeout(timer))
+    if (captureIsEmpty(capture)) return await finish({ code: 'CAPTURE_FAILED', message: 'The page could not be captured (nothing on it could be read)' })
     const urls = await storeCaptureImages(storage, userId, captureImages(capture))
     await writeCaptureJob(storage, userId, jobId, { state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls) })
   } catch (err) {
@@ -40,7 +52,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
     await finish(
       rejected
         ? { code: 'URL_REJECTED', message: 'That address cannot be captured. Use a public http(s) page.' }
-        : { code: 'CAPTURE_FAILED', message: 'The page could not be captured' },
+        : { code: 'CAPTURE_FAILED', message: `The page could not be captured (${reasonOf(err)})` },
     ).catch(() => undefined)
   }
 }

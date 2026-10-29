@@ -211,14 +211,18 @@ describe('a film made of picked shots', () => {
   const row = byComponent('RowEmbed');
   const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
 
-  it('keeps only the picked shots, once each, in pick order, with framing titles', () => {
+  it('plays only the picked shots, as many scenes as the director planned, picks first in order, with framing titles', () => {
     // The model added other shots, repeated one, and put a title card in the middle.
     const noisy = inkPressPlan({ prompt: 'x', durationSec: 30 });
     const other = noisy.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
     expect(other.length).toBeGreaterThan(2);
     const plan = { ...noisy, scenes: [noisy.scenes[0], ...noisy.scenes.filter((s) => s.kind === 'shot'), { ...noisy.scenes[0], headline: 'Middle' }, noisy.scenes[noisy.scenes.length - 1]] };
     const fitted = restrictToRecipes(plan, [row, deck], 20);
-    expect(shotIds(fitted)).toEqual([row.id, deck.id]);
+    const ids = shotIds(fitted);
+    expect(ids.slice(0, 2)).toEqual([row.id, deck.id]);
+    // The model planned several scenes: they all play, with the picks repeated — never another recipe.
+    expect(ids.length).toBe(other.length);
+    expect(ids.every((id) => id === row.id || id === deck.id)).toBe(true);
     expect(fitted.scenes[0].kind).toBe('title');
     expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
     expect(fitted.scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
@@ -227,7 +231,9 @@ describe('a film made of picked shots', () => {
 
   it('puts back a picked shot the model skipped, and does nothing when none are picked', () => {
     const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
-    expect(shotIds(restrictToRecipes(plan, [byComponent('HitCounter')], 20))).toEqual([byComponent('HitCounter').id]);
+    const ids = shotIds(restrictToRecipes(plan, [byComponent('HitCounter')], 20));
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids)).toEqual(new Set([byComponent('HitCounter').id]));
     expect(restrictToRecipes(plan, [], 20)).toBe(plan);
   });
 
@@ -240,7 +246,9 @@ describe('a film made of picked shots', () => {
   it('a single picked shot is still a valid storyboard', () => {
     const plan = { ...inkPressPlan({ prompt: 'x', durationSec: 20 }), title: 'Acme — shot film' };
     const fitted = restrictToRecipes({ ...plan, scenes: plan.scenes.filter((s) => s.kind === 'shot') }, [deck], 8);
-    expect(shotIds(fitted)).toEqual([deck.id]);
+    expect(new Set(shotIds(fitted))).toEqual(new Set([deck.id]));
+    // 8 s holds at most 5 scenes at 1.5 s: the repeats beyond that are dropped.
+    expect(fitted.scenes.length).toBeLessThanOrEqual(5);
     expect(fitted.scenes.length).toBeGreaterThanOrEqual(2);
   });
 });

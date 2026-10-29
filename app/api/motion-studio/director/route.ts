@@ -9,6 +9,7 @@ import {
   PLAN_JSON_SCHEMA,
   PLAN_LIMITS,
   buildCatalogBrief,
+  targetSceneCount,
   validateBrief,
   validateDirections,
   validateEditOps,
@@ -58,8 +59,8 @@ Return a storyboard as JSON. Rules:
 - Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
 - When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
 - Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
-- requiredRecipes: when this list is NOT empty the user picked these shots by name. The film is made of ONLY these shots: use every one, exactly once, in that order, and add NO other shot recipe. You may add one opening title card and one closing call-to-action title card. Spread the requested length across them. When the list is empty, choose the shots yourself from the catalog.
-- Upstream craft rules: prefer real captured pages over mock UI; one hero per opening shot; stable camera; captions legible; give key moments a ≥ 1 s hold; at most 3 flash cuts; end with a call to action.
+- targetScenes: plan about this many scenes (title cards included), 2–6 s each, one scene per feature or part of the page the person asked to show. Fewer scenes stretch each one too long.
+- requiredRecipes: when this list is NOT empty the person picked these shots by name. Use ONLY these shots — never another recipe. Use each at least once, in that order first, and REPEAT them for as many scenes as targetScenes needs, each repeat with different copy and a different part of the site. You may add one opening title card and one closing call-to-action title card. When the list is empty, choose the shots yourself from the catalog.
 - template "inkpress": follow the Ink Press structure — a title card, real-page PRODUCT-PAGE shots with caption strips, flash cuts on key beats, a call-to-action title, and an Outro shot. Keep the paper/ink palette (#f7f4ee background, #1c1a17 text, #b5651d accent) unless brand colours are given.
 
 Catalog (id | title | category | native length | flags | what it does):
@@ -282,7 +283,21 @@ export async function POST(req: NextRequest) {
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
       template: body.template === 'inkpress' ? 'inkpress' : null,
     }
-    const raw = await callDirector(key, PLAN_INSTRUCTIONS, JSON.stringify(brief), 'motion_studio_plan', PLAN_JSON_SCHEMA)
+    const targetScenes = targetSceneCount(durationSec)
+    const started = Date.now()
+    let raw = await callDirector(key, PLAN_INSTRUCTIONS, JSON.stringify({ ...brief, targetScenes }), 'motion_studio_plan', PLAN_JSON_SCHEMA)
+    // Too few scenes for the length: ask once more, if there is time left before the host cuts the request off.
+    const got = Array.isArray(raw?.scenes) ? raw.scenes.length : 0
+    if (got < Math.ceil(targetScenes * 0.7) && Date.now() - started < 12_000) {
+      const again = await callDirector(
+        key,
+        PLAN_INSTRUCTIONS,
+        JSON.stringify({ ...brief, targetScenes, feedback: `Your plan had ${got} scenes; the length needs about ${targetScenes}. Return about ${targetScenes} scenes of 2–6 s, one per feature or part of the page.` }),
+        'motion_studio_plan',
+        PLAN_JSON_SCHEMA,
+      ).catch(() => null)
+      if (Array.isArray(again?.scenes) && again.scenes.length > got) raw = again
+    }
     return NextResponse.json({ plan: validatePlan(raw, { targetSec: durationSec }) })
   } catch (err) {
     const status = (err as { status?: number })?.status
