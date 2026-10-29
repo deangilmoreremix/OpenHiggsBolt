@@ -42,16 +42,20 @@ const CaptionStrip: React.FC<Props> = ({
           justifyContent: "center",
           alignItems: "baseline",
           gap: 14,
+          padding: "0 7%",
+          textAlign: "center",
           fontFamily: MONO,
           fontSize,
-          letterSpacing: "0.14em",
+          letterSpacing: "0.06em",
           textTransform: uppercase ? "uppercase" : "none",
           color,
+          // Over a busy picture the words need their own ground: a soft halo in the opposite tone.
+          textShadow: parseInt(color.replace('#', '').slice(0, 2) || '80', 16) > 140 ? '0 2px 16px rgba(0,0,0,0.55)' : '0 0 18px rgba(255,255,255,0.7)',
           opacity: inT * outT,
           transform: `translateY(${(1 - inT) * 8}px)`,
         }}
       >
-        <span style={{ width: 6, height: 6, background: accent, display: "inline-block" }} />
+        <span style={{ width: Math.round(fontSize * 0.26), height: Math.round(fontSize * 0.26), background: accent, display: "inline-block", flex: "none" }} />
         <span>{text}</span>
       </div>
     </AbsoluteFill>

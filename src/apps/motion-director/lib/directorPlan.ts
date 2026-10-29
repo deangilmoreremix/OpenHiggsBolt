@@ -11,6 +11,7 @@
 import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
 import { isSlowToExport } from './exportCost';
+import { ruleTags } from './shotRules';
 
 /** Scene cards that tell a product's story from its captured site (no catalog recipe behind them). */
 export const BRAND_SCENES = {
@@ -90,7 +91,7 @@ export function buildCatalogBrief(): string {
   return [...MOTION_TEMPLATES.map(
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
-        (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '')
+        (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '') + (ruleTags(t.componentName) ? ` | ${ruleTags(t.componentName)}` : '')
       } | ${t.summaryEn}`,
   ), ...brand].join('\n');
 }
@@ -325,7 +326,15 @@ export function fitToLayout(to: string, from: string): string {
 }
 
 /** scene index -> (template words -> new words). Keys must be words the recipe really draws. */
-export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, ReadonlySet<string>>): Record<number, Record<string, string>> {
+const wordCount = (v: string) => v.trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * A line whose text is part of the recipe's technique (word or character counts, measured widths)
+ * keeps its word count and its length (±15 %): the effect was built for words of that size.
+ */
+export const keepsShape = (to: string, from: string): boolean => wordCount(to) === wordCount(from) && to.length >= from.length * 0.85 - 1 && to.length <= from.length * 1.15 + 1;
+
+export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, ReadonlySet<string>>, structural: ReadonlySet<number> = new Set()): Record<number, Record<string, string>> {
   const out: Record<number, Record<string, string>> = {};
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   for (const entry of Array.isArray(input.scenes) ? input.scenes.slice(0, 40) : []) {
@@ -337,6 +346,7 @@ export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, Readon
       const pr = (pair && typeof pair === 'object' ? pair : {}) as Record<string, unknown>;
       const from = typeof pr.from === 'string' ? pr.from : '';
       const to = fitToLayout(text(pr.to, RETEXT_MAX_CHARS).replace(/[*<>{}]/g, ''), from);
+      if (structural.has(index) && !keepsShape(text(pr.to, RETEXT_MAX_CHARS).replace(/[*<>{}]/g, ''), from)) continue;
       if (ok.has(from) && to && to.toLowerCase() !== from.toLowerCase()) (out[index] ??= {})[from] = to;
     }
   }

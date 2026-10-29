@@ -10,6 +10,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
+import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
@@ -44,7 +45,7 @@ const choiceStyle = (primary: boolean): React.CSSProperties =>
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
-  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean }>({ status: 'idle', progress: 0 });
+  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -55,19 +56,20 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
   }, [render.url]);
 
   /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
-  const start = async (draft = false) => {
+  const start = async (draft = false, withoutMusic = false) => {
     abort.current = new AbortController();
     setRender({ status: 'running', progress: 0, draft });
     // Same path as the toolbar export: browser check, then the Remotion web renderer in this tab.
     const releaseGuard = guardTabWhileRendering();
     try {
       const result = await exportMp4({
-        project,
+        // Without music: the film keeps its sound effects (a second version for the person's own music).
+        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
         scale: draft ? 2 / 3 : 1,
         signal: abort.current.signal,
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
-      setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft });
+      setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
       setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
@@ -76,7 +78,8 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     }
   };
 
-  const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${render.draft ? '-draft-720p' : ''}.mp4`;
+  const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${render.draft ? '-draft-720p' : ''}${render.noMusic ? '-nobgm' : ''}.mp4`;
+  const hasMusic = project.tracks.some((track) => track.name === t('track.music') && track.clips.length > 0);
   const filmSec = projectEndFrame(project) / project.fps;
   const draftSize = `${Math.round((project.width * 2) / 3)}×${Math.round((project.height * 2) / 3)}`;
 
@@ -138,6 +141,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             >
               Fast draft · {draftSize}
             </button>
+            {hasMusic && (
+              <button type="button" onClick={() => void start(false, true)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-render-nomusic" title="Same film without the music bed, sound effects kept: for your own music">
+                Render without music
+              </button>
+            )}
             <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-estimate" title="Rough export time on a slow computer; most machines are faster.">
               ~{Math.max(1, Math.round(estimateExportSec(project) / 60))} min to render
             </span>

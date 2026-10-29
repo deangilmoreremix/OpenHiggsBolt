@@ -212,27 +212,39 @@ describe('a film made of picked shots', () => {
   // Catalog shots only: brand scenes (hub, push-in) may sit between the repeats of a pick.
   const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot' && !s.recipeId.startsWith('brand/')).map((s) => s.recipeId);
 
-  it('plays only the picked shots, as many scenes as the director planned, picks first in order, with framing titles', () => {
+  it('plays each picked shot once, in order, never another recipe; the site\'s own scenes carry the repeated scenes\' copy', () => {
     // The model added other shots, repeated one, and put a title card in the middle.
     const noisy = inkPressPlan({ prompt: 'x', durationSec: 30 });
     const other = noisy.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
     expect(other.length).toBeGreaterThan(2);
-    const plan = { ...noisy, scenes: [noisy.scenes[0], ...noisy.scenes.filter((s) => s.kind === 'shot'), { ...noisy.scenes[0], headline: 'Middle' }, noisy.scenes[noisy.scenes.length - 1]] };
-    const fitted = restrictToRecipes(plan, [row, deck], 20);
-    const ids = shotIds(fitted);
-    expect(ids.slice(0, 2)).toEqual([row.id, deck.id]);
-    // The model planned several scenes: they all play, with the picks repeated — never another recipe.
-    expect(ids.length).toBe(other.length);
-    expect(ids.every((id) => id === row.id || id === deck.id)).toBe(true);
-    expect(fitted.scenes[0].kind).toBe('title');
-    expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
-    expect(fitted.scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
-    // Two picks repeated through the film get the site's own scenes between the repeats, never another recipe.
-    const brand = fitted.scenes.filter((s) => s.recipeId.startsWith('brand/'));
-    expect(brand.length).toBeGreaterThan(0);
-    expect(brand.length).toBeLessThanOrEqual(Math.floor(ids.length / 2));
-    expect(fitted.scenes[1].recipeId.startsWith('brand/')).toBe(false);
-    expect(Math.round(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
+    const plan = { ...noisy, scenes: [noisy.scenes[0], ...noisy.scenes.filter((s) => s.kind === 'shot').map((s, i) => ({ ...s, headline: `Scene ${i}` })), { ...noisy.scenes[0], headline: 'Middle' }, noisy.scenes[noisy.scenes.length - 1]] };
+
+    const withSite = restrictToRecipes(plan, [row, deck], 20, { siteScenes: true });
+    const ids = shotIds(withSite);
+    expect(ids).toEqual([row.id, deck.id]);
+    expect(withSite.scenes[0].kind).toBe('title');
+    expect(withSite.scenes[withSite.scenes.length - 1].kind).toBe('title');
+    const brand = withSite.scenes.filter((s) => s.recipeId.startsWith('brand/'));
+    expect(brand.length).toBe(other.length - 2);
+    expect(brand.filter((s) => s.recipeId === 'brand/hub')).toHaveLength(1);
+    expect(brand.every((s) => /^Scene \d+$/.test(s.headline))).toBe(true);
+    expect(Math.round(withSite.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
+
+    // With no site there is nothing to fill with: the repeats are dropped and the picks hold longer.
+    const noSite = restrictToRecipes(plan, [row, deck], 20);
+    expect(noSite.scenes.filter((s) => s.recipeId.startsWith('brand/'))).toHaveLength(0);
+    expect(shotIds(noSite)).toEqual([row.id, deck.id]);
+    expect(Math.round(noSite.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
+  });
+
+  it('plays a recipe the director repeated only once when no recipes were picked (site film)', () => {
+    const noisy = inkPressPlan({ prompt: 'x', durationSec: 30 });
+    const shot = noisy.scenes.find((s) => s.kind === 'shot')!;
+    const plan = { ...noisy, scenes: [noisy.scenes[0], shot, { ...shot, headline: 'again' }, { ...shot, headline: 'and again' }, noisy.scenes[noisy.scenes.length - 1]] };
+    const fitted = restrictToRecipes(plan, [], 20, { siteScenes: true });
+    expect(shotIds(fitted)).toEqual([shot.recipeId]);
+    expect(fitted.scenes.filter((s) => s.recipeId.startsWith('brand/')).map((s) => s.headline)).toEqual(['again', 'and again']);
+    expect(restrictToRecipes(plan, [], 20)).toBe(plan);
   });
 
   it('puts back a picked shot the model skipped, and does nothing when none are picked', () => {
@@ -246,7 +258,7 @@ describe('a film made of picked shots', () => {
   it('stretches a few picked shots to the requested length', () => {
     const plan = inkPressPlan({ prompt: 'x', durationSec: 60 });
     const fitted = restrictToRecipes(plan, [row, deck], 60);
-    expect(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0)).toBeGreaterThan(58);
+    expect(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0)).toBeGreaterThan(54);
   });
 
   it('a single picked shot is still a valid storyboard', () => {

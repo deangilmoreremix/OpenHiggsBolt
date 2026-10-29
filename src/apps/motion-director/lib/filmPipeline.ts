@@ -15,12 +15,14 @@ import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
-import { applySiteContent, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { applyFilmRules, applySiteContent, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
+import { rulesOfScene } from './shotRules';
+import { reviewFilm, type ReviewItem } from './filmReview';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -122,7 +124,12 @@ export async function storyboardFilm(
       template: opts.template === 'inkpress' ? 'inkpress' : null,
     });
     // Picked / named shots are the whole film (plus framing title cards): no other recipes.
-    const fitted = restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec);
+    const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
+    const shaped = restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec, { siteScenes });
+    // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
+    const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes });
+    for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)));
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
     return { plan: applySiteContent(fitted, capture?.content), capture, source: 'director' };
   } catch (error) {
@@ -187,7 +194,9 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
   const used = new Set<string>();
   plan.scenes.forEach((sc, i) => {
     if (sc.kind !== 'shot') return;
-    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used);
+    const rules = rulesOfScene(sc);
+    if (rules?.text === 'fixed') return;
+    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used, rules?.text === 'structural');
     if (Object.keys(map).length) out[i] = map;
   });
   log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');
@@ -252,6 +261,8 @@ export interface FilmQaReport {
   warnings: string[];
   /** Frames rendered by the frame check (0 when the browser cannot render stills). */
   framesChecked: number;
+  /** The programmatic part of the final review (lib/filmReview). */
+  review?: ReviewItem[];
 }
 
 /** Structural check of a built film: every clip resolves, shots run back to back, nothing runs past the end. */
@@ -278,7 +289,7 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
   if (productShots.length && !opts.hasProductImages) {
     warnings.push(`${productShots.length} product shot${productShots.length === 1 ? '' : 's'} show sample pages — add your URL or attach screenshots to put your product on screen.`);
   }
-  return { ok: issues.length === 0, issues, warnings, framesChecked: 0 };
+  return { ok: issues.length === 0, issues, warnings, framesChecked: 0, review: reviewFilm(project) };
 }
 
 /**

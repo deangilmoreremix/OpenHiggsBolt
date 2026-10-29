@@ -130,7 +130,7 @@ const TitleCard: React.FC<Props> = ({
           }}
         />
         {sub ? (
-          <div style={{ fontFamily: MONO, fontSize: 26, letterSpacing: "0.12em", color: "rgba(28,26,23,0.62)", marginTop: 34, opacity: subT, textTransform: "uppercase", display: "flex", justifyContent: "center", alignItems: "baseline", gap: "0.5em" }}>
+          <div style={{ fontFamily: MONO, fontSize: 32, letterSpacing: "0.1em", color: "rgba(28,26,23,0.62)", marginTop: 34, opacity: subT, textTransform: "uppercase", display: "flex", justifyContent: "center", alignItems: "baseline", gap: "0.5em" }}>
             {subDigits ? <DigitRoll value={subDigits} delay={12} fontSize={26} color={accent} /> : null}
             <span>{sub}</span>
           </div>

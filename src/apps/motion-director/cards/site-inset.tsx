@@ -51,7 +51,7 @@ const SiteInset: React.FC<{ file?: string; side?: string; sizePct?: number; labe
               borderRadius: 999,
               background: "rgba(0,0,0,0.6)",
               color: "#fff",
-              font: "600 22px/1 system-ui, sans-serif",
+              font: "600 32px/1 system-ui, sans-serif",
               maxWidth: "80%",
               whiteSpace: "nowrap",
               overflow: "hidden",

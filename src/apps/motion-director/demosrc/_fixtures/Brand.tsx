@@ -10,6 +10,7 @@
 // Pure props function, depends on react only; copy demos together with this file and fix the import path.
 import React from 'react';
 import { Img } from 'remotion';
+import { skinLooks } from './Look';
 
 /** The brand the demos draw. Defaults to SmartVideo GO (the studio's own demos); a company film sets its own with `setBrand`. */
 export interface BrandTokens {
@@ -190,6 +191,8 @@ export interface BrandInput extends Partial<Omit<BrandTokens, 'amber' | 'short'>
 /** Make the demos speak for a company (or, with null, for SmartVideo GO again). Call at the start of a render. */
 export function setBrand(input: BrandInput | null | undefined): void {
   const b = input ?? {};
+  // Every recipe that draws in a Look speaks in the company's colours too.
+  skinLooks(b.name ? { accent: b.accent, accent2: b.accent2, ink: b.ink, paper: b.paper } : null);
   const pick = <K extends keyof BrandTokens>(k: K): BrandTokens[K] => (b[k as keyof BrandInput] as BrandTokens[K] | undefined) ?? DEFAULT_BRAND[k];
   Object.assign(BRAND, DEFAULT_BRAND, {
     name: pick('name'),

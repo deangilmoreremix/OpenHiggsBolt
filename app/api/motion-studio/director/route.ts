@@ -19,6 +19,7 @@ import {
   validatePlan,
   validateRetext,
 } from '@/apps/motion-director/lib/directorPlan'
+import { rulesOf } from '@/apps/motion-director/lib/shotRules'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { requireMotionStudioUser } from '../lib/auth'
@@ -57,6 +58,7 @@ Return a storyboard as JSON. Rules:
 - When a product capture is provided, use several PRODUCT-PAGE recipes: they show the captured site.
 - productCapture.content is what the site says about itself (its headline, section headings, calls to action). Write headlines and captions from those words; never claim features the site does not mention. End on its call to action when it has one.
 - SAMPLE-UI shots draw a made-up app screen. For a captured site and an empty requiredRecipes avoid them: prefer PRODUCT-PAGE shots, BRAND-SCENE ids and typography / camera / transition shots. Use a SAMPLE-UI shot only when the person named it.
+- Shot-card rules (from the upstream cards; they are enforced after you answer): each recipe plays ONCE per film; tags in the catalog: OPENING recipes go first, OUTRO recipes last; DARK / LIGHT is the look family the recipe was designed in - keep the whole film in ONE family (a mixed film looks pasted together); "light≤2" style tags are limits for that kind of recipe across the film (e.g. at most 2 light effects, 1 outro kind, 3 whole-frame hits, 2 big camera moves, 2 title-entrance kinds); TEXT-FIXED recipes have words that are part of the technique; NEEDS-SOUND recipes must be given sound. Build the film on this arc: brand open (hold the name ≥1 s) -> one hero shot -> features, with a breathing title card (about 1.8 s) after every one or two feature shots (2-4 per film) -> a finale with a hold. A recipe's native length (catalog column) is the scene length: never plan a scene shorter than it unless it is a technique card.
 - SLOW-EXPORT shots take several times longer to export than the rest. Avoid them unless the person named them, and never fill a film with them.
 - BRAND-SCENE ids (brand/url-scan, brand/hub, brand/feature-zoom, brand/logo-reveal) tell the product's story from the captured site. When a site was captured and requiredRecipes is empty, use the story arc: brand/url-scan or a title as the hook, brand/hub for the feature overview, several brand/feature-zoom (one per real section/feature) mixed with PRODUCT-PAGE recipes, and brand/logo-reveal last (headline = its call to action). Brand scenes are shot scenes with kind "shot".
 - One motion idea per scene; do not repeat a recipe. Let key moments breathe (hold ≥ 1s after a reveal).
@@ -79,7 +81,7 @@ const COCREATE_RULES = `Method: video-shotcraft. Work only from evidence in the 
 
 const BRIEF_INSTRUCTIONS = `You run the product check that opens a short product film. ${COCREATE_RULES}
 Return JSON {rows, questions}.
-- rows: one per item, in this order when you can: Positioning, Target user, Purpose of the video, Core selling points, Features to show, Pages and states available, First-screen claim, Length / aspect / language, Music, Data rules, Visual cues. judgment = your call in one sentence (or "Can't tell from what I have"); evidence = what in the site or the request supports it.
+- rows: one per item, in this order when you can: Positioning, Target user, Purpose of the video, Core selling points, Features to show, Pages and states available, First-screen claim, Length / aspect / language, Music, Data rules, Visual cues. Data rules: pictures of named customers, staff or other real people on the site (testimonials, team photos) are shown only when the person confirms they may be; by default say they will be avoided or blurred. judgment = your call in one sentence (or "Can't tell from what I have"); evidence = what in the site or the request supports it.
 - questions: at most 3, only what cannot be decided from the material, each starting with your recommendation and why (e.g. "Open on the headline "…"? I'd recommend yes because the site leads with it."). Empty when nothing needs confirming.`
 
 const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short product film. ${COCREATE_RULES}
@@ -97,6 +99,7 @@ Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's st
 - Write from the site's own words (productCapture.content: headline, headings, calls to action, menu) and the scene's headline / message. Never invent features, prices, numbers or claims the site does not give.
 - Keep the same kind and length class: a short label stays a short label (a menu entry or feature name), a sentence stays one sentence of similar length. The layout is drawn for the template's words: stay within about 1.25× the template line's characters (never above ${RETEXT_MAX_CHARS}); longer text overflows the shot. Plain text only: no markdown, no quotes around it.
 - Replace every string that names the template's sample product, people, data or features. Leave generic interface words (Home, Settings, Search) as they are unless the site has its own equivalent.
+- Scenes with keepShape true draw words that are part of the effect: every replacement keeps the SAME number of words and about the same number of characters (±15 %) or is left out.
 - Skip a string by leaving it out. Cover every scene you are given.`
 
 const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
@@ -224,14 +227,18 @@ export async function POST(req: NextRequest) {
     if (body.mode === 'retext') {
       const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
       const allowed = new Map<number, Set<string>>()
+      const structural = new Set<number>()
       const scenes: Array<Record<string, unknown>> = []
       for (const sc of (Array.isArray(body.scenes) ? body.scenes : []).slice(0, PLAN_LIMITS.maxScenes) as any[]) {
         const index = typeof sc?.index === 'number' ? Math.round(sc.index) : -1
         const template = resolveMotionTemplate(str(sc?.recipeId, 120))
-        const strings = template ? (DEMO_TEXTS[template.componentName] ?? []).slice(0, 40) : []
+        const rules = template ? rulesOf(template.componentName) : null
+        // Recipes whose words are part of the effect (hand-drawn glyphs, fixed segments) are never rewritten.
+        const strings = template && rules?.text !== 'fixed' ? (DEMO_TEXTS[template.componentName] ?? []).slice(0, 40) : []
         if (index < 0 || !strings.length) continue
         allowed.set(index, new Set(strings))
-        scenes.push({ index, recipe: template?.nameEn ?? '', headline: str(sc?.headline, 120), message: str(sc?.feature, 160), strings })
+        if (rules?.text === 'structural') structural.add(index)
+        scenes.push({ index, recipe: template?.nameEn ?? '', headline: str(sc?.headline, 120), message: str(sc?.feature, 160), keepShape: rules?.text === 'structural', strings })
       }
       if (!scenes.length) return NextResponse.json({ texts: {} })
       const raw = await callDirector(
@@ -246,7 +253,7 @@ export async function POST(req: NextRequest) {
         'motion_studio_retext',
         RETEXT_JSON_SCHEMA,
       )
-      return NextResponse.json({ texts: validateRetext(raw, allowed) })
+      return NextResponse.json({ texts: validateRetext(raw, allowed, structural) })
     }
 
     if (body.mode === 'chat') {

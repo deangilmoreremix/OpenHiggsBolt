@@ -3,7 +3,7 @@
  * fallback when no OpenAI key is on file or the director could not be reached.
  */
 import type { SiteContent } from './filmChat';
-import { fitToLayout } from './directorPlan';
+import { fitToLayout, keepsShape } from './directorPlan';
 import type { TextMap } from './textOverrides';
 
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
@@ -24,7 +24,7 @@ export interface SceneWords {
  * by the scenes of one film). Each replacement is about as long as the line it replaces so the
  * layout holds. Lines nothing fits keep the template's words.
  */
-export function fallbackTexts(strings: readonly string[], content: SiteContent | null | undefined, name: string, scene?: SceneWords, used: Set<string> = new Set()): TextMap {
+export function fallbackTexts(strings: readonly string[], content: SiteContent | null | undefined, name: string, scene?: SceneWords, used: Set<string> = new Set(), keepShape = false): TextMap {
   const clean = (v: string | undefined) => (v ?? '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
   const rotate = <T,>(list: T[]): T[] => (list.length && scene ? [...list.slice(scene.index % list.length), ...list.slice(0, scene.index % list.length)] : list);
   const sentences = rotate([content?.headline, content?.description, ...(content?.headings ?? [])].map(clean).filter(Boolean));
@@ -49,7 +49,8 @@ export function fallbackTexts(strings: readonly string[], content: SiteContent |
       if (to.length > limit) to = undefined;
     }
     to ??= long ? take(sentences, limit) : take(labels, limit);
-    if (to) out[line] = to;
+    // Words that are part of an effect keep their word count and length.
+    if (to && (!keepShape || keepsShape(to, line))) out[line] = to;
   }
   return out;
 }

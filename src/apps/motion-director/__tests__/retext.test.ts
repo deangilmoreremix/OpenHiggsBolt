@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { validateEditOps, validateRetext, type DirectorPlan } from '../lib/directorPlan';
+import { keepsShape, validateEditOps, validateRetext, type DirectorPlan } from '../lib/directorPlan';
 import { fallbackTexts } from '../lib/retext';
 import { planToProject } from '../lib/buildFilm';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
@@ -30,6 +30,14 @@ describe('retext', () => {
     expect(a).toEqual({ 'Your product,': 'Stop downtime', 'in motion.': 'Help desk' });
     expect(b).toEqual({ 'Your product,': 'Virtual CIO', 'in motion.': 'Firewalls' });
     expect(fallbackTexts(['Arial, sans-serif'], content, 'Acme', { index: 0, headline: 'x y z' })).toEqual({});
+  });
+
+  it('keeps the word count and length of words that are part of an effect', () => {
+    const allowed = new Map([[0, new Set(['Faster', 'Build the film'])]]);
+    const out = validateRetext({ scenes: [{ index: 0, pairs: [{ from: 'Faster', to: 'Smarter' }, { from: 'Faster', to: 'Much faster' }, { from: 'Build the film', to: 'Ship it' }] }] }, allowed, new Set([0]));
+    expect(out).toEqual({ 0: { Faster: 'Smarter' } });
+    expect(keepsShape('Smarter', 'Faster')).toBe(true);
+    expect(keepsShape('Much faster', 'Faster')).toBe(false);
   });
 
   it('fills sentences with the site headline and labels with its menu, in similar lengths', () => {
