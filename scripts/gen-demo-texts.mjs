@@ -13,7 +13,7 @@ const OUT = path.join(ROOT, '_generated', 'demoTexts.ts')
 
 const CSS_WORD = /^(?:flex|grid|block|none|auto|center|absolute|relative|fixed|hidden|visible|bold|normal|italic|inherit|transparent|white|black|solid|dashed|dotted|nowrap|wrap|column|row|left|right|top|bottom|middle|start|end|cover|contain|pointer|default|text|round|square|butt|miter|bevel|uppercase|lowercase|capitalize|ease|linear|circle|ellipse|clip|svg|path|rect|line|g|div|span|img|button|input|use|mask|defs|filter|stop|linearGradient|radialGradient|clipPath|polygon|polyline)$/i
 const CSS_LIKE = /(?:\d(?:px|em|rem|vh|vw|deg|ms|s)\b|%|#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|gradient|url\(|calc\(|cubic-bezier|translate|rotate|scale\(|blur\(|inset|^\s*[\d.\s,-]+$|^[\w-]+\/[\w./-]+$|^https?:|\.(?:png|jpe?g|svg|mp3|mp4|webp)\b|^[a-z]+(?:-[a-z]+)+$|^[a-z]+[A-Z]\w*$|^[A-Z][a-z]+[A-Z]\w*$|^[A-Z_]{2,}_[A-Z_]+$)/
-const CODE_LIKE = /[<>{}=;]|\b[a-z][\w-]*\([^)]*\)|^(?:export|function|const|return|import)\b|\(props|&nbsp;/
+const CODE_LIKE = /sans-serif|monospace|system-ui|\bHelvetica\b|\bImpact\b|[<>{}=;]|\b[a-z][\w-]*\([^)]*\)|^(?:export|function|const|return|import)\b|\(props|&nbsp;/
 const WORDY = /[A-Za-zÀ-ɏ぀-ヿ一-鿿]{2}/
 
 const HEX = /^\s*#[0-9a-f]{3,8}\s*$/i

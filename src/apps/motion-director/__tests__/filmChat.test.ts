@@ -209,7 +209,8 @@ describe('Brand Kit logo and attached videos', () => {
 describe('a film made of picked shots', () => {
   const deck = byComponent('DeckDealFlyin');
   const row = byComponent('RowEmbed');
-  const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
+  // Catalog shots only: brand scenes (hub, push-in) may sit between the repeats of a pick.
+  const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot' && !s.recipeId.startsWith('brand/')).map((s) => s.recipeId);
 
   it('plays only the picked shots, as many scenes as the director planned, picks first in order, with framing titles', () => {
     // The model added other shots, repeated one, and put a title card in the middle.
@@ -226,6 +227,11 @@ describe('a film made of picked shots', () => {
     expect(fitted.scenes[0].kind).toBe('title');
     expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
     expect(fitted.scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
+    // Two picks repeated through the film get the site's own scenes between the repeats, never another recipe.
+    const brand = fitted.scenes.filter((s) => s.recipeId.startsWith('brand/'));
+    expect(brand.length).toBeGreaterThan(0);
+    expect(brand.length).toBeLessThanOrEqual(Math.floor(ids.length / 2));
+    expect(fitted.scenes[1].recipeId.startsWith('brand/')).toBe(false);
     expect(Math.round(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
   });
 
