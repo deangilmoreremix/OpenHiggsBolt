@@ -463,10 +463,10 @@ describe('toBox', () => {
   it('converts text layers from center coordinates and scale', () => {
     const layer = createLayer('headline', { x: 0.5, y: 0.5, scale: 0.05, text: 'Hello' })
     const box = toBox(layer, 1920, 1080)
-    // fontSize = 0.05 * 1080; width = min(1920 * 0.9, fontSize * max(4, 5 * 0.55))
+    // fontSize = 0.05 * 1080 = 54; width via fitTextBox measureTextWidth fallback
     expect(box.fontSizePx).toBe(54)
-    expect(box.widthPx).toBe(216)
-    expect(box.leftPx).toBe(Math.round(1920 * 0.5 - 216 / 2))
+    expect(box.widthPx).toBe(135)
+    expect(box.leftPx).toBe(Math.round(1920 * 0.5 - 135 / 2))
     expect(box.topPx).toBe(Math.round(1080 * 0.5 - 54 / 2))
   })
 
@@ -483,7 +483,7 @@ describe('toBox', () => {
     const box = toBox(layer, 1920, 1080)
     expect(box.topPx).toBe(0)
     expect(box.fontSizePx).toBe(216)
-    expect(box.leftPx).toBe(Math.round(0 - Math.min(1920 * 0.9, 216 * 4) / 2))
+    expect(box.leftPx).toBe(Math.round(0 - Math.min(1920 * 0.9, 108) / 2))
   })
 })
 

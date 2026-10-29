@@ -27,6 +27,7 @@ import type {
 // deterministic typeface. `templates/typography` imports nothing from
 // `preview/`, so this import cannot form a cycle.
 import { DESIGN_FONT_STACK } from '../templates/typography'
+import { fitTextBox } from './textFit'
 
 const LAYER_KINDS: PreviewLayerKind[] = [
   'logo',
@@ -691,6 +692,27 @@ export function toBox(
     const leftPx = Math.round(x * width - widthPx / 2)
     const topPx = Math.max(0, Math.round(y * height - widthPx / 2))
     return { leftPx, topPx, widthPx, heightPx: widthPx, fontSizePx: 0 }
+  }
+
+  // Text layers: fit to role limits inside the title-safe area.
+  if (
+    layer.kind === 'businessName' ||
+    layer.kind === 'headline' ||
+    layer.kind === 'offer' ||
+    layer.kind === 'cta' ||
+    layer.kind === 'tagline'
+  ) {
+    const fitted = fitTextBox({
+      text: layer.text ?? '',
+      role: layer.kind,
+      compW: width,
+      compH: height,
+      fontSizePx: Math.round(scale * height),
+      weight: 800,
+    })
+    const leftPx = Math.round(x * width - fitted.widthPx / 2)
+    const topPx = Math.max(0, Math.round(y * height - fitted.fontSizePx / 2))
+    return { leftPx, topPx, widthPx: fitted.widthPx, fontSizePx: fitted.fontSizePx }
   }
 
   const fontSizePx = Math.round(scale * height)

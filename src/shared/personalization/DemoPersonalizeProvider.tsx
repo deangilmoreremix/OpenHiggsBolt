@@ -95,6 +95,7 @@ import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { defaultCtaLabel } from './preview/displayText'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
@@ -701,7 +702,7 @@ export type DemoPersonalizeContextValue = {
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
-   updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
+    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard' | 'textStyleId'>>) => void
    resetPreviewLayout: () => void
    /**
     * Every registered Remotion design, in registration order. Empty when no
@@ -1378,7 +1379,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     headline: clientForm.businessName ? `${clientForm.businessName}` : '',
     tagline: clientForm.brandDescription || '',
     offer: clientForm.offer || '',
-    cta: clientForm.callToAction || (clientForm.website ? `Visit ${clientForm.website}` : ''),
+    cta: clientForm.ctaHeadline || defaultCtaLabel({ industry: clientForm.industry, phone: clientForm.phone, website: clientForm.website }),
     phone: clientForm.phone || '',
     website: clientForm.website || '',
     logoUrl: assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || undefined,
@@ -1393,6 +1394,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     clientForm.businessName,
     clientForm.name,
     clientForm.brandDescription,
+    clientForm.ctaHeadline,
+    clientForm.industry,
     clientForm.offer,
     clientForm.callToAction,
     clientForm.phone,

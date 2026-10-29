@@ -13,6 +13,7 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { resolveDesignSlotValues } from './designSlots'
+import { ctaTreatmentFor, textOn, textStyleFor } from './textStyles'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -447,9 +448,12 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
           const box = toBox(layer, compW, compH)
           const entrance = entranceFor(layer, frame, settings.fps)
+          const style = textStyleFor(layer.kind, settings.textStyleId ?? null)
           const textColor =
             layer.color ??
-            (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
+            (layer.kind === 'cta'
+              ? textOn(settings.brandColors.accent)
+              : settings.brandColors.text)
           const isExtraBold = layer.kind === 'businessName' || layer.kind === 'cta'
           const transformParts: string[] = []
           if (entrance.translateX) transformParts.push(`translateX(${entrance.translateX}px)`)
@@ -539,23 +543,90 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           }
 
           if (layer.kind === 'cta') {
+            const treatment = ctaTreatmentFor(settings.textStyleId ?? null)
+            const accent = settings.brandColors.accent
+            const ctaTextColor = textOn(accent)
             return (
               <AbsoluteFill key={layer.id} style={layerStyle}>
                 <div style={{ width: '100%', textAlign: 'center' }}>
-                  <span
-                    style={{
-                      background: settings.brandColors.accent,
-                      color: PILL_TEXT_COLOR,
-                      padding: '0.4em 1.1em',
-                      borderRadius: 999,
-                      display: 'inline-block',
-                      fontFamily: fontStackById(layer.fontFamily),
-                      fontSize: box.fontSizePx,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {text}
-                  </span>
+                  {treatment === 'pill' ? (
+                    <span
+                      style={{
+                        background: accent,
+                        color: ctaTextColor,
+                        padding: '0.4em 1.1em',
+                        borderRadius: 999,
+                        display: 'inline-block',
+                        fontFamily: fontStackById(layer.fontFamily),
+                        fontSize: box.fontSizePx,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {text}
+                    </span>
+                  ) : treatment === 'outline' ? (
+                    <span
+                      style={{
+                        background: 'transparent',
+                        color: accent,
+                        padding: '0.35em 1em',
+                        border: `2px solid ${accent}`,
+                        borderRadius: 999,
+                        display: 'inline-block',
+                        fontFamily: fontStackById(layer.fontFamily),
+                        fontSize: box.fontSizePx,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {text}
+                    </span>
+                  ) : treatment === 'glass' ? (
+                    <span
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        color: '#ffffff',
+                        padding: '0.35em 1em',
+                        borderRadius: 6,
+                        display: 'inline-block',
+                        fontFamily: fontStackById(layer.fontFamily),
+                        fontSize: box.fontSizePx,
+                        fontWeight: 700,
+                        backdropFilter: 'blur(4px)',
+                      }}
+                    >
+                      {text}
+                    </span>
+                  ) : treatment === 'underline' ? (
+                    <span
+                      style={{
+                        background: 'transparent',
+                        color: accent,
+                        textDecoration: 'underline',
+                        textDecorationThickness: '2px',
+                        display: 'inline-block',
+                        fontFamily: fontStackById(layer.fontFamily),
+                        fontSize: box.fontSizePx,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {text}
+                    </span>
+                  ) : (
+                    // ghost-arrow
+                    <span
+                      style={{
+                        background: 'transparent',
+                        color: ctaTextColor,
+                        paddingRight: '0.6em',
+                        display: 'inline-block',
+                        fontFamily: fontStackById(layer.fontFamily),
+                        fontSize: box.fontSizePx,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {text} →
+                    </span>
+                  )}
                 </div>
               </AbsoluteFill>
             )
@@ -568,8 +639,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                   fontFamily: fontStackById(layer.fontFamily),
                   color: textColor,
                   fontSize: box.fontSizePx,
-                  fontWeight: isExtraBold ? 800 : 600,
-                  lineHeight: 1.15,
+                  fontWeight: style.weight,
+                  letterSpacing: `${style.tracking}em`,
+                  textTransform: style.case,
+                  lineHeight: style.lineHeight,
                   textAlign: 'center',
                   width: '100%',
                   wordBreak: 'break-word',

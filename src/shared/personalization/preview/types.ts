@@ -129,6 +129,12 @@ export interface PersonalizationPreviewSettings {
    * restore; the normalizer falls back to `null`.
    */
   remotionDesignId?: string | null
+  /**
+   * Id of the coordinated text style applied to the preview, or null.
+   * Optional and additive; each style defines per-role typography, CTA
+   * treatment, brand colours, layout zones and motion presets.
+   */
+  textStyleId?: string | null
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

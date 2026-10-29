@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import {
+  DESIGN_FONT_ALIAS_NOTE,
   DESIGN_FONT_ATTRIBUTION,
   DESIGN_FONT_DATA_URI,
   DESIGN_FONT_FACE_CSS,
@@ -250,9 +251,14 @@ describe('the inlined font payload (Phase 3 decision D1)', () => {
   it('exposes the licence attribution the credit line must carry (D2)', () => {
     expect(DESIGN_FONT_ATTRIBUTION).toContain('SIL OFL 1.1')
     expect(DESIGN_FONT_ATTRIBUTION).toContain('The Inter Project Authors')
-    expect(DESIGN_FONT_ATTRIBUTION).toContain('Personalization Sans')
-    expect(DESIGN_FONT_ATTRIBUTION).toContain('bundled Inter 4.001 subset')
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('Inter')
     expect(DESIGN_FONT_LICENSE_FILE).toBe('/fonts/OFL.txt')
+  })
+
+  it('explains the local family alias (Personalization Sans = bundled Inter)', () => {
+    expect(DESIGN_FONT_ALIAS_NOTE).toContain('Personalization Sans')
+    expect(DESIGN_FONT_ALIAS_NOTE).toContain('bundled Inter')
+    expect(DESIGN_FONT_ALIAS_NOTE).toContain('not a different typeface')
   })
 })
 

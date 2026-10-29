@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
+import { defaultCtaLabel } from '../preview/displayText'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
 import type { ClientProfile } from '../types'
 import type { PreviewLayerKind, PreviewLayoutId } from '../preview/types'
@@ -222,7 +223,7 @@ export function StepPersonalize({
               id="guided-cta"
               value={clientForm.callToAction || ''}
               onChange={(event) => setField('callToAction', event.target.value, 'cta')}
-              placeholder={clientForm.website ? `Visit ${clientForm.website}` : clientForm.phone ? `Call ${clientForm.phone}` : 'e.g. Book a free quote'}
+              placeholder={defaultCtaLabel({ industry: clientForm.industry, phone: clientForm.phone, website: clientForm.website })}
               style={inputStyle}
             />
           </div>

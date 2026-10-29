@@ -17,6 +17,7 @@ import type {
   PreviewInputProps,
   PreviewVideoRef,
 } from '../preview/types'
+import { defaultCtaLabel } from '../preview/displayText'
 
 export interface BuildPreviewInputContext {
   source: PersonalizationSource | null
@@ -44,9 +45,13 @@ export function buildPreviewInput(
 
   const businessName = clientForm.businessName || clientForm.name || ''
   const website = clientForm.website || ''
+  const phone = clientForm.phone || ''
+  // The rendered CTA button text comes from ctaHeadline (the customer's own
+  // words), never from the raw URL stored in callToAction. A URL is never
+  // shown as button text.
   const callToAction =
-    clientForm.callToAction ||
-    (website ? `Visit ${website}` : clientForm.phone ? `Call ${clientForm.phone}` : '')
+    clientForm.ctaHeadline ||
+    defaultCtaLabel({ industry: clientForm.industry, phone, website })
 
   return {
     videoUrl: previewVideo?.url || source?.sourceMedia || null,

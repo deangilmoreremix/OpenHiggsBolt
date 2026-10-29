@@ -7,6 +7,7 @@ import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
+import { TEXT_STYLES, DEFAULT_TEXT_STYLE_ID } from '../preview/textStyles'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
@@ -217,6 +218,52 @@ export function StepPreviewApprove(): React.JSX.Element {
           />
           End with a branded card (logo, contact details and final call to action)
         </label>
+
+        {/* ── Design Style (Workstream A3/A5) ─────────────────────────────── */}
+        <div style={{ ...softPanelStyle, marginTop: 16, padding: 12, borderRadius: 10, border: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Sparkles size={14} color={C.cyan} />
+            <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+              Design style
+            </h3>
+          </div>
+          <p style={{ ...hintStyle, marginBottom: 10 }}>
+            Pick a coordinated look: fonts, CTA treatment and motion change together.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {Object.values(TEXT_STYLES).map((style) => {
+              const active = previewSettings.textStyleId === style.id
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => updatePreviewComposition({ textStyleId: style.id })}
+                  aria-pressed={active}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: 10,
+                    borderRadius: 10,
+                    border: active ? `2px solid ${C.cyan}` : `1px solid ${C.border}`,
+                    background: active ? 'rgba(42,124,206,0.12)' : 'rgba(255,255,255,0.04)',
+                    color: C.text,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    minWidth: 90,
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, fontSize: 10 }}>{style.ctaTreatment === 'pill' ? '●' : style.ctaTreatment === 'outline' ? '○' : '◆'}</span>
+                    <span style={{ color: C.muted }}>{style.ctaTreatment}</span>
+                  </div>
+                  <div style={{ fontWeight: 700 }}>{style.name}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* ── Direct on-video overlay editing ─────────────────────────────── */}
