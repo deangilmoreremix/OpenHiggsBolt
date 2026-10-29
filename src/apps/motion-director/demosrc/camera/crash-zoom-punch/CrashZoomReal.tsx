@@ -29,6 +29,7 @@ import layout from '../../_textures/live-layout.json';
 import { Dust, LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { EASE, FONT, Vignette, mix, ramp, softShadow } from '../../_fixtures/Polish';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 export const CRASHZOOM_DUR = 132;
 
@@ -165,7 +166,7 @@ const SHUTTER = 0.55; // 帧（≈200° 快门）
 const samplesAt = (f: number) => {
   const a = camAt(f), b = camAt(f - SHUTTER);
   const edge = Math.abs(a.zoom - b.zoom) * 1100 + Math.hypot(a.sx - b.sx, a.sy - b.sy) + Math.abs(a.tilt - b.tilt) * 30;
-  return Math.max(1, Math.min(44, Math.ceil(edge / 6)));
+  return blurSamples(Math.max(1, Math.min(44, Math.ceil(edge / 6))));
 };
 // 子帧间距（屏幕 px）→ 每层补一点各向同性模糊，把离散回波抹成连续拖影（页面小字只有 ~14px 高，
 // 回波间距 6px 时肉眼仍能数出层数）

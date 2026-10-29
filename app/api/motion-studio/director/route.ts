@@ -57,6 +57,7 @@ Return a storyboard as JSON. Rules:
 - When a product capture is provided, use several PRODUCT-PAGE recipes: they show the captured site.
 - productCapture.content is what the site says about itself (its headline, section headings, calls to action). Write headlines and captions from those words; never claim features the site does not mention. End on its call to action when it has one.
 - SAMPLE-UI shots draw a made-up app screen. For a captured site and an empty requiredRecipes avoid them: prefer PRODUCT-PAGE shots, BRAND-SCENE ids and typography / camera / transition shots. Use a SAMPLE-UI shot only when the person named it.
+- SLOW-EXPORT shots take several times longer to export than the rest. Avoid them unless the person named them, and never fill a film with them.
 - BRAND-SCENE ids (brand/url-scan, brand/hub, brand/feature-zoom, brand/logo-reveal) tell the product's story from the captured site. When a site was captured and requiredRecipes is empty, use the story arc: brand/url-scan or a title as the hook, brand/hub for the feature overview, several brand/feature-zoom (one per real section/feature) mixed with PRODUCT-PAGE recipes, and brand/logo-reveal last (headline = its call to action). Brand scenes are shot scenes with kind "shot".
 - One motion idea per scene; do not repeat a recipe. Let key moments breathe (hold ≥ 1s after a reveal).
 - headline: short, punchy on-screen line (≤ ${PLAN_LIMITS.headlineChars} chars). caption: optional small strip (≤ ${PLAN_LIMITS.captionChars} chars) or "".

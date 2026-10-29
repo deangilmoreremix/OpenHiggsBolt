@@ -27,6 +27,7 @@ import { CameraMotionBlur } from '@remotion/motion-blur';
 import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { Dust, LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 const L = LOOKS.midnight;
 
@@ -324,7 +325,7 @@ export const MagicianCardFlourish: React.FC = () => {
         <Dust look={L} count={26} seed={7} drift={0.22} opacity={0.35 + 0.35 * lit} />
       </Stage>
       {moving ? (
-        <CameraMotionBlur shutterAngle={150} samples={7}>
+        <CameraMotionBlur shutterAngle={150} samples={blurSamples(7)}>
           <Card />
         </CameraMotionBlur>
       ) : (

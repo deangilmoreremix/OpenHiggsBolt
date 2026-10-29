@@ -3,6 +3,7 @@ import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from 'remotion';
 import { CameraMotionBlur } from '@remotion/motion-blur';
 import { FakeDashboard } from '../../_fixtures/Fixtures';
 import { Backdrop, EASE, Grain, mix, ramp } from '../../_fixtures/Polish';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 // drone-dive-landing：上帝视角俯视整页平躺的 dashboard（近垂直俯角、缩小居中），
 // 相机猛扎下来——俯角抬平、页面放大立正，最后一段气垫式长尾减速，
@@ -163,7 +164,7 @@ export const DroneDiveLanding: React.FC = () => (
   <AbsoluteFill>
     {/* 背景静止，放在动态模糊之外：多重采样叠加大面积渐变会量化出色环 */}
     <Backdrop tone="light" light={{ x: 0.5, y: 0.12 }} grain={0} vignette={0.16} />
-    <CameraMotionBlur shutterAngle={220} samples={12}>
+    <CameraMotionBlur shutterAngle={220} samples={blurSamples(12)}>
       <Scene />
     </CameraMotionBlur>
     <Focus />

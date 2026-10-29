@@ -23,6 +23,7 @@ import { CameraMotionBlur } from '@remotion/motion-blur';
 import { bezier, ramp, mix, EASE, FONT, softShadow } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, springAt } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 export const CRANE_RISE_REVEAL_DURATION = 165; // 特写 hold 24f + 拉升 102f + 落定/余波/hold 39f
 
@@ -316,7 +317,7 @@ export const CraneRiseReveal: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: L.bg[1], overflow: 'hidden' }}>
       {fast ? (
-        <CameraMotionBlur shutterAngle={150} samples={10}>
+        <CameraMotionBlur shutterAngle={150} samples={blurSamples(10)}>
           <Page />
         </CameraMotionBlur>
       ) : (

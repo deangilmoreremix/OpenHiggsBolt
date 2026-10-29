@@ -10,6 +10,7 @@
  */
 import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
+import { isSlowToExport } from './exportCost';
 
 /** Scene cards that tell a product's story from its captured site (no catalog recipe behind them). */
 export const BRAND_SCENES = {
@@ -89,7 +90,7 @@ export function buildCatalogBrief(): string {
   return [...MOTION_TEMPLATES.map(
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
-        isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : ''
+        (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '')
       } | ${t.summaryEn}`,
   ), ...brand].join('\n');
 }
