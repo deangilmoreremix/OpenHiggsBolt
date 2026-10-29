@@ -17,7 +17,7 @@ import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
-import { BRAND_SCENES, isBrandScene, type DirectorPlan } from './directorPlan';
+import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
 
 export interface FilmCapture {
   /** Captured page URLs (1920 CSS px wide, 2x). */
@@ -55,6 +55,9 @@ export interface FilmMusic {
 
 const FPS = 30;
 const FLASH_FRAMES = 10;
+/** Length of each seam card in frames; the cut sits in its middle. */
+const SEAM_FRAMES: Partial<Record<SceneTransition, number>> = { wipe: 16, barn: 16, dip: 14 };
+const WIPE_DIRS = ['right', 'left', 'up', 'down'] as const;
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 const SFX_CUT = 'transition/swoosh-quick';
 const SFX_FLASH = 'impact/impact-transition';
@@ -230,11 +233,19 @@ const INSET_PAGE_H = 1200;
   let featureZooms = 0;
   const videos = opts.videos ?? [];
   const lastIndex = scenes.length - 1;
-  /** A scene change: whoosh on every cut, impact + white flash on flash cuts. */
-  const cut = (flash: boolean) => {
+  /** A scene change: whoosh on every cut, impact + white flash on flash cuts, a panel on wipe / barn-door, a dip to the page colour. */
+  const cut = (kind: SceneTransition, wipeIndex: number) => {
+    const flash = kind === 'flash';
+    const seam = SEAM_FRAMES[kind];
     if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
+    else if (seam) {
+      const color = kind === 'dip' ? palette.background : kind === 'wipe' ? palette.accent : palette.text;
+      const props = kind === 'wipe' ? { color, dir: WIPE_DIRS[wipeIndex % WIPE_DIRS.length] } : { color };
+      flashes.push(clip(`inkpress-seam-${kind}`, Math.max(0, at - Math.round(seam / 2)), seam, props));
+    }
     sfx.push(pinSfx(flash ? SFX_FLASH : SFX_CUT, at, { tailMs: flash ? 900 : 500, volume: 0.6, label: flash ? 'Impact' : 'Whoosh' }));
   };
+  let wipes = 0;
 
   scenes.forEach((scene, i) => {
     // Attached videos play just before the closing scene (or at the end of a one-scene film).
@@ -243,7 +254,7 @@ const INSET_PAGE_H = 1200;
         const frames = Math.round(videoSceneSec(v) * FPS);
         shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
         at += frames;
-        cut(false);
+        cut('cut', 0);
       }
     }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
@@ -321,11 +332,11 @@ const INSET_PAGE_H = 1200;
       }
     }
     at += frames;
-    if (i < lastIndex) cut(scene.transition === 'flash');
+    if (i < lastIndex) cut(scene.transition ?? 'cut', scene.transition === 'wipe' ? wipes++ : 0);
   });
   if (lastIndex === 0) {
     for (const v of videos) {
-      cut(false);
+      cut('cut', 0);
       const frames = Math.round(videoSceneSec(v) * FPS);
       shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
       at += frames;

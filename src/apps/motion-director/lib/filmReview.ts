@@ -38,7 +38,7 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
   items.push({ code: 'S3', ok: cut.length === 0, text: cut.length ? `Cut short before they finish: ${cut.map((x) => `${x.template!.nameEn} at ${sec(x.c.start, fps)}`).join(', ')}.` : 'Every recipe plays its whole motion.' });
 
   // B3: the closing scene holds for at least a second.
-  const visual = clips.filter((c) => !c.cardId.startsWith('audio') && c.cardId !== 'inkpress-caption' && c.cardId !== 'site-inset' && c.cardId !== 'inkpress-flash-cut' && !c.cardId.startsWith('bg-')).sort((a, b) => a.start - b.start);
+  const visual = clips.filter((c) => !c.cardId.startsWith('audio') && c.cardId !== 'inkpress-caption' && c.cardId !== 'site-inset' && !c.cardId.startsWith('inkpress-flash-cut') && !c.cardId.startsWith('inkpress-seam-') && !c.cardId.startsWith('bg-')).sort((a, b) => a.start - b.start);
   const last = visual[visual.length - 1];
   items.push({ code: 'B3', ok: !last || last.duration >= fps, text: last && last.duration < fps ? `The last scene (from ${sec(last.start, fps)}) holds only ${sec(last.duration, fps)}; the name needs at least 1 s.` : 'The film ends on a hold of at least 1 s.' });
 

@@ -23,7 +23,9 @@ export const BRAND_SCENES = {
 export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id in BRAND_SCENES;
 
 export type SceneKind = 'shot' | 'title';
-export type SceneTransition = 'cut' | 'flash';
+/** How a scene hands over to the next: a plain cut, or one of the cards' seam transitions. */
+export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip';
+export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip'];
 
 export interface DirectorScene {
   kind: SceneKind;
@@ -110,7 +112,7 @@ const sceneSchema = {
     durationSec: { type: 'number' },
     headline: { type: 'string' },
     caption: { type: 'string' },
-    transition: { type: 'string', enum: ['cut', 'flash'] },
+    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip'] },
   },
 } as const;
 
@@ -166,7 +168,7 @@ export function validatePlan(raw: unknown, opts: { targetSec: number; maxSceneSe
       durationSec: clamp(dur, PLAN_LIMITS.minSceneSec, maxScene),
       headline,
       caption: text(s.caption, PLAN_LIMITS.captionChars),
-      transition: s.transition === 'flash' ? 'flash' : 'cut',
+      transition: SCENE_TRANSITIONS.includes(s.transition as SceneTransition) ? (s.transition as SceneTransition) : 'cut',
       ...(text(s.feature, 120) ? { feature: text(s.feature, 120) } : {}),
       ...(text(s.action, 120) ? { action: text(s.action, 120) } : {}),
       ...(text(s.asset, 100) ? { asset: text(s.asset, 100) } : {}),

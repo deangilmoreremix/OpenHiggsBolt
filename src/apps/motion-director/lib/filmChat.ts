@@ -18,7 +18,7 @@ import {
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
-import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
+import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type SceneTransition } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -487,6 +487,69 @@ export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<st
   };
   const kept = validatePlan({ ...plan, scenes }, { targetSec: plan.scenes.reduce((sum, s) => sum + s.durationSec, 0), maxSceneSec: 12 });
   return { plan: kept, notes: found.map((f) => `${title(f.recipeId)}: ${f.reason}`) };
+}
+
+/** Caps from the transition cards: wipes / barn-doors ≤ 2, dips ≤ 2, flash cuts ≤ 3 (R4) in one film. */
+const SEAM_CAPS = { panel: 2, dip: 2, flash: 3 } as const;
+const seamGroup = (t: SceneTransition | undefined): 'panel' | 'dip' | 'flash' | null => (t === 'wipe' || t === 'barn' ? 'panel' : t === 'dip' ? 'dip' : t === 'flash' ? 'flash' : null);
+
+/**
+ * Pick the seam transition for each scene change (the cards choose one per seam, frames taken
+ * from the neighbours). The director's own picks stay unless they break a cap; plain cuts between
+ * two shots are then dressed in turn (wipe, barn-door, dip) on every other seam, never next to a
+ * title card (a breathing card is cut to plainly) and always a dip into the closing scene.
+ */
+export function chooseSeams(plan: DirectorPlan): DirectorPlan {
+  const used = { panel: 0, dip: 0, flash: 0 };
+  const last = plan.scenes.length - 1;
+  const seams: SceneTransition[] = plan.scenes.map((scene, i) => {
+    if (i === last) return 'cut';
+    const group = seamGroup(scene.transition);
+    if (group && used[group] < SEAM_CAPS[group]) {
+      used[group]++;
+      return scene.transition!;
+    }
+    return 'cut';
+  });
+  const order: SceneTransition[] = ['wipe', 'dip', 'barn'];
+  let turn = 0;
+  let sinceDressed = 1;
+  plan.scenes.forEach((scene, i) => {
+    if (i === last) return;
+    const next = plan.scenes[i + 1];
+    if (seams[i] !== 'cut') {
+      sinceDressed = 0;
+      return;
+    }
+    if (scene.kind === 'title' || next.kind === 'title') {
+      sinceDressed++;
+      return;
+    }
+    // Into the closing logo: a dip, so the name arrives on a calm frame.
+    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip) {
+      seams[i] = 'dip';
+      used.dip++;
+      sinceDressed = 0;
+      return;
+    }
+    if (sinceDressed < 1) {
+      sinceDressed++;
+      return;
+    }
+    for (let k = 0; k < order.length; k++) {
+      const pick = order[(turn + k) % order.length];
+      const group = seamGroup(pick)!;
+      if (used[group] < SEAM_CAPS[group]) {
+        seams[i] = pick;
+        used[group]++;
+        turn += k + 1;
+        sinceDressed = 0;
+        return;
+      }
+    }
+    sinceDressed++;
+  });
+  return { ...plan, scenes: plan.scenes.map((scene, i) => ({ ...scene, transition: seams[i] })) };
 }
 
 /** Native length of the site scenes (frames of their cards at 30 fps). */
