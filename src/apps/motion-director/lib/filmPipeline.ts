@@ -11,7 +11,8 @@ import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
-import { analyzeBeats } from './beatSync';
+import { analyzeBeats, syncReport } from './beatSync';
+import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
@@ -252,6 +253,11 @@ export async function buildFilmProject(
     brand,
     texts,
   });
+  if (beats.length) {
+    const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);
+    const sync = syncReport(cuts, beats, project.fps);
+    log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)`, 'done');
+  }
   log(`Film built · ${project.tracks.length} tracks`, 'done');
   return { ...project, spec: buildDesignSpec(plan, opts.capture, opts.prompt) };
 }
