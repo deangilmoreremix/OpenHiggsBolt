@@ -17,8 +17,9 @@ export const parseWords = (text: string) =>
     .split(/\s+/)
     .filter(Boolean)
     .map((w) => {
-      const m = w.match(/^\*(.+)\*$/);
-      return m ? { text: m[1], accent: true } : { text: w, accent: false };
+      // `*word*` with punctuation outside the stars ("Meet *Acme*.") still marks the word.
+      const m = w.match(/^([^\w*]*)\*(.+?)\*([^\w*]*)$/);
+      return m ? { text: `${m[1]}${m[2]}${m[3]}`, accent: true } : { text: w.replace(/\*/g, ""), accent: false };
     });
 
 interface Props {

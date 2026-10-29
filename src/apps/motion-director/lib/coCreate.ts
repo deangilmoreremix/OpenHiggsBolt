@@ -5,6 +5,7 @@
  */
 import { MOTION_TEMPLATES, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import type { DirectionOptions, DirectorBrief, DirectorScene, MappingRow, VisualDirection } from './directorPlan';
+import { BRAND_SCENES, isBrandScene } from './directorPlan';
 
 /** "You decide", "surprise me": the person hands the remaining choices to the director. */
 export const YOU_DECIDE_RE = /\b(?:you (?:decide|choose|pick)|your call|decide for me|surprise me|skip (?:the )?(?:questions|confirmations?)|just (?:make|build) it|go ahead and decide)\b/i;
@@ -12,6 +13,7 @@ export const YOU_DECIDE_RE = /\b(?:you (?:decide|choose|pick)|your call|decide f
 export const ACCEPT_RE = /^\W*(?:y|yes|yep|yeah|ok|okay|sure|looks? (?:right|good)|that'?s right|good|great|perfect|accept(?:ed)?|approve[d]?|confirm(?:ed)?|go|go ahead|continue|next|fine|done)\W*$/i;
 
 const shotTitle = (id: string): string => {
+  if (isBrandScene(id)) return BRAND_SCENES[id].title;
   const t = id ? resolveMotionTemplate(id) : undefined;
   return t && MOTION_TEMPLATES.includes(t) ? motionTemplateTitle(t) : id;
 };

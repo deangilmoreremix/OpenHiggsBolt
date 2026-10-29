@@ -6,6 +6,7 @@ import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { sceneDetail } from '../lib/coCreate';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
@@ -295,10 +296,11 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           steps={withVideos(plan.scenes.map((scene, i) => {
             const startSec = plan.scenes.slice(0, i).reduce((sum, sc) => sum + sc.durationSec, 0);
             const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
+            const brandScene = scene.kind === 'shot' && isBrandScene(scene.recipeId) ? BRAND_SCENES[scene.recipeId] : undefined;
             const onSite = Boolean(template && storyboard?.capture && isProductTextureShot(template.componentName));
             return {
               key: `${i}-${scene.recipeId || 'title'}`,
-              label: template ? motionTemplateTitle(template) : 'Title card',
+              label: template ? motionTemplateTitle(template) : brandScene ? brandScene.title : 'Title card',
               detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site'].filter(Boolean).join(' · '),
               media: template ? (
                 <RecipePreview recipe={template} playing={false} />
@@ -307,7 +309,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
                 <div
                   style={{ aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, textAlign: 'center', borderRadius: 8, background: plan.palette.background, color: plan.palette.text, fontWeight: 700, fontSize: 18 }}
                 >
-                  {scene.headline.replace(/\*/g, '') || 'Title card'}
+                  {scene.headline.replace(/\*/g, '') || brandScene?.title || 'Title card'}
                 </div>
               ),
             };

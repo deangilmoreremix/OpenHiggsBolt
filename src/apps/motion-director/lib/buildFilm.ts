@@ -16,7 +16,7 @@ import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
-import type { DirectorPlan } from './directorPlan';
+import { BRAND_SCENES, isBrandScene, type DirectorPlan } from './directorPlan';
 
 export interface FilmCapture {
   /** Captured page URLs (1920 CSS px wide, 2x). */
@@ -30,6 +30,11 @@ export interface FilmCapture {
   pageH?: number;
   /** Section headings, best effort in page order, used as the inset labels. */
   sectionNames?: string[];
+  /** The site's menu entries and calls to action: the nodes of the hub and the closing line. */
+  nav?: string[];
+  ctas?: string[];
+  /** The site's address as typed (host and path). */
+  address?: string;
 }
 
 /** A video the user attached; it plays as its own scene before the closing card. */
@@ -145,6 +150,7 @@ const INSET_PAGE_H = 1200;
   const flashes: ClipData[] = [];
   const sfx: ClipData[] = [];
   let at = 0;
+  let featureZooms = 0;
   const videos = opts.videos ?? [];
   const lastIndex = plan.scenes.length - 1;
   /** A scene change: whoosh on every cut, impact + white flash on flash cuts. */
@@ -153,7 +159,13 @@ const INSET_PAGE_H = 1200;
     sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
   };
 
-  plan.scenes.forEach((scene, i) => {
+  // A film of a captured site closes on the site's logo, call to action and address.
+  const scenes = plan.scenes.map((sc, i) =>
+    opts.brand && opts.capture && sc.kind === 'title' && i === plan.scenes.length - 1 && i > 0
+      ? { ...sc, kind: 'shot' as const, recipeId: 'brand/logo-reveal' }
+      : sc,
+  );
+  scenes.forEach((scene, i) => {
     // Attached videos play just before the closing scene (or at the end of a one-scene film).
     if (i === lastIndex && lastIndex > 0) {
       for (const v of videos) {
@@ -175,6 +187,27 @@ const INSET_PAGE_H = 1200;
           ...(opts.logo ? { logo: opts.logo } : {}),
         }, { label: scene.headline.slice(0, 24) }),
       );
+    } else if (isBrandScene(scene.recipeId)) {
+      const page = screens[0] ?? crops[0] ?? '';
+      const look = { bg: palette.background, ink: palette.text, accent: palette.accent, ...(opts.brand?.font ? { font: opts.brand.font } : {}) };
+      const title = scene.headline.replace(/\*/g, '');
+      const names = [...(opts.capture?.nav ?? []), ...(opts.capture?.sectionNames ?? [])].filter((v, n, all) => v && all.indexOf(v) === n);
+      let props: Record<string, unknown> = look;
+      if (scene.recipeId === 'brand/url-scan') {
+        props = { ...look, file: page, url: opts.capture?.address ?? opts.brand?.repo ?? '', labels: (opts.capture?.sectionNames ?? []).slice(0, 5).join('\n') || 'BRANDING\nPEOPLE\nPRODUCTS\nOFFERS\nSERVICES' };
+      } else if (scene.recipeId === 'brand/hub') {
+        props = { ...look, file: page, title, labels: names.slice(0, 10).join('\n') };
+      } else if (scene.recipeId === 'brand/feature-zoom') {
+        const k = featureZooms++;
+        const ys = opts.capture?.sections ?? [];
+        const pageH = opts.capture?.pageH ?? 0;
+        const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
+        const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
+        props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
+      } else {
+        props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
+      }
+      shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));
     } else {
       const template = resolveMotionTemplate(scene.recipeId);
       const cardId = template ? motionCardId(template) : '';
@@ -202,7 +235,8 @@ const INSET_PAGE_H = 1200;
           clip('site-inset', at, frames, { file: bySection ? screens[0] : insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
         );
       }
-      const line = scene.caption || scene.headline;
+      // `*word*` marks emphasis on the title card only; everywhere else the markers are dropped.
+      const line = (scene.caption || scene.headline).replace(/\*/g, '');
       if (line) {
         captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent }));
       }

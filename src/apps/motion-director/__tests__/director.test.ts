@@ -65,7 +65,7 @@ describe('director plan validation', () => {
 
   it('lists every shot in the catalog brief and flags product-page shots', () => {
     const brief = buildCatalogBrief().split('\n');
-    expect(brief).toHaveLength(MOTION_TEMPLATES.length);
+    expect(brief).toHaveLength(MOTION_TEMPLATES.length + 4); // the shots plus the four brand scenes
     expect(brief.filter((l) => l.includes('PRODUCT-PAGE'))).toHaveLength(PRODUCT_TEXTURE_SHOTS.length);
   });
 });

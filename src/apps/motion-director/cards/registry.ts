@@ -5,6 +5,7 @@ import { captionStripCard } from "./inkpress/caption-strip";
 import { flashCutCard } from "./inkpress/flash-cut";
 import { audioClipCard, imageClipCard, videoClipCard } from "./media-cards";
 import { siteInsetCard } from "./site-inset";
+import { BRAND_SCENE_CARDS } from "./brand-scenes";
 import { BG_CARDS } from "./background-cards";
 import { DEMO_CARDS } from "./demoCards";
 import { PROJECT_CARDS } from "./projectCards";
@@ -29,6 +30,7 @@ const ALL: CardDef[] = [
   videoClipCard,
   imageClipCard,
   siteInsetCard,
+  ...BRAND_SCENE_CARDS,
   ...BG_CARDS,
   ...PROJECT_CARDS,
   ...DEMO_CARDS,
