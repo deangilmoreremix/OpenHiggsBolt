@@ -91,13 +91,15 @@ const clip = (cardId: string, start: number, duration: number, props: Record<str
 });
 
 /**
- * Play a recipe's whole motion inside the scene: speed up or slow down within
- * a range that keeps the shot's tuned timing recognisable, then let it hold.
+ * Play a recipe at its tuned speed (the cards: easing, hold budgets and sound pins are the
+ * quality). A scene longer than the recipe lets it hold; a slightly shorter one plays it up to
+ * 25 % faster; anything shorter is cut.
  */
 const fitSpeed = (card: CardDef, durationFrames: number): number => {
   if (card.timing === 'realtime') return 1;
   const scale = FPS / (card.sourceFps ?? CARD_FPS);
-  return Math.round((clamp(card.durationInFrames / (durationFrames * scale), 0.7, 1.4) / scale) * 100) / 100;
+  const need = card.durationInFrames / (durationFrames * scale);
+  return Math.round((clamp(need, 1, 1.25) / scale) * 100) / 100;
 };
 
 /** Move each scene boundary to the nearest beat within `window` seconds, keeping scenes ≥ `minSec`. */

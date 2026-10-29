@@ -19,6 +19,9 @@ import {
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
 import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
+import { filmRuleViolations } from './shotRules';
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Shots of the Ink Press template, in film order: real pages throughout, launch outro. */
 export const INK_PRESS_SHOTS: readonly string[] = [
@@ -448,66 +451,161 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
 }
 
 /**
- * Picked shots are the film's only recipes — never others — but not its only scenes: the director plans as many
- * scenes as the length needs, and a scene whose recipe was not picked is played with a picked shot instead
- * (picks in turn, keeping that scene's copy, so a pick can play more than once). Every pick plays at least once.
- * The director may frame the film with one opening and one closing title card. Lengths are re-fitted.
+ * Shapes the director's scenes by the upstream method: a technique is the protagonist once (a repeated recipe is
+ * the "same shot twice" the final review rejects), and picked shots are the film's only catalog recipes.
+ *  - Every pick plays once, in the model's order; a scene whose recipe was not picked takes the next unplayed
+ *    pick (keeping that scene's copy). A scene that would repeat a recipe, or has no pick left, becomes one of
+ *    the site's own scenes (hub once, then push-ins on real sections) with the same copy — when the site was
+ *    captured; without a site the repeat is dropped and the remaining shots hold longer.
+ *  - The first and last scene may frame the film (title or brand scene); breathing title cards in the middle
+ *    stay (at most three) while every scene keeps its minimum time.
+ * Lengths are re-fitted.
  */
+/**
+ * Keep a storyboard to the shot cards' rules (lib/shotRules): a recipe once, groups within their
+ * caps, opening / outro recipes where they belong, one look family. A scene that breaks a rule gives
+ * way to one of the site's own scenes with the same copy (a captured site) or is dropped; recipes
+ * the person named stay. Says what it changed.
+ */
+export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<string>; siteScenes?: boolean } = {}): { plan: DirectorPlan; notes: string[] } {
+  const found = filmRuleViolations(plan.scenes, opts.keep);
+  if (!found.length) return { plan, notes: [] };
+  const bad = new Map(found.map((f) => [f.index, f]));
+  let zooms = 0;
+  const scenes: DirectorScene[] = [];
+  plan.scenes.forEach((scene, i) => {
+    if (!bad.has(i)) {
+      scenes.push(scene);
+      return;
+    }
+    if (opts.siteScenes) scenes.push({ ...scene, recipeId: zooms++ === 0 && !plan.scenes.some((x) => x.recipeId === 'brand/hub') ? 'brand/hub' : 'brand/feature-zoom', asset: scene.asset || 'your page' });
+  });
+  if (scenes.length < PLAN_LIMITS.minScenes) return { plan, notes: [] };
+  const title = (id: string) => {
+    const t = resolveMotionTemplate(id);
+    return t ? motionTemplateTitle(t) : id;
+  };
+  const kept = validatePlan({ ...plan, scenes }, { targetSec: plan.scenes.reduce((sum, s) => sum + s.durationSec, 0), maxSceneSec: 12 });
+  return { plan: kept, notes: found.map((f) => `${title(f.recipeId)}: ${f.reason}`) };
+}
+
+/** Native length of the site scenes (frames of their cards at 30 fps). */
+const BRAND_NATIVE_SEC: Record<string, number> = { 'brand/url-scan': 4.3, 'brand/hub': 4, 'brand/feature-zoom': 3, 'brand/logo-reveal': 3 };
+
+/**
+ * Scene lengths from the recipes' native lengths (the cards' tuned timings are the quality, so a
+ * recipe is never sped up to fit): every catalog shot plays its whole motion, title cards keep a
+ * reading time, site scenes their own length. Over the requested length, fillers make way (middle
+ * site scenes, extra title cards, then recipes nobody named, from the end); under it, holds grow
+ * (recipes up to +30 %, cards to 3 s) and the film simply ends a little short of the request.
+ */
+export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: ReadonlySet<string> = new Set()): DirectorPlan {
+  const nativeOf = (s: DirectorScene): number => {
+    if (s.kind === 'title') return clamp(s.durationSec, 1.8, 3);
+    if (isBrandScene(s.recipeId)) return BRAND_NATIVE_SEC[s.recipeId] ?? 3;
+    const t = resolveMotionTemplate(s.recipeId);
+    return t ? Math.max(PLAN_LIMITS.minSceneSec, t.durationSec) : s.durationSec;
+  };
+  const target = clamp(targetSec, PLAN_LIMITS.minFilmSec, PLAN_LIMITS.maxFilmSec);
+  const scenes = plan.scenes.map((s) => ({ ...s, durationSec: nativeOf(s) }));
+  const sum = () => scenes.reduce((n, s) => n + s.durationSec, 0);
+  // Make way, least important first, never the first / last scene and never a named recipe.
+  const rank = (s: DirectorScene) => (isBrandScene(s.recipeId) ? 0 : s.kind === 'title' ? 1 : keep.has(s.recipeId) ? 9 : 2);
+  while (sum() > target + 1 && scenes.length > PLAN_LIMITS.minScenes) {
+    let drop = -1;
+    for (let i = scenes.length - 2; i >= 1; i--) if (rank(scenes[i]) < 9 && (drop < 0 || rank(scenes[i]) < rank(scenes[drop]))) drop = i;
+    if (drop < 0) break;
+    scenes.splice(drop, 1);
+  }
+  const spare = target - sum();
+  if (spare > 0.5) {
+    // Longer holds, shared in proportion to what each can still take.
+    const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * 0.3));
+    const total = room.reduce((n, r) => n + r, 0) || 1;
+    scenes.forEach((s, i) => {
+      s.durationSec += Math.min(room[i], (spare * room[i]) / total);
+    });
+  }
+  return validatePlan({ ...plan, scenes }, { targetSec: sum(), maxSceneSec: 14 });
+}
+
 const isFraming = (s: DirectorScene | undefined): boolean => Boolean(s && (s.kind === 'title' || isBrandScene(s.recipeId)));
 
-export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
-  if (!recipes.length) return plan;
+export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number, opts: { siteScenes?: boolean } = {}): DirectorPlan {
+  const site = Boolean(opts.siteScenes);
+  const picked = recipes.length > 0;
+  if (!picked && !site) return plan;
   const wanted = new Set(recipes.map((r) => r.id));
-  let next = 0;
+  const used = new Set<string>();
+  const brandSeen = new Set<string>();
+  const last = plan.scenes.length - 1;
   const kept: DirectorScene[] = [];
+  let titles = 0;
+  const brandScene = (from: DirectorScene, id: string): DirectorScene => {
+    // The hub and the scan play once; further site scenes are push-ins on a real section.
+    const use = (id === 'brand/hub' || id === 'brand/url-scan') && brandSeen.has(id) ? 'brand/feature-zoom' : id;
+    brandSeen.add(use);
+    return { ...from, kind: 'shot', recipeId: use, caption: from.caption, asset: from.asset || 'your page' };
+  };
   plan.scenes.forEach((scene, i) => {
-    if (scene.kind === 'title' || isBrandScene(scene.recipeId)) {
-      // Only the framing cards (a title or a brand scene): the first and the last scene of the plan.
-      if (i === 0 || i === plan.scenes.length - 1) kept.push(scene);
-    } else {
-      kept.push(wanted.has(scene.recipeId) ? scene : { ...scene, recipeId: recipes[next++ % recipes.length].id });
+    const edge = i === 0 || i === last;
+    if (scene.kind === 'title') {
+      if (edge) kept.push(scene);
+      else if (titles < 3) {
+        titles++;
+        kept.push(scene);
+      }
+      return;
     }
+    if (isBrandScene(scene.recipeId)) {
+      if (edge) {
+        brandSeen.add(scene.recipeId);
+        kept.push(scene);
+      } else if (site && scene.recipeId !== 'brand/logo-reveal') kept.push(brandScene(scene, scene.recipeId));
+      return;
+    }
+    if (picked) {
+      if (wanted.has(scene.recipeId) && !used.has(scene.recipeId)) {
+        used.add(scene.recipeId);
+        kept.push(scene);
+        return;
+      }
+      const free = recipes.find((r) => !used.has(r.id));
+      if (free) {
+        used.add(free.id);
+        kept.push({ ...scene, recipeId: free.id });
+        return;
+      }
+    } else if (!used.has(scene.recipeId)) {
+      used.add(scene.recipeId);
+      kept.push(scene);
+      return;
+    }
+    if (site) kept.push(brandScene(scene, brandSeen.has('brand/hub') ? 'brand/feature-zoom' : 'brand/hub'));
   });
   // A picked shot the plan lost (e.g. the model skipped it) still plays.
-  const missing = recipes.filter((r) => !kept.some((s) => s.recipeId === r.id));
+  const missing = recipes.filter((r) => !used.has(r.id));
   if (missing.length) {
     const lastKept = kept[kept.length - 1];
     const at = lastKept && isFraming(lastKept) && kept.length > 1 ? kept.length - 1 : kept.length;
     kept.splice(at, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
   }
-  // Every scene needs its minimum time: a repeat of a pick is dropped (latest first) when the length cannot hold it.
+  // Every scene needs its minimum time in the requested length: drop fillers (middle title cards, then site scenes), latest first.
   const filmSec = Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec));
-  const cap = Math.max(recipes.length, Math.floor(filmSec / PLAN_LIMITS.minSceneSec) - 2);
-  let count = kept.filter((s) => s.kind === 'shot' && !isBrandScene(s.recipeId)).length;
-  for (let k = kept.length - 1; k >= 0 && count > cap; k--) {
-    if (kept[k].kind === 'shot' && kept.slice(0, k).some((x) => x.recipeId === kept[k].recipeId)) {
-      kept.splice(k, 1);
-      count--;
+  const slots = Math.floor(filmSec / PLAN_LIMITS.minSceneSec);
+  const filler = (k: number) => k > 0 && k < kept.length - 1 && (kept[k].kind === 'title' || isBrandScene(kept[k].recipeId));
+  for (const pass of ['title', 'brand']) {
+    for (let k = kept.length - 1; k >= 0 && kept.length > slots; k--) {
+      if (filler(k) && (pass === 'title' ? kept[k].kind === 'title' : true)) kept.splice(k, 1);
     }
   }
-  const shots = kept.filter((s) => s.kind === 'shot' && !isBrandScene(s.recipeId));
-  // Framing cards are optional: keep one only while every scene still gets its minimum time in the requested length.
-  const room = Math.floor(filmSec / PLAN_LIMITS.minSceneSec) - shots.length;
-  const first = room >= 1 && isFraming(kept[0]) ? kept[0] : null;
-  const lastCard = room >= 2 && kept.length > 1 && isFraming(kept[kept.length - 1]) ? kept[kept.length - 1] : null;
-  const body: DirectorScene[] = [...shots];
-  // One or two picks repeated for the whole length look the same each time: brand scenes (the site as a hub,
-  // a push-in on a real section) sit between the repeats, at most one for every two shots and only as far as
-  // the length leaves every scene its minimum time.
-  if (recipes.length <= 2 && shots.length >= 4) {
-    const model = plan.scenes.filter((s, i) => isBrandScene(s.recipeId) && i !== 0 && i !== plan.scenes.length - 1 && s.recipeId !== 'brand/logo-reveal');
-    const fresh = (id: 'brand/hub' | 'brand/feature-zoom', next: DirectorScene): DirectorScene => ({ kind: 'shot', recipeId: id, durationSec: 3, headline: next.headline, caption: '', transition: 'cut', feature: next.feature, asset: 'your page' });
-    const budget = Math.min(Math.floor(shots.length / 2), Math.max(0, room - (first ? 1 : 0) - (lastCard ? 1 : 0)));
-    let made = 0;
-    for (let at = 2; made < budget && at <= body.length; at += 3, made++) {
-      const next = body[at] ?? body[at - 1];
-      body.splice(at, 0, model[made] ?? fresh(made === 0 ? 'brand/hub' : 'brand/feature-zoom', next));
-    }
-  }
-  const scenes = [...(first ? [first] : []), ...body, ...(lastCard ? [lastCard] : [])];
+  // Framing cards are optional: keep one only while every scene still gets its minimum time.
+  while (kept.length > slots && kept.length > 1 && isFraming(kept[kept.length - 1]) ) kept.pop();
+  while (kept.length > slots && kept.length > 1 && isFraming(kept[0])) kept.shift();
+  const scenes = kept.length ? kept : plan.scenes.slice(0, 1);
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
   }
-  // Few picked shots stretch to the requested length instead of stopping at the usual per-scene cap.
+  // Few scenes stretch to the requested length instead of stopping at the usual per-scene cap.
   return validatePlan({ ...plan, scenes }, { targetSec, maxSceneSec: Math.ceil(filmSec / scenes.length) });
 }
