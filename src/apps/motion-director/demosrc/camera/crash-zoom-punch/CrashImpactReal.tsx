@@ -26,6 +26,7 @@ import layout from '../../_textures/live-layout.json';
 import { EASE, Grain, Vignette, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 export const CRASHIMPACT_DUR = 126;
 
@@ -209,7 +210,7 @@ const Readout: React.FC<{ frame: number; at: number; label: string; children: Re
 export const CrashImpactReal: React.FC = () => {
   const frame = useCurrentFrame();
   const { sx, sy, rot } = shakeAt(frame);
-  const n = frame >= PUSH && frame <= HIT ? Math.max(1, Math.min(36, Math.ceil(edgeAt(frame) / 8))) : 1;
+  const n = frame >= PUSH && frame <= HIT ? blurSamples(Math.max(1, Math.min(36, Math.ceil(edgeAt(frame) / 8)))) : 1;
   const smear = n > 1 ? Math.min(4, (edgeAt(frame) / n) * 0.5 * Math.min(1, Math.max(0, (edgeAt(frame) - 60) / 200))) : 0;
   const wide = 1 - ramp(frame, PUSH, HIT - PUSH, EASE.exit);
   const vig = frame < HIT ? 0.35 + 0.25 * ramp(frame, PUSH, HIT - PUSH, EASE.exit) : mix(0.75, 0.4, ramp(frame, HIT, 16, EASE.out));

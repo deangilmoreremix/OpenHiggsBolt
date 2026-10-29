@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { FakeDashboard, Card, G } from '../../_fixtures/Fixtures';
 import { EASE, Vignette, bezier, mix, ramp } from '../../_fixtures/Polish';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 // anime-impact 动漫打击帧〔组合〕：crash-zoom 急推撞停在目标卡上的那 3 帧，
 // 整幅画面反转成黑白负片 + 手绘放射集中线 + 红青通道 ±8px 色散——
@@ -120,7 +121,7 @@ const blurAt = (f: number) => {
   if (f <= ZOOM_START || f >= ZOOM_END) return { n: 1, sd: 0 };
   const a = camAt(f), b = camAt(f - SHUTTER);
   const edge = Math.abs(a.scale - b.scale) * 900 + Math.abs(a.p - b.p) * 160; // 画框边缘处位移 px
-  const n = Math.max(1, Math.min(12, Math.ceil(edge / 10)));
+  const n = blurSamples(Math.max(1, Math.min(12, Math.ceil(edge / 10))));
   return { n, sd: n > 1 ? Math.min(6, (edge / (n - 1)) * 0.45) : 0 };
 };
 

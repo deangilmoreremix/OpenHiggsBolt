@@ -28,6 +28,7 @@ import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { EASE, FONT, bezier, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, SERIF, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 export const BASIC_3D_SCENE_DURATION = 225; // 7.5s @30fps
 
@@ -228,7 +229,7 @@ const samplesAt = (f: number) => {
   const a = camAt(f).cam, b = camAt(f - SHUTTER).cam;
   const disp = Math.hypot(a.x - b.x, a.y - b.y) / a.s + Math.abs(a.z - b.z) * 0.4
     + (Math.abs(a.ry - b.ry) + Math.abs(a.rz - b.rz)) * 14 + Math.abs(Math.log(a.s / b.s)) * 1400;
-  return Math.max(1, Math.min(8, Math.ceil(disp / 5)));
+  return blurSamples(Math.max(1, Math.min(8, Math.ceil(disp / 5))));
 };
 
 export const Basic3DScene: React.FC = () => {

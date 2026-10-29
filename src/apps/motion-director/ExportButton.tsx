@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from './i18n';
 import { useStore } from './store';
+import { estimateExportSec } from './lib/exportCost';
 import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
 type JobState = {
@@ -27,6 +28,9 @@ const ExportButton: React.FC = () => {
   const t = useT();
   const [job, setJob] = useState<JobState | null>(null);
   const [withoutMusic, setWithoutMusic] = useState(false);
+  // Draft renders the same frames at 720p: about a third less work per frame.
+  const [draft, setDraft] = useState(false);
+  const filmProject = useStore((s) => s.project);
   const abortControllerRef = useRef<AbortController | null>(null);
   /** Set synchronously on start, so a second request during the capability check is ignored. */
   const inFlightRef = useRef(false);
@@ -89,6 +93,7 @@ const ExportButton: React.FC = () => {
         project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
         videoCodec: canRenderResult.videoCodec,
         audioCodec: canRenderResult.audioCodec,
+        scale: draft ? 2 / 3 : 1,
         onProgress: (progress, info) => {
           if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
             setJob((prev) => (prev ? { ...prev, progress, etaMs: info?.etaMs ?? null, status: 'running' } : null));
@@ -205,6 +210,8 @@ const ExportButton: React.FC = () => {
       </button>
     );
   }
+  // A ranking of how heavy the film's shots are to draw, scaled to the draft size when chosen.
+  const estimateMin = Math.max(1, Math.round((estimateExportSec(filmProject) * (draft ? 0.67 : 1)) / 60));
   return (
     <div className="flex items-center gap-2">
       <button className="btn primary" title={t('export.title')} onClick={start}>
@@ -219,6 +226,13 @@ const ExportButton: React.FC = () => {
         />
         {t('export.withoutMusic')}
       </label>
+      <label className="flex items-center gap-1.5 text-xs text-white/70 cursor-pointer select-none" title={t('export.draftHint')}>
+        <input type="checkbox" checked={draft} onChange={(e) => setDraft(e.target.checked)} aria-label={t('export.draft')} data-testid="export-draft" />
+        {t('export.draft')}
+      </label>
+      <span className="text-xs text-white/50" title={t('export.estimateHint')} data-testid="export-estimate">
+        ~{estimateMin} min
+      </span>
     </div>
   );
 };

@@ -13,6 +13,7 @@ import type {
 import type { ProjectData } from './types';
 import { MainComposition } from './preview/Composition';
 import { projectEndFrame } from './types';
+import { setExportMode } from './demosrc/_fixtures/ExportMode';
 
 type RenderOptions = {
   project: ProjectData;
@@ -26,6 +27,8 @@ type RenderOptions = {
   transparent?: boolean;
   scale?: number;
   licenseKey?: string;
+  /** Speed knobs of the web renderer (see the experiments in the export notes). */
+  tuning?: Partial<Pick<RenderMediaOnWebOptions<any, any>, 'hardwareAcceleration' | 'pageResponsiveness' | 'keyframeIntervalInSeconds' | 'videoBitrate' | 'mediaCacheSizeInBytes'>>;
 };
 
 type CanRenderResult = {
@@ -80,6 +83,30 @@ export const canRenderVideo = async (opts: {
 };
 
 /**
+ * How hard the encoder and the page work. A real machine usually has a hardware H.264
+ * encoder, which is several times faster than software; headless / sandboxed browsers
+ * do not, and asking them for one can stall, so it is probed (with a time limit) and the
+ * software encoder is the fallback. Cached for the page's life.
+ */
+let encoderTuning: Promise<NonNullable<RenderOptions['tuning']>> | null = null;
+export const pickEncoderTuning = (size: { width: number; height: number }): Promise<NonNullable<RenderOptions['tuning']>> => {
+  encoderTuning ??= (async () => {
+    const base = { pageResponsiveness: 'low', keyframeIntervalInSeconds: 2, videoBitrate: 'high' } as const;
+    try {
+      const Encoder = (globalThis as unknown as { VideoEncoder?: { isConfigSupported: (c: object) => Promise<{ supported?: boolean }> } }).VideoEncoder;
+      if (!Encoder) return { ...base, hardwareAcceleration: 'prefer-software' };
+      const probe = Encoder.isConfigSupported({ codec: 'avc1.640028', width: size.width, height: size.height, bitrate: 8_000_000, framerate: 30, hardwareAcceleration: 'prefer-hardware' });
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const res = await Promise.race([probe, timeout]);
+      return { ...base, hardwareAcceleration: res?.supported ? 'prefer-hardware' : 'prefer-software' };
+    } catch {
+      return { ...base, hardwareAcceleration: 'prefer-software' };
+    }
+  })();
+  return encoderTuning;
+};
+
+/**
  * Render a Motion Studio composition to an MP4 Blob entirely in the browser.
  * Uses the Remotion Web Renderer — no server-side rendering required.
  */
@@ -104,6 +131,7 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
     defaultProps: inputProps,
   };
 
+  const tuning = { ...(await pickEncoderTuning({ width: Math.round(width * (opts.scale ?? 1)), height: Math.round(height * (opts.scale ?? 1)) })), ...opts.tuning };
   const renderOpts: RenderMediaOnWebOptions<any, any> = {
     composition,
     // CRITICAL: The Remotion Web Renderer drives the component with the
@@ -128,11 +156,10 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
     transparent,
     scale: opts.scale ?? 1,
     signal,
-    // Force software encoding by default. Hardware encoders are unavailable
-    // in headless / sandboxed browsers (including Chromium Headless Shell
-    // used by Playwright), so prefer-software ensures the render completes
-    // on every supported browser instead of hanging on `isConfigSupported`.
-    hardwareAcceleration: 'prefer-software',
+    // Encoder, yielding and bitrate come from `pickEncoderTuning`: hardware H.264 when the
+    // browser has it, software otherwise (headless / sandboxed browsers, incl. Chromium
+    // Headless Shell, have none and can hang on a hardware request).
+    ...tuning,
     // Safety net: if any registered card calls delayRender() and never
     // resolves (e.g. a remote asset that 404s, a card waiting on a
     // condition that never fires in this environment), the render will
@@ -173,7 +200,14 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
     }),
   );
 
-  const result = await renderMediaOnWeb(renderOpts);
+  // Motion-blur recipes draw their world many times a frame; while exporting they draw far fewer.
+  setExportMode(true);
+  let result;
+  try {
+    result = await renderMediaOnWeb(renderOpts);
+  } finally {
+    setExportMode(false);
+  }
 
   console.log('[motion-studio:export] encoding finished, awaiting blob');
 

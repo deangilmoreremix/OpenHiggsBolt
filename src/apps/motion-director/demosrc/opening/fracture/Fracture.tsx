@@ -17,6 +17,7 @@ import { CameraMotionBlur } from '@remotion/motion-blur';
 import { DesignStage, E, rand, seg, useT } from '../../_fixtures/Motion';
 import { bezier, Backdrop, FONT, Grain } from '../../_fixtures/Polish';
 import { MotionStudioWordmark } from '../../_fixtures/Brand';
+import { blurSamples } from '../../_fixtures/ExportMode';
 
 export const FRACTURE_DURATION = 156; // 5200ms @30fps
 
@@ -188,7 +189,7 @@ export const Fracture: React.FC = () => {
   return (
     <AbsoluteFill>
       {flying ? (
-        <CameraMotionBlur shutterAngle={170} samples={8}>
+        <CameraMotionBlur shutterAngle={170} samples={blurSamples(8)}>
           <Scene />
         </CameraMotionBlur>
       ) : (
