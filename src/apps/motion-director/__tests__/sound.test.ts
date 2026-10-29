@@ -53,4 +53,19 @@ describe('sound design', () => {
     expect(OUTPUT_AUDIO_OFFSET_F).toBeGreaterThan(1);
     expect(OUTPUT_AUDIO_OFFSET_F).toBeLessThan(2);
   });
+
+  it('closes with a build that swells in and ends before the impact, then the shimmer', () => {
+    const clips = sfxClips();
+    const build = clips.find((c) => c.label === 'Build');
+    const impact = clips.find((c) => c.label === 'Impact' && /deep-whoosh/.test(String(c.props.file)));
+    const spark = clips.find((c) => c.label === 'Sparkle');
+    expect(build && impact && spark).toBeTruthy();
+    expect(build!.speed).toBeCloseTo(0.65);
+    expect(build!.props.fadeInFrames).toBeGreaterThan(20);
+    // The build ends where the impact's peak lands (its clip starts earlier by the file's peak lag).
+    const peakAt = impact!.start + Math.round(((SFX_PEAKS['impact/impact-deep-whoosh']?.peakMs ?? 0) / 1000) * 30) + Math.round(OUTPUT_AUDIO_OFFSET_F);
+    expect(build!.start + build!.duration).toBeLessThanOrEqual(peakAt + 2);
+    expect(build!.start + build!.duration).toBeGreaterThanOrEqual(peakAt - 4);
+    expect(spark!.start).toBeGreaterThan(impact!.start);
+  });
 });

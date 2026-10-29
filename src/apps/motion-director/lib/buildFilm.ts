@@ -84,6 +84,18 @@ const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: 
   const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
   return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: o.volume ?? 0.6 }, { label: o.label, inOffset: trim });
 };
+/** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
+const LOGO_IMPACT_F = 12;
+/**
+ * The ending's build (sound-design 4.3: riser → ~35 f → impact → ~25 f → sparkle). The licensed
+ * riser is not in the library, so a big whoosh slowed to 0.65× swells in under 35 frames and
+ * ends on the impact.
+ */
+const riserBuild = (impactFrame: number): ClipData => {
+  const frames = 35;
+  const start = Math.max(0, impactFrame - frames - Math.round(OUTPUT_AUDIO_OFFSET_F));
+  return clip('audio-clip', start, Math.min(frames, impactFrame - start), { file: sfxFile('transition/whoosh-big'), volume: 0.55, fadeInFrames: 28 }, { label: 'Build', speed: 0.65 });
+};
 /** Sound cues of each brand scene: [file, peak frame after the scene starts, tail after the peak (ms), volume, label]. Typing is a run of single key hits. */
 type Cue = readonly [string, number, number, number, string];
 const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {
@@ -91,7 +103,7 @@ const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {
   'brand/hub': [['light/light-sweep-magic', 14, 900, 0.45, 'Sweep']],
   'brand/feature-zoom': [['camera/zoom-air-fast', 14, 700, 0.45, 'Push-in']],
   // Closing phrase (sound-design 4.3): a build, the hit on the logo, then the shimmer.
-  'brand/logo-reveal': [['transition/whoosh-big', 4, 500, 0.5, 'Build'], ['impact/impact-deep-whoosh', 12, 1400, 0.7, 'Impact'], ['light/stardust-swish', 38, 1200, 0.5, 'Sparkle']],
+  'brand/logo-reveal': [['impact/impact-deep-whoosh', 12, 1400, 0.7, 'Impact'], ['light/stardust-swish', 38, 1200, 0.5, 'Sparkle']],
 };
 /** Key hits under a typed address: two different samples alternate and the level steps down (sound-design 4.2). */
 const typingCues = (chars: number): Cue[] =>
@@ -295,6 +307,7 @@ const INSET_PAGE_H = 1200;
       for (const [file, peak, tail, volume, label] of cues) {
         if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label }));
       }
+      if (scene.recipeId === 'brand/logo-reveal') sfx.push(riserBuild(at + LOGO_IMPACT_F));
       shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));
     } else {
       const template = resolveMotionTemplate(scene.recipeId);
