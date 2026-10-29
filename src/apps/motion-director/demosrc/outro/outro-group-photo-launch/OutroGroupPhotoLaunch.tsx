@@ -19,7 +19,7 @@ import { liveTexture } from '../../_fixtures/liveTexture';
 export const OUTRO_GROUP_PHOTO_LAUNCH_DURATION = 145;
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
-const LETTERS = BRAND.name.split('');
+const LETTERS = () => BRAND.name.split('');
 const PAGE_H = layout.projects.pageH;
 const WBR_PAGE_H = layout.wbr.pageH;
 
@@ -301,7 +301,7 @@ export const OutroGroupPhotoLaunch: React.FC = () => {
                 </div>
               );
             })()}
-            {LETTERS.map((ch, i) => {
+            {LETTERS().map((ch, i) => {
               const delay = Math.round(42 + i * 1.8);
               const t = interpolate(frame, [delay, delay + 8], [0, 1], {
                 extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.2, 0.75, 0.3, 1),

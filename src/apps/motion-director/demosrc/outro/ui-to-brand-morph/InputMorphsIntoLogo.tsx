@@ -46,8 +46,8 @@ const L: Look = {
   shadow: '#1a2030',
 };
 const COBALT = '#2446ff';
-const MARK_INK = BRAND.ink; // 标志顶层菱形（亮底用墨色版）
-const MARK_CUT = BRAND.amber; // 下层两层：品牌强调青，不换色
+const MARK_INK = () => BRAND.ink; // 标志顶层菱形（亮底用墨色版）
+const MARK_CUT = () => BRAND.amber; // 下层两层：品牌强调青，不换色
 
 // —— 关键帧
 const CLICK = 20;
@@ -69,9 +69,9 @@ const STEM = { x: 0, y: 0, w: 2.5 * U, h: 10 * U };
 // 两半三角形各盖住中缝一格（同色叠合）：拼缝处不出抗锯齿发丝 / 台阶；每块自带 svg 视框与路径
 type Piece = { x: number; y: number; w: number; h: number; color: string; vb: string; d: string };
 const PIECES: Piece[] = [
-  { x: -5 * U, y: -5 * U, w: 10 * U, h: 10 * U, color: MARK_INK, vb: '2 2 10 10', d: 'M12 2L2 7L12 12Z' }, // 菱形左半
-  { x: 5 * U, y: -5 * U, w: 10 * U, h: 10 * U, color: MARK_INK, vb: '12 2 10 10', d: 'M12 2L22 7L12 12Z' }, // 菱形右半
-  { x: 0, y: 5 * U, w: 20 * U, h: 10 * U, color: MARK_CUT, vb: '2 12 20 10', d: 'M2 17l10 5 10-5ZM2 12l10 5 10-5Z' }, // 下层两层
+  { x: -5 * U, y: -5 * U, w: 10 * U, h: 10 * U, color: MARK_INK(), vb: '2 2 10 10', d: 'M12 2L2 7L12 12Z' }, // 菱形左半
+  { x: 5 * U, y: -5 * U, w: 10 * U, h: 10 * U, color: MARK_INK(), vb: '12 2 10 10', d: 'M12 2L22 7L12 12Z' }, // 菱形右半
+  { x: 0, y: 5 * U, w: 20 * U, h: 10 * U, color: MARK_CUT(), vb: '2 12 20 10', d: 'M2 17l10 5 10-5ZM2 12l10 5 10-5Z' }, // 下层两层
 ];
 // 频道里最近两条消息（上下文）
 const THREAD = [
@@ -211,7 +211,7 @@ export const InputMorphsIntoLogo: React.FC = () => {
         {!assembled && <div style={{
           position: 'absolute', left: bx - bw / 2, top: by - bh / 2, width: bw, height: bh, borderRadius: br,
           boxSizing: 'border-box', overflow: 'hidden',
-          background: flood >= 1 ? MARK_INK : '#ffffff', // 灌满后底色也换墨：竖条边缘不带白边，与两半拼合无发丝缝
+          background: flood >= 1 ? MARK_INK() : '#ffffff', // 灌满后底色也换墨：竖条边缘不带白边，与两半拼合无发丝缝
           boxShadow: `0 0 0 ${(3 * (1 - fill)).toFixed(2)}px ${alpha(COBALT, 0.9 * (1 - fill))}, 0 0 0 ${(9 * (1 - fill)).toFixed(2)}px ${alpha(COBALT, 0.12 * (1 - fill))}, ` +
             `0 2px 4px ${alpha(L.shadow, 0.06 * flat)}, 0 ${mix(24, 18, m).toFixed(1)}px ${mix(50, 36, m).toFixed(1)}px -18px ${alpha(L.shadow, 0.3 * flat)}`,
           filter: mBlur > 0.3 ? `blur(${mBlur.toFixed(2)}px)` : undefined,
@@ -221,7 +221,7 @@ export const InputMorphsIntoLogo: React.FC = () => {
           {flood < 1 && <div style={{
             position: 'absolute', inset: 0,
             clipPath: flood >= 1 ? undefined : `circle(${(flood * Math.hypot(bw, bh)).toFixed(1)}px at ${(bw - 66 * (1 - m)).toFixed(1)}px ${(bh / 2).toFixed(1)}px)`,
-            background: MARK_INK,
+            background: MARK_INK(),
           }} />}
           {/* 工具图标（纹理级，morph 即退） */}
           <div style={{ position: 'absolute', right: 132, top: 0, height: BOX.h, display: 'flex', alignItems: 'center', gap: 22, opacity: 1 - uiOut }}>
@@ -264,8 +264,8 @@ export const InputMorphsIntoLogo: React.FC = () => {
         {assembled && (
           <svg width={24 * U * S} height={24 * U * S} viewBox="0 0 24 24"
             style={{ position: 'absolute', left: MX - 12 * U * S, top: MY - 12 * U * S, overflow: 'visible' }}>
-            <path d={MARK_PATHS.frame} fill={MARK_INK} />
-            <path d={MARK_PATHS.cut} fill={MARK_CUT} />
+            <path d={MARK_PATHS.frame} fill={MARK_INK()} />
+            <path d={MARK_PATHS.cut} fill={MARK_CUT()} />
           </svg>
         )}
         {PIECES.map((p, i) => {
@@ -298,7 +298,7 @@ export const InputMorphsIntoLogo: React.FC = () => {
         {/* 字标起点 = 标志右缘（x=22）+ 60px，随 mark 位置 / 比例走 */}
         <div style={{
           position: 'absolute', left: MX + (22 - 12) * U * S + 60, top: MY - 4, transform: 'translateY(-50%)',
-          fontFamily: BRAND.font, fontSize: 110, fontWeight: 700, lineHeight: 1, letterSpacing: '0.03em', color: MARK_INK, whiteSpace: 'nowrap',
+          fontFamily: BRAND.font, fontSize: 110, fontWeight: 700, lineHeight: 1, letterSpacing: '0.03em', color: MARK_INK(), whiteSpace: 'nowrap',
         }}>
           <TextReveal text={BRAND.name} by="char" variant="rise" start={WORD} each={16} gap={1.5} ease={EASE.snappy} />
         </div>

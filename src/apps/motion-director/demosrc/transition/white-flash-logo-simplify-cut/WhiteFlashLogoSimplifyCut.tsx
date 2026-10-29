@@ -31,7 +31,7 @@ import { BRAND, PITCH, MotionStudioMark } from '../../_fixtures/Brand';
 export const WHITE_FLASH_LOGO_SIMPLIFY_CUT_DURATION = 120;
 
 const L = LOOKS.aurora;
-const WORD = BRAND.name; // 品牌字标
+const WORD = () => BRAND.name; // 品牌字标
 const FS = 190; // 15 字符的字标按画宽压字号（原 4 字母占位字标是 300）
 const CY = 500; // 词标中心 y
 const FLASH0 = 44;
@@ -40,8 +40,8 @@ const RECOVER = 54;
 
 // 扁平版的三个颜色：纸面 / 墨 / 强调色（换品牌时只改这三个）——SmartVideo GO：剪辑纸 / 片场墨 / 品牌青
 const PAPER: [string, string] = ['#f7f5f0', '#ebe7de'];
-const FLAT_INK: string = BRAND.ink;
-const FLAT_ACCENT: string = BRAND.amber;
+const FLAT_INK = (): string => BRAND.ink;
+const FLAT_ACCENT = (): string => BRAND.amber;
 const MARK = 124; // 锁定段字标上方的Motion Studio 标志尺寸
 
 const wordStyle: React.CSSProperties = {
@@ -50,10 +50,11 @@ const wordStyle: React.CSSProperties = {
 
 // 字标文本：原「ft」处 f 后不加字距，让两道横笔重叠——+0.03em 字距下两道横笔恰好相接，
 // 大字号时接缝会露出一条抗锯齿亮线；SmartVideo GO 里没有 f，直接整串渲染
-const FT_AT = WORD.lastIndexOf('f');
-const wordText = FT_AT < 0 ? WORD : (
-  <>{WORD.slice(0, FT_AT)}<span style={{ letterSpacing: 0 }}>f</span>{WORD.slice(FT_AT + 1)}</>
-);
+const wordText = () => {
+  const w = WORD();
+  const at = w.lastIndexOf('f');
+  return at < 0 ? w : <>{w.slice(0, at)}<span style={{ letterSpacing: 0 }}>f</span>{w.slice(at + 1)}</>;
+};
 
 const IRIS = 'linear-gradient(100deg, #7c6bff 0%, #b18cff 16%, #f472b6 32%, #ffc6a8 46%, #8fdcff 62%, #7c6bff 78%, #c58cff 90%, #7c6bff 100%)';
 
@@ -86,7 +87,7 @@ const LiquidWord: React.FC<{ frame: number; bright: number }> = ({ frame, bright
       WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
       filter: bright > 1.001 ? `brightness(${bright.toFixed(3)}) saturate(${(1 / Math.sqrt(bright)).toFixed(3)})` : undefined,
       paddingBottom: 20,
-    }}>{wordText}</span>
+    }}>{wordText()}</span>
   );
 };
 
@@ -130,7 +131,7 @@ export const WhiteFlashLogoSimplifyCut: React.FC = () => {
           <div style={{ position: 'absolute', inset: 0, transform: `scale(${push.toFixed(5)})`, transformOrigin: `50% ${CY}px` }}>
             {/* bloom：同色模糊副本 */}
             <div style={{ ...centered(CY), opacity: 0.42 + 0.4 * charge, filter: 'blur(38px)' }}>
-              <span style={{ ...wordStyle, backgroundImage: IRIS, backgroundSize: '300% 100%', backgroundPosition: `${(frame * 1.1) % 300}% 0`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{wordText}</span>
+              <span style={{ ...wordStyle, backgroundImage: IRIS, backgroundSize: '300% 100%', backgroundPosition: `${(frame * 1.1) % 300}% 0`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{wordText()}</span>
             </div>
             {/* 地面倒影：翻转 + 渐隐 */}
             <div style={{
@@ -172,7 +173,7 @@ export const WhiteFlashLogoSimplifyCut: React.FC = () => {
           <Vignette strength={0.1} inner={0.5} color="#2a2620" />
           <div style={{ position: 'absolute', inset: 0, transform: `scale(${flatScale.toFixed(5)})`, transformOrigin: `50% ${CY}px` }}>
             <div style={centered(CY)}>
-              <span style={{ ...wordStyle, color: FLAT_INK, paddingBottom: 20 }}>{wordText}</span>
+              <span style={{ ...wordStyle, color: FLAT_INK(), paddingBottom: 20 }}>{wordText()}</span>
             </div>
             {/* 锁定：Motion Studio 标志（整标揭开 → 下层划入）+ 青色短线 + 品牌短句 */}
             <div style={{ position: 'absolute', left: 960 - MARK / 2, top: CY - FS * 0.5 - 44 - MARK }}>
@@ -180,7 +181,7 @@ export const WhiteFlashLogoSimplifyCut: React.FC = () => {
             </div>
             <div style={{
               position: 'absolute', left: 960 - 48, top: CY + FS * 0.5 + 62, width: 96, height: 5, borderRadius: 3,
-              background: FLAT_ACCENT, transform: `scaleX(${rule.toFixed(4)})`,
+              background: FLAT_ACCENT(), transform: `scaleX(${rule.toFixed(4)})`,
             }} />
             <div style={{ position: 'absolute', left: 0, right: 0, top: CY + FS * 0.5 + 106, textAlign: 'center', color: '#716d64', ...type(46, 480) }}>
               <TextReveal text={PITCH.en.motto} by="word" variant="rise" start={78} each={18} gap={4} />

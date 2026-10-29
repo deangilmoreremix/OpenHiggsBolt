@@ -26,14 +26,14 @@ const h = (n: number) => {
   return s - Math.floor(s);
 };
 
-const WORD = BRAND.short; // 'Motion Studio'——片头式亮相落在品牌名上
+const WORD = () => BRAND.short; // 'Motion Studio'——片头式亮相落在品牌名上
 const TRAVEL = 45; // 每字漂入行程帧数
 const STAG = 3; // 错峰间隔
 const INK = [23, 24, 28]; // G.ink1 #17181c
 
 export const LetterformDriftAssembly: React.FC = () => {
   const frame = useCurrentFrame();
-  const chars = WORD.split('');
+  const chars = WORD().split('');
   const lastLock = (chars.length - 1) * STAG + TRAVEL; // 69
 
   // 整词收束呼吸：80–92 放大到 1.04，92–104 回落，之后恒 1 → 帧确定

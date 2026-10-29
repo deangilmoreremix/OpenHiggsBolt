@@ -1,3 +1,5 @@
+import type { BrandInput } from './demosrc/_fixtures/Brand';
+
 /** 工程数据模型：Project → Track → Clip。所有时间量以时间轴帧为单位（默认 30fps）。 */
 
 export interface ClipData {
@@ -43,6 +45,8 @@ export interface ProjectData {
   background?: string;
   /** 由哪个成片清单导入（清单 name + total）——`?import=project` 用它判断是否需要重新导入 */
   source?: string;
+  /** Company identity the recipe demos speak with (absent = the studio's own SmartVideo GO). */
+  brand?: BrandInput;
   tracks: TrackData[];
 }
 

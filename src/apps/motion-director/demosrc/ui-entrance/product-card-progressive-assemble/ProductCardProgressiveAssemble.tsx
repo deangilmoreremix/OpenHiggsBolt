@@ -120,7 +120,7 @@ const LINES: [string, boolean?][][] = [
   [['cut to the beat, rendered in Remotion.']],
 ];
 // 色卡 = 品牌四色（成片 look 可选）
-const SWATCHES: [string, string][] = [[BRAND.ink, 'Ink'], [BRAND.paper, 'Paper'], [BRAND.amber, 'Accent'], [BRAND.slate, 'Slate']];
+const SWATCHES = (): [string, string][] => [[BRAND.ink, 'Ink'], [BRAND.paper, 'Paper'], [BRAND.amber, 'Accent'], [BRAND.slate, 'Slate']];
 
 export const ProductCardProgressiveAssemble: React.FC = () => {
   const frame = useCurrentFrame();
@@ -254,7 +254,7 @@ export const ProductCardProgressiveAssemble: React.FC = () => {
 
         {/* 色卡：四枚 pop + 色名 */}
         <div style={{ position: 'absolute', left: COL, top: F.swatch.box.y, height: 56, display: 'flex', alignItems: 'center', gap: 16 }}>
-          {SWATCHES.map(([c], i) => (
+          {SWATCHES().map(([c], i) => (
             <div key={c} style={{
               width: 52, height: 52, borderRadius: 26, marginRight: i === 0 ? 4 : 0,
               background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%), ${c}`,

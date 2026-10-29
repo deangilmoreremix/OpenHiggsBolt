@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Player } from '@remotion/player';
+import { setBrand } from '../demosrc/_fixtures/Brand';
 import { CARDS } from '../cards/registry';
 import { cardFps, cardSize } from '../cards/types';
 import { themedProps } from '../theme';
@@ -23,6 +24,8 @@ export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; pla
   const card = CARDS[motionCardId(recipe)];
   const [posterBroken, setPosterBroken] = useState(false);
   const live = playing && card && card.kind !== 'audio';
+  // Picker previews always show the recipe as designed, never a company film's brand.
+  if (live) setBrand(null);
 
   return (
     <div

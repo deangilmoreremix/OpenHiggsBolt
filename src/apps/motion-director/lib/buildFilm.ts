@@ -12,6 +12,7 @@ import { CARDS } from '../cards/registry';
 import { CARD_FPS, type CardDef } from '../cards/types';
 import type { AspectRatio } from '../projectContract';
 import { t } from '../i18n';
+import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
@@ -124,6 +125,8 @@ export function planToProject(
     /** Brand Kit logo, stamped on the title / call-to-action cards. */
     logo?: string | null;
     videos?: FilmVideo[];
+    /** The company the film is for: the recipe demos speak with its name, colours, font, logo and words instead of SmartVideo GO. */
+    brand?: BrandInput | null;
   },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
@@ -240,6 +243,7 @@ const INSET_PAGE_H = 1200;
     width,
     height,
     background: palette.background,
+    ...(opts.brand ? { brand: opts.brand } : {}),
     tracks: tracks.filter((track) => track.clips.length > 0 || track.name === t('track.shots')),
   };
 }

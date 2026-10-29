@@ -9,8 +9,25 @@
 // glyph itself, accent cyan #22d3ee / purple #a855f7 are the only accent colours.
 // Pure props function, depends on react only; copy demos together with this file and fix the import path.
 import React from 'react';
+import { Img } from 'remotion';
 
-export const BRAND = {
+/** The brand the demos draw. Defaults to SmartVideo GO (the studio's own demos); a company film sets its own with `setBrand`. */
+export interface BrandTokens {
+  name: string;
+  short: string;
+  repo: string;
+  accent: string;
+  accent2: string;
+  amber: string;
+  ink: string;
+  paper: string;
+  slate: string;
+  font: string;
+  /** The company's logo image (URL); the mark draws it instead of the SmartVideo glyph. */
+  logo: string | null;
+}
+
+const DEFAULT_BRAND: Readonly<BrandTokens> = {
   name: 'SmartVideo GO', // formal product name
   short: 'Motion Studio', // short name in prose / tight spaces
   repo: 'github.com/deangilmoreremix/OpenHiggsBolt', // rendered by demo browser chrome
@@ -21,7 +38,11 @@ export const BRAND = {
   paper: '#ffffff', // wordmark / mark on dark grounds
   slate: '#a1a1aa', // secondary text on dark
   font: '"Inter", Inter, -apple-system, "Helvetica Neue", "PingFang SC", Arial, sans-serif', // wordmark font
-} as const;
+  logo: null,
+};
+
+/** Read by the demos while they render. Mutated by `setBrand` (a composition sets it before its clips render). */
+export const BRAND: BrandTokens = { ...DEFAULT_BRAND };
 
 // The two path segments of the mark (viewBox 0 0 24 24): frame = the top stacked layer,
 // cut = the two lower layers. Exported separately so each can animate on its own
@@ -42,6 +63,21 @@ export const MotionStudioMark: React.FC<{
   const id = React.useId().replace(/[^a-zA-Z0-9]/g, '');
   const fp = Math.max(0, Math.min(1, frameProgress));
   const cp = Math.max(0, Math.min(1, cutProgress));
+  // A company's own mark: its logo image, revealed left to right like the studio's glyph.
+  if (BRAND.logo) {
+    return <Img src={BRAND.logo} style={{ display: 'block', width: size, height: size, objectFit: 'contain', clipPath: fp < 1 ? `inset(0 ${(1 - fp) * 100}% 0 0)` : undefined, ...style }} />;
+  }
+  // A company without a logo image: its initial on a tile in its accent colour (never the studio's glyph).
+  if (BRAND.name !== DEFAULT_BRAND.name) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', overflow: 'visible', opacity: fp, ...style }}>
+        <rect x={0} y={0} width={24} height={24} rx={5.5} fill={tone === 'dark' ? BRAND.paper : BRAND.accent} />
+        <text x={12} y={17} textAnchor="middle" fontSize={15} fontWeight={800} fontFamily={BRAND.font} fill={frameColor ?? (tone === 'dark' ? BRAND.accent : BRAND.paper)}>
+          {BRAND.name.trim().charAt(0).toUpperCase()}
+        </text>
+      </svg>
+    );
+  }
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', overflow: 'visible', ...style }}>
       <defs>
@@ -88,7 +124,7 @@ export const MotionStudioWordmark: React.FC<{
 
 // Pitch copy library — pick from here (or rewrite in this voice) for slogans / titles / subtitles /
 // quotes. Do not invent numbers that can go stale (demo counts, star counts, user counts).
-export const PITCH = {
+const DEFAULT_PITCH = {
   en: {
     motto: 'Direct the film. Let the studio shoot it.', // brand line
     taglines: [
@@ -134,3 +170,49 @@ export const PITCH = {
     works: 'SmartVideo GO · AI 动效工作台',
   },
 } as const;
+
+type PitchCopy = { motto: string; taglines: string[]; features: string[]; praise: string[]; works: string };
+const copyPitch = (p: { readonly motto: string; readonly taglines: readonly string[]; readonly features: readonly string[]; readonly praise: readonly string[]; readonly works: string }): PitchCopy => ({
+  motto: p.motto, taglines: [...p.taglines], features: [...p.features], praise: [...p.praise], works: p.works,
+});
+
+/** Pitch copy the demos draw; `setBrand` swaps in a company's own lines. */
+export const PITCH: { en: PitchCopy; zh: PitchCopy } = { en: copyPitch(DEFAULT_PITCH.en), zh: copyPitch(DEFAULT_PITCH.zh) };
+
+/** What a company film says about itself (all optional: what is missing keeps the studio's default). */
+export interface BrandInput extends Partial<Omit<BrandTokens, 'amber' | 'short'>> {
+  short?: string;
+  motto?: string;
+  taglines?: string[];
+  features?: string[];
+}
+
+/** Make the demos speak for a company (or, with null, for SmartVideo GO again). Call at the start of a render. */
+export function setBrand(input: BrandInput | null | undefined): void {
+  const b = input ?? {};
+  const pick = <K extends keyof BrandTokens>(k: K): BrandTokens[K] => (b[k as keyof BrandInput] as BrandTokens[K] | undefined) ?? DEFAULT_BRAND[k];
+  Object.assign(BRAND, DEFAULT_BRAND, {
+    name: pick('name'),
+    short: b.short ?? b.name ?? DEFAULT_BRAND.short,
+    accent: pick('accent'),
+    accent2: pick('accent2'),
+    amber: pick('accent'),
+    ink: pick('ink'),
+    paper: pick('paper'),
+    slate: pick('slate'),
+    font: pick('font'),
+    logo: b.logo ?? null,
+    repo: b.repo ?? (b.name ? '' : DEFAULT_BRAND.repo),
+  });
+  const en = copyPitch(DEFAULT_PITCH.en);
+  if (b.name) {
+    // A company: its own lines, never the studio's.
+    en.motto = b.motto ?? b.taglines?.[0] ?? b.name;
+    en.taglines = b.taglines?.length ? [...b.taglines] : [b.motto ?? b.name];
+    en.features = b.features?.length ? [...b.features] : [b.name];
+    en.praise = [];
+    en.works = b.repo ?? b.name;
+  }
+  PITCH.en = en;
+  PITCH.zh = b.name ? en : copyPitch(DEFAULT_PITCH.zh);
+}

@@ -14,7 +14,7 @@ import { BRAND, PITCH, MotionStudioMark } from '../../_fixtures/Brand';
 export const LOGO_SHRINK_WORDMARK_LOCKUP_DURATION = 132; // 4400ms @30fps
 
 const ACCENT = '#9d94ff'; // 标语强调色：与霓虹晕同色相、提亮降饱和
-const WORDMARK = BRAND.name; // 品牌字标
+const WORDMARK = () => BRAND.name; // 品牌字标
 const ICON = 30; // 图标基准尺寸(px)
 const MARK = 32; // 标志尺寸：整块瓷砖 ≈ MARK，正好盖住愈合后的环
 const WORD_W = 172; // 字标行实测宽（22px / 700，15 字符；渲帧量得）
@@ -22,7 +22,7 @@ const GAP = 9; // 图标与字标间距
 // 图标 lockup 左位偏移与字母行左缘耦合：整组（图标 + 间距 + 字标）在画面居中
 const SHIFT = -(ICON + GAP + WORD_W) / 2 + ICON / 2;
 const ROW_LEFT = SHIFT + ICON / 2 + GAP; // 字母行左缘相对画面中线
-const STAGGER = (0.7 - 0.46) / WORDMARK.length; // 字多：按 (0.7-0.46)/n 反算间隔，保证 0.7 前全部起跑
+const STAGGER = () => (0.7 - 0.46) / WORDMARK().length; // 字多：按 (0.7-0.46)/n 反算间隔，保证 0.7 前全部起跑
 const DT = 1 / 131; // 一帧对应的 t 增量（132f）
 
 // 圆弧 path（角度制，顺时针 sweep）
@@ -175,8 +175,8 @@ export const LogoShrinkWordmarkLockup: React.FC = () => {
             gap: 0,
           }}
         >
-          {[...WORDMARK].map((ch, i) => {
-            const lk = seg(t, 0.46 + i * STAGGER, 0.46 + i * STAGGER + 0.10, E.outCubic);
+          {[...WORDMARK()].map((ch, i) => {
+            const lk = seg(t, 0.46 + i * STAGGER(), 0.46 + i * STAGGER() + 0.10, E.outCubic);
             return (
               <span
                 key={i}

@@ -29,7 +29,7 @@ const INK = [22, 23, 28]; // 亮场文字（带冷调的近黑）
 // 文案（词数/字长贴近原片 For many years / everything changed，逐词错相节奏依赖这个）：
 // A 句 3 词讲旧痛点，B 句 2 词亮出品牌名（品牌字标）
 const WA = 'Promos took weeks'.split(' ');
-const WB = ['Meet', BRAND.name];
+const WB = () => ['Meet', BRAND.name];
 
 // 时间轴（归一化 t）
 const RISE: [number, number] = [0.04, 0.56]; // 极光升起
@@ -135,7 +135,7 @@ export const AuroraBloomBgFlip: React.FC = () => {
         </div>
         {/* 空档后文案 B：逐词 blur-in + 上浮落位 + 紫→白收色（落定瞬间转白 = 定稿） */}
         <div style={{ position: 'absolute' }}>
-          {WB.map((w, i) => {
+          {WB().map((w, i) => {
             const d0 = B_IN + i * 0.05;
             const a = seg(t, d0, d0 + 0.11, E.outQuint);
             const c = seg(t, d0 + 0.06, d0 + 0.15, E.outQuad);

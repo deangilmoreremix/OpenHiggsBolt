@@ -34,7 +34,7 @@ const CY = 520; // 标题中线
 const HALF = 676; // 括号中心最终半距（px）
 const BRACE_FS = 300; // 括号最终字号
 const BRACE_INNER = 64; // 括号字形中心到内缘的距离（×sc），clip 从这里起算
-const TITLE = BRAND.name; // 品牌字标
+const TITLE = () => BRAND.name; // 品牌字标
 const TITLE_FS = 164; // 字宽 ≈ 内腔宽 2·(HALF−内缘)：幕布拉到头才露全（换文案要同步调 HALF 或字号）
 const APPEAR = 6;
 const EXPAND = 14;
@@ -118,7 +118,7 @@ export const BraceExpand: React.FC = () => {
               whiteSpace: 'nowrap',
               backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #e8eeff 55%, #a9b9e8 100%)',
               WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', paddingBottom: 8,
-            }}>{TITLE}</div>
+            }}>{TITLE()}</div>
           </div>
         )}
 

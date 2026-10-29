@@ -21,7 +21,7 @@ const h = (n: number) => {
   return s - Math.floor(s);
 };
 
-const WORD = BRAND.short; // 'Motion Studio'（无下行字母，全员基线贴地）
+const WORD = () => BRAND.short; // 'Motion Studio'（无下行字母，全员基线贴地）
 const SIZE = 176; // 字号
 const FLOOR_Y = 600; // 地面线（字符基线）
 const BASE = Math.round(SIZE * 0.886); // 字行盒顶到基线（SF Pro，lineHeight 1 实测）
@@ -38,7 +38,7 @@ const SNAP_DUR = 6;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 // 起跳帧：非等差错峰，越来越密
-const startOf = (i: number) => 4 + 36 * (1 - Math.pow(1 - i / (WORD.length - 1), 1.5));
+const startOf = (i: number) => 4 + 36 * (1 - Math.pow(1 - i / (WORD().length - 1), 1.5));
 
 // 单字符纵向位移（相对地面，负 = 在上方）
 const dropY = (t: number): number => {
@@ -105,7 +105,7 @@ export const LetterDropPhysics: React.FC = () => {
         display: 'flex', justifyContent: 'center',
         fontSize: SIZE, fontWeight: 800, lineHeight: 1, letterSpacing: tracking(SIZE, true), color: G.ink1,
       }}>
-        {WORD.split('').map((ch, i) => {
+        {WORD().split('').map((ch, i) => {
           const t = frame - startOf(i);
           const y = dropY(t);
           const vy = dropY(t + 0.5) - dropY(t - 0.5);
