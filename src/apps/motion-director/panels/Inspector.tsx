@@ -9,6 +9,15 @@ import { cardName, tx, useT, useTx } from "../i18n";
 import { ThemePanel } from "./ThemePanel";
 import { DEMO_TEXTS } from "../demosrc/_generated/demoTexts";
 import { parseTextMap } from "../lib/textOverrides";
+import { rulesOf } from "../lib/shotRules";
+
+/** What to know before rewriting the words of a recipe (from its upstream card). */
+const textNote = (component: string): string => {
+  const text = rulesOf(component)?.text;
+  if (text === 'fixed') return 'These words are part of the effect (hand-drawn letters or fixed segments): changing them breaks it.';
+  if (text === 'structural') return 'These words are part of the effect: keep the same number of words and about the same length.';
+  return 'Type new words over any line this shot draws.';
+};
 
 /** 单个属性控件：按 schema 字段类型渲染 */
 const PropControl: React.FC<{
@@ -255,7 +264,9 @@ export const Inspector: React.FC = () => {
                           </button>
                         )}
                       </div>
-                      <div className="dim" style={{ fontSize: 11, marginBottom: 6 }}>Type new words over any line this shot draws.</div>
+                      <div className="dim" style={{ fontSize: 11, marginBottom: 6 }}>
+                        {textNote(clip.cardId.slice(5))}
+                      </div>
                       {original.slice(0, 60).map((line) => (
                         <label key={line} className="prop-row">
                           <span className="prop-label" title={line} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>

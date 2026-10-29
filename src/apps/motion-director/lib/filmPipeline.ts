@@ -21,6 +21,7 @@ import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
+import { rulesOfScene } from './shotRules';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -192,7 +193,9 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
   const used = new Set<string>();
   plan.scenes.forEach((sc, i) => {
     if (sc.kind !== 'shot') return;
-    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used);
+    const rules = rulesOfScene(sc);
+    if (rules?.text === 'fixed') return;
+    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used, rules?.text === 'structural');
     if (Object.keys(map).length) out[i] = map;
   });
   log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');

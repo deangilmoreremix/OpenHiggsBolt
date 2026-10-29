@@ -19,6 +19,7 @@ import {
   validatePlan,
   validateRetext,
 } from '@/apps/motion-director/lib/directorPlan'
+import { rulesOf } from '@/apps/motion-director/lib/shotRules'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { requireMotionStudioUser } from '../lib/auth'
@@ -98,6 +99,7 @@ Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's st
 - Write from the site's own words (productCapture.content: headline, headings, calls to action, menu) and the scene's headline / message. Never invent features, prices, numbers or claims the site does not give.
 - Keep the same kind and length class: a short label stays a short label (a menu entry or feature name), a sentence stays one sentence of similar length. The layout is drawn for the template's words: stay within about 1.25× the template line's characters (never above ${RETEXT_MAX_CHARS}); longer text overflows the shot. Plain text only: no markdown, no quotes around it.
 - Replace every string that names the template's sample product, people, data or features. Leave generic interface words (Home, Settings, Search) as they are unless the site has its own equivalent.
+- Scenes with keepShape true draw words that are part of the effect: every replacement keeps the SAME number of words and about the same number of characters (±15 %) or is left out.
 - Skip a string by leaving it out. Cover every scene you are given.`
 
 const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
@@ -225,14 +227,18 @@ export async function POST(req: NextRequest) {
     if (body.mode === 'retext') {
       const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
       const allowed = new Map<number, Set<string>>()
+      const structural = new Set<number>()
       const scenes: Array<Record<string, unknown>> = []
       for (const sc of (Array.isArray(body.scenes) ? body.scenes : []).slice(0, PLAN_LIMITS.maxScenes) as any[]) {
         const index = typeof sc?.index === 'number' ? Math.round(sc.index) : -1
         const template = resolveMotionTemplate(str(sc?.recipeId, 120))
-        const strings = template ? (DEMO_TEXTS[template.componentName] ?? []).slice(0, 40) : []
+        const rules = template ? rulesOf(template.componentName) : null
+        // Recipes whose words are part of the effect (hand-drawn glyphs, fixed segments) are never rewritten.
+        const strings = template && rules?.text !== 'fixed' ? (DEMO_TEXTS[template.componentName] ?? []).slice(0, 40) : []
         if (index < 0 || !strings.length) continue
         allowed.set(index, new Set(strings))
-        scenes.push({ index, recipe: template?.nameEn ?? '', headline: str(sc?.headline, 120), message: str(sc?.feature, 160), strings })
+        if (rules?.text === 'structural') structural.add(index)
+        scenes.push({ index, recipe: template?.nameEn ?? '', headline: str(sc?.headline, 120), message: str(sc?.feature, 160), keepShape: rules?.text === 'structural', strings })
       }
       if (!scenes.length) return NextResponse.json({ texts: {} })
       const raw = await callDirector(
@@ -247,7 +253,7 @@ export async function POST(req: NextRequest) {
         'motion_studio_retext',
         RETEXT_JSON_SCHEMA,
       )
-      return NextResponse.json({ texts: validateRetext(raw, allowed) })
+      return NextResponse.json({ texts: validateRetext(raw, allowed, structural) })
     }
 
     if (body.mode === 'chat') {
