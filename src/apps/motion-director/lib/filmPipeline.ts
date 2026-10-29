@@ -15,7 +15,7 @@ import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
-import { applySiteContent, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { applySiteContent, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -93,7 +93,7 @@ export async function storyboardFilm(
   const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
   // The site the user gave wins over a Brand Kit company: the Brand Kit names the film only when there is no site.
   const hasSite = Boolean(capture || req.siteUrl);
-  const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, businessName: hasSite ? null : opts.brandKit?.businessName });
+  const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, siteUrl: capture?.url, businessName: hasSite ? null : opts.brandKit?.businessName });
   const palette = brandPalette(capture, opts.brandKit);
 
   if (req.single) {
@@ -134,16 +134,13 @@ export async function storyboardFilm(
   }
 }
 
-/** The site's short name: the page title up to the first separator ("Acme | Home" -> "Acme"). */
-const nameOf = (title: string): string => title.split(/\s[|\u2013\u2014-]\s|:\s/)[0].trim().slice(0, 40);
-
 /**
  * The company the recipe demos should speak as. Only films of a captured site get one
  * (so the studio's own demos keep SmartVideo GO); the plan's palette and the site's own
  * words and font replace the demo's.
  */
 export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): BrandInput | undefined {
-  const name = capture ? nameOf(capture.title || '') : '';
+  const name = capture ? siteNameOf(capture.title || '', capture.url) : '';
   if (!capture || !name) return undefined;
   const content = capture.content;
   const taglines = [content?.headline, content?.description, ...(content?.headings ?? [])].filter((v): v is string => Boolean(v)).map((v) => v.trim().slice(0, 80));
@@ -180,6 +177,9 @@ export async function buildFilmProject(
         sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),
         pageH: opts.capture.pages?.[0]?.layout?.pageH ?? opts.capture.page.height,
         sectionNames: opts.capture.content?.headings ?? [],
+        nav: opts.capture.content?.nav ?? [],
+        ctas: opts.capture.content?.ctas ?? [],
+        address: opts.capture.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''),
       }
     : images.length
       ? { screens: images, crops: images }

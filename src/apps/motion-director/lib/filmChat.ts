@@ -18,7 +18,7 @@ import {
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
-import { PLAN_LIMITS, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
+import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene } from './directorPlan';
 
 /** Shots of the Ink Press template, in film order: real pages throughout, launch outro. */
 export const INK_PRESS_SHOTS: readonly string[] = [
@@ -219,10 +219,30 @@ const SCENE_COPY: Record<MotionCategoryKey, [string, string]> = {
 };
 
 /** Product name for on-screen copy: captured page title, brand kit, or "for <Name>" in the prompt. */
-export function productNameFrom(prompt: string, hints: { siteTitle?: string | null; businessName?: string | null } = {}): string {
+/**
+ * The company's name: the title segment that contains the domain's label
+ * ("South Florida's Premier Managed IT | Connections for Business" on connections.com
+ * -> "Connections for Business"), else the label itself ("Connections").
+ */
+export function siteNameOf(title: string, url: string): string {
+  let label = '';
+  try {
+    const parts = new URL(url).hostname.replace(/^www\./, '').split('.');
+    label = (parts.length > 1 ? parts[parts.length - 2] : parts[0]) ?? '';
+  } catch {
+    /* no host */
+  }
+  const squash = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const segs = title.split(/\s[|\u2013\u2014-]\s|:\s/).map((v) => v.trim()).filter(Boolean);
+  const hit = label ? segs.find((v) => squash(v).includes(squash(label))) : undefined;
+  const name = hit ?? (label ? label.charAt(0).toUpperCase() + label.slice(1) : segs[0] ?? '');
+  return name.slice(0, 40);
+}
+
+export function productNameFrom(prompt: string, hints: { siteTitle?: string | null; siteUrl?: string | null; businessName?: string | null } = {}): string {
   const clean = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, 28);
   if (hints.businessName?.trim()) return clean(hints.businessName);
-  if (hints.siteTitle?.trim()) return clean(hints.siteTitle.split(/\s[|–—:-]\s/)[0]);
+  if (hints.siteTitle?.trim()) return clean(hints.siteUrl ? siteNameOf(hints.siteTitle, hints.siteUrl) : hints.siteTitle.split(/\s[|–—:-]\s/)[0]);
   const m = prompt.match(/\b(?:for|of|called|named)\s+([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*){0,2})/);
   if (m) return clean(m[1]);
   const url = findSiteUrl(prompt);
@@ -425,14 +445,16 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
  * (picks in turn, keeping that scene's copy, so a pick can play more than once). Every pick plays at least once.
  * The director may frame the film with one opening and one closing title card. Lengths are re-fitted.
  */
+const isFraming = (s: DirectorScene | undefined): boolean => Boolean(s && (s.kind === 'title' || isBrandScene(s.recipeId)));
+
 export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
   if (!recipes.length) return plan;
   const wanted = new Set(recipes.map((r) => r.id));
   let next = 0;
   const kept: DirectorScene[] = [];
   plan.scenes.forEach((scene, i) => {
-    if (scene.kind === 'title') {
-      // Only the framing cards: the first and the last scene of the plan.
+    if (scene.kind === 'title' || isBrandScene(scene.recipeId)) {
+      // Only the framing cards (a title or a brand scene): the first and the last scene of the plan.
       if (i === 0 || i === plan.scenes.length - 1) kept.push(scene);
     } else {
       kept.push(wanted.has(scene.recipeId) ? scene : { ...scene, recipeId: recipes[next++ % recipes.length].id });
@@ -442,24 +464,24 @@ export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTe
   const missing = recipes.filter((r) => !kept.some((s) => s.recipeId === r.id));
   if (missing.length) {
     const lastKept = kept[kept.length - 1];
-    const at = lastKept?.kind === 'title' && kept.length > 1 ? kept.length - 1 : kept.length;
+    const at = lastKept && isFraming(lastKept) && kept.length > 1 ? kept.length - 1 : kept.length;
     kept.splice(at, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
   }
   // Every scene needs its minimum time: a repeat of a pick is dropped (latest first) when the length cannot hold it.
   const filmSec = Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec));
   const cap = Math.max(recipes.length, Math.floor(filmSec / PLAN_LIMITS.minSceneSec) - 2);
-  let count = kept.filter((s) => s.kind === 'shot').length;
+  let count = kept.filter((s) => s.kind === 'shot' && !isBrandScene(s.recipeId)).length;
   for (let k = kept.length - 1; k >= 0 && count > cap; k--) {
     if (kept[k].kind === 'shot' && kept.slice(0, k).some((x) => x.recipeId === kept[k].recipeId)) {
       kept.splice(k, 1);
       count--;
     }
   }
-  const shots = kept.filter((s) => s.kind === 'shot');
+  const shots = kept.filter((s) => s.kind === 'shot' && !isBrandScene(s.recipeId));
   // Framing cards are optional: keep one only while every scene still gets its minimum time in the requested length.
   const room = Math.floor(filmSec / PLAN_LIMITS.minSceneSec) - shots.length;
-  const first = room >= 1 && kept[0]?.kind === 'title' ? kept[0] : null;
-  const lastCard = room >= 2 && kept.length > 1 && kept[kept.length - 1].kind === 'title' ? kept[kept.length - 1] : null;
+  const first = room >= 1 && isFraming(kept[0]) ? kept[0] : null;
+  const lastCard = room >= 2 && kept.length > 1 && isFraming(kept[kept.length - 1]) ? kept[kept.length - 1] : null;
   const scenes = [...(first ? [first] : []), ...shots, ...(lastCard ? [lastCard] : [])];
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });

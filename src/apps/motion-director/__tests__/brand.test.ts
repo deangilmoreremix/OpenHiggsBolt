@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { BRAND, PITCH, setBrand } from '../demosrc/_fixtures/Brand';
 import { brandFor } from '../lib/filmPipeline';
+import { siteNameOf } from '../lib/filmChat';
 import type { DirectorPlan } from '../lib/directorPlan';
 import type { SiteCapture } from '../lib/directorClient';
 
@@ -31,6 +32,11 @@ describe('brand context', () => {
     setBrand(null);
     expect(BRAND.name).toBe('SmartVideo GO');
     expect(BRAND.logo).toBeNull();
+  });
+
+  it('names the company from the domain, not a descriptive title', () => {
+    expect(siteNameOf('South Florida’s Premier Managed IT | Connections for Business', 'https://www.connections.com/')).toBe('Connections for Business');
+    expect(siteNameOf('Home', 'https://www.acme-bakery.com/')).toBe('Acme-bakery');
   });
 
   it('gives films without a site no brand', () => {

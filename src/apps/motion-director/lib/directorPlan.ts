@@ -11,6 +11,15 @@
 import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 
+/** Scene cards that tell a product's story from its captured site (no catalog recipe behind them). */
+export const BRAND_SCENES = {
+  'brand/url-scan': { cardId: 'brand-url-scan', title: 'URL scan' },
+  'brand/hub': { cardId: 'brand-hub', title: 'Brand hub' },
+  'brand/feature-zoom': { cardId: 'brand-feature-zoom', title: 'Feature zoom' },
+  'brand/logo-reveal': { cardId: 'brand-logo-reveal', title: 'Logo reveal' },
+} as const;
+export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id in BRAND_SCENES;
+
 export type SceneKind = 'shot' | 'title';
 export type SceneTransition = 'cut' | 'flash';
 
@@ -67,14 +76,22 @@ const text = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s
 const hex = (v: unknown, fallback: string) => (typeof v === 'string' && HEX.test(v.trim()) ? v.trim().toLowerCase() : fallback);
 
 /** One line per recipe the model may use. Product-page shots are flagged. */
+const BRAND_SCENE_NOTES: Record<string, string> = {
+  'brand/url-scan': 'the address typed into a bar, then the captured page scanned and tagged (use it to open a film of a captured site)',
+  'brand/hub': 'the captured page in the middle with the site\'s own menu / feature names as glowing nodes (headline = the promise)',
+  'brand/feature-zoom': 'slow push-in on one real section of the captured page with a label (one per feature)',
+  'brand/logo-reveal': 'the site\'s logo and name with sparks, then its call to action and address (use it to close a film of a captured site)',
+};
+
 export function buildCatalogBrief(): string {
   const label = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
-  return MOTION_TEMPLATES.map(
+  const brand = Object.entries(BRAND_SCENES).map(([id, b]) => `${id} | ${b.title} | Brand scenes | 3-5s | BRAND-SCENE | ${BRAND_SCENE_NOTES[id]}`);
+  return [...MOTION_TEMPLATES.map(
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
         isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : ''
       } | ${t.summaryEn}`,
-  ).join('\n');
+  ), ...brand].join('\n');
 }
 
 const sceneSchema = {
@@ -130,7 +147,9 @@ export function validatePlan(raw: unknown, opts: { targetSec: number; maxSceneSe
     const kind: SceneKind = s.kind === 'title' ? 'title' : 'shot';
     const headline = text(s.headline, PLAN_LIMITS.headlineChars);
     let recipeId = '';
-    if (kind === 'shot') {
+    if (kind === 'shot' && typeof s.recipeId === 'string' && isBrandScene(s.recipeId)) {
+      recipeId = s.recipeId;
+    } else if (kind === 'shot') {
       const template = typeof s.recipeId === 'string' ? resolveMotionTemplate(s.recipeId) : undefined;
       // Only individual shots are playable; a grouped card id resolves to its card, not a shot.
       if (!template || !MOTION_TEMPLATES.includes(template)) continue;
