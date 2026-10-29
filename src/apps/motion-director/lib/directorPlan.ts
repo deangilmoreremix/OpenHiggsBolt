@@ -55,6 +55,10 @@ export const PLAN_LIMITS = {
   captionChars: 90,
 } as const;
 
+/** The scenes a film of this length needs: about one every 4 s, at least 3, at most the plan limit. */
+export const targetSceneCount = (durationSec: number): number =>
+  Math.min(PLAN_LIMITS.maxScenes, Math.max(3, Math.round(clamp(durationSec, PLAN_LIMITS.minFilmSec, PLAN_LIMITS.maxFilmSec) / 4)));
+
 const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_PALETTE: DirectorPalette = { background: '#f7f4ee', text: '#1c1a17', accent: '#b5651d' };
 

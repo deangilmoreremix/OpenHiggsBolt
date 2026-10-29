@@ -266,6 +266,26 @@ describe('POST /api/motion-studio/director', () => {
     expect(none.status).toBe(400)
   })
 
+  it('asks once more when the plan has too few scenes for the length', async () => {
+    vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-user' }))
+    const shot = MOTION_TEMPLATES[3]
+    const scene = (headline: string) => ({ kind: 'shot', recipeId: shot.id, durationSec: 4, headline, caption: '', transition: 'cut', feature: '', action: '', asset: '', sfx: '' })
+    const plan = (n: number) => ({ title: 't', summary: '', palette: { background: '#111111', text: '#ffffff', accent: '#ec008c' }, scenes: Array.from({ length: n }, (_, i) => scene(`Scene ${i + 1}`)) })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(plan(2)) }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ output_text: JSON.stringify(plan(7)) }), { status: 200 }))
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    const { POST } = await import('@/app/api/motion-studio/director/route')
+    const res = await POST(post('/api/motion-studio/director', { mode: 'plan', prompt: 'Promo', durationSec: 30 }))
+    const { plan: got } = await res.json()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(got.scenes.length).toBe(7)
+    const first = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))
+    expect(JSON.parse(first.input[0].content[0].text).targetScenes).toBe(8)
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body)).input[0].content[0].text).toContain('Your plan had 2 scenes')
+  })
+
   it('maps a rejected OpenAI key to 401', async () => {
     vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-bad' }))
     mockOpenAi({}, 401)
