@@ -22,6 +22,7 @@ import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
+import { reviewFilm, type ReviewItem } from './filmReview';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -260,6 +261,8 @@ export interface FilmQaReport {
   warnings: string[];
   /** Frames rendered by the frame check (0 when the browser cannot render stills). */
   framesChecked: number;
+  /** The programmatic part of the final review (lib/filmReview). */
+  review?: ReviewItem[];
 }
 
 /** Structural check of a built film: every clip resolves, shots run back to back, nothing runs past the end. */
@@ -286,7 +289,7 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
   if (productShots.length && !opts.hasProductImages) {
     warnings.push(`${productShots.length} product shot${productShots.length === 1 ? '' : 's'} show sample pages — add your URL or attach screenshots to put your product on screen.`);
   }
-  return { ok: issues.length === 0, issues, warnings, framesChecked: 0 };
+  return { ok: issues.length === 0, issues, warnings, framesChecked: 0, review: reviewFilm(project) };
 }
 
 /**

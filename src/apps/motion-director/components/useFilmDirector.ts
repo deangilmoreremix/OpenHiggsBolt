@@ -33,6 +33,7 @@ import {
   type FilmQaReport,
   type StoryboardResult,
 } from '../lib/filmPipeline';
+import { reviewSummary } from '../lib/filmReview';
 
 /**
  * The film conversation: one chat turns a request into a finished film.
@@ -589,6 +590,7 @@ export function useFilmDirector(opts: {
           `Your film is ready: ${Math.round(project.tracks.reduce((m, t) => t.clips.reduce((mm, c) => Math.max(mm, c.start + c.duration), m), 0) / project.fps)}s at ${project.width}×${project.height}, ${project.fps} fps, ${project.tracks.map((t) => t.name).join(' / ')} tracks.`,
           qa.ok ? `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.` : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
           ...qa.warnings,
+          ...(qa.review ? reviewSummary(qa.review) : []),
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );

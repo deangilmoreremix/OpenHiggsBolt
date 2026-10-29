@@ -209,6 +209,8 @@ export function planToProject(
   },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
+  // Caption text is read on a phone: at least 5.2 % of the frame height (aesthetic-rules Q11).
+  const captionPx = Math.round(Math.min(height, width * 0.9) * 0.052);
   const palette = plan.palette;
   const { scenes, seconds } = withClosingScene(plan, opts);
   const durations = snapToBeats(seconds, opts.music?.beats ?? []);
@@ -315,7 +317,7 @@ const INSET_PAGE_H = 1200;
       // `*word*` marks emphasis on the title card only; everywhere else the markers are dropped.
       const line = (scene.caption || scene.headline).replace(/\*/g, '');
       if (line) {
-        captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent }));
+        captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
       }
     }
     at += frames;

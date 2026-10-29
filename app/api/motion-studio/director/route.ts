@@ -81,7 +81,7 @@ const COCREATE_RULES = `Method: video-shotcraft. Work only from evidence in the 
 
 const BRIEF_INSTRUCTIONS = `You run the product check that opens a short product film. ${COCREATE_RULES}
 Return JSON {rows, questions}.
-- rows: one per item, in this order when you can: Positioning, Target user, Purpose of the video, Core selling points, Features to show, Pages and states available, First-screen claim, Length / aspect / language, Music, Data rules, Visual cues. judgment = your call in one sentence (or "Can't tell from what I have"); evidence = what in the site or the request supports it.
+- rows: one per item, in this order when you can: Positioning, Target user, Purpose of the video, Core selling points, Features to show, Pages and states available, First-screen claim, Length / aspect / language, Music, Data rules, Visual cues. Data rules: pictures of named customers, staff or other real people on the site (testimonials, team photos) are shown only when the person confirms they may be; by default say they will be avoided or blurred. judgment = your call in one sentence (or "Can't tell from what I have"); evidence = what in the site or the request supports it.
 - questions: at most 3, only what cannot be decided from the material, each starting with your recommendation and why (e.g. "Open on the headline "…"? I'd recommend yes because the site leads with it."). Empty when nothing needs confirming.`
 
 const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short product film. ${COCREATE_RULES}

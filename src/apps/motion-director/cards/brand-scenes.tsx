@@ -84,7 +84,7 @@ const BrandHub: React.FC<{ title?: string; file?: string; labels?: string } & Lo
         const y = cy + Math.sin(a) * ry;
         const float = Math.sin((frame + i * 9) / 18) * 4;
         return (
-          <div key={i} style={{ position: "absolute", left: x, top: y + float, transform: `translate(-50%, -50%) scale(${0.7 + 0.3 * t})`, opacity: t, padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: `1.5px solid ${accent}`, color: ink, fontSize: height * 0.026, fontWeight: 600, whiteSpace: "nowrap", boxShadow: `0 0 24px ${accent}55`, backdropFilter: "blur(6px)" }}>
+          <div key={i} style={{ position: "absolute", left: x, top: y + float, transform: `translate(-50%, -50%) scale(${0.7 + 0.3 * t})`, opacity: t, padding: "10px 22px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: `1.5px solid ${accent}`, color: ink, fontSize: height * 0.032, fontWeight: 600, whiteSpace: "nowrap", boxShadow: `0 0 24px ${accent}55`, backdropFilter: "blur(6px)" }}>
             {name}
           </div>
         );
@@ -124,12 +124,12 @@ const BrandUrlScan: React.FC<{ url?: string; file?: string; labels?: string } & 
           const col = i % 2;
           return (
             <div key={i} style={{ position: "absolute", left: `${6 + col * 48}%`, top: `${8 + Math.floor(i / 2) * 28}%`, width: "42%", height: "22%", border: `3px solid ${accent}`, borderRadius: 10, opacity: on ? 1 : 0, background: `${accent}18` }}>
-              <span style={{ position: "absolute", left: -3, top: -34, background: accent, color: bg, padding: "4px 12px", fontFamily: MONO, fontSize: height * 0.02, fontWeight: 700, letterSpacing: "0.1em" }}>{tag.toUpperCase()}</span>
+              <span style={{ position: "absolute", left: -3, top: -34, background: accent, color: bg, padding: "4px 12px", fontFamily: MONO, fontSize: height * 0.03, fontWeight: 700, letterSpacing: "0.08em" }}>{tag.toUpperCase()}</span>
             </div>
           );
         })}
       </div>
-      <div style={{ position: "absolute", bottom: height * 0.045, left: 0, right: 0, textAlign: "center", fontFamily: MONO, letterSpacing: "0.3em", color: accent, fontSize: height * 0.024, opacity: pageT }}>
+      <div style={{ position: "absolute", bottom: height * 0.045, left: 0, right: 0, textAlign: "center", fontFamily: MONO, letterSpacing: "0.3em", color: accent, fontSize: height * 0.03, opacity: pageT }}>
         {scan >= 1 ? "BRAND READ" : `SIGNALS ${String(signal).padStart(2, "0")}/${String(Math.max(tags.length, 1)).padStart(2, "0")} SCANNING`}
       </div>
     </AbsoluteFill>
