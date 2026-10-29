@@ -26,6 +26,7 @@ import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepSt
 import {
   buildFilmProject,
   checkFilmFrames,
+  reviewFramesWithModel,
   checkFilmStructure,
   storyboardFilm,
   type ActivityStatus,
@@ -594,6 +595,10 @@ export function useFilmDirector(opts: {
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );
+      // A second reviewer (a model that did not make the film) looks at a few frames; it arrives as a follow-up.
+      void reviewFramesWithModel(project).then((lines) => {
+        if (live() && lines.length) say('assistant', lines.join('\n'));
+      });
     } catch (error) {
       if (!live()) return;
       setStage('plan');

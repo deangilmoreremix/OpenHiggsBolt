@@ -14,7 +14,7 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
-import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
+import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
@@ -346,4 +346,57 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
     failed.length ? 'error' : 'done',
   );
   return { checked, failed };
+}
+
+/** A frame as a small JPEG data URL (the reviewer sees 640 px wide, enough for layout and legibility). */
+async function stillToJpeg(blob: Blob, maxW = 800): Promise<string> {
+  const bitmap = await createImageBitmap(blob);
+  const scale = Math.min(1, maxW / bitmap.width);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+/**
+ * Independent review of a built film by a model that sees a few of its frames and the design
+ * spec (final-review.md: a reviewer that did not make the film). Best effort: returns [] when
+ * there is no key, no spec, the browser cannot render stills, or the model cannot be reached.
+ */
+export async function reviewFramesWithModel(project: ProjectData, budgetMs = 30_000): Promise<string[]> {
+  if (!project.spec) return [];
+  let render: typeof import('../webRenderer').renderStillOnWebExport;
+  try {
+    render = (await import('../webRenderer')).renderStillOnWebExport;
+  } catch {
+    return [];
+  }
+  const shotTrack = project.tracks.find((tr) => tr.clips.some((c) => c.cardId.startsWith('demo:') || c.cardId.startsWith('brand-'))) ?? project.tracks[0];
+  const clips = (shotTrack?.clips ?? []).slice().sort((a, b) => a.start - b.start);
+  const picks = clips.length <= 5 ? clips : [0, 1, 2, 3, 4].map((i) => clips[Math.round((i * (clips.length - 1)) / 4)]);
+  const frames = [...new Set(picks.map((c) => c.start + Math.floor(c.duration * 0.6)))].slice(0, 5);
+  frames.push(Math.max(0, projectEndFrame(project) - 12));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), budgetMs);
+  try {
+    const images: Array<{ second: number; image: string }> = [];
+    for (const f of frames) {
+      if (controller.signal.aborted) break;
+      const still = await render(project, f, controller.signal);
+      images.push({ second: Math.round((f / project.fps) * 10) / 10, image: await stillToJpeg(still.blob) });
+    }
+    if (!images.length) return [];
+    const { findings, summary } = await requestFrameReview({ frames: images, spec: project.spec });
+    return [
+      findings.length ? `A second reviewer looked at ${images.length} frames:` : `A second reviewer looked at ${images.length} frames and flagged nothing it could see.`,
+      ...findings.map((f) => `- ${f.severity === 'fix' ? '✗' : '?'} ${f.second.toFixed(1)}s ${f.text}`),
+      ...(summary ? [summary] : []),
+    ];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
 }

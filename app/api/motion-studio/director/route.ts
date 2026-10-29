@@ -102,6 +102,29 @@ Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's st
 - Scenes with keepShape true draw words that are part of the effect: every replacement keeps the SAME number of words and about the same number of characters (±15 %) or is left out.
 - Skip a string by leaving it out. Cover every scene you are given.`
 
+const REVIEW_INSTRUCTIONS = `You are an independent reviewer of a finished product film. You see a few frames of it (each labelled with its second) and the design spec it was built from. You did not make it and you do not defend it.
+Check, for each frame: is anything cut off, overlapping, blank or unreadable (text smaller than a phone can read, low contrast); does the look match the spec's colours; is the product's name or logo wrong or missing where it should be; is there visible template text that belongs to another product; are people's faces or names from a third party shown.
+Report only what you can see in the frames, each with the second it is in. Never say the film is fine overall; if a frame has no problem, say nothing about it. At most 6 findings, the worst first. summary: one sentence on what you could not judge from stills (motion, sound, timing).`
+
+const REVIEW_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['findings', 'summary'],
+  properties: {
+    findings: {
+      type: 'array',
+      maxItems: 6,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['second', 'severity', 'text'],
+        properties: { second: { type: 'number' }, severity: { type: 'string', enum: ['fix', 'check'] }, text: { type: 'string' } },
+      },
+    },
+    summary: { type: 'string' },
+  },
+} as const
+
 const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
 You receive their message, the storyboard on the table (title, summary, scenes) and what the product's site says (productCapture.content, when present).
 Return JSON {reply, revise}.
@@ -139,14 +162,14 @@ function extractOutputText(payload: any): string {
   return ''
 }
 
-async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object) {
+async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object, images: string[] = []) {
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: DIRECTOR_MODEL,
       instructions,
-      input: [{ role: 'user', content: [{ type: 'input_text', text: input }] }],
+      input: [{ role: 'user', content: [{ type: 'input_text', text: input }, ...images.map((image_url) => ({ type: 'input_image', image_url }))] }],
       text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
     }),
     signal: AbortSignal.timeout(55_000),
@@ -254,6 +277,36 @@ export async function POST(req: NextRequest) {
         RETEXT_JSON_SCHEMA,
       )
       return NextResponse.json({ texts: validateRetext(raw, allowed, structural) })
+    }
+
+    if (body.mode === 'review') {
+      const frames = (Array.isArray(body.frames) ? body.frames : [])
+        .slice(0, 6)
+        .map((f: any) => ({ second: typeof f?.second === 'number' ? Math.round(f.second * 10) / 10 : 0, image: typeof f?.image === 'string' ? f.image : '' }))
+        .filter((f) => /^data:image\/(jpeg|png);base64,/.test(f.image) && f.image.length < 400_000)
+      if (!frames.length) return NextResponse.json({ error: 'Frames are required', code: 'BAD_REQUEST' }, { status: 400 })
+      const spec = body.spec && typeof body.spec === 'object' ? (body.spec as Record<string, any>) : {}
+      const raw = await callDirector(
+        key,
+        REVIEW_INSTRUCTIONS,
+        JSON.stringify({
+          frames: frames.map((f) => f.second),
+          spec: {
+            brief: str(spec.brief, 300),
+            product: str(spec.product, 120),
+            tokens: spec.tokens && typeof spec.tokens === 'object' ? { background: str(spec.tokens.background, 20), text: str(spec.tokens.text, 20), accent: str(spec.tokens.accent, 20) } : null,
+            scenes: (Array.isArray(spec.scenes) ? spec.scenes : []).slice(0, 20).map((sc: any) => str(sc?.line, 260)),
+          },
+        }),
+        'motion_studio_review',
+        REVIEW_JSON_SCHEMA,
+        frames.map((f) => f.image),
+      )
+      const findings = (Array.isArray(raw?.findings) ? raw.findings : [])
+        .slice(0, 6)
+        .map((f: any) => ({ second: typeof f?.second === 'number' ? f.second : 0, severity: f?.severity === 'fix' ? 'fix' : 'check', text: str(f?.text, 300) }))
+        .filter((f: any) => f.text)
+      return NextResponse.json({ findings, summary: str(raw?.summary, 300) })
     }
 
     if (body.mode === 'chat') {
