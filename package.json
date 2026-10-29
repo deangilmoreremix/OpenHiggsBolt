@@ -55,7 +55,8 @@
     "build:metadata": "node scripts/generate-build-info.mjs",
     "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs && node scripts/build-fast-discovery.mjs && node scripts/build-motion-capture.mjs",
     "build:fast-discovery": "node scripts/build-fast-discovery.mjs",
-    "build:motion-capture": "node scripts/build-motion-capture.mjs"
+    "build:motion-capture": "node scripts/build-motion-capture.mjs",
+    "gen:demo-texts": "node scripts/gen-demo-texts.mjs"
   },
   "build": {
     "appId": "ai.generative.open",

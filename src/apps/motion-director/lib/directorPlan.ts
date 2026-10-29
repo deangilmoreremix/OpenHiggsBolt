@@ -203,6 +203,7 @@ export type DirectorEditOp =
   | { op: 'remove'; clipId: string }
   | { op: 'replace_recipe'; clipId: string; recipeId: string }
   | { op: 'add_shot'; afterClipId: string; recipeId: string; seconds: number; text: string }
+  | { op: 'set_texts'; clipId: string; from: string; to: string }
   | { op: 'set_palette'; background: string; text: string; accent: string };
 
 export const EDIT_JSON_SCHEMA = {
@@ -216,9 +217,11 @@ export const EDIT_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['op', 'clipId', 'recipeId', 'seconds', 'text', 'background', 'accent'],
+        required: ['op', 'clipId', 'recipeId', 'seconds', 'text', 'background', 'accent', 'from', 'to'],
         properties: {
-          op: { type: 'string', enum: ['set_text', 'set_duration', 'remove', 'replace_recipe', 'add_shot', 'set_palette'] },
+          op: { type: 'string', enum: ['set_text', 'set_duration', 'remove', 'replace_recipe', 'add_shot', 'set_palette', 'set_texts'] },
+          from: { type: 'string' },
+          to: { type: 'string' },
           clipId: { type: 'string' },
           recipeId: { type: 'string' },
           seconds: { type: 'number' },
@@ -263,6 +266,12 @@ export function validateEditOps(raw: unknown, clipIds: ReadonlySet<string>): { r
         if (recipeId) ops.push({ op: 'add_shot', afterClipId: clipIds.has(clipId) ? clipId : '', recipeId, seconds, text: text(o.text, PLAN_LIMITS.headlineChars) });
         break;
       }
+      case 'set_texts': {
+        const from = text(o.from, 120);
+        const to = text(o.to, RETEXT_MAX_CHARS).replace(/[*<>{}]/g, '');
+        if (clipIds.has(clipId) && from && to) ops.push({ op: 'set_texts', clipId, from, to });
+        break;
+      }
       case 'set_palette':
         if ([o.background, o.text, o.accent].some((v) => typeof v === 'string' && HEX.test(v))) {
           ops.push({
@@ -276,6 +285,61 @@ export function validateEditOps(raw: unknown, clipIds: ReadonlySet<string>): { r
     }
   }
   return { reply: text(input.reply, 600) || (ops.length ? 'Done.' : 'I could not turn that into a change.'), ops };
+}
+
+// ── Rewriting the words a recipe draws ─────────────────────────────────────
+
+export const RETEXT_MAX_CHARS = 80;
+
+export const RETEXT_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['scenes'],
+  properties: {
+    scenes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['index', 'pairs'],
+        properties: {
+          index: { type: 'number' },
+          pairs: {
+            type: 'array',
+            items: { type: 'object', additionalProperties: false, required: ['from', 'to'], properties: { from: { type: 'string' }, to: { type: 'string' } } },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/** A recipe's layout is drawn for its own words: keep a rewrite within about a third more characters, cut at a word. */
+export function fitToLayout(to: string, from: string): string {
+  const limit = Math.max(18, Math.ceil(from.length * 1.35));
+  if (to.length <= limit) return to;
+  const cut = to.slice(0, limit);
+  const at = cut.lastIndexOf(' ');
+  return (at > limit * 0.5 ? cut.slice(0, at) : cut).replace(/[,;:\s-]+$/, '');
+}
+
+/** scene index -> (template words -> new words). Keys must be words the recipe really draws. */
+export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, ReadonlySet<string>>): Record<number, Record<string, string>> {
+  const out: Record<number, Record<string, string>> = {};
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  for (const entry of Array.isArray(input.scenes) ? input.scenes.slice(0, 40) : []) {
+    const sc = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
+    const index = typeof sc.index === 'number' ? Math.round(sc.index) : -1;
+    const ok = allowed.get(index);
+    if (!ok) continue;
+    for (const pair of Array.isArray(sc.pairs) ? sc.pairs.slice(0, 60) : []) {
+      const pr = (pair && typeof pair === 'object' ? pair : {}) as Record<string, unknown>;
+      const from = typeof pr.from === 'string' ? pr.from : '';
+      const to = fitToLayout(text(pr.to, RETEXT_MAX_CHARS).replace(/[*<>{}]/g, ''), from);
+      if (ok.has(from) && to && to.toLowerCase() !== from.toLowerCase()) (out[index] ??= {})[from] = to;
+    }
+  }
+  return out;
 }
 
 // ── Co-creation steps (upstream's guided flow) ─────────────────────────────

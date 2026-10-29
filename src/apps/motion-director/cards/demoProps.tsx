@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
+import { applyTextOverrides, parseTextMap } from "../lib/textOverrides";
 import { LiveTextureContext, textureOverrides } from "../demosrc/_fixtures/liveTexture";
 
 /**
@@ -24,6 +25,8 @@ interface DemoOverlayProps {
   screens?: string[];
   /** Captured element crops (cards) for the same shots. */
   crops?: string[];
+  /** Words the recipe draws -> the words to draw instead (see lib/textOverrides). */
+  texts?: unknown;
 }
 
 const num = (v: unknown, fallback: number) => {
@@ -44,7 +47,15 @@ export const withDemoProps = (
       tintOpacity = 0,
       screens,
       crops,
+      texts,
     } = props as DemoOverlayProps;
+    const textMap = React.useMemo(() => parseTextMap(texts), [texts]);
+    const hasTexts = Object.keys(textMap).length > 0;
+    const innerRef = React.useRef<HTMLDivElement>(null);
+    // After every commit (animated text changes per frame) swap the recipe's words for the clip's.
+    React.useLayoutEffect(() => {
+      if (hasTexts && innerRef.current) applyTextOverrides(innerRef.current, textMap);
+    });
     const textures = React.useMemo(
       () => textureOverrides(Array.isArray(screens) ? screens : [], Array.isArray(crops) ? crops : []),
       [screens, crops],
@@ -56,7 +67,13 @@ export const withDemoProps = (
     return (
       <AbsoluteFill>
         <LiveTextureContext.Provider value={textures}>
-          <Inner />
+          {hasTexts ? (
+            <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+              <Inner />
+            </div>
+          ) : (
+            <Inner />
+          )}
         </LiveTextureContext.Provider>
         {wash > 0 ? (
           <AbsoluteFill style={{ background: tint, opacity: wash, mixBlendMode: "overlay" }} />

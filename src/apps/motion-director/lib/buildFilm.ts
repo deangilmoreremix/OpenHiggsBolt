@@ -140,6 +140,8 @@ export function planToProject(
     videos?: FilmVideo[];
     /** The company the film is for: the recipe demos speak with its name, colours, font, logo and words instead of SmartVideo GO. */
     brand?: BrandInput | null;
+    /** Scene index -> (template words -> the words to draw), from the director or the site's own words. */
+    texts?: Record<number, Record<string, string>>;
   },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
@@ -232,6 +234,7 @@ const INSET_PAGE_H = 1200;
         clip(cardId, at, frames, {
           accent: palette.accent,
           ...(usesCapture ? { screens, crops } : {}),
+          ...(opts.texts?.[i] && Object.keys(opts.texts[i]).length ? { texts: opts.texts[i] } : {}),
         }, { speed: fitSpeed(card, frames) }),
       );
       // A shot that draws its own sample UI still shows the user's site: a framed picture in a corner.

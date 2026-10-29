@@ -4,6 +4,8 @@
  * its existing mutators (prop/timing edits share one undo step; adding or
  * removing a clip pushes its own, as in `agentApply.ts`).
  */
+import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
+import { parseTextMap } from './textOverrides';
 import { findClip, useStore } from '../store';
 import { CARDS } from '../cards/registry';
 import type { ProjectData } from '../types';
@@ -211,6 +213,23 @@ export async function askDirector(body: { message: string; plan: DirectorPlan; c
   return { reply: typeof res.reply === 'string' ? res.reply : '', revise: res.revise === true };
 }
 
+/** Ask the director to rewrite the template words of each shot scene from the site and the storyboard. */
+export async function requestRetext(body: { plan: DirectorPlan; product: string; capture?: SiteCapture | null }): Promise<Record<number, Record<string, string>>> {
+  const scenes = body.plan.scenes.map((sc, index) => ({ index, recipeId: sc.kind === 'shot' ? sc.recipeId : '', headline: sc.headline, feature: sc.feature ?? sc.caption }));
+  const res = await post<{ texts?: Record<string, Record<string, unknown>> }>('/api/motion-studio/director', {
+    mode: 'retext',
+    product: body.product,
+    title: body.plan.title,
+    scenes,
+    capture: body.capture ? { title: body.capture.title, url: body.capture.url, content: body.capture.content ?? null } : null,
+  }, 45_000);
+  const out: Record<number, Record<string, string>> = {};
+  for (const [k, pairs] of Object.entries(res.texts ?? {})) {
+    for (const [from, to] of Object.entries(pairs ?? {})) if (typeof to === 'string' && to) (out[Number(k)] ??= {})[from] = to;
+  }
+  return out;
+}
+
 /** The editable text prop of a card, if it has one. */
 const textKey = (cardId: string): string | null => {
   if (cardId === 'inkpress-title-card' || cardId === 'inkpress-caption') return 'text';
@@ -231,6 +250,8 @@ export function clipsForDirector(project: ProjectData) {
         label: c.label ?? '',
         text: key ? String(c.props?.[key] ?? '') : '',
         seconds: Math.round((c.duration / project.fps) * 10) / 10,
+        // The words this shot draws, so the director can rewrite them with set_texts.
+        strings: c.cardId.startsWith('demo:') ? (DEMO_TEXTS[c.cardId.slice(5)] ?? []).slice(0, 40) : [],
       };
     }),
   );
@@ -285,6 +306,9 @@ export function applyDirectorOps(ops: DirectorEditOp[]): number {
       const key = textKey(hit.clip.cardId);
       if (!key) continue;
       s.updateClipProps(op.clipId, { [key]: op.text });
+    } else if (op.op === 'set_texts') {
+      if (!hit.clip.cardId.startsWith('demo:')) continue;
+      s.updateClipProps(op.clipId, { texts: { ...parseTextMap(hit.clip.props.texts), [op.from]: op.to } });
     } else if (op.op === 'set_duration') {
       s.updateClip(op.clipId, { duration: Math.max(2, Math.round(op.seconds * fps)) });
     } else if (op.op === 'remove') {

@@ -7,6 +7,8 @@ import { MANIFEST } from '../cards/projectCards';
 import { themedProps } from '../theme';
 import { cardName, tx, useT, useTx } from "../i18n";
 import { ThemePanel } from "./ThemePanel";
+import { DEMO_TEXTS } from "../demosrc/_generated/demoTexts";
+import { parseTextMap } from "../lib/textOverrides";
 
 /** 单个属性控件：按 schema 字段类型渲染 */
 const PropControl: React.FC<{
@@ -233,6 +235,45 @@ export const Inspector: React.FC = () => {
                     ))}
                   </section>
                 )}
+
+                {clip.cardId.startsWith("demo:") && (DEMO_TEXTS[clip.cardId.slice(5)]?.length ?? 0) > 0 && (() => {
+                  const original = DEMO_TEXTS[clip.cardId.slice(5)];
+                  const texts = parseTextMap(clip.props.texts);
+                  const set = (from: string, to: string) => {
+                    const next = { ...texts };
+                    if (to.trim()) next[from] = to;
+                    else delete next[from];
+                    updateClipProps(clip.id, { texts: next });
+                  };
+                  return (
+                    <section data-testid="template-text">
+                      <div className="sec-title">
+                        Template text
+                        {Object.keys(texts).length > 0 && (
+                          <button type="button" className="mini" style={{ marginLeft: 8 }} onClick={() => { begin(); updateClipProps(clip.id, { texts: {} }); }}>
+                            Reset all
+                          </button>
+                        )}
+                      </div>
+                      <div className="dim" style={{ fontSize: 11, marginBottom: 6 }}>Type new words over any line this shot draws.</div>
+                      {original.slice(0, 60).map((line) => (
+                        <label key={line} className="prop-row">
+                          <span className="prop-label" title={line} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>
+                          <span className="prop-ctl">
+                            <input
+                              type="text"
+                              value={texts[line] ?? ""}
+                              placeholder={line}
+                              data-testid="template-text-input"
+                              onFocus={begin}
+                              onChange={(e) => set(line, e.target.value)}
+                            />
+                          </span>
+                        </label>
+                      ))}
+                    </section>
+                  );
+                })()}
 
                 <section>
                   <div className="sec-title">{t("insp.timing")}</div>
