@@ -437,6 +437,24 @@ test.describe('Motion Studio director', () => {
     await expect(page.getByRole('button', { name: 'Approve & build film' })).toBeEnabled();
   });
 
+  test('the template picker is sorted into category chips with counts', async ({ page }) => {
+    await installStudioSession(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: /Select a recipe/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Motion Templates' });
+    const chips = dialog.getByTestId('recipe-categories');
+    await expect(chips.getByRole('tab', { name: /^All\s*\d+/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(chips.getByRole('tab')).toHaveCount(11);
+    await chips.getByRole('tab', { name: /^Camera/ }).click();
+    await expect(chips.getByRole('tab', { name: /^Camera/ })).toHaveAttribute('aria-selected', 'true');
+    // Only that category's shots are listed.
+    await expect(dialog.getByRole('heading', { name: 'Camera' })).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Typography' })).toHaveCount(0);
+    await chips.getByRole('tab', { name: /^All/ }).click();
+    await expect(dialog.getByRole('heading', { name: 'Typography' })).toBeVisible();
+  });
+
   test('picking a template goes straight back to the chat box', async ({ page }) => {
     await installStudioSession(page);
     await page.goto(`${BASE_URL}/studio/motion-director/new`);
