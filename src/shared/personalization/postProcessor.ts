@@ -139,6 +139,9 @@ async function logoDataUrl(url: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
     body: JSON.stringify({ urls: [url] }),
+    // A hung download must not stall generation: the caller draws the end
+    // card without the logo instead.
+    signal: AbortSignal.timeout(10_000),
   })
   const data = await res.json().catch(() => ({}))
   const result = data?.results?.[0]

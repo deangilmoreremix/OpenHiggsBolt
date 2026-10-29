@@ -13,13 +13,15 @@ export function imageLoadsInBrowser(url: string, timeoutMs = IMAGE_LOAD_TIMEOUT_
   if (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) return Promise.resolve(false)
   return new Promise((resolve) => {
     const img = new Image()
+    // Declared before `done`, which clears it.
+    let timer: ReturnType<typeof setTimeout> | undefined
     const done = (ok: boolean) => {
       clearTimeout(timer)
       img.onload = null
       img.onerror = null
       resolve(ok)
     }
-    const timer = setTimeout(() => done(false), timeoutMs)
+    timer = setTimeout(() => done(false), timeoutMs)
     img.onload = () => done(img.naturalWidth > 0)
     img.onerror = () => done(false)
     img.src = url
