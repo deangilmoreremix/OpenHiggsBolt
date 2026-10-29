@@ -22,7 +22,7 @@
 import React, { useId } from 'react';
 import { AbsoluteFill, useCurrentFrame, interpolate, Easing } from 'remotion';
 import { Grain, Vignette, bezier } from '../../_fixtures/Polish';
-import { MotionStudioWordmark } from '../../_fixtures/Brand';
+import { MotionStudioWordmark, BRAND } from '../../_fixtures/Brand';
 
 export const INTEGRATION_HUB_MAP_DURATION = 150; // 前摇 0.5s + 快翻 1.2s + 两拍接入 0.7s + 输送呼吸 ~2.6s
 
@@ -128,8 +128,8 @@ const HubPanel: React.FC<{ glow: number }> = ({ glow }) => (
 );
 
 // ---------- 翻转前的旧页面（正面）：另一张页面，翻面后才得到中枢页 ----------
-const PARAS = [
-  'A 45-second launch film for the new pricing page, cut from real page captures. SmartVideo GO drafted the storyboard from twelve shot recipe cards; the beat grid is locked to the soundtrack.',
+const PARAS = () => [
+  `A 45-second launch film for the new pricing page, cut from real page captures. ${BRAND.name} drafted the storyboard from twelve shot recipe cards; the beat grid is locked to the soundtrack.`,
   'Camera moves are 2.5D push-ins with a crash zoom on the hero. Sound design lands a whoosh on every cut, and the first full render is already queued for review in the workbench.',
 ];
 const FrontPanel: React.FC<{ glow: number }> = ({ glow }) => (
@@ -157,7 +157,7 @@ const FrontPanel: React.FC<{ glow: number }> = ({ glow }) => (
       ))}
     </div>
     <div style={{ fontSize: 15, fontWeight: 650, color: INK, marginTop: 22 }}>Summary</div>
-    {PARAS.map((p, i) => (
+    {PARAS().map((p, i) => (
       <div key={i} style={{ fontSize: 13, lineHeight: 1.62, color: INK2, marginTop: 8, maxWidth: 720 }}>{p}</div>
     ))}
     <div style={{ fontSize: 15, fontWeight: 650, color: INK, marginTop: 18 }}>Next steps</div>

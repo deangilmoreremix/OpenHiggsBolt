@@ -122,7 +122,7 @@ const HomePage: React.FC<{ slot: number }> = ({ slot }) => (
     <Nav active="Product" />
     <div style={{ position: 'absolute', left: 150, top: 290 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, ...type(24, 700, { caps: true }), color: GOLD, letterSpacing: '0.18em' }}>
-        <div style={{ width: 36, height: 2, background: GOLD }} />Part of SmartVideo GO
+        <div style={{ width: 36, height: 2, background: GOLD }} />Part of {BRAND.name}
       </div>
       <div style={{ ...type(148, 800), color: INK, marginTop: 34, lineHeight: 0.98, letterSpacing: '-0.05em' }}>
         Frame motion.<br /><span style={{ fontFamily: SERIF_STACK, fontStyle: 'italic', fontWeight: 400, letterSpacing: '-0.03em' }}>Craft the shot.</span>

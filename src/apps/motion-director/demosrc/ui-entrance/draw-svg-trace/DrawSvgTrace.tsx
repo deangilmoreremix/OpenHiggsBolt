@@ -154,7 +154,7 @@ export const DrawSvgTrace: React.FC = () => {
               )}
             </div>
             <div style={{ marginTop: 44, ...type(32, 450), lineHeight: 1.35, color: L.ink2, ...rise(3) }}>
-              Every cut snaps to the downbeat. Rendered by SmartVideo GO.
+              Every cut snaps to the downbeat. Rendered by {BRAND.name}.
             </div>
           </div>
 
