@@ -12,6 +12,7 @@
 // 大幅缩放不再"硬缩"；整行上移提前到 f32–46，品牌行静止 26f 再 crash；强调色统一为批次靛蓝。
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { Grain, Vignette } from '../../_fixtures/Polish';
+import { BRAND } from '../../_fixtures/Brand';
 import {
   AbsoluteFill,
   continueRender,
@@ -26,8 +27,8 @@ import {
 export const LEAD_WORD_ZOOM_ASSEMBLE_DURATION = 84; // 2.8s @30fps
 
 // ---- 编舞常量 ----
-const TEXT = 'Introducing SmartVideo GO';
-const HIGHLIGHT_WORD = 'SmartVideo GO'; // 精确匹配的词换强调色：品牌词落位那一下自带高亮
+const TEXT = () => `Introducing ${BRAND.name}`;
+const HIGHLIGHT_WORD = () => BRAND.name; // 精确匹配的词换强调色：品牌词落位那一下自带高亮
 const FONT_SIZE = 96;
 const INITIAL_SCALE = 2.3; // 首词起手放大倍数
 const INTRO_DURATION = 6; // f：首词淡入
@@ -114,7 +115,7 @@ const TextReveal: React.FC = () => {
     if (metrics) continueRender(handle);
   }, [metrics, handle]);
 
-  const words = TEXT.split(' ').filter(Boolean);
+  const words = TEXT().split(' ').filter(Boolean);
   const ready = metrics !== null;
   const leadRatio = metrics?.leadRatio ?? 0.14;
   const lineWidth = metrics?.lineWidth ?? width * 0.5;
@@ -182,7 +183,7 @@ const TextReveal: React.FC = () => {
                 style={{
                   display: 'inline-block',
                   opacity,
-                  color: word === HIGHLIGHT_WORD ? ACCENT : undefined,
+                  color: BRAND.name.split(' ').includes(word) ? ACCENT : undefined,
                   translate: isLead
                     ? undefined
                     : `${interpolate(

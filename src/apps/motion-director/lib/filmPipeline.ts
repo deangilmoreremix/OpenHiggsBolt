@@ -17,6 +17,7 @@ import { captureSite, requestPlan, DirectorError, type SiteCapture } from './dir
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { applySiteContent, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
+import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
@@ -133,6 +134,34 @@ export async function storyboardFilm(
   }
 }
 
+/** The site's short name: the page title up to the first separator ("Acme | Home" -> "Acme"). */
+const nameOf = (title: string): string => title.split(/\s[|\u2013\u2014-]\s|:\s/)[0].trim().slice(0, 40);
+
+/**
+ * The company the recipe demos should speak as. Only films of a captured site get one
+ * (so the studio's own demos keep SmartVideo GO); the plan's palette and the site's own
+ * words and font replace the demo's.
+ */
+export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): BrandInput | undefined {
+  const name = capture ? nameOf(capture.title || '') : '';
+  if (!capture || !name) return undefined;
+  const content = capture.content;
+  const taglines = [content?.headline, content?.description, ...(content?.headings ?? [])].filter((v): v is string => Boolean(v)).map((v) => v.trim().slice(0, 80));
+  return {
+    name,
+    logo: capture.logo ?? null,
+    accent: plan.palette.accent,
+    accent2: plan.palette.accent,
+    ink: plan.palette.text,
+    paper: plan.palette.background,
+    ...(capture.brand.fontFamily ? { font: capture.brand.fontFamily } : {}),
+    repo: capture.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''),
+    motto: content?.headline || taglines[0],
+    taglines: taglines.slice(0, 4),
+    features: (content?.headings ?? []).slice(0, 6),
+  };
+}
+
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
@@ -172,6 +201,7 @@ export async function buildFilmProject(
     // A film of a captured site shows that site's logo (none if it had none); the Brand Kit logo is for films with no site.
     logo: opts.capture ? opts.capture.logo ?? null : opts.logo ?? null,
     videos,
+    brand: brandFor(plan, opts.capture),
   });
   log(`Film built · ${project.tracks.length} tracks`, 'done');
   return project;

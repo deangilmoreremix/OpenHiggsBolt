@@ -1707,6 +1707,8 @@ const CAPTURE_FIRST_SHOT_MS = 7_000
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
+/** A film wants this many distinct pictures of the site; page slices make up the difference. */
+export const CAPTURE_MIN_PICTURES = 8
 /** Extra routes are only started while the run is younger than this. */
 export const CAPTURE_ROUTE_BUDGET_MS = 9_000
 export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 8_000
@@ -2193,6 +2195,17 @@ export async function capturePageScreenshots(
           if (!crop) continue
           crops.push(crop)
           cards.push(rect)
+        }
+        // Few card-like blocks (many sites have 1-2): fill up to CAPTURE_MIN_PICTURES with
+        // full-width slices of the page, so a film shows distinct parts of it instead of the
+        // same two pictures. Appended after the cards, which keeps `cards[i]` <-> `crops[i]`.
+        if (maxCards && crops.length < CAPTURE_MIN_PICTURES && left() > 6_000) {
+          const bandH = Math.round(CAPTURE_VIEWPORT.width * (9 / 16))
+          for (let y = 0; y + bandH <= pageHeight + 1 && crops.length < CAPTURE_MIN_PICTURES; y += bandH) {
+            if (left() < 4_000) break
+            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: { x: 0, y, width: CAPTURE_VIEWPORT.width, height: bandH } }).catch(() => null)
+            if (band) crops.push(band)
+          }
         }
         const layout: RouteLayout = { pageH: pageHeight, sections: found?.sections ?? [], cards }
         return { shot, pageHeight, pageClip, found, semantic, crops, layout }

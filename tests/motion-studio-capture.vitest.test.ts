@@ -75,7 +75,9 @@ describe('capturePageScreenshots', () => {
     // A first shot of what is on screen is taken at once, then the full-height one replaces it.
     expect(h.screenshots[0]).toMatchObject({ type: 'jpeg', clip: { x: 0, y: 0, width: 1920, height: 1080 } })
     expect(h.screenshots[1]).toMatchObject({ type: 'jpeg', clip: { x: 0, y: 0, width: 1920, height: mod.CAPTURE_MAX_PAGE_HEIGHT } })
-    expect(result.crops).toHaveLength(2)
+    // Two card crops, then full-width page slices fill up toward CAPTURE_MIN_PICTURES.
+    expect(result.crops.length).toBeGreaterThan(2)
+    expect(result.crops.length).toBeLessThanOrEqual(mod.CAPTURE_MIN_PICTURES)
     expect(result.pageHeight).toBe(mod.CAPTURE_MAX_PAGE_HEIGHT)
     expect(result.title).toBe('Acme — ship faster')
     expect(result.brand).toEqual({ background: '#ffffff', text: '#111111', accent: '#ff5500', fontFamily: 'Inter, sans-serif' })

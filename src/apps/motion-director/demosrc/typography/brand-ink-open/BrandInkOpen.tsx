@@ -16,8 +16,8 @@ const INK = 'oklch(18% 0.006 82)';
 const AMBER = 'oklch(52% 0.115 65)';
 const INK2 = 'oklch(50% 0.006 82)';
 
-const WORDMARK = BRAND.name; // 'SmartVideo GO'
-const KICKER = PITCH.en.motto; // 'Frame motion. Craft the shot.'（textTransform 转大写）
+const WORDMARK = () => BRAND.name; // 'SmartVideo GO'
+const KICKER = () => PITCH.en.motto; // 'Frame motion. Craft the shot.'（textTransform 转大写）
 
 export const BrandInkOpen: React.FC = () => {
   const frame = useCurrentFrame();
@@ -37,7 +37,7 @@ export const BrandInkOpen: React.FC = () => {
   const perChar = 0.7;
   const kickStart = 28;
   const kickChars = Math.floor(Math.max(0, frame - kickStart) / perChar);
-  const kickDone = kickStart + KICKER.length * perChar;
+  const kickDone = kickStart + KICKER().length * perChar;
   const cursorOn = (() => {
     if (frame < kickStart) return false;
     if (frame < kickDone) return true;
@@ -82,7 +82,7 @@ export const BrandInkOpen: React.FC = () => {
             display: 'inline-flex', alignItems: 'flex-end',
           }}
         >
-          {WORDMARK.split('').map((ch, i) => {
+          {WORDMARK().split('').map((ch, i) => {
             const delay = 10 + i * 3;
             const t = interpolate(frame, [delay, delay + 12], [0, 1], {
               extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.2, 0.7, 0.25, 1),
@@ -120,7 +120,7 @@ export const BrandInkOpen: React.FC = () => {
             display: 'flex', justifyContent: 'center', alignItems: 'center',
           }}
         >
-          <span style={{ whiteSpace: 'pre' }}>{KICKER.slice(0, kickChars)}</span>
+          <span style={{ whiteSpace: 'pre' }}>{KICKER().slice(0, kickChars)}</span>
           <span
             style={{
               display: 'inline-block', width: 14, height: 24, marginLeft: 4,

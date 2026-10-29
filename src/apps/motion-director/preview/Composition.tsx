@@ -4,6 +4,7 @@ import type { ProjectData } from "../types";
 import { CARDS } from "../cards/registry";
 import { MANIFEST } from '../cards/projectCards';
 import { themedProps, themedBackground } from '../theme';
+import { setBrand } from "../demosrc/_fixtures/Brand";
 
 /** 时间重映射：clip 本地帧 → 卡片源帧（inOffset + f × speed）。
  *  卡片全部是 frame 的纯函数（tween 均 clamp），因此变速/裁入/超时长定格都安全。
@@ -19,6 +20,7 @@ const TimeRemap: React.FC<{
 };
 
 export const MainComposition: React.FC<{ project: ProjectData }> = ({ project }) => {
+  setBrand(project.brand);
   // UI 中 tracks[0] 是最上层轨 → 最后渲染（覆盖在上）
   const ordered = [...project.tracks].reverse();
   return (

@@ -81,6 +81,7 @@ export const isProjectShape = (v: unknown): v is ProjectData =>
   (v.themeId === undefined || isStr(v.themeId)) &&
   (v.background === undefined || isStr(v.background)) &&
   (v.source === undefined || isStr(v.source)) &&
+  (v.brand === undefined || isObj(v.brand)) &&
   (v.themeColors === undefined ||
     (isObj(v.themeColors) && Object.values(v.themeColors).every(isStr)));
 

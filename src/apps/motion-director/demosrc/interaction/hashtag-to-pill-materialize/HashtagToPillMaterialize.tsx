@@ -14,6 +14,7 @@
 import React from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame, Easing } from 'remotion';
 import { Grain, SpeedBlur, velocity } from '../../_fixtures/Polish';
+import { BRAND } from '../../_fixtures/Brand';
 
 // 揭示 83f 后真静止 37f（≈1.2s 呼吸，R1），全段 4s
 export const HASHTAG_TO_PILL_MATERIALIZE_DURATION = 120;
@@ -172,7 +173,7 @@ export const HashtagToPillMaterialize: React.FC = () => {
             fontSize: 70, fontWeight: 500, color: C.body, lineHeight: 1.33, letterSpacing: 0.3,
           }}>
             A few camera moves I keep stealing from<br />
-            SmartVideo GO: the crash zoom, the orbit,<br />
+            {BRAND.name}: the crash zoom, the orbit,<br />
             the whip pan. Welcome. Bring popcorn.
           </div>
         </>

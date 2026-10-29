@@ -12,6 +12,7 @@ import React from 'react';
 import { AbsoluteFill } from 'remotion';
 import { DesignStage, E, lerp, seg, useT } from '../../_fixtures/Motion';
 import { Backdrop, EASE, FONT, softShadow } from '../../_fixtures/Polish';
+import { BRAND } from '../../_fixtures/Brand';
 
 export const DOC_PARK_LEFT_PILL_DEAL_DURATION = 174; // 5800ms @30fps
 
@@ -112,11 +113,11 @@ const Caption: React.FC<{
 // ---- 文档：出版级客户档案（内容坐标，宽 DW；只露右侧约 35%，行尾要铺满） ----
 const DW = 250, DH = 190;
 type Line = { y: number; kind: 'title' | 'meta' | 'h' | 'p'; text: string; mark?: number };
-const DOC: Line[] = [
-  { y: 17, kind: 'title', text: 'Launch film brief · SmartVideo GO' },
+const DOC = (): Line[] => [
+  { y: 17, kind: 'title', text: `Launch film brief · ${BRAND.name}` },
   { y: 30, kind: 'meta', text: 'Prepared by the Motion Studio agent  ·  Oct 2  ·  12 captures' },
   { y: 53, kind: 'h', text: 'PRODUCT' },
-  { y: 63, kind: 'p', text: 'Part of SmartVideo GO — the AI motion studio, rendered with Remotion.' },
+  { y: 63, kind: 'p', text: `Part of ${BRAND.name} — the AI motion studio, rendered with Remotion.` },
   { y: 73, kind: 'p', text: 'Takes a frontend repo, real page captures and a one-line prompt.' },
   { y: 83, kind: 'p', text: 'Ships a 1080p promo with beat-synced cuts and film-grade SFX.' },
   { y: 97, kind: 'h', text: 'OPENER' },
@@ -210,7 +211,7 @@ export const DocParkLeftPillDeal: React.FC = () => {
               >
                 <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: 330, transform: `translateY(${scrollY.toFixed(2)}px)` }}>
                   <div style={{ position: 'absolute', left: 14, right: 14, top: 41.5, height: 0.5, background: LINE }} />
-                  {DOC.map((l, i) => {
+                  {DOC().map((l, i) => {
                     const st: React.CSSProperties =
                       l.kind === 'title'
                         ? { fontSize: 8.6, fontWeight: 650, color: TXT, letterSpacing: '-0.015em' }
@@ -252,7 +253,7 @@ export const DocParkLeftPillDeal: React.FC = () => {
                 const draw = seg(t, f + 0.04, f + 0.11, EASE.out);
                 const fade = 1 - seg(t, ce - 0.06, ce - 0.01, EASE.out);
                 if (draw <= 0 || fade <= 0) return null;
-                const line = DOC.find((l) => l.mark === k)!;
+                const line = DOC().find((l) => l.mark === k)!;
                 const a = toCanvas(DW - 6, line.y + scrollY);
                 const b = { x: PX - 3, y: PY + k * (PH + PG) + PH / 2 };
                 const mx = (a.x + b.x) / 2;

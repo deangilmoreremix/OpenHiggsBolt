@@ -23,6 +23,7 @@ import React from 'react';
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { EASE, bezier, ramp } from '../../_fixtures/Polish';
 import { Dust, LOOKS, Sheen, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
+import { BRAND } from '../../_fixtures/Brand';
 
 export const LIST_REVEAL_DURATION = 120;
 
@@ -136,7 +137,7 @@ export const ListReveal: React.FC = () => {
       {/* 右侧标题：列表铺到一半才进 */}
       <div style={{ position: 'absolute', left: 1010, top: 336, width: 780 }}>
         <div style={{ ...type(24, 600, { mono: true }), letterSpacing: '0.16em', color: L.accent2, opacity: ramp(frame, 40, 16, EASE.out) }}>
-          SmartVideo GO · workbench
+          {BRAND.name} · workbench
         </div>
         <div style={{ ...type(120, 760), color: L.ink, marginTop: 26 }}>
           <TextReveal text={'Every shot,\nwithin reach.'} by="line" start={46} each={22} gap={7} />

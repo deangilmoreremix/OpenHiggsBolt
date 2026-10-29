@@ -22,7 +22,7 @@
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { EASE, FONT, Grain, SpeedBlur, Vignette, bezier, mix, ramp, velocity } from '../../_fixtures/Polish';
-import { MARK_PATHS } from '../../_fixtures/Brand';
+import { MARK_PATHS, BRAND } from '../../_fixtures/Brand';
 
 export const RISO_MISREGISTRATION_HIT_DURATION = 120;
 
@@ -184,7 +184,7 @@ export const RisoMisregistrationHit: React.FC = () => {
           {[
             ['SHOT RECIPE CARDS', 'Cinematic product films'],
             ['ONE PROMPT', 'To a finished promo'],
-            ['BUILT ON REMOTION', 'Part of SmartVideo GO'],
+            ['BUILT ON REMOTION', `Part of ${BRAND.name}`],
           ].map(([a, b], i) => (
             <div key={i} style={info(i)}>
               <div style={{ fontFamily: SANS, fontSize: 40, fontWeight: 850, letterSpacing: '-0.01em', lineHeight: 1.1 }}>{a}</div>

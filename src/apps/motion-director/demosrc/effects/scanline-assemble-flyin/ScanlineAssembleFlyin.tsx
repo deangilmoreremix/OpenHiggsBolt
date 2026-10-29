@@ -250,7 +250,7 @@ export const ScanlineAssembleFlyin: React.FC = () => {
           <span style={{ color: done > 0.5 ? L.accent2 : L.accent, letterSpacing: '0.06em', textShadow: done > 0.5 ? glow(L.accent2, 0.5) : 'none' }}>
             {done > 0.5 ? '✓ BUILT' : '▸ BUILDING'}
           </span>
-          <span style={{ marginLeft: 18, color: L.ink3, fontWeight: 500 }}>SmartVideo GO / index</span>
+          <span style={{ marginLeft: 18, color: L.ink3, fontWeight: 500 }}>{BRAND.name} / index</span>
           <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }}>
             <span style={{ color: L.ink3, fontWeight: 500 }}>BLOCKS </span>
             <span style={{ color: placed === PLAN.length ? L.accent2 : L.ink }}>{String(placed).padStart(2, '0')}</span>

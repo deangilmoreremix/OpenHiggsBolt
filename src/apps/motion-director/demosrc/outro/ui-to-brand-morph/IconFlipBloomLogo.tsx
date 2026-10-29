@@ -25,7 +25,7 @@ const SmileLaptop: React.FC<{ size: number }> = ({ size }) => (
   </svg>
 );
 
-const WORD = BRAND.name;
+const WORD = () => BRAND.name;
 
 export const IconFlipBloomLogo: React.FC = () => {
   const frame = useCurrentFrame();
@@ -161,7 +161,7 @@ export const IconFlipBloomLogo: React.FC = () => {
             whiteSpace: 'nowrap',
           }}
         >
-          {WORD.split('').map((ch, i) => {
+          {WORD().split('').map((ch, i) => {
             const st = WORD_START + i * 2.6; // 每字独立的"由大变小"动作，错峰拉到 2.6f 才读得清
             const cT = ramp(frame, st, 12, EASE.snappy);
             const op = ramp(frame, st, 5, EASE.out);
