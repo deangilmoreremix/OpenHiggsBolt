@@ -58,6 +58,14 @@ const FLASH_FRAMES = 10;
 const SFX_CUT = 'motion-studio/sfxlib/transition/swoosh-quick.mp3';
 const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
 const SFX_FRAMES = 24;
+const sfxFile = (name: string) => `motion-studio/sfxlib/${name}.mp3`;
+/** The sound cues of each brand scene: [file, frames after the scene starts, length, volume, label]. */
+const BRAND_SOUNDS: Record<string, ReadonlyArray<readonly [string, number, number, number, string]>> = {
+  'brand/url-scan': [['text/typewriter-digital', 4, 54, 0.45, 'Typing'], ['data/data-scan', 54, 60, 0.5, 'Scan']],
+  'brand/hub': [['light/light-sweep-magic', 6, 40, 0.45, 'Sweep'], ['ui/ui-message-pop', 34, 20, 0.35, 'Node pop']],
+  'brand/feature-zoom': [['camera/zoom-air-fast', 0, 30, 0.45, 'Push-in']],
+  'brand/logo-reveal': [['impact/impact-cine-big', 2, 60, 0.7, 'Impact'], ['light/stardust-swish', 12, 48, 0.5, 'Sparkle']],
+};
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Screen time an attached video gets as its own scene: its length, kept between 2 and 8 seconds. */
@@ -177,6 +185,7 @@ const INSET_PAGE_H = 1200;
     }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
     if (scene.kind === 'title') {
+      sfx.push(clip('audio-clip', at + 4, Math.min(20, frames - 4), { file: sfxFile('text/typewriter-hit-soft'), volume: 0.4 }, { label: 'Stamp' }));
       shots.push(
         clip('inkpress-title-card', at, frames, {
           text: scene.headline,
@@ -206,6 +215,9 @@ const INSET_PAGE_H = 1200;
         props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
+      }
+      for (const [file, offset, len, volume, label] of BRAND_SOUNDS[scene.recipeId] ?? []) {
+        if (offset < frames) sfx.push(clip('audio-clip', at + offset, Math.min(len, frames - offset), { file: sfxFile(file), volume }, { label }));
       }
       shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));
     } else {

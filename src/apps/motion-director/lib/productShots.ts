@@ -24,3 +24,13 @@ export const PRODUCT_TEXTURE_SHOTS: readonly string[] = [
 
 export const isProductTextureShot = (componentName: string): boolean =>
   PRODUCT_TEXTURE_SHOTS.includes(componentName);
+
+/**
+ * Categories whose recipes draw their own sample interface (a made-up app screen, table
+ * or chart). In a film for a company they show a foreign screen unless the site's page is
+ * added beside them, so the director prefers PRODUCT-PAGE shots and brand scenes.
+ */
+const SAMPLE_UI_CATEGORIES: readonly string[] = ['ui-entrance', 'interaction', 'data'];
+
+export const drawsSampleScreen = (t: { componentName: string; category: string }): boolean =>
+  SAMPLE_UI_CATEGORIES.includes(t.category) && !isProductTextureShot(t.componentName);
