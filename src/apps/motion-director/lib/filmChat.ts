@@ -280,6 +280,8 @@ export function inkPressPlan(opts: {
   palette?: Partial<DirectorPalette> | null;
   /** What the captured site says about itself: its headline under the title, section headings as shot captions, its call to action at the end. */
   content?: SiteContent | null;
+  /** The site was captured with pictures: tell its story with the URL scan and hub scenes, then close on its logo. */
+  siteScenes?: boolean;
 }): DirectorPlan {
   const name = opts.productName || productNameFrom(opts.prompt);
   const site = opts.content ?? null;
@@ -295,6 +297,12 @@ export function inkPressPlan(opts: {
   const scenes: DirectorScene[] = [];
   if (withTitles) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: fit(site?.headline || site?.description, PLAN_LIMITS.captionChars), transition: 'cut' });
+  }
+  // The template's own arc for a captured site: the address scanned, then the product as a hub of its features.
+  const story = Boolean(opts.siteScenes) && !named && withTitles && target >= (shots.length + 4) * PLAN_LIMITS.minSceneSec && shots.length + 4 <= PLAN_LIMITS.maxScenes;
+  if (story) {
+    scenes.push({ kind: 'shot', recipeId: 'brand/url-scan', durationSec: 3.5, headline: '', caption: '', transition: 'cut', feature: 'We read your site', action: 'address typed, page scanned', asset: 'your page' });
+    scenes.push({ kind: 'shot', recipeId: 'brand/hub', durationSec: 3.5, headline: fit(site?.headline || site?.description, PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'Everything in one place', action: 'features as nodes around your page', asset: 'your page + menu' });
   }
   shots.forEach((shot, i) => {
     const scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');

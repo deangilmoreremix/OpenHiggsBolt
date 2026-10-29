@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { BRAND_SCENES, buildCatalogBrief, validatePlan, type DirectorPlan } from '../lib/directorPlan';
 import { planToProject } from '../lib/buildFilm';
-import { restrictToRecipes } from '../lib/filmChat';
+import { inkPressPlan, restrictToRecipes } from '../lib/filmChat';
+import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { CARDS } from '../cards/registry';
 import { parseWords } from '../cards/inkpress/title-card';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
@@ -49,5 +50,27 @@ describe('brand scenes', () => {
 
   it('marks emphasis even with punctuation outside the stars', () => {
     expect(parseWords('Meet *Acme-bakery*.')).toEqual([{ text: 'Meet', accent: false }, { text: 'Acme-bakery.', accent: true }]);
+  });
+
+  it('the Ink Press path tells a captured site\'s story with the scan and hub scenes', () => {
+    const plan = inkPressPlan({ prompt: 'acme.com', durationSec: 40, productName: 'Acme', content: { headline: 'Grow with Acme', headings: ['One', 'Two'] }, siteScenes: true });
+    const ids = plan.scenes.map((s) => s.recipeId);
+    expect(ids.slice(0, 3)).toEqual(['', 'brand/url-scan', 'brand/hub']);
+    const without = inkPressPlan({ prompt: 'acme.com', durationSec: 40, productName: 'Acme' });
+    expect(without.scenes.map((s) => s.recipeId)).not.toContain('brand/hub');
+  });
+
+  it('flags shots that draw a sample screen', () => {
+    const flagged = MOTION_TEMPLATES.filter(drawsSampleScreen);
+    expect(flagged.length).toBeGreaterThan(10);
+    expect(flagged.some((t) => isProductTextureShot(t.componentName))).toBe(false);
+    expect(buildCatalogBrief().split('\n').filter((l) => l.includes('SAMPLE-UI'))).toHaveLength(flagged.length);
+  });
+
+  it('lays sound cues under brand scenes and the closing logo', () => {
+    const plan: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene('brand/url-scan'), scene('', 'title', 'Hello'), scene('', 'title', 'Go')] };
+    const project = planToProject(plan, { aspectRatio: '16:9', capture, brand: { name: 'Acme' } });
+    const labels = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip').map((c) => c.label);
+    expect(labels).toEqual(expect.arrayContaining(['Typing', 'Scan', 'Impact', 'Sparkle', 'Stamp']));
   });
 });

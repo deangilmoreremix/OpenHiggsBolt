@@ -10,7 +10,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
-import { isProductTextureShot } from '../lib/productShots';
+import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
@@ -301,7 +301,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
             return {
               key: `${i}-${scene.recipeId || 'title'}`,
               label: template ? motionTemplateTitle(template) : brandScene ? brandScene.title : 'Title card',
-              detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site'].filter(Boolean).join(' · '),
+              detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site', template && storyboard?.capture && drawsSampleScreen(template) && 'sample screen + your page beside it'].filter(Boolean).join(' · '),
               media: template ? (
                 <RecipePreview recipe={template} playing={false} />
               ) : (

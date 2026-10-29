@@ -128,7 +128,7 @@ export async function storyboardFilm(
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content });
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url) });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
     return { plan, capture, source: 'inkpress', note };
   }

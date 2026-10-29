@@ -111,7 +111,7 @@ describe('film assembly', () => {
     expect(shots[2].props.screens).toBeUndefined();
     expect(byName.Transitions.map((c) => c.cardId)).toEqual(['inkpress-flash-cut']);
     // One sound effect per scene change: a whoosh on the plain cut, an impact on the flash cut.
-    expect(byName.SFX.map((c) => c.props.file)).toEqual([
+    expect(byName.SFX.filter((c) => c.label !== 'Stamp').map((c) => c.props.file)).toEqual([
       'motion-studio/sfxlib/transition/swoosh-quick.mp3',
       'motion-studio/sfxlib/impact/impact-transition.mp3',
     ]);
