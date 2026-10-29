@@ -3359,9 +3359,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           failedDownloads.push(result.url)
         }
       }
-      if (failedDownloads.length > 0 && failedDownloads.length < remoteItems.length) {
-        partialDownloadError = `${failedDownloads.length} of ${remoteItems.length} assets failed to download. ${downloadedByUrl.size} assets were imported.`
-      } else if (failedDownloads.length === remoteItems.length && linkedItems.length === 0) {
+      const importedCount = downloadedByUrl.size + linkedItems.length
+      if (failedDownloads.length > 0 && importedCount > 0) {
+        partialDownloadError = `${failedDownloads.length} of ${untouched.length} assets failed to download. ${importedCount} assets were imported.`
+      } else if (failedDownloads.length > 0) {
         setDiscoveryError('All assets failed to download. Please try again.')
         setDiscoveryStatus('reviewing')
         return
@@ -3445,10 +3446,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
-    if (ids) {
-      // Only assets that actually imported leave the review; failed ones stay
-      // so they can be retried.
-      const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+    // Only assets that actually imported leave the review; failed ones stay
+    // so they can be retried.
+    const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+    const anyFailed = toImport.some((item) => !importedIds.has(item.id))
+    if (ids || anyFailed) {
       setDiscoveredAssetsState((prev) => prev.filter((a) => !importedIds.has(a.id)))
       setDiscoveryStatus('reviewing')
     } else {
@@ -4262,7 +4264,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Pre-generate CTA end card if exact end-card handling is requested
       if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
         setGeneration((prev) => ({ ...prev, progress: 3, progressMessage: 'Preparing branding assets...' }))
-        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || null, apiKey)
+        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || null, apiKey)
         if (endCardUrl) {
           resolved = {
             ...resolved,

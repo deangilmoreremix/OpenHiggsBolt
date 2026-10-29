@@ -1325,6 +1325,36 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     fetchSpy.mockRestore()
   })
 
+  it('reports and keeps blocked images whose download fails, alongside linked ones', async () => {
+    imageProbe.loads.mockImplementation(async (url: string) => !url.includes('blocked'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        return { ok: true, status: 200, json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: false, error: 'blocked' })) }) } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+    const asset = (id: string, url: string) => ({ id, sourceUrl: url, previewUrl: url, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: url, edited: false, videoReady: false, hasTransparency: false })
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([asset('ok', 'https://biz.example/a.jpg'), asset('bl', 'https://blocked.example/b.jpg')])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/1 of 2 assets failed to download/)
+    expect(ctx.discoveredAssets.map((a: any) => a.id)).toEqual(['bl'])
+    expect(ctx.assets.products).toHaveLength(1)
+
+    imageProbe.loads.mockReset()
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
   it('imports more than 20 assets in batches the download route accepts', async () => {
     const batchSizes: number[] = []
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
