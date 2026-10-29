@@ -19,7 +19,7 @@ import { Inspector } from "./panels/Inspector";
 import { PreviewPanel } from "./preview/PreviewPanel";
 import { Timeline } from "./timeline/Timeline";
 import MotionAgentPanel from "./components/MotionAgentPanel";
-import { findClip, useStore } from "./store";
+import { findClip, resetProject, useStore } from "./store";
 import { seekTo, togglePlay } from "./playerRef";
 import type { ClipData, ProjectData, TrackData } from "./types";
 import { applyLocaleToDocument, LOCALES, useLocale, useT, type Locale } from "./i18n";
@@ -244,6 +244,7 @@ export const App: React.FC = () => {
         <ExportButton />
         <button className="btn" onClick={exportJson}>{t("exportJson")}</button>
         <button className="btn" onClick={() => fileRef.current?.click()}>{t("import")}</button>
+        <button className="btn" onClick={() => { if (window.confirm(t("resetSample.confirm"))) resetProject(); }} data-testid="topbar-reset-sample">{t("resetSample")}</button>
         <span className="tl-sep" />
         <select
           className="btn interface-language"

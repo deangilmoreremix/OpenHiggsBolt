@@ -230,6 +230,18 @@ export async function requestRetext(body: { plan: DirectorPlan; product: string;
   return out;
 }
 
+export interface FrameFinding {
+  second: number;
+  severity: 'fix' | 'check';
+  text: string;
+}
+
+/** An independent model review of a few rendered frames against the design spec (needs the person's key). */
+export async function requestFrameReview(body: { frames: Array<{ second: number; image: string }>; spec: unknown }): Promise<{ findings: FrameFinding[]; summary: string }> {
+  const res = await post<{ findings?: FrameFinding[]; summary?: string }>('/api/motion-studio/director', { mode: 'review', frames: body.frames, spec: body.spec }, 50_000);
+  return { findings: Array.isArray(res.findings) ? res.findings : [], summary: typeof res.summary === 'string' ? res.summary : '' };
+}
+
 /** The editable text prop of a card, if it has one. */
 const textKey = (cardId: string): string | null => {
   if (cardId === 'inkpress-title-card' || cardId === 'inkpress-caption') return 'text';
