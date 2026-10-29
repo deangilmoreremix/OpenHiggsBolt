@@ -1170,12 +1170,8 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     return fetchSpy
   }
 
-  it('surfaces partial download failures in discoveryError and importConfirmation', async () => {
-    const fetchSpy = mockDownloadResponse([
-      { url: 'https://example.com/a.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-a').toString('base64')}` },
-      { url: 'https://example.com/b.jpg', ok: false, error: 'Network timeout' },
-      { url: 'https://example.com/c.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-c').toString('base64')}` },
-    ])
+  it('imports discovered website assets by linking to their source URLs, with no storage copy', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
     mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded.png' })
 
@@ -1200,22 +1196,26 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     })
 
     ctx = (window as any).__personalizationCtx
-    expect(ctx.discoveryError).toMatch(/1 of 3 assets failed to download/)
+    expect(fetchSpy.mock.calls.some(([u]) => typeof u === 'string' && u.includes('/api/personalization/download-image'))).toBe(false)
+    expect(mockUploadPersonalizationAsset).not.toHaveBeenCalled()
+    expect(ctx.discoveryError).toBeNull()
     expect(ctx.importConfirmation).toBeTruthy()
-    expect(ctx.importConfirmation.count).toBe(2)
+    expect(ctx.importConfirmation.count).toBe(3)
+    const all = [...ctx.assets.logos, ...ctx.assets.identities, ...ctx.assets.brandReferences].filter(Boolean)
+    expect(all).toHaveLength(3)
+    expect(all.every((a: any) => a.uploadStatus === 'ready' && !a.file)).toBe(true)
+    expect(all[0].url).toBe('https://example.com/a.jpg')
+    expect(all[0].uploadedUrl).toBe('https://example.com/a.jpg')
+    expect(all[1].url).toBe('https://example.com/b.jpg')
+    expect(all[2].url).toBe('https://example.com/c.jpg')
 
     fetchSpy.mockRestore()
   })
 
-  it('reports upload failures during import and exposes retry affordance', async () => {
-    const fetchSpy = mockDownloadResponse([
-      { url: 'https://example.com/a.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-a').toString('base64')}` },
-      { url: 'https://example.com/b.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-b').toString('base64')}` },
-    ])
+  it('does not upload discovered website assets, leaving them ready to use', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset
-      .mockRejectedValueOnce(new Error('Storage quota exceeded'))
-      .mockResolvedValueOnce({ url: 'https://example.com/uploaded-b.png' })
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded.png' })
 
     await renderProvider()
     await openSource()
@@ -1237,32 +1237,22 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     })
 
     ctx = (window as any).__personalizationCtx
-    expect(ctx.discoveryError).toMatch(/1 of 2 asset\(s\) failed to upload/)
+    expect(fetchSpy.mock.calls.some(([u]) => typeof u === 'string' && u.includes('/api/personalization/download-image'))).toBe(false)
+    expect(mockUploadPersonalizationAsset).not.toHaveBeenCalled()
+    expect(ctx.discoveryError).toBeNull()
     expect(ctx.importConfirmation).toBeTruthy()
-    expect(ctx.importConfirmation.failedCount).toBe(1)
-    // `count` reports every asset that was ADDED to the session library —
-    // both of them are usable for personalization even though only one could
-    // be stored durably. The upload failure is reported separately via
-    // `failedCount` and `discoveryError`.
     expect(ctx.importConfirmation.count).toBe(2)
-
-    const allAssets = [
-      ...ctx.assets.identities,
-      ...ctx.assets.logos,
-      ...ctx.assets.products,
-      ...ctx.assets.brandReferences,
-      ctx.assets.firstFrame,
-      ctx.assets.lastFrame,
-      ctx.assets.ctaGraphic,
-    ].filter(Boolean)
-    const failedAsset = allAssets.find((a: any) => a.uploadStatus === 'error')
-    expect(failedAsset).toBeTruthy()
-    expect(failedAsset.uploadError).toBeTruthy()
+    expect(ctx.importConfirmation.failedCount).toBe(0)
+    const all = [...ctx.assets.logos, ...ctx.assets.brandReferences].filter(Boolean)
+    expect(all).toHaveLength(2)
+    expect(all.every((a: any) => a.uploadStatus === 'ready' && !a.file)).toBe(true)
+    expect(all[0].url).toBe('https://example.com/a.jpg')
+    expect(all[1].url).toBe('https://example.com/b.jpg')
 
     fetchSpy.mockRestore()
   })
 
-  it('shows actionable message for 401 auth error on download-image', async () => {
+  it('does not call download-image, so no auth error surfaces for discovered assets', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 401,
@@ -1288,12 +1278,16 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     })
 
     ctx = (window as any).__personalizationCtx
-    expect(ctx.discoveryError).toMatch(/Authentication required/)
+    expect(fetchSpy.mock.calls.some(([u]) => typeof u === 'string' && u.includes('/api/personalization/download-image'))).toBe(false)
+    expect(ctx.discoveryError).toBeNull()
+    expect(ctx.assets.logos).toHaveLength(1)
+    expect(ctx.assets.logos[0].url).toBe('https://example.com/a.jpg')
+    expect(ctx.assets.logos[0].uploadStatus).toBe('ready')
 
     fetchSpy.mockRestore()
   })
 
-  it('shows actionable message for 403 entitlement error on download-image', async () => {
+  it('does not call download-image, so no entitlement error surfaces for discovered assets', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 403,
@@ -1319,7 +1313,11 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     })
 
     ctx = (window as any).__personalizationCtx
-    expect(ctx.discoveryError).toMatch(/Contact your administrator/)
+    expect(fetchSpy.mock.calls.some(([u]) => typeof u === 'string' && u.includes('/api/personalization/download-image'))).toBe(false)
+    expect(ctx.discoveryError).toBeNull()
+    expect(ctx.assets.logos).toHaveLength(1)
+    expect(ctx.assets.logos[0].url).toBe('https://example.com/a.jpg')
+    expect(ctx.assets.logos[0].uploadStatus).toBe('ready')
 
     fetchSpy.mockRestore()
   })

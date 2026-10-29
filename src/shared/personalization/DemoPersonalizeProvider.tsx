@@ -3215,115 +3215,88 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       brand: 'brand_reference',
     }
 
-    // 1. Download only untouched remote assets. Edited assets already carry
-    // an in-memory data URL produced by the editor and should not be sent to
-    // the server-side downloader.
-    const remoteItems = toImport.filter((item) => !item.editedDataUrl)
-    const downloadedByUrl = new Map<string, string>()
-    let partialDownloadError: string | null = null
-
-    if (remoteItems.length > 0) {
-      let downloadRes: Response
-      try {
-        downloadRes = await fetch('/api/personalization/download-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
-          credentials: 'same-origin',
-        })
-      } catch (err) {
-        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-        setDiscoveryStatus('reviewing')
-        return
-      }
-
-      if (!downloadRes.ok) {
-        let data: Record<string, unknown>
-        try {
-          data = await downloadRes.json()
-        } catch {
-          data = {}
-        }
-        const status = downloadRes.status
-        if (status === 401) {
-          setDiscoveryError('Authentication required. Please sign in to continue.')
-        } else if (status === 403) {
-          setDiscoveryError('You do not have access to this feature. Contact your administrator.')
-        } else {
-          setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
-        }
-        setDiscoveryStatus('reviewing')
-        return
-      }
-
-      const downloadData = await downloadRes.json()
-      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
-      const failedDownloads: string[] = []
-      for (const result of results) {
-        if (result?.ok && result?.url && result?.dataUrl) {
-          downloadedByUrl.set(result.url, result.dataUrl)
-        } else if (result?.url) {
-          failedDownloads.push(result.url)
-        }
-      }
-      if (failedDownloads.length > 0 && failedDownloads.length < remoteItems.length) {
-        partialDownloadError = `${failedDownloads.length} of ${remoteItems.length} assets failed to download. ${downloadedByUrl.size} assets were imported.`
-      } else if (failedDownloads.length === remoteItems.length) {
-        setDiscoveryError('All assets failed to download. Please try again.')
-        setDiscoveryStatus('reviewing')
-        return
-      }
-    }
-
-    // 2. Build assets from either edited data URLs or downloaded originals.
-    const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    // Build imported assets. AI-edited images keep their in-memory edit and
+    // are uploaded to durable storage below. Discovered website images link
+    // straight to their source URL: nothing is downloaded or copied to
+    // storage, which is what avoids the failed-upload error when storage
+    // isn't configured. Drag-and-drop and the sections themselves are
+    // unchanged.
+    const assetsToCreate: {
+      item: DiscoveredAsset
+      blob: Blob | null
+      role: PersonalizationAsset['role']
+      isPrimary: boolean
+      websiteUrl: string
+    }[] = []
 
     for (const item of toImport) {
-      const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
-      if (!dataUrl) continue
-
       const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
-      const blob = dataUrlToBlob(dataUrl)
-      if (!blob) continue
+      const isPrimary = role === 'presenter_identity' || role === 'logo'
 
-      const isPrimary =
-        role === 'presenter_identity' ? true :
-        role === 'logo' ? true :
-        false
-
-      assetsToCreate.push({ item, blob, role, isPrimary })
+      if (item.editedDataUrl) {
+        // AI-edited image: persist the edited result to durable storage.
+        const blob = dataUrlToBlob(item.editedDataUrl)
+        if (!blob) continue
+        assetsToCreate.push({ item, blob, role, isPrimary, websiteUrl: '' })
+      } else {
+        // Discovered website image: remember its website address instead of
+        // downloading and re-uploading it to storage. Skip anything with no
+        // address to link to.
+        const websiteUrl = item.originalPreviewUrl || item.previewUrl
+        if (!websiteUrl) continue
+        assetsToCreate.push({ item, blob: null, role, isPrimary, websiteUrl })
+      }
     }
 
     if (assetsToCreate.length === 0) {
-      setDiscoveryError(partialDownloadError || 'No valid images could be downloaded.')
+      setDiscoveryError('No valid images could be imported.')
       setDiscoveryStatus('reviewing')
       return
     }
 
-    // 3. Build asset objects before updating library so upload can reference them.
+    // Build asset objects before updating the library.
     const createdAssets: PersonalizationAsset[] = []
-    for (const { item, blob, role, isPrimary } of assetsToCreate) {
-      const asset = createOwnedAsset(blob, role, {
-        isPrimary,
-        name: `discovered_${Date.now()}`,
-        originalUrl: item.originalPreviewUrl || item.previewUrl,
-        edited: Boolean(item.edited || item.editedDataUrl),
-        editedDataUrl: item.editedDataUrl,
-        videoReady: item.videoReady || false,
-        hasTransparency: item.hasTransparency || false,
-        editMetadata: item.editMetadata,
-        visionAnalysis: item.visionAnalysis,
-        visionValidation: item.visionValidation,
-        sourceCategory: item.category,
-        sourceType: item.sourceType,
-        sourceDiscoveredAssetId: item.id,
-      })
+    for (const { item, blob, role, isPrimary, websiteUrl } of assetsToCreate) {
+      let asset: PersonalizationAsset
+      if (blob) {
+        asset = createOwnedAsset(blob, role, {
+          isPrimary,
+          name: `discovered_${Date.now()}`,
+          originalUrl: item.originalPreviewUrl || item.previewUrl,
+          edited: Boolean(item.edited || item.editedDataUrl),
+          editedDataUrl: item.editedDataUrl,
+          videoReady: item.videoReady || false,
+          hasTransparency: item.hasTransparency || false,
+          editMetadata: item.editMetadata,
+          visionAnalysis: item.visionAnalysis,
+          visionValidation: item.visionValidation,
+          sourceCategory: item.category,
+          sourceType: item.sourceType,
+          sourceDiscoveredAssetId: item.id,
+        })
+      } else {
+        // Website-linked asset: its durable URL is the source address itself.
+        asset = createAssetFromUrl(websiteUrl, role, {
+          isPrimary,
+          name: websiteUrl.split('/').pop() || 'discovered',
+          originalUrl: item.originalPreviewUrl || item.previewUrl,
+          edited: false,
+          videoReady: item.videoReady || false,
+          hasTransparency: item.hasTransparency || false,
+          editMetadata: item.editMetadata,
+          visionAnalysis: item.visionAnalysis,
+          visionValidation: item.visionValidation,
+          sourceCategory: item.category,
+          sourceType: item.sourceType,
+          sourceDiscoveredAssetId: item.id,
+        })
+      }
       createdAssets.push(asset)
     }
 
-    // 3a. Add assets to library
+    // Add assets to library
     setAssets((prev) => {
       let next = { ...prev }
       for (const asset of createdAssets) {
@@ -3332,9 +3305,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return next
     })
 
-    // 4. Upload each asset to get durable URLs
+    // Upload only assets that carry a local file (AI-edited images).
+    // Website-linked assets are already ready: no storage copy, no upload.
     const uploadErrors: string[] = []
     for (const asset of createdAssets) {
+      if (!asset.file) continue
       try {
         await uploadAsset(asset)
       } catch (e) {
@@ -3361,11 +3336,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const summary = uploadErrors.length === totalAttempted
         ? `All ${totalAttempted} asset(s) failed to upload.`
         : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload. ${successCount} succeeded.`
-      setDiscoveryError(partialDownloadError
-        ? `${partialDownloadError} ${summary}`
-        : summary)
-    } else if (partialDownloadError) {
-      setDiscoveryError(partialDownloadError)
+      setDiscoveryError(summary)
     }
 
     // The assets are in the session regardless of whether the durable upload

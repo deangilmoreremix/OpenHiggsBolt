@@ -594,22 +594,25 @@ describe('free discovery in the shared modal — anonymous mode', () => {
     expect(reviewText).toContain('Brand (1)')
 
     // Drag one discovered asset onto a different section through the modal's
-    // real drag handlers.
+    // real drag handlers. The same drop imports it into the library (linked to
+    // its website address, no storage copy), so it leaves discovery review.
     const productAsset = ctx().discoveredAssets.find((a: any) => a.assignedSection === 'products')
+    expect(productAsset).toBeTruthy()
     await act(async () => {
       dragDiscoveredAssetToSection(container, 'listing-1.jpg', 'logo')
     })
     await flush(10)
 
-    const moved = ctx().discoveredAssets.find((a: any) => a.id === productAsset.id)
-    expect(moved.assignedSection).toBe('logo')
-    // The drag handler re-assigns the section (exactly as the existing handler
-    // always has) and clears the auto-assignment; the asset's category is
-    // unchanged, which is what makes the review area trustworthy.
-    expect(moved.autoAssigned).toBe(false)
-    expect(moved.category).toBe('product')
+    // Imported into the library under its new section, linked to the website.
+    const logo = ctx().assets.logos.find((a: any) => a.url === 'https://sunsetrealty.example.com/listing-1.jpg')
+    expect(logo).toBeTruthy()
+    expect(logo.role).toBe('logo')
+    expect(logo.uploadStatus).toBe('ready')
+
+    // Leaves the discovery review state.
+    expect(ctx().discoveredAssets.find((a: any) => a.id === productAsset.id)).toBeUndefined()
     expect(ctx().discoveredAssets.filter((a: any) => a.assignedSection === 'products').length).toBe(0)
-    expect(ctx().discoveredAssets.filter((a: any) => a.assignedSection === 'logo').length).toBe(2)
+    expect(ctx().discoveredAssets.filter((a: any) => a.assignedSection === 'logo').length).toBe(1)
   })
 })
 
