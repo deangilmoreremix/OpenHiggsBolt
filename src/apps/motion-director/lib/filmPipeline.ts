@@ -13,12 +13,14 @@ import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
-import { captureSite, requestPlan, DirectorError, type SiteCapture } from './directorClient';
+import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { applySiteContent, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
+import { fallbackTexts } from './retext';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -159,6 +161,38 @@ export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): Brand
   };
 }
 
+/**
+ * The words each shot draws, in the person's product's voice. The director rewrites a recipe's
+ * template text from the site and the storyboard; with no key, or when it cannot be reached,
+ * the site's own headline, headings and menu fill the same lines.
+ */
+export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog): Promise<Record<number, Record<string, string>>> {
+  const stringsOf = (recipeId: string) => {
+    const t = recipeId ? resolveMotionTemplate(recipeId) : undefined;
+    return t ? DEMO_TEXTS[t.componentName] ?? [] : [];
+  };
+  const hasWords = plan.scenes.some((sc) => sc.kind === 'shot' && stringsOf(sc.recipeId).length > 0);
+  if (!hasWords) return {};
+  log('Writing your words into the shots', 'running');
+  try {
+    const texts = await requestRetext({ plan, product, capture });
+    if (Object.keys(texts).length) {
+      log('Shots now say your words', 'done');
+      return texts;
+    }
+  } catch {
+    /* fall through to the site's own words */
+  }
+  const out: Record<number, Record<string, string>> = {};
+  plan.scenes.forEach((sc, i) => {
+    if (sc.kind !== 'shot') return;
+    const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product);
+    if (Object.keys(map).length) out[i] = map;
+  });
+  log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');
+  return out;
+}
+
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
@@ -191,6 +225,9 @@ export async function buildFilmProject(
     beats = await analyzeBeats(track.url).then((r) => r.beats).catch(() => []);
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
   }
+  const brand = brandFor(plan, opts.capture);
+  const product = brand?.name ?? plan.title.split(/\s[—–-]\s/)[0];
+  const texts = await writeShotWords(plan, opts.capture, product, log);
   log('Animating the shots and laying in sound design', 'running');
   const videos = opts.media.filter((m) => m.kind === 'video').map((m) => ({ url: m.url, name: m.name, durationSec: m.durationSec }));
   if (videos.length) log(`Cutting in ${videos.length} attached video${videos.length === 1 ? '' : 's'}`, 'done');
@@ -201,7 +238,8 @@ export async function buildFilmProject(
     // A film of a captured site shows that site's logo (none if it had none); the Brand Kit logo is for films with no site.
     logo: opts.capture ? opts.capture.logo ?? null : opts.logo ?? null,
     videos,
-    brand: brandFor(plan, opts.capture),
+    brand,
+    texts,
   });
   log(`Film built · ${project.tracks.length} tracks`, 'done');
   return project;

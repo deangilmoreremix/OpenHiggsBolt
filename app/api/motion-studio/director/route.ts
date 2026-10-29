@@ -8,6 +8,8 @@ import {
   MAPPING_JSON_SCHEMA,
   PLAN_JSON_SCHEMA,
   PLAN_LIMITS,
+  RETEXT_JSON_SCHEMA,
+  RETEXT_MAX_CHARS,
   buildCatalogBrief,
   targetSceneCount,
   validateBrief,
@@ -15,7 +17,10 @@ import {
   validateEditOps,
   validateMapping,
   validatePlan,
+  validateRetext,
 } from '@/apps/motion-director/lib/directorPlan'
+import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
+import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { requireMotionStudioUser } from '../lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -85,6 +90,14 @@ Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot an
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
 
+const RETEXT_INSTRUCTIONS = `You rewrite the words a film's shot recipes draw, so each shot speaks for the person's product instead of the template's sample content. ${COCREATE_RULES}
+You receive scenes: each has an index, its headline and message, and strings = the exact words that recipe draws today (template words).
+Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's strings, copied exactly; to = the words to draw instead.
+- Write from the site's own words (productCapture.content: headline, headings, calls to action, menu) and the scene's headline / message. Never invent features, prices, numbers or claims the site does not give.
+- Keep the same kind and length class: a short label stays a short label (a menu entry or feature name), a sentence stays one sentence of similar length. The layout is drawn for the template's words: stay within about 1.25× the template line's characters (never above ${RETEXT_MAX_CHARS}); longer text overflows the shot. Plain text only: no markdown, no quotes around it.
+- Replace every string that names the template's sample product, people, data or features. Leave generic interface words (Home, Settings, Search) as they are unless the site has its own equivalent.
+- Skip a string by leaving it out. Cover every scene you are given.`
+
 const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
 You receive their message, the storyboard on the table (title, summary, scenes) and what the product's site says (productCapture.content, when present).
 Return JSON {reply, revise}.
@@ -105,6 +118,7 @@ Return JSON {reply, ops}. Each op has every field; fill unused ones with "" or 0
 - remove {clipId}.
 - replace_recipe {clipId, recipeId}: swap the motion recipe (catalog ids only).
 - add_shot {clipId: the clip to insert after ("" = at the end), recipeId, seconds, text}.
+- set_texts {clipId, from, to}: change one line a shot draws; from = one of the clip's strings, copied exactly; to = the new words (≤ 80 chars). One op per line.
 - set_palette {background, text: text colour hex, accent}.
 Use only clip ids from the list and recipe ids from the catalog. Keep the film's rhythm: key moments hold ≥ 1 s, ≤ 3 flash cuts. reply: one or two sentences describing what you changed.
 
@@ -192,6 +206,7 @@ export async function POST(req: NextRequest) {
         label: str(c?.label, 80),
         text: str(c?.text, 120),
         seconds: typeof c?.seconds === 'number' ? Math.round(c.seconds * 10) / 10 : 0,
+        strings: (Array.isArray(c?.strings) ? c.strings : []).slice(0, 40).map((v: unknown) => str(v, 120)).filter(Boolean),
       }))
       const instruction = str(body.instruction, 1000).trim()
       if (!instruction) return NextResponse.json({ error: 'An instruction is required', code: 'BAD_REQUEST' }, { status: 400 })
@@ -203,6 +218,34 @@ export async function POST(req: NextRequest) {
         EDIT_JSON_SCHEMA,
       )
       return NextResponse.json(validateEditOps(raw, new Set(clips.map((c) => c.id))))
+    }
+
+    if (body.mode === 'retext') {
+      const capture = body.capture && typeof body.capture === 'object' ? (body.capture as Record<string, unknown>) : null
+      const allowed = new Map<number, Set<string>>()
+      const scenes: Array<Record<string, unknown>> = []
+      for (const sc of (Array.isArray(body.scenes) ? body.scenes : []).slice(0, PLAN_LIMITS.maxScenes) as any[]) {
+        const index = typeof sc?.index === 'number' ? Math.round(sc.index) : -1
+        const template = resolveMotionTemplate(str(sc?.recipeId, 120))
+        const strings = template ? (DEMO_TEXTS[template.componentName] ?? []).slice(0, 40) : []
+        if (index < 0 || !strings.length) continue
+        allowed.set(index, new Set(strings))
+        scenes.push({ index, recipe: template?.nameEn ?? '', headline: str(sc?.headline, 120), message: str(sc?.feature, 160), strings })
+      }
+      if (!scenes.length) return NextResponse.json({ texts: {} })
+      const raw = await callDirector(
+        key,
+        RETEXT_INSTRUCTIONS,
+        JSON.stringify({
+          product: str(body.product, 80),
+          filmTitle: str(body.title, 120),
+          productCapture: capture ? { title: str(capture.title, 200), url: str(capture.url, 300), content: siteContent(capture.content) } : null,
+          scenes,
+        }),
+        'motion_studio_retext',
+        RETEXT_JSON_SCHEMA,
+      )
+      return NextResponse.json({ texts: validateRetext(raw, allowed) })
     }
 
     if (body.mode === 'chat') {
