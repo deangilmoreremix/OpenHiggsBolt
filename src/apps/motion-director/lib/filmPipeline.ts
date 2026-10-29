@@ -15,6 +15,7 @@ import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
+import { buildDesignSpec } from './designSpec';
 import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
@@ -206,7 +207,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string },
   log: ActivityLog,
 ): Promise<ProjectData> {
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
@@ -252,7 +253,7 @@ export async function buildFilmProject(
     texts,
   });
   log(`Film built · ${project.tracks.length} tracks`, 'done');
-  return project;
+  return { ...project, spec: buildDesignSpec(plan, opts.capture, opts.prompt) };
 }
 
 export interface FilmQaReport {
