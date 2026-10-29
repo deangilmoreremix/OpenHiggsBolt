@@ -47,6 +47,8 @@ export interface ProjectData {
   source?: string;
   /** Company identity the recipe demos speak with (absent = the studio's own SmartVideo GO). */
   brand?: BrandInput;
+  /** The design spec the film was built from (brief, tokens, storyboard rows, data rules). */
+  spec?: DesignSpec;
   tracks: TrackData[];
 }
 
@@ -106,3 +108,15 @@ export const normalizeSession = (session: SessionData): SessionData => ({
     ? session.messages.length
     : (session.messageCount ?? 0),
 });
+
+/** What a film was asked to be, saved with it (see lib/designSpec). */
+export interface DesignSpec {
+  version: 1;
+  brief: string;
+  product: string;
+  url: string | null;
+  sampleOnly: boolean;
+  tokens: { background: string; text: string; accent: string; font: string | null };
+  scenes: Array<{ n: number; start: number; durationSec: number; kind: 'shot' | 'title'; recipeId: string; line: string }>;
+  dataRules: string[];
+}

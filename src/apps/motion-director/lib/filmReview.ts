@@ -7,6 +7,7 @@
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import type { ProjectData } from '../types';
 import { filmRuleViolations, rulesOf } from './shotRules';
+import { reviewAgainstSpec } from './designSpec';
 
 export interface ReviewItem {
   code: string;
@@ -56,7 +57,7 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
 
   // A8: with music, deliver it with and without.
   if (clips.some((c) => c.cardId === 'audio-clip' && !/sfxlib/.test(String(c.props.file)))) items.push({ code: 'A8', ok: true, text: 'Render both the version with music and the one without.' });
-  return items;
+  return [...items, ...reviewAgainstSpec(project)];
 }
 
 /** The lines for the chat: what failed (with the second), and how many passed. */

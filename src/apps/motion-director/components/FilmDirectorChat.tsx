@@ -9,6 +9,7 @@ import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeC
 import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
+import { specMarkdown } from '../lib/designSpec';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
@@ -42,6 +43,17 @@ const choiceStyle = (primary: boolean): React.CSSProperties =>
   primary
     ? { background: 'var(--color-primary)', color: 'white' }
     : { background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: semantic.textSecondary };
+
+/** Downloads the film's design spec as Markdown. */
+const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }) => {
+  const url = useMemo(() => URL.createObjectURL(new Blob([specMarkdown(spec)], { type: 'text/markdown' })), [spec]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <a href={url} download={`${spec.product.replace(/[^\w-]+/g, '-').slice(0, 40) || 'film'}-design-spec.md`} className="px-3 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-spec">
+      Design spec
+    </a>
+  );
+};
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
@@ -120,6 +132,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             <a href={render.url} download={fileName} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-download">
               Download MP4{render.draft ? ` (draft ${draftSize})` : ''}
             </a>
+            {project.spec && <SpecLink spec={project.spec} />}
             {render.draft && (
               <button type="button" onClick={() => void start(false)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>
                 Render full {project.width}×{project.height}

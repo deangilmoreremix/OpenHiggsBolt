@@ -566,7 +566,7 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null }, glog);
+      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const music = media.find((m) => m.kind === 'audio');
