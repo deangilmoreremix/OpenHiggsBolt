@@ -195,15 +195,31 @@ function mapAspectRatioToSize(ratio?: string): string {
   return ASPECT_RATIO_TO_SIZE[ratio] || '1024x1024'
 }
 
-async function toImageBlob(url: string): Promise<Blob> {
+export async function toImageBlob(url: string): Promise<Blob> {
   try {
     const res = await fetch(url)
     if (res.ok) return await res.blob()
   } catch {
-    // fall through to placeholder
+    // A website image linked by its address usually refuses a cross-origin
+    // fetch; read it through the same-origin download route instead.
   }
-  // Minimal valid 1x1 PNG so editImage always receives a Blob
-  return new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], { type: 'image/png' })
+  try {
+    const res = await fetch('/api/personalization/download-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ urls: [url] }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    const data = await res.json().catch(() => ({}))
+    const dataUrl = data?.results?.[0]?.ok ? data.results[0].dataUrl : null
+    if (res.ok && typeof dataUrl === 'string') return await (await fetch(dataUrl)).blob()
+  } catch {
+    // reported below
+  }
+  // Never substitute a blank image: the edit would silently lose the person
+  // or product the user chose.
+  throw new Error('The reference image could not be loaded. Try another image or upload your own.')
 }
 
 function extractOpenAIImageUrl(result?: { url?: string; b64_json?: string }): string {
