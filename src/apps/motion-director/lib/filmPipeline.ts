@@ -15,7 +15,7 @@ import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
-import { applyFilmRules, applySiteContent, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -131,7 +131,7 @@ export async function storyboardFilm(
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
     const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)));
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: applySiteContent(fitted, capture?.content), capture, source: 'director' };
+    return { plan: chooseSeams(applySiteContent(fitted, capture?.content)), capture, source: 'director' };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
@@ -139,7 +139,7 @@ export async function storyboardFilm(
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
     const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url) });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan, capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan), capture, source: 'inkpress', note };
   }
 }
 

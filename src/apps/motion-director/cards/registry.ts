@@ -3,6 +3,7 @@ import { textBasicCard } from "./text-basic";
 import { titleCardCard } from "./inkpress/title-card";
 import { captionStripCard } from "./inkpress/caption-strip";
 import { flashCutCard } from "./inkpress/flash-cut";
+import { seamBarnCard, seamDipCard, seamWipeCard } from "./inkpress/seam-cuts";
 import { audioClipCard, imageClipCard, videoClipCard } from "./media-cards";
 import { siteInsetCard } from "./site-inset";
 import { BRAND_SCENE_CARDS } from "./brand-scenes";
@@ -26,6 +27,9 @@ const ALL: CardDef[] = [
   titleCardCard,
   captionStripCard,
   flashCutCard,
+  seamWipeCard,
+  seamBarnCard,
+  seamDipCard,
   audioClipCard,
   videoClipCard,
   imageClipCard,

@@ -74,6 +74,17 @@ export const CAPTION_STRIP_SCHEMA: PropField[] = [
   { type: "boolean", key: "uppercase", label: "全大写", default: true },
 ];
 
+/** Seam transitions (wipe / barn-door / dip) */
+export const SEAM_WIPE_SCHEMA: PropField[] = [
+  { type: "color", key: "color", label: "Panel colour", default: "#14110f" },
+  {
+    type: "select", key: "dir", label: "Direction", default: "right",
+    options: [{ value: "right", label: "→" }, { value: "left", label: "←" }, { value: "up", label: "↑" }, { value: "down", label: "↓" }],
+  },
+];
+export const SEAM_BARN_SCHEMA: PropField[] = [{ type: "color", key: "color", label: "Panel colour", default: "#14110f" }];
+export const SEAM_DIP_SCHEMA: PropField[] = [{ type: "color", key: "color", label: "Dip colour", default: "#14110f" }];
+
 /** 暖白闪转场 · Ink Press */
 export const FLASH_CUT_SCHEMA: PropField[] = [
   { type: "slider", key: "peak", label: "峰值不透明度", default: 0.85, min: 0.2, max: 1, step: 0.05 },
@@ -102,6 +113,9 @@ export const NATIVE_CARD_SCHEMAS: Record<string, PropField[]> = {
   "inkpress-title-card": TITLE_CARD_SCHEMA,
   "inkpress-caption": CAPTION_STRIP_SCHEMA,
   "inkpress-flash-cut": FLASH_CUT_SCHEMA,
+  "inkpress-seam-wipe": SEAM_WIPE_SCHEMA,
+  "inkpress-seam-barn": SEAM_BARN_SCHEMA,
+  "inkpress-seam-dip": SEAM_DIP_SCHEMA,
 };
 
 /**
