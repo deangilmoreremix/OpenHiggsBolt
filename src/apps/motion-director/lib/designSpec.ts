@@ -10,6 +10,7 @@ import { isBrandScene } from './directorPlan';
 import { sceneLine } from './coCreate';
 import type { ReviewItem } from './filmReview';
 import type { SiteCapture } from './directorClient';
+import { pickMotionPreset, presetText } from './motionPreset';
 
 export const DATA_RULES = [
   'Words on screen come from the site or the brief; nothing is invented (no made-up numbers, handles or domains).',
@@ -30,7 +31,13 @@ export function buildDesignSpec(plan: DirectorPlan, capture: SiteCapture | null,
     product: plan.title,
     url: capture?.url ?? null,
     sampleOnly: !capture || Boolean(capture.partial) || !capture.page?.url,
-    tokens: { background: plan.palette.background, text: plan.palette.text, accent: plan.palette.accent, font: capture?.brand?.fontFamily ?? null },
+    tokens: {
+      background: plan.palette.background,
+      text: plan.palette.text,
+      accent: plan.palette.accent,
+      font: capture?.brand?.fontFamily ?? null,
+      motion: (({ id, label, mainFrames, easing, overshoot, squash }) => ({ id, label, mainFrames, easing, overshoot, squash }))(pickMotionPreset({ text: presetText(capture ?? { title: plan.title }), accent: plan.palette.accent })),
+    },
     scenes,
     dataRules: DATA_RULES,
   };
@@ -45,6 +52,7 @@ export function specMarkdown(spec: DesignSpec): string {
     spec.brief ? `**Brief:** ${spec.brief}` : undefined,
     spec.url ? `**Site:** ${spec.url}` : '**Site:** none (sample pages)',
     `**Tokens:** background ${spec.tokens.background}, text ${spec.tokens.text}, accent ${spec.tokens.accent}${spec.tokens.font ? `, font ${spec.tokens.font}` : ''}`,
+    spec.tokens.motion ? `**Motion voice:** ${spec.tokens.motion.label} (main move ${spec.tokens.motion.mainFrames} f, ${spec.tokens.motion.easing}, overshoot ${spec.tokens.motion.overshoot}, squash ${spec.tokens.motion.squash})` : undefined,
     '',
     '## Storyboard',
     '',
