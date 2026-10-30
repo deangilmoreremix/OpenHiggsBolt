@@ -359,7 +359,17 @@ export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, Readon
 
 export interface BriefRow { item: string; judgment: string; evidence: string }
 export interface DirectorBrief { rows: BriefRow[]; questions: string[] }
-export interface VisualDirection { name: string; claim: string; keywords: string[]; look: string; motion: string; why: string; tradeoff: string }
+export interface VisualDirection {
+  name: string;
+  claim: string;
+  keywords: string[];
+  look: string;
+  motion: string;
+  why: string;
+  tradeoff: string;
+  /** The direction's colours (hex), used for its styleframe stills. */
+  palette?: DirectorPalette;
+}
 export interface DirectionOptions { directions: VisualDirection[]; recommended: number }
 export interface MappingRow { feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }
 
@@ -391,8 +401,14 @@ export const DIRECTION_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'claim', 'keywords', 'look', 'motion', 'why', 'tradeoff'],
+        required: ['name', 'claim', 'keywords', 'look', 'motion', 'why', 'tradeoff', 'palette'],
         properties: {
+          palette: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['background', 'text', 'accent'],
+            properties: { background: { type: 'string' }, text: { type: 'string' }, accent: { type: 'string' } },
+          },
           name: { type: 'string' },
           claim: { type: 'string' },
           keywords: { type: 'array', items: { type: 'string' } },
@@ -446,6 +462,13 @@ export function validateBrief(raw: unknown): DirectorBrief {
   return { rows, questions: list(input.questions, 3, 260) };
 }
 
+/** A direction's colours when all three are 6-digit hex; otherwise none (its stills use the site's own colours). */
+function directionPalette(raw: unknown): DirectorPalette | undefined {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const [background, textColor, accent] = [o.background, o.text, o.accent].map((v) => (typeof v === 'string' ? v.trim() : ''));
+  return HEX.test(background) && HEX.test(textColor) && HEX.test(accent) ? { background, text: textColor, accent } : undefined;
+}
+
 /** At most three directions; `recommended` always points at one of them. */
 export function validateDirections(raw: unknown): DirectionOptions {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -454,7 +477,7 @@ export function validateDirections(raw: unknown): DirectionOptions {
     const name = text(o.name, 50);
     const claim = text(o.claim, 200);
     return name && claim
-      ? [{ name, claim, keywords: list(o.keywords, 5, 24), look: text(o.look, 220), motion: text(o.motion, 200), why: text(o.why, 220), tradeoff: text(o.tradeoff, 200) }]
+      ? [{ name, claim, keywords: list(o.keywords, 5, 24), look: text(o.look, 220), motion: text(o.motion, 200), why: text(o.why, 220), tradeoff: text(o.tradeoff, 200), ...(directionPalette(o.palette) ? { palette: directionPalette(o.palette)! } : {}) }]
       : [];
   });
   if (!directions.length) throw new Error('The director returned no visual directions');

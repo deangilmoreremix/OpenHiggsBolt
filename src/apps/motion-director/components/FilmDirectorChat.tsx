@@ -305,6 +305,23 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           </button>
         </div>
       )}
+      {stage === 'direction' && director.styleframes.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="film-styleframes">
+          <span className="text-[11px]" style={{ color: semantic.textMuted }}>The options as frames (a real page and the closing logo in each direction's colours):</span>
+          <div className="flex flex-wrap gap-3">
+            {director.styleframes.map((sf, i) => (
+              <div key={sf.direction + i} className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold" style={{ color: semantic.textSecondary }}>{String.fromCharCode(65 + i)} · {sf.direction}</span>
+                <div className="flex gap-1">
+                  {sf.frames.map((src, k) => (
+                    <img key={src} src={src} alt={`${sf.direction}, frame ${k + 1}`} className="h-20 rounded object-cover" style={{ border: '1px solid var(--border-color)' }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {activity.length > 0 && <ActivityList items={activity} />}
       {storyboard?.capture && (storyboard.capture.logo || storyboard.capture.images?.length) ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="site-assets">
