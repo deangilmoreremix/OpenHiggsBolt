@@ -30,7 +30,7 @@ const walk = (dir) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name)
     if (e.isDirectory()) {
-      if (e.name !== '_fixtures' && e.name !== '_generated') walk(p)
+      if (e.name !== '_fixtures' && e.name !== '_generated' && e.name !== '_legacy') walk(p)
     } else if (e.name.endsWith('.tsx')) files.push(p)
   }
 }
