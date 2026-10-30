@@ -21,6 +21,7 @@ import {
 import { videoSceneSec } from '../lib/buildFilm';
 import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, type GuidedContext, type SiteCapture } from '../lib/directorClient';
 import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
+import { renderStyleframes, type Styleframe } from '../lib/styleframes';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
@@ -111,6 +112,15 @@ export function useFilmDirector(opts: {
   const [stage, setStage] = useState<FilmStage>('idle');
   const [activity, setActivity] = useState<Array<{ label: string; status: ActivityStatus }>>([]);
   const [storyboard, setStoryboard] = useState<StoryboardResult | null>(null);
+  /** Two real stills per visual direction, shown while the person chooses (best effort; empty when stills cannot be rendered). */
+  const [styleframes, setStyleframes] = useState<Styleframe[]>([]);
+  const styleframeUrls = useRef<string[]>([]);
+  const setFrames = useCallback((frames: Styleframe[]) => {
+    for (const url of styleframeUrls.current) URL.revokeObjectURL(url);
+    styleframeUrls.current = frames.flatMap((f) => f.frames);
+    setStyleframes(frames);
+  }, []);
+  useEffect(() => () => { for (const url of styleframeUrls.current) URL.revokeObjectURL(url); }, []);
   const [film, setFilm] = useState<BuiltFilm | null>(null);
   /** The seven workflow steps (Product → Deliver) with their live state. */
   const [steps, setSteps] = useState<FilmStep[]>(initialSteps);
@@ -293,10 +303,15 @@ export function useFilmDirector(opts: {
           if (!live()) return;
           g.options = options;
           say('assistant', directionMessage(options));
+          // Each option as two real frames in its colours, while the person reads (never blocks the choice).
+          void renderStyleframes({ options, capture: g.capture ?? null, product: g.req.prompt.slice(0, 60) }).then((frames) => {
+            if (live() && frames.length) setFrames(frames);
+          });
         } else {
           const mapping = await requestMapping(guidedContext(g, { brief: g.brief ? briefText(g.brief) : '', direction: g.direction ?? '' }));
           if (!live()) return;
           g.mapping = mapping;
+          setFrames([]);
           say('assistant', mappingMessage(mapping));
         }
         setStage(step);
@@ -646,9 +661,10 @@ export function useFilmDirector(opts: {
     setActivity([]);
     setMessages([]);
     setSteps(initialSteps());
-  }, []);
+    setFrames([]);
+  }, [setFrames]);
 
-  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, coCreate, approve, revise, stop, reset };
+  return { messages, stage, activity, steps, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;
