@@ -10,6 +10,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
+import { buildJianyingKit, plateProject } from '../lib/jianyingKit';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
@@ -58,6 +59,7 @@ const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
+  const [kit, setKit] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; url?: string; note?: string }>({ status: 'idle', progress: 0 });
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -66,6 +68,25 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
   useEffect(() => () => {
     if (render.url) URL.revokeObjectURL(render.url);
   }, [render.url]);
+
+  /** The JianYing kit: the film without captions and sound as a plate, the tables and the sounds, zipped. */
+  const startKit = async () => {
+    abort.current = new AbortController();
+    setKit({ status: 'running', progress: 0 });
+    const releaseGuard = guardTabWhileRendering();
+    try {
+      const plate = await exportMp4({ project: plateProject(project), scale: 1, signal: abort.current.signal, onProgress: (progress) => setKit((k) => (k.status === 'running' ? { ...k, progress } : k)) });
+      const { zip, missing } = await buildJianyingKit(project, plate.blob, async (url) => {
+        const res = await fetch(url);
+        return res.ok ? new Uint8Array(await res.arrayBuffer()) : null;
+      });
+      setKit({ status: 'done', progress: 1, url: createDownloadUrl(new Blob([zip as unknown as BlobPart], { type: 'application/zip' })), note: missing.length ? `${missing.length} sound file(s) could not be fetched` : undefined });
+    } catch (error) {
+      setKit({ status: abort.current?.signal.aborted ? 'idle' : 'error', progress: 0, note: abort.current?.signal.aborted ? undefined : error instanceof Error ? error.message : String(error) });
+    } finally {
+      releaseGuard();
+    }
+  };
 
   /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
   const start = async (draft = false, withoutMusic = false) => {
@@ -163,6 +184,15 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
               ~{Math.max(1, Math.round(estimateExportSec(project) / 60))} min to render
             </span>
           </>
+        )}
+        {kit.status === 'done' && kit.url ? (
+          <a href={kit.url} download={`${(project.name || 'film').replace(/[^\w-]+/g, '-').slice(0, 40)}-jianying-kit.zip`} className="px-3 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-jianying-download" title={kit.note}>
+            Download JianYing kit{kit.note ? ' (some sounds missing)' : ''}
+          </a>
+        ) : (
+          <button type="button" disabled={kit.status === 'running' || render.status === 'running'} onClick={() => void startKit()} className="px-3 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-jianying" title="An editable JianYing draft: the film without captions and sound, the captions as text, the sounds as tracks. Built on your computer with the included script.">
+            {kit.status === 'running' ? `JianYing kit… ${Math.round(kit.progress * 100)}%` : kit.status === 'error' ? 'JianYing kit failed — retry' : 'JianYing kit'}
+          </button>
         )}
         {onOpenWorkbench && (
           <button
