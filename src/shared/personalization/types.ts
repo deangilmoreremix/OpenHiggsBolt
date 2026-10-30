@@ -8,6 +8,12 @@ export type PersonalizationSourceType =
   | 'go-ai-viral-video'
   | 'image-demo'
   | 'future-demo'
+  /**
+   * A studio-originated project handed to the modal by the shared studio
+   * entry point (`src/shared/personalization/studioEntry.ts`). Added as a
+   * widening — every pre-existing member keeps its exact meaning.
+   */
+  | 'studio-project'
 
 export interface PersonalizationSource {
   sourceType: PersonalizationSourceType
@@ -70,17 +76,43 @@ export interface BusinessDiscoveryRecord {
   whatsapp?: string
   youtube?: string
   linkedin?: string
+  tiktok?: string
   openingHours?: string
   operator?: string
+  brand?: string
+  network?: string
   activityScore?: number
   leadScore?: number
+  contactabilityScore?: number
+  videoOpportunityScore?: number
+  ownership?: BusinessOwnership
+  /** Human-readable evidence for the ownership verdict. */
+  ownershipEvidence?: string[]
+  scoreBreakdown?: {
+    contactability: number
+    activity: number
+    videoOpportunity: number
+    ownership: BusinessOwnership
+    rationale: string[]
+  }
+  videoOpportunity?: { hasPromoVideo: boolean | 'unknown'; signals: string[] }
   websiteStatus: 'confirmed' | 'unknown' | 'not_found_after_research'
   verificationStatus: 'unverified' | 'researching' | 'verified'
   rawSource?: Record<string, unknown>
 }
 
-export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
+/**
+ * Ownership classification for a discovered business. Mirrors the server-side
+ * contract in `src/server/businessDiscovery/types.ts` (`OwnershipType`).
+ */
+export type BusinessOwnership =
+  | 'independent'
+  | 'local_multi_location'
+  | 'franchise_chain'
+  | 'national_bigbox'
+  | 'unknown'
 
+export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
 export interface BusinessSearchState {
   mode: BusinessSearchMode
   results: BusinessDiscoveryRecord[]
@@ -301,6 +333,26 @@ export interface GenerationResult {
   metadata?: Record<string, unknown>
 }
 
+/**
+ * The final outcome of a personalization run, handed back to whoever opened
+ * the modal (see `StudioPersonalizeOptions.onComplete`).
+ *
+ * Produced by the provider when a run finishes — through the AI generation
+ * path or the in-browser branded render — and delivered at most once per open.
+ */
+export interface PersonalizationCompletion {
+  /** The produced media, grouped by kind. */
+  outputs: { prompts: string[]; images: string[]; videos: string[] }
+  /** The prompt that produced the outputs. */
+  personalizedPrompt: string
+  /** The persisted project id, when the run restored or wrote one. */
+  projectId?: string
+  /** Which studio opened the modal, when the run was a studio hand-off. */
+  originStudio?: string
+  /** The source id the run was keyed on. */
+  sourceId?: string
+}
+
 export interface ImageStudioHandoff {
   source: 'demo-personalization'
   sourceType: string
@@ -336,7 +388,14 @@ export interface PersonalizationEligibility {
 
 export interface SharedMediaEntry {
   id: string
-  originStudio: 'demo-personalization'
+  /**
+   * Which surface produced this entry. `demo-personalization` is the original
+   * literal (the Personalization demo flow); studio hand-offs record their own
+   * studio slug (see `PersonalizationOriginStudio`). Widened from the literal
+   * so a studio run can be told apart from a demo run — the only reader
+   * (`guided/StepChooseVideo.tsx`) renders it as free text.
+   */
+  originStudio: string
   sourceType: string
   sourceDemoId?: string
   sourceDemoSlug?: string
@@ -455,6 +514,16 @@ export interface BusinessResearchResult {
     emails: string[]
     addresses: string[]
   }
+  // Video-marketing evidence from the research route: a tri-state promo-video
+  // verdict plus the raw detection signals (mirrors researchProvider.ts).
+  videoMarketing?: {
+    hasPromoVideo: boolean | 'unknown'
+    signals: string[]
+  }
+  brandingAssets?: {
+    logoUrl?: string
+    imageUrls: string[]
+  }
 }
 
 export interface DiscoveredAsset {
@@ -548,6 +617,27 @@ export type {
   PreviewVideoRef,
   PersonalizationPreviewSettings,
 } from './preview/types'
+
+// ── Shared Remotion design registry ──────────────────────────────────────────
+
+export type {
+  RemotionDesignCategory,
+  RemotionDesignColorBinding,
+  RemotionDesignColorRole,
+  RemotionDesignColors,
+  RemotionDesignComponent,
+  RemotionDesignComponentProps,
+  RemotionDesignMediaBinding,
+  RemotionDesignMediaRole,
+  RemotionDesignPlacement,
+  RemotionDesignAnimation,
+  RemotionDesignSource,
+  RemotionDesignSupportCheck,
+  RemotionDesignTemplate,
+  RemotionDesignTemplateRegistry,
+  RemotionDesignTextField,
+  RemotionDesignTextSlot,
+} from './templates/types'
 
 export type GuidedStep = 1 | 2 | 3 | 4
 

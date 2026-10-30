@@ -53,7 +53,8 @@ beforeEach(() => {
     expect(form.get('operation')).toBeNull()
     expect(form.get('model')).toBe('gpt-image-2.5-sunburst')
     expect(form.get('n')).toBe('1')
-    expect(form.get('input_fidelity')).toBe('high')
+    // gpt-image-2.5 models reject input_fidelity, so it is never forwarded.
+    expect(form.get('input_fidelity')).toBeNull()
     expect(form.get('image[]')).toBeInstanceOf(File)
 
     return {

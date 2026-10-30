@@ -33,6 +33,12 @@ const DEFAULT_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
   'https://z.overpass-api.de/api/interpreter',
+  // Independent public mirrors (not operated by the overpass-api.de cluster).
+  // When the whole cluster 502s at once, these frequently stay healthy; trades
+  // categories (craft=plumber/electrician/…) have no Nominatim-search
+  // coverage, so a working Overpass mirror is the only way to reach them.
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ]
 
 const USER_AGENT = 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)'
@@ -223,6 +229,12 @@ const SOCIAL_TAGS: Record<string, string> = {
   'contact:youtube': 'youtube',
   'contact:instagram': 'instagram',
 }
+// Ownership hints. `brand` is the primary OSM franchise/chain tag; `owner` and
+// `contact:person` are weaker ownership hints kept in the same field so
+// classifyOwnership can use them as evidence (they are not strictly brands,
+// so an unmatched value classifies as `unknown`, never as a chain).
+// Wikidata-style tags (brand:wikidata etc.) are deliberately ignored.
+const BRAND_TAGS = ['brand', 'owner', 'contact:person']
 
 interface OverpassElement {
   type: 'node' | 'way' | 'relation'
@@ -411,6 +423,7 @@ function normalizeElement(
     linkedin: social.linkedin,
     openingHours: tags['opening_hours'],
     operator: tags['operator'],
+    brand: extractFirst(tags, BRAND_TAGS),
     websiteStatus,
     verificationStatus: 'unverified',
     rawSource: tags,

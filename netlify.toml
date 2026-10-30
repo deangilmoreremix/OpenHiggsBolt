@@ -1,7 +1,13 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
+  # pnpm, not npm: the repo's packageManager is pnpm, the dependency tree is
+  # pnpm-lock.yaml, and only pnpm applies the patchedDependencies in
+  # pnpm-workspace.yaml. Under npm that patch is never applied and the prebuild
+  # guard exits 1, which is why every Netlify-side build failed with a bare
+  # "Build script returned non-zero exit code". Commit 4d6631bee fixed this and
+  # 7e8a436b3 reverted it; this restores the fix.
+  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
@@ -32,10 +38,11 @@
     # and Google Fonts. Without this the Netlify Essential Next.js plugin's default
     # CSP blocks Clerk's JS/CSS/API and leaves /sign-in, /sign-up and the password-reset
     # pages blank.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
 
 [[redirects]]
   from = "/api/brands"

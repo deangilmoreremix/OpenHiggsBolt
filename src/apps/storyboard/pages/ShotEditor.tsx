@@ -364,7 +364,7 @@ export default function ShotEditor() {
 
           {shots.length === 0 ? (
             <div className="rounded-xl p-6 text-sm" style={{ ...glassStyle, color: textMuted }}>
-              No scenes yet. Add scenes here or from the Composer to build your storyboard.
+              No scenes yet. Add scenes here or from the Storyboard page to build your storyboard.
             </div>
           ) : (
             <Fragment>

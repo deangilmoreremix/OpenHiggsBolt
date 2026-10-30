@@ -19,7 +19,10 @@ export interface NicheResult {
   subNiches: string[];
 }
 
-const NICHE_KEYWORDS: Record<string, string[]> = {
+/** Keyword table for the 12 business niches. Exported so the shared demo
+ *  taxonomy (src/shared/personalization/guided/demoCategories.ts) can reuse the
+ *  exact same matching rules instead of duplicating them. */
+export const NICHE_KEYWORDS: Record<string, string[]> = {
   'ecommerce': [
     'shopify', 'unboxing', 'checkout', 'ecommerce', 'e-commerce',
     'inventory', 'discount', 'dropshipping', 'amazon',
@@ -109,7 +112,9 @@ const NICHE_KEYWORDS: Record<string, string[]> = {
   ],
 };
 
-const SUB_NICHE_KEYWORDS: Record<string, Record<string, string[]>> = {
+/** Sub-niche keyword table, grouped by primary niche. Exported for the same
+ *  reason as `NICHE_KEYWORDS`. */
+export const SUB_NICHE_KEYWORDS: Record<string, Record<string, string[]>> = {
   'ecommerce': {
     fashion: ['chanel', 'gucci', 'louis vuitton', 'bag', 'purse', 'accessory', 'sunglasses', 'leather', 'fashion', 'style'],
     luxury: ['luxury', 'premium', 'gold', 'diamond', 'high-end', 'designer'],

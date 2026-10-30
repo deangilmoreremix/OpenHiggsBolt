@@ -1,0 +1,11 @@
+[dotenv@17.2.2] injecting env (22) from .env.local -- tip: 📡 observe env with Radar: https://dotenvx.com/radar
+
+Running 4 tests using 1 worker
+
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+  ✓  1 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:62:7 › Phase 1 — Remotion designs in Step 4 › the five existing pill layouts are unchanged and still selectable (4.1s)
+  ✓  2 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:85:7 › Phase 1 — Remotion designs in Step 4 › the five Remotion designs are selectable in Step 4 and render a design layer (2.8s)
+  ✓  3 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:118:7 › Phase 1 — Remotion designs in Step 4 › each design renders its own content in the live preview (3.4s)
+  ✓  4 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:135:7 › Phase 1 — Remotion designs in Step 4 › captures before/after Step 4 screenshots (3.5s)
+
+  4 passed (17.6s)

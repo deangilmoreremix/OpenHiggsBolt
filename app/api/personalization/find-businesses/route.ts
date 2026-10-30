@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, deduplicateBusinesses, scoreAndSort, classifyRecords, excludeNationalChains, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import type { BusinessDiscoveryRecord, OwnershipType } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { createStageDeadline, withDeadline, DeadlineExceededError, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
@@ -111,6 +112,55 @@ function isBudgetExhausted(err: unknown): boolean {
 // the research step. Keep it provider-internals free.
 const ALL_OVERPASS_FAILED_USER_MESSAGE =
   'Local business search is temporarily busy. Please try again in a moment or enter a business website manually to continue.'
+
+// Ownership classification runs at the ROUTE level (after deduplication)
+// rather than inside the Overpass provider, because the local_multi_location
+// heuristic needs the full batch of names (allNamesInBatch) — something the
+// per-element normalizer cannot see. Big-box chains are excluded by default;
+// `includeChains: true` opts in to keeping them.
+interface DiscoveryStats {
+  discovered: number
+  independent: number
+  localMultiLocation: number
+  franchiseChain: number
+  nationalBigboxExcluded: number
+  unknownOwnership: number
+  withContact: number
+}
+
+function countOwnership(records: BusinessDiscoveryRecord[], ownership: OwnershipType): number {
+  return records.filter((r) => r.ownership === ownership).length
+}
+
+function buildStats(
+  classified: BusinessDiscoveryRecord[],
+  nationalBigboxExcluded: number,
+  pool: BusinessDiscoveryRecord[],
+): DiscoveryStats {
+  return {
+    discovered: classified.length,
+    independent: countOwnership(classified, 'independent'),
+    localMultiLocation: countOwnership(classified, 'local_multi_location'),
+    franchiseChain: countOwnership(classified, 'franchise_chain'),
+    nationalBigboxExcluded,
+    unknownOwnership: countOwnership(classified, 'unknown'),
+    withContact: pool.filter((r) => r.phone || r.email).length,
+  }
+}
+
+function processDiscoveryBatch(
+  results: BusinessDiscoveryRecord[],
+  includeChains: boolean,
+): { enriched: BusinessDiscoveryRecord[]; stats: DiscoveryStats } {
+  const classified = classifyRecords(deduplicateBusinesses(results))
+  const { kept, excluded } = excludeNationalChains(classified)
+  const pool = includeChains ? classified : kept
+  // scoreAndSort assigns every score field itself; enriching again would just
+  // recompute identical values (the double-source pattern behind the old
+  // "displayed score ≠ ranked score" bug).
+  const enriched = scoreAndSort(pool)
+  return { enriched, stats: buildStats(classified, excluded.length, pool) }
+}
 
 /**
  * JSON answer for an upstream (502) failure.
@@ -303,6 +353,9 @@ export async function POST(req: NextRequest) {
         ? body.limit
         : DEFAULT_LIMIT
     const limit = Math.max(1, Math.min(Math.floor(rawLimit), MAX_LIMIT))
+    // Big-box/national chains are excluded by default; `includeChains: true`
+    // opts in to keeping them.
+    const includeChains = body?.includeChains === true
 
     // Validate input
     if (!niche) {
@@ -601,14 +654,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Deduplicate
-    const deduplicated = deduplicateBusinesses(winner.records as any[])
-
-    // Score and sort
-    const scored = scoreAndSort(deduplicated)
-
-    // Enrich
-    const enriched = scored.map(enrichBusinessRecord)
+    // Deduplicate, classify ownership, exclude big-box chains by default, then
+    // score and sort (classification needs the full batch of names, so it runs
+    // at the route level — see processDiscoveryBatch above).
+    const { enriched, stats } = processDiscoveryBatch(winner.records as any[], includeChains)
 
     // Limit results
     const limited = enriched.slice(0, limit)
@@ -649,6 +698,7 @@ export async function POST(req: NextRequest) {
         query: { niche: mapping.label, location, radiusMiles: boundedRadius },
         count: limited.length,
         businesses: limited,
+        stats,
         providerUsed: winner.source,
         durationMs,
         correlationId,

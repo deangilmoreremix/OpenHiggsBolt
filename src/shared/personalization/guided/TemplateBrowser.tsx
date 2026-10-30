@@ -4,13 +4,15 @@
  * TemplateBrowser — the Motion Studio library browser for Step 2 of the
  * Easy Personalization Wizard.
  *
- * Surfaces the FULL Motion Studio shot library (124 recipe cards / 150
- * motion shots / 10 categories) sourced from `src/data/motionRecipeCatalog`,
- * which is the single source of truth. The browser is browser-only: it
- * never makes a paid call and never reaches for a Node.js / FFmpeg /
- * desktop dependency. The "Use this template" action sets the recipe as
- * the wizard's in-modal preview; the secondary "Edit in Motion Studio"
- * action hands off to the canonical `/studio/motion-studio` route.
+ * Surfaces the Motion Studio recipe-card library — 124 recipe cards (150
+ * preview clips / 10 categories) sourced from `src/data/motionRecipeCatalog`,
+ * which is the single source of truth. The grid unit is the RECIPE CARD
+ * (`MOTION_TEMPLATE_CARDS`); counts everywhere are derived from that array at
+ * runtime. The browser is browser-only: it never makes a paid call and never
+ * reaches for a Node.js / FFmpeg / desktop dependency. The "Use this template"
+ * action resolves the card to its representative shot and sets it as the
+ * wizard's in-modal preview; the secondary "Edit in Motion Studio" action
+ * hands off to the canonical `/studio/motion-studio` route.
  */
 
 import { useMemo, useState, useCallback, useEffect, useId, useRef, type CSSProperties } from 'react'
@@ -41,13 +43,18 @@ import {
 import {
   MOTION_CATEGORIES,
   MOTION_TEMPLATES,
-  getMotionTemplatesByCategory,
-  searchMotionTemplates,
+  MOTION_TEMPLATE_CARDS,
+  getMotionTemplateCardShot,
+  getMotionTemplateCardsByCategory,
+  motionTemplateTitle,
+  normalizeCardCounts,
+  searchMotionTemplateCards,
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { CardPreviewVideo } from './CardPreviewVideo'
 
 /** Map a category key to a small lucide icon so the tab bar reads at a glance. */
 const CATEGORY_ICONS: Record<MotionCategoryKey, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -144,13 +151,25 @@ function TemplatePosterPlaceholder({ template }: { template: MotionTemplate }): 
   )
 }
 
+/**
+ * True when the persisted/selected motion template belongs to a recipe card:
+ * the provider stores the representative SHOT (id `<card.id>/<Component>`),
+ * so a card is active when the selected id is or prefixes that shot id.
+ */
+function isCardSelected(selectedId: string | undefined, cardId: string): boolean {
+  if (!selectedId) return false
+  return selectedId === cardId || selectedId.startsWith(`${cardId}/`)
+}
+
 export interface TemplateBrowserProps {
   /**
    * When true, "Use this template" calls the provider's
    * `useMotionTemplate` (sets the in-modal preview). When false, it calls
    * `launchMotionTemplate` (hands off to `/studio/motion-studio`). Defaults
    * to true — the wizard is the selection surface; the studio handoff is a
-   * secondary action exposed on each card.
+   * secondary action exposed on each card. Both callbacks receive the card's
+   * resolved representative shot so persisted wizard state keeps the shot
+   * identity the provider's restore path expects.
    */
   onSelect?: (template: MotionTemplate) => void
   onLaunch?: (template: MotionTemplate) => void
@@ -169,30 +188,43 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
   const searchId = useId()
 
   const handleSelect = useCallback(
-    (template: MotionTemplate) => {
-      if (onSelect) onSelect(template)
-      else ctx.useMotionTemplate(template)
+    (card: MotionTemplate) => {
+      // Resolve the card to its representative shot first: the provider
+      // persists `template.id` and restores it through the shot lookup, so
+      // the pipeline identity stays resolvable across reloads. Falls back to
+      // the card itself only if the shot invariant is ever broken.
+      const shot = getMotionTemplateCardShot(card) ?? card
+      if (onSelect) onSelect(shot)
+      else ctx.useMotionTemplate(shot)
     },
     [onSelect, ctx],
   )
 
   const handleLaunch = useCallback(
-    (template: MotionTemplate) => {
-      if (onLaunch) onLaunch(template)
-      else ctx.launchMotionTemplate(template)
+    (card: MotionTemplate) => {
+      const shot = getMotionTemplateCardShot(card) ?? card
+      if (onLaunch) onLaunch(shot)
+      else ctx.launchMotionTemplate(shot)
     },
     [onLaunch, ctx],
   )
 
-  /** Visible cards, filtered by the active tab and the search box. */
+  /** Visible recipe cards, filtered by the active tab and the search box. */
   const visible = useMemo<MotionTemplate[]>(() => {
     const trimmed = query.trim()
-    if (trimmed) return searchMotionTemplates(trimmed)
-    if (activeCategory === 'all') return MOTION_TEMPLATES.slice()
-    return getMotionTemplatesByCategory(activeCategory)
+    if (trimmed) return searchMotionTemplateCards(trimmed)
+    if (activeCategory === 'all') return MOTION_TEMPLATE_CARDS.slice()
+    return getMotionTemplateCardsByCategory(activeCategory)
   }, [query, activeCategory])
 
-  const totalCount = MOTION_TEMPLATES.length
+  const cardCount = MOTION_TEMPLATE_CARDS.length
+  const cardCounts = useMemo(() => normalizeCardCounts(), [])
+  const clipCount = useMemo(() => {
+    const keys = new Set<string>()
+    for (const template of MOTION_TEMPLATES) if (template.preview) keys.add(template.preview)
+    for (const template of MOTION_TEMPLATE_CARDS) if (template.preview) keys.add(template.preview)
+    return keys.size
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -212,8 +244,9 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
           >
             Motion Studio
           </h3>
-          <span style={badgeStyle('muted')}>{totalCount} shots</span>
-          <span style={badgeStyle('cyan')}>10 categories</span>
+          <span style={badgeStyle('muted')}>{cardCount} recipe cards</span>
+          <span style={badgeStyle('muted')}>{clipCount} preview clips</span>
+          <span style={badgeStyle('cyan')}>{MOTION_CATEGORIES.length} categories</span>
           <span style={{ marginLeft: 'auto', color: C.muted2, fontSize: 10 }}>
             Browser-only preview · hands off to the studio for editing & export
           </span>
@@ -230,7 +263,7 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
             marginBottom: 4,
           }}
         >
-          Search shots
+          Search recipes
         </label>
         <div style={{ position: 'relative' }}>
           <Search
@@ -265,7 +298,7 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
             label="All"
             icon={Sparkles}
             active={activeCategory === 'all'}
-            count={totalCount}
+            count={cardCount}
             onClick={() => setActiveCategory('all')}
           />
           {MOTION_CATEGORIES.map((category) => {
@@ -276,7 +309,7 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
                 label={CATEGORY_LABELS_EN[category.key]}
                 icon={Icon}
                 active={activeCategory === category.key}
-                count={category.count}
+                count={cardCounts[category.key]}
                 onClick={() => setActiveCategory(category.key)}
               />
             )
@@ -287,20 +320,20 @@ export function TemplateBrowser({ onSelect, onLaunch }: TemplateBrowserProps): R
       {/* ── Grid ────────────────────────────────────────────────────────── */}
       <div style={panelStyle}>
         {visible.length === 0 ? (
-          <p style={hintStyle}>No Motion Studio shots match that search. Try a different query or category.</p>
+          <p style={hintStyle}>No Motion Studio recipes match that search. Try a different query or category.</p>
         ) : (
           <>
             <p style={{ ...hintStyle, marginTop: 0, marginBottom: 10 }}>
-              {visible.length === totalCount
-                ? `All ${totalCount} shots from the full Motion Studio library.`
-                : `Showing ${visible.length} of ${totalCount} shots.`}
+              {visible.length === cardCount
+                ? `All ${cardCount} recipe cards from the full Motion Studio library.`
+                : `Showing ${visible.length} of ${cardCount} recipe cards.`}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" style={{ gap: 10 }}>
               {visible.map((template) => (
                 <TemplateCard
                   key={template.id}
                   template={template}
-                  active={ctx.motionTemplate?.id === template.id}
+                  active={isCardSelected(ctx.motionTemplate?.id, template.id)}
                   onSelect={handleSelect}
                   onLaunch={handleLaunch}
                 />
@@ -355,6 +388,30 @@ function CategoryTab({
   )
 }
 
+/** The still poster for an unselected card. If the poster URL fails to
+ *  load (upstream has not published that JPEG), fall back to the SVG
+ *  placeholder so the grid never shows a broken image. */
+function TemplatePosterImage({ template, poster }: { template: MotionTemplate; poster: string }): React.JSX.Element {
+  const [broken, setBroken] = useState(false)
+  if (broken) return <TemplatePosterPlaceholder template={template} />
+  return (
+    <img
+      src={poster}
+      alt=""
+      loading="lazy"
+      onError={() => setBroken(true)}
+      style={{
+        width: '100%',
+        aspectRatio: '16 / 9',
+        objectFit: 'cover',
+        borderRadius: 8,
+        display: 'block',
+        background: '#000',
+      }}
+    />
+  )
+}
+
 /** Single recipe card. */
 function TemplateCard({
   template,
@@ -371,9 +428,14 @@ function TemplateCard({
   const clip = previewVideoUrl(template)
   const supportedAssets = ASSET_ICONS.filter((entry) => template.assets[entry.key])
   const durationLabel = template.durationSec > 0 ? `${template.durationSec.toFixed(1)}s` : null
-  // The SELECTED card hosts the real, playing clip. Unselected cards keep the
-  // still poster so the grid stays cheap — only one clip is ever fetched.
+  // The SELECTED card hosts the real, playing clip with controls. Every other
+  // card autoplays its own silent clip while on screen, over its poster.
   const showPlayer = active && Boolean(clip)
+  const still = poster ? (
+    <TemplatePosterImage template={template} poster={poster} />
+  ) : (
+    <TemplatePosterPlaceholder template={template} />
+  )
 
   return (
     <div
@@ -383,22 +445,10 @@ function TemplateCard({
     >
       {showPlayer ? (
         <MotionTemplatePlayer template={template} src={clip!} poster={poster} />
-      ) : poster ? (
-        <img
-          src={poster}
-          alt=""
-          loading="lazy"
-          style={{
-            width: '100%',
-            aspectRatio: '16 / 9',
-            objectFit: 'cover',
-            borderRadius: 8,
-            display: 'block',
-            background: '#000',
-          }}
-        />
+      ) : clip ? (
+        <CardPreviewVideo src={clip} poster={poster} fallback={still} />
       ) : (
-        <TemplatePosterPlaceholder template={template} />
+        still
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -415,10 +465,8 @@ function TemplateCard({
         )}
       </div>
 
-      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{template.nameEn}</div>
-      {template.nameEn !== template.name && (
-        <div style={{ color: C.muted2, fontSize: 10 }}>{template.name}</div>
-      )}
+      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{motionTemplateTitle(template)}</div>
+      <div style={{ color: C.muted2, fontSize: 10 }}>{template.nameEn}</div>
       {template.summaryEn && (
         <p style={{ ...hintStyle, margin: 0 }}>{template.summaryEn}</p>
       )}
@@ -481,15 +529,23 @@ function TemplateCard({
   )
 }
 
-/**
- * The playing preview for the SELECTED Motion Studio shot.
+/** The playing preview for the SELECTED Motion Studio card.
  *
  * Renders the real upstream ShotCraft clip (an MP4 published in the
  * `gallery-media` GitHub release) instead of the still poster, so the user
  * sees the actual motion rather than a picture of it. `muted` + `playsInline`
  * let the browser autoplay the clip; the explicit `play()` call is the
  * fallback for browsers that still refuse the first attempt.
+ *
+ * Failure handling is non-destructive: a media error re-mounts back to the
+ * poster with an inline "Preview unavailable — try another clip" state and a
+ * Retry button, and a clip whose metadata has not arrived after a grace
+ * period gets a small "Still loading…" hint. Neither state ever unmounts the
+ * player on its own — Retry (or a new selection) is always the user's call,
+ * so a slow load is never killed by a hard timeout.
  */
+const LOADING_HINT_DELAY_MS = 8000
+
 function MotionTemplatePlayer({
   template,
   src,
@@ -500,34 +556,125 @@ function MotionTemplatePlayer({
   poster: string | null
 }): React.JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [failed, setFailed] = useState(false)
+  const [loadingSlow, setLoadingSlow] = useState(false)
 
   useEffect(() => {
     const el = videoRef.current
-    if (!el) return
-    const attempt = el.play()
-    if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {})
-  }, [src])
+    if (el) {
+      const play = el.play()
+      if (play && typeof play.catch === 'function') play.catch(() => {})
+    }
+    setFailed(false)
+    setLoadingSlow(false)
+    const deadline = setTimeout(() => {
+      const video = videoRef.current
+      // Metadata still absent after the grace period — surface the hint but
+      // keep the clip loading (a cold upstream can legitimately take longer).
+      if (video && video.readyState < HTMLMediaElement.HAVE_METADATA && !video.error) {
+        setLoadingSlow(true)
+      }
+    }, LOADING_HINT_DELAY_MS)
+    return () => clearTimeout(deadline)
+  }, [src, attempt])
+
+  const retry = useCallback(() => {
+    setFailed(false)
+    setLoadingSlow(false)
+    setAttempt((n) => n + 1)
+  }, [])
+
+  if (failed) {
+    return (
+      <div
+        data-testid="motion-template-player-fallback"
+        style={{ width: '100%' }}
+      >
+        {poster ? (
+          <TemplatePosterImage template={template} poster={poster} />
+        ) : (
+          <TemplatePosterPlaceholder template={template} />
+        )}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 6,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ color: C.muted2, fontSize: 10 }}>Preview unavailable — try another clip</span>
+          <button
+            type="button"
+            data-testid="motion-template-retry"
+            onClick={retry}
+            style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px' }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <video
-      ref={videoRef}
-      data-testid="motion-template-player"
-      data-template-id={template.id}
-      src={src}
-      poster={poster ?? undefined}
-      muted
-      playsInline
-      loop
-      autoPlay
-      controls
-      style={{
-        width: '100%',
-        aspectRatio: '16 / 9',
-        objectFit: 'contain',
-        borderRadius: 8,
-        display: 'block',
-        background: '#000',
-      }}
-    />
+    <div style={{ position: 'relative', width: '100%' }}>
+      <video
+        key={attempt}
+        ref={videoRef}
+        data-testid="motion-template-player"
+        data-template-id={template.id}
+        src={src}
+        poster={poster ?? undefined}
+        muted
+        playsInline
+        loop
+        autoPlay
+        controls
+        onError={() => setFailed(true)}
+        onLoadedMetadata={() => setLoadingSlow(false)}
+        onCanPlay={() => setLoadingSlow(false)}
+        style={{
+          width: '100%',
+          aspectRatio: '16 / 9',
+          objectFit: 'contain',
+          borderRadius: 8,
+          display: 'block',
+          background: '#000',
+        }}
+      />
+      {loadingSlow && (
+        <div
+          data-testid="motion-template-loading-slow"
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '3px 8px',
+            borderRadius: 6,
+            border: `1px solid ${C.border}`,
+            background: 'rgba(0,0,0,.7)',
+            color: C.muted,
+            fontSize: 10,
+            fontWeight: 700,
+          }}
+        >
+          <span>Still loading…</span>
+          <button
+            type="button"
+            data-testid="motion-template-retry"
+            onClick={retry}
+            style={{ ...secondaryButtonStyle, minHeight: 22, fontSize: 9, padding: '0 8px' }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

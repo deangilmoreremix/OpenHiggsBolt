@@ -80,6 +80,48 @@ export interface MotionCategory {
   count: number;
 }
 
+/**
+ * Card-registry bridge — the ONE place that turns a catalog shot into the id
+ * the Motion Studio card registry uses.
+ *
+ * The catalog ids are `<category>/<slug>/<Component>` while the registry
+ * (`apps/motion-studio/cards/demoCards.ts`) keys every demo card as
+ * `demo:<Stem>`. Indexing `CARDS` with a raw catalog id therefore always
+ * misses: every library preview fell back to a gradient placeholder and every
+ * entry-page clip pointed at a card that does not exist (the composition
+ * renders nothing for an unknown cardId).
+ *
+ * Use `motionCardId` at every boundary — preview, drag payload, clip insert.
+ */
+export const motionCardId = (t: MotionTemplate): string => `demo:${t.componentName}`;
+
+/**
+ * Readable English title for a recipe.
+ *
+ * Upstream ShotCraft has no English display names — its `nameEn` is the
+ * kebab-case card key, plus ` · <Component>` for multi-style cards
+ * (`crash-zoom-punch · CrashImpactReal`). This turns both halves into words:
+ * `Crash Zoom Punch · Crash Impact Real`. Keep `nameEn` itself as the upstream
+ * key for search and cross-referencing.
+ */
+const TITLE_ACRONYMS: Record<string, string> = {
+  '2d': '2D', '3d': '3D', ai: 'AI', bg: 'BG', cta: 'CTA', fui: 'FUI', hud: 'HUD', svg: 'SVG', ui: 'UI', v2: 'V2',
+};
+const titleWord = (word: string): string =>
+  TITLE_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1);
+const splitCamel = (value: string): string =>
+  value
+    .replace(/([a-z])([A-Z0-9])/g, '$1 $2')
+    .replace(/([A-Z0-9]+)([A-Z][a-z])/g, '$1 $2');
+export const englishRecipeName = (nameEn: string): string =>
+  nameEn
+    .split(' · ')
+    .map((part) => (/^[a-z0-9-]+$/.test(part) ? part.split('-').filter(Boolean).map(titleWord).join(' ') : splitCamel(part)))
+    .join(' · ');
+
+/** `englishRecipeName` for a catalog entry. */
+export const motionTemplateTitle = (t: Pick<MotionTemplate, 'nameEn'>): string => englishRecipeName(t.nameEn);
+
 export const MOTION_CATEGORIES: readonly MotionCategory[] = [
   { key: 'opening', label: '开场与品牌', labelEn: 'Opening & Brand', count: 11 },
   { key: 'typography', label: '文字与字卡', labelEn: 'Typography & Title Cards', count: 25 },
@@ -4862,9 +4904,109 @@ export function searchMotionTemplates(query: string): MotionTemplate[] {
     (t) =>
       t.name.toLowerCase().includes(q) ||
       t.nameEn.toLowerCase().includes(q) ||
+      motionTemplateTitle(t).toLowerCase().includes(q) ||
       t.categoryLabel.toLowerCase().includes(q) ||
       t.summary.toLowerCase().includes(q) ||
       t.summaryEn.toLowerCase().includes(q) ||
       t.slug.toLowerCase().includes(q)
   );
+}
+
+/**
+ * Runtime-derived per-category card counts for `MOTION_TEMPLATE_CARDS` — the
+ * counts the TemplateBrowser tab badges show (recipe cards, not shots: e.g.
+ * `camera` is 10 cards but 14 shots). Reads the cards array it is given
+ * instead of trusting any declared count, so the badges can never drift from
+ * what the grid actually renders.
+ */
+export function normalizeCardCounts(
+  cards?: readonly MotionTemplate[]
+): Record<MotionCategoryKey, number> {
+  const counts: Record<MotionCategoryKey, number> = {
+    opening: 0,
+    typography: 0,
+    'ui-entrance': 0,
+    camera: 0,
+    data: 0,
+    interaction: 0,
+    transition: 0,
+    rhythm: 0,
+    effects: 0,
+    outro: 0,
+  };
+  for (const card of cards ?? MOTION_TEMPLATE_CARDS) {
+    counts[card.category] = (counts[card.category] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export function getMotionTemplateCardsByCategory(category: MotionCategoryKey): MotionTemplate[] {
+  return MOTION_TEMPLATE_CARDS.filter((c) => c.category === category);
+}
+
+export function searchMotionTemplateCards(query: string): MotionTemplate[] {
+  const q = query.toLowerCase();
+  return MOTION_TEMPLATE_CARDS.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.nameEn.toLowerCase().includes(q) ||
+      c.summary.toLowerCase().includes(q) ||
+      c.summaryEn.toLowerCase().includes(q) ||
+      c.slug.toLowerCase().includes(q) ||
+      c.componentName.toLowerCase().includes(q) ||
+      c.categoryLabel?.toLowerCase().includes(q)
+  );
+}
+
+/**
+ * The representative SHOT of a recipe card: the shot whose id is
+ * `<card.id>/<Component>`, preferring (deterministically — array order is
+ * stable) the shot whose clip matches the card's own `preview`, else the shot
+ * carrying the card's `componentName`. Most cards resolve on rule 1; a
+ * multi-style card whose published clip belongs to a style with no dedicated
+ * local component (e.g. `shot-transitions` first style `flash-cut`) resolves
+ * on rule 2. Selection flows resolve to this shot so persisted wizard state
+ * keeps the shot identity the provider's `getMotionTemplate` restore path
+ * expects, while the browser grid shows cards.
+ */
+export function getMotionTemplateCardShot(card: MotionTemplate): MotionTemplate | undefined {
+  const prefix = `${card.id}/`;
+  const shots = MOTION_TEMPLATES.filter((t) => t.id.startsWith(prefix));
+  const byPreview = shots.find((t) => Boolean(t.preview) && t.preview === card.preview);
+  if (byPreview) return byPreview;
+  return shots.find((t) => t.componentName === card.componentName) ?? shots[0];
+}
+
+/**
+ * Resolve any catalog identifier to a template:
+ *   - shot id        `camera/crash-zoom-punch/CrashZoomReal`
+ *   - grouped card   `camera/crash-zoom-punch`
+ *   - slug           `crash-zoom-punch`
+ *   - component name `CrashZoomReal`
+ */
+export function resolveMotionTemplate(id: string): MotionTemplate | undefined {
+  const needle = (id ?? "").trim();
+  if (!needle) return undefined;
+  return (
+    MOTION_TEMPLATES.find((t) => t.id === needle) ??
+    MOTION_TEMPLATES.find((t) => t.componentName === needle) ??
+    MOTION_TEMPLATES.find((t) => t.slug === needle) ??
+    MOTION_TEMPLATE_CARDS.find((t) => t.id === needle) ??
+    MOTION_TEMPLATE_CARDS.find((t) => t.slug === needle)
+  );
+}
+
+/** Registry id for any catalog identifier — undefined when the id is unknown. */
+export function motionCardIdFor(id: string): string | undefined {
+  const template = resolveMotionTemplate(id);
+  return template ? motionCardId(template) : undefined;
+}
+
+/**
+ * Every shot that belongs to a grouped card (same slug). 20 of the 124 cards
+ * ship 2–3 variants (e.g. `crash-zoom-punch` → CrashImpactReal +
+ * CrashZoomReal); each variant is its own selectable shot.
+ */
+export function motionTemplateVariants(card: MotionTemplate): MotionTemplate[] {
+  return MOTION_TEMPLATES.filter((t) => t.slug === card.slug);
 }

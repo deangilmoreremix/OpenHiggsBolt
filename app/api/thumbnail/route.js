@@ -69,6 +69,9 @@ export async function GET(request) {
         'Content-Type': contentType,
         // Cache aggressively at the CDN/browser; thumbnails are immutable.
         'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400',
+        // Netlify's cache key ignores query strings unless told otherwise, so
+        // without this every ?url= shares one cached image.
+        'Netlify-Vary': 'query=url',
         'Access-Control-Allow-Origin': '*',
       },
     });

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { CameraSpec } from './cameraTaxonomy'
+import { DEFAULT_STORYBOARD_MODEL_ID, isValidStoryboardModel } from './models'
 
 export interface StoryboardCharacter {
   id?: string
@@ -17,14 +18,21 @@ export interface StoryboardShot {
   characterIds?: string[]
 }
 
+/**
+ * A saved project. The active project's live data sits in the provider's
+ * top-level state; its entry here is refreshed whenever you switch away, so
+ * every project keeps its own brief, scenes, characters and result.
+ */
 export interface StoryboardProject {
   id: string
   projectName: string
+  brief?: string
   shotCount?: number
   characters?: StoryboardCharacter[]
   shots?: StoryboardShot[]
   aspectRatio?: '16:9' | '9:16'
   episodeDuration?: number
+  result?: { url?: string } | null
 }
 
 export interface StoryboardExport {
@@ -77,6 +85,8 @@ export interface StoryboardContextValue {
 
 const STORAGE_KEY = 'storyboard_context'
 
+const generateId = () => Math.random().toString(36).slice(2, 9)
+
 const StoryboardContext = createContext<StoryboardContextValue | null>(null)
 
 export function StoryboardProvider({ children }: { children: ReactNode }) {
@@ -89,9 +99,10 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<StoryboardProject[]>([])
   const [shots, setShots] = useState<StoryboardShot[]>([])
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9')
-  const [episodeDuration, setEpisodeDuration] = useState(60)
-  const [model, setModel] = useState('flux-dev')
+  const [episodeDuration, setEpisodeDuration] = useState(10)
+  const [model, setModel] = useState<string>(DEFAULT_STORYBOARD_MODEL_ID)
   const [result, setResult] = useState<{ url?: string } | null>(null)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     try {
@@ -102,18 +113,59 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
         setCharacterIds(parsed.characterIds ?? [])
         setEpisodeId(parsed.episodeId ?? null)
         setProjectName(parsed.projectName ?? '')
-        setBrief(parsed.brief ?? '')
+        setBrief((prev) => parsed.brief || prev)
         setCharacters(parsed.characters ?? [])
         setProjects(parsed.projects ?? [])
         setShots(parsed.shots ?? [])
         setAspectRatio(parsed.aspectRatio ?? '16:9')
-        setEpisodeDuration(parsed.episodeDuration ?? 60)
+        setEpisodeDuration(parsed.episodeDuration ?? 10)
         setResult(parsed.result ?? null)
+        if (isValidStoryboardModel(parsed.model)) setModel(parsed.model)
+        // Older saves had no project list (or an active id outside it): adopt
+        // the loaded state as a project so the switcher always has a current entry.
+        const saved: StoryboardProject[] = Array.isArray(parsed.projects) ? parsed.projects : []
+        if (!parsed.projectId || !saved.some((p) => p.id === parsed.projectId)) {
+          const id = parsed.projectId || generateId()
+          setProjectId(id)
+          setProjects([...saved, { id, projectName: parsed.projectName || `Project ${saved.length + 1}` }])
+        }
+      } else {
+        const id = generateId()
+        setProjectId(id)
+        setProjects([{ id, projectName: 'Project 1' }])
       }
     } catch {
       /* ignore */
     }
+    setHydrated(true)
   }, [])
+
+  // Write-through to localStorage once the stored state has been loaded, so the
+  // initial empty render can't clobber a saved project.
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          projectId,
+          characterIds,
+          episodeId,
+          projectName,
+          brief,
+          characters,
+          projects,
+          shots,
+          aspectRatio,
+          episodeDuration,
+          model,
+          result,
+        })
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [hydrated, projectId, characterIds, episodeId, projectName, brief, characters, projects, shots, aspectRatio, episodeDuration, model, result])
 
   const persist = (
     next: Partial<{
@@ -131,40 +183,54 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       result: { url?: string } | null
     }>
   ) => {
-    setProjectId((prev) => next.projectId ?? prev)
-    setCharacterIds((prev) => next.characterIds ?? prev)
-    setEpisodeId((prev) => next.episodeId ?? prev)
-    setProjectName((prev) => next.projectName ?? prev)
-    setBrief((prev) => next.brief ?? prev)
-    setCharacters((prev) => next.characters ?? prev)
-    setProjects((prev) => next.projects ?? prev)
-    setShots((prev) => next.shots ?? prev)
-    setAspectRatio((prev) => next.aspectRatio ?? prev)
-    setEpisodeDuration((prev) => next.episodeDuration ?? prev)
-    setModel((prev) => next.model ?? prev)
-    setResult((prev) => next.result ?? prev)
-    try {
-      const current = {
-        projectId: next.projectId ?? projectId,
-        characterIds: next.characterIds ?? characterIds,
-        episodeId: next.episodeId ?? episodeId,
-        projectName: next.projectName ?? projectName,
-        brief: next.brief ?? brief,
-        characters: next.characters ?? characters,
-        projects: next.projects ?? projects,
-        shots: next.shots ?? shots,
-        aspectRatio: next.aspectRatio ?? aspectRatio,
-        episodeDuration: next.episodeDuration ?? episodeDuration,
-        model: next.model ?? model,
-        result: next.result ?? result,
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
-    } catch {
-      /* ignore */
-    }
+    if ('projectId' in next) setProjectId(next.projectId ?? null)
+    if (next.characterIds) setCharacterIds(next.characterIds)
+    if ('episodeId' in next) setEpisodeId(next.episodeId ?? null)
+    if (next.projectName !== undefined) setProjectName(next.projectName)
+    if (next.brief !== undefined) setBrief(next.brief)
+    if (next.characters) setCharacters(next.characters)
+    if (next.projects) setProjects(next.projects)
+    if (next.shots) setShots(next.shots)
+    if (next.aspectRatio) setAspectRatio(next.aspectRatio)
+    if (next.episodeDuration !== undefined) setEpisodeDuration(next.episodeDuration)
+    if (next.model) setModel(next.model)
+    if ('result' in next) setResult(next.result ?? null)
   }
 
-  const generateId = () => Math.random().toString(36).slice(2, 9)
+  const snapshotCurrent = (): StoryboardProject | null =>
+    projectId
+      ? {
+          id: projectId,
+          projectName: projectName || 'Untitled',
+          brief,
+          characters,
+          shots,
+          shotCount: shots.length,
+          aspectRatio,
+          episodeDuration,
+          result,
+        }
+      : null
+
+  const loadProject = (p: StoryboardProject) => {
+    setProjectId(p.id)
+    setProjectName(p.projectName ?? '')
+    setBrief(p.brief ?? '')
+    setCharacters(p.characters ?? [])
+    setShots(p.shots ?? [])
+    setAspectRatio(p.aspectRatio ?? '16:9')
+    setEpisodeDuration(p.episodeDuration ?? 10)
+    setResult(p.result ?? null)
+  }
+
+  /** The project list with the active project's entry refreshed from live state. */
+  const projectsWithCurrent = (): StoryboardProject[] => {
+    const current = snapshotCurrent()
+    if (!current) return projects
+    return projects.some((p) => p.id === current.id)
+      ? projects.map((p) => (p.id === current.id ? current : p))
+      : [...projects, current]
+  }
 
   const value: StoryboardContextValue = {
     projectId,
@@ -187,37 +253,47 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       setProjects([])
       setShots([])
       setAspectRatio('16:9')
-      setEpisodeDuration(60)
+      setEpisodeDuration(10)
+      setModel(DEFAULT_STORYBOARD_MODEL_ID)
       setResult(null)
-      try {
-        localStorage.removeItem(STORAGE_KEY)
-      } catch {
-        /* ignore */
-      }
     },
     characters,
+    // Collection updates are functional so several calls in one tick all land.
     addCharacterObject: (character) =>
-      persist({ characters: [...characters, { ...character, id: generateId() }] }),
+      setCharacters((prev) => [...prev, { ...character, id: generateId() }]),
     updateCharacter: (id, updates) =>
-      persist({ characters: characters.map((c) => (c.id === id ? { ...c, ...updates } : c)) }),
+      setCharacters((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c))),
     removeCharacter: (id) =>
-      persist({ characters: characters.filter((c) => c.id !== id) }),
+      setCharacters((prev) => prev.filter((c) => c.id !== id)),
     projects,
     createProject: () => {
+      const saved = projectsWithCurrent()
       const newProject: StoryboardProject = {
         id: generateId(),
-        projectName: `Project ${projects.length + 1}`,
+        projectName: `Project ${saved.length + 1}`,
         shotCount: 0,
       }
-      persist({ projects: [...projects, newProject], projectId: newProject.id })
+      setProjects([...saved, newProject])
+      loadProject(newProject)
     },
-    switchProject: (id) => persist({ projectId: id }),
+    switchProject: (id) => {
+      if (id === projectId) return
+      const saved = projectsWithCurrent()
+      const target = saved.find((p) => p.id === id)
+      if (!target) return
+      setProjects(saved)
+      loadProject(target)
+    },
     deleteProject: (id) => {
-      const filtered = projects.filter((p) => p.id !== id)
-      persist({
-        projects: filtered,
-        projectId: filtered.length > 0 ? filtered[0].id : null,
-      })
+      const remaining = projectsWithCurrent().filter((p) => p.id !== id)
+      if (remaining.length === 0) {
+        const fresh: StoryboardProject = { id: generateId(), projectName: 'Project 1', shotCount: 0 }
+        setProjects([fresh])
+        loadProject(fresh)
+        return
+      }
+      setProjects(remaining)
+      if (id === projectId) loadProject(remaining[0])
     },
     shots,
     addShot: (sceneOrShot, duration?, camera?, characterIds?) => {
@@ -231,18 +307,19 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
               ...(camera ? { camera } : {}),
               ...(characterIds ? { characterIds } : {}),
             }
-      persist({ shots: [...shots, shot] })
+      setShots((prev) => [...prev, shot])
     },
     updateShot: (id, updates) =>
-      persist({ shots: shots.map((s) => (s.id === id ? { ...s, ...updates } : s)) }),
+      setShots((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s))),
     removeShot: (id) =>
-      persist({ shots: shots.filter((s) => s.id !== id) }),
-    moveShot: (fromIndex, toIndex) => {
-      const next = [...shots]
-      const [moved] = next.splice(fromIndex, 1)
-      next.splice(toIndex, 0, moved)
-      persist({ shots: next })
-    },
+      setShots((prev) => prev.filter((s) => s.id !== id)),
+    moveShot: (fromIndex, toIndex) =>
+      setShots((prev) => {
+        const next = [...prev]
+        const [moved] = next.splice(fromIndex, 1)
+        next.splice(toIndex, 0, moved)
+        return next
+      }),
     aspectRatio,
     setAspectRatio: (ratio) => persist({ aspectRatio: ratio }),
     episodeDuration,

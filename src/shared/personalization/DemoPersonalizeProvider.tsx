@@ -18,10 +18,10 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import PersonalizationModal from './PersonalizationModal'
-import { readHandoff, writeHandoff } from '@/shared/crossStudio'
+import { readHandoff, writeHandoff, TARGET_SLUG, type StudioTarget } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
-import { getMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog'
+import { getMotionTemplate, motionTemplateTitle, type MotionTemplate } from '@/data/motionRecipeCatalog'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish(): null | { openPublish: (opts: { mediaUrl: string; mediaType?: 'image' | 'video'; title?: string; caption?: string }) => void; closePublish: () => void; openSocialPublisher: (opts: { asset: unknown }) => void } {
@@ -48,6 +48,7 @@ import type {
   PersonalizationVisionValidation,
   BusinessResearchResult,
   PersonalizationAccessMode,
+  PersonalizationCompletion,
   GuidedStep,
   PersonalizationViewMode,
   PersonalizationPreviewSettings,
@@ -92,16 +93,25 @@ import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
-import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
+  applyDesignTemplate,
   resetLayoutToDefaults,
+  resetPreviewDesign,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
+import {
+  getRemotionDesignTemplate,
+  listRemotionDesignTemplates,
+  subscribeRemotionDesignRegistry,
+} from './templates/registry'
+import type { RemotionDesignTemplate } from './templates/types'
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -204,6 +214,8 @@ interface PersistedPreviewState {
 }
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
+/** The download route accepts at most this many URLs per request. */
+const DOWNLOAD_BATCH_SIZE = 20
 
 /**
  * Build the localStorage key for the preview mirror. The key is scoped to the
@@ -435,6 +447,39 @@ type OpenPersonalizeOptions = {
    * existing entry point keeps the full pipeline unchanged.
    */
   access?: PersonalizationAccessMode
+  /**
+   * Which surface opened the modal. Recorded on the persisted project and on
+   * the shared-media entry so a studio run is distinguishable from the demo
+   * flow. Absent → the historical literal `'demo-personalization'`, so every
+   * existing call site (landing, demo, viral, free-discovery, the design
+   * preview) keeps its exact behaviour.
+   */
+  originStudio?: string
+  /**
+   * Pre-seed the modal's brand-asset library. The library starts empty and is
+   * normally filled by upload/discovery; a studio that already owns brand
+   * assets can hand them over with the open call.
+   */
+  initialAssets?: AssetLibrary
+  /**
+   * Called once, with the finished outputs, when the run produces a final
+   * result. Cleared when the modal closes, so it never leaks into the next
+   * open.
+   */
+  onComplete?: (completion: PersonalizationCompletion) => void
+  /**
+   * Where the finished result is handed off when the run completes. Uses the
+   * existing cross-studio transport (`StudioHandoff` / `writeHandoff`) — the
+   * modal writes the hand-off and navigates to the target studio.
+   */
+  returnTo?: StudioTarget
+  /** Free-form payload carried along with the hand-off. */
+  returnPayload?: Record<string, unknown>
+}
+
+export interface ImportDiscoveredAssetsOptions {
+  ids?: string[]
+  section?: AssignedSection
 }
 
 export type DemoPersonalizeContextValue = {
@@ -551,7 +596,8 @@ export type DemoPersonalizeContextValue = {
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   revertDiscoveredAssetEdit: (id: string) => void
   selectRecommendedDiscoveredAssets: () => void
-  importDiscoveredAssets: () => Promise<void>
+  /** Imports the selected assets, or only `ids` into `section` (a drop onto a section). */
+  importDiscoveredAssets: (options?: ImportDiscoveredAssetsOptions) => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
   visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
@@ -652,6 +698,13 @@ export type DemoPersonalizeContextValue = {
     updatedAt: string
   } | null
   restoring: boolean
+  /**
+   * The last saved project for this source, offered instead of restored: the
+   * modal opens with an empty form and the user picks "Continue" to load it.
+   */
+  resumableProject: { label: string } | null
+  resumeLastProject: () => Promise<void>
+  dismissResumableProject: () => void
 
   // Guided Simple Mode + free Remotion preview
   viewMode: PersonalizationViewMode
@@ -666,6 +719,17 @@ export type DemoPersonalizeContextValue = {
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
    resetPreviewLayout: () => void
+   /**
+    * Every registered Remotion design, in registration order. Empty when no
+    * catalog is bundled.
+    */
+   remotionDesignTemplates: RemotionDesignTemplate[]
+   /** Id of the design currently applied to the preview, or null. */
+   activeRemotionDesignId: string | null
+   /** Applies a design, or clears the applied design when given null. */
+   setRemotionDesign: (designId: string | null) => void
+   /** Why the last `setRemotionDesign` call failed, or null. */
+   remotionDesignError: string | null
    previewApproved: boolean
    approvePersonalization: () => void
    createFinalVideo: () => Promise<void>
@@ -1035,6 +1099,22 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   )
   const triggerRef = useRef<HTMLElement | null>(null)
 
+  // ── Studio hand-off options (Phase 1) ─────────────────────────────────────
+  //
+  // The open call may carry extra context that only matters for the lifetime
+  // of one modal session: which studio opened it, the brand assets to seed,
+  // a completion callback and a return destination. They live in refs (not
+  // state) because they are read from deep inside the generation callbacks
+  // and must never trigger a re-render; they are cleared on close so a stale
+  // callback can never fire on the next open.
+  const originStudioRef = useRef<string | null>(null)
+  const initialAssetsRef = useRef<AssetLibrary | null>(null)
+  const onCompleteRef = useRef<((completion: PersonalizationCompletion) => void) | null>(null)
+  const returnToRef = useRef<StudioTarget | null>(null)
+  const returnPayloadRef = useRef<Record<string, unknown> | null>(null)
+  /** Guards the completion callback so one open fires it at most once. */
+  const onCompleteFiredRef = useRef(false)
+
   // Client
   const [clients, setClients] = useState<ClientProfile[]>(loadClients)
   const [selectedClientId, setSelectedClientId] = useState<string>(() => getCurrentClientId() || '')
@@ -1224,6 +1304,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatedAt: string
   } | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [resumableProject, setResumableProject] = useState<{ label: string } | null>(null)
+  // While true the modal shows a fresh form and autosave holds off, so an empty
+  // session never replaces the saved project the user may still resume.
+  const freshStartRef = useRef(false)
+  /** An explicit edit ends the fresh start, so it is saved like any other work. */
+  const markSessionStarted = useCallback(() => {
+    if (!freshStartRef.current) return
+    freshStartRef.current = false
+    setResumableProject(null)
+  }, [])
+  /** Mirror of the restored project's id, readable from the run callbacks. */
+  const loadedProjectIdRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    loadedProjectIdRef.current = loadedProject?.id
+  }, [loadedProject])
 
   // Guided Simple Mode + free Remotion preview
   const [viewMode, setViewMode] = useState<PersonalizationViewMode>('simple')
@@ -1234,6 +1329,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [previewVideo, setPreviewVideo] = useState<PreviewVideoRef | null>(null)
   const [previewApproved, setPreviewApproved] = useState(false)
   const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
+  // ── Remotion design registry ───────────────────────────────────────────────
+  // The design catalog registers itself on import, so the list of designs can
+  // grow after the first render. The registry is observable, hence the
+  // subscription.
+  const [remotionDesignError, setRemotionDesignError] = useState<string | null>(null)
+  /** The design id the last failed `setRemotionDesign` call referred to. */
+  const remotionDesignErrorIdRef = useRef<string | null>(null)
   // Motion Studio recipe selected in Step 2. The full catalog (150 shots,
   // 124 cards, 10 categories) lives in `@/data/motionRecipeCatalog`; this
   // state holds the customer's single picked recipe.
@@ -1262,8 +1364,37 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // keeps unauthenticated mounts from cross-contaminating the mirror.
   const previewUserScope = userScopeProp || apiKey || 'anonymous'
 
+  // The catalog registers itself on import, which can happen after this
+  // provider mounted. The registered list therefore lives in STATE and is
+  // re-derived from the registry whenever the registry announces a change.
+  const [remotionDesignTemplates, setRemotionDesignTemplates] = useState<
+    RemotionDesignTemplate[]
+  >(() => listRemotionDesignTemplates())
+
+  useEffect(
+    () =>
+      subscribeRemotionDesignRegistry(() =>
+        setRemotionDesignTemplates(listRemotionDesignTemplates()),
+      ),
+    [],
+  )
+
+  // A design refused because its catalog had not registered yet becomes
+  // usable once the catalog lands; drop the stale error then.
+  useEffect(() => {
+    const failedId = remotionDesignErrorIdRef.current
+    if (!failedId) return
+    if (!getRemotionDesignTemplate(failedId)) return
+    remotionDesignErrorIdRef.current = null
+    setRemotionDesignError(null)
+  }, [remotionDesignTemplates])
   // Debounced Supabase project persistence
   const projectPersistence = useRef(createProjectPersistence({ debounceMs: 1500 }))
+  // Bumped by every restore and by closing the modal. A restore response that
+  // arrives after the session moved on (another source opened, or the modal
+  // closed) is discarded, so a late source-A response can never apply A's data
+  // to source B or point B's autosaves at A's row.
+  const restoreSessionRef = useRef(0)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -1321,10 +1452,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const nextId = source.id ?? null
     if (resetSourceIdRef.current === nextId) return
     resetSourceIdRef.current = nextId
-    // Revoke any outstanding blob URLs before resetting state
+    // Revoke any outstanding blob URLs before resetting state. A studio that
+    // seeded its own brand assets gets them back instead of an empty library;
+    // every other caller still starts from the empty library.
+    const seededAssets = initialAssetsRef.current
     setAssets((prev) => {
       releaseAllJobBlobUrls()
-      return { ...EMPTY_ASSET_LIBRARY }
+      return seededAssets
+        ? { ...EMPTY_ASSET_LIBRARY, ...seededAssets }
+        : { ...EMPTY_ASSET_LIBRARY }
     })
     setPromptState({
       original: source.originalPrompt || source.fullPrompt || source.shortPrompt || '',
@@ -1383,11 +1519,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
   }, [savedClientAssets, liveBlobUrlCounts])
 
-  // Single builder for the persisted project payload, shared by both debounced
-  // persist effects below and by the immediate flush on approval so they can
+  // Single builder for the persisted project payload, shared by the debounced
+  // persist effect below and by the immediate flush on approval so they can
   // never drift. The payload is purely additive over the previous fields.
   const buildProjectPayload = useCallback((): PersonalizationProjectState => ({
-    originStudio: 'demo-personalization',
+    // Which surface opened the modal. A studio hand-off records its own slug;
+    // every other caller keeps the historical demo literal.
+    originStudio: originStudioRef.current || 'demo-personalization',
     sourceType: source!.sourceType,
     sourceDemoId: source!.id,
     sourceDemoSlug: (source as { slug?: string }).slug ?? null,
@@ -1403,6 +1541,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
     firstFrameAssetId: assets.firstFrame?.id || null,
     lastFrameAssetId: assets.lastFrame?.id || null,
+    // The id lists alone cannot be restored; persist each asset's durable URL
+    // next to its id (blob:/data: URLs are dropped by `durableAssetUrls`).
+    assetUrls: durableAssetUrls(
+      Object.fromEntries(
+        [
+          ...assets.identities,
+          ...assets.logos,
+          ...assets.products,
+          ...assets.brandReferences,
+          ...(assets.firstFrame ? [assets.firstFrame] : []),
+          ...(assets.lastFrame ? [assets.lastFrame] : []),
+        ].map((a) => [a.id, a.uploadedUrl || a.url]),
+      ),
+    ),
     outputUrls: result?.urls || (result?.url ? [result.url] : []),
     outputType,
     clientId: selectedClientId || null,
@@ -1449,11 +1601,28 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     viewMode,
   ])
 
-  // Debounced Supabase project persistence
+  // Debounced Supabase project persistence. Exactly ONE effect may schedule
+  // this write: `persist` coalesces calls inside the debounce window, so a
+  // second identical effect never added a request, but it doubled the payload
+  // build + scheduling on every commit and hid which effect owns the write.
+  // `DemoPersonalizePersistence.test.tsx` pins one `persist` per commit.
   useEffect(() => {
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
     if (!source || access !== 'authenticated') return
+    // A fresh session saves nothing until the user starts on something, so
+    // opening the modal never replaces the project they may want to resume.
+    if (freshStartRef.current) {
+      const hasAssets = Object.values(assets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
+      const started =
+        Boolean(clientForm.businessName || clientForm.website || clientForm.ctaHeadline || clientForm.callToAction || promptState.personalized || promptState.edited) ||
+        hasAssets ||
+        Boolean(previewVideo) ||
+        Boolean(result?.url || result?.urls?.length)
+      if (!started) return
+      freshStartRef.current = false
+      setResumableProject(null)
+    }
     projectPersistence.current.persist(buildProjectPayload())
   }, [
     source?.id,
@@ -1468,36 +1637,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     generation.status,
     result?.url,
     result?.urls,
-    clientForm.ctaHeadline,
-    clientForm.callToAction,
-    genOptions,
-    previewSettings,
-    previewVideo,
-    guidedStep,
-    viewMode,
-    access,
-    buildProjectPayload,
-  ])
-
-  // Debounced Supabase project persistence
-  useEffect(() => {
-    // Anonymous sessions persist nothing: the free discovery run writes no
-    // project row, no identity and no saved asset.
-    if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist(buildProjectPayload())
-  }, [
-    source?.id,
-    source,
-    mode,
-    promptState.original,
-    promptState.personalized,
-    promptState.edited,
-    assets,
-    outputType,
-    selectedClientId,
-    generation.status,
-    result?.url,
-    result?.urls,
+    clientForm.businessName,
+    clientForm.website,
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
@@ -1514,7 +1655,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // project persistence above: anonymous sessions write nothing).
   useEffect(() => {
     if (!source?.id || access !== 'authenticated') return
+    // Keep the saved preview intact while "Continue" is still on offer.
+    if (freshStartRef.current) return
     const timer = setTimeout(() => {
+      if (freshStartRef.current) return
       writePreviewStorage(source.id, previewUserScope, {
         previewSettings,
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
@@ -1594,18 +1738,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
     if (!src?.id) return
+    const session = ++restoreSessionRef.current
     projectPersistence.current.cancel() // don't race with an in-flight save
+    // A new source writes to its own row: forget the previous source's row id
+    // until this source's saved project (if any) is known.
+    projectPersistence.current.setProjectId(null)
 
     let result: LoadProjectResult
     try {
       result = await loadProject({ sourceId: src.id })
     } catch {
+      if (session !== restoreSessionRef.current) return
       // Network/parse failure: Supabase is unreachable but the visitor's
       // per-user localStorage mirror may still have their in-progress
       // preview, so fall through to it instead of abandoning the session.
       applyLocalPreviewState(src.id)
       return
     }
+    // A newer restore started, or the modal closed, while this one loaded.
+    if (session !== restoreSessionRef.current) return
 
     if (!result.ok || !result.data) {
       // Supabase returned no durable row for this source. The localStorage
@@ -1631,26 +1782,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     // ── Restore assets ───────────────────────────────────────────────────────
+    // Each saved id is rebuilt from its persisted durable URL. An id with no
+    // loadable URL (a row saved before `assetUrls` existed) is skipped: an
+    // asset whose `url` is an opaque id would break generation and previews.
     const assetEntries: { id: string; url: string; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    const pushRestored = (id: string, role: PersonalizationAsset['role'], isPrimary: boolean) => {
+      const url = resolveRestoredAssetUrl(id, entry.assetUrls)
+      if (url) assetEntries.push({ id, url, role, isPrimary })
+    }
 
-    entry.identityAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'presenter_identity', isPrimary: idx === 0 })
-    })
-    entry.logoAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'logo', isPrimary: idx === 0 })
-    })
-    entry.productAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'product_reference', isPrimary: false })
-    })
-    entry.brandReferenceAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'brand_reference', isPrimary: false })
-    })
-    if (entry.firstFrameAssetId) {
-      assetEntries.push({ id: entry.firstFrameAssetId, url: entry.firstFrameAssetId, role: 'first_frame', isPrimary: true })
-    }
-    if (entry.lastFrameAssetId) {
-      assetEntries.push({ id: entry.lastFrameAssetId, url: entry.lastFrameAssetId, role: 'last_frame', isPrimary: true })
-    }
+    entry.identityAssetIds.forEach((id, idx) => pushRestored(id, 'presenter_identity', idx === 0))
+    entry.logoAssetIds.forEach((id, idx) => pushRestored(id, 'logo', idx === 0))
+    entry.productAssetIds.forEach((id) => pushRestored(id, 'product_reference', false))
+    entry.brandReferenceAssetIds.forEach((id) => pushRestored(id, 'brand_reference', false))
+    if (entry.firstFrameAssetId) pushRestored(entry.firstFrameAssetId, 'first_frame', true)
+    if (entry.lastFrameAssetId) pushRestored(entry.lastFrameAssetId, 'last_frame', true)
 
     // Build the AssetLibrary in one shot to avoid intermediate empty states
     const restoredLibrary = assetEntries.reduce<AssetLibrary>((lib, a) => {
@@ -1793,6 +1939,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
+    // Later autosaves update the restored row rather than inserting a new one.
+    projectPersistence.current.setProjectId(entry.id)
+
     // Expose restore summary to the UI
     setLoadedProject({
       id: entry.id || '',
@@ -1809,20 +1958,80 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // this effect then fills it back in from durable storage. Anonymous sessions
   // have no durable storage to hydrate from (and issue no authenticated
   // request), so the free run always starts from a clean slate.
+  //
+  // `restoreProject` is read through a ref: its identity changes whenever
+  // `previewUserScope` does (the auth-config API key hydrates AFTER mount on
+  // every real page load), and re-running the restore then would re-apply the
+  // just-written localStorage mirror over the user's live session — silently
+  // reverting their view mode, guided step and preview state to what they
+  // were ~800ms after the modal opened. The restore must run once per
+  // source/open, with the latest closure — never again because the scope
+  // arrived late.
+  const restoreProjectRef = useRef(restoreProject)
+  useEffect(() => {
+    restoreProjectRef.current = restoreProject
+  }, [restoreProject])
+
+  const resumeLastProject = useCallback(async () => {
+    if (!source) return
+    freshStartRef.current = false
+    setResumableProject(null)
+    setRestoring(true)
+    try {
+      await restoreProjectRef.current(source)
+    } finally {
+      setRestoring(false)
+    }
+  }, [source])
+
+  const dismissResumableProject = useCallback(() => {
+    setResumableProject(null)
+  }, [])
+
   useEffect(() => {
     if (!source?.id || !isOpen || access !== 'authenticated') return
     let cancelled = false
-    setRestoring(true)
     setLoadedProject(null)
+    setResumableProject(null)
+    // The modal opens with an empty form. The last saved project is only
+    // offered ("Continue with …"); loading it happens on the user's request.
+    freshStartRef.current = true
+    // A fresh form must not stay attached to the last saved client, or saving
+    // a new business would overwrite that client's profile. Continue (or
+    // picking a saved client) re-attaches it.
+    setSelectedClientId('')
+    setCurrentClientId(null)
+    projectPersistence.current.cancel()
+    projectPersistence.current.setProjectId(null)
 
-    restoreProject(source).finally(() => {
-      if (!cancelled) setRestoring(false)
-    })
+    loadProject({ sourceId: source.id })
+      .then((result) => {
+        if (cancelled || !freshStartRef.current) return
+        if (!result.ok || !result.data) {
+          // No saved row, but this browser kept the visitor's preview.
+          if (readPreviewStorage(source.id, previewUserScope)) setResumableProject({ label: 'your last project' })
+          return
+        }
+        const entry = result.data
+        const savedClient = entry.clientId
+          ? clients.find((c) => c.id === entry.clientId) ?? loadClients().find((c) => c.id === entry.clientId)
+          : null
+        const label = savedClient?.businessName || savedClient?.website || 'your last project'
+        setResumableProject({ label })
+      })
+      .catch(() => {
+        // No offer when the saved project cannot be read; the fresh form stands.
+      })
 
     return () => {
       cancelled = true
     }
-  }, [source?.id, isOpen, restoreProject, access])
+    // `restoreProject` is intentionally absent: it is read through
+    // `restoreProjectRef` above so a late `previewUserScope` change (the
+    // auth-config API key hydrating) never re-triggers this restore and
+    // clobbers the visitor's live session. See the comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.id, isOpen, access])
 
   // ── Modal actions ──────────────────────────────────────────────────────────
 
@@ -1841,10 +2050,31 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setSource(normalized)
       setIsOpen(true)
       triggerRef.current = opts.trigger || null
+      // ── Studio hand-off context (Phase 1) ──────────────────────────────────
+      // Stored in refs so the generation callbacks can read them without
+      // re-rendering, and reset here so a second open never inherits the
+      // previous open's callback, assets or destination.
+      originStudioRef.current = opts.originStudio || null
+      initialAssetsRef.current = opts.initialAssets || null
+      onCompleteRef.current = opts.onComplete || null
+      returnToRef.current = opts.returnTo || null
+      returnPayloadRef.current = opts.returnPayload || null
+      onCompleteFiredRef.current = false
+      if (opts.initialAssets) {
+        // Applied eagerly as well as in the reset effect below: re-opening the
+        // SAME source id skips the reset, so the seeded assets would otherwise
+        // never be re-applied.
+        setAssets({ ...EMPTY_ASSET_LIBRARY, ...opts.initialAssets })
+      }
     }
   }, [accessProp])
 
   const closePersonalize = useCallback(() => {
+    // Invalidate any restore still loading for the session being closed.
+    restoreSessionRef.current += 1
+    // Reopening the same source must reset the form again: the personalizer
+    // always opens empty, with the last project offered rather than kept.
+    resetSourceIdRef.current = undefined
     // Revoke outstanding blob URLs (reference-counted, idempotent;
     // outside the state updater — updaters must stay pure for Strict Mode replay)
     releaseAllBlobUrls()
@@ -1854,6 +2084,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setAccess(accessProp || 'authenticated')
     setResult(null)
     setGeneration({ ...EMPTY_GENERATION_STATE })
+    // Drop the studio hand-off context so a completion callback can never
+    // fire on a later open.
+    originStudioRef.current = null
+    initialAssetsRef.current = null
+    onCompleteRef.current = null
+    returnToRef.current = null
+    returnPayloadRef.current = null
+    onCompleteFiredRef.current = false
     triggerRef.current?.focus()
     triggerRef.current = null
   }, [accessProp, releaseAllBlobUrls])
@@ -2088,7 +2326,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
-    if (!apiKey) throw new Error('Missing API key')
+    // No MuAPI key is needed to save an asset: the upload service stores it
+    // durably and defers the MuAPI copy to generation time.
 
     // The local blob URL captured synchronously from the asset object this
     // upload was started with.  Ownership was registered when the asset was
@@ -3013,11 +3252,24 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     )
   }, [])
 
-  const importDiscoveredAssets = useCallback(async () => {
+  const importDiscoveredAssets = useCallback(async (options?: ImportDiscoveredAssetsOptions) => {
+    // Buttons wire this straight to onClick, so the argument can be a click
+    // event; only a real options object with ids narrows the import.
+    const ids = options && Array.isArray((options as ImportDiscoveredAssetsOptions).ids)
+      ? (options as ImportDiscoveredAssetsOptions).ids!
+      : null
+    const sectionOverride = ids ? (options as ImportDiscoveredAssetsOptions).section : undefined
+
     setDiscoveryStatus('importing')
     setDiscoveryError(null)
 
-    const toImport = discoveredAssets.filter((a) => a.selected && !a.rejected)
+    // A drop onto a section imports exactly the dropped asset into that
+    // section, selected or not; otherwise every selected asset is imported.
+    const toImport = ids
+      ? discoveredAssets
+          .filter((a) => ids.includes(a.id) && !a.rejected)
+          .map((a) => (sectionOverride ? { ...a, assignedSection: sectionOverride } : a))
+      : discoveredAssets.filter((a) => a.selected && !a.rejected)
     if (toImport.length === 0) {
       setDiscoveryStatus('reviewing')
       return
@@ -3046,49 +3298,59 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       brand: 'brand_reference',
     }
 
-    // 1. Download only untouched remote assets. Edited assets already carry
-    // an in-memory data URL produced by the editor and should not be sent to
-    // the server-side downloader.
-    const remoteItems = toImport.filter((item) => !item.editedDataUrl)
+    // 1. Discovered website images are linked by their web address: nothing
+    // is downloaded or copied to storage. Only an image the browser cannot
+    // load from its site (the site blocks it) is downloaded and stored, and
+    // edited images keep their in-memory edit.
+    const untouched = toImport.filter((item) => !item.editedDataUrl)
+    const loads = await Promise.all(untouched.map((item) => imageLoadsInBrowser(item.originalPreviewUrl || item.previewUrl)))
+    const linkedItems = untouched.filter((_, index) => loads[index])
+    const remoteItems = untouched.filter((_, index) => !loads[index])
     const downloadedByUrl = new Map<string, string>()
     let partialDownloadError: string | null = null
 
     if (remoteItems.length > 0) {
-      let downloadRes: Response
-      try {
-        downloadRes = await fetch('/api/personalization/download-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
-          credentials: 'same-origin',
-        })
-      } catch (err) {
-        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-        setDiscoveryStatus('reviewing')
-        return
-      }
-
-      if (!downloadRes.ok) {
-        let data: Record<string, unknown>
+      // The download route takes at most 20 URLs per request, so a full
+      // import goes out in batches.
+      const urls = remoteItems.map((a) => a.previewUrl)
+      const results: Array<{ ok?: boolean; url?: string; dataUrl?: string }> = []
+      for (let start = 0; start < urls.length; start += DOWNLOAD_BATCH_SIZE) {
+        let downloadRes: Response
         try {
-          data = await downloadRes.json()
-        } catch {
-          data = {}
+          downloadRes = await fetch('/api/personalization/download-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: urls.slice(start, start + DOWNLOAD_BATCH_SIZE) }),
+            credentials: 'same-origin',
+          })
+        } catch (err) {
+          setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+          setDiscoveryStatus('reviewing')
+          return
         }
-        const status = downloadRes.status
-        if (status === 401) {
-          setDiscoveryError('Authentication required. Please sign in to continue.')
-        } else if (status === 403) {
-          setDiscoveryError('You do not have access to this feature. Contact your administrator.')
-        } else {
-          setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
-        }
-        setDiscoveryStatus('reviewing')
-        return
-      }
 
-      const downloadData = await downloadRes.json()
-      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+        if (!downloadRes.ok) {
+          let data: Record<string, unknown>
+          try {
+            data = await downloadRes.json()
+          } catch {
+            data = {}
+          }
+          const status = downloadRes.status
+          if (status === 401) {
+            setDiscoveryError('Authentication required. Please sign in to continue.')
+          } else if (status === 403) {
+            setDiscoveryError('You do not have access to this feature. Contact your administrator.')
+          } else {
+            setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
+          }
+          setDiscoveryStatus('reviewing')
+          return
+        }
+
+        const downloadData = await downloadRes.json()
+        if (Array.isArray(downloadData?.results)) results.push(...downloadData.results)
+      }
       const failedDownloads: string[] = []
       for (const result of results) {
         if (result?.ok && result?.url && result?.dataUrl) {
@@ -3097,27 +3359,32 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           failedDownloads.push(result.url)
         }
       }
-      if (failedDownloads.length > 0 && failedDownloads.length < remoteItems.length) {
-        partialDownloadError = `${failedDownloads.length} of ${remoteItems.length} assets failed to download. ${downloadedByUrl.size} assets were imported.`
-      } else if (failedDownloads.length === remoteItems.length) {
+      const importedCount = downloadedByUrl.size + linkedItems.length
+      if (failedDownloads.length > 0 && importedCount > 0) {
+        partialDownloadError = `${failedDownloads.length} of ${untouched.length} assets failed to download. ${importedCount} assets were imported.`
+      } else if (failedDownloads.length > 0) {
         setDiscoveryError('All assets failed to download. Please try again.')
         setDiscoveryStatus('reviewing')
         return
       }
     }
 
-    // 2. Build assets from either edited data URLs or downloaded originals.
-    const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    // 2. Build assets: linked website images carry no file; edited and
+    // downloaded images carry the bytes to store.
+    const assetsToCreate: { item: DiscoveredAsset; blob: Blob | null; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    const linkedIds = new Set(linkedItems.map((item) => item.id))
 
     for (const item of toImport) {
-      const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
-      if (!dataUrl) continue
-
       const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
-      const blob = dataUrlToBlob(dataUrl)
-      if (!blob) continue
+      let blob: Blob | null = null
+      if (!linkedIds.has(item.id)) {
+        const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
+        if (!dataUrl) continue
+        blob = dataUrlToBlob(dataUrl)
+        if (!blob) continue
+      }
 
       const isPrimary =
         role === 'presenter_identity' ? true :
@@ -3136,10 +3403,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // 3. Build asset objects before updating library so upload can reference them.
     const createdAssets: PersonalizationAsset[] = []
     for (const { item, blob, role, isPrimary } of assetsToCreate) {
-      const asset = createOwnedAsset(blob, role, {
+      const websiteUrl = item.originalPreviewUrl || item.previewUrl
+      const shared = {
         isPrimary,
-        name: `discovered_${Date.now()}`,
-        originalUrl: item.originalPreviewUrl || item.previewUrl,
+        name: blob ? `discovered_${Date.now()}` : websiteUrl.split('/').pop() || 'discovered',
+        originalUrl: websiteUrl,
         edited: Boolean(item.edited || item.editedDataUrl),
         editedDataUrl: item.editedDataUrl,
         videoReady: item.videoReady || false,
@@ -3150,7 +3418,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         sourceCategory: item.category,
         sourceType: item.sourceType,
         sourceDiscoveredAssetId: item.id,
-      })
+      }
+      // A linked image's permanent address is its address on the site.
+      const asset = blob ? createOwnedAsset(blob, role, shared) : createAssetFromUrl(websiteUrl, role, shared)
       createdAssets.push(asset)
     }
 
@@ -3163,9 +3433,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return next
     })
 
-    // 4. Upload each asset to get durable URLs
+    // 4. Store the assets that carry bytes; linked website images are ready.
     const uploadErrors: string[] = []
-    for (const asset of createdAssets) {
+    const storedAssets = createdAssets.filter((asset) => asset.file)
+    for (const asset of storedAssets) {
       try {
         await uploadAsset(asset)
       } catch (e) {
@@ -3175,15 +3446,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
-    setDiscoveredAssetsState([])
-    setDiscoveryStatus('idle')
+    // Only assets that actually imported leave the review; failed ones stay
+    // so they can be retried.
+    const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+    const anyFailed = toImport.some((item) => !importedIds.has(item.id))
+    if (ids || anyFailed) {
+      setDiscoveredAssetsState((prev) => prev.filter((a) => !importedIds.has(a.id)))
+      setDiscoveryStatus('reviewing')
+    } else {
+      setDiscoveredAssetsState([])
+      setDiscoveryStatus('idle')
+    }
 
-    const totalAttempted = createdAssets.length
+    const totalAttempted = storedAssets.length
     const successCount = totalAttempted - uploadErrors.length
     if (uploadErrors.length > 0) {
+      // Name the reason: a bare count left the user nothing to act on.
+      const reason = uploadErrors[0].replace(/^[^:]*:\s*/, '')
       const summary = uploadErrors.length === totalAttempted
-        ? `All ${totalAttempted} asset(s) failed to upload.`
-        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload. ${successCount} succeeded.`
+        ? `All ${totalAttempted} asset(s) failed to upload: ${reason}`
+        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload (${reason}). ${successCount} succeeded.`
       setDiscoveryError(partialDownloadError
         ? `${partialDownloadError} ${summary}`
         : summary)
@@ -3191,8 +3473,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setDiscoveryError(partialDownloadError)
     }
 
+    // The assets are in the session regardless of whether the durable upload
+    // succeeded: `setAssets` above already placed every created asset into the
+    // library, and the video personalization reads them from there. Reporting
+    // `count: 0` when only the durable upload failed told a customer whose
+    // BYOK key was missing that nothing had been added, while the assets were
+    // in fact usable in the session.
     setImportConfirmation({
-      count: successCount,
+      count: createdAssets.length,
       failedCount: uploadErrors.length,
       clientName: clientForm.businessName || clientForm.name || undefined,
     })
@@ -3555,8 +3843,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const browserQueued = Boolean(data?.browserQueued)
       const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
 
-      // If background discovery is queued, show fast assets and poll for completion
-      if (jobId && (responseStatus === 'processing' || browserQueued)) {
+      // If background discovery is queued, show fast assets and poll for completion.
+      // 'pending' means the job was accepted but the background worker has not
+      // started yet — poll just the same.
+      if (jobId && (responseStatus === 'processing' || responseStatus === 'pending' || browserQueued)) {
         if (discoveredAssets.length > 0) {
           setDiscoveredAssetsState(discoveredAssets)
           setDiscoveryStatus('reviewing')
@@ -3651,7 +3941,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           setDiscoveryStatus('idle')
         }
 
-        pollStatus()
+        // Awaited so the caller's "busy" state lasts until the job finishes.
+        // Returning early re-enabled the button mid-poll, so every extra click
+        // started another discovery job.
+        await pollStatus()
         return
       }
 
@@ -3849,6 +4142,72 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // ── Generation actions ─────────────────────────────────────────────────────
 
+  /**
+   * Finish a run: deliver the outputs to whoever opened the modal and, when a
+   * return destination was requested, hand the result to that studio through
+   * the existing cross-studio transport.
+   *
+   * Both halves are opt-in: without an `onComplete` callback and without a
+   * `returnTo` target this is a no-op, so the demo flow is unchanged.
+   */
+  const completeRun = useCallback((result: GenerationResult, personalizedPrompt: string) => {
+    const callback = onCompleteRef.current
+    const target = returnToRef.current
+    if (!callback && !target) return
+    if (onCompleteFiredRef.current) return
+    onCompleteFiredRef.current = true
+
+    const urls = result.urls || (result.url ? [result.url] : [])
+    const outputs = {
+      prompts: personalizedPrompt ? [personalizedPrompt] : [],
+      images: result.type === 'image' ? urls : [],
+      videos: result.type === 'video' ? urls : [],
+    }
+
+    callback?.({
+      outputs,
+      personalizedPrompt,
+      projectId: loadedProjectIdRef.current,
+      originStudio: originStudioRef.current || undefined,
+      sourceId: source?.id,
+    })
+
+    if (!target) return
+
+    // Hand the finished result to the target studio. The payload travels in the
+    // existing `StudioHandoff` envelope so the target studio reads it exactly
+    // like a storyboard hand-off.
+    const project = lastProjectRef.current
+    const videoUrl = result.type === 'video' ? urls[0] || null : null
+    const referenceImageUrl = result.type === 'image' ? urls[0] || null : null
+    const handoff = {
+      version: 1 as const,
+      target,
+      from: 'demo-personalization' as const,
+      projectName: project?.source?.title || 'Personalized Result',
+      aspectRatio:
+        ((project?.source?.aspectRatio as '16:9' | '9:16' | '1:1' | null) ||
+          (result.type === 'image' ? '1:1' : '16:9')) as '16:9' | '9:16' | '1:1',
+      episodeDuration: project?.source?.duration || 0,
+      videoUrl,
+      referenceImageUrl,
+      characterNames: (project?.assets?.identities || []).map((i) => i.name).filter(Boolean),
+      shots: [],
+      combinedPrompt: personalizedPrompt,
+      firstFrameUrl: null,
+      metadata: {
+        originStudio: originStudioRef.current || 'demo-personalization',
+        ...(returnPayloadRef.current || {}),
+      },
+      createdAt: new Date().toISOString(),
+    }
+    writeHandoff(handoff)
+    const readBack = readHandoff(target)
+    if (!readBack) return
+    closePersonalize()
+    router.push(`/studio/${TARGET_SLUG[target]}`)
+  }, [closePersonalize, loadedProjectIdRef, router, source])
+
   const generate = useCallback(async () => {
     if (!source || !apiKey) return
 
@@ -3905,7 +4264,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Pre-generate CTA end card if exact end-card handling is requested
       if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
         setGeneration((prev) => ({ ...prev, progress: 3, progressMessage: 'Preparing branding assets...' }))
-        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || null, apiKey)
+        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || null, apiKey)
         if (endCardUrl) {
           resolved = {
             ...resolved,
@@ -3969,6 +4328,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
       // Register shared media
       const entry = registerSharedMedia({
+        originStudio: originStudioRef.current || 'demo-personalization',
         sourceType: source.sourceType,
         sourceDemoId: source.id,
         sourceMedia: source.sourceMedia,
@@ -3991,7 +4351,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Also persist to Supabase server-side so history survives
       // across devices and browser clears. Best-effort: do not block UI.
       registerSupabaseSharedMedia({
-        originStudio: 'demo-personalization',
+        originStudio: originStudioRef.current || 'demo-personalization',
         sourceType: source.sourceType,
         sourceDemoId: source.id,
          sourceDemoSlug: (source as { slug?: string }).slug ?? null,
@@ -4013,6 +4373,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }).catch(() => {
         // Supabase persistence is best-effort; localStorage remains the source of truth
       })
+
+      // Hand the finished result back to whoever opened the modal (studio
+      // hand-off) and, when a return destination was requested, to that studio.
+      completeRun(resultWithPostProcessing, finalPrompt)
     } catch (error) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
@@ -4021,7 +4385,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         failedStage: 'generation',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId])
+  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun])
 
   const retry = useCallback(async () => {
     await generate()
@@ -4088,10 +4452,39 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const setPreviewLayout = useCallback((layout: PreviewLayoutId) => {
+    markSessionStarted()
     setPreviewSettings((prev) => applyLayoutPreset(prev, layout, previewSeedRef.current))
   }, [])
 
+  /**
+   * Applies a registered Remotion design to the preview, or clears the applied
+   * design when given null.
+   *
+   * The design replaces the preview's layer list with its own `design` layer;
+   * brand colours, aspect ratio, fps and duration are untouched. An unknown
+   * design id is refused and reported through `remotionDesignError` instead of
+   * silently doing nothing.
+   */
+  const setRemotionDesign = useCallback((designId: string | null) => {
+    markSessionStarted()
+    if (designId === null) {
+      remotionDesignErrorIdRef.current = null
+      setRemotionDesignError(null)
+      setPreviewSettings((prev) => resetPreviewDesign(prev, previewSeedRef.current))
+      return
+    }
+    if (!getRemotionDesignTemplate(designId)) {
+      remotionDesignErrorIdRef.current = designId
+      setRemotionDesignError(`That design is not available.`)
+      return
+    }
+    remotionDesignErrorIdRef.current = null
+    setRemotionDesignError(null)
+    setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current))
+  }, [])
+
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) =>
@@ -4101,6 +4494,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
+    markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
       brandColors: { ...prev.brandColors, ...patch },
@@ -4109,6 +4503,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewComposition = useCallback(
     (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
+      markSessionStarted()
       setPreviewSettings((prev) => {
         const next = { ...prev, ...patch }
         if (patch.aspectRatio) {
@@ -4126,8 +4521,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // "Restore default layout" must undo per-layer position/scale/visibility
     // edits, not only re-seed layers that are missing from the layout. Brand
     // content stays — it is re-derived from the form/asset seed below.
+    markSessionStarted()
     setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
-  }, [])
+  }, [markSessionStarted])
+
+  // The user-facing setters for the saved project's other fields: each change
+  // ends the fresh start, like the preview edits above.
+  const chooseOutputType = useCallback((type: OutputType) => {
+    markSessionStarted()
+    setOutputType(type)
+  }, [markSessionStarted])
+
+  const chooseMode = useCallback((next: VideoPersonalizationMode | ImagePersonalizationMode | null) => {
+    markSessionStarted()
+    setMode(next)
+  }, [markSessionStarted])
+
+  const updateGenOptions = useCallback((patch: Partial<GenerationOptions>) => {
+    markSessionStarted()
+    setGenOptions((prev) => ({ ...prev, ...patch }))
+  }, [markSessionStarted])
 
   const approvePersonalization = useCallback(() => {
     setPreviewApproved(true)
@@ -4290,6 +4703,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         progress: 100,
         progressMessage: 'Branded video ready',
       })
+      // Hand the rendered result back to whoever opened the modal (studio
+      // hand-off) and, when a return destination was requested, to that studio.
+      completeRun(brandedResult, promptState.edited || promptState.personalized || promptState.original)
     } catch (error) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
@@ -4297,13 +4713,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         errorMessage: error instanceof Error ? error.message : 'Branded render failed',
       })
     }
-  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved])
+  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun])
 
   const cancelExport = useCallback(() => {
     cancelActiveExport()
   }, [])
 
   const setPreviewAudio = useCallback(async (file: File) => {
+    markSessionStarted()
     setPreviewAudioError(null)
 
     const blobUrl = URL.createObjectURL(file)
@@ -4453,6 +4870,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // after pane and the export path all see it without further wiring).
   const useMotionTemplate = useCallback((template: MotionTemplate) => {
     if (!template || !template.componentName) return
+    markSessionStarted()
     setMotionTemplate(template)
     // `template.preview` is the real ShotCraft MP4 clip (an absolute URL);
     // `template.poster` is the optional still frame. They are distinct
@@ -4469,7 +4887,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo({
       url: clip,
       poster,
-      title: template.nameEn || template.name,
+      title: template.nameEn ? motionTemplateTitle(template) : template.name,
       kind: 'motion-template',
       demoId: undefined,
       templateId: template.componentName,
@@ -4626,11 +5044,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
     // Output / mode / options
     outputType,
-    setOutputType,
+    setOutputType: chooseOutputType,
     mode,
-    setMode,
+    setMode: chooseMode,
     genOptions,
-    updateGenOptions: (patch: Partial<GenerationOptions>) => setGenOptions((prev) => ({ ...prev, ...patch })),
+    updateGenOptions,
     consent,
     setConsent,
 
@@ -4657,6 +5075,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Project restore (Phase 14)
     loadedProject,
     restoring,
+    resumableProject,
+    resumeLastProject,
+    dismissResumableProject,
 
     // Guided Simple Mode + free Remotion preview
     viewMode,
@@ -4671,6 +5092,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatePreviewBrandColors,
     updatePreviewComposition,
     resetPreviewLayout,
+    remotionDesignTemplates,
+    activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
+    setRemotionDesign,
+    remotionDesignError,
     previewApproved,
     approvePersonalization,
      createFinalVideo,

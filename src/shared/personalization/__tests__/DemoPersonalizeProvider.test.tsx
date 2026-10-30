@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
@@ -10,6 +12,10 @@ vi.mock('studio/src/muapi', () => ({
 vi.mock('../assetUploadService', () => ({
   uploadPersonalizationAsset: vi.fn(),
 }))
+
+// jsdom cannot load images; each test decides which addresses "load".
+const imageProbe = vi.hoisted(() => ({ loads: vi.fn(async (_url: string) => false) }))
+vi.mock('../imageLoadProbe', () => ({ imageLoadsInBrowser: imageProbe.loads }))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -1238,7 +1244,11 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     expect(ctx.discoveryError).toMatch(/1 of 2 asset\(s\) failed to upload/)
     expect(ctx.importConfirmation).toBeTruthy()
     expect(ctx.importConfirmation.failedCount).toBe(1)
-    expect(ctx.importConfirmation.count).toBe(1)
+    // `count` reports every asset that was ADDED to the session library —
+    // both of them are usable for personalization even though only one could
+    // be stored durably. The upload failure is reported separately via
+    // `failedCount` and `discoveryError`.
+    expect(ctx.importConfirmation.count).toBe(2)
 
     const allAssets = [
       ...ctx.assets.identities,
@@ -1252,6 +1262,132 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     const failedAsset = allAssets.find((a: any) => a.uploadStatus === 'error')
     expect(failedAsset).toBeTruthy()
     expect(failedAsset.uploadError).toBeTruthy()
+
+    fetchSpy.mockRestore()
+  })
+
+  it('links a discovered website image by its address: no download, no storage upload', async () => {
+    imageProbe.loads.mockResolvedValue(true)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, status: 200, json: async () => ({}) } as Response)
+    const { uploadPersonalizationAsset } = await import('../assetUploadService')
+    vi.mocked(uploadPersonalizationAsset).mockClear()
+
+    await renderProvider()
+    await openSource()
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'w1', sourceUrl: 'https://biz.example/logo.png', previewUrl: 'https://biz.example/logo.png', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://biz.example/logo.png', edited: false, videoReady: false, hasTransparency: false },
+      ])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(fetchSpy.mock.calls.some(([u]) => String(u).includes('/api/personalization/download-image'))).toBe(false)
+    expect(uploadPersonalizationAsset).not.toHaveBeenCalled()
+    expect(ctx.assets.primaryLogo?.url).toBe('https://biz.example/logo.png')
+    expect(ctx.assets.primaryLogo?.uploadStatus).toBe('ready')
+    expect(ctx.discoveryError ?? '').not.toMatch(/failed to upload/)
+
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('downloads and stores only the image its site blocks from loading here', async () => {
+    imageProbe.loads.mockImplementation(async (url: string) => !url.includes('blocked'))
+    const requested: string[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        requested.push(...urls)
+        return { ok: true, status: 200, json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: true, dataUrl: 'data:image/png;base64,iVBORw0KGgo=' })) }) } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+    const asset = (id: string, url: string) => ({ id, sourceUrl: url, previewUrl: url, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: url, edited: false, videoReady: false, hasTransparency: false })
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([asset('ok', 'https://biz.example/a.jpg'), asset('bl', 'https://blocked.example/b.jpg')])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    expect(requested).toEqual(['https://blocked.example/b.jpg'])
+    const products = (window as any).__personalizationCtx.assets.products
+    expect(products.map((p: any) => p.originalUrl).sort()).toEqual(['https://biz.example/a.jpg', 'https://blocked.example/b.jpg'])
+
+    imageProbe.loads.mockReset()
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('reports and keeps blocked images whose download fails, alongside linked ones', async () => {
+    imageProbe.loads.mockImplementation(async (url: string) => !url.includes('blocked'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        return { ok: true, status: 200, json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: false, error: 'blocked' })) }) } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+    const asset = (id: string, url: string) => ({ id, sourceUrl: url, previewUrl: url, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: url, edited: false, videoReady: false, hasTransparency: false })
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([asset('ok', 'https://biz.example/a.jpg'), asset('bl', 'https://blocked.example/b.jpg')])
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/1 of 2 assets failed to download/)
+    expect(ctx.discoveredAssets.map((a: any) => a.id)).toEqual(['bl'])
+    expect(ctx.assets.products).toHaveLength(1)
+
+    imageProbe.loads.mockReset()
+    imageProbe.loads.mockResolvedValue(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('imports more than 20 assets in batches the download route accepts', async () => {
+    const batchSizes: number[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      if (String(url).includes('/api/personalization/download-image')) {
+        const urls: string[] = JSON.parse(String(init?.body)).urls
+        batchSizes.push(urls.length)
+        if (urls.length > 20) {
+          return { ok: false, status: 400, json: async () => ({ error: 'Maximum 20 URLs allowed per request' }) } as Response
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, results: urls.map((u) => ({ url: u, ok: true, dataUrl: 'data:image/png;base64,iVBORw0KGgo=' })) }),
+        } as Response
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response
+    })
+
+    await renderProvider()
+    await openSource()
+
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      id: `d${i}`, sourceUrl: `https://example.com/${i}.jpg`, previewUrl: `https://example.com/${i}.jpg`, sourceType: 'WEBSITE', category: 'product', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'products', autoAssigned: true, originalPreviewUrl: `https://example.com/${i}.jpg`, edited: false, videoReady: false, hasTransparency: false,
+    }))
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets(many)
+    })
+    await act(async () => {
+      await (window as any).__personalizationCtx.importDiscoveredAssets()
+    })
+
+    expect(batchSizes).toEqual([20, 5])
+    expect((window as any).__personalizationCtx.discoveryError ?? '').not.toMatch(/Maximum 20 URLs/)
 
     fetchSpy.mockRestore()
   })
@@ -2243,5 +2379,28 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
     expect(jobLogo).toBeTruthy()
     expect(jobLogo.url).toBe('https://example.com/persisted-saved.png')
     expect(mockUpload).not.toHaveBeenCalled()
+  })
+})
+
+describe('DemoPersonalizeProvider persistence dedup (Phase 3 review finding 1)', () => {
+  const PROVIDER_PATH = join(
+    process.cwd(),
+    'src/shared/personalization/DemoPersonalizeProvider.tsx',
+  )
+
+  it('has exactly one projectPersistence.persist call in an effect', () => {
+    const source = readFileSync(PROVIDER_PATH, 'utf-8')
+    // Count persist calls inside useEffect blocks (not flush/cancel)
+    const persistCalls = source.match(/projectPersistence\.current\.persist\(/g)
+    expect(persistCalls).not.toBeNull()
+    expect(persistCalls!.length).toBe(1)
+  })
+
+  // Unmount cleanup, the restore, and the fresh-start reset when the modal opens.
+  it('has exactly three cancel calls: unmount, restore and fresh start', () => {
+    const source = readFileSync(PROVIDER_PATH, 'utf-8')
+    const cancelCalls = source.match(/projectPersistence\.current\.cancel\(/g)
+    expect(cancelCalls).not.toBeNull()
+    expect(cancelCalls!.length).toBe(3)
   })
 })
