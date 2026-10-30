@@ -95,9 +95,9 @@ const ALL_CATEGORIES: RemotionDesignCategory[] = [
 
 /**
  * The exact size of the catalog: five Phase 1 designs + ten batch-1 designs
- * + four batch-2 designs.
+ * + four batch-2 designs + one batch-3 segment design.
  */
-const EXPECTED_TOTAL = 19
+const EXPECTED_TOTAL = 20
 
 const VALID_TEXT_FIELDS: RemotionDesignTextField[] = [
   'businessName',
@@ -211,16 +211,20 @@ describe('Remotion design catalog', () => {
       expect(template.source.license).toBe('MIT')
       expect(template.source.attribution.trim().length).toBeGreaterThan(0)
       expect(template.source.repositoryUrl).toMatch(/^https:\/\/github\.com\//)
-      // Phase 2 draws from TWO upstream repositories, so the credit line
-      // depends on the repository the design came from — but there are only
-      // those two, and every design carries the right one.
+      // Phase 2 draws from TWO upstream repositories, and batch-3 adds a third
+      // (remotion-video-templates). Every design carries the right attribution
+      // for the repository it came from.
       if (template.source.repository === 'free-remotion-templates') {
         expect(template.source.attribution).toBe(REMOTION_DESIGN_ATTRIBUTION)
         expect(template.source.sourcePath).toMatch(/^src\/components\/.+\.tsx$/)
-      } else {
-        expect(template.source.repository).toBe('remotion-templates')
+      } else if (template.source.repository === 'remotion-templates') {
         expect(template.source.attribution).toBe(RVE_ATTRIBUTION)
         expect(template.source.sourcePath).toMatch(/^templates\/.+\.tsx$/)
+      } else if (template.source.repository === 'remotion-video-templates') {
+        expect(template.source.attribution).toContain('Alejandro Brito')
+        expect(template.source.sourcePath).toMatch(/^src\/templates\/.+\.tsx$/)
+      } else {
+        throw new Error(`Unknown repository: ${template.source.repository}`)
       }
     }
   })
@@ -363,8 +367,9 @@ describe('Remotion design catalog', () => {
     for (const template of REMOTION_DESIGN_TEMPLATES) {
       const scale = template.placement?.scale ?? 1
       if (scale >= 1) {
-        // A full-frame effect (the bokeh loop, the starfield) covers the frame
-        // on purpose — it has to be marked as such.
+        // A full-frame effect (the bokeh loop, the starfield) or a segment
+        // design (kinetic text, etc.) covers the frame on purpose — it has to
+        // be marked as such.
         expect(template.placement?.animation).toBe('none')
         expect(template.placement?.opacity).toBe(1)
         continue
@@ -457,12 +462,20 @@ describe('Remotion design adapters', () => {
       const { container, unmount } = renderTemplate(template)
       const credit = container.querySelector('[data-remotion-design-credit]')
       expect(credit).not.toBeNull()
-      // The credit names the upstream the design came from.
+      // The credit names the upstream the design came from. Segment designs
+      // render through DesignStage which uses the shared DESIGN_VIDEO_CREDIT
+      // (Trimora/RenderComp); overlay designs from repo-2 render their own
+      // RveCreditBlock (React Video Editor).
       if (template.source.repository === 'free-remotion-templates') {
         expect(credit?.textContent).toContain('Trimora')
-      } else {
+      } else if (template.source.repository === 'remotion-templates') {
         expect(credit?.textContent).toContain('React Video Editor')
         expect(credit?.textContent).not.toContain('RenderComp')
+      } else if (template.source.repository === 'remotion-video-templates') {
+        // Segment designs render through DesignStage which uses the shared
+        // DESIGN_VIDEO_CREDIT (Trimora/RenderComp).
+        expect(credit?.textContent).toContain('Trimora')
+        expect(credit?.textContent).toContain('RenderComp')
       }
       unmount()
     }

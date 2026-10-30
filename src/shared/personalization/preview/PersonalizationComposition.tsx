@@ -14,6 +14,7 @@ import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { resolveDesignSlotValues } from './designSlots'
 import { ctaTreatmentFor, textOn, textStyleFor } from './textStyles'
+import { DesignStage } from '../templates/designs/shared'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -29,6 +30,7 @@ import type {
   PreviewInputProps,
   PreviewLayer,
   PersonalizationPreviewSettings,
+  RemotionDesignSegment,
 } from './types'
 
 const TEXT_LAYER_KINDS: PreviewLayer['kind'][] = [
@@ -59,6 +61,25 @@ interface EntranceState {
   scale: number
   translateX: number
   translateY: number
+}
+
+/**
+ * Duration of an intro/outro segment in frames.
+ *
+ * When `settings.segments.intro.durationInFrames` is set it wins; otherwise
+ * fall back to the design's own `animation.durationInFrames`; otherwise 0.
+ */
+function segmentDuration(
+  segment: RemotionDesignSegment | undefined,
+  design: RemotionDesignTemplate | undefined,
+): number {
+  if (segment?.durationInFrames && segment.durationInFrames > 0) {
+    return segment.durationInFrames
+  }
+  if (design?.animation?.durationInFrames && design.animation.durationInFrames > 0) {
+    return design.animation.durationInFrames
+  }
+  return 0
 }
 
 /**
@@ -304,6 +325,35 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   const compH = settings.height > 0 ? settings.height : videoConfig.height
   const [mediaFailed, setMediaFailed] = useState(false)
 
+  // --- Scene segments: intro / outro ---------------------------------------
+  //
+  // Intro/outro designs are full-canvas, opaque components that replace the
+  // customer's video during their duration. They are rendered at scale=1
+  // (full canvas) rather than as boxed overlays. When both are set, the
+  // composition plays: intro → video → outro, all within
+  // `settings.durationInFrames` frames (the video gets squeezed in the
+  // middle, just like the end card already does).
+  const introSegment = settings.segments?.intro
+  const outroSegment = settings.segments?.outro
+  const introDesign = introSegment?.designId
+    ? getRemotionDesignTemplate(introSegment.designId)
+    : undefined
+  const outroDesign = outroSegment?.designId
+    ? getRemotionDesignTemplate(outroSegment.designId)
+    : undefined
+  const introDuration = segmentDuration(introSegment, introDesign)
+  const outroDuration = segmentDuration(outroSegment, outroDesign)
+
+  // Time boundaries within the composition.
+  const introEnd = introDuration
+  const videoStart = introDuration
+  const videoEnd = Math.max(videoStart, settings.durationInFrames - outroDuration)
+  const outroStart = videoEnd
+
+  const inIntro = frame < introEnd
+  const inOutro = frame >= outroStart && outroDuration > 0
+  const inVideo = frame >= videoStart && frame < videoEnd
+
   // The design catalog registers itself on import. Re-render when the registry
   // changes so a design that lands after the first paint is picked up.
   const [, setRegistryVersion] = useState(0)
@@ -341,6 +391,21 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   }, [videoUrl])
 
   const renderBackground = () => {
+    // During intro/outro segments the background video is replaced by the
+    // segment design (rendered below). Only paint the video during the video
+    // portion of the composition.
+    if (!inVideo) {
+      if (isImageSource && posterUrl) {
+        return (
+          <Img
+            src={posterUrl}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )
+      }
+      return null
+    }
+
     if (isImageSource && !videoUrl) {
       if (!posterUrl) return null
       return (
@@ -658,7 +723,122 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             <EndCard settings={settings} brand={brand} />
           </Sequence>
         ) : null}
+        {/* --- Scene segments: intro / outro --- */}
+        {inIntro && introDesign ? (
+          <Sequence from={0} durationInFrames={introDuration}>
+            <SegmentDesign
+              design={introDesign}
+              segment={introSegment!}
+              brand={brand}
+              settings={settings}
+              compW={compW}
+              compH={compH}
+            />
+          </Sequence>
+        ) : null}
+        {inOutro && outroDesign ? (
+          <Sequence from={outroStart} durationInFrames={outroDuration}>
+            <SegmentDesign
+              design={outroDesign}
+              segment={outroSegment!}
+              brand={brand}
+              settings={settings}
+              compW={compW}
+              compH={compH}
+            />
+          </Sequence>
+        ) : null}
       </AbsoluteFill>
     </Internals.SequenceManager.Provider>
+  )
+}
+
+/**
+ * Renders a full-canvas intro/outro segment design.
+ *
+ * Unlike overlay designs (boxed, scaled into a layer), segment designs paint
+ * the entire composition canvas. They replace the customer's video during
+ * their duration — the background video is already suppressed by
+ * `renderBackground` during these frames, and the design below is the only
+ * thing visible.
+ */
+const SegmentDesign: React.FC<{
+  design: RemotionDesignTemplate
+  segment: RemotionDesignSegment
+  brand: PreviewInputProps['brand']
+  settings: PersonalizationPreviewSettings
+  compW: number
+  compH: number
+}> = ({ design, segment, brand, settings, compW, compH }) => {
+  const frame = useCurrentFrame()
+  const slots = resolveDesignTextSlots(
+    design,
+    { kind: 'design', text: '', imageUrl: '' } as PreviewLayer,
+    brand,
+  )
+  const primarySlot =
+    (Array.isArray(design.textSlots) ? design.textSlots : []).find(
+      (slot) => slot && slot.primary,
+    ) ??
+    (Array.isArray(design.textSlots) ? design.textSlots : [])[0]
+  const designProps = (design.defaultProps ?? {}) as Partial<
+    RemotionDesignComponentProps
+  >
+  const DesignComponent = design.component
+  // Segment designs render full-canvas: the box is the composition itself.
+  const layerFrame = Math.max(0, frame)
+  return (
+    <DesignStage
+      designId={design.id}
+      props={{
+        ...designProps,
+        text: primarySlot ? (slots[primarySlot.key] ?? '') : '',
+        textSlots: slots,
+        colors: {
+          primary: settings.brandColors.primary,
+          accent: settings.brandColors.accent,
+          text: settings.brandColors.text,
+          backgroundDim: settings.brandColors.backgroundDim,
+        },
+        media: resolveDesignMedia(
+          design,
+          { kind: 'design', text: '', imageUrl: '' } as PreviewLayer,
+          brand,
+        ),
+        box: { leftPx: 0, topPx: 0, widthPx: compW, heightPx: compH },
+        width: compW,
+        height: compH,
+        frame: layerFrame,
+        fps: settings.fps,
+        opacity: 1,
+        color: settings.brandColors.text,
+        fontFamily: undefined,
+      }}
+    >
+      <DesignComponent
+        {...designProps}
+        text={primarySlot ? (slots[primarySlot.key] ?? '') : ''}
+        textSlots={slots}
+        colors={{
+          primary: settings.brandColors.primary,
+          accent: settings.brandColors.accent,
+          text: settings.brandColors.text,
+          backgroundDim: settings.brandColors.backgroundDim,
+        }}
+        media={resolveDesignMedia(
+          design,
+          { kind: 'design', text: '', imageUrl: '' } as PreviewLayer,
+          brand,
+        )}
+        box={{ leftPx: 0, topPx: 0, widthPx: compW, heightPx: compH }}
+        width={compW}
+        height={compH}
+        frame={layerFrame}
+        fps={settings.fps}
+        opacity={1}
+        color={settings.brandColors.text}
+        fontFamily={undefined}
+      />
+    </DesignStage>
   )
 }

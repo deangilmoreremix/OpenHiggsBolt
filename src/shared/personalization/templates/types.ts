@@ -204,6 +204,13 @@ export interface RemotionDesignTemplate {
   /** Preview/export capability. */
   capabilities: RemotionDesignCapabilities
   /**
+   * When true, the design is a full-canvas scene segment (intro/outro) that
+   * replaces the customer's video during its duration, rather than an overlay
+   * painted on top of it. Segment designs are rendered at scale=1 (full
+   * canvas) and are selectable as intro/outro segments in Step 4.
+   */
+  segment?: boolean
+  /**
    * Whether the design can be previewed at all.
    *
    * Defaults to true; set it to false (with a reason) for a design that can

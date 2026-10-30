@@ -135,6 +135,40 @@ export interface PersonalizationPreviewSettings {
    * treatment, brand colours, layout zones and motion presets.
    */
   textStyleId?: string | null
+
+  /**
+   * Scene segments that play before/after the customer's video.
+   *
+   * Intro/outro designs are full-canvas, opaque components that replace the
+   * customer's video during their duration — they are scene segments, not
+   * overlays. When both intro and outro are set, the total composition
+   * duration grows to intro + video + outro.
+   */
+  segments?: {
+    /** Design rendered from frame 0, replacing the video until it ends. */
+    intro?: RemotionDesignSegment
+    /** Design rendered after the video ends, replacing it until composition end. */
+    outro?: RemotionDesignSegment
+  }
+}
+
+/**
+ * One scene segment: a design id plus optional slot overrides and duration.
+ *
+ * Segment designs are full-canvas, opaque components (intros, outros) that
+ * replace the customer's video during their duration. They are registered
+ * in the same design registry as overlay designs, but carry a `segment: true`
+ * marker so the UI and the composition know to render them full-frame rather
+ * than as a boxed overlay.
+ */
+export interface RemotionDesignSegment {
+  /** Id of a registered design template. */
+  designId: string
+  /** Text slot overrides applied to the design (e.g. headline text). */
+  slotOverrides?: Record<string, string>
+  /** Duration in frames; when omitted the design's default animation
+   *  duration is used. */
+  durationInFrames?: number
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

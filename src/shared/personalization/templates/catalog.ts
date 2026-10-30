@@ -56,6 +56,10 @@ import { LogoMaskWipeDesign } from './designs/LogoMaskWipeDesign'
 import { LogoSplitRevealDesign } from './designs/LogoSplitRevealDesign'
 import { StarfieldWarpDesign } from './designs/StarfieldWarpDesign'
 import { TextMaskRevealDesign } from './designs/TextMaskRevealDesign'
+// Segment designs (intro/outro full-canvas components) live in their own
+// module so the overlay-design barrel is not polluted with segment-only
+// components.
+import { KineticTextSegment } from './designs/KineticTextSegment'
 // The Phase 2 batch-2 entries (the React Video Editor templates) come from
 // their own module, which exports ready-to-register entries and registers
 // nothing by itself.
@@ -974,11 +978,80 @@ export const REMOTION_DESIGN_BATCH2_TEMPLATES: RemotionDesignTemplate[] = [
   ...RVE_CATALOG_ENTRIES,
 ]
 
+/**
+ * Segment-capable designs (intro/outro full-canvas components) from
+ * `remotion-video-templates` (Alejandro Brito, MIT). These replace the
+ * customer's video during their duration — they are scene segments, not
+ * overlays. The upstream templates use `staticFile()` and build-time JSON
+ * imports that cannot resolve in the browser renderer; this adapter
+ * re-implements the rendering inline with browser-safe primitives.
+ *
+ * Repo 3 templates that cannot be used as segments (blocked upstream traits):
+ *  - LogoIntro: uses `staticFile(logoSrc)` — cannot resolve in web renderer
+ *  - PromoTemplate: uses `staticFile(screenshot)` — cannot resolve in web renderer
+ *  - CaptionedShort: imports `captions.sample.json` at build time — cannot resolve
+ */
+export const REMOTION_DESIGN_SEGMENT_TEMPLATES: RemotionDesignTemplate[] = [
+  /**
+   * Kinetic text intro/outro.
+   *
+   * Word-by-word animated text over a solid background. The brand's headline,
+   * offer, CTA and business name become the kinetic lines; the CTA line is
+   * emphasised. Duration grows with the line count (same formula as the
+   * upstream).
+   */
+  {
+    id: 'kinetic-text-segment',
+    name: 'Kinetic Text',
+    description: 'Word-by-word animated text over a solid background (intro/outro).',
+    category: 'animated-headline',
+    source: {
+      repository: 'remotion-video-templates',
+      repositoryUrl: 'https://github.com/deangilmoreremix/remotion-video-templates',
+      sourcePath: 'src/templates/KineticText/KineticText.tsx',
+      license: 'MIT',
+      attribution: '© Alejandro Brito — remotion-video-templates, MIT License. https://github.com/deangilmoreremix/remotion-video-templates',
+    },
+    component: KineticTextSegment,
+    textSlots: [
+      { key: 'headline', field: 'headline', label: 'Headline', primary: true },
+      { key: 'offer', field: 'offer', label: 'Offer' },
+      { key: 'cta', field: 'cta', label: 'Call to action' },
+      { key: 'businessName', field: 'businessName', label: 'Business name' },
+    ],
+    colors: [
+      { role: 'primary', label: 'Background colour' },
+      { role: 'text', label: 'Text colour' },
+      { role: 'accent', label: 'Emphasis colour' },
+    ],
+    media: [],
+    animation: {
+      durationInFrames: 120,
+      delayInFrames: 0,
+      easing: 'word-by-word kinetic stagger + settle + hold + exit',
+    },
+    placement: { x: 0.5, y: 0.5, scale: 1, opacity: 1, animation: 'none' },
+    aspectRatios: ['16:9', '9:16', '1:1', '4:5'],
+    requiredMedia: [],
+    capabilities: {
+      preview: true,
+      browserExport: true,
+      notes:
+        'Full-canvas segment design — replaces the customer\'s video during its duration. ' +
+        'Renders in the browser export path: spring(), interpolate() and transform only. ' +
+        'Duration is computed from the line count (same formula as the upstream).',
+    },
+    previewCompatible: true,
+    segment: true,
+  },
+]
+
 /** Every design, in registration order. */
 export const REMOTION_DESIGN_TEMPLATES: RemotionDesignTemplate[] = [
   ...REMOTION_DESIGN_PHASE1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH2_TEMPLATES,
+  ...REMOTION_DESIGN_SEGMENT_TEMPLATES,
 ]
 
 // The catalog registers itself on import, so the designs exist before the
