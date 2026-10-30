@@ -94,7 +94,12 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
 export type CaptureJob =
   | { state: 'running'; startedAt: string }
   | { state: 'done'; finishedAt: string; capture: ReturnType<typeof buildCaptureResponse> }
-  | { state: 'error'; finishedAt: string; code: string; error: string }
+  | { state: 'error'; finishedAt: string; code: string; error: string; timing?: Record<string, number> }
+
+/** The whole background job (capture + upload) gets this long, then the worker writes a `timed out` record. */
+export const WORKER_WATCHDOG_MS = 120_000
+/** A record still `running` this long after it started belongs to a worker that died (memory, host limit). */
+export const CAPTURE_JOB_STALE_MS = WORKER_WATCHDOG_MS + 15_000
 
 export const CAPTURE_JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -112,7 +117,11 @@ export async function readCaptureJob(storage: CaptureStorage, userId: string, jo
   if (error || !data) return null
   try {
     const job = JSON.parse(await data.text()) as CaptureJob
-    return job && typeof job === 'object' && 'state' in job ? job : null
+    if (!job || typeof job !== 'object' || !('state' in job)) return null
+    if (job.state === 'running' && Date.now() - Date.parse(job.startedAt) > CAPTURE_JOB_STALE_MS) {
+      return { state: 'error', finishedAt: new Date().toISOString(), code: 'CAPTURE_STOPPED', error: 'The capture stopped before it finished (the server ran out of time or memory)' }
+    }
+    return job
   } catch {
     return null
   }

@@ -2369,6 +2369,10 @@ export async function capturePageScreenshots(
           }, Math.max(options.hardMs === undefined ? 2_000 : 0, (options.hardMs ?? CAPTURE_HARD_MS) - elapsed()))
         })
         return await Promise.race([running, deadline])
+      } catch (error) {
+        // The background worker records how far the capture got next to why it failed.
+        if (error instanceof Error) Object.assign(error, { timing: { ...timing } })
+        throw error
       } finally {
         if (hardTimer) clearTimeout(hardTimer)
         // Which step took the time (host only, no address) — visible in the host's function logs.

@@ -4,26 +4,21 @@
  * ~30 s on the host, too little to start a browser and photograph a heavy page; the background function
  * has minutes. The result is a job record the client polls (`/api/motion-studio/capture/status`).
  */
-import { BrowserSsrfError, capturePageScreenshots } from './browserDiscovery'
+import { BrowserSsrfError, capturePageScreenshots, type PageCapture } from './browserDiscovery'
 import {
   CAPTURE_JOB_ID,
   buildCaptureResponse,
   captureImages,
   captureIsEmpty,
   storeCaptureImages,
+  WORKER_WATCHDOG_MS,
   writeCaptureJob,
+  type CaptureJob,
   type CaptureStorage,
 } from './motionCapture'
 
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
 export const WORKER_CAPTURE_OPTIONS = { hardMs: 90_000, budgetMs: 60_000, firstShotMs: 25_000, navigationMs: 30_000 } as const
-
-/** Longest the whole job may take (the capture itself stops at 90 s). */
-const WORKER_WATCHDOG_MS = 110_000
-
-/** A short reason for the chat and the job record: the first line of the error, without addresses. */
-const reasonOf = (err: unknown): string =>
-  (err instanceof Error ? err.message : String(err)).split('\n')[0].replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 140) || 'unknown error'
 
 export interface MotionCaptureJobRequest {
   jobId: string
@@ -31,29 +26,84 @@ export interface MotionCaptureJobRequest {
   url: string
 }
 
+/** A capture that fails this fast (browser start, first navigation) is tried once more within the same budget. */
+const RETRY_WITHIN_MS = 15_000
+/** How long a new record waits for one that is still being saved. */
+const WRITE_WAIT_MS = 10_000
+
+/** Why a capture failed, safe to show: the first line of the error, no addresses, short. */
+const reasonOf = (err: unknown): string =>
+  (err instanceof Error ? err.message : String(err)).split('\n')[0].replace(/https?:\/\/\S+/gi, 'the address').slice(0, 160)
+
 /** Runs one capture job and always leaves a `done` or `error` record behind. */
-export async function runMotionCapture(job: MotionCaptureJobRequest, storage: CaptureStorage): Promise<void> {
+export async function runMotionCapture(job: MotionCaptureJobRequest, storage: CaptureStorage, opts: { watchdogMs?: number } = {}): Promise<void> {
   const { jobId, userId, url } = job
-  const finish = (error: { code: string; message: string }) =>
-    writeCaptureJob(storage, userId, jobId, { state: 'error', finishedAt: new Date().toISOString(), code: error.code, error: error.message })
-  try {
-    // A record is always written: if the browser hangs, the watchdog ends the job instead of leaving it `running`.
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const watchdog = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('the capture took too long')), WORKER_WATCHDOG_MS)
+  const started = Date.now()
+  let saved = false
+  let saving: Promise<void> | null = null
+  // One record wins: once a record is saved, a later one is dropped. A record still being saved is waited for
+  // (up to WRITE_WAIT_MS), so the watchdog never returns while the only final record is stuck or about to fail.
+  const write = async (record: CaptureJob) => {
+    const pending = saving
+    if (pending) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, WRITE_WAIT_MS)
+        pending.catch(() => undefined).then(() => {
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    }
+    if (saved) return
+    const attempt = writeCaptureJob(storage, userId, jobId, record).then(() => {
+      saved = true
     })
-    const capture = await Promise.race([capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS }), watchdog]).finally(() => clearTimeout(timer))
-    if (captureIsEmpty(capture)) return await finish({ code: 'CAPTURE_FAILED', message: 'The page could not be captured (nothing on it could be read)' })
+    saving = attempt
+    try {
+      await attempt
+    } finally {
+      if (saving === attempt) saving = null
+    }
+  }
+  const fail = (code: string, message: string, timing?: unknown) =>
+    write({ state: 'error', finishedAt: new Date().toISOString(), code, error: message, ...(timing && typeof timing === 'object' ? { timing: timing as Record<string, number> } : {}) })
+
+  const run = async () => {
+    let capture: PageCapture
+    try {
+      capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
+    } catch (err) {
+      if (err instanceof BrowserSsrfError || Date.now() - started > RETRY_WITHIN_MS) throw err
+      console.warn('[motion-studio/capture-worker] retrying after', reasonOf(err))
+      const hardMs = WORKER_CAPTURE_OPTIONS.hardMs - (Date.now() - started)
+      capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS, hardMs, budgetMs: Math.min(WORKER_CAPTURE_OPTIONS.budgetMs, hardMs - 20_000) })
+    }
+    if (captureIsEmpty(capture)) return fail('CAPTURE_FAILED', 'The page could not be captured: it showed no picture and no text')
     const urls = await storeCaptureImages(storage, userId, captureImages(capture))
-    await writeCaptureJob(storage, userId, jobId, { state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls) })
+    await write({ state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls) })
+  }
+
+  let watchdog: ReturnType<typeof setTimeout> | undefined
+  const running = run()
+  // After the watchdog has answered, a late failure has nothing left to report.
+  running.catch(() => undefined)
+  try {
+    await Promise.race([
+      running,
+      new Promise<void>((resolve) => {
+        watchdog = setTimeout(() => {
+          resolve(fail('TIMEOUT', 'The capture took longer than 2 minutes'))
+        }, opts.watchdogMs ?? WORKER_WATCHDOG_MS)
+      }),
+    ])
   } catch (err) {
-    const rejected = err instanceof BrowserSsrfError
-    console.warn('[motion-studio/capture-worker] failed', err instanceof Error ? err.message : String(err))
-    await finish(
-      rejected
-        ? { code: 'URL_REJECTED', message: 'That address cannot be captured. Use a public http(s) page.' }
-        : { code: 'CAPTURE_FAILED', message: `The page could not be captured (${reasonOf(err)})` },
+    console.warn('[motion-studio/capture-worker] failed', reasonOf(err))
+    await (err instanceof BrowserSsrfError
+      ? fail('URL_REJECTED', 'That address cannot be captured. Use a public http(s) page.')
+      : fail('CAPTURE_FAILED', `The page could not be captured: ${reasonOf(err)}`, (err as { timing?: unknown })?.timing)
     ).catch(() => undefined)
+  } finally {
+    clearTimeout(watchdog)
   }
 }
 
