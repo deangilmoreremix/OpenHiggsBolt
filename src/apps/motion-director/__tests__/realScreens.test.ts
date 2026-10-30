@@ -9,7 +9,7 @@ describe("recipes that show the site's own screens", () => {
   });
 
   it('counts the dashboard / card fixture recipes and the card recipes as real-page shots (no sample-screen flag)', () => {
-    for (const name of ['AnimeImpact', 'BentoLightUp', 'BeforeAfterSliderScrub', 'CardStack', 'Carousel3D', 'UiStripAwayOutro']) {
+    for (const name of ['AnimeImpact', 'BentoLightUp', 'BeforeAfterSliderScrub', 'CardStack', 'Carousel3D', 'UiStripAwayOutro', 'ProductCardProgressiveAssemble', 'NeonFrameForerun', 'NeonFrameForerunOrbit']) {
       const t = MOTION_TEMPLATES.find((x) => x.componentName === name)!;
       expect(isProductTextureShot(name), name).toBe(true);
       expect(drawsSampleScreen(t), name).toBe(false);

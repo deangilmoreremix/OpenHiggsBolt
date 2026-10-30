@@ -9,7 +9,8 @@
 // 整体机位缩一档（原 scale 0.9–1.0 弧线中段面板左上角出画）；暗角 + 颗粒；补导出时长 140f。
 // —— 品牌轮：Northwind → SmartVideo GO 标志 + 字标，页面内容换成镜头/渲染的世界。
 import React, { useId } from 'react';
-import { AbsoluteFill, useCurrentFrame, interpolate, Easing } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame, interpolate, Easing } from 'remotion';
+import { realPage } from '../../_fixtures/liveTexture';
 import { FONT, Grain, Vignette } from '../../_fixtures/Polish';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
 
@@ -115,6 +116,15 @@ const Chip: React.FC<{ w: number; i: number }> = ({ w, i }) => {
 /* 与 neon-frame-forerun 同款工作台首页；t=贴落进程。本变体 liftOf 忽略 land，全体同帧起落、同帧贴合 */
 const HomePage: React.FC<{ t?: number }> = ({ t = 1 }) => {
   const L = (land: number, H = 72) => liftOf(t, land, H * 1.7);
+  // A film of a real site: the page that drops into the frame is the site's own, in one piece.
+  const page = realPage(0);
+  if (page) {
+    return (
+      <FloatWrap h={L(0.3, 90)}>
+        <Img src={page} style={{ width: PW, height: PH, objectFit: 'cover', objectPosition: '50% 0%', display: 'block', borderRadius: 6 }} />
+      </FloatWrap>
+    );
+  }
   return (
   <div style={{
     width: PW, height: PH, background: 'linear-gradient(180deg, #f8f8f7 0%, #f3f3f1 100%)', borderRadius: 6, display: 'flex',
