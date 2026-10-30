@@ -141,6 +141,15 @@ describe('GET /api/motion-studio/capture/status', () => {
     expect((await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).status).toBe(404)
   })
 
+  it('reports a job stuck on running (its worker died) as an error', async () => {
+    const old = new Date(Date.now() - 10 * 60_000).toISOString()
+    files.set(`user_1/motion-capture-jobs/${jobId}.json`, JSON.stringify({ state: 'running', startedAt: old }))
+    const { GET } = await import('@/app/api/motion-studio/capture/status/route')
+    expect(await (await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).json()).toMatchObject({ state: 'error', code: 'CAPTURE_STOPPED' })
+    files.set(`user_1/motion-capture-jobs/${jobId}.json`, JSON.stringify({ state: 'running', startedAt: new Date().toISOString() }))
+    expect(await (await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).json()).toMatchObject({ state: 'running' })
+  })
+
   it('answers 404 for an unknown or malformed job id', async () => {
     const { GET } = await import('@/app/api/motion-studio/capture/status/route')
     expect((await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).status).toBe(404)
@@ -167,13 +176,57 @@ describe('the background worker', () => {
     capture.mockResolvedValueOnce({ ...fullCapture, page: null, title: '', content: { headline: '', description: '', headings: [], ctas: [], nav: [] } })
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED' })
-    capture.mockRejectedValueOnce(new Error('Navigation to https://secret.test/x timed out\n    at stack'))
+    // Fails twice (the fast failure is retried once): the record says why, without the address, and how far it got.
+    capture.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(Object.assign(new Error('navigation to https://acme.test/x failed\nstack'), { timing: { loaded: 9606 } }))
     await runMotionCapture(job, storage)
-    // The reason reaches the chat, without the address.
-    expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED', error: 'The page could not be captured (Navigation to timed out)' })
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED', error: 'The page could not be captured: navigation to the address failed', timing: { loaded: 9606 } })
     capture.mockRejectedValueOnce(new FakeSsrfError('private'))
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'URL_REJECTED' })
+  })
+
+  it('tries a capture that fails fast once more, within the same budget', async () => {
+    const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
+    capture.mockRejectedValueOnce(new Error('browser failed to launch'))
+    await runMotionCapture(job, storage)
+    expect(capture).toHaveBeenCalledTimes(2)
+    expect(capture.mock.calls[1][1].hardMs).toBeLessThanOrEqual(90_000)
+    expect(recordOf().state).toBe('done')
+  })
+
+  it('writes one timed-out record when the capture hangs, and a late result does not overwrite it', async () => {
+    const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
+    let finishLate: (v: unknown) => void = () => undefined
+    capture.mockReturnValueOnce(new Promise((resolve) => { finishLate = resolve }))
+    await runMotionCapture(job, storage, { watchdogMs: 20 })
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
+    finishLate(fullCapture)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
+  })
+
+  it('the watchdog waits for a final record still being saved: kept when it lands, replaced when it fails', async () => {
+    const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
+    const slowDone = (outcome: 'ok' | 'fail') =>
+      storage.upload.mockImplementation(async (path: string, body: string | Buffer) => {
+        if (String(body).includes('"state":"done"')) {
+          await new Promise((r) => setTimeout(r, 40))
+          if (outcome === 'fail') return { error: { message: 'storage down' } }
+        }
+        files.set(path, body)
+        return { error: null }
+      })
+    slowDone('ok')
+    await runMotionCapture(job, storage, { watchdogMs: 10 })
+    expect(recordOf().state).toBe('done')
+    files.clear()
+    slowDone('fail')
+    await runMotionCapture(job, storage, { watchdogMs: 10 })
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
+    storage.upload.mockImplementation(async (path: string, body: string | Buffer) => {
+      files.set(path, body)
+      return { error: null }
+    })
   })
 
   it('accepts only well-formed jobs', async () => {
