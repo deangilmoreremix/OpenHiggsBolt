@@ -7,7 +7,9 @@
 // 全部内容由 seed 确定性生成（无随机源）。可选 tone="dark" 出同布局深色版（换肤类 demo 用）。
 // 依赖 react + ./Brand（侧栏/顶栏的 SmartVideo GO 标志与名字）；copy demo 时一并带上这两个文件并改 import 路径。
 import React from 'react';
+import { Img } from 'remotion';
 import { MotionStudioMark } from './Brand';
+import { realCrop, realPage } from './liveTexture';
 
 const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, Arial, sans-serif';
 const MONO = '"SF Mono", "JetBrains Mono", Menlo, monospace';
@@ -426,6 +428,15 @@ export const Card: React.FC<{
   w: number; h: number; seed?: number; style?: React.CSSProperties; tone?: Tone;
 }> = ({ w, h, seed = 0, style, tone = 'light' }) => {
   const p = P[tone];
+  // A film of a real site: the card shows one of the site's own cards (same shell, same size).
+  const crop = realCrop(seed);
+  if (crop) {
+    return (
+      <div style={{ width: w, height: h, background: p.surface, border: `1px solid ${p.line}`, borderRadius: 14, boxSizing: 'border-box', overflow: 'hidden', boxShadow: p.shadow, ...style, padding: 0 }}>
+        <Img src={crop} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', display: 'block' }} />
+      </div>
+    );
+  }
   // w/h 为 0（父级用 style 100% 撑满）时按 dashboard 网格卡 524×454 排内容
   const W = w > 0 ? w : 524;
   const H = h > 0 ? h : 454;
@@ -529,6 +540,15 @@ const ListRow: React.FC<{ i: number; p: Pal }> = ({ i, p }) => {
 // B 行 1628×171.2 @ y=108+i×191.2，行首 44px 图标块圆心 x=308。
 export const FakeDashboard: React.FC<{ variant?: 'A' | 'B'; tone?: Tone }> = ({ variant = 'A', tone = 'light' }) => {
   const p = P[tone];
+  // A film of a real site: the whole screen is the site's own page (top of the page; B is a lower section).
+  const page = realPage(variant === 'A' ? 0 : 1);
+  if (page) {
+    return (
+      <div style={{ width: 1920, height: 1080, background: p.canvas, overflow: 'hidden' }}>
+        <Img src={page} style={{ width: 1920, height: 1080, objectFit: 'cover', objectPosition: variant === 'A' ? '50% 0%' : '50% 30%', display: 'block' }} />
+      </div>
+    );
+  }
   const active = variant === 'A' ? 0 : 2; // 侧栏高亮项与顶栏页名一致
   return (
     <div style={{ width: 1920, height: 1080, background: p.canvas, display: 'flex', fontFamily: SANS }}>

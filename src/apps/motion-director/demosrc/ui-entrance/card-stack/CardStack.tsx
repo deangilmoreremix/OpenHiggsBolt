@@ -20,7 +20,8 @@
 //   102–122 中心卡抽出 72px（overshoot）+ 钴蓝描边 + 扫光；标题逐词升起（106–）、副句（116–）
 //   122–150 hold（相机极缓推进 ×1.017）
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
+import { realCrop } from '../../_fixtures/liveTexture';
 import { EASE, FONT, mix, ramp, softShadow } from '../../_fixtures/Polish';
 import { LOOKS, Sheen, Stage, TextReveal, alpha, springAt, stagger, type } from '../../_fixtures/Look';
 import { BRAND, MARK_PATHS, MotionStudioMark } from '../../_fixtures/Brand';
@@ -167,10 +168,12 @@ export const CardStack: React.FC = () => {
 const COVER_H = 256;
 const CardFace: React.FC<{ c: (typeof CARDS)[number]; i: number }> = ({ c, i }) => {
   const hero = c.kind === 'hero';
+  // A film of a real site: the cover is one of the site's own pictures.
+  const crop = realCrop(i);
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <div style={{ position: 'absolute', left: 12, right: 12, top: 12, height: COVER_H, borderRadius: 14, overflow: 'hidden', background: c.tint }}>
-        <Cover kind={c.kind} seed={i} />
+        {crop ? <Img src={crop} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', display: 'block' }} /> : <Cover kind={c.kind} seed={i} />}
       </div>
       <div style={{ position: 'absolute', left: 28, right: 28, top: COVER_H + 40 }}>
         <div style={{ fontFamily: FONT.mono, fontSize: 15, letterSpacing: '0.14em', color: hero ? L.accent : L.ink3 }}>{c.meta}</div>

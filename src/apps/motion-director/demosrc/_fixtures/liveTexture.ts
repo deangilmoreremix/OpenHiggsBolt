@@ -50,6 +50,21 @@ export function liveTexturePath(path: string): string {
   return path.startsWith(LIVE_DIR) ? liveTexture(path.slice(LIVE_DIR.length)) : staticFile(path);
 }
 
+/**
+ * The user's own captured page for a sample screen, or null when the clip carries none (the sample
+ * UI is drawn instead). Only a clip's supplied captures count; the bundled sample files never do.
+ */
+export function realPage(index = 0): string | null {
+  const overrides = use(LiveTextureContext);
+  return overrides[PAGE_TEXTURES[index % PAGE_TEXTURES.length]] ?? null;
+}
+
+/** The user's own captured card crop for sample card number `seed`, or null. */
+export function realCrop(seed = 0): string | null {
+  const overrides = use(LiveTextureContext);
+  return overrides[CROP_TEXTURES[Math.abs(Math.round(seed)) % CROP_TEXTURES.length]] ?? null;
+}
+
 const usable = (value: unknown): value is string =>
   typeof value === 'string' && /^(https?:|blob:|data:image\/)/.test(value);
 

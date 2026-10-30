@@ -1,6 +1,7 @@
 /**
  * Shots that render a product's real pages: they read full-page captures and
- * card crops through `demosrc/_fixtures/liveTexture`, so a clip's `screens` /
+ * card crops through `demosrc/_fixtures/liveTexture` (directly, or through the shared
+ * dashboard / card fixtures), so a clip's `screens` /
  * `crops` props put the user's product on screen. Every other recipe draws its
  * own UI in code and only takes the shared title / tint overlay.
  *
@@ -20,6 +21,23 @@ export const PRODUCT_TEXTURE_SHOTS: readonly string[] = [
   'SpotlightHeroCard',
   'TypeAndFilter',
   'WhipBrakeReal',
+  // Recipes that draw their screen with the shared fake dashboard / card fixtures: those now show the
+  // site's own page and card crops (demosrc/_fixtures/Fixtures.tsx) when a clip carries them.
+  'AnimeImpact',
+  'FlylineArc',
+  'ReticleLockOn',
+  'UiStripAwayOutro',
+  'WireframeDrawOn',
+  'BentoLightUp',
+  'JumpCutPunchIn',
+  'TrailerBumper',
+  'InkBleedReveal',
+  'BeforeAfterSliderScrub',
+  'DroneDiveLanding',
+  'PullBackIsolation',
+  // Card recipes whose picture area takes the site's own crops.
+  'CardStack',
+  'Carousel3D',
 ];
 
 export const isProductTextureShot = (componentName: string): boolean =>
