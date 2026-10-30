@@ -51,6 +51,9 @@ export interface FilmMusic {
   name: string;
   /** Beat times (seconds) used to snap scene changes; empty = no snapping. */
   beats?: number[];
+  /** First beat of each bar and the kick hits: a cut prefers these to a plain beat (the drum map from lib/beatSync). */
+  downbeats?: number[];
+  kicks?: number[];
 }
 
 const FPS = 30;
@@ -144,8 +147,12 @@ const fitSpeed = (card: CardDef, durationFrames: number): number => {
   return Math.round((clamp(need, 1, 1.25) / scale) * 100) / 100;
 };
 
-/** Move each scene boundary to the nearest beat within `window` seconds, keeping scenes ≥ `minSec`. */
-export function snapToBeats(durations: number[], beats: number[], window = 0.35, minSec = 1.2): number[] {
+/**
+ * Move each scene boundary to a beat within `window` seconds, keeping scenes ≥ `minSec`. A downbeat or a
+ * kick is worth a little extra distance (0.15 s / 0.08 s), so a cut lands on the first beat of the bar or
+ * on the drum when one is nearly as close as a plain beat.
+ */
+export function snapToBeats(durations: number[], beats: number[], window = 0.35, minSec = 1.2, hits: { downbeats?: number[]; kicks?: number[] } = {}): number[] {
   if (!beats.length || durations.length < 2) return durations.slice();
   const bounds: number[] = [];
   let acc = 0;
@@ -153,14 +160,17 @@ export function snapToBeats(durations: number[], beats: number[], window = 0.35,
   const snapped = bounds.map((b, i) => {
     if (i === bounds.length - 1) return b;
     let best = b;
-    let bestDist = window;
-    for (const beat of beats) {
-      const dist = Math.abs(beat - b);
-      if (dist <= bestDist) {
-        best = beat;
-        bestDist = dist;
+    let bestCost = window;
+    const consider = (t: number, bonus: number) => {
+      const dist = Math.abs(t - b);
+      if (dist <= window && dist - bonus <= bestCost) {
+        best = t;
+        bestCost = dist - bonus;
       }
-    }
+    };
+    for (const beat of beats) consider(beat, 0);
+    for (const k of hits.kicks ?? []) consider(k, 0.08);
+    for (const d of hits.downbeats ?? []) consider(d, 0.15);
     return best;
   });
   const out: number[] = [];
@@ -228,7 +238,7 @@ export function planToProject(
   const captionPx = Math.round(Math.min(height, width * 0.9) * 0.052);
   const palette = plan.palette;
   const { scenes, seconds } = withClosingScene(plan, opts);
-  const durations = snapToBeats(seconds, opts.music?.beats ?? []);
+  const durations = snapToBeats(seconds, opts.music?.beats ?? [], 0.35, 1.2, { downbeats: opts.music?.downbeats, kicks: opts.music?.kicks });
   const screens = opts.capture?.screens ?? [];
   const crops = opts.capture?.crops ?? [];
   /** CSS px of a 1920-wide page that a 16:10 inset shows. */

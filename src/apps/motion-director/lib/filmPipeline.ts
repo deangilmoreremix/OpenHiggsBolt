@@ -11,7 +11,7 @@ import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
-import { analyzeBeats, syncReport } from './beatSync';
+import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
@@ -232,9 +232,12 @@ export async function buildFilmProject(
       : null;
   const track = opts.media.find((m) => m.kind === 'audio');
   let beats: number[] = [];
+  let drums: Pick<DrumMap, 'downbeats' | 'kicks' | 'snares' | 'hats'> = { downbeats: [], kicks: [], snares: [], hats: [] };
   if (track) {
     log(`Finding the beat in ${track.name}`, 'running');
-    beats = await analyzeBeats(track.url).then((r) => r.beats).catch(() => []);
+    const map = await analyzeBeats(track.url).catch(() => null);
+    beats = map?.beats ?? [];
+    if (map) drums = map;
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
   }
   const brand = brandFor(plan, opts.capture);
@@ -246,7 +249,7 @@ export async function buildFilmProject(
   const project = planToProject(plan, {
     aspectRatio: opts.aspectRatio,
     capture: film,
-    music: track ? { url: track.url, name: track.name, beats } : null,
+    music: track ? { url: track.url, name: track.name, beats, downbeats: drums.downbeats, kicks: drums.kicks } : null,
     // A film of a captured site shows that site's logo (none if it had none); the Brand Kit logo is for films with no site.
     logo: opts.capture ? opts.capture.logo ?? null : opts.logo ?? null,
     videos,
@@ -256,7 +259,8 @@ export async function buildFilmProject(
   if (beats.length) {
     const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);
     const sync = syncReport(cuts, beats, project.fps);
-    log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)`, 'done');
+    const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
+    log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
   log(`Film built · ${project.tracks.length} tracks`, 'done');
   return { ...project, spec: buildDesignSpec(plan, opts.capture, opts.prompt) };
