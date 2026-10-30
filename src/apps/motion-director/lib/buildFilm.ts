@@ -78,6 +78,18 @@ const peakLagF = (name: string): number => ((SFX_PEAKS[name]?.peakMs ?? 0) / 100
  * own peak lag and the output offset (sound-design 4.6). A hit that would have to start before frame 0 is
  * trimmed at its head instead. `tailMs` is how much after the peak is heard (long samples are cut, never played whole).
  */
+/**
+ * Volume is a multiplier of the file's own level, so a quietly recorded file (peak below −12 dB: 26 of the
+ * library's 141) pinned at the usual 0.2–0.6 vanishes under the music. Those get a gain that brings their peak
+ * to about −8 dB (capped at 5×; a file below −45 dB is practically silent and gets only the cap). The web
+ * renderer plays gains above 1 for real (the preview clamps at 1); the mixed result was checked on an export.
+ */
+export const sfxGain = (name: string): number => {
+  const db = SFX_PEAKS[name]?.peakDb;
+  if (typeof db !== 'number' || db >= -12) return 1;
+  return Math.min(5, Math.round(10 ** ((-8 - db) / 20) * 100) / 100);
+};
+
 const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string } = {}): ClipData => {
   const lag = peakLagF(name);
   const raw = peakFrame - lag - OUTPUT_AUDIO_OFFSET_F;
@@ -85,7 +97,7 @@ const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: 
   const trim = raw < 0 ? Math.round(-raw) : 0;
   const frames = Math.max(2, Math.ceil(((o.tailMs ?? 700) / 1000) * FPS + (lag - trim)));
   const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
-  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: o.volume ?? 0.6 }, { label: o.label, inOffset: trim });
+  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100 }, { label: o.label, inOffset: trim });
 };
 /** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
 const LOGO_IMPACT_F = 12;
@@ -375,8 +387,8 @@ const INSET_PAGE_H = 1200;
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
-      // Music sits under the SFX at about a third of full volume, with a 1 s fade in and out.
-      clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 30, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
+      // Music sits under the SFX at about a third of full volume, with a 1 s fade in and a 1.7 s fade out (sound-design 3).
+      clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 50, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
     });
   }
 

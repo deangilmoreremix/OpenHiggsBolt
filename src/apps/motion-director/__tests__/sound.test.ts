@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
-import { OUTPUT_AUDIO_OFFSET_F, planToProject } from '../lib/buildFilm';
+import { OUTPUT_AUDIO_OFFSET_F, planToProject, sfxGain } from '../lib/buildFilm';
 import type { DirectorPlan } from '../lib/directorPlan';
 import { SFX_PEAKS } from '../demosrc/_generated/sfxPeaks';
 
@@ -69,5 +69,25 @@ describe('sound design', () => {
     expect(build!.start + build!.duration).toBeLessThanOrEqual(peakAt + 3);
     expect(build!.start + build!.duration).toBeGreaterThanOrEqual(peakAt - 4);
     expect(spark!.start).toBeGreaterThan(impact!.start);
+  });
+
+  it('boosts quietly recorded sounds toward the level of normal ones, and leaves loud ones alone', () => {
+    expect(sfxGain('impact/impact-deep-whoosh')).toBe(1);
+    expect(sfxGain('not/a-file')).toBe(1);
+    const quiet = Object.entries(SFX_PEAKS).filter(([, v]) => v.peakDb < -12);
+    expect(quiet.length).toBeGreaterThan(10);
+    for (const [name, v] of quiet) {
+      const gain = sfxGain(name);
+      expect(gain, name).toBeGreaterThan(1);
+      expect(gain, name).toBeLessThanOrEqual(5);
+      // Unless the cap holds, the boosted peak lands at about −8 dB.
+      if (gain < 5) expect(v.peakDb + 20 * Math.log10(gain), name).toBeCloseTo(-8, 0);
+    }
+  });
+
+  it('applies the gain to the clips that use a quiet file', () => {
+    const clips = sfxClips().filter((c) => c.props.file === 'motion-studio/sfxlib/light/light-sweep-magic.mp3');
+    expect(clips.length).toBeGreaterThan(0);
+    for (const c of clips) expect(Number(c.props.volume)).toBeCloseTo(0.45 * sfxGain('light/light-sweep-magic'), 1);
   });
 });
