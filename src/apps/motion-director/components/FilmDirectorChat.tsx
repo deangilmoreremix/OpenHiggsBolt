@@ -10,7 +10,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
-import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
+import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, supportsHtmlInCanvas } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
@@ -58,6 +58,7 @@ const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
+  const [fasterExportHint] = useState(() => isChromiumBrowser() && !supportsHtmlInCanvas());
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -158,6 +159,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
               <button type="button" onClick={() => void start(false, true)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-render-nomusic" title="Same film without the music bed, sound effects kept: for your own music">
                 Render without music
               </button>
+            )}
+            {fasterExportHint && (
+              <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-faster-hint" title="Chrome's experimental HTML-in-canvas lets the renderer draw the page natively; it is off by default.">
+                Faster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.
+              </span>
             )}
             <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-estimate" title="Rough export time on a slow computer; most machines are faster.">
               ~{Math.max(1, Math.round(estimateExportSec(project) / 60))} min to render

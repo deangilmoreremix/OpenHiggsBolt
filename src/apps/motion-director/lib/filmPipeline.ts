@@ -331,7 +331,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
     for (const f of list) {
       if (controller.signal.aborted) break;
       try {
-        await render(project, f, controller.signal);
+        await render(project, f, controller.signal, 0.5);
         checked++;
       } catch (error) {
         if (controller.signal.aborted) break;
@@ -388,7 +388,7 @@ export async function reviewFramesWithModel(project: ProjectData, budgetMs = 30_
     const images: Array<{ second: number; image: string }> = [];
     for (const f of frames) {
       if (controller.signal.aborted) break;
-      const still = await render(project, f, controller.signal);
+      const still = await render(project, f, controller.signal, 0.5);
       images.push({ second: Math.round((f / project.fps) * 10) / 10, image: await stillToJpeg(still.blob) });
     }
     if (!images.length) return [];
