@@ -191,3 +191,9 @@
 | `tonight-hiphop.mp3` | Tonight | Michael Ramir C. | Hip Hop | ~103 | https://assets.mixkit.co/music/841/841.mp3 |
 
 BPM 为 librosa 实测（beat grid 最小二乘拟合法，见 references/music-beat-sync.md）。
+
+## riser/（原创合成，无第三方授权问题）
+
+| 文件名 | 来源 | 说明 |
+|---|---|---|
+| `riser-rise-build.mp3` | 本项目用 numpy 合成（2026-10-30，脚本见 `scripts/gen-riser.py`） | 1.5 s 上升音：三个失谐正弦音（180→2000 Hz 指数滑升）+ 低通渐开的噪声 + 加速颤音，音量按 t^2.2 爬升，末尾 12 ms 淡出便于切进撞击。可商用；上游的 `riser-cine` 授权无法追溯，所以没有采用。 |

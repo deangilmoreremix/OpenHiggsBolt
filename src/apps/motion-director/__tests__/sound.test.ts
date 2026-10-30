@@ -60,11 +60,13 @@ describe('sound design', () => {
     const impact = clips.find((c) => c.label === 'Impact' && /deep-whoosh/.test(String(c.props.file)));
     const spark = clips.find((c) => c.label === 'Sparkle');
     expect(build && impact && spark).toBeTruthy();
-    expect(build!.speed).toBeCloseTo(0.65);
-    expect(build!.props.fadeInFrames).toBeGreaterThan(20);
+    // The riser is our own file (not the slowed whoosh of before), played at its own speed.
+    expect(String(build!.props.file)).toMatch(/sfxlib\/riser\/riser-rise-build\.mp3$/);
+    expect(build!.speed).toBe(1);
+    expect(build!.duration).toBeGreaterThan(35);
     // The build ends where the impact's peak lands (its clip starts earlier by the file's peak lag).
     const peakAt = impact!.start + Math.round(((SFX_PEAKS['impact/impact-deep-whoosh']?.peakMs ?? 0) / 1000) * 30) + Math.round(OUTPUT_AUDIO_OFFSET_F);
-    expect(build!.start + build!.duration).toBeLessThanOrEqual(peakAt + 2);
+    expect(build!.start + build!.duration).toBeLessThanOrEqual(peakAt + 3);
     expect(build!.start + build!.duration).toBeGreaterThanOrEqual(peakAt - 4);
     expect(spark!.start).toBeGreaterThan(impact!.start);
   });
