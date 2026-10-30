@@ -27,7 +27,8 @@
 //   0–132   整卡前推 1→1.035（不对称 in-out）
 //   132–172 hold 40f，干净定格
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
+import { realCrop } from '../../_fixtures/liveTexture';
 import { EASE, FONT, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, springAt, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
@@ -104,7 +105,11 @@ const Skeleton: React.FC<{ box: Box; fade: number; rows?: number[]; radius?: num
   );
 
 // 商品：SmartVideo GO 标志当棚拍主体（亮底 light 版），下方一团独立的地面接触影（不是标志投影）
-const ProductMark: React.FC = () => (
+const ProductMark: React.FC = () => {
+  // A film of a real site: the product shot is the site's own picture.
+  const crop = realCrop(0);
+  if (crop) return <Img src={crop} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', borderRadius: 18, display: 'block' }} />;
+  return (
   <div style={{ position: 'relative', width: '100%', height: '100%' }}>
     <div style={{
       position: 'absolute', left: 40, right: 40, top: 326, height: 52, borderRadius: '50%',
@@ -112,7 +117,8 @@ const ProductMark: React.FC = () => (
     }} />
     <MotionStudioMark size={368} tone="light" style={{ position: 'absolute', left: 46, top: 26 }} />
   </div>
-);
+  );
+};
 
 const LINES: [string, boolean?][][] = [
   [['Shot recipes that '], ['direct every move', true], ['.']],

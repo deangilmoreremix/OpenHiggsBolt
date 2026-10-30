@@ -38,6 +38,10 @@ export const PRODUCT_TEXTURE_SHOTS: readonly string[] = [
   // Card recipes whose picture area takes the site's own crops.
   'CardStack',
   'Carousel3D',
+  // The product shot / the page that lands in the frame is the site's own.
+  'ProductCardProgressiveAssemble',
+  'NeonFrameForerun',
+  'NeonFrameForerunOrbit',
 ];
 
 export const isProductTextureShot = (componentName: string): boolean =>

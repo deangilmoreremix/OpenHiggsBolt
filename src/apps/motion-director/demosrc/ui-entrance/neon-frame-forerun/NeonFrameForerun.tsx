@@ -21,7 +21,8 @@
 //   92–124  隧道中段先熄、两端后熄；框芯线退成发丝，框光并入面板辉光
 //   124–140 hold
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
+import { realPage } from '../../_fixtures/liveTexture';
 import { EASE, FONT, bezier, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
@@ -205,6 +206,11 @@ export const NeonFrameForerun: React.FC = () => {
   const frame = useCurrentFrame();
   const uid = React.useId().replace(/[^a-zA-Z0-9]/g, '');
   const gid = `nff${uid}`;
+  // A film of a real site: the page that lands in the neon frame is the site's own page, in one piece.
+  const page = realPage(0);
+  const parts: Part[] = page
+    ? [{ key: 'page', x: 0, y: 0, w: PW, land: 0.3, H: 150, node: <Img src={page} style={{ width: PW, height: PH, objectFit: 'cover', objectPosition: '50% 0%', display: 'block', borderRadius: 18 }} /> }]
+    : PARTS;
 
   // 框奔画：两颗亮头 2→22 帧从左缘中点上下分头跑，在右缘中点相撞
   const trace = ramp(frame, 2, 20, EASE.swift);
@@ -286,7 +292,7 @@ export const NeonFrameForerun: React.FC = () => {
 
           {/* 组件：真 3D 悬空 + 同形软影，错峰贴落 */}
           <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d' }}>
-            {PARTS.map((p) => (
+            {parts.map((p) => (
               <Float key={p.key} x={p.x} y={p.y} w={p.w} h={liftOf(p)} lit={lit} vis={vis}>{p.node}</Float>
             ))}
           </div>
