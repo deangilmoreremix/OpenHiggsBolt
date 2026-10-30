@@ -2117,27 +2117,18 @@ function ConfigurationView(props: any) {
     }
   }, [findMyBrandUrl, runDiscoveryWorkflow])
 
-  // Selecting a business from the (existing) search results. In anonymous
-  // (free) mode the selection IS the Find My Brand submit: it runs the very
-  // same automated workflow instead of leaving the visitor to click through the
-  // manual research + discovery steps. The OpenStreetMap record is passed
-  // through so its category/city/region populate the form (a) via the same
-  // mapping as any other selection.
-  //
-  // Authenticated mode keeps exactly today's behaviour: select the business
-  // only, and let the visitor drive the manual steps.
+  // Selecting a business from the search results. In every mode the selection
+  // runs the same automated workflow: populate the client form, research the
+  // business and discover its brand assets in one run. Discovery is free for
+  // all users — never behind a paid entitlement or plan check.
   const handleSelectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
-    if (isAnonymous) {
-      if (!business.website || !business.website.trim()) {
-        setDiscoveryError('No website is listed for this business. Paste one in the Website field and use Find My Brand.')
-        return
-      }
-      // (a) + (b) + (c): populate, research and discover in one automated run
-      void runDiscoveryWorkflow(business.website.trim(), { business })
+    if (!business.website || !business.website.trim()) {
+      setDiscoveryError('No website is listed for this business. Paste one in the Website field and use Find My Brand.')
       return
     }
-    selectBusiness(business)
-  }, [isAnonymous, runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
+    // Populate, research and discover in one automated run.
+    void runDiscoveryWorkflow(business.website.trim(), { business })
+  }, [runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
 
   const handleOpenSavedLead = useCallback((lead: LeadRecord) => {
     // Same selection path the result cards use, so the Personalization handoff
@@ -2158,9 +2149,7 @@ function ConfigurationView(props: any) {
   // anonymous mode are one server round trip, and in authenticated mode the
   // indicator stays lit across both phases.
   const showBrandRunProgress = brandRunInFlight || discoveryStatus === 'discovering'
-  const brandRunProgressMessage = isAnonymous
-    ? 'Reading the website and finding the brand assets already on it…'
-    : 'Researching the business and finding its brand assets…'
+  const brandRunProgressMessage = 'Reading the website and finding the brand assets already on it…'
 
   // ── Paid AI affordances (never offered to free visitors) ───────────────────
   // The server refuses image edits / vision / generation for anonymous
@@ -2422,11 +2411,9 @@ function ConfigurationView(props: any) {
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>STEP 1 — WHO IS THIS FOR?</h2>
 
           {/* ── FIND MY BRAND — the single primary starting action ───────────
-              Anonymous (free landing) mode only, so the authenticated surface
-              keeps rendering exactly as today. The access mode decides which
-              discovery endpoint the workflow calls and which paid/AI
-              affordances render — never which starting action is offered.     */}
-          {isAnonymous && (
+              Available in every personalization modal (anonymous and
+              authenticated alike). Discovery itself is free for all users —
+              it is never behind a paid entitlement or plan check.            */}
           <div
             id="pz-find-my-brand"
             data-testid="find-my-brand"
@@ -2442,9 +2429,7 @@ function ConfigurationView(props: any) {
               Find My Brand
             </div>
             <p style={{ margin: '0 0 10px', color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
-              {isAnonymous
-                ? 'Paste a business website. We read the page it already has and show the logos, photos, products and branding found on it — nothing is generated and nothing is charged.'
-                : 'Paste a business website. We research it and find its brand assets for you, in one step.'}
+              Paste a business website. We read the page it already has and show the logos, photos, products and branding found on it — nothing is generated and nothing is charged.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
@@ -2519,7 +2504,6 @@ function ConfigurationView(props: any) {
               </p>
             )}
           </div>
-          )}
 
           <div className="grid grid-cols-3" style={{ gap: 8, marginBottom: 18 }}>
             {[

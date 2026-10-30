@@ -4065,7 +4065,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setVisionStatus('idle')
     setDiscoveryStatus('discovering')
 
-    if (access === 'anonymous') {
+    // Free discovery runs for every user — anonymous and authenticated alike.
+    // It is never behind a paid entitlement or plan check.
+    if (access === 'anonymous' || source?.sourceMetadata?.freeDiscovery === true) {
       // The free pipeline performs its own research + capped discovery in one
       // server round trip, so this single call covers research + discovery.
       await discoverDemoAssets(website)
@@ -4088,7 +4090,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
     // (c) Existing discovery run for the same URL.
     await discoverAssets(website)
-  }, [access, discoverAssets, discoverDemoAssets, fetchBusinessResearch, mergeResearchIntoClientForm, selectBusiness, setDiscoveryError, setDiscoveryStatus, setVisionError, setVisionStatus])
+  }, [access, source, discoverAssets, discoverDemoAssets, fetchBusinessResearch, mergeResearchIntoClientForm, selectBusiness, setDiscoveryError, setDiscoveryStatus, setVisionError, setVisionStatus])
 
   const clearBusinessSearch = useCallback(() => {
     setBusinessSearchMode('idle')
