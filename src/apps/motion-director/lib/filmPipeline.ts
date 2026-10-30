@@ -17,6 +17,7 @@ import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
+import { pickMotionPreset, presetText } from './motionPreset';
 import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
@@ -131,9 +132,12 @@ export async function storyboardFilm(
     // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
     const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
-    const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)));
+    // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
+    log(`Motion voice: ${voice.label}`, 'done');
+    const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(applySiteContent(fitted, capture?.content)), capture, source: 'director' };
+    return { plan: chooseSeams(applySiteContent(fitted, capture?.content), voice), capture, source: 'director' };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
@@ -141,7 +145,7 @@ export async function storyboardFilm(
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
     const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url) });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(plan), capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan, pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: plan.palette?.accent ?? palette.accent })), capture, source: 'inkpress', note };
   }
 }
 

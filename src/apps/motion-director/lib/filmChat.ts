@@ -18,6 +18,7 @@ import {
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
+import type { MotionPreset } from './motionPreset';
 import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type SceneTransition } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
 
@@ -500,13 +501,15 @@ const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | nul
  * two shots are then dressed in turn (wipe, barn-door, dip) on every other seam, never next to a
  * title card (a breathing card is cut to plainly) and always a dip into the closing scene.
  */
-export function chooseSeams(plan: DirectorPlan): DirectorPlan {
+export function chooseSeams(plan: DirectorPlan, preset?: MotionPreset): DirectorPlan {
+  // A seam out of character for the film's motion voice is not used (a plain cut is always in character).
+  const fits = (t: SceneTransition) => !preset || t === 'cut' || preset.seams.includes(t);
   const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0, ring: 0 };
   const last = plan.scenes.length - 1;
   const seams: SceneTransition[] = plan.scenes.map((scene, i) => {
     if (i === last) return 'cut';
     const group = seamGroup(scene.transition);
-    if (group && used[group] < SEAM_CAPS[group]) {
+    if (group && fits(scene.transition!) && used[group] < SEAM_CAPS[group]) {
       used[group]++;
       return scene.transition!;
     }
@@ -527,7 +530,7 @@ export function chooseSeams(plan: DirectorPlan): DirectorPlan {
       return;
     }
     // Into the closing logo: a dip, so the name arrives on a calm frame.
-    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip) {
+    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip && fits('dip')) {
       seams[i] = 'dip';
       used.dip++;
       sinceDressed = 0;
@@ -540,7 +543,7 @@ export function chooseSeams(plan: DirectorPlan): DirectorPlan {
     for (let k = 0; k < order.length; k++) {
       const pick = order[(turn + k) % order.length];
       const group = seamGroup(pick)!;
-      if (used[group] < SEAM_CAPS[group]) {
+      if (fits(pick) && used[group] < SEAM_CAPS[group]) {
         seams[i] = pick;
         used[group]++;
         turn += k + 1;
@@ -563,7 +566,7 @@ const BRAND_NATIVE_SEC: Record<string, number> = { 'brand/url-scan': 4.3, 'brand
  * site scenes, extra title cards, then recipes nobody named, from the end); under it, holds grow
  * (recipes up to +30 %, cards to 3 s) and the film simply ends a little short of the request.
  */
-export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: ReadonlySet<string> = new Set()): DirectorPlan {
+export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: ReadonlySet<string> = new Set(), holdGrowth = 1.3): DirectorPlan {
   const nativeOf = (s: DirectorScene): number => {
     if (s.kind === 'title') return clamp(s.durationSec, 1.8, 3);
     if (isBrandScene(s.recipeId)) return BRAND_NATIVE_SEC[s.recipeId] ?? 3;
@@ -584,7 +587,7 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
   const spare = target - sum();
   if (spare > 0.5) {
     // Longer holds, shared in proportion to what each can still take.
-    const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * 0.3));
+    const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * Math.max(0, holdGrowth - 1)));
     const total = room.reduce((n, r) => n + r, 0) || 1;
     scenes.forEach((s, i) => {
       s.durationSec += Math.min(room[i], (spare * room[i]) / total);
