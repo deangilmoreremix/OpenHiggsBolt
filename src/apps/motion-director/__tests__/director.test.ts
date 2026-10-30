@@ -128,6 +128,9 @@ describe('film assembly', () => {
     // The film's total length is unchanged.
     expect(snapped.reduce((a, b) => a + b, 0)).toBeCloseTo(6, 6);
     expect(snapToBeats([2, 2], [])).toEqual([2, 2]);
+    // A downbeat a little further away still beats a plain beat; without it the nearest beat wins.
+    expect(snapToBeats([2, 2], [2.1], 0.35, 1.2, { downbeats: [2.2] })[0]).toBeCloseTo(2.2);
+    expect(snapToBeats([2, 2], [2.1])[0]).toBeCloseTo(2.1);
     // A beat farther than the window is ignored.
     expect(snapToBeats([2, 2], [3])).toEqual([2, 2]);
   });
