@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
-import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
+import { C, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
+import { PersonalizationTemplateBrowser } from './PersonalizationTemplateBrowser'
 import type { ClientProfile } from '../types'
 import type { PreviewLayerKind, PreviewLayoutId } from '../preview/types'
 
@@ -84,12 +85,6 @@ export function StepPersonalize({
   const taglineLayer = layers.find((item) => item.kind === 'tagline')
   const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) || PREVIEW_LAYOUTS[0]
 
-  const chooseLayout = (layoutId: PreviewLayoutId) => {
-    setLocalChosenByUser(true)
-    onChooseLayout?.()
-    setPreviewLayout(layoutId)
-  }
-
   // Auto-apply a compatible layout on mount, and again while nothing was chosen
   // explicitly (e.g. a product photo imported later). The ref guard keeps it to
   // one call per source, so it can never loop.
@@ -153,19 +148,13 @@ export function StepPersonalize({
           We applied <strong style={{ color: C.text }}>{activeLayout.name}</strong> for you — {activeLayout.description} You
           can switch to another at any time; nothing is required to continue.
         </p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-          {PREVIEW_LAYOUTS.map((layout) => (
-            <button
-              key={layout.id}
-              type="button"
-              onClick={() => chooseLayout(layout.id)}
-              aria-pressed={previewSettings.layout === layout.id}
-              style={chipStyle(previewSettings.layout === layout.id)}
-            >
-              {layout.name}
-            </button>
-          ))}
-        </div>
+        <PersonalizationTemplateBrowser
+          onSelect={(layoutId) => {
+            setLocalChosenByUser(true)
+            onChooseLayout?.()
+            setPreviewLayout(layoutId)
+          }}
+        />
       </div>
 
       {/* ── Editable content ────────────────────────────────────────────── */}
