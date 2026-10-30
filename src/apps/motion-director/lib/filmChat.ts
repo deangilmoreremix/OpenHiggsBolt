@@ -490,9 +490,9 @@ export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<st
 }
 
 /** Caps from the transition cards: wipes / barn-doors ≤ 2, dips ≤ 2, flash cuts ≤ 3 (R4) in one film. */
-const SEAM_CAPS = { panel: 2, dip: 2, flash: 3, light: 1, whip: 2 } as const;
+const SEAM_CAPS = { panel: 2, dip: 2, flash: 3, light: 1, whip: 2, ring: 2 } as const;
 const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | null =>
-  t === 'wipe' || t === 'barn' || t === 'ink' ? 'panel' : t === 'dip' ? 'dip' : t === 'flash' ? 'flash' : t === 'leak' ? 'light' : t === 'whip' ? 'whip' : null;
+  t === 'wipe' || t === 'barn' || t === 'ink' ? 'panel' : t === 'dip' || t === 'iris' ? 'dip' : t === 'flash' || t === 'glitch' ? 'flash' : t === 'portal' || t === 'line' ? 'ring' : t === 'leak' ? 'light' : t === 'whip' ? 'whip' : null;
 
 /**
  * Pick the seam transition for each scene change (the cards choose one per seam, frames taken
@@ -501,7 +501,7 @@ const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | nul
  * title card (a breathing card is cut to plainly) and always a dip into the closing scene.
  */
 export function chooseSeams(plan: DirectorPlan): DirectorPlan {
-  const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0 };
+  const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0, ring: 0 };
   const last = plan.scenes.length - 1;
   const seams: SceneTransition[] = plan.scenes.map((scene, i) => {
     if (i === last) return 'cut';
@@ -512,7 +512,7 @@ export function chooseSeams(plan: DirectorPlan): DirectorPlan {
     }
     return 'cut';
   });
-  const order: SceneTransition[] = ['wipe', 'dip', 'whip', 'barn', 'ink', 'leak'];
+  const order: SceneTransition[] = ['wipe', 'dip', 'whip', 'barn', 'ink', 'leak', 'portal', 'line', 'iris', 'glitch'];
   let turn = 0;
   let sinceDressed = 1;
   plan.scenes.forEach((scene, i) => {

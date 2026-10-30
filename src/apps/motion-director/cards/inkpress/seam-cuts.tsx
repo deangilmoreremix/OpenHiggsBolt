@@ -122,6 +122,60 @@ const SeamLeak: React.FC<LeakProps> = ({ color = "#ffb45a", peak = 0.9, duration
   );
 };
 
+/** Portal: a glowing ring opens from the centre across the cut (its disc softly fills the frame at the cut). */
+const SeamPortal: React.FC<WhipProps> = ({ color = "#14110f", duration = 20 }) => {
+  const frame = useCurrentFrame();
+  const t = interpolate(frame, [0, duration], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.out(Easing.cubic) });
+  const r = t * 95;
+  const fill = cover(frame, duration) * 0.85;
+  return (
+    <AbsoluteFill
+      style={{
+        pointerEvents: "none",
+        background: `radial-gradient(circle at 50% 50%, ${color}${Math.round(fill * 255).toString(16).padStart(2, "0")} 0%, transparent ${Math.max(0, r - 8)}%, ${color} ${r}%, transparent ${r + 7}%)`,
+      }}
+    />
+  );
+};
+
+/** Iris: the frame closes to a point in the page colour and opens on the next scene (the cut hides in the dark). */
+const SeamIris: React.FC<WhipProps> = ({ color = "#14110f", duration = 18 }) => {
+  const frame = useCurrentFrame();
+  const hole = (1 - cover(frame, duration)) * 75;
+  return <AbsoluteFill style={{ pointerEvents: "none", background: `radial-gradient(circle at 50% 50%, transparent ${hole}%, ${color} ${hole + 1.5}%)` }} />;
+};
+
+/** Line carry: a single line crosses the frame top to bottom with a soft trail; the cut is made as it passes the centre. */
+const SeamLine: React.FC<WhipProps> = ({ color = "#f7c948", duration = 14 }) => {
+  const frame = useCurrentFrame();
+  const y = interpolate(frame, [0, duration], [-6, 106], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.inOut(Easing.cubic) });
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none", overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: `${y - 14}%`, height: "14%", background: `linear-gradient(180deg, transparent, ${color}33)` }} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: `${y}%`, height: 6, background: color, boxShadow: `0 0 28px 6px ${color}` }} />
+    </AbsoluteFill>
+  );
+};
+
+/** Glitch: horizontal slices jump sideways in cyan / magenta at the cut (a whole-frame hit, so it counts with the flash cuts). */
+const SLICES = [0.08, 0.19, 0.31, 0.43, 0.52, 0.64, 0.77, 0.9];
+const SeamGlitch: React.FC<{ duration?: number }> = ({ duration = 10 }) => {
+  const frame = useCurrentFrame();
+  const o = cover(frame, duration);
+  if (o <= 0.02) return null;
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none", opacity: o }}>
+      {SLICES.map((y, i) => {
+        const dir = i % 2 ? 1 : -1;
+        const dx = dir * (40 + ((i * 53 + frame * 37) % 160));
+        return (
+          <div key={i} style={{ position: "absolute", left: 0, right: 0, top: `${y * 100}%`, height: `${4 + ((i * 7) % 6)}%`, transform: `translateX(${dx}px)`, background: i % 3 === 0 ? "#00e5ff" : i % 3 === 1 ? "#ff2bd6" : "#ffffff", mixBlendMode: "screen", opacity: 0.55 }} />
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
+
 const base = { category: "内置卡", categoryEn: "Built-in cards", accent: "#f7c948", durationProp: "duration" } as const;
 
 export const seamWipeCard: CardDef = {
@@ -188,4 +242,48 @@ export const seamLeakCard: CardDef = {
   component: SeamLeak as React.ComponentType<Record<string, unknown>>,
   summary: "A warm glow blooms across the cut (a light effect: at most one per film).",
   schema: SEAM_LEAK_SCHEMA,
+};
+
+export const seamPortalCard: CardDef = {
+  ...base,
+  id: "inkpress-seam-portal",
+  name: "传送门转场",
+  nameEn: "Portal seam",
+  durationInFrames: 20,
+  component: SeamPortal as React.ComponentType<Record<string, unknown>>,
+  summary: "A ring opens from the centre across the cut.",
+  schema: SEAM_DIP_SCHEMA,
+};
+
+export const seamIrisCard: CardDef = {
+  ...base,
+  id: "inkpress-seam-iris",
+  name: "光圈转场",
+  nameEn: "Iris seam",
+  durationInFrames: 18,
+  component: SeamIris as React.ComponentType<Record<string, unknown>>,
+  summary: "The frame closes to a point and opens on the next scene; the cut hides in the dark.",
+  schema: SEAM_DIP_SCHEMA,
+};
+
+export const seamLineCard: CardDef = {
+  ...base,
+  id: "inkpress-seam-line",
+  name: "线条转场",
+  nameEn: "Line-carry seam",
+  durationInFrames: 14,
+  component: SeamLine as React.ComponentType<Record<string, unknown>>,
+  summary: "A single line crosses the frame and carries the eye into the next scene.",
+  schema: SEAM_DIP_SCHEMA,
+};
+
+export const seamGlitchCard: CardDef = {
+  ...base,
+  id: "inkpress-seam-glitch",
+  name: "故障转场",
+  nameEn: "Glitch seam",
+  durationInFrames: 10,
+  component: SeamGlitch as React.ComponentType<Record<string, unknown>>,
+  summary: "Colour slices jump sideways at the cut (a whole-frame hit: counts with the flash cuts).",
+  schema: [],
 };

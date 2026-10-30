@@ -72,3 +72,14 @@ describe('more seam kinds', () => {
     expect(ids).toEqual(['inkpress-seam-whip', 'inkpress-seam-ink', 'inkpress-seam-leak']);
   });
 });
+
+describe('portal, iris, line and glitch seams', () => {
+  it('lay their cards, and glitch counts with the flash cuts (at most 3 hits)', () => {
+    const p = plan([scene('title', '', 'portal'), scene('title', '', 'iris'), scene('title', '', 'line'), scene('title', '', 'glitch'), scene('title', '')]);
+    const project = planToProject(p, {} as never);
+    const ids = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId.startsWith('inkpress-seam-')).map((c) => c.cardId);
+    expect(ids).toEqual(['inkpress-seam-portal', 'inkpress-seam-iris', 'inkpress-seam-line', 'inkpress-seam-glitch']);
+    const hits = chooseSeams(plan(Array.from({ length: 8 }, () => scene('shot', 'brand/feature-zoom', 'glitch')))).scenes.filter((s) => s.transition === 'glitch' || s.transition === 'flash');
+    expect(hits.length).toBeLessThanOrEqual(3);
+  });
+});

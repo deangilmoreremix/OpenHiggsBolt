@@ -44,7 +44,7 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
   items.push({ code: 'B3', ok: !last || last.duration >= fps, text: last && last.duration < fps ? `The last scene (from ${sec(last.start, fps)}) holds only ${sec(last.duration, fps)}; the name needs at least 1 s.` : 'The film ends on a hold of at least 1 s.' });
 
   // R4: at most three flash cuts / whole-frame hits.
-  const flashes = clips.filter((c) => c.cardId === 'inkpress-flash-cut').length;
+  const flashes = clips.filter((c) => c.cardId === 'inkpress-flash-cut' || c.cardId === 'inkpress-seam-glitch').length;
   items.push({ code: 'R4', ok: flashes <= 3, text: flashes > 3 ? `${flashes} flash cuts (at most 3).` : `${flashes} flash cut${flashes === 1 ? '' : 's'} (at most 3).` });
 
   // Q11: captions are readable on a phone (at least 5 % of the frame height).

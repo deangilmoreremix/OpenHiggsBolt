@@ -124,6 +124,10 @@ export const NATIVE_CARD_SCHEMAS: Record<string, PropField[]> = {
   "inkpress-seam-whip": SEAM_DIP_SCHEMA,
   "inkpress-seam-ink": SEAM_DIP_SCHEMA,
   "inkpress-seam-leak": SEAM_LEAK_SCHEMA,
+  "inkpress-seam-portal": SEAM_DIP_SCHEMA,
+  "inkpress-seam-iris": SEAM_DIP_SCHEMA,
+  "inkpress-seam-line": SEAM_DIP_SCHEMA,
+  "inkpress-seam-glitch": [],
 };
 
 /**
