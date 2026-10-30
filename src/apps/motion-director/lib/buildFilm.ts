@@ -90,15 +90,11 @@ const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: 
 /** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
 const LOGO_IMPACT_F = 12;
 /**
- * The ending's build (sound-design 4.3: riser → ~35 f → impact → ~25 f → sparkle). The licensed
- * riser is not in the library, so a big whoosh slowed to 0.65× swells in under 35 frames and
- * ends on the impact.
+ * The ending's build (sound-design 4.3: riser → impact → sparkle): our own synthesised riser
+ * (scripts/gen-riser.py, public/motion-studio/sfxlib/riser), pinned by its peak, which is the last
+ * moment of the file, to the frame just before the impact lands.
  */
-const riserBuild = (impactFrame: number): ClipData => {
-  const frames = 35;
-  const start = Math.max(0, impactFrame - frames - Math.round(OUTPUT_AUDIO_OFFSET_F));
-  return clip('audio-clip', start, Math.min(frames, impactFrame - start), { file: sfxFile('transition/whoosh-big'), volume: 0.55, fadeInFrames: 28 }, { label: 'Build', speed: 0.65 });
-};
+const riserBuild = (impactFrame: number): ClipData => pinSfx('riser/riser-rise-build', impactFrame - 1, { tailMs: 60, volume: 0.6, label: 'Build' });
 /** Sound cues of each brand scene: [file, peak frame after the scene starts, tail after the peak (ms), volume, label]. Typing is a run of single key hits. */
 type Cue = readonly [string, number, number, number, string];
 const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {

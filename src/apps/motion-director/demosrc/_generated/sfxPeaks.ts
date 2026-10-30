@@ -421,6 +421,11 @@ export const SFX_PEAKS: Record<string, { peakMs: number; durationMs: number; pea
   "durationMs": 5503,
   "peakDb": 0.5
  },
+ "riser/riser-rise-build": {
+  "peakMs": 1423,
+  "durationMs": 1500,
+  "peakDb": -5.7
+ },
  "scifi/hitech-bleep": {
   "peakMs": 484,
   "durationMs": 690,
