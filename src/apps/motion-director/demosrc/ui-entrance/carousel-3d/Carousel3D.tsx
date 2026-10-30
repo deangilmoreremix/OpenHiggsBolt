@@ -14,7 +14,8 @@
 // 时间表（30fps，共 168f，可无缝循环）：
 //   每 21f 一拍：0–8 停靠（正前方卡点亮、字幕定格）→ 8–21 换位（smooth，字幕上滚换字）；共 8 拍 = 360°
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
+import { realCrop } from '../../_fixtures/liveTexture';
 import { EASE, FONT, mix } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
@@ -188,6 +189,7 @@ export const Carousel3D: React.FC = () => {
 const Face: React.FC<{ i: number; hl: number }> = ({ i, hl }) => {
   const c = CARDS[i];
   const g = mixHex('#6b7262', L.accent, hl); // 图形主色：石墨灰 → 荧光
+  const crop = realCrop(i); // a film of a real site: the picture area shows the site's own card
   return (
     <div style={{ position: 'absolute', inset: 0, padding: 30 }}>
       {/* 卡顶受光 */}
@@ -197,7 +199,7 @@ const Face: React.FC<{ i: number; hl: number }> = ({ i, hl }) => {
         <span style={{ color: hl > 0.5 ? L.accent : L.ink3 }}>●</span>
       </div>
       <div style={{ position: 'relative', marginTop: 22, height: 150 }}>
-        <Graphic kind={c.kind} color={g} seed={i} />
+        {crop ? <Img src={crop} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', borderRadius: 10, display: 'block' }} /> : <Graphic kind={c.kind} color={g} seed={i} />}
       </div>
       <div style={{ position: 'relative', marginTop: 26, display: 'flex', alignItems: 'baseline', gap: 10 }}>
         <span style={{ ...type(72, 800), color: L.ink, letterSpacing: '-0.04em' }}>{c.stat}</span>
