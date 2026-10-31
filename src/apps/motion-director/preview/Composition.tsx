@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, Freeze, Sequence, useCurrentFrame } from "remotion";
 import type { ProjectData } from "../types";
 import { CARDS } from "../cards/registry";
+import { cardSize } from "../cards/types";
 import { THEME_MANIFEST } from '../cards/projectCards';
 import { resolvePalette, siteFont } from '../lib/palette';
 import { setFilmPalette } from '../demosrc/_fixtures/skin';
@@ -21,11 +22,28 @@ const TimeRemap: React.FC<{
   return <Freeze frame={Math.max(0, inOffset + frame * speed)}>{children}</Freeze>;
 };
 
+/** Cards drawn on a fixed design stage (recipes, title cards, brand scenes, insets): the rest fill the frame themselves. */
+const STAGED = (id: string) => id.startsWith("demo:") || id.startsWith("brand-") || id === "inkpress-title-card" || id === "site-inset";
+
+/**
+ * A 16:9 design stage in a 9:16 / 1:1 film: scaled to fit and centred, so nothing runs off the frame
+ * (the recipes are designed at 1920×1080; drawing them unscaled in 1080 wide showed only their left part).
+ */
+const FitStage: React.FC<{ width: number; height: number; stageW: number; stageH: number; children: React.ReactNode }> = ({ width, height, stageW, stageH, children }) => {
+  if (stageW === width && stageH === height) return <>{children}</>;
+  const s = Math.min(width / stageW, height / stageH);
+  return (
+    <div style={{ position: "absolute", left: (width - stageW * s) / 2, top: (height - stageH * s) / 2, width: stageW, height: stageH, transform: `scale(${s})`, transformOrigin: "0 0", overflow: "hidden" }}>
+      {children}
+    </div>
+  );
+};
+
 export const MainComposition: React.FC<{ project: ProjectData }> = ({ project }) => {
   setBrand(project.brand);
   // A film with a theme (Themes tab / director) draws every recipe in that theme; older films keep the brand skin.
   if (project.themeId !== undefined) {
-    const palette = resolvePalette(project.themeId, project.themeColors);
+    const palette = resolvePalette(project.themeId, project.themeColors, undefined, project.sitePalette);
     const font = siteFont(project.brand?.font);
     setFilmPalette(palette && font ? { ...palette, font } : palette);
   }
@@ -67,7 +85,13 @@ export const MainComposition: React.FC<{ project: ProjectData }> = ({ project })
                     <Comp {...props} inOffset={clip.inOffset} speed={clip.speed} />
                   ) : (
                     <TimeRemap inOffset={clip.inOffset} speed={clip.speed}>
-                      <Comp {...props} />
+                      {STAGED(clip.cardId) ? (
+                        <FitStage width={project.width} height={project.height} stageW={cardSize(card).width} stageH={cardSize(card).height}>
+                          <Comp {...props} />
+                        </FitStage>
+                      ) : (
+                        <Comp {...props} />
+                      )}
                     </TimeRemap>
                   )}
                 </AbsoluteFill>

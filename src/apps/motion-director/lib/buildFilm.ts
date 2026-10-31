@@ -146,15 +146,13 @@ const clip = (cardId: string, start: number, duration: number, props: Record<str
 });
 
 /**
- * Play a recipe at its tuned speed (the cards: easing, hold budgets and sound pins are the
- * quality). A scene longer than the recipe lets it hold; a slightly shorter one plays it up to
- * 25 % faster; anything shorter is cut.
+ * A recipe plays at its own speed: its tuned timings are the quality (upstream SKILL / every card), so a
+ * scene shorter than the recipe cuts its tail rather than speeding it up. Only the card's own frame rate
+ * is converted.
  */
-const fitSpeed = (card: CardDef, durationFrames: number): number => {
+const fitSpeed = (card: CardDef, _durationFrames: number): number => {
   if (card.timing === 'realtime') return 1;
-  const scale = FPS / (card.sourceFps ?? CARD_FPS);
-  const need = card.durationInFrames / (durationFrames * scale);
-  return Math.round((clamp(need, 1, 1.25) / scale) * 100) / 100;
+  return Math.round(((card.sourceFps ?? CARD_FPS) / FPS) * 100) / 100;
 };
 
 /**
@@ -302,7 +300,7 @@ const INSET_PAGE_H = 1200;
           ink: palette.text,
           accent: palette.accent,
           ...(opts.logo ? { logo: opts.logo } : {}),
-        }, { label: scene.headline.slice(0, 24) }),
+        }, { label: scene.headline.replace(/\*/g, '').slice(0, 24) }),
       );
     } else if (isBrandScene(scene.recipeId)) {
       const page = screens[0] ?? crops[0] ?? '';
@@ -411,7 +409,7 @@ const INSET_PAGE_H = 1200;
     background: opts.theme?.colors?.page ?? palette.background,
     ...(opts.brand ? { brand: opts.brand } : {}),
     // Every recipe draws in the film's theme (re-skinned to the product, SKILL principle 2); the Themes tab changes it.
-    ...(opts.theme ? { themeId: opts.theme.id, ...(opts.theme.colors ? { themeColors: { ...opts.theme.colors } } : {}) } : {}),
+    ...(opts.theme ? { themeId: opts.theme.id, ...(opts.theme.colors ? { sitePalette: { ...opts.theme.colors } } : {}) } : {}),
     tracks: tracks.filter((track) => track.clips.length > 0 || track.name === t('track.shots')),
   };
 }

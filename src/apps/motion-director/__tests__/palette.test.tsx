@@ -92,3 +92,25 @@ describe('the site palette ("Your site")', () => {
     expect(siteFont('sans-serif')).toBeUndefined();
   });
 });
+
+describe('native timing', () => {
+  it('never speeds a recipe up to fit a short scene', async () => {
+    const { planToProject } = await import('../lib/buildFilm');
+    const { MOTION_TEMPLATES } = await import('@/data/motionRecipeCatalog');
+    const id = MOTION_TEMPLATES.find((t) => t.componentName === 'DeckDealFlyin')!.id;
+    const p = planToProject({ title: 't', summary: '', palette: { background: '#fff', text: '#000', accent: '#f00' }, scenes: [{ kind: 'shot', recipeId: id, durationSec: 3, headline: '', caption: '', transition: 'cut' }] }, { aspectRatio: '16:9' });
+    const clip = p.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'demo:DeckDealFlyin')!;
+    expect(clip.speed).toBe(1);
+  });
+});
+
+describe('frame size', () => {
+  it('reads the size a message asks for', async () => {
+    const { aspectFromText, parseFilmRequest } = await import('../lib/filmChat');
+    expect(aspectFromText('a vertical promo for TikTok')).toBe('9:16');
+    expect(aspectFromText('make it 1:1 square')).toBe('1:1');
+    expect(aspectFromText('16:9 for YouTube')).toBe('16:9');
+    expect(aspectFromText('a 30 second promo')).toBeNull();
+    expect(parseFilmRequest('a 9:16 promo for https://example.com/1:1').aspectRatio).toBe('9:16');
+  });
+});

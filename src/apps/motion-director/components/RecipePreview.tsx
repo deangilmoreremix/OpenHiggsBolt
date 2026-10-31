@@ -20,9 +20,12 @@ const CATEGORY_LABEL_EN = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key
  * or a category tile when upstream has no poster, so the grid never mounts
  * more than one Player.
  */
-export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; playing: boolean }) {
+export function RecipePreview({ recipe, playing, site }: { recipe: MotionTemplate; playing: boolean; site?: string | null }) {
   const card = CARDS[motionCardId(recipe)];
   const [posterBroken, setPosterBroken] = useState(false);
+  // The recipe's own reference frame (peak, rendered as designed: public/motion-studio/previews), else upstream's poster.
+  const [refBroken, setRefBroken] = useState(false);
+  const poster = !refBroken && recipe.componentName ? `/motion-studio/previews/${recipe.componentName}-b.jpg` : recipe.poster;
   const live = playing && card && card.kind !== 'audio';
   // Picker previews always show the recipe as designed, never a company film's brand.
   if (live) setBrand(null);
@@ -36,12 +39,12 @@ export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; pla
       {/* The still layer stays mounted under the player: swapping the node under
           the pointer would fire a spurious mouseleave (killing the hover preview)
           and swallow a click that started on it. */}
-      {recipe.poster && !posterBroken ? (
+      {poster && !posterBroken ? (
         <img
-          src={recipe.poster}
+          src={poster}
           alt=""
           loading="lazy"
-          onError={() => setPosterBroken(true)}
+          onError={() => (refBroken ? setPosterBroken(true) : setRefBroken(true))}
           className="w-full h-full object-cover"
         />
       ) : (
@@ -72,6 +75,12 @@ export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; pla
           />
         </div>
       )}
+      {site ? (
+        // Upstream pairs each shot with the page it will show: the motion above, the product's picture in it.
+        <div className="absolute left-1.5 bottom-1.5 rounded overflow-hidden" style={{ width: '34%', aspectRatio: '16 / 10', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', pointerEvents: 'none' }} data-site-asset>
+          <img src={site} alt="" className="w-full h-full object-cover object-top" />
+        </div>
+      ) : null}
       {!live && card && (
         <span className="absolute bottom-1.5 right-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{ background: 'rgba(0,0,0,0.65)', color: 'rgba(255,255,255,0.7)' }}>
           ▶ {recipe.durationSec ? `${recipe.durationSec}s` : 'Preview'}

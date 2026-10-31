@@ -19,17 +19,18 @@ export const AS_DESIGNED = 'as-designed';
 export const SITE_THEME = 'site';
 export const PRESET_PALETTES = palettes as Record<string, Palette>;
 
+// "中文 · English", the label format the Themes tab reads (i18n themeLabel; upstream themes/manifest.tsx).
 const LABELS: Array<[string, string]> = [
-  [AS_DESIGNED, 'As designed · each recipe in its own look'],
-  [SITE_THEME, 'Your site'],
-  ['modern-light', 'Modern Light'],
-  ['midnight', 'Midnight'],
-  ['solar-pop', 'Sage'],
-  ['coral-burst', 'Coral'],
-  ['color-play', 'Iris'],
-  ['deep-ocean', 'Deep Ocean'],
-  ['obsidian-violet', 'Obsidian Violet'],
-  ['vintage-kraft', 'Vintage Kraft'],
+  [AS_DESIGNED, '原样 · As designed'],
+  [SITE_THEME, '你的网站 · Your site'],
+  ['modern-light', '现代浅色 · Modern Light'],
+  ['midnight', '暗黑 · Midnight'],
+  ['solar-pop', '清新鼠尾草 · Sage'],
+  ['coral-burst', '珊瑚点缀 · Coral'],
+  ['color-play', '柔和鸢尾 · Iris'],
+  ['deep-ocean', '深海蓝 · Deep Ocean'],
+  ['obsidian-violet', '黑曜紫 · Obsidian Violet'],
+  ['vintage-kraft', '复古牛皮纸 · Vintage Kraft'],
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -57,14 +58,24 @@ export const cleanPalette = (colors: unknown): FilmPalette => {
  * Resolution order, as upstream: the preset, then the film's colours, then this clip's own.
  * `as-designed` with no colours anywhere returns null: the recipe draws in its own look.
  */
-export const resolvePalette = (themeId?: unknown, filmColors?: unknown, clipColors?: unknown): FilmPalette | null => {
+export const resolvePalette = (themeId?: unknown, filmColors?: unknown, clipColors?: unknown, sitePalette?: unknown): FilmPalette | null => {
   const id = typeof themeId === 'string' ? themeId : AS_DESIGNED;
   const film = cleanPalette(filmColors);
   const clip = cleanPalette(clipColors);
-  const base = id === AS_DESIGNED ? {} : PRESET_PALETTES[id === SITE_THEME ? 'modern-light' : id] ?? {};
+  const base = themeBase(id, sitePalette) ?? {};
   const out = { ...base, ...film, ...clip };
   return Object.keys(out).length ? out : null;
 };
+
+/** The preset palette a theme starts from; "Your site" starts from the colours captured for this film. */
+export function themeBase(themeId: string | undefined, sitePalette?: unknown): Palette | null {
+  if (!themeId || themeId === AS_DESIGNED) return null;
+  if (themeId === SITE_THEME) {
+    const site = cleanPalette(sitePalette);
+    return PALETTE_KEYS.every((k) => isHex(site[k])) ? (site as Palette) : PRESET_PALETTES['modern-light'];
+  }
+  return PRESET_PALETTES[themeId] ?? null;
+}
 
 // ───────── colour helpers ─────────
 const rgb = (hex: string): [number, number, number] => {

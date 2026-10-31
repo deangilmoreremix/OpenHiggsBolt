@@ -70,6 +70,16 @@ export interface FilmRequest {
   durationSec: number | null;
   /** Product URL in the message, if any. */
   siteUrl: string | null;
+  /** Frame size stated in the message ("vertical", "9:16", "square", "for TikTok"…); null = the size picker's. */
+  aspectRatio?: '16:9' | '9:16' | '1:1' | null;
+}
+
+/** The frame size a message asks for, if it names one. */
+export function aspectFromText(text: string): '16:9' | '9:16' | '1:1' | null {
+  if (/\b9\s*[:x×/]\s*16\b|\bvertical\b|\bportrait\b|\b(?:tik\s?tok|reels?|shorts|stor(?:y|ies))\b/i.test(text)) return '9:16';
+  if (/\b1\s*[:x×/]\s*1\b|\bsquare\b/i.test(text)) return '1:1';
+  if (/\b16\s*[:x×/]\s*9\b|\blandscape\b|\bhorizontal\b|\bwidescreen\b|\byoutube\b/i.test(text)) return '16:9';
+  return null;
 }
 
 const INK_PRESS_RE = /\bink[\s-]?press\b/i;
@@ -148,7 +158,7 @@ export function parseFilmRequest(text: string): FilmRequest {
       : null;
   let template: FilmTemplateChoice | undefined;
   if (INK_PRESS_RE.test(prompt)) template = /\b(?:no|not|without|skip|don'?t)\b[^.]{0,20}ink[\s-]?press/i.test(prompt) ? 'director' : 'inkpress';
-  return { prompt, recipes, single, template, durationSec, siteUrl: findSiteUrl(prompt) };
+  return { prompt, recipes, single, template, durationSec, siteUrl: findSiteUrl(prompt), aspectRatio: aspectFromText(prompt.replace(/https?:\/\/\S+/g, '')) };
 }
 
 /** A question about the storyboard ("why this shot?", "what will the opening say?") rather than a change to it. */
@@ -473,8 +483,8 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
  * way to one of the site's own scenes with the same copy (a captured site) or is dropped; recipes
  * the person named stay. Says what it changed.
  */
-export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<string>; siteScenes?: boolean } = {}): { plan: DirectorPlan; notes: string[] } {
-  const found = filmRuleViolations(plan.scenes, opts.keep);
+export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<string>; siteScenes?: boolean; ground?: 'dark' | 'light' | null } = {}): { plan: DirectorPlan; notes: string[] } {
+  const found = filmRuleViolations(plan.scenes, opts.keep, opts.ground);
   if (!found.length) return { plan, notes: [] };
   const bad = new Map(found.map((f) => [f.index, f]));
   let zooms = 0;
@@ -582,7 +592,8 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
   const scenes = plan.scenes.map((s) => ({ ...s, durationSec: nativeOf(s) }));
   const sum = () => scenes.reduce((n, s) => n + s.durationSec, 0);
   // Make way, least important first, never the first / last scene and never a named recipe.
-  const rank = (s: DirectorScene) => (isBrandScene(s.recipeId) ? 0 : s.kind === 'title' ? 1 : keep.has(s.recipeId) ? 9 : 2);
+  // Extra title cards go first, then site scenes, then recipes nobody named; the site's pictures (the gallery) stay longest.
+  const rank = (s: DirectorScene) => (keep.has(s.recipeId) ? 9 : s.recipeId === 'brand/people-gallery' ? 3 : s.kind === 'title' ? 0 : isBrandScene(s.recipeId) ? 1 : 2);
   while (sum() > target + 1 && scenes.length > PLAN_LIMITS.minScenes) {
     let drop = -1;
     for (let i = scenes.length - 2; i >= 1; i--) if (rank(scenes[i]) < 9 && (drop < 0 || rank(scenes[i]) < rank(scenes[drop]))) drop = i;

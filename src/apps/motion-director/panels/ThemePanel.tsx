@@ -4,6 +4,9 @@ import { useStore } from '../store';
 import { selectedTheme, switchTheme, validThemeColors, FALLBACK_THEME } from '../theme';
 import { applyPalette, paletteFromProject, parsePalette, type PalettePreset } from '../palettePresets';
 import { t, themeLabel, useT } from '../i18n';
+import { SITE_THEME, themeBase } from '../lib/palette';
+import type { ManifestTheme } from '../cards/manifest';
+import type { ProjectData } from '../types';
 
 // Kept for backwards compatibility with palettes saved by the original "shotcraft"
 // tool so a user's "My themes" survive the rebrand.
@@ -64,13 +67,15 @@ export const ThemePanel = () => {
   // 没接入成片清单时没有清单自带的主题——用 Studio 自带的纸墨配色兜底，
   // 否则配色编辑器整块都不渲染，`setThemeColors` 也就没有入口。
   const themes = THEME_MANIFEST?.themes?.length ? THEME_MANIFEST.themes : [FALLBACK_THEME];
-  const current = selectedTheme(THEME_MANIFEST,project.themeId);
+  // "Your site" starts from this film's captured colours, not a fixed preset.
+  const withSite = (theme: ManifestTheme | undefined, p: ProjectData) => theme?.id===SITE_THEME ? {...theme, palette: themeBase(SITE_THEME,p.sitePalette) ?? theme.palette} : theme;
+  const current = withSite(selectedTheme(THEME_MANIFEST,project.themeId),project);
   const custom = validThemeColors(THEME_MANIFEST,project.themeId,project.themeColors);
   const modified = Object.keys(custom).length > 0;
   const palette = {...current?.palette,...custom};
   const updateColor = (key:string,value:string,begin=true) => {
     const store = useStore.getState();
-    const base = selectedTheme(THEME_MANIFEST,store.project.themeId)?.palette;
+    const base = withSite(selectedTheme(THEME_MANIFEST,store.project.themeId),store.project)?.palette;
     const colors = validThemeColors(THEME_MANIFEST,store.project.themeId,store.project.themeColors);
     if(!base?.[key] || !/^#[0-9a-f]{6}$/i.test(value) || value.toLowerCase()===(colors[key] ?? base[key]).toLowerCase()) return;
     const next = {...colors,[key]:value};
@@ -83,7 +88,8 @@ export const ThemePanel = () => {
   return <section className="theme-panel" aria-label={t("theme.aria")}>
     <div className="theme-panel-heading">{t("theme.presets")}</div>
     <p className="theme-panel-hint">{t("theme.hint")}</p>
-    {themes.length ? <div className="theme-options">{themes.map(theme=>{
+    {themes.length ? <div className="theme-options">{themes.map(t0=>{
+      const theme=withSite(t0,project)!;
       const active=theme.id===current?.id;
       const colors=theme.palette ?? {page:theme.background ?? '#f2eee6',text:'#13110f',accent:'#955905'};
       return <button key={theme.id} className={`theme-option${active?' active':''}`} aria-label={themeLabel(theme.label)} aria-pressed={active}

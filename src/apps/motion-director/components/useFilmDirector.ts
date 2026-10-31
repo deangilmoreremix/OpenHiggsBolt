@@ -208,7 +208,7 @@ export function useFilmDirector(opts: {
           {
             template,
             durationSec: req.durationSec ?? s.durationSec,
-            aspectRatio: s.aspectRatio,
+            aspectRatio: req.aspectRatio ?? s.aspectRatio,
             brandKit: s.brandKit,
             capture: known ?? (reuseCapture ? storyboard?.capture ?? null : null),
             reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
@@ -277,7 +277,7 @@ export function useFilmDirector(opts: {
     return {
       prompt: g.req.prompt,
       durationSec: g.req.durationSec ?? set.durationSec,
-      aspectRatio: set.aspectRatio,
+      aspectRatio: g.req.aspectRatio ?? set.aspectRatio,
       capture: g.capture,
       brandKit: (set.brandKit as Record<string, unknown> | null | undefined) ?? null,
       notes: g.notes,
@@ -584,7 +584,7 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });

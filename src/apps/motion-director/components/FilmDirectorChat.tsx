@@ -6,7 +6,7 @@ import { Player } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { sceneDetail } from '../lib/coCreate';
-import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
@@ -16,6 +16,7 @@ import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
+import type { SiteCapture } from '../lib/directorClient';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
 
@@ -356,7 +357,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
               label: template ? motionTemplateTitle(template) : brandScene ? brandScene.title : 'Title card',
               detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site', template && storyboard?.capture && drawsSampleScreen(template) && 'sample screen + your page beside it'].filter(Boolean).join(' · '),
               media: template ? (
-                <RecipePreview recipe={template} playing={false} />
+                <StoryboardShot recipe={template} site={sitePicture(storyboard?.capture, i)} />
               ) : (
                 // A title card shows its words on the film's colours, so it is not an empty tile beside a shot preview.
                 <div
@@ -375,6 +376,23 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         />
       )}
       {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} />}
+    </div>
+  );
+};
+
+/** The site picture a storyboard row will show (the same rotation the build uses). */
+const sitePicture = (capture: SiteCapture | null | undefined, i: number): string | null => {
+  if (!capture) return null;
+  const pool = [...(capture.assets ?? []).map((a) => a.url), ...(capture.crops ?? []), ...(capture.page?.url ? [capture.page.url] : [])].filter(Boolean);
+  return pool.length ? pool[i % pool.length] : null;
+};
+
+/** A storyboard row: the recipe's motion preview (plays on hover) with the site picture it will carry. */
+const StoryboardShot: React.FC<{ recipe: MotionTemplate; site: string | null }> = ({ recipe, site }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <RecipePreview recipe={recipe} playing={hover} site={site} />
     </div>
   );
 };

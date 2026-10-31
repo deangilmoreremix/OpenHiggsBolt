@@ -7,7 +7,7 @@
  * key, director down) the Ink Press template storyboard is built locally, so a
  * film request always ends in a film.
  */
-import { AS_DESIGNED, SITE_THEME, paletteFromBrand } from './palette';
+import { AS_DESIGNED, SITE_THEME, luma, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
@@ -159,7 +159,9 @@ export async function storyboardFilm(
     const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
     const shaped = restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec, { siteScenes });
     // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
-    const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes });
+    const site = capture ? paletteFromBrand(capture.brand) : null;
+    const ground = site ? (luma(site.page) < 0.5 ? 'dark' : 'light') : null;
+    const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes, ground });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
@@ -173,9 +175,16 @@ export async function storyboardFilm(
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) });
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: palette.accent });
+    // Same rule as the director's plan: every recipe plays its whole tuned motion (native length), never sped up.
+    const plan = fitNativeLengths(
+      inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) }),
+      planSec,
+      new Set(req.recipes.map((r) => r.id)),
+      voice.holdGrowth,
+    );
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(plan, pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: plan.palette?.accent ?? palette.accent })), capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan, voice), capture, source: 'inkpress', note };
   }
 }
 

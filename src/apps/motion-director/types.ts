@@ -37,6 +37,8 @@ export interface ProjectData {
   /** Visual preset; absent means the manifest's default, preserving older JSON. */
   themeId?: string;
   themeColors?: Record<string, string>;
+  /** The colours captured from the film's site: the base of the "Your site" theme (lib/palette). */
+  sitePalette?: Record<string, string>;
   name: string;
   fps: number;
   width: number;
