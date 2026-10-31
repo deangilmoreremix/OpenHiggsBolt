@@ -8,6 +8,7 @@ import { spring, useCurrentFrame } from 'remotion';
 import { EASE, FONT, Grain, Vignette, tracking } from './Polish';
 import { type FilmPalette, skinLook } from '../../lib/palette';
 import { activePalette, setFilmPalette } from './skin';
+import { useClipText } from './textMap';
 
 // ───────────────────────── 调色板 ─────────────────────────
 // 每个 look = 一套完整的明暗、表面、文字、强调色与光色。一个镜头只用一个 look；
@@ -322,8 +323,10 @@ export const TextReveal: React.FC<{
   text: string; start?: number; by?: 'char' | 'word' | 'line'; variant?: RevealVariant;
   each?: number; gap?: number; ease?: (t: number) => number; style?: React.CSSProperties; unitStyle?: (i: number) => React.CSSProperties;
   out?: { start: number; dur?: number };
-}> = ({ text, start = 0, by = 'char', variant = 'rise', each = 18, gap, ease = EASE.snappy, style, unitStyle, out }) => {
+}> = ({ text: designed, start = 0, by = 'char', variant = 'rise', each = 18, gap, ease = EASE.snappy, style, unitStyle, out }) => {
   const frame = useCurrentFrame();
+  // The clip's own words for this line (a company film), looked up before the text is split into units.
+  const text = useClipText(designed);
   const units = by === 'line' ? text.split('\n') : by === 'word' ? text.split(/(\s+)/) : Array.from(text);
   const g = gap ?? (by === 'char' ? 1.6 : by === 'word' ? 4 : 7);
   let k = 0;

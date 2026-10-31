@@ -13,6 +13,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "One prompt to a finished promo.",
   "Chapter ·",
   "· Three chapters, one film",
+  "Craft the shot.",
   "Shot recipes for cinematic product films."
  ],
  "CrashImpactReal": [
@@ -23,11 +24,15 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Yuki",
   "State",
   "Active",
-  "PRIORITY · THIS SPRINT"
+  "PRIORITY · THIS SPRINT",
+  "7 open questions",
+  "Routing ships first."
  ],
  "CrashZoomReal": [
   "localhost:3000/projects",
-  "In focus · Efficient Models"
+  "In focus · Efficient Models",
+  "inference cost",
+  "at equal accuracy, routed per query"
  ],
  "CursorFlyover": [
   "Frames rendered",
@@ -65,6 +70,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "ASR",
   "In focus",
   "2.5D camera moves",
+  "Your page, in depth.",
   "Screenshots, split into layers and flown in 2.5D."
  ],
  "GrazeFaceTour": [
@@ -202,6 +208,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "“Moved the crash zoom to f240, right on the beat, and…”",
   "Approve",
   "Edit",
+  "Built in layers.",
   "Every shot, tuned in one place."
  ],
  "SteepTiltGlide": [
@@ -285,6 +292,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Dec",
   "Renders",
   "· FY2026",
+  "Monthly renders",
   "FY total"
  ],
  "OscilloscopeStreamV2": [
@@ -300,6 +308,10 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Launch film",
   "Explainer",
   "· Renders · Q3 2026",
+  "Every dot is 40 renders",
+  "Split by format",
+  "Stacked by format",
+  "Total renders",
   "Each dot ≈ 40 renders"
  ],
  "NeedleSweepSelftest": [
@@ -314,7 +326,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  "TapeScrollFixedPointer": [
   "Old limit",
   "New limit",
-  "· frames / hour"
+  "· frames / hour",
+  "Throughput",
+  "tripled."
  ],
  "BrakeReticleLock": [
   "Crash zoom shot card",
@@ -526,6 +540,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  ],
  "GlowOrbAmbient": [
   "Now playing",
+  "Launch film",
+  "Beat-synced cuts · film-grade SFX",
   "Remaining"
  ],
  "OrbFlylineRelay": [
@@ -557,7 +573,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Real pages, filmed in depth.",
   "per promo",
   "What’s new",
-  "Combo"
+  "Combo",
+  "Up to a week back on every promo."
  ],
  "SheenSweepRetry": [
   "Director",
@@ -598,7 +615,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "left center",
   "Launch film · preview",
   "Shot recipe cards",
-  "Remotion render"
+  "Remotion render",
+  "Every shot, tuned in one place."
  ],
  "RisoMisregistrationHit": [
   "CRA",
@@ -722,12 +740,16 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Film",
   "Your product, in motion.",
   "60 SEC · 16:9 · 1080P",
-  "Watch now"
+  "Watch now",
+  "Premieres Friday",
+  "· shot with"
  ],
  "ScoreSlam": [
   "FULL TIME · 90+4′",
   "Keyframes",
   "MOTION CUP FINAL · BUILT ON REMOTION",
+  "Motion Studio lifts the",
+  "Cup.",
   "Camera moves I would have keyframed for a week."
  ],
  "CornerSpotlightReveal": [
@@ -789,6 +811,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Grain dissolve outro",
   "Outro",
   "· Storyboard",
+  "Launch film",
   "Shot recipes",
   "5 suggested",
   "Pick the shots for this cut.",
@@ -802,6 +825,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Student",
   "Nonprofit rate",
   "· Billing cycle",
+  "How would you like to pay?",
   "/mo"
  ],
  "CursorCastEnsemble": [
@@ -981,10 +1005,16 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "SHOT-05",
   "tilt up",
   "SHOT-06",
-  "· shot recipes"
+  "· shot recipes",
+  "Every shot,",
+  "one film."
  ],
  "Fracture": [
   "INTRODUCING"
+ ],
+ "IconFieldColorize": [
+  "Every shot,",
+  "one place."
  ],
  "MagicianCardFlourish": [
   "SC 01 · TAKE 01",
@@ -993,6 +1023,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Film",
   "ADMIT ONE",
   "1920×1080 · 30 FPS",
+  "NOW SHOWING",
   "Craft the shot.",
   "Cinematic product videos, crafted by your agent."
  ],
@@ -1109,10 +1140,13 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Iris",
   "Mint",
   "Sun",
+  "Make it",
   "THEME"
  ],
  "ComicPanelSplit": [
-  "Craft the shot."
+  "Craft the shot.",
+  "Three angles, cut on the beat.",
+  "Frame motion."
  ],
  "QuadSplitParallelScenes": [
   "localhost:3000/promo",
@@ -1156,6 +1190,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "PAUSED",
   "LIVE",
   "Shot review",
+  "Ship this first.",
   "Marco · design review",
   "FRAME HELD · 0 FPS"
  ],
@@ -1220,7 +1255,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Dolly zoom",
   "Style",
   "Feature",
-  "Before"
+  "Before",
+  "Three features. Three outcomes."
  ],
  "CardFlockTumble": [
   "CRAFT THE SHOT · CRAFT THE SHOT · CRAFT THE SHOT ·",
@@ -1286,10 +1322,13 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Shots rendered",
   "of 54-shot goal",
   "Your week · Mara K.",
+  "Almost there.",
   "7 shots left — one more render.",
   "6 shots to pass Aiko for"
  ],
  "GradientTransition": [
+  "Bend light.",
+  "Focus it.",
   "Introducing"
  ],
  "LineCarryTransition": [
@@ -1311,6 +1350,10 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Mosaic",
   "Cascade",
   "Storyboard",
+  "Every shot,",
+  "in sequence.",
+  "Featured shot",
+  "Golden Hour",
   "Shot 01 · Crash zoom · 4.5 s"
  ],
  "BarnDoorSplit": [
@@ -1322,6 +1365,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Shot recipes for product films.",
   "Introducing",
   "Motion Studio",
+  "One prompt to a finished promo.",
   "to left",
   "to right"
  ],
@@ -1433,6 +1477,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Storyboards, keyframes and three rounds of render notes.",
   "Your agent shoots, cuts and scores it to the beat.",
   "Product launch film",
+  "What does a promo take?",
   "VS",
   "Direct the film. Let the agent shoot it."
  ],
@@ -1607,7 +1652,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "JUL",
   "SEP",
   "NOV",
-  "ARR"
+  "ARR",
+  "FY2026 · Annual report",
+  "Every quarter beat the last one."
  ],
  "LetterDropPhysics": [
   "Every shot lands on the beat."
@@ -1615,6 +1662,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
  "FontWeightPump": [
   "LOUDER",
   "128 BPM",
+  "Beat-synced cuts, right on the drop.",
   "Drop"
  ],
  "KaraokeFillSync": [
@@ -1748,7 +1796,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "PLAN · 3 ACTS",
   "Stat count-up",
   "DATA · KPI",
+  "Start from a shot recipe.",
   "Nine shot recipes. Every one ready to render.",
+  "top left",
   "Launch"
  ],
  "Carousel3D": [
@@ -1770,6 +1820,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Camera Path",
   "FLYOVER · 2.5D",
   "1080P · 30 FPS",
+  "top left",
   "FPS"
  ],
  "ClonerDepthEcho": [
@@ -1779,6 +1830,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "shots rendered · one prompt"
  ],
  "DeckDealFlyin": [
+  "Your product,",
+  "in motion.",
   "2.2ch",
   "REAL PAGE CAPTURES"
  ],
@@ -1827,7 +1880,9 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "2026-W23 · Motion Studio Weekly",
   "2026 · Week 22",
   "May 29",
-  "2026-W22 · Motion Studio Weekly"
+  "2026-W22 · Motion Studio Weekly",
+  "From screenshot",
+  "to showreel."
  ],
  "DrawSvgTrace": [
   "LAUNCH FILM · RENDER",
@@ -1843,7 +1898,8 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "Punch in on the number that matters.",
   "Logo sting",
   "Lands the mark on the final downbeat.",
-  "SHOT RECIPES · LAUNCH FILM"
+  "SHOT RECIPES · LAUNCH FILM",
+  "Pick your shot."
  ],
  "IntegrationHubMap": [
   "Launch Film v3",
@@ -1987,6 +2043,7 @@ export const DEMO_TEXTS: Record<string, readonly string[]> = {
   "AL"
  ],
  "ProductCardProgressiveAssemble": [
+  "top left",
   "Shot recipes that",
   "direct every move",
   "Built on",

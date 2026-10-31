@@ -6,6 +6,7 @@ import { adaptedNow, prepareAdapted } from "../lib/adaptedRuntime";
 import { AdaptedBoundary, type AdaptedComponent } from "../lib/shotAdapter";
 import { resolvePalette } from "../lib/palette";
 import { setClipPalette } from "../demosrc/_fixtures/skin";
+import { TextMapContext } from "../demosrc/_fixtures/textMap";
 
 /**
  * 动效库（demo 卡）的 props 包装层。
@@ -108,6 +109,7 @@ export const withDemoProps = (
 
     return (
       <AbsoluteFill>
+        <TextMapContext.Provider value={textMap}>
         <LiveTextureContext.Provider value={textures}>
           {hasTexts ? (
             <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
@@ -119,6 +121,7 @@ export const withDemoProps = (
             <Inner />
           )}
         </LiveTextureContext.Provider>
+        </TextMapContext.Provider>
         {wash > 0 ? (
           <AbsoluteFill style={{ background: tint, opacity: wash, mixBlendMode: "overlay" }} />
         ) : null}

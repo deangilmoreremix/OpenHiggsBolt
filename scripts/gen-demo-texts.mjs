@@ -54,7 +54,7 @@ for (const file of files.sort()) {
     else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       const parent = node.parent
       // Style, class, id, geometry and path attributes are not words.
-      if (ts.isJsxAttribute(parent) && !['alt', 'title', 'label', 'placeholder', 'aria-label'].includes(parent.name.getText())) return
+      if (ts.isJsxAttribute(parent) && !['alt', 'title', 'label', 'placeholder', 'aria-label', 'text', 'caption', 'headline', 'subtitle'].includes(parent.name.getText())) return
       if (ts.isPropertyAssignment(parent) && parent.initializer === node && /^(?:fontFamily|fontWeight|fontStyle|background\w*|color|border\w*|boxShadow|transform\w*|transition|filter|mixBlendMode|textTransform|textAlign|whiteSpace|display|position|overflow|cursor|opacity|outline|content|d|fill|stroke\w*|viewBox|href|src|type|kind|mode|variant|align\w*|justify\w*)$/.test(parent.name.getText())) return
       if (ts.isElementAccessExpression(parent) || ts.isCaseClause(parent) || ts.isBinaryExpression(parent) && ['===', '!==', '==', '!='].includes(parent.operatorToken.getText())) return
       add(node.text)
