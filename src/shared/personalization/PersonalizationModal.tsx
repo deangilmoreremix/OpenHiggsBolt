@@ -61,7 +61,7 @@ import type { AIMissingRequirement } from './ai/types'
 import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, BusinessOwnership, PersonalizationSource } from './types'
 import { LEAD_STAGES, isLeadStage } from './leadStages'
 import { ownershipBadgeStyle, ownershipLabel } from './ownershipBadge'
-import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
+import { modelForGeneration, resolveModelCapabilities } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
 import { BUSINESS_NICHES } from './businessNiches'
@@ -1261,17 +1261,9 @@ export default function PersonalizationModal() {
   const outputOptions = isVideo ? OUTPUT_OPTIONS_VIDEO : isImage ? OUTPUT_OPTIONS_IMAGE : OUTPUT_OPTIONS_PROMPT
   const showModes = outputType !== 'prompt' && eligibleModes.length > 0
 
-  const effectiveModelId =
-    genOptions.advancedModel ||
-    genOptions.model ||
-    source.model ||
-    (isVideo
-      ? mode === 'face_only'
-        ? FACE_SWAP_MODEL
-        : mode === 'full_body'
-          ? FULL_BODY_MODEL
-          : DEFAULT_T2V_MODEL
-      : DEFAULT_I2I_MODEL)
+  // The model a run will really call (Face only / Full presenter always use
+  // their own), so the settings shown are the ones that model takes.
+  const effectiveModelId = modelForGeneration(source, genOptions, mode)
 
   const capabilities = resolveModelCapabilities(source, { ...genOptions, model: effectiveModelId })
 
@@ -4807,7 +4799,13 @@ function ConfigurationView(props: any) {
         </div>
         {showAdvanced && (
           <div className="grid grid-cols-2 gap-3 p-4 mt-2 rounded-xl border" style={{ borderColor: C.border, background: '#0c1014' }}>
-            {capabilities.aspectRatioOptions.length > 0 ? (
+            {mode === 'full_body' ? (
+              // The recast keeps the source clip's shape.
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Aspect Ratio</label>
+                <div style={{ padding: '8px 0', color: C.muted, fontSize: 13 }}>Matches the source video</div>
+              </div>
+            ) : capabilities.aspectRatioOptions.length > 0 ? (
               <div>
                 <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Aspect Ratio</label>
                 {/* One aspect ratio for the preview, the AI run and the final
