@@ -49,6 +49,9 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   design: 'Design',
 }
 
+/** Fonts the video renderer can actually draw. */
+const SELECTABLE_FONT_COUNT = PREVIEW_FONTS.filter((font) => font.available).length
+
 const TEXT_KINDS: PreviewLayerKind[] = [
   'businessName',
   'headline',
@@ -492,7 +495,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     <div style={{ width: '100%', textAlign: 'center' }}>
                       <span
                         style={{
-                          background: settings.brandColors.accent,
+                          background: layer.color ?? settings.brandColors.accent,
                           color: '#041014',
                           padding: '0.4em 1.1em',
                           borderRadius: 999,
@@ -662,16 +665,19 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   )}
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
                     <div>
-                      <label style={labelStyle} htmlFor={controlId('color')}>Color</label>
+                      <label style={labelStyle} htmlFor={controlId('color')}>{selected.kind === 'cta' ? 'Button color' : 'Color'}</label>
                       <input
                         id={controlId('color')}
                         type="color"
-                        aria-label="Text color"
-                        value={selected.color || settings.brandColors.text}
+                        aria-label={selected.kind === 'cta' ? 'Button color' : 'Text color'}
+                        value={selected.color || (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)}
                         onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
                         style={{ width: '100%', height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
                       />
                     </div>
+                    {/* Only shown when there's a real choice: with one bundled
+                        font every option renders the same in the video. */}
+                    {SELECTABLE_FONT_COUNT > 1 && (
                     <div>
                       <label style={labelStyle} htmlFor={controlId('font')}>Font</label>
                       <select
@@ -700,6 +706,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         ))}
                       </select>
                     </div>
+                    )}
                   </div>
                 </>
               )}

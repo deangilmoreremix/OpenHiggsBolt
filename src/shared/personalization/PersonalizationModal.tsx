@@ -3621,6 +3621,10 @@ function ConfigurationView(props: any) {
       {/* ── CLIENT ASSETS (full width, 6 numbered cards) ──────────── */}
       <section id="pz-client-assets" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>YOUR ASSETS</h2>
+        <p data-testid="pz-assets-usage-note" style={{ margin: '6px 0 0', color: C.muted, fontSize: 11 }}>
+          The presenter photo drives Face only / Full presenter. The logo and product photos appear as on-video layers
+          (Overlays); brand photos and frames guide the AI where the chosen model supports them.
+        </p>
         <p style={{ margin: '6px 0 18px', color: C.muted, fontSize: 12, lineHeight: 1.5 }}>
           Add the people, products, branding and visual references SmartVideo should use when personalizing this demo.
         </p>
@@ -4589,6 +4593,11 @@ function ConfigurationView(props: any) {
       {/* ── PERSONALIZE THE PROMPT ──────────────────────────── */}
       <section id="pz-prompt" data-pz-focus="prompt" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>PERSONALIZE THE PROMPT</h2>
+        {mode === 'face_only' && outputType !== 'prompt' && (
+          <p data-testid="pz-prompt-unused-note" style={{ margin: '6px 0 0', color: '#fcd34d', fontSize: 11 }}>
+            Face only swaps the face in the demo video — the prompt isn&apos;t used for this mode.
+          </p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 14 }}>
           <div className="prompt-box" style={{ minHeight: 150, border: `1px solid ${C.border}`, borderRadius: 12, background: C.field, padding: 14 }}>
             <h4 style={{ margin: '0 0 9px', fontSize: 11, textTransform: 'uppercase' }}>Original Prompt</h4>
@@ -4889,6 +4898,9 @@ function ConfigurationView(props: any) {
                 Resolution and quality are set by the {mode === 'face_only' ? 'face-swap' : 'recast'} model.
               </div>
             )}
+            {/* Only Full presenter changes the sound (its model returns a
+                silent video); the other modes keep the clip's own audio. */}
+            {mode === 'full_body' && (
             <div className="flex items-end">
               <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: C.muted }}>
                 <input
@@ -4900,6 +4912,7 @@ function ConfigurationView(props: any) {
                 Keep the original video&apos;s sound
               </label>
             </div>
+            )}
           </div>
         )}
         {mode && ['face_only', 'full_body', 'replace_face', 'replace_person'].includes(mode) && (

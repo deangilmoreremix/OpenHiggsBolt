@@ -166,4 +166,23 @@ describe('repeated business name', () => {
     expect(buildPreviewInput({ ...base, clientForm: { businessName: 'Red Zebra', productService: 'Smash burgers' } } as any).brand.headline).toBe('Smash burgers')
     expect(buildPreviewInput({ ...base, clientForm: { businessName: 'Red Zebra' } } as any).brand.headline).toBe('Red Zebra')
   })
+
+  it('a cleared text layer falls back like the editor shows it', () => {
+    const props = makeInputProps({ videoUrl: 'https://cdn.example.com/good.mp4' })
+    props.settings = { ...props.settings, layers: props.settings.layers.map((l) => (l.kind === 'businessName' ? { ...l, text: '' } : l)) }
+    const { container } = mountComposition(props)
+    expect(container.textContent).toContain('Acme Roofing')
+  })
+
+  it('the CTA color is the button color', () => {
+    const props = makeInputProps({ videoUrl: 'https://cdn.example.com/good.mp4' })
+    props.brand = { ...props.brand, cta: 'Book now' }
+    props.settings = {
+      ...props.settings,
+      layers: [...props.settings.layers.filter((l) => l.kind !== 'cta'), { ...props.settings.layers[0], id: 'cta', kind: 'cta', visible: true, text: undefined, color: '#ff0000', imageUrl: undefined, startFrame: 0, animation: 'none' } as PreviewInputProps['settings']['layers'][number]],
+    }
+    const { container } = mountComposition(props)
+    const pill = Array.from(container.querySelectorAll('span')).find((el) => el.textContent === 'Book now') as HTMLElement
+    expect(pill.style.background).toMatch(/rgb\(255, 0, 0\)|#ff0000/)
+  })
 })

@@ -4561,6 +4561,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const runGenerate = useCallback(async (overrides?: GenerateOverrides) => {
     const options: GenerationOptions = overrides?.options ? { ...genOptions, ...overrides.options } : genOptions
     const burnInLayers = Boolean(overrides?.burnInLayers)
+    if (source && mode && ['face_only', 'full_body', 'replace_face', 'replace_person'].includes(mode) && !options.consentGiven) {
+      // Checked here too, not only by the disabled button.
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: "Confirm permission to use this person's likeness (Output & engine) before creating.",
+      })
+      return
+    }
     if (!source) return
     if (!apiKey) {
       // Say why nothing happens instead of silently doing nothing.
@@ -4685,13 +4694,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
           // Draw the layers at the generated clip's own length and shape.
           const clip = await readClipMetadata(genResult.url)
-          const inputProps = buildPreviewInput({
+          const built = buildPreviewInput({
             source,
             previewSettings: fitSettingsToClip(previewSettings, clip),
             previewVideo: { url: genResult.url, poster: null, title: source.title, kind: 'source' },
             clientForm,
             assets,
           })
+          // Full presenter comes back silent: "Keep the original video's
+          // sound" puts the source video's audio under it.
+          const inputVideoUrl = (resolved.directInputs.video_url as string | undefined) || source.sourceMedia || null
+          const inputProps = mode === 'full_body' && options.preserveAudio && !built.audioUrl && inputVideoUrl
+            ? { ...built, audioUrl: inputVideoUrl }
+            : built
           const exported = await exportPersonalizedVideo({
             inputProps,
             onProgress: (progress) => {
@@ -4737,7 +4752,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           originalUrl: postResult.originalUrl || genResult.url,
           postProcessingInput: resolved.postProcessing,
           ...(burned ? { layersBurnedIn: true, generatedUrl: genResult.url, container: burned.mimeType, extension: burned.extension } : {}),
-          ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}). The logo and end card were applied instead.` } : {}),
+          ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}). The logo was added as a watermark instead.` } : {}),
         },
       }
 

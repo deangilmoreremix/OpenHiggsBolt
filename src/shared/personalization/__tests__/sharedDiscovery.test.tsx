@@ -921,6 +921,12 @@ describe('pre-existing modal features survive the integration', () => {
       fireEvent.click(screen.getByText('Advanced Settings ›'))
     })
     await flush(20)
+    // The sound control only exists where it changes the video (Full presenter).
+    expect(screen.queryByText("Keep the original video's sound")).toBeNull()
+    await act(async () => {
+      ;(window as unknown as { __personalizationCtx: { setMode: (mode: string) => void } }).__personalizationCtx.setMode('full_body')
+    })
+    await flush(20)
     expect(screen.getByText("Keep the original video's sound")).toBeTruthy()
 
     // onRevert: edit a product asset, then revert it through the thumb control

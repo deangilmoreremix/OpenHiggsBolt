@@ -104,20 +104,26 @@ function entranceFor(layer: PreviewLayer, frame: number, fps: number): EntranceS
   }
 }
 
+/** The layer's own text, or null when it has none (unset or cleared). */
+function ownText(layer: PreviewLayer): string | null {
+  return typeof layer.text === 'string' && layer.text.trim() ? layer.text : null
+}
+
 function resolveLayerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
   switch (layer.kind) {
+    // Cleared text falls back like unset text, matching the editor.
     case 'businessName':
-      return layer.text ?? brand.businessName
+      return ownText(layer) ?? brand.businessName
     case 'headline':
-      return layer.text ?? brand.headline
+      return ownText(layer) ?? brand.headline
     case 'tagline':
-      return layer.text ?? brand.headline
+      return ownText(layer) ?? brand.headline
     case 'offer':
-      return layer.text ?? brand.offer
+      return ownText(layer) ?? brand.offer
     case 'cta':
-      return layer.text ?? brand.cta
+      return ownText(layer) ?? brand.cta
     default:
-      return layer.text ?? ''
+      return ownText(layer) ?? ''
   }
 }
 
@@ -450,7 +456,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           // the business name already on screen isn't drawn twice.
           if (
             (layer.kind === 'headline' || layer.kind === 'tagline') &&
-            layer.text == null &&
+            ownText(layer) == null &&
             businessNameShown &&
             text.trim().toLowerCase() === brand.businessName.trim().toLowerCase()
           ) return null
@@ -555,7 +561,8 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   <span
                     style={{
-                      background: settings.brandColors.accent,
+                      // The layer's color is the button color (default: accent).
+                      background: textColor,
                       color: PILL_TEXT_COLOR,
                       padding: '0.4em 1.1em',
                       borderRadius: 999,

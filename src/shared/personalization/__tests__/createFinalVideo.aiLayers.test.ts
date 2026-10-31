@@ -29,14 +29,15 @@ import { applyPostProcessing } from '../postProcessor'
 
 const GENERATED = 'https://cdn.example/generated.mp4'
 
-async function openAuthenticated() {
+async function openAuthenticated(mode = 'face_only', { consent = true, sourceMedia = null as string | null } = {}) {
   await act(async () => {
-    ;(window as any).__personalizationCtx.openPersonalize({ source: makeDemoSource(), access: 'authenticated' })
+    ;(window as any).__personalizationCtx.openPersonalize({ source: { ...makeDemoSource(), sourceMedia }, access: 'authenticated' })
   })
   await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
   await act(async () => {
     getCtx({ current: null }).setOutputType('video')
-    getCtx({ current: null }).setMode('face_only')
+    getCtx({ current: null }).setMode(mode)
+    getCtx({ current: null }).updateGenOptions({ ...getCtx({ current: null }).genOptions, consentGiven: consent })
   })
 }
 
@@ -96,5 +97,22 @@ describe('createFinalVideo with an AI mode', () => {
     const result = getCtx(ref).result
     expect(result.url).toBe('https://cdn.example/watermarked.mp4')
     expect(String(result.metadata.layersNote)).toMatch(/couldn't be added/)
+  })
+
+  it('refuses a face/person mode without consent, even if the button was bypassed', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated('face_only', { consent: false })
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+    expect(runGeneration).not.toHaveBeenCalled()
+    expect(getCtx(ref).generation.errorMessage).toMatch(/permission/i)
+  })
+
+  it("Full presenter keeps the original video's sound under the silent recast", async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated('full_body', { sourceMedia: 'https://cdn.example/demo.mp4' })
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+    expect(renderMediaOnWeb.mock.calls[0][0].inputProps.audioUrl).toBe('https://cdn.example/demo.mp4')
   })
 })

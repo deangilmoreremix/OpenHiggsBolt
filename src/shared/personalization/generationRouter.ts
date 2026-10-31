@@ -239,9 +239,14 @@ async function handleImageGeneration({
       if (!imageUrl) throw new Error('No source image available for image personalization.')
 
       const imageBlob = await toImageBlob(imageUrl)
+      const referenceUrl = resolved.directInputs.reference_image_url as string | undefined
+      const referenceImages = referenceUrl ? [await toImageBlob(referenceUrl)] : undefined
       const results = await openaiClient.editImage({
-        prompt,
+        prompt: referenceImages
+          ? `${prompt}\n\nPut the person from the second image into the first image${mode === 'replace_face' ? ' (replace only the face)' : ''}, keeping the first image's design, layout and text.`
+          : prompt,
         image: imageBlob,
+        referenceImages,
         model: imageModel,
         size,
         quality: options.quality,
@@ -339,8 +344,10 @@ async function handleVideoGeneration({
         images_list: [identityUrl],
         aspect_ratio: 'adaptive',
         duration: clampRecastDuration(options.duration || source.duration || 5),
-        generate_audio: false,
-        prompt: options.preserveAudio ? undefined : prompt,
+        // "Keep the original video's sound" puts the source audio back on in
+        // the final render; otherwise the model makes the sound.
+        generate_audio: !options.preserveAudio,
+        prompt,
       })
 
       onProgress?.(85, 'Processing...')

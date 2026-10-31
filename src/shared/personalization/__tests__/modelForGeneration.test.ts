@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { AssetLibrary, GenerationOptions, PersonalizationAsset, PersonalizationSource } from '../types'
 import {
   fitToModel,
   FACE_SWAP_MODEL,
@@ -16,19 +17,19 @@ const demo = {
   id: 'demo-1', title: 'Demo', mediaType: 'video', originalPrompt: 'p', fullPrompt: 'p', shortPrompt: 'p',
   sourceMedia: 'https://cdn.example/demo.mp4', poster: null, sourceType: 'landing-demo', sourceMetadata: {},
   model: 'veo-4-text-to-video',
-} as any
+} as unknown as PersonalizationSource
 
 const photo = {
   id: 'face-1', name: 'face.jpg', role: 'presenter_identity', url: 'https://cdn.example/face.jpg',
   uploadedUrl: 'https://cdn.example/face.jpg', uploadStatus: 'ready', isPrimary: true,
-} as any
+} as unknown as PersonalizationAsset
 
 const assets = {
   identities: [photo], primaryIdentity: photo, logos: [], primaryLogo: null, products: [], brandReferences: [],
   firstFrame: null, lastFrame: null, ctaGraphic: null, savedReferences: [],
-} as any
+} as unknown as AssetLibrary
 
-const options = { engine: 'smartvideo-recommended', preserveAudio: true, consentGiven: true } as any
+const options = { engine: 'smartvideo-recommended', preserveAudio: true, consentGiven: true } as unknown as GenerationOptions
 
 describe('generation uses the model the mode really calls', () => {
   it('Face only sends the presenter photo even when the demo uses another model', () => {
@@ -69,5 +70,15 @@ describe('fitToModel', () => {
 
   it('passes values through for models without fixed options', () => {
     expect(fitToModel({ aspectRatioOptions: [], durationOptions: [] }, { aspectRatio: '4:5', durationSeconds: 12 })).toEqual({ aspectRatio: '4:5', duration: 12 })
+  })
+})
+
+describe('image demos: Replace person keeps the demo image', () => {
+  it('edits the demo image and sends the photo as a second image', () => {
+    const imageDemo = { ...demo, mediaType: 'image', sourceMedia: 'https://cdn.example/design.png', model: 'gpt-image-2.5-flare' } as PersonalizationSource
+    const modelOptions = optionsForGeneration(imageDemo, options, 'replace_person')
+    const resolved = resolveAssetsForModel(imageDemo, assets, 'replace_person', modelOptions, resolveModelCapabilities(imageDemo, modelOptions))
+    expect(resolved.directInputs.image_url).toBe('https://cdn.example/design.png')
+    expect(resolved.directInputs.reference_image_url).toBe('https://cdn.example/face.jpg')
   })
 })

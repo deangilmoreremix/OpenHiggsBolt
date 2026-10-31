@@ -360,7 +360,14 @@ export function resolveAssetsForModel(
   }
 
   const primaryIdentityUrl = getGenerationAssetUrl(assets.primaryIdentity)
-  if (mode === 'face_only' || mode === 'replace_face') {
+  if (source.mediaType === 'image' && (mode === 'replace_face' || mode === 'replace_person')) {
+    // Image demos keep the demo image as the one being edited; the person's
+    // photo goes along as a second, reference image (it used to replace the
+    // demo image, so the demo's design was lost).
+    if (source.sourceMedia) directInputs.image_url = source.sourceMedia
+    if (primaryIdentityUrl) directInputs.reference_image_url = primaryIdentityUrl
+    else if (assets.primaryIdentity) promptContext.presenterDescription = assets.primaryIdentity.name
+  } else if (mode === 'face_only' || mode === 'replace_face') {
     if (capabilities.supportsFaceSwap && primaryIdentityUrl) {
       directInputs.image_url = primaryIdentityUrl
     } else if (assets.primaryIdentity) {
