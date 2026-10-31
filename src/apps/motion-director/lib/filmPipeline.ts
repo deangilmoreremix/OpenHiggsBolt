@@ -63,6 +63,11 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
 /** The site's own pictures the film can show: the images found on the page plus its card crops. */
 export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
 
+/** "Andrew Garnett President & CEO Special Needs Group": a name followed by a job title. */
+export const looksLikePersonLine = (line: string): boolean =>
+  /^\s*[A-Z][a-z'’-]{1,15}\s+(?:[A-Z]\.\s+)?[A-Z][a-z'’-]{1,20}\b/.test(line) &&
+  /\b(?:President|CEO|CFO|CTO|COO|CMO|Founder|Co-?founder|Owner|Director|Manager|Partner|Principal|VP|Vice President|Strategist|Engineer|Specialist|Consultant|Coordinator|Head of|Lead|Officer|Administrator|Analyst|Executive)\b/.test(line);
+
 export async function storyboardFilm(
   req: FilmRequest,
   opts: {
@@ -102,6 +107,8 @@ export async function storyboardFilm(
     }
   }
   // Attached videos play as their own scenes; the storyboard gets what is left of the requested length.
+  // Section headings become captions and titles: a testimonial's "Name Title Company" line is not a heading.
+  if (capture?.content?.headings?.length) capture = { ...capture, content: { ...capture.content, headings: capture.content.headings.filter((h) => !looksLikePersonLine(h)) } };
   const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
   // The site the user gave wins over a Brand Kit company: the Brand Kit names the film only when there is no site.
   const hasSite = Boolean(capture || req.siteUrl);

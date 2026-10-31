@@ -17,7 +17,7 @@ vi.mock('../lib/directorClient', () => {
   };
 });
 
-import { buildFilmProject, storyboardFilm } from '../lib/filmPipeline';
+import { buildFilmProject, looksLikePersonLine, storyboardFilm } from '../lib/filmPipeline';
 import { captureSite, type SiteCapture } from '../lib/directorClient';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { parseFilmRequest } from '../lib/filmChat';
@@ -122,5 +122,12 @@ describe('music of a finished film', () => {
     expect(own.map((c) => c.props.file)).toEqual(['blob:mine']);
     const none = await buildFilmProject(await storyboard(), { aspectRatio: '16:9', capture: null, media: [], prompt: 'a promo for Acme, no music please' }, () => {});
     expect(musicClips(none)).toHaveLength(0);
+  });
+});
+
+describe('captions never use a testimonial name line', () => {
+  it('spots name + job title lines and leaves real headings', () => {
+    for (const l of ['Andrew Garnett President & CEO Special Needs Group', 'Debi Davis Business Strategist The Case Team', 'Michael Vernoff Director Of Operations B’nai Torah Congregation']) expect(looksLikePersonLine(l), l).toBe(true);
+    for (const l of ['Finally, a Cure for Your IT Headaches', 'Identify & Secure', 'Managed IT Services', 'What Other Business Owners are Saying']) expect(looksLikePersonLine(l), l).toBe(false);
   });
 });

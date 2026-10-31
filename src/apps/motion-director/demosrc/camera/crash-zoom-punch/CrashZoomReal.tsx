@@ -28,6 +28,7 @@ import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
 import layout from '../../_textures/live-layout.json';
 import { Dust, LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { EASE, FONT, Vignette, mix, ramp, softShadow } from '../../_fixtures/Polish';
+import { BRAND, PITCH } from '../../_fixtures/Brand';
 import { liveTexture } from '../../_fixtures/liveTexture';
 import { blurSamples } from '../../_fixtures/ExportMode';
 
@@ -191,6 +192,8 @@ export const CrashZoomReal: React.FC = () => {
   const n = frame >= PUSH && frame <= HIT + 1 ? samplesAt(frame) : 1;
   const smear = n > 1 ? smearAt(frame, n) : 0;
   const callout = frame >= 58;
+  // A company's film (setBrand with a site): the readout speaks the company's own words.
+  const company = BRAND.name !== 'SmartVideo GO';
   const scrim = ramp(frame, 58, 14, EASE.out);
   // 右栏压暗的起点跟着卡片右缘走（卡右缘 + 70px），永远不压到主角身上
   const cam = camAt(frame);
@@ -226,18 +229,19 @@ export const CrashZoomReal: React.FC = () => {
           <div style={{ position: 'absolute', left: 1212, top: 300, width: 620, color: L.ink }}>
             <div style={{ ...type(28, 650, { caps: true }), letterSpacing: '0.2em', color: L.accent, display: 'flex', alignItems: 'center', gap: 16, opacity: ramp(frame, 68, 10, EASE.out), transform: `translateY(${(14 * (1 - ramp(frame, 68, 14, EASE.snappy))).toFixed(2)}px)` }}>
               <span style={{ width: 12, height: 12, borderRadius: 6, background: L.accent, boxShadow: `0 0 14px ${alpha(L.accent, 0.8)}` }} />
-              In focus · Efficient Models
+              {company ? `In focus · ${PITCH.en.features[0] ?? BRAND.name}` : 'In focus · Efficient Models'}
             </div>
             {/* clipPath 只裁掉行框下沿以外：逐字从线下升起时，未升起的字形不会从遮罩的内边距里露头 */}
             <div style={{ ...type(232, 700), letterSpacing: '-0.055em', marginTop: 26, marginLeft: -10, clipPath: 'inset(-40px -60px 0 -60px)' }}>
-              <TextReveal text="−41%" by="char" variant="rise" start={71} each={18} gap={2.2} ease={EASE.snappy} />
+              {/* A company film never shows the sample card's figure: it would be a claim the company did not make. */}
+              {company ? null : <TextReveal text="−41%" by="char" variant="rise" start={71} each={18} gap={2.2} ease={EASE.snappy} />}
             </div>
             <div style={{ height: 2, width: 520, marginTop: 30, background: alpha(L.ink, 0.16), transform: `scaleX(${ramp(frame, 76, 22, EASE.snappy).toFixed(4)})`, transformOrigin: '0 50%' }} />
             <div style={{ ...type(52, 600), marginTop: 30 }}>
-              <TextReveal text="inference cost" by="word" variant="blur" start={79} each={16} gap={4} ease={EASE.out} />
+              <TextReveal text={company ? (PITCH.en.taglines[0] ?? BRAND.name) : 'inference cost'} by="word" variant="blur" start={79} each={16} gap={4} ease={EASE.out} />
             </div>
             <div style={{ ...type(40, 400), color: L.ink2, marginTop: 14 }}>
-              <TextReveal text="at equal accuracy, routed per query" by="word" variant="blur" start={83} each={15} gap={2} ease={EASE.out} />
+              <TextReveal text={company ? (PITCH.en.features[1] ?? '') : 'at equal accuracy, routed per query'} by="word" variant="blur" start={83} each={15} gap={2} ease={EASE.out} />
             </div>
           </div>
         </>

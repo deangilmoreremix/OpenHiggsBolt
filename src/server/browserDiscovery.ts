@@ -1893,17 +1893,22 @@ function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: Ca
 
   const images: CaptureRect[] = []
   const candidates: CaptureRect[] = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
-    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img))
+    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img) && !notAPicture(img, img.currentSrc || img.src))
     .map((img) => toRect(img))
     .filter((r) => r.width >= 240 && r.height >= 160 && r.y >= 0 && r.y + r.height <= limits.maxY)
     .sort((a, b) => b.width * b.height - a.width * a.height)
+  // Maps, video posters and players are not pictures of the business.
+  function notAPicture(el: Element, src: string): boolean {
+    if (/maps\.(?:googleapis|gstatic)\.com|google\.[a-z.]+\/maps|staticmap|api\.mapbox|openstreetmap|ytimg\.com|vimeocdn\.com|\/vi\/[^/]+\/(?:max|hq|sd|mq)?default/i.test(src)) return true
+    return Boolean(el.closest('[class*="map" i], [id*="map" i], [class*="video" i], [class*="player" i], [class*="lightbox" i], iframe'))
+  }
   // Pictures set as CSS backgrounds (hero art, people, product shots on many sites) are not <img> elements.
   const backgrounds: CaptureRect[] = []
   for (const el of Array.from(document.querySelectorAll('div, section, header, figure, a, span')).slice(0, 4000)) {
     const bg = getComputedStyle(el).backgroundImage
     if (!bg || bg === 'none' || !/url\(/.test(bg) || /gradient/.test(bg) && !/url\(/.test(bg)) continue
     const r = toRect(el)
-    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el)) backgrounds.push(r)
+    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el) && !notAPicture(el, bg)) backgrounds.push(r)
   }
   backgrounds.sort((a, b) => b.width * b.height - a.width * a.height)
   candidates.push(...backgrounds)
