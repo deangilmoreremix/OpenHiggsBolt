@@ -26,6 +26,7 @@ import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
+import { adaptFilm } from './adaptLoop';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -218,7 +219,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
@@ -272,8 +273,29 @@ export async function buildFilmProject(
     const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
     log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
-  log(`Film built · ${project.tracks.length} tracks`, 'done');
-  return { ...project, spec: buildDesignSpec(plan, opts.capture, opts.prompt) };
+  const spec = buildDesignSpec(plan, opts.capture, opts.prompt);
+  let built: ProjectData = { ...project, spec };
+  // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
+  if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {
+    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture.brand?.fontFamily ?? undefined };
+    built = await adaptFilm(
+      built,
+      { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
+      {
+        render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+        review: async (p, frames, signal) => {
+          const render = (await import('../webRenderer')).renderStillOnWebExport;
+          const images: Array<{ second: number; image: string }> = [];
+          for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
+          const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
+          return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
+        },
+      },
+      log,
+    ).catch(() => built);
+  }
+  log(`Film built · ${built.tracks.length} tracks`, 'done');
+  return built;
 }
 
 export interface FilmQaReport {
