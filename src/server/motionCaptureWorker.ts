@@ -20,7 +20,7 @@ import {
 } from './motionCapture'
 
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
-export const WORKER_CAPTURE_OPTIONS = { hardMs: 90_000, budgetMs: 60_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
+export const WORKER_CAPTURE_OPTIONS = { hardMs: 360_000, budgetMs: 300_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
 
 export interface MotionCaptureJobRequest {
   jobId: string
@@ -72,7 +72,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
 
   const run = async () => {
     // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
-    const assetsRun = findMotionAssets(url, { budgetMs: 60_000 }).catch(() => [])
+    const assetsRun = findMotionAssets(url, { budgetMs: 240_000 }).catch(() => [])
     let capture: PageCapture
     try {
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
@@ -99,7 +99,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
       running,
       new Promise<void>((resolve) => {
         watchdog = setTimeout(() => {
-          resolve(fail('TIMEOUT', 'The capture took longer than 2 minutes'))
+          resolve(fail('TIMEOUT', 'The capture took longer than 8 minutes'))
         }, opts.watchdogMs ?? WORKER_WATCHDOG_MS)
       }),
     ])

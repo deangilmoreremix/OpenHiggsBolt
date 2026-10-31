@@ -13,12 +13,12 @@ describe('the asset finder for films', () => {
       ...Array.from({ length: 7 }, (_, n) => a(`p${n}`, 'person', 70 + n)),
       a('pr', 'product', 60), a('dup', 'product', 59, { sourceUrl: 'https://x.test/pr.jpg' }), a('rej', 'team', 99, { rejected: true }),
     ];
-    const picked = pickMotionAssets(found, 14, 5);
+    const picked = pickMotionAssets(found);
     expect(picked[0].category).toBe('person');
-    expect(picked.filter((x) => x.category === 'person')).toHaveLength(5);
+    expect(picked.filter((x) => x.category === 'person')).toHaveLength(7); // no per-kind limit
     expect(picked.some((x) => ['logo', 'irrelevant'].includes(x.category) || x.id === 'rej' || x.id === 'dup')).toBe(false);
-    expect(picked.map((x) => x.category)).toEqual(['person', 'person', 'person', 'person', 'person', 'product', 'storefront']);
-    expect(pickMotionAssets(found, 3)).toHaveLength(3);
+    expect(picked.map((x) => x.category)).toEqual([...Array(7).fill('person'), 'product', 'storefront']);
+    expect(pickMotionAssets(found, 3)).toHaveLength(3); // a caller may still ask for a limit
   });
 
   it('names stored files by type and puts the pictures with their labels in the response', () => {

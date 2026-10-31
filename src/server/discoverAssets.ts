@@ -88,6 +88,8 @@ interface DiscoveryOptions {
   maxImageBytes?: number
   openAiKey?: string
   openAiModel?: string
+  /** Crawl the site's other pages too, up to `maxPages` (the asset finder of films); off for the personalization modal. */
+  thorough?: boolean
   enableBrowserFallback?: boolean
   /**
    * Absolute epoch milliseconds after which the crawl must stop making new
@@ -327,7 +329,7 @@ function extractInternalLinks(baseUrl: string, html: string): string[] {
   return Array.from(links)
 }
 
-function selectPriorityPages(_baseUrl: string, links: string[]): string[] {
+function selectPriorityPages(_baseUrl: string, links: string[], limit = MAX_PAGES - 1, fill = false): string[] {
   const scored = links.map((link) => {
     const url = new URL(link)
     const path = url.pathname.toLowerCase()
@@ -343,8 +345,10 @@ function selectPriorityPages(_baseUrl: string, links: string[]): string[] {
   scored.sort((a, b) => b.score - a.score)
   const selected = scored
     .filter((s) => s.score > 0)
-    .slice(0, MAX_PAGES - 1)
+    .slice(0, limit)
     .map((s) => s.url)
+  // A thorough crawl (films) goes on with the site's other pages once the priority ones are taken.
+  if (fill) for (const s of scored) if (selected.length < limit && !selected.includes(s.url)) selected.push(s.url)
 
   if (selected.length === 0 && links.length > 0) {
     selected.push(links[0])
@@ -742,7 +746,7 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
 
   // 3. Discover linked pages and crawl them
   const links = extractInternalLinks(baseUrl, homeHtml)
-  const priorityLinks = selectPriorityPages(baseUrl, links)
+  const priorityLinks = selectPriorityPages(baseUrl, links, Math.max(0, maxPages - 1), Boolean(options.thorough))
   const pagesToCrawl = priorityLinks.slice(0, Math.max(0, maxPages - 1))
 
   if (pagesToCrawl.length > 0) {

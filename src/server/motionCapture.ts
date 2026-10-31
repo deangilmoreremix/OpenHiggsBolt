@@ -40,16 +40,21 @@ export function captureImages(capture: PageCapture): StoredImage[] {
 /** Uploads every image at once under the caller's prefix; returns its public URL by name. */
 export async function storeCaptureImages(storage: CaptureStorage, userId: string, images: StoredImage[]): Promise<Map<string, string>> {
   const folder = `${sanitizeName(userId)}/motion-capture/${randomUUID()}`
-  const stored = await Promise.all(
-    images.map(async (image) => {
+  // Many pictures: upload eight at a time rather than all at once.
+  const stored: Array<readonly [string, string]> = []
+  let next = 0
+  const lanes = Array.from({ length: Math.min(8, images.length) }, async () => {
+    while (next < images.length) {
+      const image = images[next++]
       const path = `${folder}/${image.name}`
       const { error } = await storage.upload(path, image.body, { contentType: image.contentType, upsert: false })
       if (error) throw new Error(`storage upload failed: ${error.message}`)
       const { data } = storage.getPublicUrl(path)
       if (!data?.publicUrl) throw new Error('storage returned no public URL')
-      return [image.name, data.publicUrl] as const
-    }),
-  )
+      stored.push([image.name, data.publicUrl] as const)
+    }
+  })
+  await Promise.all(lanes)
   return new Map(stored)
 }
 
@@ -109,7 +114,7 @@ export type CaptureJob =
   | { state: 'error'; finishedAt: string; code: string; error: string; timing?: Record<string, number> }
 
 /** The whole background job (capture + upload) gets this long, then the worker writes a `timed out` record. */
-export const WORKER_WATCHDOG_MS = 120_000
+export const WORKER_WATCHDOG_MS = 480_000
 /** A record still `running` this long after it started belongs to a worker that died (memory, host limit). */
 export const CAPTURE_JOB_STALE_MS = WORKER_WATCHDOG_MS + 15_000
 

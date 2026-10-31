@@ -16,8 +16,8 @@ export interface MotionAsset {
 /** What a film wants most first: faces, then what the business sells and where it works. */
 export const CATEGORY_PRIORITY: readonly DiscoveredAssetCategory[] = ['person', 'team', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'brand']
 
-/** Best pictures first, at most `max`, at most `perCategory` of one kind so the film is not eight headshots. Pure. */
-export function pickMotionAssets(found: readonly DiscoveredAsset[], max = 14, perCategory = 5): DiscoveredAsset[] {
+/** Every usable picture, best first (people, then what the business sells…), never the same file twice. `max` / `perCategory` only if a caller wants a limit. Pure. */
+export function pickMotionAssets(found: readonly DiscoveredAsset[], max = Infinity, perCategory = Infinity): DiscoveredAsset[] {
   const usable = found.filter((a) => !a.rejected && a.category !== 'irrelevant' && a.category !== 'logo' && !a.isSiteLogo)
   const out: DiscoveredAsset[] = []
   const count = new Map<string, number>()
@@ -37,10 +37,10 @@ export function pickMotionAssets(found: readonly DiscoveredAsset[], max = 14, pe
 
 /** Crawl, label, download. Never throws: no pictures is a normal answer. */
 export async function findMotionAssets(websiteUrl: string, opts: { budgetMs?: number; max?: number } = {}): Promise<MotionAsset[]> {
-  const deadlineAt = Date.now() + (opts.budgetMs ?? 60_000)
+  const deadlineAt = Date.now() + (opts.budgetMs ?? 200_000)
   try {
-    const found = await discoverBusinessAssets({ websiteUrl, maxPages: 6, maxImages: 30, deadlineAt: deadlineAt - 12_000 })
-    const picked = pickMotionAssets(found, opts.max ?? 14)
+    const found = await discoverBusinessAssets({ websiteUrl, maxPages: 40, maxImages: 200, thorough: true, deadlineAt: deadlineAt - 20_000 })
+    const picked = pickMotionAssets(found, opts.max ?? Infinity)
     const downloaded = await Promise.all(
       picked.map(async (a) => {
         const file = await downloadImage(a.sourceUrl, deadlineAt)

@@ -1706,10 +1706,12 @@ const CAPTURE_FIRST_SHOT_MS = 7_000
 /** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** A deep capture (the background worker has minutes, not seconds) takes more routes, more cards and the whole length of the page. */
-export const DEEP_MAX_ROUTES = 4
-export const DEEP_MAX_CROPS = 12
-export const DEEP_MAX_Y = 7_500
-export const DEEP_MAX_BANDS = 8
+/** Deep captures stop on time, not on a count: these are only guards against runaway pages. */
+export const DEEP_MAX_ROUTES = 25
+export const DEEP_MAX_CROPS = 40
+export const DEEP_MAX_Y = 40_000
+export const DEEP_MAX_BANDS = 60
+export const DEEP_MAX_IMAGES = 120
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
 /** A film wants this many distinct pictures of the site; page slices make up the difference. */
@@ -2351,7 +2353,7 @@ export async function capturePageScreenshots(
         out = result
 
         // The site's own assets first (what the film shows): its logo (transparent PNG) and largest images.
-        const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
+        const assets = (await page.evaluate(findAssetRects, { maxY: deep ? DEEP_MAX_Y : CAPTURE_MAX_IMAGE_Y, maxImages: deep ? DEEP_MAX_IMAGES : CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
         result.logo = assets.logo ? await clipShot(assets.logo, true) : null
         for (const rect of assets.images) {
           if (left() < 4_000) break
@@ -2376,14 +2378,14 @@ export async function capturePageScreenshots(
         mark('extras')
 
         // More routes of the same site, captured the same way, while time allows.
-        let cropBudget = (deep ? CAPTURE_MAX_TOTAL_CROPS * 2 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
+        let cropBudget = (deep ? 400 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
           if (deep ? left() < 12_000 : elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
           try {
             await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
             const landed = await guard.validateNavigationTarget(page.url())
             if (landed.hostname !== finalTarget.hostname) continue
-            const shot = await shootRoute(Math.max(0, Math.min(2, cropBudget)))
+            const shot = await shootRoute(Math.max(0, Math.min(deep ? DEEP_MAX_CROPS : 2, cropBudget)))
             cropBudget -= shot.crops.length
             result.routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
             result.crops.push(...shot.crops)

@@ -321,11 +321,11 @@ const INSET_PAGE_H = 1200;
         props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
       } else if (scene.recipeId === 'brand/people-gallery') {
         const assets = opts.capture?.assets ?? [];
-        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 8);
+        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6); // the scene shows six; the rest feed the recipes' picture slots and insets
         // Each picture the asset finder labelled keeps its own caption (what it shows); the rest take the site's section names in order.
         const label = (a: { category: string; alt: string }) => (a.alt || a.category.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
         const notes = [...assets.map(label), ...(opts.capture?.sectionNames ?? [])];
-        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: notes.slice(0, 8).join('\n'), text: title };
+        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: notes.slice(0, 6).join('\n'), text: title };
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
       }
