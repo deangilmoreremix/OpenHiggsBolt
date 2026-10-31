@@ -11,7 +11,7 @@ import { NextRequest } from 'next/server'
 class FakeSsrfError extends Error {}
 
 // The asset finder crawls the real site: tests stay offline.
-vi.mock('../src/server/motionAssets', () => ({ findMotionAssets: vi.fn(async () => []) }))
+vi.mock('../src/server/motionAssets', () => ({ findMotionAssets: vi.fn(async () => ({ assets: [], logo: null })) }))
 
 let userId: string | null = 'user_1'
 const files = new Map<string, string | Buffer>()

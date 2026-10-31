@@ -72,7 +72,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
 
   const run = async () => {
     // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
-    const assetsRun = findMotionAssets(url, { budgetMs: 240_000 }).catch(() => [])
+    const assetsRun = findMotionAssets(url, { budgetMs: 200_000 }).catch(() => ({ assets: [], logo: null }))
     let capture: PageCapture
     try {
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
@@ -83,9 +83,11 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS, hardMs, budgetMs: Math.min(WORKER_CAPTURE_OPTIONS.budgetMs, hardMs - 20_000) })
     }
     if (captureIsEmpty(capture)) return fail('CAPTURE_FAILED', 'The page could not be captured: it showed no picture and no text')
-    const found = await assetsRun
+    const { assets: found, logo: crawledLogo } = await assetsRun
+    // The browser could not cut the logo out of the page: use the one the crawl found.
+    const extraImages = !capture.logo && crawledLogo ? [{ name: 'logo.png', body: crawledLogo.body, contentType: crawledLogo.contentType }] : []
     const assetImages = found.map((a, i) => ({ name: assetFileName(i, a.contentType), body: a.body, contentType: a.contentType }))
-    const urls = await storeCaptureImages(storage, userId, [...captureImages(capture), ...assetImages])
+    const urls = await storeCaptureImages(storage, userId, [...captureImages(capture), ...extraImages, ...assetImages])
     const info = found.map((a, i) => ({ name: assetFileName(i, a.contentType), category: a.category, alt: a.alt }))
     await write({ state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls, false, info) })
   }

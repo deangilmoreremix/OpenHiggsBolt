@@ -2088,6 +2088,18 @@ export function pickCaptureRoutes(
     })
 }
 
+/**
+ * The page the browser landed on belongs to the same site as the one asked for: the same host, `www.` added or
+ * dropped, or a sub-domain of it. (shopify.com -> www.shopify.com is the usual case.) The SSRF gate has already
+ * validated the landing address; this only decides it is still "the site" and not somewhere else.
+ */
+export function sameSiteHost(asked: string, landed: string): boolean {
+  const bare = (h: string) => h.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  const a = bare(asked)
+  const b = bare(landed)
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)
+}
+
 /** Clip rects for 16:9 slices of the page from `fromY` down to `toY` (a short last slice is kept when it is at least half a slice). */
 export function bandRects(fromY: number, toY: number, width: number, bandH: number, max: number): Array<{ x: number; y: number; width: number; height: number }> {
   const out: Array<{ x: number; y: number; width: number; height: number }> = []
@@ -2207,7 +2219,10 @@ export async function capturePageScreenshots(
         const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)
         const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
         const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
-        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip })
+        // A heavy page may not give a tall picture in time: fall back to what is on screen rather than lose the page.
+        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip, timeout: 25_000 }).catch(() =>
+          page.screenshot({ type: 'jpeg', quality: 80, animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: Math.min(pageHeight, CAPTURE_VIEWPORT.height) }, timeout: 15_000 }),
+        )
         // The page is usable from here: a stalled crop below must not lose it.
         onShot?.(shot, pageHeight)
 
@@ -2260,7 +2275,7 @@ export async function capturePageScreenshots(
       const work = async (): Promise<PageCapture> => {
         await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: options.navigationMs ?? CAPTURE_NAVIGATION_TIMEOUT })
         const finalTarget = await guard.validateNavigationTarget(page.url())
-        if (finalTarget.hostname !== baseTarget.hostname) {
+        if (!sameSiteHost(baseTarget.hostname, finalTarget.hostname)) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
         }
         mark('loaded')
@@ -2308,7 +2323,9 @@ export async function capturePageScreenshots(
         }
         snapshot.page = first
         mark('first')
-        const home = await shootRoute(
+        let home: Awaited<ReturnType<typeof shootRoute>>
+        try {
+          home = await shootRoute(
           maxCrops,
           (shot, pageHeight) => {
             // The full-height shot replaces the first one.
@@ -2319,7 +2336,13 @@ export async function capturePageScreenshots(
             }
           },
           homeAcc,
-        )
+          )
+        } catch (error) {
+          // The first picture and the page's words are already in the snapshot: hand those back instead of failing.
+          warnStep('home', error)
+          mark('home-failed')
+          return snapshot
+        }
         mark('home')
         const read = await page.evaluate(readPageContent).catch(() => null)
         const content: PageContent = read

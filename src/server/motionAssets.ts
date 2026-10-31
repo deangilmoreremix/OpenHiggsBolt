@@ -35,21 +35,36 @@ export function pickMotionAssets(found: readonly DiscoveredAsset[], max = Infini
   return out
 }
 
+export interface MotionAssetResult {
+  assets: MotionAsset[]
+  /** The site's own logo as the crawl found it: used when the browser could not cut one out of the page. */
+  logo: MotionAsset | null
+}
+
+/** The best logo candidate (the image the site links home with, else the most confident `logo`). Pure. */
+export function pickLogoAsset(found: readonly DiscoveredAsset[]): DiscoveredAsset | null {
+  const logos = found.filter((a) => !a.rejected && (a.isSiteLogo || a.category === 'logo'))
+  return logos.sort((x, y) => Number(Boolean(y.isSiteLogo)) - Number(Boolean(x.isSiteLogo)) || (y.confidence ?? 0) - (x.confidence ?? 0))[0] ?? null
+}
+
 /** Crawl, label, download. Never throws: no pictures is a normal answer. */
-export async function findMotionAssets(websiteUrl: string, opts: { budgetMs?: number; max?: number } = {}): Promise<MotionAsset[]> {
+export async function findMotionAssets(websiteUrl: string, opts: { budgetMs?: number; max?: number } = {}): Promise<MotionAssetResult> {
   const deadlineAt = Date.now() + (opts.budgetMs ?? 200_000)
   try {
     const found = await discoverBusinessAssets({ websiteUrl, maxPages: 40, maxImages: 200, thorough: true, deadlineAt: deadlineAt - 20_000 })
     const picked = pickMotionAssets(found, opts.max ?? Infinity)
+    const logoPick = pickLogoAsset(found)
+    const logoFile = logoPick ? await downloadImage(logoPick.sourceUrl, deadlineAt) : null
+    const logo: MotionAsset | null = logoPick && logoFile ? { ...logoFile, category: 'logo', alt: '', source: logoPick.sourceUrl } : null
     const downloaded = await Promise.all(
       picked.map(async (a) => {
         const file = await downloadImage(a.sourceUrl, deadlineAt)
         return file ? ({ ...file, category: a.category, alt: (a.altText ?? '').replace(/\s+/g, ' ').trim().slice(0, 120), source: a.sourceUrl } satisfies MotionAsset) : null
       }),
     )
-    return downloaded.filter((x): x is MotionAsset => x !== null)
+    return { assets: downloaded.filter((x): x is MotionAsset => x !== null), logo }
   } catch (error) {
     console.warn('[motion-studio/assets] discovery failed', error instanceof Error ? error.message.split('\n')[0] : error)
-    return []
+    return { assets: [], logo: null }
   }
 }

@@ -288,3 +288,17 @@ describe('deep capture helpers', () => {
     expect(bandRects(1000, 1600, 1920, 1080, 8)).toEqual([{ x: 0, y: 1000, width: 1920, height: 600 }]);
   });
 });
+
+describe('same-site redirects', () => {
+  it('accepts www / sub-domain moves of the same site and nothing else', async () => {
+    const { sameSiteHost } = await import('../src/server/browserDiscovery');
+    expect(sameSiteHost('shopify.com', 'www.shopify.com')).toBe(true);
+    expect(sameSiteHost('www.acme.io', 'acme.io')).toBe(true);
+    expect(sameSiteHost('acme.io', 'app.acme.io')).toBe(true);
+    expect(sameSiteHost('acme.io', 'acme.io.')).toBe(true);
+    expect(sameSiteHost('acme.io', 'evil.io')).toBe(false);
+    expect(sameSiteHost('acme.io', 'acme.io.evil.io')).toBe(false);
+    expect(sameSiteHost('acme.io', 'notacme.io')).toBe(false);
+    expect(sameSiteHost('acme.io', '127.0.0.1')).toBe(false);
+  });
+});

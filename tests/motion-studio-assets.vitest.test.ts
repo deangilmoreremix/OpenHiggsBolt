@@ -30,3 +30,13 @@ describe('the asset finder for films', () => {
     expect(res.assets).toEqual([{ url: 'u/asset-1.jpg', category: 'person', alt: 'Andrew Garnett' }]);
   });
 });
+
+describe('the crawl\'s logo', () => {
+  it('prefers the image the site links home with, then the most confident logo, and ignores rejected ones', async () => {
+    const { pickLogoAsset } = await import('../src/server/motionAssets');
+    const logo = (id: string, o: Partial<DiscoveredAsset>) => a(id, 'logo', 50, o);
+    expect(pickLogoAsset([a('x', 'person')])).toBeNull();
+    expect(pickLogoAsset([logo('l1', { confidence: 90 }), logo('l2', { isSiteLogo: true, confidence: 40 })])?.id).toBe('l2');
+    expect(pickLogoAsset([logo('l1', { confidence: 60 }), logo('l3', { confidence: 80 }), logo('r', { confidence: 99, rejected: true })])?.id).toBe('l3');
+  });
+});
