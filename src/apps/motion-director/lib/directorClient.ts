@@ -38,6 +38,8 @@ export interface SiteCapture {
   brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
   /** Every route captured, the page asked for first (upstream captures several routes of the site). */
   pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
+  /** Pictures of the site found by the asset finder (people, team, products…), with what each one shows. */
+  assets?: Array<{ url: string; category: string; alt: string }>;
   /** Floating UI cutouts: the nav bar, and transparent PNGs of the search pill and main button. */
   cutouts?: { nav: string | null; search: string | null; button: string | null };
   /** The page with its cards hidden, for fly-in shots. */

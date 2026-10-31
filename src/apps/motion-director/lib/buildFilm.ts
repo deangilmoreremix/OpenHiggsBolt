@@ -26,6 +26,8 @@ export interface FilmCapture {
   crops: string[];
   /** The site's name, shown on the inset pictures. */
   title?: string;
+  /** The site's own pictures from the asset finder, best first; they also lead `crops`. */
+  assets?: Array<{ url: string; category: string; alt: string }>;
   /** Where the page's sections start (CSS px from the top of `screens[0]`) and its height; the insets show them one by one. */
   sections?: number[];
   pageH?: number;
@@ -318,8 +320,12 @@ const INSET_PAGE_H = 1200;
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
         props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
       } else if (scene.recipeId === 'brand/people-gallery') {
-        const pics = [...crops, ...screens.slice(1)].slice(0, 6);
-        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: (opts.capture?.sectionNames ?? []).slice(0, 6).join('\n'), text: title };
+        const assets = opts.capture?.assets ?? [];
+        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 8);
+        // Each picture the asset finder labelled keeps its own caption (what it shows); the rest take the site's section names in order.
+        const label = (a: { category: string; alt: string }) => (a.alt || a.category.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
+        const notes = [...assets.map(label), ...(opts.capture?.sectionNames ?? [])];
+        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: notes.slice(0, 8).join('\n'), text: title };
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
       }

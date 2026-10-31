@@ -848,3 +848,29 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
 
   return results
 }
+
+/** The bytes of one image (same safety gate as discovery: validated redirects, size cap). Null when it cannot be had. */
+export async function downloadImage(url: string, deadlineAt?: number): Promise<{ body: Buffer; contentType: string } | null> {
+  const timeout = remainingBudgetMs(deadlineAt)
+  if (timeout <= 0) return null
+  try {
+    const response = await requestWithValidatedRedirects(
+      url,
+      (target, config) =>
+        axios.get(target, {
+          ...config,
+          headers: IMAGE_HEADERS,
+          responseType: 'arraybuffer',
+          maxContentLength: MAX_IMAGE_BYTES,
+          validateStatus: (s: number) => s >= 200 && s < 300,
+        }),
+      REDIRECT_LIMIT,
+      Math.min(timeout, 10_000),
+    )
+    const contentType = String(response.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(contentType)) return null
+    return { body: Buffer.from(response.data as ArrayBuffer), contentType }
+  } catch {
+    return null
+  }
+}

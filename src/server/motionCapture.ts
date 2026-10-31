@@ -57,7 +57,17 @@ export async function storeCaptureImages(storage: CaptureStorage, userId: string
 export const captureIsEmpty = (capture: PageCapture): boolean => !capture.page && !captureHasWords(capture)
 
 /** The JSON the client receives, from a capture and the URLs its images were stored at. */
-export function buildCaptureResponse(capture: PageCapture, urls: Map<string, string>, transient = false) {
+/** A picture the asset finder found on the site, stored under `name`. */
+export interface StoredAssetInfo {
+  name: string
+  category: string
+  alt: string
+}
+
+/** Stored file names of the asset finder's pictures: asset-1.jpg … */
+export const assetFileName = (index: number, contentType: string) => `asset-${index + 1}.${contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : contentType === 'image/gif' ? 'gif' : 'jpg'}`
+
+export function buildCaptureResponse(capture: PageCapture, urls: Map<string, string>, transient = false, assets: readonly StoredAssetInfo[] = []) {
   const at = (name: string) => urls.get(name) ?? null
   const width = CAPTURE_VIEWPORT.width * CAPTURE_DEVICE_SCALE
   let homePath = '/'
@@ -80,6 +90,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     pages,
     crops: capture.crops.map((_, i) => at(`crop-${i + 1}.jpg`)!),
     images: (capture.images ?? []).map((_, i) => at(`image-${i + 1}.jpg`)!),
+    // The asset finder's pictures of the site (people, team, products…), with what each one shows.
+    assets: assets.map((a) => ({ url: at(a.name), category: a.category, alt: a.alt })).filter((a): a is { url: string; category: string; alt: string } => Boolean(a.url)),
     logo: at('logo.png'),
     cutouts: { nav: at('nav.jpg'), search: at('float-search.png'), button: at('float-button.png') },
     emptyPlate: at('page-empty.jpg'),

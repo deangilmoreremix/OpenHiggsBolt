@@ -5,8 +5,10 @@
  * has minutes. The result is a job record the client polls (`/api/motion-studio/capture/status`).
  */
 import { BrowserSsrfError, capturePageScreenshots, type PageCapture } from './browserDiscovery'
+import { findMotionAssets } from './motionAssets'
 import {
   CAPTURE_JOB_ID,
+  assetFileName,
   buildCaptureResponse,
   captureImages,
   captureIsEmpty,
@@ -69,6 +71,8 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
     write({ state: 'error', finishedAt: new Date().toISOString(), code, error: message, ...(timing && typeof timing === 'object' ? { timing: timing as Record<string, number> } : {}) })
 
   const run = async () => {
+    // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
+    const assetsRun = findMotionAssets(url, { budgetMs: 60_000 }).catch(() => [])
     let capture: PageCapture
     try {
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
@@ -79,8 +83,11 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS, hardMs, budgetMs: Math.min(WORKER_CAPTURE_OPTIONS.budgetMs, hardMs - 20_000) })
     }
     if (captureIsEmpty(capture)) return fail('CAPTURE_FAILED', 'The page could not be captured: it showed no picture and no text')
-    const urls = await storeCaptureImages(storage, userId, captureImages(capture))
-    await write({ state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls) })
+    const found = await assetsRun
+    const assetImages = found.map((a, i) => ({ name: assetFileName(i, a.contentType), body: a.body, contentType: a.contentType }))
+    const urls = await storeCaptureImages(storage, userId, [...captureImages(capture), ...assetImages])
+    const info = found.map((a, i) => ({ name: assetFileName(i, a.contentType), category: a.category, alt: a.alt }))
+    await write({ state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls, false, info) })
   }
 
   let watchdog: ReturnType<typeof setTimeout> | undefined
