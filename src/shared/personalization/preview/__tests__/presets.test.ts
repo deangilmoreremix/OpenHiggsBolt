@@ -14,6 +14,7 @@ import {
   PREVIEW_POSITIONS,
   resetLayoutToDefaults,
   toBox,
+  layoutPlacement,
 } from '../presets'
 import { DEFAULT_PREVIEW_BRAND_COLORS } from '../types'
 import { DESIGN_FONT_STACK } from '../../templates/typography'
@@ -274,9 +275,11 @@ describe('resetLayoutToDefaults', () => {
     )
     // …while position is back to the layout default, not the customer's.
     expect(next.layers.find((layer) => layer.kind === 'headline')?.x).toBe(
-      createLayer('headline').x,
+      layoutPlacement('business-introduction', 'headline', next.width, next.height)?.x,
     )
-    expect(next.layers.find((layer) => layer.kind === 'logo')?.x).toBe(createLayer('logo').x)
+    expect(next.layers.find((layer) => layer.kind === 'logo')?.x).toBe(
+      layoutPlacement('business-introduction', 'logo', next.width, next.height)?.x,
+    )
   })
 
   it('re-seeds tagline and serviceImage for the service-promotion layout', () => {

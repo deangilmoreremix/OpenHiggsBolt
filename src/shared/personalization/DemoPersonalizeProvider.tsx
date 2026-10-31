@@ -103,6 +103,7 @@ import {
   applyDesignTemplate,
   resetLayoutToDefaults,
   removeDesignLayer,
+  relayoutForAspect,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
@@ -4513,6 +4514,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           const dimensions = getCompositionDimensions(patch.aspectRatio)
           next.width = dimensions.width
           next.height = dimensions.height
+          // Untouched layers move to the layout's arrangement for the new shape.
+          return relayoutForAspect(prev, next)
         }
         return next
       })

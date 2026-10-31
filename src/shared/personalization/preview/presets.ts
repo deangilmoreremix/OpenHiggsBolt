@@ -255,6 +255,65 @@ export const LAYER_IDS_BY_LAYOUT: Record<PreviewLayoutId, PreviewLayerKind[]> = 
   'branded-ending': ['logo', 'businessName', 'cta', 'endCard'],
 }
 
+/** Frame shape a layout arranges itself for. */
+export type LayoutShape = 'wide' | 'square' | 'tall'
+
+/** 16:9 is wide; 1:1 and 4:5 are square; 9:16 is tall. */
+export function layoutShapeFor(width: number, height: number): LayoutShape {
+  const w = Number.isFinite(width) && width > 0 ? width : 1920
+  const h = Number.isFinite(height) && height > 0 ? height : 1080
+  const ratio = w / h
+  if (ratio >= 1.3) return 'wide'
+  if (ratio >= 0.75) return 'square'
+  return 'tall'
+}
+
+type Placement = { x: number; y: number; scale: number }
+
+/**
+ * Where each layout puts its layers, per frame shape (centers + scale, the
+ * same units as `PreviewLayer`). Every arrangement is checked by a unit test
+ * so no two layers of a layout overlap at any aspect ratio: wide frames put
+ * photos beside the text, square and tall frames stack them.
+ */
+export const LAYOUT_PLACEMENTS: Record<PreviewLayoutId, Record<LayoutShape, Partial<Record<PreviewLayerKind, Placement>>>> = {
+  'business-introduction': {
+    wide: { logo: { x: 0.12, y: 0.2, scale: 0.12 }, businessName: { x: 0.5, y: 0.62, scale: 0.07 }, headline: { x: 0.5, y: 0.75, scale: 0.045 } },
+    square: { logo: { x: 0.5, y: 0.25, scale: 0.26 }, businessName: { x: 0.5, y: 0.56, scale: 0.065 }, headline: { x: 0.5, y: 0.68, scale: 0.045 } },
+    tall: { logo: { x: 0.5, y: 0.25, scale: 0.4 }, businessName: { x: 0.5, y: 0.5, scale: 0.04 }, headline: { x: 0.5, y: 0.58, scale: 0.028 } },
+  },
+  'product-showcase': {
+    wide: { logo: { x: 0.08, y: 0.12, scale: 0.08 }, productImage: { x: 0.72, y: 0.5, scale: 0.3 }, headline: { x: 0.3, y: 0.42, scale: 0.05 }, offer: { x: 0.3, y: 0.58, scale: 0.04 } },
+    square: { logo: { x: 0.12, y: 0.1, scale: 0.14 }, productImage: { x: 0.5, y: 0.36, scale: 0.4 }, headline: { x: 0.5, y: 0.66, scale: 0.05 }, offer: { x: 0.5, y: 0.78, scale: 0.04 } },
+    tall: { logo: { x: 0.15, y: 0.07, scale: 0.2 }, productImage: { x: 0.5, y: 0.33, scale: 0.7 }, headline: { x: 0.5, y: 0.62, scale: 0.032 }, offer: { x: 0.5, y: 0.75, scale: 0.026 } },
+  },
+  'service-promotion': {
+    wide: { logo: { x: 0.08, y: 0.12, scale: 0.08 }, serviceImage: { x: 0.72, y: 0.5, scale: 0.3 }, headline: { x: 0.3, y: 0.42, scale: 0.05 }, tagline: { x: 0.3, y: 0.58, scale: 0.035 } },
+    square: { logo: { x: 0.12, y: 0.1, scale: 0.14 }, serviceImage: { x: 0.5, y: 0.36, scale: 0.4 }, headline: { x: 0.5, y: 0.66, scale: 0.05 }, tagline: { x: 0.5, y: 0.78, scale: 0.035 } },
+    tall: { logo: { x: 0.15, y: 0.07, scale: 0.2 }, serviceImage: { x: 0.5, y: 0.33, scale: 0.7 }, headline: { x: 0.5, y: 0.62, scale: 0.032 }, tagline: { x: 0.5, y: 0.75, scale: 0.024 } },
+  },
+  'special-offer': {
+    wide: { headline: { x: 0.5, y: 0.28, scale: 0.065 }, offer: { x: 0.5, y: 0.48, scale: 0.08 }, cta: { x: 0.5, y: 0.72, scale: 0.05 } },
+    square: { headline: { x: 0.5, y: 0.28, scale: 0.06 }, offer: { x: 0.5, y: 0.48, scale: 0.075 }, cta: { x: 0.5, y: 0.72, scale: 0.05 } },
+    tall: { headline: { x: 0.5, y: 0.34, scale: 0.04 }, offer: { x: 0.5, y: 0.47, scale: 0.05 }, cta: { x: 0.5, y: 0.62, scale: 0.03 } },
+  },
+  'branded-ending': {
+    wide: { logo: { x: 0.5, y: 0.26, scale: 0.14 }, businessName: { x: 0.5, y: 0.6, scale: 0.065 }, cta: { x: 0.5, y: 0.76, scale: 0.045 } },
+    square: { logo: { x: 0.5, y: 0.28, scale: 0.26 }, businessName: { x: 0.5, y: 0.6, scale: 0.065 }, cta: { x: 0.5, y: 0.76, scale: 0.05 } },
+    tall: { logo: { x: 0.5, y: 0.28, scale: 0.4 }, businessName: { x: 0.5, y: 0.5, scale: 0.04 }, cta: { x: 0.5, y: 0.6, scale: 0.03 } },
+  },
+}
+
+/** A layout's default placement for one layer kind at a frame size. */
+export function layoutPlacement(
+  layoutId: PreviewLayoutId,
+  kind: PreviewLayerKind,
+  width: number,
+  height: number,
+): Placement | undefined {
+  return LAYOUT_PLACEMENTS[layoutId]?.[layoutShapeFor(width, height)]?.[kind]
+}
+
 /**
  * The customer-facing font picker (Phase 3 decision D3).
  *
@@ -381,7 +440,9 @@ export function createDefaultPreviewSettings(
   const { width, height } = getCompositionDimensions('16:9')
   const base: PersonalizationPreviewSettings = {
     layout: 'business-introduction',
-    layers: LAYER_IDS_BY_LAYOUT['business-introduction'].map((kind) => createLayer(kind)),
+    layers: LAYER_IDS_BY_LAYOUT['business-introduction'].map((kind) =>
+      createLayer(kind, layoutPlacement('business-introduction', kind, width, height)),
+    ),
     brandColors: { ...DEFAULT_PREVIEW_BRAND_COLORS },
     aspectRatio: '16:9',
     fps: DEFAULT_PREVIEW_FPS,
@@ -423,8 +484,14 @@ export interface ApplyLayoutContext {
   serviceUrl?: string
 }
 
-function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext): PreviewLayer {
+function createSeededLayer(
+  kind: PreviewLayerKind,
+  ctx?: ApplyLayoutContext,
+  placement?: { layoutId: PreviewLayoutId; width: number; height: number },
+): PreviewLayer {
   const overrides: Partial<PreviewLayer> = {}
+  const position = placement ? layoutPlacement(placement.layoutId, kind, placement.width, placement.height) : undefined
+  if (position) Object.assign(overrides, position)
   if (kind === 'headline') {
     const text = nonEmptyString(ctx?.headline)
     if (text) overrides.text = text
@@ -473,7 +540,7 @@ export function applyLayoutPreset(
   const layers = kinds.map((kind) => {
     const kept = existingById.get(kind)
     if (kept) return clampLayer({ ...kept })
-    return createSeededLayer(kind, ctx)
+    return createSeededLayer(kind, ctx, { layoutId, width: settings.width, height: settings.height })
   })
   // An applied design stacks ON TOP of the layout: switching the layout keeps
   // the design layer (and the customer's edits to it) after the layout layers.
@@ -521,7 +588,7 @@ export function resetLayoutToDefaults(
     if (layer && typeof layer.kind === 'string') previousByKind.set(layer.kind, layer)
   }
   const layers = kinds.map((kind) => {
-    const seeded = createSeededLayer(kind, ctx)
+    const seeded = createSeededLayer(kind, ctx, { layoutId, width: settings.width, height: settings.height })
     const previous = previousByKind.get(kind)
     if (!previous) return seeded
     // Carry over brand content the seed did not provide. The seed wins when
@@ -550,6 +617,29 @@ export function resetLayoutToDefaults(
     return applyDesignTemplate({ ...reset, layers: [...layers, designLayer] }, designLayer.designId, ctx)
   }
   return reset
+}
+
+/**
+ * Re-arranges a layout for a new frame shape after the aspect ratio changes.
+ *
+ * Only layers still sitting at the layout's default placement for the OLD
+ * shape move to the default for the NEW shape; anything the customer moved or
+ * resized keeps their edit. Pure: returns a new settings object.
+ */
+export function relayoutForAspect(
+  prev: PersonalizationPreviewSettings,
+  next: PersonalizationPreviewSettings,
+): PersonalizationPreviewSettings {
+  if (layoutShapeFor(prev.width, prev.height) === layoutShapeFor(next.width, next.height)) return next
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-3
+  const layers = next.layers.map((layer) => {
+    const before = layoutPlacement(next.layout, layer.kind, prev.width, prev.height)
+    const after = layoutPlacement(next.layout, layer.kind, next.width, next.height)
+    if (!before || !after) return layer
+    const untouched = near(layer.x, before.x) && near(layer.y, before.y) && near(layer.scale, before.scale)
+    return untouched ? clampLayer({ ...layer, ...after }) : layer
+  })
+  return { ...next, layers }
 }
 
 /** The layout a fresh preview starts from. */

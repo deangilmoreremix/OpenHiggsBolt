@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { layoutPlacement } from '../preview/presets'
 
 vi.mock('studio/src/muapi', () => ({ uploadFile: vi.fn() }))
 
@@ -336,10 +337,12 @@ describe('DemoPersonalizeProvider Restore default layout end-to-end', () => {
     const restoredProduct = after.previewSettings.layers.find((l: any) => l.kind === 'productImage')
     const restoredHeadline = after.previewSettings.layers.find((l: any) => l.kind === 'headline')
 
-    // Geometry restored to the layout default (0.08/0.08, scale 0.22 for logo)
-    expect(restoredLogo.x).toBe(0.08)
-    expect(restoredLogo.y).toBe(0.08)
-    expect(restoredLogo.scale).toBe(0.22)
+    // Geometry restored to the layout's default placement for this frame shape.
+    const { layout, width, height } = after.previewSettings
+    const logoDefault = layoutPlacement(layout, 'logo', width, height)!
+    expect(restoredLogo.x).toBe(logoDefault.x)
+    expect(restoredLogo.y).toBe(logoDefault.y)
+    expect(restoredLogo.scale).toBe(logoDefault.scale)
     expect(restoredLogo.visible).toBe(true)
     // Logo imageUrl is re-seeded from previewSeed (which derives from the
     // selected primary logo asset), i.e. the logo asset's persisted durable URL.
@@ -352,8 +355,8 @@ describe('DemoPersonalizeProvider Restore default layout end-to-end', () => {
     expect(after.previewSettings.brandColors.accent).toBe('#fedcba')
     // Text was re-seeded from the form/asset context, not from the dragged
     // headline (the dragged headline was at x=0.5, y=0.85; the seed is default).
-    expect(restoredHeadline.x).toBe(0.08)
-    expect(restoredHeadline.y).toBe(0.4)
+    expect(restoredHeadline.x).toBe(layoutPlacement(layout, 'headline', width, height)!.x)
+    expect(restoredHeadline.y).toBe(layoutPlacement(layout, 'headline', width, height)!.y)
   })
 })
 
