@@ -201,4 +201,34 @@ describe('Advanced Editing readiness', () => {
     expect($(container, 'pz-tab-client')!.getAttribute('data-issue')).toBeNull()
     expect($(container, 'pz-footer-reason')?.textContent || '').not.toContain('business name')
   });
+
+  it('the phone is edited in one place (Profile); Business content links to it', async () => {
+    const container = await openModal();
+    expect(container.querySelectorAll('input[placeholder="555-555-5555"]').length).toBe(1)
+    expect($(container, 'pz-section-client-profile')!.querySelector('input[placeholder="555-555-5555"]')).toBeTruthy()
+
+    await act(async () => { $(container, 'pz-tab-assets')!.click(); });
+    await act(async () => { $(container, 'pz-pill-assets-content')!.click(); });
+    const note = $(container, 'pz-content-phone')!
+    expect(note.textContent).toContain('Add in Profile')
+    await act(async () => { (note.querySelector('button') as HTMLElement).click(); });
+    expect($(container, 'pz-section-client-profile')!.hidden).toBe(false)
+  });
+
+  it('a greyed-out mode says what is missing and links to where to add it', async () => {
+    const container = await openModal();
+    await act(async () => { latestCtx.setOutputType('video'); });
+    await act(async () => { $(container, 'pz-tab-create')!.click(); });
+    await act(async () => { $(container, 'pz-pill-create-output')!.click(); });
+
+    const reason = container.querySelector('[data-testid^="pz-mode-reason-"]') as HTMLElement
+    expect(reason, 'a person mode is unavailable without a presenter photo').toBeTruthy()
+    expect(reason.textContent).toMatch(/Assets › Your assets › Person \/ Presenter/)
+
+    const fix = container.querySelector('[data-testid^="pz-mode-fix-"]') as HTMLButtonElement
+    expect(fix.disabled).toBe(false)
+    await act(async () => { fix.click(); });
+    expect($(container, 'pz-tabpanel-assets')!.hidden).toBe(false)
+    expect($(container, 'pz-section-assets-yours')!.hidden).toBe(false)
+  });
 });

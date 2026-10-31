@@ -253,12 +253,17 @@ function isModeUnavailable(modeKey: string, assets: { primaryIdentity?: Personal
 
 function getModeUnavailableReason(modeKey: string, assets: { primaryIdentity?: PersonalizationAsset | null; identities?: PersonalizationAsset[] }): string {
   if (modeKey === 'face_only' || modeKey === 'replace_face') {
-    return 'Requires a person/identity photo.'
+    return 'Needs a clear photo of the person\'s face — add one under Assets › Your assets › Person / Presenter.'
   }
   if (modeKey === 'full_body' || modeKey === 'replace_person') {
-    return 'Requires a person/identity photo.'
+    return 'Needs a full-body photo of the person — add one under Assets › Your assets › Person / Presenter.'
   }
   return 'Not available for the current source/model.'
+}
+
+/** Modes that a presenter photo unlocks (the "Add a presenter photo" link). */
+function modeNeedsPresenter(modeKey: string): boolean {
+  return ['face_only', 'replace_face', 'full_body', 'replace_person'].includes(modeKey)
 }
 
 // ── Reusable sub-components ──────────────────────────────────────────────────
@@ -2110,6 +2115,11 @@ function ConfigurationView(props: any) {
   // affordances exist — the modal never renders a paid action the server has not
   // granted.
   const isAnonymous = access !== 'authenticated'
+  // Saved clients are picked one way at a time: the cards (customer audience)
+  // or else the dropdown in the profile form.
+  const showSavedClientCards = !isAnonymous && clientForm.audience === 'customer' && clients.length > 0
+  /** Clear the form for a client that isn't saved yet. */
+  const startNewClient = () => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }
   const isFreeDiscovery = isAnonymous && source?.sourceMetadata?.freeDiscovery === true
   // Generation config/output sections only exist for entitled users.
   const showGenerationSections = !isAnonymous && !isPromptOnly
@@ -3313,9 +3323,19 @@ function ConfigurationView(props: any) {
         <div id="pz-client-profile" className="panel" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
           {/* Saved Clients — entitlement-gated: free visitors have no saved
               profiles, so the control is not offered at all. */}
-          {!isAnonymous && clientForm.audience === 'customer' && clients.length > 0 && (
+          {showSavedClientCards && (
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Saved Clients</div>
+              <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Saved Clients</div>
+                <button
+                  type="button"
+                  data-testid="pz-new-client"
+                  onClick={startNewClient}
+                  className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-white/70 hover:bg-white/10"
+                >
+                  + New client
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2" style={{ maxHeight: 132, overflowY: 'auto' }} data-testid="pz-saved-clients">
                 {clients.map((c: any) => (
                   <button
@@ -3425,7 +3445,9 @@ function ConfigurationView(props: any) {
                 </div>
               )}
             </div>
-            {!isAnonymous && (
+            {/* The dropdown is the picker when the saved-client cards above
+                are not shown (one way to pick a client at a time). */}
+            {!isAnonymous && !showSavedClientCards && (
               <div className="col-span-full">
                 <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>Select Existing Client</label>
                 <div className="flex gap-2">
@@ -3448,7 +3470,7 @@ function ConfigurationView(props: any) {
                     ))}
                   </select>
                   <button
-                    onClick={() => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }}
+                    onClick={startNewClient}
                     className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/10"
                   >
                     New
@@ -3459,7 +3481,7 @@ function ConfigurationView(props: any) {
             <Field autoFilled={isAuto('businessName')} required focusId="businessName" label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
             <Field autoFilled={isAuto('industry')} label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
             <Field autoFilled={isAuto('location')} label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
-            <Field autoFilled={isAuto('phone')} label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
+            <Field autoFilled={isAuto('phone')} focusId="phone" label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
             {!isAnonymous && (
               <div className="col-span-full flex gap-2">
                 <button
@@ -3501,6 +3523,7 @@ function ConfigurationView(props: any) {
           {/* 1. Person / Presenter */}
           <article
             className="asset-card"
+            data-pz-focus="presenter"
             data-asset-section="person"
             onDragEnter={(e) => handleSectionDragEnter('person', e)}
             onDragOver={(e) => handleSectionDragOver('person', e)}
@@ -4332,7 +4355,17 @@ function ConfigurationView(props: any) {
           <Field autoFilled={isAuto('offer')} label="Offer" value={clientForm.offer} placeholder="Free Roof Inspection" onChange={(v) => updateClientForm({ ...clientForm, offer: v })} />
           <Field autoFilled={isAuto('ctaHeadline')} label="CTA Headline" value={clientForm.ctaHeadline} placeholder="Protect Your Home Today" onChange={(v) => updateClientForm({ ...clientForm, ctaHeadline: v })} />
           <Field autoFilled={isAuto('callToAction')} label="Button / Action" value={clientForm.callToAction} placeholder="Book Your Inspection" onChange={(v) => updateClientForm({ ...clientForm, callToAction: v })} />
-          <Field autoFilled={isAuto('phone')} label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
+          {/* The phone is edited once, in the Profile; the CTA uses it from there. */}
+          <div data-testid="pz-content-phone" className="col-span-full" style={{ color: C.muted, fontSize: 11 }}>
+            Phone on the CTA: <span style={{ color: C.text, fontWeight: 700 }}>{clientForm.phone || 'none yet'}</span>{' · '}
+            <button
+              type="button"
+              onClick={() => { goToSection('client', 'profile'); focusRequirementControl('phone') }}
+              style={{ color: C.cyan, background: 'none', border: 0, padding: 0, font: 'inherit', fontWeight: 800, cursor: 'pointer' }}
+            >
+              {clientForm.phone ? 'Edit in Profile' : 'Add in Profile'}
+            </button>
+          </div>
         </div>
         <div
           data-asset-section="ctaGraphic"
@@ -4513,8 +4546,8 @@ function ConfigurationView(props: any) {
               const active = mode === m.key
               const isUnavailable = !active && isModeUnavailable(m.key, assets, capabilities)
               return (
+                <div key={m.key} className="flex flex-col" style={{ gap: 6 }}>
                 <button
-                  key={m.key}
                   onClick={() => setMode(m.key)}
                   disabled={isUnavailable}
                   aria-pressed={active}
@@ -4533,7 +4566,7 @@ function ConfigurationView(props: any) {
                   <h4 style={{ margin: '0 0 6px', fontSize: 12, textTransform: 'uppercase' }}>{m.label}</h4>
                   <p style={{ margin: 0, color: C.muted, fontSize: 10, lineHeight: 1.45 }}>{m.description}</p>
                   {isUnavailable && (
-                    <p style={{ margin: '6px 0 0', color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
+                    <p data-testid={`pz-mode-reason-${m.key}`} style={{ margin: '6px 0 0', color: '#fcd34d', fontSize: 10, lineHeight: 1.4 }}>
                       {getModeUnavailableReason(m.key, assets)}
                     </p>
                   )}
@@ -4543,6 +4576,19 @@ function ConfigurationView(props: any) {
                     </p>
                   )}
                 </button>
+                {isUnavailable && modeNeedsPresenter(m.key) && (
+                  // Outside the (disabled) card so it stays clickable.
+                  <button
+                    type="button"
+                    data-testid={`pz-mode-fix-${m.key}`}
+                    onClick={() => { goToSection('assets', 'yours'); focusRequirementControl('presenter') }}
+                    className="self-start"
+                    style={{ color: C.cyan, background: 'none', border: 0, padding: 0, fontSize: 10, fontWeight: 800, cursor: 'pointer' }}
+                  >
+                    + Add a presenter photo →
+                  </button>
+                )}
+                </div>
               )
             })}
           </div>

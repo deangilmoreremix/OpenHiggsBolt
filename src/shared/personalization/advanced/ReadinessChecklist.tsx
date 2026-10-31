@@ -22,6 +22,7 @@ export function requirementLocation(field: string): RequirementLocation | null {
   if (field === 'mode') return { tab: 'create', section: 'output', focus: 'mode' }
   if (field === 'consent') return { tab: 'create', section: 'output', focus: 'consent' }
   if (field === 'prompt') return { tab: 'create', section: 'prompt', focus: 'prompt' }
+  if (field === 'assets.identities') return { tab: 'assets', section: 'yours', focus: 'presenter' }
   if (field === 'uploads' || field.startsWith('assets.')) return { tab: 'assets', section: 'yours' }
   return null
 }
