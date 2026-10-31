@@ -35,6 +35,7 @@ import {
   type FilmQaReport,
   type StoryboardResult,
 } from '../lib/filmPipeline';
+import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 
 /**
@@ -582,7 +583,9 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      // Findings the program can repair safely are repaired once, and said.
+      const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const music = media.find((m) => m.kind === 'audio');
@@ -607,6 +610,7 @@ export function useFilmDirector(opts: {
           qa.ok ? `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.` : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
           ...qa.warnings,
           ...(qa.review ? reviewSummary(qa.review) : []),
+          ...(fixed.length ? ['Fixed before showing you:', ...fixed.map((f) => `- ${f}`)] : []),
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );

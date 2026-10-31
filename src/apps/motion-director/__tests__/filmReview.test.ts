@@ -36,3 +36,17 @@ describe('final review', () => {
     expect(reviewSummary(items).slice(1).every((l) => l.startsWith('- '))).toBe(true);
   });
 });
+
+const samplePlan = (): DirectorPlan => ({ title: 't', summary: '', palette, scenes: [scene(id('SpotlightHeroCard')), scene('', 'title', 3)] });
+
+describe('A5 long sound samples', () => {
+  it('flags a >5 s sample left running for over 3 s and accepts a trimmed one', async () => {
+    const { SFX_PEAKS } = await import('../demosrc/_generated/sfxPeaks');
+    const long = Object.entries(SFX_PEAKS).find(([, v]) => v.durationMs > 5000)![0];
+    const base = reviewFilm(planToProject(samplePlan(), { aspectRatio: '16:9' }));
+    expect(base.find((i) => i.code === 'A5')?.ok).toBe(true);
+    const project = planToProject(samplePlan(), { aspectRatio: '16:9' });
+    project.tracks.push({ id: 'tA5', name: 'x', clips: [{ id: 'cA5', cardId: 'audio-clip', start: 0, duration: 200, speed: 1, props: { file: `motion-studio/sfxlib/${long}.mp3` } }] } as never);
+    expect(reviewFilm(project).find((i) => i.code === 'A5')?.ok).toBe(false);
+  });
+});

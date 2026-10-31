@@ -1,5 +1,6 @@
 'use client';
 
+import { audioReport, measureRenderedAudio } from '../lib/renderedAudio';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
@@ -68,10 +69,12 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     if (render.url) URL.revokeObjectURL(render.url);
   }, [render.url]);
 
+  const [audioNote, setAudioNote] = useState<string[]>([]);
   /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
   const start = async (draft = false, withoutMusic = false) => {
     abort.current = new AbortController();
     setRender({ status: 'running', progress: 0, draft });
+    setAudioNote([]);
     // Same path as the toolbar export: browser check, then the Remotion web renderer in this tab.
     const releaseGuard = guardTabWhileRendering();
     try {
@@ -83,6 +86,8 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
       setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
+      // Measure the sound of the file that was just made (the preview cannot show clipping).
+      void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
       setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
@@ -134,6 +139,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
               Download MP4{render.draft ? ` (draft ${draftSize})` : ''}
             </a>
             {project.spec && <SpecLink spec={project.spec} />}
+            {audioNote.length > 0 && <div className="w-full text-[11px]" style={{ color: semantic.textSecondary }} data-testid="film-audio-check">{audioNote.join(' ')}</div>}
             {render.draft && (
               <button type="button" onClick={() => void start(false)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>
                 Render full {project.width}×{project.height}

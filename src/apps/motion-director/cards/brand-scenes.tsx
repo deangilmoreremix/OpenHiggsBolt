@@ -162,6 +162,47 @@ const BrandFeatureZoom: React.FC<{ file?: string; label?: string; text?: string;
   );
 };
 
+// ——— Gallery: the site's own pictures (people, products, cards), one after another with a fan behind ———
+const BrandGallery: React.FC<{ images?: string; captions?: string; text?: string; duration?: number } & Look> = ({ images = "", captions = "", text = "", duration = 120, ...look }) => {
+  const frame = useCurrentFrame();
+  const { height } = useVideoConfig();
+  const { bg, ink, accent, font } = lookOf(look);
+  const files = String(images).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).slice(0, 6);
+  const notes = String(captions).split(/\r?\n/).map((x) => x.replace(/\*/g, "").trim());
+  const n = Math.max(1, files.length);
+  const per = Math.max(24, Math.floor((duration - 12) / n));
+  const at = Math.min(n - 1, Math.floor(frame / per));
+  const t = frame - at * per;
+  const enter = interpolate(t, [0, 14], [0, 1], { ...clamp, easing: ease });
+  const fade = interpolate(frame, [duration - 8, duration], [1, 0], clamp);
+  const push = interpolate(t, [0, per], [1, 1.06], clamp);
+  return (
+    <AbsoluteFill style={{ fontFamily: font, opacity: fade }}>
+      <Backdrop bg={bg} accent={accent} />
+      {files.slice(at + 1, at + 3).map((f, k) => (
+        <AbsoluteFill key={f + k} style={{ justifyContent: "center", alignItems: "center" }}>
+          <div style={{ width: "46%", aspectRatio: "4 / 3", borderRadius: 18, overflow: "hidden", opacity: 0.5 - k * 0.2, transform: `translateX(${(k + 1) * 11}%) rotate(${(k + 1) * 4}deg) scale(${1 - (k + 1) * 0.06})`, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+            <Img src={src(f)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        </AbsoluteFill>
+      ))}
+      {files.length ? (
+        <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+          <div key={at} style={{ width: "46%", aspectRatio: "4 / 3", borderRadius: 22, overflow: "hidden", background: "#fff", boxShadow: `0 30px 90px rgba(0,0,0,0.55), 0 0 0 3px ${accent}66`, opacity: enter, transform: `translateX(${(1 - enter) * -18}%) scale(${push})` }}>
+            <Img src={src(files[at])} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 20%" }} />
+          </div>
+        </AbsoluteFill>
+      ) : null}
+      {notes[at] ? (
+        <div style={{ position: "absolute", left: "27%", bottom: "9%", maxWidth: "46%", padding: "10px 24px", borderRadius: 14, background: accent, color: bg, fontSize: height * 0.034, fontWeight: 700, opacity: enter }}>{notes[at]}</div>
+      ) : null}
+      {text ? (
+        <div style={{ position: "absolute", left: "8%", top: "10%", maxWidth: "26%", color: ink, fontSize: height * 0.05, fontWeight: 800, lineHeight: 1.1, opacity: rise(frame, 6, 22) }}>{text.replace(/\*/g, "")}</div>
+      ) : null}
+    </AbsoluteFill>
+  );
+};
+
 // ——— Logo reveal: logo + name with sparks, then the call to action and the address ———
 const BrandLogoReveal: React.FC<{ logo?: string; name?: string; cta?: string; url?: string; duration?: number } & Look> = ({ logo = "", name = "", cta = "", url = "", duration = 90, ...look }) => {
   const frame = useCurrentFrame();
@@ -233,6 +274,11 @@ export const BRAND_SCENE_CARDS: CardDef[] = [
     { type: "text", key: "label", label: "Label", default: "" },
     { type: "text", key: "text", label: "Line", default: "" },
     { type: "slider", key: "focusY", label: "Page position", default: 0, min: 0, max: 100, step: 1, unit: "%" },
+  ], "duration"),
+  brandCard("brand-gallery", "People & pictures", "The site's own pictures (people, products, cards) one after another with a fan behind and the site's caption.", BrandGallery, 120, [
+    { type: "textarea", key: "images", label: "Images (one per line)", default: "" },
+    { type: "textarea", key: "captions", label: "Captions (one per line)", default: "" },
+    { type: "text", key: "text", label: "Line", default: "" },
   ], "duration"),
   brandCard("brand-logo-reveal", "Logo reveal", "Logo and name with sparks, then the call to action and the address.", BrandLogoReveal, 90, [
     { type: "text", key: "logo", label: "Logo image", default: "" },
