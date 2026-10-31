@@ -157,7 +157,10 @@ function redirectLocationOf(response: AxiosResponse): string {
  * answer that changes between the check and the connect (the rebinding
  * window) cannot move the socket to a private peer.
  */
-async function fetchWithValidatedRedirects(startUrl: string): Promise<{
+export async function fetchWithValidatedRedirects(
+  startUrl: string,
+  options: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<{
   response: AxiosResponse
   finalUrl: string
 }> {
@@ -181,7 +184,8 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
     const pin = safeRequestConfig(destination)
 
     const response = await axios.get(currentUrl, {
-      timeout: REQUEST_TIMEOUT,
+      timeout: options.timeoutMs ?? REQUEST_TIMEOUT,
+      ...(options.signal ? { signal: options.signal } : {}),
       maxContentLength: MAX_HTML_BYTES,
       headers: {
         'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',

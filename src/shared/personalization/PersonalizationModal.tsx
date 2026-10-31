@@ -62,6 +62,7 @@ import { SimpleModeWizard } from './guided/SimpleModeWizard'
 import { OverlayEditor } from './guided/OverlayEditor'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { BeforeAfterPreview } from './preview/BeforeAfterPreview'
+import { isOwnedWebsite } from './websiteClassification'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -625,6 +626,9 @@ export default function PersonalizationModal() {
     businessResearch,
     findBusinesses,
     selectBusiness,
+    resolveBusinessWebsite,
+    websiteLookup,
+    setDiscoveryError,
     researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
@@ -1546,6 +1550,9 @@ export default function PersonalizationModal() {
               businessResearch={businessResearch}
               findBusinesses={findBusinesses}
               selectBusiness={selectBusiness}
+              resolveBusinessWebsite={resolveBusinessWebsite}
+              websiteLookup={websiteLookup}
+              setDiscoveryError={setDiscoveryError}
               researchBusiness={researchBusiness}
                clearBusinessSearch={clearBusinessSearch}
                setBusinessSearchMode={setBusinessSearchMode}
@@ -1902,6 +1909,8 @@ function ConfigurationView(props: any) {
     businessResearch,
     findBusinesses,
     selectBusiness,
+    resolveBusinessWebsite,
+    websiteLookup,
     researchBusiness,
     runDiscoveryWorkflow,
     access,
@@ -2121,20 +2130,39 @@ function ConfigurationView(props: any) {
   // runs the same automated workflow: populate the client form, research the
   // business and discover its brand assets in one run. Discovery is free for
   // all users — never behind a paid entitlement or plan check.
-  const handleSelectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
-    if (!business.website || !business.website.trim()) {
-      setDiscoveryError('No website is listed for this business. Paste one in the Website field and use Find My Brand.')
+  //
+  // OpenStreetMap often lists only a Facebook/Instagram page as the
+  // "website". Those pages carry none of the business's brand assets, so a
+  // lead without an OWNED website first goes through the free website lookup,
+  // and discovery runs on the business's real site once it is verified.
+  const handleSelectBusiness = useCallback(async (business: BusinessDiscoveryRecord) => {
+    const listed = business.website?.trim()
+    if (listed && isOwnedWebsite(listed)) {
+      // Populate, research and discover in one automated run.
+      void runDiscoveryWorkflow(listed, { business })
       return
     }
-    // Populate, research and discover in one automated run.
-    void runDiscoveryWorkflow(business.website.trim(), { business })
-  }, [runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
+
+    setDiscoveryError(null)
+    const found = resolveBusinessWebsite ? await resolveBusinessWebsite(business) : null
+    if (found) {
+      void runDiscoveryWorkflow(found, {
+        business: { ...business, website: found, websiteStatus: 'confirmed' },
+      })
+      return
+    }
+
+    const hasSocial = Boolean(business.facebook || business.instagram || (listed && !isOwnedWebsite(listed)))
+    setDiscoveryError(hasSocial
+      ? `We couldn't find ${business.name}'s own website — only a social media page is listed. Paste the business website in the Website field and use Find My Brand.`
+      : `We couldn't find a website for ${business.name}. Paste one in the Website field and use Find My Brand.`)
+  }, [resolveBusinessWebsite, runDiscoveryWorkflow, setDiscoveryError])
 
   const handleOpenSavedLead = useCallback((lead: LeadRecord) => {
     // Same selection path the result cards use, so the Personalization handoff
     // (anonymous automated run or authenticated select) is identical.
     setSavedLeadsOpen(false)
-    handleSelectBusiness(lead.business)
+    void handleSelectBusiness(lead.business)
   }, [handleSelectBusiness])
 
   const handleOpenBusinessSearch = useCallback(() => {
@@ -2746,7 +2774,7 @@ function ConfigurationView(props: any) {
                       background: selectedBusiness?.id === business.id ? 'rgba(41,211,242,.06)' : '#11161b',
                       cursor: 'pointer',
                     }}
-                    onClick={() => handleSelectBusiness(business)}
+                    onClick={() => { void handleSelectBusiness(business) }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                       <div style={{ flex: 1 }}>
@@ -2763,8 +2791,15 @@ function ConfigurationView(props: any) {
                           {business.phone && (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Phone</span>
                           )}
-                          {business.website ? (
+                          {isOwnedWebsite(business.website) ? (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Website</span>
+                          ) : business.facebook || business.instagram || business.website ? (
+                            <span
+                              style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}
+                              title="Only a social media page is listed. We'll look for the business's own website when you use it."
+                            >
+                              Social page only
+                            </span>
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
@@ -2807,7 +2842,7 @@ function ConfigurationView(props: any) {
                         )}
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleSelectBusiness(business) }}
+                          onClick={(e) => { e.stopPropagation(); void handleSelectBusiness(business) }}
                           className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
                           style={{
                             minHeight: 32,
@@ -2817,7 +2852,9 @@ function ConfigurationView(props: any) {
                             color: '#041014',
                           }}
                         >
-                          Use This Business
+                          {websiteLookup?.status === 'searching' && websiteLookup.businessId === business.id
+                            ? 'Finding website…'
+                            : 'Use This Business'}
                         </button>
                       </div>
                     </div>

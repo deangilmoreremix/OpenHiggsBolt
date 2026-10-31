@@ -88,6 +88,7 @@ import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
+import { isOwnedWebsite, nonOwnedWebsiteMessage } from './websiteClassification'
 import { uploadPersonalizationAsset } from './assetUploadService'
 import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
@@ -477,6 +478,14 @@ type OpenPersonalizeOptions = {
   returnPayload?: Record<string, unknown>
 }
 
+/** Website lookup for a business whose listing has no owned website. */
+export interface WebsiteLookupState {
+  status: 'idle' | 'searching' | 'found' | 'not_found' | 'error'
+  businessId?: string
+  businessName?: string
+  website?: string
+}
+
 export interface ImportDiscoveredAssetsOptions {
   ids?: string[]
   section?: AssignedSection
@@ -586,6 +595,8 @@ export type DemoPersonalizeContextValue = {
   discoveredAssets: DiscoveredAsset[]
   discoveryStatus: 'idle' | 'discovering' | 'reviewing' | 'importing'
   discoveryError: string | null
+  /** Shows (or clears with `null`) the discovery error banner. */
+  setDiscoveryError: (message: string | null) => void
   importConfirmation: { count: number; clientName?: string } | null
   setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
   toggleDiscoveredAssetSelection: (id: string) => void
@@ -623,6 +634,13 @@ export type DemoPersonalizeContextValue = {
   }
   findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
   selectBusiness: (business: BusinessDiscoveryRecord) => void
+  /**
+   * Finds a selected business's OWN website when OpenStreetMap lists only a
+   * social page (or nothing). Resolves the verified URL or `null`.
+   */
+  resolveBusinessWebsite: (business: BusinessDiscoveryRecord) => Promise<string | null>
+  /** Status of the most recent website lookup (shown next to the website field). */
+  websiteLookup: WebsiteLookupState
   researchBusiness: (retryUrl?: string) => Promise<void>
   clearBusinessSearch: () => void
   setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
@@ -928,7 +946,10 @@ export function clientFormFromBusiness(business: BusinessDiscoveryRecord): Parti
     industry: business.category,
     location: [business.city, business.region].filter(Boolean).join(', ') || undefined,
     phone: business.phone,
-    website: business.website,
+    // Only the business's OWN website: a Facebook/Instagram page or a
+    // directory listing has none of its brand assets (older saved leads may
+    // still carry one in `website`).
+    website: isOwnedWebsite(business.website) ? business.website : undefined,
   }
 }
 
@@ -1260,6 +1281,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [businessSearchError, setBusinessSearchError] = useState<string | null>(null)
   const [businessSearchQuery, setBusinessSearchQuery] = useState<{ niche: string; location: string; radiusMiles: number } | null>(null)
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessDiscoveryRecord | null>(null)
+  const [websiteLookup, setWebsiteLookup] = useState<WebsiteLookupState>({ status: 'idle' })
+  // The business the latest lookup belongs to, so a slow answer for a
+  // previously selected business never lands on the current one.
+  const websiteLookupBusinessRef = useRef<string | null>(null)
   const [businessResearch, setBusinessResearch] = useState<{
     status: 'idle' | 'researching' | 'done' | 'error'
     result?: BusinessResearchResult
@@ -3688,6 +3713,45 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [])
 
+  const resolveBusinessWebsite = useCallback(async (business: BusinessDiscoveryRecord): Promise<string | null> => {
+    websiteLookupBusinessRef.current = business.id
+    setWebsiteLookup({ status: 'searching', businessId: business.id, businessName: business.name })
+    try {
+      const res = await fetch('/api/personalization/resolve-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          name: business.name,
+          city: business.city,
+          region: business.region,
+          postalCode: business.postalCode,
+          phone: business.phone,
+          email: business.email,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { website?: unknown }
+      if (websiteLookupBusinessRef.current !== business.id) return null
+      if (!res.ok) {
+        setWebsiteLookup({ status: 'error', businessId: business.id, businessName: business.name })
+        return null
+      }
+      const website = typeof data.website === 'string' && isOwnedWebsite(data.website) ? data.website : null
+      setWebsiteLookup(website
+        ? { status: 'found', businessId: business.id, businessName: business.name, website }
+        : { status: 'not_found', businessId: business.id, businessName: business.name })
+      return website
+    } catch {
+      if (websiteLookupBusinessRef.current === business.id) {
+        setWebsiteLookup({ status: 'error', businessId: business.id, businessName: business.name })
+      }
+      return null
+    }
+  }, [])
+  // selectBusiness keeps stable deps; it reaches the lookup through a ref.
+  const resolveBusinessWebsiteRef = useRef(resolveBusinessWebsite)
+  resolveBusinessWebsiteRef.current = resolveBusinessWebsite
+
   const selectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
     setSelectedBusiness(business)
     setBusinessSearchMode('selected')
@@ -3707,6 +3771,22 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // (see `clientFormFromBusiness`) that the automated "Find My Brand"
     // workflow uses too.
     updateClientForm(clientFormFromBusiness(business))
+
+    // OpenStreetMap often lists only a Facebook/Instagram page. Look for the
+    // business's own website in the background and fill the form when it is
+    // verified (never over a website the visitor typed meanwhile).
+    if (isOwnedWebsite(business.website)) {
+      websiteLookupBusinessRef.current = null
+      setWebsiteLookup({ status: 'idle' })
+    } else {
+      void resolveBusinessWebsiteRef.current(business).then((found) => {
+        if (!found || websiteLookupBusinessRef.current !== business.id) return
+        setSelectedBusiness((prev) => (prev && prev.id === business.id
+          ? { ...prev, website: found, websiteStatus: 'confirmed' }
+          : prev))
+        setClientForm((prev) => (prev.website && prev.website.trim() ? prev : { ...prev, website: found }))
+      })
+    }
 
     // Asset discovery is NOT triggered here: the caller decides. The
     // "Find My Brand" workflow calls `runDiscoveryWorkflow` (which performs the
@@ -3800,6 +3880,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [mergeResearchIntoClientForm])
 
   const discoverAssets = useCallback(async (websiteUrl: string) => {
+    const notOwned = websiteUrl ? nonOwnedWebsiteMessage(websiteUrl) : null
+    if (notOwned) {
+      setDiscoveryError(notOwned)
+      setDiscoveryStatus('idle')
+      return
+    }
+
     // The access mode — not the modal — decides which endpoint is used.
     if (access === 'anonymous') {
       await discoverDemoAssets(websiteUrl)
@@ -4051,6 +4138,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const website = normalizeWebsiteInput(rawWebsiteUrl)
     if (!website) {
       setDiscoveryError('Enter a business website URL to find your brand assets.')
+      return
+    }
+    const notOwned = nonOwnedWebsiteMessage(website)
+    if (notOwned) {
+      setDiscoveryError(notOwned)
       return
     }
 
@@ -5003,6 +5095,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     discoveredAssets,
     discoveryStatus,
     discoveryError,
+    setDiscoveryError,
     importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
@@ -5034,6 +5127,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     businessResearch,
     findBusinesses,
     selectBusiness,
+    resolveBusinessWebsite,
+    websiteLookup,
     researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,

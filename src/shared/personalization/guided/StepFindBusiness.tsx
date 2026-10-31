@@ -5,6 +5,7 @@ import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
+import { isOwnedWebsite, nonOwnedWebsiteMessage } from '../websiteClassification'
 import type { BusinessOwnership, DiscoveredAsset } from '../types'
 import { DiscoveredAssetGrid, type DiscoveredAssetDropZone } from '../DiscoveredAssetGrid'
 import { ResumeProjectBanner } from '../ResumeProjectBanner'
@@ -78,6 +79,7 @@ export function StepFindBusiness({
     importConfirmation,
     access,
     setViewMode,
+    websiteLookup,
   } = ctx
 
   const [searchNiche, setSearchNiche] = useState('')
@@ -91,6 +93,11 @@ export function StepFindBusiness({
 
   const businessName = clientForm.businessName || clientForm.name || ''
   const website = clientForm.website || ''
+  // A pasted Facebook/Instagram/Yelp URL is not the business's own website.
+  const websiteHint = website.trim() ? nonOwnedWebsiteMessage(website.trim()) : null
+  const lookupForSelected = websiteLookup && selectedBusiness && websiteLookup.businessId === selectedBusiness.id
+    ? websiteLookup
+    : null
   const research = businessResearch
   const discoveredCount = discoveredAssets.filter((asset) => !asset.rejected).length
   // "Logo found" must reflect the DISCOVERED assets: a discovery run that
@@ -251,6 +258,9 @@ export function StepFindBusiness({
                       {[business.category, [business.city, business.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                     </div>
                     {business.phone && <div style={{ color: C.muted2, fontSize: 11 }}>{business.phone}</div>}
+                    {!isOwnedWebsite(business.website) && (business.facebook || business.instagram || business.website) && (
+                      <div style={{ color: C.muted2, fontSize: 11 }}>Social page only — we'll look for its website</div>
+                    )}
                     {business.ownership && (
                       <div style={{ marginTop: 4 }}>
                         <span style={ownershipBadgeStyle(business.ownership)}>
@@ -319,6 +329,20 @@ export function StepFindBusiness({
         <p style={hintStyle}>
           We read the public page for your logo, photos and business details. Nothing is generated and nothing is charged.
         </p>
+        {websiteHint && (
+          <p style={{ ...hintStyle, color: C.danger }}>{websiteHint}</p>
+        )}
+        {lookupForSelected?.status === 'searching' && (
+          <p style={{ ...hintStyle, color: C.cyan }}>Looking for {lookupForSelected.businessName}'s website…</p>
+        )}
+        {lookupForSelected?.status === 'found' && lookupForSelected.website && (
+          <p style={{ ...hintStyle, color: C.cyan }}>Found {lookupForSelected.businessName}'s website: {lookupForSelected.website}</p>
+        )}
+        {(lookupForSelected?.status === 'not_found' || lookupForSelected?.status === 'error') && !website.trim() && (
+          <p style={hintStyle}>
+            We couldn't find {lookupForSelected.businessName}'s own website{selectedBusiness?.facebook || selectedBusiness?.instagram ? ' — only a social media page is listed' : ''}. Enter it above to find its brand assets.
+          </p>
+        )}
         {research && research.status === 'researching' && (
           <p style={{ ...hintStyle, color: C.cyan }}>Reading your website…</p>
         )}
