@@ -85,7 +85,7 @@ function RecastExample({ defaultOpen }: { defaultOpen: boolean }) {
   return (
     <details open={defaultOpen} data-testid="pz-recast-example" style={{ margin: '12px 0 4px', border: `1px solid ${C.border}`, borderRadius: 14, background: C.panel, padding: '10px 12px' }}>
       <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 800, color: C.text }}>
-        ▶ See an example result
+        See an example result
       </summary>
       <div className="grid grid-cols-3" style={{ gap: 4, marginTop: 10, borderRadius: 12, overflow: 'hidden', background: '#000', maxWidth: 520 }}>
         <figure style={tile}>

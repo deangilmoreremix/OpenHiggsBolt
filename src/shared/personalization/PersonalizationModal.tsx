@@ -4628,13 +4628,20 @@ function useAdvancedPreviewInput(source: PersonalizationSource | null) {
  */
 function AdvancedLivePreview({ source }: { source: PersonalizationSource | null }) {
   const inputProps = useAdvancedPreviewInput(source)
+  const { previewVideo, preRecastVideo } = useDemoPersonalize()
   if (!inputProps) return null
+  // After a Full Body Recast, BEFORE shows the original performer and AFTER
+  // the recast person, so the swap itself is visible.
+  const beforeVideoUrl = previewVideo?.kind === 'recast'
+    ? preRecastVideo?.url || source?.sourceMedia || null
+    : null
   return (
     <section data-testid="pz-live-preview" style={{ padding: 14, border: `1px solid ${C.border}`, borderRadius: 14, background: C.panel }}>
       <h2 style={{ margin: '0 0 10px', fontSize: 12, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>
         Live Preview
       </h2>
-      <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" />
+      {/* Opens on the personalized result; "Before" is one click away. */}
+      <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" initialSide="after" beforeVideoUrl={beforeVideoUrl} />
     </section>
   )
 }
