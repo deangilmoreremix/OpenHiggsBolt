@@ -17,6 +17,8 @@ import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
 import type { SiteCapture } from '../lib/directorClient';
+import { buildCatalogue } from '../lib/pictureCatalogue';
+import { assignPictures } from '../lib/assignPictures';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
 
@@ -258,6 +260,8 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
   const { messages, stage, activity, steps, storyboard, film } = director;
   const shown = hideOwnMessages ? history : [...history, ...messages];
   const plan = storyboard?.plan;
+  // The pictures each scene will show (the same assignment the build uses), for the storyboard thumbnails.
+  const scenePictures = useMemo(() => (plan && storyboard?.capture ? assignPictures(plan, buildCatalogue(storyboard.capture)) : []), [plan, storyboard?.capture]);
   const videos = storyboard?.videos ?? [];
   /** Attached videos sit just before the closing scene, where the build places them. */
   const withVideos = <T,>(steps: T[]): Array<T | { key: string; label: string; detail: string }> => {
@@ -357,7 +361,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
               label: template ? motionTemplateTitle(template) : brandScene ? brandScene.title : 'Title card',
               detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site', template && storyboard?.capture && drawsSampleScreen(template) && 'sample screen + your page beside it'].filter(Boolean).join(' · '),
               media: template ? (
-                <StoryboardShot recipe={template} site={sitePicture(storyboard?.capture, i)} />
+                <StoryboardShot recipe={template} site={scenePictures[i]?.crops[0] ?? scenePictures[i]?.screens[0] ?? sitePicture(storyboard?.capture, i)} />
               ) : (
                 // A title card shows its words on the film's colours, so it is not an empty tile beside a shot preview.
                 <div

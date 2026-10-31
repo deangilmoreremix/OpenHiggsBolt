@@ -76,6 +76,11 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
   const source = await (deps.source ?? fetchRecipeSource)(stem);
   if (!source) return null;
   const request = deps.request ?? requestAdapt;
+  // This scene's own pictures (lib/assignPictures) when it has them, else the film's.
+  const own = (clip.props?.scenePictures ?? null) as { screens?: string[]; crops?: string[] } | null;
+  const screens = Array.isArray(clip.props?.screens) ? (clip.props!.screens as string[]) : own?.screens?.length ? own.screens : ctx.screens;
+  const crops = Array.isArray(clip.props?.crops) ? (clip.props!.crops as string[]) : own?.crops?.length ? own.crops : ctx.crops;
+  ctx = { ...ctx, screens, crops };
   const slots = { screens: ctx.screens, crops: ctx.crops, layout: ctx.layout, brand: ctx.brand };
   const [card, reference] = await Promise.all([(deps.card ?? fetchRecipeCard)(stem).catch(() => null), (deps.reference ?? fetchReferenceFrames)(stem).catch(() => [])]);
   let problems: string[] = [];

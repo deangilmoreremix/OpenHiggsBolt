@@ -354,6 +354,8 @@ const INSET_PAGE_H = 1200;
         clip(cardId, at, frames, {
           accent: palette.accent,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
+          // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
+          ...(!usesCapture && opts.capture?.scenes?.[i]?.crops.length ? { scenePictures: { screens: opts.capture.scenes[i]!.screens.slice(0, 3), crops: opts.capture.scenes[i]!.crops } } : {}),
           ...(usesCapture
             ? opts.capture?.scenes?.[i]?.crops.length
               ? { screens: opts.capture.scenes[i]!.screens, crops: opts.capture.scenes[i]!.crops }
