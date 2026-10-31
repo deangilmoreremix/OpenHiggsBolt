@@ -1735,6 +1735,30 @@ export interface PageCaptureBrand {
   text: string | null
   accent: string | null
   fontFamily: string | null
+  /** The rest of the product's tokens (upstream THEMES.md's seven colours, body font, corner radius). */
+  surface?: string | null
+  field?: string | null
+  muted?: string | null
+  border?: string | null
+  bodyFont?: string | null
+  radius?: number | null
+}
+
+const brandFrom = (styles: Record<string, string | null> | undefined): PageCaptureBrand => {
+  const font = (v: unknown) => (typeof v === 'string' && v ? v.slice(0, 120) : null)
+  const r = Number.parseFloat(String(styles?.radius ?? ''))
+  return {
+    background: cssColorToHex(styles?.background),
+    text: cssColorToHex(styles?.text),
+    accent: cssColorToHex(styles?.accent),
+    fontFamily: font(styles?.fontFamily),
+    surface: cssColorToHex(styles?.surface),
+    field: cssColorToHex(styles?.field),
+    muted: cssColorToHex(styles?.muted),
+    border: cssColorToHex(styles?.border),
+    bodyFont: font(styles?.bodyFont),
+    radius: Number.isFinite(r) && r >= 0 && r <= 64 ? Math.round(r) : null,
+  }
 }
 
 export interface PageCapture {
@@ -2118,15 +2142,55 @@ export function bandRects(fromY: number, toY: number, width: number, bandH: numb
 function readBrandStyles(): Record<string, string | null> {
   const body = getComputedStyle(document.body)
   const heading = document.querySelector('h1, h2')
-  const action = Array.from(document.querySelectorAll('button, a[class*="btn"], a[class*="button"], [role="button"]'))
-    .map((el) => getComputedStyle(el).backgroundColor)
-    .find((c) => c && !/rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c))
+  // Saturation of a computed rgb() colour (0 grey … 1 pure): an accent is a colour, not white/black/grey.
+  const sat = (c: string | null | undefined) => {
+    const m = /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(c ?? '')
+    if (!m || (m[4] !== undefined && Number(m[4]) < 0.5)) return 0
+    const v = [m[1], m[2], m[3]].map(Number)
+    const hi = Math.max(...v)
+    const lo = Math.min(...v)
+    return hi === 0 ? 0 : (hi - lo) / hi
+  }
+  const colourful = (sel: string, prop: 'backgroundColor' | 'color') =>
+    Array.from(document.querySelectorAll(sel)).slice(0, 60).map((el) => getComputedStyle(el)[prop]).find((c) => sat(c) > 0.25) ?? null
+  const action =
+    colourful('button, a[class*="btn"], a[class*="button"], [role="button"], [class*="cta"]', 'backgroundColor') ??
+    colourful('a', 'color') ??
+    (heading && sat(getComputedStyle(heading).color) > 0.25 ? getComputedStyle(heading).color : null)
   const html = getComputedStyle(document.documentElement)
+  const clear = (c: string | null | undefined) => !c || /rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c)
+  const first = <T,>(sel: string, pick: (st: CSSStyleDeclaration, el: Element) => T | null): T | null => {
+    for (const el of Array.from(document.querySelectorAll(sel)).slice(0, 40)) {
+      const r = el.getBoundingClientRect()
+      if (r.width < 40 || r.height < 16) continue
+      const v = pick(getComputedStyle(el), el)
+      if (v !== null && v !== undefined) return v
+    }
+    return null
+  }
+  // Card-like blocks: their fill is the surface, their edge the border, their corners the radius.
+  const cardSel = '[class*="card"], [class*="Card"], article, [class*="tile"], [class*="panel"]'
+  const surface = first(cardSel, (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  const border = first(cardSel + ', hr, input', (st) => (parseFloat(st.borderTopWidth) > 0 && !clear(st.borderTopColor) ? st.borderTopColor : null))
+  const radius = first(cardSel + ', button, a[class*="btn"]', (st) => (parseFloat(st.borderTopLeftRadius) > 0 ? st.borderTopLeftRadius : null))
+  const field = first('input:not([type=hidden]), textarea, select', (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  // Muted text: a paragraph whose colour differs from the main text.
+  const mainText = body.color
+  const muted = first('p, small, figcaption, [class*="subtitle"], [class*="description"]', (st) => (st.color && st.color !== mainText ? st.color : null))
+  const para = document.querySelector('p')
   return {
-    background: body.backgroundColor && !/rgba\(0, 0, 0, 0\)/.test(body.backgroundColor) ? body.backgroundColor : html.backgroundColor,
-    text: heading ? getComputedStyle(heading).color : body.color,
+    // A transparent page is the browser's white.
+    background: !clear(body.backgroundColor) ? body.backgroundColor : !clear(html.backgroundColor) ? html.backgroundColor : 'rgb(255, 255, 255)',
+    // The text colour is the body's; a heading is often decorated (gradient, brand colour).
+    text: !clear(body.color) ? body.color : heading ? getComputedStyle(heading).color : null,
     accent: action ?? null,
     fontFamily: (heading ? getComputedStyle(heading).fontFamily : body.fontFamily) || null,
+    surface,
+    field,
+    muted,
+    border,
+    radius,
+    bodyFont: (para ? getComputedStyle(para).fontFamily : body.fontFamily) || null,
   }
 }
 
@@ -2306,12 +2370,7 @@ export async function capturePageScreenshots(
           cutouts: { nav: null, search: null, button: null },
           emptyPlate: null,
           routes: [],
-          brand: {
-            background: cssColorToHex(styles0?.background),
-            text: cssColorToHex(styles0?.text),
-            accent: cssColorToHex(styles0?.accent),
-            fontFamily: typeof styles0?.fontFamily === 'string' ? styles0.fontFamily.slice(0, 120) : null,
-          },
+          brand: brandFrom(styles0 ?? undefined),
         }
         out = snapshot
         mark('content')
@@ -2371,12 +2430,7 @@ export async function capturePageScreenshots(
           cutouts: { nav: null, search: null, button: null },
           emptyPlate: null,
           routes: [],
-          brand: {
-            background: cssColorToHex(styles.background),
-            text: cssColorToHex(styles.text),
-            accent: cssColorToHex(styles.accent),
-            fontFamily: typeof styles.fontFamily === 'string' ? styles.fontFamily.slice(0, 120) : null,
-          },
+          brand: brandFrom(styles),
         }
         out = result
 

@@ -80,7 +80,7 @@ describe('capturePageScreenshots', () => {
     expect(result.crops.length).toBeLessThanOrEqual(mod.CAPTURE_MIN_PICTURES)
     expect(result.pageHeight).toBe(mod.CAPTURE_MAX_PAGE_HEIGHT)
     expect(result.title).toBe('Acme — ship faster')
-    expect(result.brand).toEqual({ background: '#ffffff', text: '#111111', accent: '#ff5500', fontFamily: 'Inter, sans-serif' })
+    expect(result.brand).toMatchObject({ background: '#ffffff', text: '#111111', accent: '#ff5500', fontFamily: 'Inter, sans-serif' })
   })
 
   it("pulls the site's logo (transparent PNG) and its own images", async () => {

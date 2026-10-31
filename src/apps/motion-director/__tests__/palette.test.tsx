@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AS_DESIGNED, DIRECTOR_THEMES, PRESET_PALETTES, resolvePalette, SITE_THEME, skinLook } from '../lib/palette';
+import { AS_DESIGNED, DIRECTOR_THEMES, PRESET_PALETTES, paletteFromBrand, resolvePalette, SITE_THEME, siteFont, skinLook } from '../lib/palette';
 import { LOOKS, designedLook } from '../demosrc/_fixtures/Look';
 import { FONT } from '../demosrc/_fixtures/Polish';
 import { setClipPalette, setFilmPalette } from '../demosrc/_fixtures/skin';
@@ -69,5 +69,26 @@ describe('re-skinning the recipe looks', () => {
     expect(FONT.sans.startsWith('"Inter Tight", ')).toBe(true);
     setFilmPalette(null);
     expect(FONT.sans.startsWith('-apple-system')).toBe(true);
+  });
+});
+
+describe('the site palette ("Your site")', () => {
+  it('builds the seven colours from what the capture read, keeping roles on the page ground', () => {
+    // apple.com as captured: white page, near-black text, blue action, a black promo tile.
+    const p = paletteFromBrand({ background: '#ffffff', text: '#1d1d1f', accent: '#0071e3', surface: '#000000', fontFamily: '"SF Pro Text", Helvetica' })!;
+    expect(p.page).toBe('#ffffff');
+    expect(p.accent).toBe('#0071e3');
+    expect(p.surface).not.toBe('#000000');
+    expect(Object.keys(p).sort()).toEqual(['accent', 'border', 'field', 'muted', 'page', 'surface', 'text']);
+  });
+
+  it('rejects an accent that is the page colour, and needs a background and text', () => {
+    expect(paletteFromBrand({ background: '#f7f7f7', text: '#1c1d29', accent: '#f7f7f7' })!.accent).toBe('#2563eb');
+    expect(paletteFromBrand({ background: null, text: '#000000' })).toBeNull();
+  });
+
+  it('keeps a real font name, drops a generic family', () => {
+    expect(siteFont('sohne-var, "SF Pro Display", sans-serif')).toBe('sohne-var');
+    expect(siteFont('sans-serif')).toBeUndefined();
   });
 });

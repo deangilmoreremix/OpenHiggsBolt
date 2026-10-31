@@ -7,6 +7,7 @@
  * key, director down) the Ink Press template storyboard is built locally, so a
  * film request always ends in a film.
  */
+import { AS_DESIGNED, SITE_THEME, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
@@ -59,9 +60,19 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
   accent: capture?.brand.accent ?? kit?.colors?.accent ?? kit?.colors?.primary ?? undefined,
 });
 
+/** A film of a captured site draws every recipe in the site's own palette ("Your site"); without one, each recipe keeps its designed look. */
+const filmTheme = (capture: SiteCapture | null | undefined): { id: string; colors?: Record<string, string> } => {
+  const colors = capture ? paletteFromBrand(capture.brand) : null;
+  return colors ? { id: SITE_THEME, colors } : { id: AS_DESIGNED };
+};
+
 /** Capture (when the request has a URL) and storyboard the film. */
 /** The site's own pictures the film can show: the images found on the page plus its card crops. */
 export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
+
+/** The capture without testimonial "Name Title Company" lines in its headings (they feed captions, titles and recipe words; D2). */
+const withoutPeopleLines = <T extends SiteCapture | null>(capture: T): T =>
+  capture?.content?.headings?.length ? { ...capture, content: { ...capture.content, headings: capture.content.headings.filter((h) => !looksLikePersonLine(h)) } } : capture;
 
 /** "Andrew Garnett President & CEO Special Needs Group": a name followed by a job title. */
 export const looksLikePersonLine = (line: string): boolean =>
@@ -108,7 +119,7 @@ export async function storyboardFilm(
   }
   // Attached videos play as their own scenes; the storyboard gets what is left of the requested length.
   // Section headings become captions and titles: a testimonial's "Name Title Company" line is not a heading.
-  if (capture?.content?.headings?.length) capture = { ...capture, content: { ...capture.content, headings: capture.content.headings.filter((h) => !looksLikePersonLine(h)) } };
+  capture = withoutPeopleLines(capture);
   const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
   // The site the user gave wins over a Brand Kit company: the Brand Kit names the film only when there is no site.
   const hasSite = Boolean(capture || req.siteUrl);
@@ -234,6 +245,7 @@ export async function buildFilmProject(
   opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
+  opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
   const film: FilmCapture | null = opts.capture
@@ -286,6 +298,7 @@ export async function buildFilmProject(
     videos,
     brand,
     texts,
+    theme: filmTheme(opts.capture),
   });
   if (beats.length) {
     const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);

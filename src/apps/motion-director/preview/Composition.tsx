@@ -3,7 +3,7 @@ import { AbsoluteFill, Freeze, Sequence, useCurrentFrame } from "remotion";
 import type { ProjectData } from "../types";
 import { CARDS } from "../cards/registry";
 import { THEME_MANIFEST } from '../cards/projectCards';
-import { resolvePalette } from '../lib/palette';
+import { resolvePalette, siteFont } from '../lib/palette';
 import { setFilmPalette } from '../demosrc/_fixtures/skin';
 import { themedProps, themedBackground } from '../theme';
 import { setBrand } from "../demosrc/_fixtures/Brand";
@@ -24,7 +24,11 @@ const TimeRemap: React.FC<{
 export const MainComposition: React.FC<{ project: ProjectData }> = ({ project }) => {
   setBrand(project.brand);
   // A film with a theme (Themes tab / director) draws every recipe in that theme; older films keep the brand skin.
-  if (project.themeId !== undefined) setFilmPalette(resolvePalette(project.themeId, project.themeColors));
+  if (project.themeId !== undefined) {
+    const palette = resolvePalette(project.themeId, project.themeColors);
+    const font = siteFont(project.brand?.font);
+    setFilmPalette(palette && font ? { ...palette, font } : palette);
+  }
   // UI 中 tracks[0] 是最上层轨 → 最后渲染（覆盖在上）
   const ordered = [...project.tracks].reverse();
   return (

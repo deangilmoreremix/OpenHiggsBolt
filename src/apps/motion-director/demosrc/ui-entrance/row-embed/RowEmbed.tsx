@@ -42,6 +42,9 @@ const airOf = (frame: number, cue: number) => 1 - interpolate(frame, [cue, cue +
 
 export const RowEmbed: React.FC = () => {
   const detailSrc = liveTexture('detail-full.png');
+  // A real site page (not the sample): the empty slot is the page's own region out of focus — a flat
+  // patch of the sample's paper colour would show as a white box on any other page.
+  const sitePage = detailSrc !== staticFile('motion-studio/textures/live/detail-full.png');
   const frame = useCurrentFrame();
 
   return (
@@ -149,7 +152,10 @@ export const RowEmbed: React.FC = () => {
                   key={`patch-${i}`}
                   style={{
                     position: 'absolute', left: r.x - 8, top: r.y - 4,
-                    width: r.w + 24, height: r.h + 8, background: PAGE_BG,
+                    width: r.w + 24, height: r.h + 8,
+                    ...(sitePage
+                      ? { backgroundImage: `url(${detailSrc})`, backgroundSize: `1920px ${DETAIL_H}px`, backgroundPosition: `-${r.x - 8}px -${r.y - 4}px`, filter: 'blur(7px) saturate(0.5) brightness(0.96)' }
+                      : { background: PAGE_BG }),
                     opacity: patchOpacity, zIndex: 1, pointerEvents: 'none',
                   }}
                 >

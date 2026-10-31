@@ -35,7 +35,7 @@ export interface SiteCapture {
   images?: string[];
   /** The site's logo (transparent PNG), when one was found. */
   logo?: string | null;
-  brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
+  brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null; surface?: string | null; field?: string | null; muted?: string | null; border?: string | null; bodyFont?: string | null; radius?: number | null };
   /** Every route captured, the page asked for first (upstream captures several routes of the site). */
   pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
   /** Pictures of the site found by the asset finder (people, team, products…), with what each one shows. */

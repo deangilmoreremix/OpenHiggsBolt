@@ -135,3 +135,44 @@ export function skinLook<T extends LookRoles>(look: T, p: FilmPalette, monochrom
   out.line = isHex(p.border) ? p.border : mixHex(text, page, dark ? 0.85 : 0.88);
   return out;
 }
+
+/** What the capture read off the site (src/server/browserDiscovery readBrandStyles). */
+export interface SiteBrand {
+  background?: string | null;
+  text?: string | null;
+  accent?: string | null;
+  surface?: string | null;
+  field?: string | null;
+  muted?: string | null;
+  border?: string | null;
+  fontFamily?: string | null;
+}
+
+/**
+ * The site's own palette (the "Your site" theme): its background, text and action colour, with the
+ * other roles read from the page when they belong to the same ground, and derived otherwise.
+ */
+export function paletteFromBrand(b: SiteBrand | null | undefined): Palette | null {
+  if (!b || !isHex(b.background) || !isHex(b.text)) return null;
+  const page = b.background;
+  const dark = luma(page) < 0.5;
+  const near = (c: unknown, limit: number) => isHex(c) && Math.abs(luma(c) - luma(page)) < limit;
+  const text = Math.abs(luma(b.text) - luma(page)) > 0.35 ? b.text : dark ? '#f2f4f8' : '#16181d';
+  const accent = isHex(b.accent) && Math.abs(luma(b.accent) - luma(page)) > 0.08 ? b.accent : dark ? '#61d9ef' : '#2563eb';
+  return {
+    page,
+    surface: near(b.surface, 0.12) ? (b.surface as string) : dark ? mixHex(page, '#ffffff', 0.06) : mixHex(page, '#ffffff', 0.6),
+    field: near(b.field, 0.15) ? (b.field as string) : dark ? mixHex(page, '#ffffff', 0.1) : mixHex(page, '#000000', 0.03),
+    text,
+    muted: isHex(b.muted) && Math.abs(luma(b.muted) - luma(page)) > 0.2 ? b.muted : mixHex(text, page, 0.38),
+    accent,
+    border: near(b.border, 0.25) ? (b.border as string) : mixHex(text, page, dark ? 0.82 : 0.86),
+  };
+}
+
+/** The product's font as a CSS family name, or undefined for a generic stack ("sans-serif" alone says nothing). */
+export function siteFont(family: string | null | undefined): string | undefined {
+  const first = (family ?? '').split(',')[0]?.trim();
+  if (!first || /^(sans-serif|serif|monospace|system-ui|-apple-system|inherit|initial)$/i.test(first.replace(/["']/g, ''))) return undefined;
+  return first;
+}

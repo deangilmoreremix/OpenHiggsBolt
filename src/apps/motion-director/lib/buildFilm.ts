@@ -241,6 +241,8 @@ export function planToProject(
     brand?: BrandInput | null;
     /** Scene index -> (template words -> the words to draw), from the director or the site's own words. */
     texts?: Record<number, Record<string, string>>;
+    /** The film's theme (lib/palette): a preset, or the site's own colours ("Your site"). */
+    theme?: { id: string; colors?: Record<string, string> | null } | null;
   },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
@@ -406,8 +408,10 @@ const INSET_PAGE_H = 1200;
     fps: FPS,
     width,
     height,
-    background: palette.background,
+    background: opts.theme?.colors?.page ?? palette.background,
     ...(opts.brand ? { brand: opts.brand } : {}),
+    // Every recipe draws in the film's theme (re-skinned to the product, SKILL principle 2); the Themes tab changes it.
+    ...(opts.theme ? { themeId: opts.theme.id, ...(opts.theme.colors ? { themeColors: { ...opts.theme.colors } } : {}) } : {}),
     tracks: tracks.filter((track) => track.clips.length > 0 || track.name === t('track.shots')),
   };
 }
