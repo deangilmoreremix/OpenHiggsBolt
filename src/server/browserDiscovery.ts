@@ -1906,6 +1906,8 @@ function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: Ca
  */
 function readPageContent(): PageContent & { links: Array<{ href: string; text: string }> } {
   const clean = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim()
+  // innerText follows the rendering (line breaks and blocks become spaces); textContent glues "for" + "Your" into "forYour".
+  const read = (el: Element | null | undefined) => clean(el ? ((el as HTMLElement).innerText ?? el.textContent) : '')
   const visible = (el: Element) => {
     const r = el.getBoundingClientRect()
     const style = getComputedStyle(el)
@@ -1916,7 +1918,7 @@ function readPageContent(): PageContent & { links: Array<{ href: string; text: s
     for (const el of Array.from(document.querySelectorAll(selector))) {
       if (out.length >= max) break
       if (!visible(el)) continue
-      const text = clean(el.textContent)
+      const text = read(el)
       if (text.length < minLen || text.length > len || out.includes(text)) continue
       out.push(text)
     }
@@ -1926,13 +1928,13 @@ function readPageContent(): PageContent & { links: Array<{ href: string; text: s
   const h1 = Array.from(document.querySelectorAll('h1')).find(visible)
   return {
     description: clean(meta?.getAttribute('content')).slice(0, 300),
-    headline: clean(h1?.textContent).slice(0, 160),
+    headline: read(h1).slice(0, 160),
     headings: texts('h2, h3', 8, 120, 3),
     ctas: texts('main a[class*="btn" i], main a[class*="button" i], main button, a[class*="btn" i], a[class*="button" i], button', 4, 32, 2),
     nav: texts('header a, nav a', 10, 40, 2),
     links: (Array.from(document.querySelectorAll('header a[href], nav a[href], main a[href], footer a[href]')) as HTMLAnchorElement[])
       .slice(0, 300)
-      .map((a) => ({ href: a.href, text: clean(a.textContent).slice(0, 60) })),
+      .map((a) => ({ href: a.href, text: read(a).slice(0, 60) })),
   }
 }
 

@@ -303,7 +303,7 @@ export function inkPressPlan(opts: {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: fit(site?.headline || site?.description, PLAN_LIMITS.captionChars), transition: 'cut' });
   }
   // The template's own arc for a captured site: the address scanned, then the product as a hub of its features.
-  const story = Boolean(opts.siteScenes) && !named && withTitles && target >= (shots.length + 4) * PLAN_LIMITS.minSceneSec && shots.length + 4 <= PLAN_LIMITS.maxScenes;
+  const story = Boolean(opts.siteScenes) && withTitles && target >= (shots.length + 4) * PLAN_LIMITS.minSceneSec && shots.length + 4 <= PLAN_LIMITS.maxScenes;
   if (story) {
     scenes.push({ kind: 'shot', recipeId: 'brand/url-scan', durationSec: 3.5, headline: '', caption: '', transition: 'cut', feature: 'We read your site', action: 'address typed, page scanned', asset: 'your page' });
     scenes.push({ kind: 'shot', recipeId: 'brand/hub', durationSec: 3.5, headline: fit(site?.headline || site?.description, PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'Everything in one place', action: 'features as nodes around your page', asset: 'your page + menu' });

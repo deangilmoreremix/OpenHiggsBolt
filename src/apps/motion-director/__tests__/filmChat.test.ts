@@ -316,3 +316,14 @@ describe('questions about the storyboard', () => {
     expect(isQuestion('use deck-deal-flyin instead?')).toBe(false);
   });
 });
+
+describe('a named shot on a captured site', () => {
+  it('keeps the site story scenes around the picked shot', () => {
+    const shot = MOTION_TEMPLATES.find((t) => t.componentName === 'DatavizLandscapeOpen')!;
+    const plan = inkPressPlan({ prompt: 'film for acme.com', durationSec: 30, recipes: [shot], productName: 'Acme', siteScenes: true });
+    const ids = plan.scenes.map((s) => s.recipeId);
+    expect(ids).toContain('brand/url-scan');
+    expect(ids).toContain('brand/hub');
+    expect(ids).toContain(shot.id);
+  });
+});

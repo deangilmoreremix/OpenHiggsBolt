@@ -116,7 +116,7 @@ export async function storyboardFilm(
         : [];
   log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
   try {
-    const plan = await requestPlan({
+    const ask = () => requestPlan({
       prompt: req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
@@ -125,6 +125,12 @@ export async function storyboardFilm(
       brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
       requiredRecipes: required.map((r) => r.id),
       template: opts.template === 'inkpress' ? 'inkpress' : null,
+    });
+    // One more try when the director is slow or briefly down; a missing key or a refusal is final.
+    const plan = await ask().catch(async (error) => {
+      if (error instanceof DirectorError && (error.status === 401 || error.status === 403 || error.status === 429)) throw error;
+      log('The director did not answer; trying once more', 'running');
+      return ask();
     });
     // Picked / named shots are the whole film (plus framing title cards): no other recipes.
     const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
