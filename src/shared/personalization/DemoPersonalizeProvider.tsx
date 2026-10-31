@@ -851,6 +851,12 @@ export type DemoPersonalizeContextValue = {
    setPreviewAudio: (file: File) => Promise<void>
    removePreviewAudio: () => void
    previewAudioError: string | null
+  /** Set when the prompt was filled in without the AI (the AI call failed). */
+  promptNotice?: string | null
+  /** Publish only works where a SocialPublishProvider is mounted. */
+  canPublish?: boolean
+  /** Video Studio needs a stored video URL and a presenter photo. */
+  canEditInVideoStudio?: boolean
 
    // Motion Studio recipe (the full library — 124 cards / 150 shots / 10
    // categories — is exposed by `src/data/motionRecipeCatalog.ts`; the
@@ -1552,6 +1558,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [assets.presenterVideos, preRecastVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
+  /** Shown under the prompt when it was filled in without the AI. */
+  const [promptNotice, setPromptNotice] = useState<string | null>(null)
   const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
   // ── Remotion design registry ───────────────────────────────────────────────
   // The design catalog registers itself on import, so the list of designs can
@@ -2493,24 +2501,28 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       assets.ctaGraphic,
     ].filter(Boolean).find((a) => a?.id === assetId)
     if (jobAsset) releaseJobBlobUrls(jobAsset.id, jobAsset, { dropOriginal: true })
-    setAssets((prev) => {
-      const all = [
-        ...prev.identities,
-        ...prev.logos,
-        ...prev.products,
-        ...prev.brandReferences,
-      ].filter(Boolean) as PersonalizationAsset[]
-      const exists = all.some((a) => a.id === assetId)
-      if (!exists) return prev
-      const filtered = all.filter((a) => a.id !== assetId)
-      const rebuilt: AssetLibrary = { ...EMPTY_ASSET_LIBRARY }
-      for (const a of filtered) {
-        rebuilt.identities = [...rebuilt.identities, a]
-        if (rebuilt.primaryIdentity?.id === a.id) rebuilt.primaryIdentity = a
-      }
-      return rebuilt
-    })
-  }, [selectedClientId, savedClientAssets, releaseSavedBlobUrls, releaseJobBlobUrls])
+    // Drop it from whichever list holds it; everything else (other lists,
+    // frames, CTA, audio, recast videos) stays exactly as it was.
+    if (jobAsset) {
+      setAssets((prev) => {
+        const without = (list: PersonalizationAsset[]) => list.filter((a) => a.id !== assetId)
+        const identities = without(prev.identities)
+        const logos = without(prev.logos)
+        return {
+          ...prev,
+          identities,
+          logos,
+          products: without(prev.products),
+          brandReferences: without(prev.brandReferences),
+          primaryIdentity: prev.primaryIdentity?.id === assetId ? identities[0] || null : prev.primaryIdentity,
+          primaryLogo: prev.primaryLogo?.id === assetId ? logos[0] || null : prev.primaryLogo,
+          firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+          lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+          ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+        }
+      })
+    }
+  }, [selectedClientId, savedClientAssets, assets, releaseSavedBlobUrls, releaseJobBlobUrls])
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
@@ -3014,7 +3026,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [assets.identities.length])
 
   const removeIdentity = useCallback((id: string) => {
-    const asset = assets.identities.find((a) => a.id === id) || assets.primaryIdentity
+    // Only release the asset actually being removed (an unknown id used to
+    // release the primary's blob and break its preview).
+    const asset = assets.identities.find((a) => a.id === id) || (assets.primaryIdentity?.id === id ? assets.primaryIdentity : null)
     if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
@@ -3024,11 +3038,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [assets, releaseJobBlobUrls])
 
   const setPrimaryIdentity = useCallback((id: string) => {
-    setAssets((prev) => ({
-      ...prev,
-      identities: prev.identities.map((a) => ({ ...a, isPrimary: a.id === id })),
-      primaryIdentity: prev.identities.find((a) => a.id === id) || prev.primaryIdentity,
-    }))
+    setAssets((prev) => {
+      const next = prev.identities.find((a) => a.id === id)
+      if (!next) return prev
+      return {
+        ...prev,
+        identities: prev.identities.map((a) => ({ ...a, isPrimary: a.id === id })),
+        primaryIdentity: next,
+      }
+    })
   }, [])
 
   const addLogoFiles = useCallback((files: FileList | null) => {
@@ -3057,7 +3075,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [assets.logos.length])
 
   const removeLogo = useCallback((id: string) => {
-    const asset = assets.logos.find((a) => a.id === id) || assets.primaryLogo
+    const asset = assets.logos.find((a) => a.id === id) || (assets.primaryLogo?.id === id ? assets.primaryLogo : null)
     if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => {
       return {
@@ -3069,11 +3087,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [assets, releaseJobBlobUrls])
 
   const setPrimaryLogo = useCallback((id: string) => {
-    setAssets((prev) => ({
-      ...prev,
-      logos: prev.logos.map((a) => ({ ...a, isPrimary: a.id === id })),
-      primaryLogo: prev.logos.find((a) => a.id === id) || prev.primaryLogo,
-    }))
+    setAssets((prev) => {
+      const next = prev.logos.find((a) => a.id === id)
+      if (!next) return prev
+      return {
+        ...prev,
+        logos: prev.logos.map((a) => ({ ...a, isPrimary: a.id === id })),
+        primaryLogo: next,
+      }
+    })
   }, [])
 
   const addProductFiles = useCallback((files: FileList | null) => {
@@ -4408,24 +4430,31 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const personalizePromptFn = useCallback(async () => {
     if (!source || !clientForm) return
     setGeneration((prev) => ({ ...prev, status: 'personalizing-prompt', progress: 10, progressMessage: 'Personalizing prompt...' }))
+    setPromptNotice(null)
+    let aiFailure: string | null = null
     try {
       const personalized = await personalizePrompt({
         originalPrompt: promptState.original,
         client: clientForm as ClientProfile,
         assets,
         outputType,
+        onAiFailure: (error) => { aiFailure = error instanceof Error ? error.message : 'unknown error' },
       })
       if (personalized === promptState.original) {
         setGeneration((prev) => ({
           ...prev,
           status: 'error',
-          errorMessage: 'Personalization returned the same prompt. Please edit manually or retry.',
+          errorMessage: aiFailure
+            ? `Couldn't reach the AI to personalize the prompt (${aiFailure}). Edit it manually or try again.`
+            : 'Personalization returned the same prompt. Please edit manually or retry.',
           failedStage: 'prompt',
         }))
         return
       }
       setPromptState((prev) => ({ ...prev, personalized }))
       setGeneration((prev) => ({ ...prev, status: 'idle', progress: 100, progressMessage: 'Prompt personalized' }))
+      // The prompt was still filled in from the client's details: say so.
+      if (aiFailure) setPromptNotice(`Couldn't reach the AI (${aiFailure}) — the prompt was filled in from your client details. Review it or try again.`)
     } catch (error) {
       setGeneration((prev) => ({
         ...prev,
@@ -4442,6 +4471,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const resetPrompt = useCallback(() => {
     setPromptState((prev) => ({ ...prev, personalized: '', edited: '' }))
+    setPromptNotice(null)
   }, [])
 
   // ── Generation actions ─────────────────────────────────────────────────────
@@ -4513,7 +4543,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [closePersonalize, loadedProjectIdRef, router, source])
 
   const generate = useCallback(async () => {
-    if (!source || !apiKey) return
+    if (!source) return
+    if (!apiKey) {
+      // Say why nothing happens instead of silently doing nothing.
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: 'Connect your SmartVideo (MuAPI) API key in Settings to create videos and images.',
+      })
+      return
+    }
 
     // Guard: block blob URLs from reaching generation
     const allAssets: PersonalizationAsset[] = [
@@ -5435,6 +5474,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
      setPreviewAudio,
      removePreviewAudio,
      previewAudioError,
+    promptNotice,
+    canPublish: Boolean(socialPublish),
+    canEditInVideoStudio: Boolean(
+      result?.type === 'video' &&
+      result.url &&
+      !result.url.startsWith('blob:') &&
+      getGenerationAssetUrl(lastProjectRef.current?.assets.primaryIdentity ?? null),
+    ),
 
      // Motion Studio recipe (full catalog: 124 cards / 150 shots / 10
      // categories, exposed by `@/data/motionRecipeCatalog`). The selected

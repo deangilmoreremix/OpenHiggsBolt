@@ -1543,6 +1543,8 @@ export default function PersonalizationModal() {
         >
           {generation.status === 'complete' && result ? (
             <ResultView
+              canPublish={ctx.canPublish}
+              canEditInVideoStudio={ctx.canEditInVideoStudio}
               result={result}
               resultTab={resultTab}
               setResultTab={setResultTab}
@@ -1831,6 +1833,7 @@ function ResultView(props: any) {
     generateAgain, retryBranding, outputType, setOutputType, download,
     editInImageStudio, editInVideoStudio, publish,
     sharedMediaCount, isVideo, eligibleModes, mode, setMode,
+    canPublish = true, canEditInVideoStudio = true,
   } = props
 
   return (
@@ -1899,9 +1902,12 @@ function ResultView(props: any) {
             <button onClick={editInImageStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               Edit in Image Studio
             </button>
-            <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
-              <Share2 size={14} /> Publish
-            </button>
+            {/* Only offered where publishing is available on this page. */}
+            {canPublish && (
+              <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
+                <Share2 size={14} /> Publish
+              </button>
+            )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again
             </button>
@@ -1925,12 +1931,19 @@ function ResultView(props: any) {
             <button onClick={download} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <Download size={14} /> Download
             </button>
-            <button onClick={editInVideoStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
-              Edit in Video Studio
-            </button>
-            <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
-              <Share2 size={14} /> Publish
-            </button>
+            {/* Video Studio needs a stored video and a presenter photo (not a
+                video rendered in this browser). */}
+            {canEditInVideoStudio && (
+              <button onClick={editInVideoStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
+                Edit in Video Studio
+              </button>
+            )}
+            {/* Only offered where publishing is available on this page. */}
+            {canPublish && (
+              <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
+                <Share2 size={14} /> Publish
+              </button>
+            )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again
             </button>
@@ -2018,6 +2031,7 @@ function ConfigurationView(props: any) {
     previewVideo: ctxPreviewVideo,
     moveDiscoveredAssetToSection: ctxMoveDiscoveredAssetToSection,
     previewSettings: ctxPreviewSettings,
+    promptNotice,
   } = useDemoPersonalize()
   const isAuto = (key: AutoFillKey) => Boolean(autoFilledKeys?.has(key))
   // Contexts without the tab API (partial test doubles) still get a working
@@ -4614,6 +4628,11 @@ function ConfigurationView(props: any) {
             >
               Reset
             </button>
+          </div>
+        )}
+        {promptNotice && (
+          <div data-testid="pz-prompt-notice" role="status" style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(251,191,36,.35)', background: 'rgba(251,191,36,.06)', color: '#fcd34d', fontSize: 11 }}>
+            {promptNotice}
           </div>
         )}
       </section>

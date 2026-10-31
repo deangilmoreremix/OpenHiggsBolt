@@ -148,6 +148,42 @@ describe('Advanced Editing buttons', () => {
     expect(click).toHaveBeenCalledTimes(5)
   });
 
+  it('removing a saved asset keeps every other asset in its own list', async () => {
+    await openModal();
+    await act(async () => { latestCtx.updateClientForm({ businessName: 'Joe Roofing', audience: 'self' }) });
+    await act(async () => { await latestCtx.saveClient(); });
+    await act(async () => {
+      latestCtx.addLogoUrl('https://cdn.example/logo.png')
+      latestCtx.addProductUrl('https://cdn.example/roof.png')
+      latestCtx.addProductUrl('https://cdn.example/gutter.png')
+    });
+    const [roof] = latestCtx.assets.products
+    await act(async () => { latestCtx.removeSavedAsset(roof.id) });
+
+    expect(latestCtx.assets.products.map((a: any) => a.url)).toEqual(['https://cdn.example/gutter.png'])
+    expect(latestCtx.assets.logos).toHaveLength(1)
+    expect(latestCtx.assets.primaryLogo?.url).toBe('https://cdn.example/logo.png')
+    expect(latestCtx.assets.identities).toHaveLength(0)
+  });
+
+  it('an unknown id leaves the primary photo and logo alone', async () => {
+    await openModal();
+    await act(async () => {
+      latestCtx.addLogoUrl('https://cdn.example/logo.png')
+      latestCtx.addIdentityUrl('https://cdn.example/face.png')
+    });
+    const before = { logo: latestCtx.assets.primaryLogo?.id, person: latestCtx.assets.primaryIdentity?.id }
+    await act(async () => {
+      latestCtx.setPrimaryLogo('nope')
+      latestCtx.setPrimaryIdentity('nope')
+      latestCtx.removeLogo('nope')
+      latestCtx.removeIdentity('nope')
+    });
+    expect(latestCtx.assets.primaryLogo?.id).toBe(before.logo)
+    expect(latestCtx.assets.primaryIdentity?.id).toBe(before.person)
+    expect(latestCtx.assets.logos.every((a: any) => a.isPrimary !== false || a.id !== before.logo)).toBe(true)
+  });
+
   it('Save Client says it saved', async () => {
     const container = await openModal();
     await act(async () => { latestCtx.updateClientForm({ businessName: 'Joe Roofing', audience: 'self' }) });

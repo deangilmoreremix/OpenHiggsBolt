@@ -111,8 +111,13 @@ export function useRecastJob({
       return
     }
     const { job: restored, resume } = restoredRecastJob(stored)
+    if (resume && !apiKey) {
+      // It can't be checked without a key: say so instead of spinning forever.
+      setJob({ ...restored, status: 'error', error: 'Connect your SmartVideo (MuAPI) API key in Settings, then Retry to finish this recast.', finishedAt: Date.now() })
+      return
+    }
     setJob(restored)
-    if (resume && apiKey) void poll(restored)
+    if (resume) void poll(restored)
   }, [sourceId, apiKey, poll, setJob])
 
   useEffect(() => () => abortRef.current?.abort(), [])
