@@ -18,7 +18,7 @@ import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorEr
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
-import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -59,6 +59,9 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
 });
 
 /** Capture (when the request has a URL) and storyboard the film. */
+/** The site's own pictures the film can show: the images found on the page plus its card crops. */
+export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
+
 export async function storyboardFilm(
   req: FilmRequest,
   opts: {
@@ -142,7 +145,8 @@ export async function storyboardFilm(
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
     log(`Motion voice: ${voice.label}`, 'done');
-    const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
+    const withPictures = addGalleryScene(ruled.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
+    const fitted = fitNativeLengths(withPictures, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
     return { plan: chooseSeams(applySiteContent(fitted, capture?.content), voice), capture, source: 'director' };
   } catch (error) {
@@ -150,7 +154,7 @@ export async function storyboardFilm(
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url) });
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
     return { plan: chooseSeams(plan, pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: plan.palette?.accent ?? palette.accent })), capture, source: 'inkpress', note };
   }

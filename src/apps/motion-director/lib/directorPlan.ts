@@ -18,6 +18,7 @@ export const BRAND_SCENES = {
   'brand/url-scan': { cardId: 'brand-url-scan', title: 'URL scan' },
   'brand/hub': { cardId: 'brand-hub', title: 'Brand hub' },
   'brand/feature-zoom': { cardId: 'brand-feature-zoom', title: 'Feature zoom' },
+  'brand/people-gallery': { cardId: 'brand-gallery', title: 'People & pictures' },
   'brand/logo-reveal': { cardId: 'brand-logo-reveal', title: 'Logo reveal' },
 } as const;
 export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id in BRAND_SCENES;
@@ -84,6 +85,7 @@ const BRAND_SCENE_NOTES: Record<string, string> = {
   'brand/url-scan': 'the address typed into a bar, then the captured page scanned and tagged (use it to open a film of a captured site)',
   'brand/hub': 'the captured page in the middle with the site\'s own menu / feature names as glowing nodes (headline = the promise)',
   'brand/feature-zoom': 'slow push-in on one real section of the captured page with a label (one per feature)',
+  'brand/people-gallery': 'the site\'s own pictures (people, products, cards) shown one after another with the site\'s captions — use it when the person asks for the site\'s images or people',
   'brand/logo-reveal': 'the site\'s logo and name with sparks, then its call to action and address (use it to close a film of a captured site)',
 };
 

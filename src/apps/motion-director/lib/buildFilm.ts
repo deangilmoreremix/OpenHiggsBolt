@@ -317,6 +317,9 @@ const INSET_PAGE_H = 1200;
         const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
         props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
+      } else if (scene.recipeId === 'brand/people-gallery') {
+        const pics = [...crops, ...screens.slice(1)].slice(0, 6);
+        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: (opts.capture?.sectionNames ?? []).slice(0, 6).join('\n'), text: title };
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
       }
