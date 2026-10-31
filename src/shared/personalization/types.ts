@@ -174,6 +174,8 @@ export type AssetRole =
   | 'background_reference'
   | 'audio_reference'
   | 'saved_reference'
+  /** A Full Body Recast result: the client's person performing in a source clip. */
+  | 'presenter_video'
 
 export interface PersonalizationAsset {
   id: string
@@ -225,6 +227,8 @@ export interface AssetLibrary {
   ctaGraphic: PersonalizationAsset | null
   audio: PersonalizationAsset[]
   savedReferences: PersonalizationAsset[]
+  /** Full Body Recast videos made in Advanced Editing (newest last). */
+  presenterVideos?: PersonalizationAsset[]
 }
 
 export const EMPTY_ASSET_LIBRARY: AssetLibrary = {
@@ -642,3 +646,6 @@ export type {
 export type GuidedStep = 1 | 2 | 3 | 4
 
 export type PersonalizationViewMode = 'simple' | 'advanced'
+
+/** The four tabs of the modal's Advanced Editing workspace. */
+export type AdvancedEditingTab = 'client' | 'assets' | 'recast' | 'create'

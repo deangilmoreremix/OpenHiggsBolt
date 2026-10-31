@@ -87,7 +87,7 @@ export interface PreviewVideoRef {
   url: string
   poster: string | null
   title: string
-  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template'
+  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template' | 'recast'
   demoId?: string
   /** For `kind: 'motion-template'`: the canonical component name of the selected
    *  Motion Studio shot, used to resolve the recipe in `/studio/motion-studio`

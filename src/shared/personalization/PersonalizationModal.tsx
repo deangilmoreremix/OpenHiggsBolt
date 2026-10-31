@@ -43,6 +43,16 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
+import type { AutoFillKey } from './businessContentFromResearch'
+import type { AdvancedEditingTab } from './types'
+import {
+  AdvancedPreviewColumn,
+  AdvancedStepBar,
+  AdvancedTabFooter,
+  AdvancedTabPanel,
+  SECTION_TAB,
+} from './advanced/AdvancedWorkspace'
+import { FullBodyRecastSection } from './advanced/FullBodyRecastPanel'
 import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, BusinessOwnership, PersonalizationSource } from './types'
 import { LEAD_STAGES, isLeadStage } from './leadStages'
 import { ownershipBadgeStyle, ownershipLabel } from './ownershipBadge'
@@ -182,10 +192,21 @@ function isUsableImageSource(url?: string): boolean {
   }
 }
 
-function Field({ label, value, placeholder, onChange, full = false }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean }) {
+function Field({ label, value, placeholder, onChange, full = false, autoFilled = false }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean; autoFilled?: boolean }) {
   return (
     <div className={full ? 'col-span-full' : ''}>
-      <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>{label}</label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: C.muted, fontSize: 10 }}>
+        {label}
+        {autoFilled && (
+          <span
+            data-testid="pz-autofilled-tag"
+            title="Loaded from the business website. Edit to replace it."
+            style={{ padding: '1px 6px', borderRadius: 999, background: C.cyanSoft, border: `1px solid ${C.cyanBorder}`, color: C.cyan, fontSize: 9, fontWeight: 700 }}
+          >
+            from website
+          </span>
+        )}
+      </label>
       <input
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
@@ -1399,6 +1420,7 @@ export default function PersonalizationModal() {
         {/* ── BODY ──────────────────────────────────────────────────── */}
         <main
           className="flex-1 overflow-y-auto"
+          data-pz-scroll-root
           style={{ padding: '0 26px' }}
         >
           {generation.status === 'complete' && result ? (
@@ -1840,6 +1862,25 @@ function isAssetInCurrentJob(asset: { id?: string; url?: string; uploadedUrl?: s
 }
 
 function ConfigurationView(props: any) {
+  const {
+    autoFilledKeys,
+    businessLoadSummary,
+    advancedTab: ctxAdvancedTab,
+    setAdvancedTab: ctxSetAdvancedTab,
+    previewVideo: ctxPreviewVideo,
+  } = useDemoPersonalize()
+  const isAuto = (key: AutoFillKey) => Boolean(autoFilledKeys?.has(key))
+  // Contexts without the tab API (partial test doubles) still get a working
+  // local tab state.
+  const [localAdvancedTab, setLocalAdvancedTab] = useState<AdvancedEditingTab>('client')
+  const advancedTab: AdvancedEditingTab = ctxAdvancedTab || localAdvancedTab
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
+  const selectAdvancedTab = useCallback((tab: AdvancedEditingTab) => {
+    if (typeof ctxSetAdvancedTab === 'function') ctxSetAdvancedTab(tab)
+    else setLocalAdvancedTab(tab)
+    // Start the newly shown tab at its top.
+    document.querySelector('[data-pz-scroll-root]')?.scrollTo?.({ top: 0 })
+  }, [ctxSetAdvancedTab])
   const {
     source, clients, selectedClientId, clientForm,
     selectClient, saveClient, deleteClient, updateClientForm,
@@ -2293,8 +2334,23 @@ function ConfigurationView(props: any) {
     batchVideoReadyRunningRef.current = false
   }, [clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
 
+    const advancedTabsDone: Partial<Record<AdvancedEditingTab, boolean>> = {
+      client: Boolean(clientForm.businessName || clientForm.name),
+      assets: Boolean(assets.primaryIdentity || assets.identities?.length || assets.logos?.length || assets.products?.length),
+      recast: ctxPreviewVideo?.kind === 'recast',
+      create: Boolean(mode) || Boolean(promptState?.personalized || promptState?.edited),
+    }
+
     return (
-      <div>
+      <div
+        onClickCapture={(event) => {
+          // A link to a section on another tab switches to that tab first.
+          const link = (event.target as HTMLElement | null)?.closest?.('a[href^="#pz-"]')
+          const id = link?.getAttribute('href')?.slice(1)
+          const tab = id ? SECTION_TAB[id] : undefined
+          if (tab && tab !== advancedTab) selectAdvancedTab(tab)
+        }}
+      >
         {dropError && (
           <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.danger}`, background: 'rgba(239,91,103,.08)', color: '#ff9ba3', fontSize: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={14} />
@@ -2307,34 +2363,64 @@ function ConfigurationView(props: any) {
        <input ref={productInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
        <input ref={brandRefInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
 
-       {/* ── WHAT SMARTVIDEO WILL USE ─────────────────────────────── */}
-       <section style={{ padding: '18px 0 10px', borderBottom: `1px solid ${C.border}` }}>
-         <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 10 }}>
-           <div>
-             <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>What SmartVideo Will Use</h2>
-             <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
-               {assetSummary.length} asset{assetSummary.length === 1 ? '' : 's'} assigned across {new Set(assetSummary.map((a) => a.section)).size} block{new Set(assetSummary.map((a) => a.section)).size === 1 ? '' : 's'}
-             </p>
-           </div>
-         </div>
-         <div className="flex flex-wrap gap-2">
-           {assetSummary.map((item) => (
-             <div
-               key={item.id}
-               className="flex items-center gap-1.5 rounded-lg px-2 py-1"
-               style={{ background: 'rgba(41,211,242,.06)', border: `1px solid rgba(41,211,242,.18)` }}
-             >
-               <img src={item.url} alt="" className="w-5 h-5 rounded object-cover" style={{ background: '#000' }} />
-               <span style={{ fontSize: 10, fontWeight: 700, color: C.text }}>{item.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'ASSET'}</span>
-               <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>{item.section}</span>
-             </div>
-           ))}
-           {assetSummary.length === 0 && (
-             <span style={{ fontSize: 11, color: C.muted2 }}>No assets assigned yet.</span>
-           )}
-         </div>
-       </section>
+      <AdvancedStepBar active={advancedTab} onSelect={selectAdvancedTab} done={advancedTabsDone} />
 
+      {/* ── IMPORT CONFIRMATION ───────────────────────────────────── */}
+      {importConfirmation && (
+        <div style={{ padding: '14px 18px', border: `1px solid ${C.cyan}`, borderRadius: 12, background: 'rgba(41,211,242,.08)', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: C.cyan, fontSize: 18 }}>✓</span>
+            <div>
+              <div style={{ color: C.text, fontSize: 12, fontWeight: 700 }}>
+                {importConfirmation.count} asset{importConfirmation.count === 1 ? '' : 's'} added{importConfirmation.clientName ? ` to ${importConfirmation.clientName}` : ''}
+              </div>
+              <div style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>
+                Assets are now available in Client Assets below.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WORKSPACE: active tab | sticky live preview ─────────────────
+          Every existing section is kept and only regrouped into tabs. All
+          panels stay mounted (inactive ones hidden) so switching tabs never
+          loses input, and every section id stays in the DOM.             */}
+      <div
+        className="pz-adv-layout grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px]"
+        style={{ columnGap: 28 }}
+      >
+        <button
+          type="button"
+          className="order-first xl:hidden"
+          onClick={() => setMobilePreviewOpen((open) => !open)}
+          aria-expanded={mobilePreviewOpen}
+          style={{ marginTop: 12, minHeight: 34, borderRadius: 10, border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan, fontSize: 11, fontWeight: 800 }}
+        >
+          {mobilePreviewOpen ? 'Hide preview' : 'Show preview'}
+        </button>
+        <div className="min-w-0">
+      <AdvancedTabPanel tab="client" active={advancedTab}>
+        {discoveryStatus === 'reviewing' && discoveredAssets.length > 0 && (
+          <div
+            data-testid="pz-review-assets-callout"
+            role="status"
+            className="flex items-center justify-between flex-wrap"
+            style={{ gap: 10, marginTop: 14, padding: '10px 14px', borderRadius: 12, border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, fontSize: 12 }}
+          >
+            <span style={{ color: C.text, fontWeight: 700 }}>
+              ✓ Found {discoveredAssets.length} asset{discoveredAssets.length === 1 ? '' : 's'} on the website
+              {businessLoadSummary?.logo || businessLoadSummary?.photos ? ' — the best ones are already placed' : ''}.
+            </span>
+            <button
+              type="button"
+              onClick={() => selectAdvancedTab('assets')}
+              style={{ minHeight: 32, padding: '0 14px', borderRadius: 10, border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014', fontSize: 11, fontWeight: 900 }}
+            >
+              Review in Assets →
+            </button>
+          </div>
+        )}
       {/* ── TOP OVERVIEW: Source Demo | Client Profile ────────────── */}
       <section id="pz-overview" className="grid grid-cols-1 lg:grid-cols-2" style={{ padding: '20px 0', gap: 18, scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         {/* Source Demo */}
@@ -3006,6 +3092,23 @@ function ConfigurationView(props: any) {
                     }}
                   />
                 </div>
+                {!selectedBusiness.website && (
+                  <div data-testid="pz-add-website-hint" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ color: C.muted2 }}>Add their website to load their logo, photos and offer.</span>
+                    <button
+                      type="button"
+                      disabled={!clientForm.website?.trim() || brandRunInFlight}
+                      onClick={() => {
+                        const website = clientForm.website?.trim()
+                        if (website) void runDiscoveryWorkflow(website, { business: { ...selectedBusiness, website } })
+                      }}
+                      className="rounded-[8px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-40"
+                      style={{ minHeight: 28, padding: '0 10px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+                    >
+                      Load from website
+                    </button>
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {!isAnonymous && (
@@ -3153,9 +3256,21 @@ function ConfigurationView(props: any) {
 
           <ResumeProjectBanner />
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
+          {businessLoadSummary && businessLoadSummary.details > 0 && (
+            <div
+              data-testid="pz-business-load-summary"
+              role="status"
+              style={{ margin: '-4px 0 12px', padding: '8px 10px', borderRadius: 8, border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.text, fontSize: 11 }}
+            >
+              ✓ Loaded {businessLoadSummary.details} detail{businessLoadSummary.details === 1 ? '' : 's'}
+              {businessLoadSummary.logo ? ', the logo' : ''}
+              {businessLoadSummary.photos ? ` and ${businessLoadSummary.photos} photo${businessLoadSummary.photos === 1 ? '' : 's'}` : ''}
+              {businessLoadSummary.domain ? ` from ${businessLoadSummary.domain}` : ''}. Fields tagged “from website” can be edited.
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
             <div className="col-span-full">
-              <Field label="Website" value={clientForm.website} placeholder="https://joesroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
+              <Field autoFilled={isAuto('website')} label="Website" value={clientForm.website} placeholder="https://joesroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
               <button
                 type="button"
                 onClick={() => discoverAssets(clientForm.website)}
@@ -3230,10 +3345,10 @@ function ConfigurationView(props: any) {
                 </div>
               </div>
             )}
-            <Field label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
-            <Field label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
-            <Field label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
-            <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
+            <Field autoFilled={isAuto('businessName')} label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
+            <Field autoFilled={isAuto('industry')} label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
+            <Field autoFilled={isAuto('location')} label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
+            <Field autoFilled={isAuto('phone')} label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
             {!isAnonymous && (
               <div className="col-span-full flex gap-2">
                 <button
@@ -3258,74 +3373,9 @@ function ConfigurationView(props: any) {
         </div>
       </section>
 
-      {/* ── IMPORT CONFIRMATION ───────────────────────────────────── */}
-      {importConfirmation && (
-        <div style={{ padding: '14px 18px', border: `1px solid ${C.cyan}`, borderRadius: 12, background: 'rgba(41,211,242,.08)', marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: C.cyan, fontSize: 18 }}>✓</span>
-            <div>
-              <div style={{ color: C.text, fontSize: 12, fontWeight: 700 }}>
-                {importConfirmation.count} asset{importConfirmation.count === 1 ? '' : 's'} added{importConfirmation.clientName ? ` to ${importConfirmation.clientName}` : ''}
-              </div>
-              <div style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>
-                Assets are now available in Client Assets below.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </AdvancedTabPanel>
 
-      {/* ── SECTION NAV (sticky) ───────────────────────────────────────
-          Native anchor links (no JS) so keyboard/screen-reader users can
-          jump between the (now two-column) sections. Chips only render for
-          sections that are currently visible.                            */}
-      <nav
-        aria-label="Personalization sections"
-        className="sticky top-0 z-10 flex flex-wrap items-center gap-1.5"
-        style={{ padding: '10px 0', background: C.modal, borderBottom: `1px solid ${C.border}` }}
-      >
-        {[
-          { id: 'pz-overview', label: 'Overview' },
-          ...(discoveryStatus === 'reviewing' && discoveredAssets.length > 0
-            ? [{ id: 'pz-discovered', label: 'Discovered' }]
-            : []),
-          { id: 'pz-client-assets', label: 'Client Assets' },
-          ...(!isAnonymous && selectedClientId ? [{ id: 'pz-saved-assets', label: 'Saved Assets' }] : []),
-          ...(source?.mediaType === 'video' || source?.mediaType === 'image'
-            ? [{ id: 'pz-onvideo-overlays', label: 'Preview' }]
-            : []),
-          { id: 'pz-content', label: 'Business' },
-          { id: 'pz-prompt', label: 'Prompt' },
-          ...(!isPromptOnly && !isAnonymous ? [{ id: 'pz-output', label: 'Output' }] : []),
-          ...(showModes && !isAnonymous ? [{ id: 'pz-mode', label: 'Mode' }] : []),
-          ...(!isAnonymous ? [{ id: 'pz-engine', label: 'Engine' }] : []),
-        ].map((chip) => (
-          <a
-            key={chip.id}
-            href={`#${chip.id}`}
-            style={{
-              padding: '5px 10px',
-              borderRadius: 999,
-              border: `1px solid ${C.border}`,
-              background: 'rgba(255,255,255,.03)',
-              color: C.muted,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '.04em',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {chip.label}
-          </a>
-        ))}
-      </nav>
-
-      {/* ── TWO-COLUMN BODY (xl+) ──────────────────────────────────────
-          CSS multi-column keeps DOM/reading/tab order intact while roughly
-          halving vertical scroll depth on wide viewports. Below `xl` the
-          content collapses back to the original single column.            */}
-      <div className="xl:columns-2 xl:gap-x-7">
+      <AdvancedTabPanel tab="assets" active={advancedTab}>
 
       {/* ── DISCOVERED ASSETS REVIEW ────────────────────────────────── */}
       {discoveryStatus === 'reviewing' && discoveredAssets.length > 0 && (
@@ -4138,23 +4188,15 @@ function ConfigurationView(props: any) {
         </section>
       )}
 
-      {/* ── PREVIEW & ON-VIDEO OVERLAYS (guided preview, shared state) ──
-          Free browser-based Remotion preview of the personalized composition
-          plus the direct on-video overlay editor. Renders only for video and
-          image sources, and only when the provider exposes the guided API. */}
-      {(source?.mediaType === 'video' || source?.mediaType === 'image') && (
-        <AdvancedOverlaySection source={source} />
-      )}
-
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
       <section id="pz-content" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA & BUSINESS CONTENT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
-          <Field label="Product / Service" value={clientForm.productService} placeholder="Residential Roof Replacement" onChange={(v) => updateClientForm({ ...clientForm, productService: v })} />
-          <Field label="Offer" value={clientForm.offer} placeholder="Free Roof Inspection" onChange={(v) => updateClientForm({ ...clientForm, offer: v })} />
-          <Field label="CTA Headline" value={clientForm.ctaHeadline} placeholder="Protect Your Home Today" onChange={(v) => updateClientForm({ ...clientForm, ctaHeadline: v })} />
-          <Field label="Button / Action" value={clientForm.callToAction} placeholder="Book Your Inspection" onChange={(v) => updateClientForm({ ...clientForm, callToAction: v })} />
-          <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
+          <Field autoFilled={isAuto('productService')} label="Product / Service" value={clientForm.productService} placeholder="Residential Roof Replacement" onChange={(v) => updateClientForm({ ...clientForm, productService: v })} />
+          <Field autoFilled={isAuto('offer')} label="Offer" value={clientForm.offer} placeholder="Free Roof Inspection" onChange={(v) => updateClientForm({ ...clientForm, offer: v })} />
+          <Field autoFilled={isAuto('ctaHeadline')} label="CTA Headline" value={clientForm.ctaHeadline} placeholder="Protect Your Home Today" onChange={(v) => updateClientForm({ ...clientForm, ctaHeadline: v })} />
+          <Field autoFilled={isAuto('callToAction')} label="Button / Action" value={clientForm.callToAction} placeholder="Book Your Inspection" onChange={(v) => updateClientForm({ ...clientForm, callToAction: v })} />
+          <Field autoFilled={isAuto('phone')} label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
         </div>
         <div
           data-asset-section="ctaGraphic"
@@ -4202,6 +4244,21 @@ function ConfigurationView(props: any) {
           )}
         </div>
       </section>
+
+      </AdvancedTabPanel>
+
+      <AdvancedTabPanel tab="recast" active={advancedTab}>
+        <FullBodyRecastSection source={source} />
+      </AdvancedTabPanel>
+
+      <AdvancedTabPanel tab="create" active={advancedTab}>
+      {/* ── PREVIEW & ON-VIDEO OVERLAYS (guided preview, shared state) ──
+          Free browser-based Remotion preview of the personalized composition
+          plus the direct on-video overlay editor. Renders only for video and
+          image sources, and only when the provider exposes the guided API. */}
+      {(source?.mediaType === 'video' || source?.mediaType === 'image') && (
+        <AdvancedOverlaySection source={source} />
+      )}
 
       {/* ── PERSONALIZE THE PROMPT ──────────────────────────── */}
       <section id="pz-prompt" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
@@ -4331,6 +4388,11 @@ function ConfigurationView(props: any) {
                   {isUnavailable && (
                     <p style={{ margin: '6px 0 0', color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
                       {getModeUnavailableReason(m.key, assets)}
+                    </p>
+                  )}
+                  {m.key === 'full_body' && ctxPreviewVideo?.kind === 'recast' && (
+                    <p data-testid="pz-mode-already-recast" style={{ margin: '6px 0 0', color: C.cyan, fontSize: 9, lineHeight: 1.4 }}>
+                      Already recast in the Full Body Recast tab. Pick Recreate or Complete, or recast again there.
                     </p>
                   )}
                 </button>
@@ -4492,7 +4554,46 @@ function ConfigurationView(props: any) {
         )}
       </section>
       )}
+      </AdvancedTabPanel>
 
+      <AdvancedTabFooter active={advancedTab} onSelect={selectAdvancedTab} />
+        </div>
+
+        <div className={`order-first xl:order-last ${mobilePreviewOpen ? '' : 'hidden xl:block'}`}>
+          <AdvancedPreviewColumn>
+            {(source?.mediaType === 'video' || source?.mediaType === 'image') && (
+              <AdvancedLivePreview source={source} />
+            )}
+       {/* ── WHAT SMARTVIDEO WILL USE ─────────────────────────────── */}
+       <section data-testid="pz-will-use" style={{ padding: '14px', border: `1px solid ${C.border}`, borderRadius: 14, background: C.panel }}>
+         <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 10 }}>
+           <div>
+             <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>What SmartVideo Will Use</h2>
+             <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
+               {assetSummary.length} asset{assetSummary.length === 1 ? '' : 's'} assigned across {new Set(assetSummary.map((a) => a.section)).size} block{new Set(assetSummary.map((a) => a.section)).size === 1 ? '' : 's'}
+             </p>
+           </div>
+         </div>
+         <div className="flex flex-wrap gap-2">
+           {assetSummary.map((item) => (
+             <div
+               key={item.id}
+               className="flex items-center gap-1.5 rounded-lg px-2 py-1"
+               style={{ background: 'rgba(41,211,242,.06)', border: `1px solid rgba(41,211,242,.18)` }}
+             >
+               <img src={item.url} alt="" className="w-5 h-5 rounded object-cover" style={{ background: '#000' }} />
+               <span style={{ fontSize: 10, fontWeight: 700, color: C.text }}>{item.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'ASSET'}</span>
+               <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>{item.section}</span>
+             </div>
+           ))}
+           {assetSummary.length === 0 && (
+             <span style={{ fontSize: 11, color: C.muted2 }}>No assets assigned yet.</span>
+           )}
+         </div>
+       </section>
+
+          </AdvancedPreviewColumn>
+        </div>
       </div>
     </div>
   )
@@ -4504,20 +4605,43 @@ function ConfigurationView(props: any) {
 // the same provider state. It renders nothing when the guided preview API is
 // unavailable, so partially-wired contexts keep the previous behavior.
 
-function AdvancedOverlaySection({ source }: { source: PersonalizationSource | null }) {
+/** Builds the preview props shared by the live preview and the overlay editor. */
+function useAdvancedPreviewInput(source: PersonalizationSource | null) {
   const ctx = useDemoPersonalize()
   const guidedAvailable =
     typeof (ctx as { setGuidedStep?: unknown }).setGuidedStep === 'function' &&
     Boolean((ctx as { previewSettings?: unknown }).previewSettings)
   if (!guidedAvailable || !ctx.previewSettings) return null
-
-  const inputProps = buildPreviewInput({
+  return buildPreviewInput({
     source,
     previewSettings: ctx.previewSettings,
     previewVideo: ctx.previewVideo ?? null,
     clientForm: ctx.clientForm || {},
     assets: ctx.assets,
   })
+}
+
+/**
+ * The always-visible before/after preview in the workspace's sticky column.
+ * Opens in single-view "Switch" mode (the column is narrow); Compare is one
+ * click away.
+ */
+function AdvancedLivePreview({ source }: { source: PersonalizationSource | null }) {
+  const inputProps = useAdvancedPreviewInput(source)
+  if (!inputProps) return null
+  return (
+    <section data-testid="pz-live-preview" style={{ padding: 14, border: `1px solid ${C.border}`, borderRadius: 14, background: C.panel }}>
+      <h2 style={{ margin: '0 0 10px', fontSize: 12, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>
+        Live Preview
+      </h2>
+      <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" />
+    </section>
+  )
+}
+
+function AdvancedOverlaySection({ source }: { source: PersonalizationSource | null }) {
+  const inputProps = useAdvancedPreviewInput(source)
+  if (!inputProps) return null
 
   return (
     <section
@@ -4526,15 +4650,12 @@ function AdvancedOverlaySection({ source }: { source: PersonalizationSource | nu
       style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}
     >
       <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>
-        Preview &amp; On-Video Overlays
+        On-Video Overlays
       </h2>
       <p className="mt-1.5 max-w-[900px] text-[12px] leading-[1.55]" style={{ color: C.muted }}>
-        A free, browser-based preview of your branding placed directly on the video — before and after, side by
-        side. Drag, resize and edit every layer on the video itself. Nothing here is generated or charged.
+        Drag, resize and edit every layer on the video itself — the live preview beside this updates as you go.
+        Nothing here is generated or charged.
       </p>
-      <div style={{ marginTop: 16 }}>
-        <BeforeAfterPreview inputProps={inputProps} defaultMode="split" />
-      </div>
       <div style={{ marginTop: 16 }}>
         <OverlayEditor inputProps={inputProps} />
       </div>

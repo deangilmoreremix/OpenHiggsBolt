@@ -30,13 +30,16 @@ import {
   v2vModels,
   recastModels,
   lipsyncModels,
+  motionControlModels,
 } from '@/packages/studio/src/models.js'
 
 // ── Model Catalog Constants ──────────────────────────────────────────────────
 // These must match actual IDs in packages/studio/src/models.js.
 
 export const FACE_SWAP_MODEL = 'ai-video-face-swap'
-export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast'
+// Full Presenter uses the same Seedance motion-control recast as the Advanced
+// Editing "Full Body Recast" tab (keeps the clip's motion, swaps the person).
+export const FULL_BODY_MODEL = 'seedance-2.5-motion-control'
 export const DEFAULT_T2V_MODEL = 'veo-4-text-to-video'
 export const DEFAULT_I2I_MODEL = 'gpt-image-2-edit'
 
@@ -105,6 +108,8 @@ function findModel(modelId: string): any | null {
     getI2VModelById(modelId) ||
     getV2VModelById(modelId) ||
     getRecastModelById(modelId) ||
+    // Exact match only: getMotionControlModelById falls back to the first model.
+    motionControlModels.find((m: { id: string }) => m.id === modelId) ||
     getLipSyncModelById(modelId) ||
     null
   )
@@ -114,12 +119,17 @@ function isInCatalog(modelId: string, catalog: any[]): boolean {
   return catalog.some((m) => m.id === modelId)
 }
 
+/** Recast and motion-control models both replace the person in a video. */
+function isRecastModel(modelId: string): boolean {
+  return isInCatalog(modelId, recastModels) || isInCatalog(modelId, motionControlModels)
+}
+
 function getFallbackModel(modelId: string, sourceMediaType: string): string {
   if (sourceMediaType === 'image') return DEFAULT_I2I_MODEL
   const model = findModel(modelId)
   if (!model) return DEFAULT_T2V_MODEL
   if (isInCatalog(modelId, v2vModels)) return FACE_SWAP_MODEL
-  if (isInCatalog(modelId, recastModels)) return FULL_BODY_MODEL
+  if (isRecastModel(modelId)) return FULL_BODY_MODEL
   return DEFAULT_T2V_MODEL
 }
 
@@ -168,7 +178,7 @@ export function resolveModelCapabilities(
 
   const supportsAudioPreservation =
     isInCatalog(modelId, v2vModels) ||
-    isInCatalog(modelId, recastModels) ||
+    isRecastModel(modelId) ||
     /v2v|recast/.test(modelId.toLowerCase())
 
   const aspectRatioOptions = Array.isArray(model?.inputs?.aspect_ratio?.enum)
@@ -201,12 +211,12 @@ export function resolveModelCapabilities(
       modelId === FACE_SWAP_MODEL ||
       /face.?swap|face.?replace/.test(modelId.toLowerCase()),
     supportsPersonReplacement:
-      isInCatalog(modelId, recastModels) ||
+      isRecastModel(modelId) ||
       /recast|person|character|swap|animate/.test(modelId.toLowerCase()),
     supportsI2I: isInCatalog(modelId, i2iModels) || /i2i|image.?to.?image|flux|midjourney|gpt.?image|ideogram|seedream/.test(modelId.toLowerCase()),
     supportsT2V: !source.sourceMedia && isInCatalog(modelId, t2vModels),
-    supportsV2V: isInCatalog(modelId, v2vModels) || isInCatalog(modelId, recastModels) || /v2v|video.?to.?video/.test(modelId.toLowerCase()),
-    supportsRecast: isInCatalog(modelId, recastModels) || /recast/.test(modelId.toLowerCase()),
+    supportsV2V: isInCatalog(modelId, v2vModels) || isRecastModel(modelId) || /v2v|video.?to.?video/.test(modelId.toLowerCase()),
+    supportsRecast: isRecastModel(modelId) || /recast|motion.?control/.test(modelId.toLowerCase()),
     supportsLipSync: isInCatalog(modelId, lipsyncModels) || /lipsync|lip.?sync/.test(modelId.toLowerCase()),
     maxImages,
     maxVideos,

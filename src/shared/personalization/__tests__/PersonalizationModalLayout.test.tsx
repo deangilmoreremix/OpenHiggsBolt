@@ -2,19 +2,19 @@
 /**
  * Layout regression guards for the Personalization modal.
  *
- * The modal was changed from a narrow, tall, single-scroll layout
- * (maxWidth 1100px) to a wide, two-column layout (maxWidth 1480px +
- * `xl:columns-2`) so users see far more without scrolling.
+ * Advanced Editing is a wide (maxWidth 1480px) four-tab workspace — Client,
+ * Assets, Full Body Recast, Overlays & Create — with a sticky live-preview
+ * column, so each task fits on one screen instead of one long scroll.
  *
- * These tests pin that geometry so a future layout refactor cannot silently
- * revert it. The audit that preceded this change found NO existing test
- * asserting the modal's width/height bounds, layout classes, or anchors.
+ * These tests pin that geometry, and that every pre-existing section is still
+ * present under a tab, so a future refactor cannot silently drop features.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
+import { SECTION_TAB } from '../advanced/AdvancedWorkspace';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -137,15 +137,19 @@ describe('PersonalizationModal wide-layout guards', () => {
     expect(dialog!.style.maxHeight).toBe('90vh');
   });
 
-  it('body renders a two-column wrapper that collapses below the xl breakpoint', async () => {
+  it('body is a tab workspace with a sticky live-preview column on xl screens', async () => {
     const container = await openModal();
 
-    const wrapper = container.querySelector('[class*="columns-2"]') as HTMLElement | null;
-    expect(wrapper).toBeTruthy();
-    expect(wrapper!.className).toContain('xl:columns-2');
+    const layout = container.querySelector('.pz-adv-layout') as HTMLElement | null;
+    expect(layout).toBeTruthy();
+    expect(layout!.className).toContain('xl:grid-cols-[minmax(0,1fr)_420px]');
+    // Below xl it falls back to a single column.
+    expect(layout!.className).toContain('grid-cols-1');
 
-    // Below xl it must fall back to a single column (no unconditional multi-col).
-    expect(wrapper!.className).not.toMatch(/(^|\s)columns-2(\s|$)/);
+    const preview = container.querySelector('[data-testid="pz-preview-column"]') as HTMLElement | null;
+    expect(preview).toBeTruthy();
+    expect(preview!.className).toContain('xl:sticky');
+    expect(preview!.querySelector('[data-testid="pz-will-use"]')).toBeTruthy();
   });
 
   it('sections are marked break-inside-avoid so none split across a column', async () => {
@@ -175,24 +179,47 @@ describe('PersonalizationModal wide-layout guards', () => {
     });
   });
 
-  it('sticky section nav renders as an accessible landmark with valid anchor links', async () => {
+  it('a sticky step bar switches between the four tabs, showing one panel at a time', async () => {
     const container = await openModal();
 
-    const nav = container.querySelector('nav[aria-label="Personalization sections"]') as HTMLElement | null;
-    expect(nav).toBeTruthy();
+    const tablist = container.querySelector('[role="tablist"][aria-label="Advanced Editing steps"]') as HTMLElement | null;
+    expect(tablist).toBeTruthy();
+    expect(tablist!.className).toContain('sticky');
 
-    // Sticky so it stays reachable while the two columns scroll.
-    expect(nav!.className).toContain('sticky');
+    const tabs = Array.from(tablist!.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
+    expect(tabs.map((tab) => tab.id)).toEqual(['pz-tab-client', 'pz-tab-assets', 'pz-tab-recast', 'pz-tab-create']);
 
-    const links = Array.from(nav!.querySelectorAll('a')) as HTMLAnchorElement[];
-    expect(links.length).toBeGreaterThanOrEqual(5);
+    const visiblePanels = () =>
+      Array.from(container.querySelectorAll('[role="tabpanel"]'))
+        .filter((panel) => !(panel as HTMLElement).hidden)
+        .map((panel) => panel.id);
 
-    links.forEach((link) => {
-      const href = link.getAttribute('href') || '';
-      expect(href.startsWith('#')).toBe(true);
-      // Every nav target must actually exist in the DOM.
-      expect(container.querySelector(href), `nav target ${href} should exist`).toBeTruthy();
-    });
+    expect(visiblePanels()).toEqual(['pz-tabpanel-client']);
+    for (const tab of tabs) {
+      await act(async () => { tab.click(); });
+      expect(tab.getAttribute('aria-selected')).toBe('true');
+      expect(visiblePanels()).toEqual([tab.getAttribute('aria-controls')]);
+    }
+
+    // "Next" moves forward one tab.
+    await act(async () => { tabs[0].click(); });
+    const next = Array.from(container.querySelectorAll('button')).find((b) => /^Next: Assets/.test(b.textContent || ''));
+    await act(async () => { next!.click(); });
+    expect(visiblePanels()).toEqual(['pz-tabpanel-assets']);
+  });
+
+  it('keeps every Advanced Editing section, each under its tab', async () => {
+    const container = await openModal();
+
+    // Always-present sections for a signed-in video source.
+    // (#pz-mode only appears once a non-prompt output is chosen, as before.)
+    const required = ['pz-overview', 'pz-client-assets', 'pz-content', 'pz-recast', 'pz-prompt', 'pz-output', 'pz-engine'];
+    for (const id of required) {
+      const section = container.querySelector(`#${id}`) as HTMLElement | null;
+      expect(section, `expected section #${id} to render`).toBeTruthy();
+      const panel = section!.closest('[role="tabpanel"]') as HTMLElement | null;
+      expect(panel?.id, `#${id} should be inside its tab`).toBe(`pz-tabpanel-${SECTION_TAB[id]}`);
+    }
   });
 
   it('asset cards keep a compact min-height to limit vertical scroll', async () => {

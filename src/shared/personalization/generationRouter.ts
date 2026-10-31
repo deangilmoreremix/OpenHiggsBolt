@@ -10,12 +10,13 @@ import {
   generateI2I,
   generateVideo,
   generateI2V,
-  processRecast,
+  processMotionControl,
   processV2V,
   processLipSync,
   uploadFile,
 } from '@/packages/studio/src/muapi'
 import { createPersonalizationOpenAIClient } from './openaiPersonalizationClient'
+import { clampRecastDuration } from './recast/recastJob'
 import {
   getV2VModelById,
   getRecastModelById,
@@ -349,12 +350,16 @@ async function handleVideoGeneration({
       const identityUrl = resolved.directInputs.image_url as string | undefined
       if (!identityUrl) throw new Error('No identity image provided for full presenter replacement.')
 
-      const result = await processRecast(apiKey, {
+      // Seedance motion control (open-genjutsu): keeps the clip's motion,
+      // camera and location and swaps in the person.
+      const result = await processMotionControl(apiKey, {
         model: videoModel,
         video_url: videoUrl,
-        image_url: identityUrl,
+        images_list: [identityUrl],
+        aspect_ratio: 'adaptive',
+        duration: clampRecastDuration(options.duration || source.duration || 5),
+        generate_audio: false,
         prompt: options.preserveAudio ? undefined : prompt,
-        aspect_ratio: options.aspectRatio || source.aspectRatio,
       })
 
       onProgress?.(85, 'Processing...')

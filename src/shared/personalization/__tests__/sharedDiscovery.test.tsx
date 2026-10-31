@@ -513,11 +513,14 @@ describe('free discovery in the shared modal — anonymous mode', () => {
     expect(screen.queryAllByTestId('find-my-brand-progress').length).toBe(0)
 
     // The form was populated through the existing selectBusiness mapping:
-    // website is the normalised input, businessName the hostname.
+    // website is the normalised input. The hostname placeholder name is then
+    // replaced by the name the site publishes (its page title).
     expect(ctx().clientForm.website).toBe('https://sunsetrealty.example.com')
-    expect(ctx().clientForm.businessName).toBe('sunsetrealty.example.com')
+    expect(ctx().clientForm.businessName).toBe('Sunset Realty')
     // Research + discovery both happened (one server round trip).
     expect(ctx().businessResearch.status).toBe('done')
+    // (Auto-placing the logo/photos into empty cards is covered by
+    // businessAutoLoad.test.tsx, which stubs the browser image-load check.)
     expect(ctx().discoveredAssets.length).toBe(4)
     expect(requestedUrls('/api/demo/discover').length).toBe(1)
   })
@@ -895,10 +898,16 @@ describe('pre-existing modal features survive the integration', () => {
     expect(screen.getByRole('heading', { name: 'What SmartVideo Will Use' })).toBeTruthy()
     expect(screen.getByText('No assets assigned yet.')).toBeTruthy()
 
-    // First/Last Frame + CTA sections
+    // First/Last Frame + CTA sections (on the Assets tab of Advanced Editing)
     expect(screen.getByText('5. First Frame')).toBeTruthy()
     expect(screen.getByText('6. Last Frame / CTA')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-create'))
+    })
 
     // Engine + audio control
     expect(container.querySelector('#pz-engine')).toBeTruthy()
@@ -908,7 +917,11 @@ describe('pre-existing modal features survive the integration', () => {
     await flush(20)
     expect(screen.getByText('Preserve Audio')).toBeTruthy()
 
-    // onRevert: edit a product asset, then revert it through the thumb control.
+    // onRevert: edit a product asset, then revert it through the thumb control
+    // (product thumbnails live on the Assets tab).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
     await act(async () => {
       ctx().addProductUrl('https://example.com/product.png')
     })

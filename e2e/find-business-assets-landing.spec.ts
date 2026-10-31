@@ -472,10 +472,13 @@ async function startAssetDiscovery(page: Page, dialog: Locator): Promise<Discove
   }
 
   const discoveredHeading = dialog.getByRole('heading', { name: 'Discovered Assets', exact: true });
+  // Advanced Editing groups sections into tabs: discovery finishes on the
+  // Client tab with a "Review in Assets" prompt that opens the Assets tab.
+  const reviewCallout = dialog.getByTestId('pz-review-assets-callout');
   const errorBanner = dialog.getByText(/couldn.t find business assets/i);
 
   const outcome = await Promise.race([
-    discoveredHeading
+    reviewCallout
       .waitFor({ state: 'visible', timeout: DISCOVERY_TIMEOUT_MS })
       .then(() => 'assets' as const, () => 'none' as const),
     errorBanner
@@ -484,6 +487,8 @@ async function startAssetDiscovery(page: Page, dialog: Locator): Promise<Discove
   ]);
 
   if (outcome === 'assets') {
+    await reviewCallout.getByRole('button', { name: /Review in Assets/ }).click();
+    await discoveredHeading.waitFor({ state: 'visible', timeout: 15_000 });
     const assetCount = await dialog.locator('#pz-discovered img').count();
     return { kind: 'assets', httpStatus, assetCount, message: '' };
   }
@@ -642,21 +647,20 @@ test.describe('Find Business Assets — Landing page', () => {
         'The imported asset did not appear in the Client Assets section.',
       ).toBeGreaterThan(0);
 
-      const nav = dialog.getByRole('navigation', { name: 'Personalization sections' });
-      await expect(
-        nav,
-        'The personalization section navigation is missing.',
-      ).toBeVisible({ timeout: 15_000 });
-
-      await nav.getByRole('link', { name: 'Business', exact: true }).click();
-      await expect(dialog.locator('#pz-content'), 'The Business step did not open.').toBeVisible({
+      // Move to another tab and back: the Advanced Editing tabs stay mounted,
+      // so the imported assets must be unchanged.
+      await dialog.getByTestId('pz-tab-client').click();
+      await expect(dialog.locator('#pz-overview'), 'The Client tab did not open.').toBeVisible({
         timeout: 15_000,
       });
 
-      await nav.getByRole('link', { name: 'Client Assets', exact: true }).click();
+      await dialog.getByTestId('pz-tab-assets').click();
+      await expect(dialog.locator('#pz-content'), 'The Business content (Assets tab) did not open.').toBeVisible({
+        timeout: 15_000,
+      });
       await expect(
         dialog.locator('#pz-client-assets'),
-        'The Client Assets step did not open.',
+        'The Client Assets section did not open.',
       ).toBeVisible({ timeout: 15_000 });
 
       const after = await imageSources(dialog.locator('#pz-client-assets img'));

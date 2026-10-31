@@ -51,6 +51,7 @@ import type {
   PersonalizationCompletion,
   GuidedStep,
   PersonalizationViewMode,
+  AdvancedEditingTab,
   PersonalizationPreviewSettings,
   PreviewLayer,
   PreviewVideoRef,
@@ -112,6 +113,17 @@ import {
   subscribeRemotionDesignRegistry,
 } from './templates/registry'
 import type { RemotionDesignTemplate } from './templates/types'
+import { RECAST_MODEL, type RecastJob, type StartRecastInput } from './recast/recastJob'
+import { useRecastJob } from './recast/useRecastJob'
+import { registerGeneratedVideo } from './supabaseGeneratedVideos'
+import {
+  autoFilledKeysOf,
+  businessContentFromResearch,
+  clearAutoFilledContent,
+  mergeAutoFilledContent,
+  type AutoFillKey,
+  type AutoFilledValues,
+} from './businessContentFromResearch'
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -206,6 +218,7 @@ interface PersistedPreviewState {
   previewVideo?: unknown
   guidedStep?: unknown
   viewMode?: unknown
+  advancedTab?: unknown
   /** Motion Studio template selected in Step 2 (full metadata), so the
    *  in-modal preview survives a reload. The provider re-resolves it through
    *  `getMotionTemplate` on restore; storing the full object (not just an id)
@@ -214,6 +227,11 @@ interface PersistedPreviewState {
 }
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
+
+const ADVANCED_TAB_IDS: AdvancedEditingTab[] = ['client', 'assets', 'recast', 'create']
+function toAdvancedTab(value: unknown): AdvancedEditingTab {
+  return ADVANCED_TAB_IDS.includes(value as AdvancedEditingTab) ? (value as AdvancedEditingTab) : 'client'
+}
 /** The download route accepts at most this many URLs per request. */
 const DOWNLOAD_BATCH_SIZE = 20
 
@@ -477,6 +495,60 @@ type OpenPersonalizeOptions = {
   returnPayload?: Record<string, unknown>
 }
 
+export interface BusinessLoadSummary {
+  domain: string
+  details: number
+  logo: boolean
+  photos: number
+}
+
+/** Discovered categories auto-placed into empty client-asset cards (never people). */
+const AUTO_IMPORT_PHOTO_CATEGORIES: Record<string, 'products' | 'brand'> = {
+  product: 'products',
+  service: 'products',
+  completed_work: 'products',
+  storefront: 'brand',
+  office: 'brand',
+  branded_vehicle: 'brand',
+  team: 'brand',
+  brand: 'brand',
+}
+const AUTO_IMPORT_PHOTOS_PER_CARD = 3
+
+function discoveredAssetRank(asset: DiscoveredAsset): number {
+  return (asset.recommended ? 100 : 0)
+    + (asset.relevanceScore ?? 0)
+    + (asset.qualityScore ?? 0)
+    + (asset.confidence ?? 0)
+}
+
+/**
+ * Which discovered assets to place automatically after a business is found:
+ * the best logo when the Logo card is empty, and up to three photos for each
+ * empty Products / Brand Refs card. People are never auto-placed.
+ */
+export function pickAutoImportAssets(discovered: DiscoveredAsset[], library: AssetLibrary): DiscoveredAsset[] {
+  const usable = discovered.filter((asset) => !asset.rejected && asset.previewUrl)
+  const ranked = [...usable].sort((a, b) => discoveredAssetRank(b) - discoveredAssetRank(a))
+  const picked: DiscoveredAsset[] = []
+  if (library.logos.length === 0) {
+    const logo = ranked.find((asset) => asset.category === 'logo')
+    if (logo) picked.push({ ...logo, assignedSection: 'logo' })
+  }
+  const cards: Array<{ section: 'products' | 'brand'; empty: boolean }> = [
+    { section: 'products', empty: library.products.length === 0 },
+    { section: 'brand', empty: library.brandReferences.length === 0 },
+  ]
+  for (const { section, empty } of cards) {
+    if (!empty) continue
+    ranked
+      .filter((asset) => AUTO_IMPORT_PHOTO_CATEGORIES[asset.category] === section)
+      .slice(0, AUTO_IMPORT_PHOTOS_PER_CARD)
+      .forEach((asset) => picked.push({ ...asset, assignedSection: section }))
+  }
+  return picked
+}
+
 export interface ImportDiscoveredAssetsOptions {
   ids?: string[]
   section?: AssignedSection
@@ -623,6 +695,10 @@ export type DemoPersonalizeContextValue = {
   }
   findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
   selectBusiness: (business: BusinessDiscoveryRecord) => void
+  /** Client-form fields still holding a value the business finder filled in. */
+  autoFilledKeys: Set<AutoFillKey>
+  /** What finding the current business loaded, for the one-line summary. */
+  businessLoadSummary: BusinessLoadSummary | null
   researchBusiness: (retryUrl?: string) => Promise<void>
   clearBusinessSearch: () => void
   setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
@@ -709,6 +785,22 @@ export type DemoPersonalizeContextValue = {
   // Guided Simple Mode + free Remotion preview
   viewMode: PersonalizationViewMode
   setViewMode: (mode: PersonalizationViewMode) => void
+  /** Active tab of the Advanced Editing workspace. */
+  advancedTab: AdvancedEditingTab
+  setAdvancedTab: (tab: AdvancedEditingTab) => void
+
+  // Full Body Recast (Advanced Editing). The job outlives the panel and the
+  // modal, and resumes after a reload.
+  recastJob: RecastJob | null
+  startRecast: (input: StartRecastInput) => Promise<void>
+  cancelRecast: () => void
+  retryRecast: () => boolean
+  dismissRecast: () => void
+  /** The video shown before a recast was applied (for "Use original video"). */
+  preRecastVideo: PreviewVideoRef | null
+  restoreOriginalVideo: () => void
+  applyPresenterVideo: (assetId: string) => void
+  removePresenterVideo: (assetId: string) => void
   guidedStep: GuidedStep
   setGuidedStep: (step: GuidedStep) => void
   previewSettings: PersonalizationPreviewSettings
@@ -877,6 +969,8 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
       return { ...library, lastFrame: asset }
     case 'cta_graphic':
       return { ...library, ctaGraphic: asset }
+    case 'presenter_video':
+      return { ...library, presenterVideos: [...(library.presenterVideos || []), asset] }
     default:
       return library
   }
@@ -1119,6 +1213,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [clients, setClients] = useState<ClientProfile[]>(loadClients)
   const [selectedClientId, setSelectedClientId] = useState<string>(() => getCurrentClientId() || '')
   const [clientForm, setClientForm] = useState<Partial<ClientProfile>>({})
+  // Values the business finder filled in. A field keeps its "from website" tag
+  // only while it still holds that value, so editing it removes the tag.
+  const autoFilledRef = useRef<AutoFilledValues>({})
+  const [autoFilledContent, setAutoFilledContent] = useState<AutoFilledValues>({})
+  // The URL-only path names the business after its hostname until research
+  // finds the real name; that placeholder may be replaced.
+  const placeholderNameRef = useRef('')
+  // Set when a business is found, consumed once its discovery finishes.
+  const autoImportPendingRef = useRef(false)
+  // Discovered-asset ids that were placed automatically for this business.
+  const autoImportedDiscoveredIdsRef = useRef<Set<string>>(new Set())
+  const [businessLoadSummary, setBusinessLoadSummary] = useState<BusinessLoadSummary | null>(null)
 
   // Saved client assets (persisted per-client library)
   const [savedClientAssets, setSavedClientAssets] = useState<ClientAssetLibrary>(() =>
@@ -1322,11 +1428,98 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // Guided Simple Mode + free Remotion preview
   const [viewMode, setViewMode] = useState<PersonalizationViewMode>('simple')
+  const [advancedTab, setAdvancedTab] = useState<AdvancedEditingTab>('client')
   const [guidedStep, setGuidedStepState] = useState<GuidedStep>(1)
   const [previewSettings, setPreviewSettings] = useState<PersonalizationPreviewSettings>(() =>
     createDefaultPreviewSettings(),
   )
   const [previewVideo, setPreviewVideo] = useState<PreviewVideoRef | null>(null)
+
+  // ── Full Body Recast (Advanced Editing tab) ────────────────────────────────
+  // The video shown before a recast was applied, so "Use original video" can
+  // undo it.
+  const [preRecastVideo, setPreRecastVideo] = useState<PreviewVideoRef | null>(null)
+  const previewVideoRef = useRef<PreviewVideoRef | null>(null)
+  previewVideoRef.current = previewVideo
+  const recastMarkAppliedRef = useRef<() => void>(() => {})
+
+  /** A finished recast becomes the video and is saved with the client's assets. */
+  const handleRecastDone = useCallback((job: RecastJob) => {
+    const current = previewVideoRef.current
+    if (current?.kind !== 'recast') setPreRecastVideo(current)
+    setPreviewVideo({
+      url: job.resultUrl,
+      poster: null,
+      title: `Full Body Recast — ${job.identityName || 'Presenter'}`,
+      kind: 'recast',
+    })
+    setAssets((prev) => {
+      if ((prev.presenterVideos || []).some((asset) => asset.url === job.resultUrl)) return prev
+      return updateAssetInLibrary(prev, createAssetFromUrl(job.resultUrl, 'presenter_video', {
+        name: `${job.identityName || 'Presenter'} — Full Body Recast`,
+        mimeType: 'video/mp4',
+        editMetadata: { operation: 'full_body_recast', model: RECAST_MODEL, prompt: job.prompt },
+      }))
+    })
+    try {
+      registerSharedMedia({
+        originStudio: 'demo-personalization',
+        sourceType: source?.sourceType || 'unknown',
+        sourceDemoId: source?.id,
+        sourceMedia: job.sourceUrl,
+        personalizationMode: 'full_body',
+        model: RECAST_MODEL,
+        originalPrompt: job.prompt,
+        personalizedPrompt: job.prompt,
+        identityAssetIds: job.identityId ? [job.identityId] : [],
+        outputUrls: [job.resultUrl],
+        outputType: 'video',
+      })
+      setSharedMediaEntries(getSharedMedia())
+    } catch {
+      // History is best effort.
+    }
+    if (access === 'authenticated') {
+      void registerGeneratedVideo({
+        source_type: source?.sourceType || null,
+        source_url: job.sourceUrl,
+        personalization_mode: 'full_body',
+        model: RECAST_MODEL,
+        prompt: job.prompt,
+        selected_asset_ids: job.identityId ? [job.identityId] : [],
+        provider_job_id: job.requestId || null,
+        video_url: job.resultUrl,
+        duration_seconds: job.duration,
+        metadata: { feature: 'advanced_full_body_recast' },
+      })
+    }
+    recastMarkAppliedRef.current()
+  }, [source, access])
+
+  const recast = useRecastJob({ apiKey, sourceId: source?.id, onDone: handleRecastDone })
+  recastMarkAppliedRef.current = recast.markApplied
+
+  /** Undo: go back to the video shown before the recast was applied. */
+  const restoreOriginalVideo = useCallback(() => {
+    setPreviewVideo(preRecastVideo)
+    setPreRecastVideo(null)
+  }, [preRecastVideo])
+
+  /** Re-apply a saved recast video from the client's assets. */
+  const applyPresenterVideo = useCallback((assetId: string) => {
+    const asset = (assets.presenterVideos || []).find((candidate) => candidate.id === assetId)
+    if (!asset) return
+    const current = previewVideoRef.current
+    if (current?.kind !== 'recast') setPreRecastVideo(current)
+    setPreviewVideo({ url: asset.url, poster: null, title: asset.name, kind: 'recast' })
+  }, [assets.presenterVideos])
+
+  const removePresenterVideo = useCallback((assetId: string) => {
+    setAssets((prev) => ({
+      ...prev,
+      presenterVideos: (prev.presenterVideos || []).filter((asset) => asset.id !== assetId),
+    }))
+  }, [])
   const [previewApproved, setPreviewApproved] = useState(false)
   const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
   // ── Remotion design registry ───────────────────────────────────────────────
@@ -1485,6 +1678,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo(null)
     setPreviewApproved(false)
   }, [source?.id, source])
+
+  // A Full Body Recast that finished while the modal was closed (or before a
+  // reload) is applied once its source is open again. Declared after the reset
+  // effect above so the reset cannot wipe it.
+  useEffect(() => {
+    const job = recast.job
+    if (!source?.id || !job || job.sourceId !== source.id) return
+    if (job.status === 'done' && !job.applied) handleRecastDone(job)
+  }, [source?.id, recast.job, handleRecastDone])
 
   // Persist current reusable assets to saved client library whenever they change
   useEffect(() => {
@@ -1664,11 +1866,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
         guidedStep,
         viewMode,
+        advancedTab,
         motionTemplate: motionTemplate ?? null,
       })
     }, 800)
     return () => clearTimeout(timer)
-  }, [previewSettings, previewVideo, guidedStep, viewMode, motionTemplate, source?.id, access, previewUserScope])
+  }, [previewSettings, previewVideo, guidedStep, viewMode, advancedTab, motionTemplate, source?.id, access, previewUserScope])
 
   // Cancel pending project persistence and release every still-owned blob URL
   // on unmount
@@ -1723,6 +1926,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     )
     const storedViewMode = stored.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
+    setAdvancedTab(toAdvancedTab(stored.advancedTab))
     setPreviewApproved(false)
     // Re-resolve the stored Motion Studio template through the catalog so a
     // stale id resolves to the current canonical entry (or null if it was
@@ -1891,6 +2095,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         ? entry.viewMode
         : stored?.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
+    setAdvancedTab(toAdvancedTab(stored?.advancedTab))
     setPreviewApproved(false)
     // Re-resolve the stored Motion Studio template through the catalog so a
     // stale id (e.g. from an older session) maps to the current canonical
@@ -2162,22 +2367,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * hand-corrected website — the visitor's value always wins.
    */
   const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
+    const incoming = businessContentFromResearch(research)
     setClientForm((prev) => {
-      const next: Partial<ClientProfile> = { ...prev }
-      const fill = (key: keyof ClientProfile, value: unknown) => {
-        if (typeof value !== 'string') return
-        const trimmed = value.trim()
-        if (!trimmed) return
-        const current = next[key]
-        if (typeof current === 'string' && current.trim()) return
-        ;(next as Record<string, unknown>)[key] = trimmed
-      }
-      fill('website', research.canonicalUrl || research.finalUrl)
-      fill('brandDescription', research.description)
-      fill('phone', research.contactInfo?.phones?.[0])
-      return next
+      const merged = mergeAutoFilledContent(prev, incoming, autoFilledRef.current, {
+        placeholderName: placeholderNameRef.current,
+      })
+      autoFilledRef.current = merged.autoFilled
+      return merged.form
     })
   }, [])
+
+  // The merge records what it filled in a ref (it runs inside a state
+  // updater); mirror it into state so the "from website" tags re-render.
+  useEffect(() => {
+    setAutoFilledContent(autoFilledRef.current)
+  }, [clientForm])
+
+  const autoFilledKeys = useMemo(
+    () => autoFilledKeysOf(clientForm, autoFilledContent),
+    [clientForm, autoFilledContent],
+  )
 
   // ── Saved client assets actions ─────────────────────────────────────────────
 
@@ -3486,6 +3695,44 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     })
   }, [discoveredAssets, setAssets, uploadAsset, clientForm, createOwnedAsset])
 
+  /** Remove assets that were placed automatically for the previous business. */
+  const removeAutoImportedAssets = useCallback(() => {
+    const ids = autoImportedDiscoveredIdsRef.current
+    if (ids.size === 0) return
+    const placed = [...assets.logos, ...assets.products, ...assets.brandReferences]
+      .filter((asset) => asset.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
+    for (const asset of placed) {
+      if (asset.role === 'logo') removeLogo(asset.id)
+      else if (asset.role === 'product_reference') removeProduct(asset.id)
+      else if (asset.role === 'brand_reference') removeBrandReference(asset.id)
+    }
+    autoImportedDiscoveredIdsRef.current = new Set()
+  }, [assets, removeLogo, removeProduct, removeBrandReference])
+
+  // When a found business's discovery finishes, place the best logo and
+  // photos into empty asset cards so the preview and overlays use them right
+  // away. Everything stays reviewable in the Discovered Assets grid.
+  useEffect(() => {
+    if (!autoImportPendingRef.current || discoveryStatus !== 'reviewing' || discoveredAssets.length === 0) return
+    autoImportPendingRef.current = false
+    const picks = pickAutoImportAssets(discoveredAssets, assets)
+    let domain = ''
+    try {
+      domain = clientForm.website ? new URL(normalizeWebsiteInput(clientForm.website)).hostname.replace(/^www\./, '') : ''
+    } catch {
+      domain = ''
+    }
+    setBusinessLoadSummary({
+      domain,
+      details: Object.keys(autoFilledRef.current).length,
+      logo: picks.some((asset) => asset.assignedSection === 'logo'),
+      photos: picks.filter((asset) => asset.assignedSection !== 'logo').length,
+    })
+    if (picks.length === 0) return
+    for (const asset of picks) autoImportedDiscoveredIdsRef.current.add(asset.id)
+    void importDiscoveredAssets({ ids: picks.map((asset) => asset.id) })
+  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website])
+
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
@@ -3703,17 +3950,37 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
 
+    // Content found for the previous business must not mix into this one:
+    // drop its auto-filled fields (anything the user typed stays) and the
+    // assets that were placed automatically.
+    const previousAutoFilled = autoFilledRef.current
+    removeAutoImportedAssets()
+    autoImportPendingRef.current = false
+    setBusinessLoadSummary(null)
+    placeholderNameRef.current = business.id.startsWith('url:') ? business.name : ''
+
     // Populate client form from business, through the single shared mapping
     // (see `clientFormFromBusiness`) that the automated "Find My Brand"
-    // workflow uses too.
-    updateClientForm(clientFormFromBusiness(business))
+    // workflow uses too. These values count as auto-filled.
+    const fromRecord = clientFormFromBusiness(business)
+    setClientForm((prev) => {
+      const next: Partial<ClientProfile> = clearAutoFilledContent(prev, previousAutoFilled)
+      const filled: AutoFilledValues = {}
+      for (const [key, value] of Object.entries(fromRecord) as Array<[AutoFillKey, unknown]>) {
+        if (typeof value !== 'string' || !value.trim()) continue
+        next[key] = value
+        filled[key] = value
+      }
+      autoFilledRef.current = filled
+      return next
+    })
 
     // Asset discovery is NOT triggered here: the caller decides. The
     // "Find My Brand" workflow calls `runDiscoveryWorkflow` (which performs the
     // research + discovery run for a selected business or a pasted URL), and
     // the manual "Find Business Assets" button remains for the step-by-step
     // path.
-  }, [updateClientForm])
+  }, [removeAutoImportedAssets])
 
   /**
    * Free-tier discovery: the restricted anonymous pipeline behind
@@ -4059,6 +4326,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     //     the pasted URL itself when they arrived with one. There is no second
     //     mapping, so both paths fill the same fields with the same rules.
     selectBusiness(options?.business || businessRecordFromWebsite(website))
+    autoImportPendingRef.current = true
 
     setDiscoveryError(null)
     setVisionError(null)
@@ -4260,6 +4528,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     try {
       const capabilities = resolveModelCapabilities(source, genOptions)
       let resolved = resolveAssetsForModel(source, assets, mode, genOptions, capabilities)
+
+      // Generate from the video the user is looking at (a picked demo, an
+      // upload, or a Full Body Recast) wherever a source video is used. Modes
+      // that start from an image keep their image-to-video path.
+      const chosenVideoUrl = previewVideo?.url && !previewVideo.url.startsWith('blob:') ? previewVideo.url : ''
+      if (
+        chosenVideoUrl &&
+        source.mediaType === 'video' &&
+        (resolved.directInputs.video_url || mode === 'face_only' || mode === 'full_body')
+      ) {
+        resolved = { ...resolved, directInputs: { ...resolved.directInputs, video_url: chosenVideoUrl } }
+      }
 
       const finalPrompt = promptState.edited || promptState.personalized || promptState.original
 
@@ -5034,6 +5314,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     businessResearch,
     findBusinesses,
     selectBusiness,
+    autoFilledKeys,
+    businessLoadSummary,
     researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
@@ -5084,6 +5366,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Guided Simple Mode + free Remotion preview
     viewMode,
     setViewMode,
+    advancedTab,
+    setAdvancedTab,
+    recastJob: recast.job,
+    startRecast: recast.start,
+    cancelRecast: recast.cancel,
+    retryRecast: recast.retry,
+    dismissRecast: recast.dismiss,
+    preRecastVideo,
+    restoreOriginalVideo,
+    applyPresenterVideo,
+    removePresenterVideo,
     guidedStep,
     setGuidedStep,
     previewSettings,

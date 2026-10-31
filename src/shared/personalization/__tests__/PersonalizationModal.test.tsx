@@ -292,15 +292,22 @@ describe('PersonalizationModal', () => {
       expect(screen.getByText(title)).toBeTruthy();
     });
 
-    // Verify the full-width design sections are present.
-    // Scoped to headings: the sticky section nav also renders short link
-    // labels (e.g. "Client Assets"), so unscoped text queries would be
-    // ambiguous.
+    // Verify the full-width design sections are present. Advanced Editing
+    // groups them into tabs (all mounted, inactive ones hidden), so each
+    // heading is checked on the tab that shows it.
+    const showTab = async (tab: string) => {
+      await act(async () => {
+        (document.querySelector(`[data-testid="pz-tab-${tab}"]`) as HTMLElement | null)?.click();
+      });
+    };
     expect(screen.getByRole('heading', { name: 'Source Demo' })).toBeTruthy();
+    await showTab('assets');
     expect(screen.getByRole('heading', { name: /CLIENT ASSETS/i })).toBeTruthy();
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy();
+    await showTab('create');
     expect(screen.getByRole('heading', { name: /Personalize The Prompt/i })).toBeTruthy();
     expect(screen.getByRole('heading', { name: /SmartVideo Engine/i })).toBeTruthy();
+    await showTab('client');
 
     // Verify SmartVideo Recommended is prominently visible (check container text)
     expect(container.textContent).toMatch(/SmartVideo/)
