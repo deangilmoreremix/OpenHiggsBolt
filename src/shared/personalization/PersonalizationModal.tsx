@@ -1749,7 +1749,9 @@ export default function PersonalizationModal() {
               Cancel
             </button>
             <button
-              onClick={outputType === 'prompt' ? handlePersonalize : generate}
+              // Videos go through createFinalVideo, so the on-video layers from
+              // Create › Overlays end up in the file (not only in the preview).
+              onClick={outputType === 'prompt' ? handlePersonalize : outputType === 'image' ? generate : () => { void ctx.createFinalVideo() }}
               disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || Boolean(blockingRequirement) || personalizationInProgress}
               title={blockingRequirement ? blockingRequirement.message : undefined}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
@@ -1957,6 +1959,16 @@ function ResultView(props: any) {
         </div>
       </div>
 
+      {typeof result.metadata?.layersNote === 'string' && (
+        <div data-testid="pz-layers-note" role="status" className="rounded-xl p-3 text-xs" style={{ border: '1px solid rgba(251,191,36,.35)', background: 'rgba(251,191,36,.06)', color: '#fcd34d' }}>
+          {result.metadata.layersNote}
+        </div>
+      )}
+      {result.metadata?.layersBurnedIn === true && (
+        <div data-testid="pz-layers-burned" className="text-xs" style={{ color: C.green }}>
+          ✓ Your on-video layers are in this video, and a copy was downloaded to your device.
+        </div>
+      )}
       {result.metadata?.postProcessingFailed && retryBranding && (
         <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -5062,7 +5074,10 @@ function AdvancedLivePreview({ source }: { source: PersonalizationSource | null 
 
 function AdvancedOverlaySection({ source }: { source: PersonalizationSource | null }) {
   const inputProps = useAdvancedPreviewInput(source)
+  const { outputType } = useDemoPersonalize()
   if (!inputProps) return null
+  // Say where these layers end up for the chosen output.
+  const layersInVideo = outputType === 'video' || outputType === 'everything'
 
   return (
     <section
@@ -5076,6 +5091,15 @@ function AdvancedOverlaySection({ source }: { source: PersonalizationSource | nu
       <p className="mt-1.5 max-w-[900px] text-[12px] leading-[1.55]" style={{ color: C.muted }}>
         Drag, resize and edit every layer on the video itself — the live preview beside this updates as you go.
         Nothing here is generated or charged.
+      </p>
+      <p
+        data-testid="pz-overlay-output-note"
+        className="mt-2 max-w-[900px] text-[11px] font-bold"
+        style={{ color: layersInVideo ? C.green : '#fcd34d' }}
+      >
+        {layersInVideo
+          ? '✓ These layers are burned into your final video, exactly as previewed.'
+          : 'Layers apply to video outputs only — choose Video or Everything under Output & engine to include them.'}
       </p>
       <div style={{ marginTop: 16 }}>
         <OverlayEditor inputProps={inputProps} />

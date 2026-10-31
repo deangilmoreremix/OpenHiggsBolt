@@ -164,6 +164,12 @@ const MAX_REFERENCE_UPLOADS = 10
 // OpenAI. Everything below only derives/clamps settings and reads/writes the
 // browser mirror used when Supabase has no saved state.
 
+/** Per-run generation settings (see runGenerate). */
+interface GenerateOverrides {
+  options?: Partial<GenerationOptions>
+  burnInLayers?: boolean
+}
+
 function clampPreviewNumber(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback
   return Math.min(max, Math.max(min, n))
@@ -1574,7 +1580,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [motionTemplate, setMotionTemplate] = useState<MotionTemplate | null>(null)
   // Set when the preview hands off to the existing generate() path after the
   // source has been patched with the selected preview video.
-  const pendingFinalGenerateRef = useRef(false)
+  // Set by createFinalVideo while the swapped-in source commits; the effect
+  // below then runs the generation with these settings.
+  const pendingFinalGenerateRef = useRef<GenerateOverrides | null>(null)
 
   // Guards async uploads against writing state (and revoking blobs) after the
   // provider has unmounted, which would double-revoke blobs released on unmount.
@@ -4542,7 +4550,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     router.push(`/studio/${TARGET_SLUG[target]}`)
   }, [closePersonalize, loadedProjectIdRef, router, source])
 
-  const generate = useCallback(async () => {
+  /**
+   * Runs a generation. `overrides.options` replaces generation options for
+   * this run (so callers don't race a same-tick setGenOptions), and
+   * `overrides.burnInLayers` renders the approved on-video layers over a
+   * generated video in the browser, in place of the MuAPI logo/end-card
+   * watermark.
+   */
+  const runGenerate = useCallback(async (overrides?: GenerateOverrides) => {
+    const options: GenerationOptions = overrides?.options ? { ...genOptions, ...overrides.options } : genOptions
+    const burnInLayers = Boolean(overrides?.burnInLayers)
     if (!source) return
     if (!apiKey) {
       // Say why nothing happens instead of silently doing nothing.
@@ -4599,8 +4616,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setResult(null)
 
     try {
-      const capabilities = resolveModelCapabilities(source, genOptions)
-      let resolved = resolveAssetsForModel(source, assets, mode, genOptions, capabilities)
+      const capabilities = resolveModelCapabilities(source, options)
+      let resolved = resolveAssetsForModel(source, assets, mode, options, capabilities)
 
       // Generate from the video the user is looking at (a picked demo, an
       // upload, or a Full Body Recast) wherever a source video is used. Modes
@@ -4617,7 +4634,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const finalPrompt = promptState.edited || promptState.personalized || promptState.original
 
       // Pre-generate CTA end card if exact end-card handling is requested
-      if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
+      if (!burnInLayers && options.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
         setGeneration((prev) => ({ ...prev, progress: 3, progressMessage: 'Preparing branding assets...' }))
         const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || null, apiKey)
         if (endCardUrl) {
@@ -4647,32 +4664,75 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         resolved,
         prompt: finalPrompt,
         mode,
-        options: genOptions,
+        options,
         apiKey,
         onProgress: (percent, message) => {
           setGeneration((prev) => ({ ...prev, progress: percent, progressMessage: message }))
         },
       })
 
-      // Apply deterministic post-processing (logo overlay, CTA end card)
-      setGeneration((prev) => ({ ...prev, progress: 90, progressMessage: 'Applying branding...' }))
-      const postResult = await applyPostProcessing({
-        generatedUrl: genResult.url || '',
-        type: genResult.type as 'image' | 'video',
-        postProcessing: resolved.postProcessing,
-        apiKey,
-      })
+      // The layers from the overlay editor (logo, headline, images, CTA, end
+      // card — positions, timing and animation included) are rendered over the
+      // generated video in this browser, exactly as previewed.
+      let burned: { url: string; extension: string; mimeType: string } | null = null
+      let layersNote: string | null = null
+      if (burnInLayers && genResult.type === 'video' && genResult.url) {
+        setGeneration((prev) => ({ ...prev, progress: 88, progressMessage: 'Adding your layers to the video…' }))
+        try {
+          const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
+          const inputProps = buildPreviewInput({
+            source,
+            previewSettings,
+            previewVideo: { url: genResult.url, poster: null, title: source.title, kind: 'source' },
+            clientForm,
+            assets,
+          })
+          const exported = await exportPersonalizedVideo({
+            inputProps,
+            onProgress: (progress) => {
+              const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100)
+              setGeneration((prev) => ({ ...prev, progress: Math.max(88, Math.min(99, 88 + Math.round(percent / 9))), progressMessage: `Adding your layers to the video… ${percent}%` }))
+            },
+          })
+          if (exported.ok) {
+            const fileName = `personalized-${Date.now().toString(36)}.${exported.extension}`
+            downloadWebExportBlob(exported.blob, fileName)
+            burned = { url: URL.createObjectURL(exported.blob), extension: exported.extension, mimeType: exported.mimeType }
+          } else if (exported.reason !== 'cancelled') {
+            layersNote = exported.error
+          }
+        } catch (error) {
+          layersNote = error instanceof Error ? error.message : 'The layers could not be added in this browser.'
+        }
+      }
 
-      const finalUrl = postResult.finalUrl || genResult.url || ''
+      // Without burned-in layers: deterministic post-processing (logo
+      // overlay, CTA end card) as before.
+      let postResult: Awaited<ReturnType<typeof applyPostProcessing>> = { finalUrl: genResult.url || '', originalUrl: genResult.url || '', applied: [] }
+      if (!burned) {
+        setGeneration((prev) => ({ ...prev, progress: 90, progressMessage: 'Applying branding...' }))
+        postResult = await applyPostProcessing({
+          generatedUrl: genResult.url || '',
+          type: genResult.type as 'image' | 'video',
+          postProcessing: resolved.postProcessing,
+          apiKey,
+        })
+      }
+
+      const finalUrl = burned?.url || postResult.finalUrl || genResult.url || ''
+      // Shared media and history keep the stored (non-blob) video URL.
+      const storedUrl = burned ? genResult.url || '' : finalUrl
       const resultWithPostProcessing: GenerationResult = {
         ...genResult,
         url: finalUrl,
         metadata: {
           ...genResult.metadata,
-          postProcessing: postResult.applied,
+          postProcessing: burned ? ['layers-burned-in'] : postResult.applied,
           postProcessingFailed: postResult.failed,
-          originalUrl: postResult.originalUrl,
+          originalUrl: postResult.originalUrl || genResult.url,
           postProcessingInput: resolved.postProcessing,
+          ...(burned ? { layersBurnedIn: true, generatedUrl: genResult.url, container: burned.mimeType, extension: burned.extension } : {}),
+          ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}). The logo and end card were applied instead.` } : {}),
         },
       }
 
@@ -4697,7 +4757,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
         firstFrameAssetId: assets.firstFrame?.id || null,
         lastFrameAssetId: assets.lastFrame?.id || null,
-        outputUrls: resultWithPostProcessing.urls || (finalUrl ? [finalUrl] : []),
+        outputUrls: resultWithPostProcessing.urls || (storedUrl ? [storedUrl] : []),
         outputType: resultWithPostProcessing.type,
         clientId: selectedClientId || undefined,
       })
@@ -4722,7 +4782,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
         firstFrameAssetId: assets.firstFrame?.id || null,
         lastFrameAssetId: assets.lastFrame?.id || null,
-        outputUrls: resultWithPostProcessing.urls || (finalUrl ? [finalUrl] : []),
+        outputUrls: resultWithPostProcessing.urls || (storedUrl ? [storedUrl] : []),
         outputType: resultWithPostProcessing.type,
         clientId: selectedClientId || undefined,
       }).catch(() => {
@@ -4740,7 +4800,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         failedStage: 'generation',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun])
+  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun, previewVideo, previewSettings])
+
+  const generate = useCallback(() => runGenerate(), [runGenerate])
 
   const retry = useCallback(async () => {
     await generate()
@@ -4920,14 +4982,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       )
       const hasCta = previewSettings.layers.some((layer) => layer.kind === 'cta' && layer.visible)
 
-      // Sync the approved preview into the existing generation options.
-      setGenOptions((prev) => ({
-        ...prev,
+      // The approved preview's settings for this run. They're also saved to
+      // the options, but passed directly: a setGenOptions in the same tick
+      // isn't visible to generate yet.
+      const finalOptions: Partial<GenerationOptions> = {
         aspectRatio: previewSettings.aspectRatio,
         duration: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)),
-        exactLogoHandling: hasLogo ? 'final-overlay' : prev.exactLogoHandling,
-        exactCtaHandling: hasCta ? 'final-end-card' : prev.exactCtaHandling,
-      }))
+        ...(hasLogo ? { exactLogoHandling: 'final-overlay' as const } : {}),
+        ...(hasCta ? { exactCtaHandling: 'final-end-card' as const } : {}),
+      }
+      setGenOptions((prev) => ({ ...prev, ...finalOptions }))
+      const finalRun: GenerateOverrides = { options: finalOptions, burnInLayers: true }
 
       // A selected preview video replaces the source media. The source update and
       // generate() cannot share a tick (generate would read the stale source), so
@@ -4943,11 +5008,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
               }
             : prev,
         )
-        pendingFinalGenerateRef.current = true
+        pendingFinalGenerateRef.current = finalRun
         return
       }
 
-      await generate()
+      await runGenerate(finalRun)
       return
     }
 
@@ -5068,7 +5133,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         errorMessage: error instanceof Error ? error.message : 'Branded render failed',
       })
     }
-  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun])
+  }, [previewSettings, previewSeed, previewVideo, source, runGenerate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun])
 
   const cancelExport = useCallback(() => {
     cancelActiveExport()
@@ -5138,10 +5203,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Hands off to the existing generate() path once the patched source (selected
   // preview video) has committed.
   useEffect(() => {
-    if (!pendingFinalGenerateRef.current) return
-    pendingFinalGenerateRef.current = false
-    void generate()
-  }, [generate])
+    const pending = pendingFinalGenerateRef.current
+    if (!pending) return
+    pendingFinalGenerateRef.current = null
+    void runGenerate(pending)
+  }, [runGenerate])
 
   // ── Result actions ─────────────────────────────────────────────────────────
 
