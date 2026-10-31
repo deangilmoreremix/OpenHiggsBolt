@@ -91,7 +91,7 @@ export function lookChanged(prev: PersonalizationPreviewSettings, next: Personal
 
 /** Extra note when a change switched the branded end card on or off. */
 export function endCardChangeNote(prev: PersonalizationPreviewSettings, next: PersonalizationPreviewSettings): string | null {
-  if (prev.showEndCard && !next.showEndCard) return 'the branded end card was turned off (the closing scene replaces it)'
+  if (prev.showEndCard && !next.showEndCard) return 'the branded end card was turned off (the closing scene plays after your video instead)'
   if (!prev.showEndCard && next.showEndCard) return 'the branded end card is back on'
   return null
 }

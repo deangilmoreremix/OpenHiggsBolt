@@ -10,7 +10,7 @@ import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { DEFAULT_PREVIEW_BRAND_COLORS, PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import type { DesignSlot } from '../preview/types'
-import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS } from '../preview/presets'
+import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS, totalDurationInFrames } from '../preview/presets'
 import { LAYER_LABELS } from './layerChanges'
 import { DesignGallery } from './DesignGallery'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
@@ -18,9 +18,9 @@ import { chooseFinalOutputPath } from '../finalOutput'
 
 /** The three places an animated design can go, in the order they play. */
 const DESIGN_TABS: { slot: DesignSlot; label: string; hint: string; none: string }[] = [
-  { slot: 'intro', label: 'Opening scene', hint: 'A full-screen scene that plays for the first few seconds.', none: 'None: start straight on your video' },
+  { slot: 'intro', label: 'Opening scene', hint: 'Plays before your video starts. Any design works here.', none: 'None: start straight on your video' },
   { slot: 'overlay', label: 'On-screen design', hint: 'An animated design shown on top of your video.', none: 'None: no on-screen design' },
-  { slot: 'outro', label: 'Closing scene', hint: 'A full-screen scene for the last few seconds. It replaces the branded end card.', none: 'None: keep the branded end card' },
+  { slot: 'outro', label: 'Closing scene', hint: 'Plays after your video ends, instead of the branded end card. Any design works here.', none: 'None: keep the branded end card' },
 ]
 
 const BRAND_COLOR_FIELDS = [
@@ -102,6 +102,10 @@ export function StepPreviewApprove(): React.JSX.Element {
   const fixedSvgIdWarning = getRemotionDesignFixedSvgIdWarning(activeRemotionDesignId)
 
   const brandColors = { ...DEFAULT_PREVIEW_BRAND_COLORS, ...(previewSettings.brandColors ?? {}) }
+  const fpsForLength = previewSettings.fps || 30
+  const videoSeconds = Math.round((previewSettings.durationInFrames / fpsForLength) * 10) / 10
+  const totalSeconds =
+    Math.round((totalDurationInFrames({ layers: previewSettings.layers ?? [], durationInFrames: previewSettings.durationInFrames }) / fpsForLength) * 10) / 10
   const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) ?? null
   const activeDesign = remotionDesignTemplates.find((design) => design.id === activeRemotionDesignId) ?? null
   const [showVideoAdvanced, setShowVideoAdvanced] = useState(false)
@@ -307,7 +311,7 @@ export function StepPreviewApprove(): React.JSX.Element {
             </select>
           </div>
           <div>
-            <label style={labelStyle} htmlFor="guided-duration">Length (seconds)</label>
+            <label style={labelStyle} htmlFor="guided-duration">Video length (seconds)</label>
             <input
               id="guided-duration"
               type="number"
@@ -320,6 +324,11 @@ export function StepPreviewApprove(): React.JSX.Element {
               }}
               style={{ ...softPanelStyle, width: '100%', color: C.text, fontSize: 12 }}
             />
+            {totalSeconds !== videoSeconds ? (
+              <p style={{ ...hintStyle, marginTop: 4 }}>
+                With your opening and closing scenes the finished video is {totalSeconds.toFixed(1)}s long.
+              </p>
+            ) : null}
           </div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 7, color: C.text, fontSize: 12, marginTop: 12, cursor: 'pointer' }}>

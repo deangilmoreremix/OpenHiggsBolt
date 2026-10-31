@@ -5,6 +5,7 @@ import { Player } from '@remotion/player'
 import type { PlayerRef } from '@remotion/player'
 import { AlertTriangle, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import { PersonalizationComposition } from './PersonalizationComposition'
+import { totalDurationInFrames } from './presets'
 import { previewPlayerRef } from './PreviewControls'
 import {
   isFailureForVideo,
@@ -68,7 +69,8 @@ export function PersonalizationPlayer(
   } = props
 
   const settings = inputProps.settings
-  const durationInFrames = Math.max(1, Math.round(settings.durationInFrames))
+  // Opening scene + the video itself + closing scene.
+  const durationInFrames = Math.max(1, totalDurationInFrames(settings))
   const compositionWidth = settings.width
   const compositionHeight = settings.height
   const fps = settings.fps

@@ -97,6 +97,10 @@ import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { probeVideoMetadata } from './guided/videoMetadata'
+
+/** The aspect ratios the preview supports, for validating catalog values. */
+const PREVIEW_ASPECT_RATIO_SET = new Set<string>(['16:9', '9:16', '1:1', '4:5'])
 import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
@@ -106,6 +110,7 @@ import {
   removeDesignLayer,
   relayoutForAspect,
   retimeScenes,
+  closestAspectRatio,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
@@ -721,6 +726,12 @@ export type DemoPersonalizeContextValue = {
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
+   /**
+    * Sets the preview's length and shape to a picked video's own: its real
+    * duration and closest aspect ratio, read from the file's metadata, with
+    * the catalog values as fallback while (or if) that cannot be read.
+    */
+   fitPreviewToVideo: (url: string, fallback?: { durationSec?: number; aspectRatio?: string }) => void
    resetPreviewLayout: () => void
    /**
     * Every registered Remotion design, in registration order. Empty when no
@@ -4532,6 +4543,35 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     [],
   )
 
+  const fitPreviewToVideo = useCallback(
+    (url: string, fallback?: { durationSec?: number; aspectRatio?: string }) => {
+      const apply = (durationSec: number | undefined, aspect: PreviewAspectRatio | null) => {
+        setPreviewSettings((prev) => {
+          let next = prev
+          if (aspect && aspect !== prev.aspectRatio) {
+            const dims = getCompositionDimensions(aspect)
+            next = relayoutForAspect(prev, { ...prev, aspectRatio: aspect, width: dims.width, height: dims.height })
+          }
+          if (durationSec && durationSec > 0) {
+            const frames = Math.max(1, Math.round(durationSec * (next.fps || 30)))
+            if (frames !== next.durationInFrames) next = { ...next, durationInFrames: frames }
+          }
+          return next
+        })
+      }
+      // Catalog values first, so the preview is right even before the probe.
+      const fallbackAspect = PREVIEW_ASPECT_RATIO_SET.has(fallback?.aspectRatio ?? '')
+        ? (fallback!.aspectRatio as PreviewAspectRatio)
+        : null
+      apply(fallback?.durationSec, fallbackAspect)
+      void probeVideoMetadata(url).then((meta) => {
+        if (!meta) return
+        apply(meta.durationSec, closestAspectRatio(meta.width, meta.height))
+      })
+    },
+    [],
+  )
+
   const resetPreviewLayout = useCallback(() => {
     // "Restore default layout" must undo per-layer position/scale/visibility
     // edits, not only re-seed layers that are missing from the layout. Brand
@@ -4909,7 +4949,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       templateSlug: template.slug,
       sourceRepo: template.sourceRepo,
     })
-  }, [])
+    if (clip) fitPreviewToVideo(clip, { durationSec: template.durationSec })
+  }, [fitPreviewToVideo])
 
   // Hand the selected Motion Studio recipe off to the canonical
   // `/studio/motion-studio` route so the full editing + export surface can
@@ -5108,6 +5149,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatePreviewComposition,
     resetPreviewLayout,
     remotionDesignTemplates,
+    fitPreviewToVideo,
     activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
     activeRemotionSceneIds: {
       intro: previewSettings.remotionSceneIds?.intro ?? null,

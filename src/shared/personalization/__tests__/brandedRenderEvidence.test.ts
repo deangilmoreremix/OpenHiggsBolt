@@ -47,6 +47,37 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+describe('branded render evidence — opening and closing scenes', () => {
+  it('renders the opening scene, the whole video and the closing scene', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openSource(ref)
+
+    await act(async () => {
+      getCtx(ref).setRemotionDesign('scene-gradient-text-sweep', 'intro')
+    })
+    await act(async () => {
+      getCtx(ref).setRemotionDesign('lower-third', 'outro')
+    })
+    const videoFrames = getCtx(ref).previewSettings.durationInFrames
+    await act(async () => {
+      getCtx(ref).approvePersonalization()
+    })
+    await act(async () => {})
+
+    renderMediaOnWeb.mockImplementation(async () => ({
+      getBlob: async () => new Blob(['fake-branded-video-bytes'], { type: 'video/mp4' }),
+    }))
+    await act(async () => {
+      await getCtx(ref).createFinalVideo()
+    })
+
+    const opts = renderMediaOnWeb.mock.calls[0][0] as any
+    // Gradient Sweep is 110 frames; any other design plays for 3s (90 frames).
+    expect(opts.composition.durationInFrames).toBe(110 + videoFrames + 90)
+  })
+})
+
 describe('branded render evidence — expected MP4 properties', () => {
   it('produces an H.264 / MP4 / AAC file with even dimensions', async () => {
     const ref: HarnessRef = { current: null }

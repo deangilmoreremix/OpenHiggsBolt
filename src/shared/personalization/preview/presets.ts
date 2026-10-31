@@ -748,7 +748,14 @@ export function applyDesignTemplate(
 
   if (slot !== 'overlay') {
     // A scene owns the whole frame for its own time window.
-    Object.assign(overrides, { x: 0.5, y: 0.5, scale: 1, opacity: 1, animation: 'fade' }, sceneWindow(design, prev, slot))
+    Object.assign(
+      overrides,
+      design.role === 'scene'
+        ? { x: 0.5, y: 0.5, scale: 1, opacity: 1, animation: 'fade' }
+        : // Any other design keeps its own placement on the brand backdrop.
+          { opacity: 1 },
+      sceneWindow(design, prev),
+    )
   }
 
   const layer = createLayer('design', { ...overrides, id: layerId })
@@ -782,27 +789,53 @@ function sceneIdsOf(settings: PersonalizationPreviewSettings): { intro: string |
 /** Default scene length: three seconds. */
 const DEFAULT_SCENE_SECONDS = 3
 
-/** The frames an opening or closing scene plays for in this video. */
+/**
+ * How long an opening or closing scene plays. Scenes play BEFORE and AFTER the
+ * video (they add to the total length), so a scene layer stores only its own
+ * length: `startFrame: 0, endFrame: length - 1`. Where it sits on the timeline
+ * comes from its slot (see `sceneLengths` / `totalDurationInFrames`).
+ */
 export function sceneWindow(
   design: RemotionDesignTemplate,
-  settings: Pick<PersonalizationPreviewSettings, 'fps' | 'durationInFrames'>,
-  slot: Exclude<DesignSlot, 'overlay'>,
+  settings: Pick<PersonalizationPreviewSettings, 'fps'>,
 ): { startFrame: number; endFrame: number } {
   const fps = settings.fps > 0 ? settings.fps : DEFAULT_PREVIEW_FPS
-  const total = Math.max(1, Math.round(settings.durationInFrames))
-  const authored = design.sceneDurationInFrames
+  const length = design.sceneDurationInFrames
     ? Math.round((design.sceneDurationInFrames / 30) * fps)
     : Math.round(DEFAULT_SCENE_SECONDS * fps)
-  // A scene never takes more than half the video, so both can fit.
-  const length = Math.max(1, Math.min(authored, Math.floor(total / 2)))
-  return slot === 'intro'
-    ? { startFrame: 0, endFrame: length - 1 }
-    : { startFrame: total - length, endFrame: total - 1 }
+  return { startFrame: 0, endFrame: Math.max(1, length) - 1 }
+}
+
+/** Frame length of a scene layer (older projects saved absolute windows). */
+function sceneLayerLength(layer: PreviewLayer): number {
+  const end = typeof layer.endFrame === 'number' ? layer.endFrame : layer.startFrame
+  return Math.max(1, Math.round(end - layer.startFrame + 1))
+}
+
+/** Lengths of the visible opening and closing scenes, in frames (0 when none). */
+export function sceneLengths(
+  settings: Pick<PersonalizationPreviewSettings, 'layers'>,
+): { intro: number; outro: number } {
+  const out = { intro: 0, outro: 0 }
+  for (const layer of Array.isArray(settings.layers) ? settings.layers : []) {
+    if (!layer || !layer.visible || !isSceneLayer(layer)) continue
+    out[designSlotOf(layer) as 'intro' | 'outro'] = sceneLayerLength(layer)
+  }
+  return out
+}
+
+/** Opening scene + the video itself + closing scene, in frames. */
+export function totalDurationInFrames(
+  settings: Pick<PersonalizationPreviewSettings, 'layers' | 'durationInFrames'>,
+): number {
+  const { intro, outro } = sceneLengths(settings)
+  return intro + Math.max(1, Math.round(settings.durationInFrames || 1)) + outro
 }
 
 /**
- * Re-times the opening and closing scenes after the video's length or frame
- * rate changes, so the closing scene still ends on the last frame. Pure.
+ * Re-times the opening and closing scenes after the frame rate changes (their
+ * authored length is in seconds). A new video length moves nothing: scenes
+ * play before and after the video whatever its length. Pure.
  */
 export function retimeScenes(settings: PersonalizationPreviewSettings): PersonalizationPreviewSettings {
   let changed = false
@@ -810,12 +843,29 @@ export function retimeScenes(settings: PersonalizationPreviewSettings): Personal
     if (!isSceneLayer(layer) || !layer.designId) return layer
     const design = getRemotionDesignTemplate(layer.designId)
     if (!design) return layer
-    const window = sceneWindow(design, settings, designSlotOf(layer) as 'intro' | 'outro')
+    const window = sceneWindow(design, settings)
     if (window.startFrame === layer.startFrame && window.endFrame === layer.endFrame) return layer
     changed = true
     return { ...layer, ...window }
   })
   return changed ? { ...settings, layers } : settings
+}
+
+/** Supported aspect ratio closest to a video's own width and height. */
+export function closestAspectRatio(width: number, height: number): PreviewAspectRatio | null {
+  if (!(width > 0) || !(height > 0)) return null
+  const ratio = width / height
+  let best: PreviewAspectRatio = '16:9'
+  let bestDiff = Infinity
+  for (const aspect of ASPECT_RATIOS) {
+    const { width: w, height: h } = getCompositionDimensions(aspect)
+    const diff = Math.abs(Math.log(ratio / (w / h)))
+    if (diff < bestDiff) {
+      best = aspect
+      bestDiff = diff
+    }
+  }
+  return best
 }
 
 /**

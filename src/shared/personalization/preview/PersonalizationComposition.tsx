@@ -11,7 +11,8 @@ import {
   useVideoConfig,
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
-import { fontStackById, isImageLayerKind, toBox } from './presets'
+import { designSlotOf, fontStackById, isImageLayerKind, isSceneLayer, sceneLengths, toBox } from './presets'
+import { darkenColor } from '../templates/designs/shared'
 import { resolveDesignSlotValues } from './designSlots'
 // Pure geometry only (imports nothing but `./presets` and types), so this
 // cannot form the Composition -> OverlayEditor -> Provider require cycle.
@@ -415,13 +416,24 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     )
   }
 
+  // Timeline: opening scene, then the video itself, then closing scene. The
+  // video, its overlays and the end card all live on the video's own clock
+  // (`videoFrame`), which starts after the opening scene.
+  const { intro: introLen, outro: outroLen } = sceneLengths(settings)
+  const mainLen = Math.max(1, Math.round(settings.durationInFrames))
+  const videoFrame = frame - introLen
+  const inVideo = videoFrame >= 0 && videoFrame < mainLen
+
   const visibleLayers = settings.layers.filter(
     (layer) =>
+      inVideo &&
       layer.visible &&
       layer.kind !== 'endCard' &&
-      frame >= layer.startFrame &&
-      (layer.endFrame === undefined || frame <= layer.endFrame),
+      !isSceneLayer(layer) &&
+      videoFrame >= layer.startFrame &&
+      (layer.endFrame === undefined || videoFrame <= layer.endFrame),
   )
+  const sceneLayers = settings.layers.filter((layer) => layer.visible && isSceneLayer(layer))
 
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
   const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
@@ -429,15 +441,18 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   return (
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
     <AbsoluteFill style={{ background: '#05070a' }}>
-      {renderBackground()}
-      {audioUrl ? <Audio src={audioUrl} /> : null}
-      <AbsoluteFill
+      {/* The video starts after the opening scene and plays in full. */}
+      <Sequence from={introLen} durationInFrames={mainLen} name="Your video">
+        {renderBackground()}
+        <AbsoluteFill
           style={{
             background: '#000',
             opacity: settings.brandColors.backgroundDim,
             pointerEvents: 'none',
           }}
         />
+      </Sequence>
+      {audioUrl ? <Audio src={audioUrl} /> : null}
         {visibleLayers.map((layer) => {
           const isImage = isImageLayerKind(layer.kind)
           const isText = TEXT_LAYER_KINDS.includes(layer.kind)
@@ -454,7 +469,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           // the editor's own (`renderedLayerGeometry`), so nothing the editor
           // shows inside the frame can render off its edge.
           const box = toBox(renderedLayerGeometry(isText ? { ...layer, text } : layer, compW, compH), compW, compH)
-          const entrance = entranceFor(layer, frame, settings.fps)
+          const entrance = entranceFor(layer, videoFrame, settings.fps)
           const textColor =
             layer.color ??
             (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
@@ -493,7 +508,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             // The design component lives inside a Sequence so its own
             // `useCurrentFrame()` is layer-local: the design's animation
             // starts when the layer appears, not at the composition's frame 0.
-            const layerFrame = Math.max(0, frame - layer.startFrame)
+            const layerFrame = Math.max(0, videoFrame - layer.startFrame)
             const designDuration =
               layer.endFrame === undefined
                 ? undefined
@@ -504,7 +519,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                 data-remotion-design-id={design.id}
                 style={{ ...layerStyle, height: box.heightPx ?? '100%' }}
               >
-                <Sequence from={layer.startFrame} durationInFrames={designDuration}>
+                <Sequence from={introLen + layer.startFrame} durationInFrames={designDuration}>
                   <DesignComponent
                     {...designProps}
                     text={primarySlot ? (slots[primarySlot.key] ?? '') : ''}
@@ -589,10 +604,67 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           )
         })}
         {settings.showEndCard ? (
-          <Sequence from={endCardStart} durationInFrames={endCardLen}>
+          <Sequence from={introLen + endCardStart} durationInFrames={endCardLen}>
             <EndCard settings={settings} brand={brand} />
           </Sequence>
         ) : null}
+        {sceneLayers.map((layer) => {
+          const design = layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+          if (!design) {
+            warnMissingDesignOnce(layer.designId)
+            return null
+          }
+          const isIntro = designSlotOf(layer) === 'intro'
+          const length = isIntro ? introLen : outroLen
+          const from = isIntro ? 0 : introLen + mainLen
+          if (length <= 0) return null
+          const DesignComponent = design.component
+          const slots = resolveDesignTextSlots(design, layer, brand)
+          const primarySlot =
+            (Array.isArray(design.textSlots) ? design.textSlots : []).find((slot) => slot && slot.primary) ??
+            (Array.isArray(design.textSlots) ? design.textSlots : [])[0]
+          const designProps = (design.defaultProps ?? {}) as Partial<RemotionDesignComponentProps>
+          // A full-screen scene fills the frame; any other design keeps its own
+          // box and plays on a full-frame backdrop in the brand colour.
+          const isFullScene = design.role === 'scene'
+          const box = isFullScene
+            ? { leftPx: 0, topPx: 0, widthPx: compW, heightPx: compH, fontSizePx: 0 }
+            : toBox(layer, compW, compH)
+          return (
+            <Sequence key={layer.id} from={from} durationInFrames={length} name={isIntro ? 'Opening scene' : 'Closing scene'}>
+              <AbsoluteFill
+                data-remotion-scene={isIntro ? 'intro' : 'outro'}
+                style={{ background: isFullScene ? '#05070a' : darkenColor(settings.brandColors.primary, 0.14) }}
+              >
+                <AbsoluteFill
+                  data-remotion-design-id={design.id}
+                  style={{ left: box.leftPx, top: box.topPx, width: box.widthPx, height: box.heightPx ?? compH, pointerEvents: 'none' }}
+                >
+                  <DesignComponent
+                    {...designProps}
+                    text={primarySlot ? (slots[primarySlot.key] ?? '') : ''}
+                    textSlots={slots}
+                    colors={{
+                      primary: settings.brandColors.primary,
+                      accent: settings.brandColors.accent,
+                      text: settings.brandColors.text,
+                      backgroundDim: settings.brandColors.backgroundDim,
+                    }}
+                    media={resolveDesignMedia(design, layer, brand)}
+                    box={{ leftPx: box.leftPx, topPx: box.topPx, widthPx: box.widthPx, heightPx: box.heightPx ?? compH }}
+                    width={compW}
+                    height={compH}
+                    frame={Math.max(0, frame - from)}
+                    fps={settings.fps}
+                    opacity={1}
+                    color={layer.color ?? settings.brandColors.text}
+                    fontFamily={layer.fontFamily}
+                  />
+                </AbsoluteFill>
+              </AbsoluteFill>
+            </Sequence>
+          )
+        })}
       </AbsoluteFill>
     </Internals.SequenceManager.Provider>
   )

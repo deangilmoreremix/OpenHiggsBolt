@@ -29,6 +29,7 @@ import {
   designSlotOf,
   isImageLayerKind,
   isSceneLayer,
+  sceneLengths,
 } from '../preview/presets'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
@@ -320,7 +321,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   // One factor for both axes: stagePx = compositionPx * (stageWidth / compW).
   const factor = stageScaleFactor(stageWidth, compW)
   const fps = settings.fps > 0 ? settings.fps : 30
+  // The video's own length; the opening and closing scenes play around it.
   const durationInFrames = Math.max(1, Math.round(settings.durationInFrames))
+  const { intro: introLen, outro: outroLen } = sceneLengths(settings)
+  const totalLen = introLen + durationInFrames + outroLen
 
   const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
   const selected = settings.layers.find((layer) => layer.id === selectedId) || settings.layers[0] || null
@@ -345,14 +349,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   })
 
   // The opening or closing scene on screen at the current frame, if any.
+  const sceneInSlot = (slot: 'intro' | 'outro') =>
+    settings.layers.find((layer) => isSceneLayer(layer) && layer.visible && designSlotOf(layer) === slot) ?? null
   const activeScene =
-    settings.layers.find(
-      (layer) =>
-        isSceneLayer(layer) &&
-        layer.visible &&
-        frame >= layer.startFrame &&
-        (layer.endFrame === undefined || frame <= layer.endFrame),
-    ) ?? null
+    frame < introLen ? sceneInSlot('intro') : frame >= introLen + durationInFrames ? sceneInSlot('outro') : null
 
   const controlId = (name: string) => `${fieldPrefix}-${name}`
   const round = (value: number) => Number(value.toFixed(4))
@@ -413,12 +413,20 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
       } catch {
         /* a player without media cannot report its state yet */
       }
-      const target = Math.min(durationInFrames - 1, layerRevealFrame(layer, fps))
+      if (isSceneLayer(layer)) {
+        // Show the scene at its best moment.
+        const start = designSlotOf(layer) === 'intro' ? 0 : introLen + durationInFrames
+        const length = designSlotOf(layer) === 'intro' ? introLen : outroLen
+        player.seekTo(Math.min(totalLen - 1, start + Math.floor(length * 0.7)))
+        return
+      }
+      // Overlays live on the video's own clock, after the opening scene.
+      const target = Math.min(introLen + durationInFrames - 1, introLen + layerRevealFrame(layer, fps))
       const beforeReveal = frame < target
-      const afterEnd = layer.endFrame !== undefined && frame > layer.endFrame
+      const afterEnd = frame > introLen + (layer.endFrame ?? durationInFrames - 1)
       if (beforeReveal || afterEnd) player.seekTo(target)
     },
-    [durationInFrames, fps, frame],
+    [durationInFrames, fps, frame, introLen, outroLen, totalLen],
   )
 
   const togglePlay = () => {
@@ -444,7 +452,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   }, [])
 
   const seekTo = (target: number) => {
-    playerRef.current?.seekTo(Math.max(0, Math.min(durationInFrames - 1, Math.round(target))))
+    playerRef.current?.seekTo(Math.max(0, Math.min(totalLen - 1, Math.round(target))))
   }
 
   const selectLayer = (layer: PreviewLayer) => {
@@ -602,20 +610,33 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
   // ── Timeline ──────────────────────────────────────────────────────────────
 
+  // One bar per item on the whole timeline: opening scene, the video's items
+  // (offset by the opening scene), closing scene.
   const timelineRows = editableLayers
     .filter((layer) => layer.visible)
-    .map((layer) => ({
-      layer,
-      start: Math.min(durationInFrames, layer.startFrame + layer.animationDelay),
-      end: Math.min(durationInFrames, layer.endFrame ?? durationInFrames),
-    }))
-  const endCardStart = endCardStartFrame(durationInFrames)
+    .map((layer) => {
+      if (isSceneLayer(layer)) {
+        const isIntro = designSlotOf(layer) === 'intro'
+        return {
+          layer,
+          start: isIntro ? 0 : introLen + durationInFrames,
+          end: isIntro ? introLen : totalLen,
+        }
+      }
+      return {
+        layer,
+        start: introLen + Math.min(durationInFrames, layer.startFrame + layer.animationDelay),
+        end: introLen + Math.min(durationInFrames, (layer.endFrame ?? durationInFrames - 1) + 1),
+      }
+    })
+    .sort((a, b) => a.start - b.start)
+  const endCardStart = introLen + endCardStartFrame(durationInFrames)
   /** Timeline click: select the layer and show it, or jump to the end card. */
   const activateTimelineRow = (layer: PreviewLayer | null) => {
     if (layer) selectLayer(layer)
     else seekTo(endCardStart + 1)
   }
-  const percent = (value: number) => `${Math.max(0, Math.min(100, (value / durationInFrames) * 100))}%`
+  const percent = (value: number) => `${Math.max(0, Math.min(100, (value / totalLen) * 100))}%`
 
   return (
     <div ref={panelRef} style={panelStyle}>
@@ -730,8 +751,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   pointerEvents: 'none',
                 }}
               >
-                {layerLabel(activeScene)} playing · your items show from{' '}
-                {framesToSeconds(designSlotOf(activeScene) === 'intro' ? (activeScene.endFrame ?? 0) + 1 : 0, fps).toFixed(1)}s
+                {designSlotOf(activeScene) === 'intro'
+                  ? `Opening scene · your video starts at ${framesToSeconds(introLen, fps).toFixed(1)}s`
+                  : 'Closing scene · plays after your video'}
               </span>
             ) : null}
 
@@ -843,7 +865,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               <RotateCcw size={13} />
             </button>
             <span style={{ color: C.muted, fontSize: 11, fontVariantNumeric: 'tabular-nums', minWidth: 72 }}>
-              {framesToSeconds(frame, fps).toFixed(1)}s / {framesToSeconds(durationInFrames, fps).toFixed(1)}s
+              {framesToSeconds(frame, fps).toFixed(1)}s / {framesToSeconds(totalLen, fps).toFixed(1)}s
             </span>
           </div>
 
@@ -852,7 +874,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               const isEndCard = row === null
               const label = isEndCard ? LAYER_LABELS.endCard : layerLabel(row.layer)
               const start = isEndCard ? endCardStart : row.start
-              const end = isEndCard ? durationInFrames : row.end
+              const end = isEndCard ? introLen + durationInFrames : row.end
               const isSelected = !isEndCard && selected?.id === row.layer.id
               return (
                 <div
@@ -1108,9 +1130,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
               {isSceneLayer(selected) ? (
                 <p style={hintStyle}>
-                  Full screen from {framesToSeconds(selected.startFrame, fps).toFixed(1)}s to{' '}
-                  {framesToSeconds((selected.endFrame ?? durationInFrames - 1) + 1, fps).toFixed(1)}s. Change it under
-                  Animated designs above.
+                  Plays for {framesToSeconds((selected.endFrame ?? 0) - selected.startFrame + 1, fps).toFixed(1)}s{' '}
+                  {designSlotOf(selected) === 'intro' ? 'before' : 'after'} your video. Change it under Animated designs
+                  above.
                 </p>
               ) : (
               <>

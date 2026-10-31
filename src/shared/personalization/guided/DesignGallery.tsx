@@ -32,14 +32,19 @@ export interface DesignGalleryProps {
 
 /** True when a design belongs in this slot's gallery. */
 export function designFitsSlot(design: RemotionDesignTemplate, slot: DesignSlot): boolean {
-  const isScene = design.role === 'scene'
-  return slot === 'overlay' ? !isScene : isScene
+  // Any design can play before or after the video (non-scene designs get a
+  // brand-colour backdrop); full-screen scenes never sit on top of it.
+  return slot === 'overlay' ? design.role !== 'scene' : true
 }
 
-/** Card length: an overlay's hover loop, or the whole scene plus a short hold. */
-function cardFrames(design: RemotionDesignTemplate): number {
-  if (design.role !== 'scene') return HOVER_PREVIEW_FRAMES
-  return Math.max(HOVER_PREVIEW_FRAMES, (design.sceneDurationInFrames ?? 90) + 15)
+/** How long a design plays as an opening/closing scene, in frames at 30fps. */
+function sceneFrames(design: RemotionDesignTemplate): number {
+  return design.sceneDurationInFrames ?? 90
+}
+
+/** Card length: an overlay's hover loop, or the whole scene. */
+function cardFrames(design: RemotionDesignTemplate, slot: DesignSlot = 'overlay'): number {
+  return slot === 'overlay' ? HOVER_PREVIEW_FRAMES : sceneFrames(design)
 }
 
 /**
@@ -87,9 +92,10 @@ export function designUsesLine(design: RemotionDesignTemplate): string {
 
 /** Where on the frame the design sits by default. */
 export function designPlacementLine(design: RemotionDesignTemplate, slot: DesignSlot = 'overlay'): string {
-  if (design.role === 'scene') {
-    const seconds = Math.round(((design.sceneDurationInFrames ?? 90) / 30) * 10) / 10
-    return `Full screen · ${seconds}s ${slot === 'outro' ? 'at the end' : 'at the start'}`
+  if (slot !== 'overlay') {
+    const seconds = Math.round((sceneFrames(design) / 30) * 10) / 10
+    const when = slot === 'outro' ? 'after your video' : 'before your video'
+    return design.role === 'scene' ? `Full screen · ${seconds}s ${when}` : `On your brand color · ${seconds}s ${when}`
   }
   const placement = design.placement
   if (!placement || placement.scale >= 0.85) return 'Full screen'
@@ -99,8 +105,8 @@ export function designPlacementLine(design: RemotionDesignTemplate, slot: Design
 }
 
 /** The frame a still thumbnail shows: the design's own animation has finished. */
-export function designStillFrame(design: RemotionDesignTemplate, fps: number): number {
-  const frames = cardFrames(design)
+export function designStillFrame(design: RemotionDesignTemplate, fps: number, slot: DesignSlot = 'overlay'): number {
+  const frames = cardFrames(design, slot)
   if (typeof design.posterFrame === 'number') return Math.max(0, Math.min(frames - 1, design.posterFrame))
   const animation = design.animation
   const settled = animation ? animation.delayInFrames + animation.durationInFrames : Math.round(fps * 1.5)
@@ -108,17 +114,22 @@ export function designStillFrame(design: RemotionDesignTemplate, fps: number): n
 }
 
 /** Preview input with only this design on the customer's backdrop. */
-function cardInputProps(design: RemotionDesignTemplate, base: PreviewInputProps, backdrop: string): PreviewInputProps {
+function cardInputProps(
+  design: RemotionDesignTemplate,
+  base: PreviewInputProps,
+  backdrop: string,
+  slot: DesignSlot,
+): PreviewInputProps {
   const fps = (base.settings?.fps ?? 0) > 0 ? base.settings.fps : 30
-  const frames = cardFrames(design)
+  const asScene = slot !== 'overlay'
   const settings = applyDesignTemplate(
     createDefaultPreviewSettings({
       layers: [],
       aspectRatio: '16:9',
       fps,
-      // Twice the scene length, so the scene window (at most half the video)
-      // covers the whole authored scene.
-      durationInFrames: design.role === 'scene' ? frames * 2 : frames,
+      // A scene card plays only the opening scene (the Player is cut to its
+      // length), so the video part behind it is a single frame.
+      durationInFrames: asScene ? 1 : HOVER_PREVIEW_FRAMES,
       showEndCard: false,
       brandColors: { ...(base.settings?.brandColors ?? {}), backgroundDim: 0 },
     }),
@@ -132,7 +143,7 @@ function cardInputProps(design: RemotionDesignTemplate, base: PreviewInputProps,
       productUrl: base.brand.productUrl ?? undefined,
       serviceUrl: base.brand.serviceUrl ?? undefined,
     },
-    design.role === 'scene' ? 'intro' : 'overlay',
+    asScene ? 'intro' : 'overlay',
   )
   return {
     ...base,
@@ -163,7 +174,7 @@ function DesignCard({
   const fps = (inputProps.settings?.fps ?? 0) > 0 ? inputProps.settings.fps : 30
   const usesLine = designUsesLine(design)
   const placementLine = designPlacementLine(design, slot)
-  const zoom = cardZoomTransform(design)
+  const zoom = slot === 'overlay' ? cardZoomTransform(design) : undefined
 
   return (
     <button
@@ -199,10 +210,10 @@ function DesignCard({
       >
         <span style={{ position: 'absolute', inset: 0, transform: zoom, transformOrigin: 'center' }}>
           <LiveCompositionPreview
-            buildInputProps={() => cardInputProps(design, inputProps, backdrop)}
+            buildInputProps={() => cardInputProps(design, inputProps, backdrop, slot)}
             playing={playing}
-            stillFrame={designStillFrame(design, fps)}
-            durationInFrames={cardFrames(design)}
+            stillFrame={designStillFrame(design, fps, slot)}
+            durationInFrames={Math.max(1, Math.round((cardFrames(design, slot) / 30) * fps))}
             width={CARD_WIDTH}
             height={CARD_HEIGHT}
             fps={fps}
@@ -284,10 +295,19 @@ export function DesignGallery({
 }: DesignGalleryProps): React.JSX.Element {
   const designs = allDesigns.filter((design) => designFitsSlot(design, slot))
   // Overlays are grouped by type; the scene rows are short enough to list flat.
+  // Overlays are grouped by type. Before/after the video, the full-screen
+  // scenes come first, then every other design (shown on the brand colour).
+  const byCategory = (entries: RemotionDesignTemplate[], prefix = '') =>
+    groupByCategory(entries).map(
+      ([category, list]) => [`${prefix}${DESIGN_CATEGORY_LABELS[category]}`, list] as [string, RemotionDesignTemplate[]],
+    )
   const groups: [string, RemotionDesignTemplate[]][] =
     slot === 'overlay'
-      ? groupByCategory(designs).map(([category, entries]) => [DESIGN_CATEGORY_LABELS[category], entries])
-      : [['', designs]]
+      ? byCategory(designs)
+      : [
+          ['Full-screen scenes', designs.filter((design) => design.role === 'scene')] as [string, RemotionDesignTemplate[]],
+          ...byCategory(designs.filter((design) => design.role !== 'scene'), 'On your brand color · '),
+        ].filter(([, list]) => list.length > 0)
   const grid: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
