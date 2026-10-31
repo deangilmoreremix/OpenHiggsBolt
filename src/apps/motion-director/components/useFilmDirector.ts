@@ -589,7 +589,8 @@ export function useFilmDirector(opts: {
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
-      const music = media.find((m) => m.kind === 'audio');
+      const musicClip = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'audio-clip' && /bgmlib|^blob:/.test(String(c.props?.file ?? '')));
+      const music = media.find((m) => m.kind === 'audio') ?? (musicClip ? { name: String(musicClip.label ?? 'music') } : undefined);
       mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
       const frames = await checkFilmFrames(project, glog);

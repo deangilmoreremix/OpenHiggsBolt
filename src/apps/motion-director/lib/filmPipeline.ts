@@ -27,6 +27,7 @@ import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
+import { defaultTrackFor } from './defaultMusic';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -223,7 +224,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
@@ -247,12 +248,18 @@ export async function buildFilmProject(
     : images.length
       ? { screens: images, crops: images }
       : null;
-  const track = opts.media.find((m) => m.kind === 'audio');
+  const attached = opts.media.find((m) => m.kind === 'audio');
+  // No track attached: the film still gets music, as upstream's finished films do, unless the person asked for none.
+  const noMusic = /\b(?:no|without|skip)\s+(?:the\s+)?(?:music|bgm|soundtrack|background music)\b/i.test(opts.prompt ?? '') || opts.music === false;
+  const voice = pickMotionPreset({ text: presetText(opts.capture ?? { title: plan.title }), accent: plan.palette?.accent });
+  const auto = !attached && !noMusic ? defaultTrackFor(voice.id) : null;
+  const track = attached ?? (auto ? { id: 'bgm', kind: 'audio' as const, name: auto.name, url: auto.file, size: 0 } : undefined);
   let beats: number[] = [];
   let drums: Pick<DrumMap, 'downbeats' | 'kicks' | 'snares' | 'hats'> = { downbeats: [], kicks: [], snares: [], hats: [] };
   if (track) {
-    log(`Finding the beat in ${track.name}`, 'running');
-    const map = await analyzeBeats(track.url).catch(() => null);
+    log(auto ? `Music: ${auto.name} (${auto.why}, chosen for the ${voice.label.toLowerCase()} feel) · finding its beat` : `Finding the beat in ${track.name}`, 'running');
+    // A library track is a file under public/; an attached one is a blob URL.
+    const map = await analyzeBeats(auto ? `/${auto.file}` : track.url).catch(() => null);
     beats = map?.beats ?? [];
     if (map) drums = map;
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
