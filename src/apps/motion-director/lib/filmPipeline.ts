@@ -60,7 +60,7 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
 
 /** Capture (when the request has a URL) and storyboard the film. */
 /** The site's own pictures the film can show: the images found on the page plus its card crops. */
-export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
+export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
 
 export async function storyboardFilm(
   req: FilmRequest,
@@ -87,7 +87,7 @@ export async function storyboardFilm(
         onProgress: (sec) => log(`Capturing ${req.siteUrl} · ${sec}s (reading the page and taking screenshots)`, 'running'),
       });
       const pages = capture.pages?.length || 1;
-      const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
+      const pulled = [capture.logo ? 'logo' : '', capture.assets?.length ? `${capture.assets.length} found pictures (${[...new Set(capture.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(
         capture.partial
           ? `Captured ${capture.title || req.siteUrl} · its words only (no screenshots in time)`
@@ -232,7 +232,9 @@ export async function buildFilmProject(
     ? {
         // Every captured route of the site, the page asked for first.
         screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images].filter(Boolean),
-        crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
+        // The asset finder's pictures lead (people and products first), then the images the page showed, then card crops.
+        crops: [...(opts.capture.assets ?? []).map((a) => a.url), ...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
+        assets: opts.capture.assets ?? [],
         title: opts.capture.title,
         // Where each section of the home page starts, so the insets can show them one at a time.
         sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),

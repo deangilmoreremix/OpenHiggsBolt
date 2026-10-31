@@ -10,6 +10,9 @@ import { NextRequest } from 'next/server'
  */
 class FakeSsrfError extends Error {}
 
+// The asset finder crawls the real site: tests stay offline.
+vi.mock('../src/server/motionAssets', () => ({ findMotionAssets: vi.fn(async () => []) }))
+
 let userId: string | null = 'user_1'
 const files = new Map<string, string | Buffer>()
 const capture = vi.fn()
@@ -164,7 +167,7 @@ describe('the background worker', () => {
   it('captures with the long budget, stores the images and writes a done record', async () => {
     const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
     await runMotionCapture(job, storage)
-    expect(capture).toHaveBeenCalledWith('https://acme.test', expect.objectContaining({ hardMs: 90_000, budgetMs: 60_000 }))
+    expect(capture).toHaveBeenCalledWith('https://acme.test', expect.objectContaining({ hardMs: 360_000, budgetMs: 300_000, deep: true }))
     const done = recordOf()
     expect(done.state).toBe('done')
     expect(done.capture.page.url).toMatch(/^https:\/\/storage\.test\/user_1\/motion-capture\/.+\/page\.jpg$/)
@@ -190,7 +193,7 @@ describe('the background worker', () => {
     capture.mockRejectedValueOnce(new Error('browser failed to launch'))
     await runMotionCapture(job, storage)
     expect(capture).toHaveBeenCalledTimes(2)
-    expect(capture.mock.calls[1][1].hardMs).toBeLessThanOrEqual(90_000)
+    expect(capture.mock.calls[1][1].hardMs).toBeLessThanOrEqual(360_000)
     expect(recordOf().state).toBe('done')
   })
 

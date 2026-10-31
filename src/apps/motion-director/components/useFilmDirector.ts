@@ -234,6 +234,7 @@ export function useFilmDirector(opts: {
           const found = [
             `${(c.pages?.length ?? 1)} page${(c.pages?.length ?? 1) === 1 ? '' : 's'}`,
             c.crops.length ? `${c.crops.length} card crop${c.crops.length === 1 ? '' : 's'}` : '',
+            c.assets?.length ? `${c.assets.length} found pictures (${[...new Set(c.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '',
             c.images?.length ? `${c.images.length} site image${c.images.length === 1 ? '' : 's'}` : '',
             c.logo ? 'the logo' : '',
           ].filter(Boolean);

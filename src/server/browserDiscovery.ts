@@ -1705,6 +1705,13 @@ const CAPTURE_CLOSE_MS = 1_500
 const CAPTURE_FIRST_SHOT_MS = 7_000
 /** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
+/** A deep capture (the background worker has minutes, not seconds) takes more routes, more cards and the whole length of the page. */
+/** Deep captures stop on time, not on a count: these are only guards against runaway pages. */
+export const DEEP_MAX_ROUTES = 25
+export const DEEP_MAX_CROPS = 40
+export const DEEP_MAX_Y = 40_000
+export const DEEP_MAX_BANDS = 60
+export const DEEP_MAX_IMAGES = 120
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
 /** A film wants this many distinct pictures of the site; page slices make up the difference. */
@@ -1885,11 +1892,21 @@ function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: Ca
   if (best < 3) logo = null
 
   const images: CaptureRect[] = []
-  const candidates = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
+  const candidates: CaptureRect[] = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
     .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img))
     .map((img) => toRect(img))
     .filter((r) => r.width >= 240 && r.height >= 160 && r.y >= 0 && r.y + r.height <= limits.maxY)
     .sort((a, b) => b.width * b.height - a.width * a.height)
+  // Pictures set as CSS backgrounds (hero art, people, product shots on many sites) are not <img> elements.
+  const backgrounds: CaptureRect[] = []
+  for (const el of Array.from(document.querySelectorAll('div, section, header, figure, a, span')).slice(0, 4000)) {
+    const bg = getComputedStyle(el).backgroundImage
+    if (!bg || bg === 'none' || !/url\(/.test(bg) || /gradient/.test(bg) && !/url\(/.test(bg)) continue
+    const r = toRect(el)
+    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el)) backgrounds.push(r)
+  }
+  backgrounds.sort((a, b) => b.width * b.height - a.width * a.height)
+  candidates.push(...backgrounds)
   for (const rect of candidates) {
     if (images.length >= limits.maxImages) break
     if (logo && overlaps(rect, logo)) continue
@@ -2071,6 +2088,15 @@ export function pickCaptureRoutes(
     })
 }
 
+/** Clip rects for 16:9 slices of the page from `fromY` down to `toY` (a short last slice is kept when it is at least half a slice). */
+export function bandRects(fromY: number, toY: number, width: number, bandH: number, max: number): Array<{ x: number; y: number; width: number; height: number }> {
+  const out: Array<{ x: number; y: number; width: number; height: number }> = []
+  for (let y = Math.max(0, Math.round(fromY)); out.length < max && toY - y >= bandH / 2; y += bandH) {
+    out.push({ x: 0, y, width, height: Math.min(bandH, Math.round(toY - y)) })
+  }
+  return out
+}
+
 /** Computed brand colours/fonts from the rendered page. Runs in the page. */
 function readBrandStyles(): Record<string, string | null> {
   const body = getComputedStyle(document.body)
@@ -2104,13 +2130,16 @@ function readBrandStyles(): Record<string, string | null> {
  */
 export async function capturePageScreenshots(
   rawUrl: string,
-  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number; budgetMs?: number; navigationMs?: number } = {},
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number; budgetMs?: number; navigationMs?: number; deep?: boolean } = {},
 ): Promise<PageCapture> {
   const started = Date.now()
   const guard = options.guard ?? createSsrfGuard()
   const baseTarget = await guard.validateNavigationTarget(rawUrl)
-  const maxCrops = Math.max(0, Math.min(CAPTURE_MAX_CROPS, options.maxCrops ?? CAPTURE_MAX_CROPS))
-  const maxRoutes = Math.max(0, Math.min(CAPTURE_MAX_EXTRA_ROUTES, options.maxRoutes ?? CAPTURE_MAX_EXTRA_ROUTES))
+  const deep = Boolean(options.deep)
+  const cropCap = deep ? DEEP_MAX_CROPS : CAPTURE_MAX_CROPS
+  const routeCap = deep ? DEEP_MAX_ROUTES : CAPTURE_MAX_EXTRA_ROUTES
+  const maxCrops = Math.max(0, Math.min(cropCap, options.maxCrops ?? cropCap))
+  const maxRoutes = Math.max(0, Math.min(routeCap, options.maxRoutes ?? routeCap))
   const settleMs = Math.max(0, options.settleMs ?? CAPTURE_SETTLE_MS)
 
   return withGuardedContext(
@@ -2164,12 +2193,13 @@ export async function capturePageScreenshots(
         await page.waitForLoadState('networkidle', { timeout: 1_500 }).catch(() => undefined)
         // Nudge lazy-loaded content inside the captured band, then return to the top.
         await page.evaluate(async (maxY: number) => {
-          for (let y = 0; y < maxY; y += 600) {
+          const end = Math.min(maxY, document.documentElement.scrollHeight)
+          for (let y = 0; y < end; y += 600) {
             window.scrollTo(0, y)
             await new Promise((resolve) => setTimeout(resolve, 80))
           }
           window.scrollTo(0, 0)
-        }, CAPTURE_MAX_PAGE_HEIGHT)
+        }, deep ? DEEP_MAX_Y : CAPTURE_MAX_PAGE_HEIGHT)
         await page.waitForLoadState('networkidle', { timeout: 1_000 }).catch(() => undefined)
         await page.evaluate(waitForFonts, CAPTURE_FONT_WAIT_MS).catch(() => undefined)
         if (settleMs) await new Promise((resolve) => setTimeout(resolve, settleMs))
@@ -2181,13 +2211,15 @@ export async function capturePageScreenshots(
         // The page is usable from here: a stalled crop below must not lose it.
         onShot?.(shot, pageHeight)
 
-        const found = (await page.evaluate(findCutoutRects, { maxY: pageHeight, maxCards }).catch(() => null)) ?? null
+        // A deep capture looks for cards down the whole page, not only in the band that is photographed whole.
+        const searchY = deep ? Math.max(pageHeight, Math.min(DEEP_MAX_Y, docHeight || 0)) : pageHeight
+        const found = (await page.evaluate(findCutoutRects, { maxY: searchY, maxCards }).catch(() => null)) ?? null
         // The page's own cards when it marks them up as cards; otherwise card-sized blocks.
         const semantic = (found?.cards.length ?? 0) >= 2
         const rects: CaptureRect[] = semantic
           ? found!.cards
           : maxCards
-            ? ((await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCards }).catch(() => null)) ?? [])
+            ? ((await page.evaluate(findCropRects, { maxY: searchY, max: maxCards }).catch(() => null)) ?? [])
             : []
         const crops: Buffer[] = acc?.crops ?? []
         const cards: CaptureRect[] = acc?.cards ?? []
@@ -2206,6 +2238,15 @@ export async function capturePageScreenshots(
           for (let y = 0; y + bandH <= pageHeight + 1 && crops.length < CAPTURE_MIN_PICTURES; y += bandH) {
             if (left() < 4_000) break
             const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: { x: 0, y, width: CAPTURE_VIEWPORT.width, height: bandH } }).catch(() => null)
+            if (band) crops.push(band)
+          }
+        }
+        // Deep: the rest of the page, below the photographed band, as 16:9 slices — the film's pictures of the parts nobody saw.
+        if (deep && maxCards) {
+          const bottom = Math.min(DEEP_MAX_Y, docHeight || 0)
+          for (const clip of bandRects(pageHeight, bottom, CAPTURE_VIEWPORT.width, Math.round(CAPTURE_VIEWPORT.width * (9 / 16)), DEEP_MAX_BANDS)) {
+            if (left() < 6_000) break
+            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip }).catch(() => null)
             if (band) crops.push(band)
           }
         }
@@ -2312,7 +2353,7 @@ export async function capturePageScreenshots(
         out = result
 
         // The site's own assets first (what the film shows): its logo (transparent PNG) and largest images.
-        const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
+        const assets = (await page.evaluate(findAssetRects, { maxY: deep ? DEEP_MAX_Y : CAPTURE_MAX_IMAGE_Y, maxImages: deep ? DEEP_MAX_IMAGES : CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
         result.logo = assets.logo ? await clipShot(assets.logo, true) : null
         for (const rect of assets.images) {
           if (left() < 4_000) break
@@ -2337,14 +2378,14 @@ export async function capturePageScreenshots(
         mark('extras')
 
         // More routes of the same site, captured the same way, while time allows.
-        let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
+        let cropBudget = (deep ? 400 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
-          if (elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
+          if (deep ? left() < 12_000 : elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
           try {
             await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
             const landed = await guard.validateNavigationTarget(page.url())
             if (landed.hostname !== finalTarget.hostname) continue
-            const shot = await shootRoute(Math.max(0, Math.min(2, cropBudget)))
+            const shot = await shootRoute(Math.max(0, Math.min(deep ? DEEP_MAX_CROPS : 2, cropBudget)))
             cropBudget -= shot.crops.length
             result.routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
             result.crops.push(...shot.crops)
