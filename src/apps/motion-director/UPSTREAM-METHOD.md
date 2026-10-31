@@ -25,9 +25,9 @@ Source: the in-repo copy of `Vincentwei1021/video-shotcraft` at `.claude/skills/
 | 3 feature → shot map; gallery names | done for the catalog; legacy cards hidden |
 | 4 storyboard: arc, caps/exclusions, native lengths, seams (`shotRules.ts`, `filmChat.ts`, `directorPlan.ts`) | done |
 | 5 capture: 2x page, crops, cutouts, layout, empty plate, background function | done; hi-res 4x crops and extra page states unconfirmed |
-| 6 per-shot build | **partial**: text/colour/picture-slot overrides on fixed recipes; 30 recipes read real pages. Per-shot **code adaptation** is the main gap: sandbox is built (`lib/shotAdapter.ts`), the `adapt` director route, the stored card type and the render-look-fix loop are not |
+| 6 per-shot build | done in code, **not run live**: text/colour/picture overrides plus per-shot code adaptation (`adapt` route -> `lib/shotAdapter.ts` sandbox -> `lib/adaptLoop.ts` 3 stills + reviewer, 2 fix rounds, 4 shots, 90 s; clip prop `adaptedCode` played by `cards/demoProps.tsx`, plain recipe on any failure). Site pictures: `brand/people-gallery` scene |
 | 7 sound (`buildFilm.ts`, `beatSync.ts`) | done, not listened to by ear |
-| 8 review (`filmReview.ts`, `designSpec.ts`) | partial: programmatic checks + optional model frame review; no fix loop; missing F1/P3/D2/bulk-finish; no rendered-audio check |
+| 8 review (`filmReview.ts`, `filmFix.ts`, `designSpec.ts`) | programmatic checks + safe auto-fixes (A7, A5, Q11, B3) + optional model frame review + rendered-audio clipping check (`renderedAudio.ts`). Still missing: F1/P3/D2/bulk-finish checks, recipe-swap fixes, beat back-test of the render |
 | 9 deliver | two renders + workbench done; closing notes excluded |
 
 ## Rules that must not be broken
@@ -37,4 +37,4 @@ Source: the in-repo copy of `Vincentwei1021/video-shotcraft` at `.claude/skills/
 - Generated code never runs without `checkAdaptedSource`.
 
 ## Order of the remaining work (do not split into new threads)
-1. `adapt` route + stored card + render-look-fix loop (stage 6). 2. Review fix loop and missing checks (stage 8). 3. Rendered-audio check (stage 7/8). 4. A live run once a key and a session are available.
+1. A live run once a key and a session are available (nothing above has run against a real site or model). 2. Missing review checks F1/P3/D2/bulk-finish and recipe-swap fixes. 3. Beat back-test of the render; 4x crops and extra page states in capture.
