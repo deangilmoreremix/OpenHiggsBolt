@@ -57,6 +57,7 @@ import type {
   PreviewLayoutId,
   PreviewBrandColors,
   PreviewAspectRatio,
+  DesignSlot,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -104,6 +105,7 @@ import {
   resetLayoutToDefaults,
   removeDesignLayer,
   relayoutForAspect,
+  retimeScenes,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
@@ -727,8 +729,13 @@ export type DemoPersonalizeContextValue = {
    remotionDesignTemplates: RemotionDesignTemplate[]
    /** Id of the design currently applied to the preview, or null. */
    activeRemotionDesignId: string | null
-   /** Applies a design, or clears the applied design when given null. */
-   setRemotionDesign: (designId: string | null) => void
+   /** Ids of the opening and closing scenes, or null. */
+   activeRemotionSceneIds: { intro: string | null; outro: string | null }
+   /**
+    * Applies a design to a slot (on top of the video by default, or as the
+    * opening/closing scene), or clears that slot when given null.
+    */
+   setRemotionDesign: (designId: string | null, slot?: DesignSlot) => void
    /** Why the last `setRemotionDesign` call failed, or null. */
    remotionDesignError: string | null
    previewApproved: boolean
@@ -4469,12 +4476,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * design id is refused and reported through `remotionDesignError` instead of
    * silently doing nothing.
    */
-  const setRemotionDesign = useCallback((designId: string | null) => {
+  const setRemotionDesign = useCallback((designId: string | null, slot: DesignSlot = 'overlay') => {
     markSessionStarted()
     if (designId === null) {
       remotionDesignErrorIdRef.current = null
       setRemotionDesignError(null)
-      setPreviewSettings((prev) => removeDesignLayer(prev))
+      setPreviewSettings((prev) => removeDesignLayer(prev, slot))
       return
     }
     if (!getRemotionDesignTemplate(designId)) {
@@ -4484,7 +4491,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
     remotionDesignErrorIdRef.current = null
     setRemotionDesignError(null)
-    setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current))
+    setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current, slot))
   }, [])
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
@@ -4517,6 +4524,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // Untouched layers move to the layout's arrangement for the new shape.
           return relayoutForAspect(prev, next)
         }
+        // A new length or frame rate moves the closing scene to the new end.
+        if (patch.durationInFrames !== undefined || patch.fps !== undefined) return retimeScenes(next)
         return next
       })
     },
@@ -5100,6 +5109,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     resetPreviewLayout,
     remotionDesignTemplates,
     activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
+    activeRemotionSceneIds: {
+      intro: previewSettings.remotionSceneIds?.intro ?? null,
+      outro: previewSettings.remotionSceneIds?.outro ?? null,
+    },
     setRemotionDesign,
     remotionDesignError,
     previewApproved,

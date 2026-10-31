@@ -8,6 +8,7 @@
  * data?).
  */
 import React from 'react'
+import { BRITO_ATTRIBUTION } from '../designs/sceneCatalogEntries'
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import {
@@ -67,6 +68,11 @@ vi.mock('remotion', async (importOriginal) => {
     // cover the adapter's mapping, so a plain <img> stands in for it.
     Img: ({ src, ...rest }: { src: string }) =>
       ReactMod.createElement('img', { src, alt: '', ...rest }),
+    // <Sequence> (used by the Kinetic Story scene) also needs a registered
+    // composition; the adapter tests only check what is drawn, so it renders
+    // its children directly.
+    Sequence: ({ children }: { children?: React.ReactNode }) =>
+      ReactMod.createElement(ReactMod.Fragment, null, children),
   }
 })
 
@@ -97,7 +103,8 @@ const ALL_CATEGORIES: RemotionDesignCategory[] = [
  * The exact size of the catalog: five Phase 1 designs + ten batch-1 designs
  * + four batch-2 designs.
  */
-const EXPECTED_TOTAL = 19
+// 19 overlays from Phases 1–2, plus 12 full-screen scenes and the Name Card overlay.
+const EXPECTED_TOTAL = 32
 
 const VALID_TEXT_FIELDS: RemotionDesignTextField[] = [
   'businessName',
@@ -185,7 +192,7 @@ describe('Remotion design catalog', () => {
     }
   })
 
-  it('registers exactly nineteen designs under unique ids', () => {
+  it('registers exactly thirty-two designs under unique ids', () => {
     const ids = listRemotionDesignTemplates().map((template) => template.id)
     expect(ids).toHaveLength(EXPECTED_TOTAL)
     expect(REMOTION_DESIGN_TEMPLATES).toHaveLength(EXPECTED_TOTAL)
@@ -217,6 +224,9 @@ describe('Remotion design catalog', () => {
       if (template.source.repository === 'free-remotion-templates') {
         expect(template.source.attribution).toBe(REMOTION_DESIGN_ATTRIBUTION)
         expect(template.source.sourcePath).toMatch(/^src\/components\/.+\.tsx$/)
+      } else if (template.source.repository === 'remotion-video-templates') {
+        expect(template.source.attribution).toBe(BRITO_ATTRIBUTION)
+        expect(template.source.sourcePath).toMatch(/^src\/templates\/.+\.tsx$/)
       } else {
         expect(template.source.repository).toBe('remotion-templates')
         expect(template.source.attribution).toBe(RVE_ATTRIBUTION)
@@ -361,6 +371,8 @@ describe('Remotion design catalog', () => {
 
   it('bounds every other design so it cannot cover the whole frame', () => {
     for (const template of REMOTION_DESIGN_TEMPLATES) {
+      // Scenes own the whole frame for their time window on purpose.
+      if (template.role === 'scene') continue
       const scale = template.placement?.scale ?? 1
       if (scale >= 1) {
         // A full-frame effect (the bokeh loop, the starfield) covers the frame
@@ -460,6 +472,8 @@ describe('Remotion design adapters', () => {
       // The credit names the upstream the design came from.
       if (template.source.repository === 'free-remotion-templates') {
         expect(credit?.textContent).toContain('Trimora')
+      } else if (template.source.repository === 'remotion-video-templates') {
+        expect(credit?.textContent).toContain('Alejandro Brito')
       } else {
         expect(credit?.textContent).toContain('React Video Editor')
         expect(credit?.textContent).not.toContain('RenderComp')

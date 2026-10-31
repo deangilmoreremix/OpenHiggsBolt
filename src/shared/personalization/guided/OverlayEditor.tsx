@@ -26,7 +26,9 @@ import {
   PREVIEW_FONTS,
   PREVIEW_POSITIONS,
   fontStackById,
+  designSlotOf,
   isImageLayerKind,
+  isSceneLayer,
 } from '../preview/presets'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
@@ -59,6 +61,8 @@ import {
   DESIGN_CATEGORY_LABELS,
   LAYER_LABELS,
   describeLayerChanges,
+  endCardChangeNote,
+  layerLabel,
   diffLayers,
   framesToSeconds,
   layerRevealFrame,
@@ -340,6 +344,16 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     return a.startFrame + a.animationDelay - (b.startFrame + b.animationDelay)
   })
 
+  // The opening or closing scene on screen at the current frame, if any.
+  const activeScene =
+    settings.layers.find(
+      (layer) =>
+        isSceneLayer(layer) &&
+        layer.visible &&
+        frame >= layer.startFrame &&
+        (layer.endFrame === undefined || frame <= layer.endFrame),
+    ) ?? null
+
   const controlId = (name: string) => `${fieldPrefix}-${name}`
   const round = (value: number) => Number(value.toFixed(4))
 
@@ -445,7 +459,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     previousSettingsRef.current = settings
     if (previous === settings || !lookChanged(previous, settings)) return
     const changes = diffLayers(previous.layers, settings.layers)
-    setNotice(describeLayerChanges(changes))
+    const summary = [describeLayerChanges(changes), endCardChangeNote(previous, settings)].filter(Boolean).join(' · ')
+    setNotice(summary || null)
     const focus =
       changes.added.find((layer) => layer.kind === 'design') ?? changes.added.find((layer) => layer.kind !== 'endCard')
     if (focus) {
@@ -698,10 +713,32 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               }}
             />
 
+            {/* While an opening/closing scene covers the frame, the items
+                underneath are hidden, so their outlines are too. */}
+            {activeScene ? (
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  top: 10,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(5,7,10,.8)',
+                  color: C.text,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  pointerEvents: 'none',
+                }}
+              >
+                {layerLabel(activeScene)} playing · your items show from{' '}
+                {framesToSeconds(designSlotOf(activeScene) === 'intro' ? (activeScene.endFrame ?? 0) + 1 : 0, fps).toFixed(1)}s
+              </span>
+            ) : null}
+
             {/* Handle layer: outlines and resize handles only — the Player
                 draws the content, so empty space still plays/pauses. */}
-            {factor > 0 &&
-              editableLayers.filter((layer) => layer.visible).map((layer) => {
+            {factor > 0 && !activeScene &&
+              editableLayers.filter((layer) => layer.visible && !isSceneLayer(layer)).map((layer) => {
                 const status = layerStatus(layer, brand)
                 if (status === 'missing-image' || status === 'empty-text' || status === 'missing-design') return null
                 const metrics = layerBoxMetrics(renderedLayerGeometry(geometryLayer(layer), compW, compH), compW, compH)
@@ -721,7 +758,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     key={layer.id}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
+                    aria-label={`Move ${layerLabel(layer)}`}
                     aria-pressed={isSelected}
                     onPointerDown={(event) => startDrag(event, layer, 'move')}
                     onPointerEnter={() => setHoveredId(layer.id)}
@@ -759,14 +796,14 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                           pointerEvents: 'none',
                         }}
                       >
-                        {LAYER_LABELS[layer.kind]}
+                        {layerLabel(layer)}
                       </span>
                     )}
                     {isSelected && (
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-label={`Resize ${LAYER_LABELS[layer.kind]}`}
+                        aria-label={`Resize ${layerLabel(layer)}`}
                         onPointerDown={(event) => startDrag(event, layer, 'resize')}
                         onKeyDown={(event) => onHandleKeyDown(event, layer)}
                         style={{
@@ -813,7 +850,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
           <div aria-label="When each item appears" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
             {[...timelineRows, ...(settings.showEndCard ? [null] : [])].map((row) => {
               const isEndCard = row === null
-              const label = isEndCard ? LAYER_LABELS.endCard : LAYER_LABELS[row.layer.kind]
+              const label = isEndCard ? LAYER_LABELS.endCard : layerLabel(row.layer)
               const start = isEndCard ? endCardStart : row.start
               const end = isEndCard ? durationInFrames : row.end
               const isSelected = !isEndCard && selected?.id === row.layer.id
@@ -893,7 +930,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 key={layer.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
+                aria-label={`Select ${layerLabel(layer)}`}
                 aria-pressed={isSelected}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -919,7 +956,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   {warning ? <AlertTriangle size={13} /> : kindIcon(layer.kind)}
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', color: C.text, fontSize: 12, fontWeight: 700 }}>{LAYER_LABELS[layer.kind]}</span>
+                  <span style={{ display: 'block', color: C.text, fontSize: 12, fontWeight: 700 }}>{layerLabel(layer)}</span>
                   <span style={{ display: 'block', color: warning ? '#f5b840' : C.muted, fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {subtitle}
                   </span>
@@ -927,7 +964,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 {layer.kind === 'endCard' ? null : (
                   <button
                     type="button"
-                    aria-label={`${layer.visible ? 'Hide' : 'Show'} ${LAYER_LABELS[layer.kind]}`}
+                    aria-label={`${layer.visible ? 'Hide' : 'Show'} ${layerLabel(layer)}`}
                     aria-pressed={layer.visible}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -944,7 +981,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
           {selected && selected.kind !== 'endCard' && (
             <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-              <div style={{ color: C.text, fontSize: 12, fontWeight: 800 }}>{LAYER_LABELS[selected.kind]}</div>
+              <div style={{ color: C.text, fontSize: 12, fontWeight: 800 }}>{layerLabel(selected)}</div>
 
               {selected.kind === 'design' && (
                 <div style={{ color: C.muted, fontSize: 10 }}>
@@ -1069,6 +1106,14 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 </div>
               )}
 
+              {isSceneLayer(selected) ? (
+                <p style={hintStyle}>
+                  Full screen from {framesToSeconds(selected.startFrame, fps).toFixed(1)}s to{' '}
+                  {framesToSeconds((selected.endFrame ?? durationInFrames - 1) + 1, fps).toFixed(1)}s. Change it under
+                  Animated designs above.
+                </p>
+              ) : (
+              <>
               <div>
                 <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>
                 <input
@@ -1120,6 +1165,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   Lower third
                 </button>
               </div>
+              </>
+              )}
 
               <button
                 type="button"

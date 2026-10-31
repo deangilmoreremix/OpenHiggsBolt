@@ -7,6 +7,7 @@
 import { getRemotionDesignTemplate } from '../templates'
 import type { RemotionDesignCategory } from '../templates/types'
 import type { PersonalizationPreviewSettings, PreviewLayer, PreviewLayerKind } from '../preview/types'
+import { DESIGN_SLOT_LAYER_IDS } from '../preview/types'
 
 export const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   logo: 'Logo',
@@ -31,13 +32,20 @@ export const DESIGN_CATEGORY_LABELS: Record<RemotionDesignCategory, string> = {
   other: 'More',
 }
 
+/** Short label for a layer: scenes are named by where they play. */
+export function layerLabel(layer: Pick<PreviewLayer, 'id' | 'kind'>): string {
+  if (layer.kind === 'design' && layer.id === DESIGN_SLOT_LAYER_IDS.intro) return 'Opening scene'
+  if (layer.kind === 'design' && layer.id === DESIGN_SLOT_LAYER_IDS.outro) return 'Closing scene'
+  return LAYER_LABELS[layer.kind] ?? layer.kind
+}
+
 /** The name a layer is shown under: designs use the design's own name. */
 export function layerDisplayName(layer: PreviewLayer): string {
   if (layer.kind === 'design' && layer.designId) {
     const design = getRemotionDesignTemplate(layer.designId)
-    if (design) return `Design: ${design.name}`
+    if (design) return `${layerLabel(layer)}: ${design.name}`
   }
-  return LAYER_LABELS[layer.kind] ?? layer.kind
+  return layerLabel(layer)
 }
 
 export interface LayerChanges {
@@ -51,7 +59,7 @@ export interface LayerChanges {
 export function diffLayers(prev: PreviewLayer[], next: PreviewLayer[]): LayerChanges {
   // A design layer always has the id 'design'; swapping one design for another
   // is reported as a removal plus an addition, so key designs by their id too.
-  const keyOf = (layer: PreviewLayer) => (layer.kind === 'design' ? `design:${layer.designId ?? ''}` : layer.id)
+  const keyOf = (layer: PreviewLayer) => (layer.kind === 'design' ? `${layer.id}:${layer.designId ?? ''}` : layer.id)
   const prevKeys = new Set(prev.map(keyOf))
   const nextKeys = new Set(next.map(keyOf))
   return {
@@ -73,7 +81,19 @@ export function describeLayerChanges(changes: LayerChanges): string | null {
 
 /** True when the layout or applied design differs between two settings. */
 export function lookChanged(prev: PersonalizationPreviewSettings, next: PersonalizationPreviewSettings): boolean {
-  return prev.layout !== next.layout || (prev.remotionDesignId ?? null) !== (next.remotionDesignId ?? null)
+  return (
+    prev.layout !== next.layout ||
+    (prev.remotionDesignId ?? null) !== (next.remotionDesignId ?? null) ||
+    (prev.remotionSceneIds?.intro ?? null) !== (next.remotionSceneIds?.intro ?? null) ||
+    (prev.remotionSceneIds?.outro ?? null) !== (next.remotionSceneIds?.outro ?? null)
+  )
+}
+
+/** Extra note when a change switched the branded end card on or off. */
+export function endCardChangeNote(prev: PersonalizationPreviewSettings, next: PersonalizationPreviewSettings): string | null {
+  if (prev.showEndCard && !next.showEndCard) return 'the branded end card was turned off (the closing scene replaces it)'
+  if (!prev.showEndCard && next.showEndCard) return 'the branded end card is back on'
+  return null
 }
 
 /** First frame a layer is fully on screen: its start, delay and entrance. */

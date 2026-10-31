@@ -178,7 +178,7 @@ export function darkenColor(value: string, factor: number): string {
  * It is rendered in the *box* (not in the scaled composition) so its size
  * does not shrink with the design, and it is deliberately unobtrusive.
  */
-export function DesignCreditLine(): React.ReactElement {
+export function DesignCreditLine({ credit = DESIGN_VIDEO_CREDIT }: { credit?: string } = {}): React.ReactElement {
   return (
     <div
       data-remotion-design-credit
@@ -197,7 +197,7 @@ export function DesignCreditLine(): React.ReactElement {
         pointerEvents: 'none',
       }}
     >
-      {DESIGN_VIDEO_CREDIT}
+      {credit}
     </div>
   )
 }
@@ -218,11 +218,14 @@ export function DesignStage({
   props,
   children,
   stageStyle,
+  credit,
 }: {
   designId: string
   props: RemotionDesignComponentProps
   children: React.ReactNode
   stageStyle?: React.CSSProperties
+  /** Credit line drawn in the corner; defaults to the RenderComp line. */
+  credit?: string
 }): React.ReactElement {
   // The frozen upstreams hardcode a system font stack, which makes the export
   // depend on the machine it runs on. `useDesignFonts()` declares the bundled
@@ -262,7 +265,7 @@ export function DesignStage({
       >
         {children}
       </AbsoluteFill>
-      <DesignCreditLine />
+      <DesignCreditLine credit={credit} />
     </AbsoluteFill>
   )
 }

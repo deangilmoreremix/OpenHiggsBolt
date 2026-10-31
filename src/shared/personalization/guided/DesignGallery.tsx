@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { CheckCircle2, Play } from 'lucide-react'
-import { FALLBACK_BACKDROP, LiveCompositionPreview } from './LiveCompositionPreview'
+import { LiveCompositionPreview, useCardBackdrop, useHoverPlay } from './LiveCompositionPreview'
 import { applyDesignTemplate, createDefaultPreviewSettings } from '../preview/presets'
-import type { PreviewInputProps } from '../preview/types'
+import type { DesignSlot, PreviewInputProps } from '../preview/types'
 import type { RemotionDesignCategory, RemotionDesignTemplate } from '../templates/types'
 import { DESIGN_CATEGORY_LABELS } from './layerChanges'
 import { C, labelStyle } from './tokens'
@@ -25,6 +24,36 @@ export interface DesignGalleryProps {
   onSelect: (designId: string | null) => void
   /** The editor's preview input: brand, colors and the video's poster. */
   inputProps: PreviewInputProps
+  /** Which slot this gallery fills; scenes and overlays list different designs. */
+  slot?: DesignSlot
+  /** Label of the card that clears the slot. */
+  noneLabel?: string
+}
+
+/** True when a design belongs in this slot's gallery. */
+export function designFitsSlot(design: RemotionDesignTemplate, slot: DesignSlot): boolean {
+  const isScene = design.role === 'scene'
+  return slot === 'overlay' ? !isScene : isScene
+}
+
+/** Card length: an overlay's hover loop, or the whole scene plus a short hold. */
+function cardFrames(design: RemotionDesignTemplate): number {
+  if (design.role !== 'scene') return HOVER_PREVIEW_FRAMES
+  return Math.max(HOVER_PREVIEW_FRAMES, (design.sceneDurationInFrames ?? 90) + 15)
+}
+
+/**
+ * CSS transform that zooms a card in on an overlay's own box, so a design
+ * placed small on the frame still fills its card. Scenes fill the frame
+ * already and are shown whole.
+ */
+export function cardZoomTransform(design: RemotionDesignTemplate): string | undefined {
+  const placement = design.placement
+  if (design.role === 'scene' || !placement || placement.scale >= 0.85) return undefined
+  const zoom = Math.min(2.4, 1 / Math.max(0.2, placement.scale * 1.15))
+  const dx = (0.5 - placement.x) * 100
+  const dy = (0.5 - placement.y) * 100
+  return `scale(${zoom.toFixed(3)}) translate(${dx.toFixed(2)}%, ${dy.toFixed(2)}%)`
 }
 
 const CARD_WIDTH = 1280
@@ -57,7 +86,11 @@ export function designUsesLine(design: RemotionDesignTemplate): string {
 }
 
 /** Where on the frame the design sits by default. */
-export function designPlacementLine(design: RemotionDesignTemplate): string {
+export function designPlacementLine(design: RemotionDesignTemplate, slot: DesignSlot = 'overlay'): string {
+  if (design.role === 'scene') {
+    const seconds = Math.round(((design.sceneDurationInFrames ?? 90) / 30) * 10) / 10
+    return `Full screen · ${seconds}s ${slot === 'outro' ? 'at the end' : 'at the start'}`
+  }
   const placement = design.placement
   if (!placement || placement.scale >= 0.85) return 'Full screen'
   if (placement.y >= 0.65) return 'Bottom of the video'
@@ -67,20 +100,25 @@ export function designPlacementLine(design: RemotionDesignTemplate): string {
 
 /** The frame a still thumbnail shows: the design's own animation has finished. */
 export function designStillFrame(design: RemotionDesignTemplate, fps: number): number {
+  const frames = cardFrames(design)
+  if (typeof design.posterFrame === 'number') return Math.max(0, Math.min(frames - 1, design.posterFrame))
   const animation = design.animation
   const settled = animation ? animation.delayInFrames + animation.durationInFrames : Math.round(fps * 1.5)
-  return Math.max(1, Math.min(HOVER_PREVIEW_FRAMES - 1, settled + 6))
+  return Math.max(1, Math.min(frames - 1, settled + 6))
 }
 
 /** Preview input with only this design on the customer's backdrop. */
-function cardInputProps(design: RemotionDesignTemplate, base: PreviewInputProps): PreviewInputProps {
+function cardInputProps(design: RemotionDesignTemplate, base: PreviewInputProps, backdrop: string): PreviewInputProps {
   const fps = (base.settings?.fps ?? 0) > 0 ? base.settings.fps : 30
+  const frames = cardFrames(design)
   const settings = applyDesignTemplate(
     createDefaultPreviewSettings({
       layers: [],
       aspectRatio: '16:9',
       fps,
-      durationInFrames: HOVER_PREVIEW_FRAMES,
+      // Twice the scene length, so the scene window (at most half the video)
+      // covers the whole authored scene.
+      durationInFrames: design.role === 'scene' ? frames * 2 : frames,
       showEndCard: false,
       brandColors: { ...(base.settings?.brandColors ?? {}), backgroundDim: 0 },
     }),
@@ -94,13 +132,14 @@ function cardInputProps(design: RemotionDesignTemplate, base: PreviewInputProps)
       productUrl: base.brand.productUrl ?? undefined,
       serviceUrl: base.brand.serviceUrl ?? undefined,
     },
+    design.role === 'scene' ? 'intro' : 'overlay',
   )
   return {
     ...base,
     // A still backdrop, never the video: dozens of cards must not each decode it.
     videoUrl: null,
     isImageSource: true,
-    posterUrl: base.posterUrl || FALLBACK_BACKDROP,
+    posterUrl: backdrop,
     audioUrl: null,
     settings: { ...settings, width: CARD_WIDTH, height: CARD_HEIGHT },
   }
@@ -111,25 +150,26 @@ function DesignCard({
   active,
   onSelect,
   inputProps,
+  slot,
 }: {
   design: RemotionDesignTemplate
   active: boolean
   onSelect: () => void
   inputProps: PreviewInputProps
+  slot: DesignSlot
 }): React.JSX.Element {
-  const [playing, setPlaying] = useState(false)
+  const { playing, handlers } = useHoverPlay()
+  const backdrop = useCardBackdrop(inputProps)
   const fps = (inputProps.settings?.fps ?? 0) > 0 ? inputProps.settings.fps : 30
   const usesLine = designUsesLine(design)
-  const placementLine = designPlacementLine(design)
+  const placementLine = designPlacementLine(design, slot)
+  const zoom = cardZoomTransform(design)
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      onPointerEnter={() => setPlaying(true)}
-      onPointerLeave={() => setPlaying(false)}
-      onFocus={() => setPlaying(true)}
-      onBlur={() => setPlaying(false)}
+      {...handlers}
       aria-pressed={active}
       aria-label={design.name}
       title={design.description}
@@ -157,15 +197,17 @@ function DesignCard({
           background: '#06090d',
         }}
       >
-        <LiveCompositionPreview
-          buildInputProps={() => cardInputProps(design, inputProps)}
-          playing={playing}
-          stillFrame={designStillFrame(design, fps)}
-          durationInFrames={HOVER_PREVIEW_FRAMES}
-          width={CARD_WIDTH}
-          height={CARD_HEIGHT}
-          fps={fps}
-        />
+        <span style={{ position: 'absolute', inset: 0, transform: zoom, transformOrigin: 'center' }}>
+          <LiveCompositionPreview
+            buildInputProps={() => cardInputProps(design, inputProps, backdrop)}
+            playing={playing}
+            stillFrame={designStillFrame(design, fps)}
+            durationInFrames={cardFrames(design)}
+            width={CARD_WIDTH}
+            height={CARD_HEIGHT}
+            fps={fps}
+          />
+        </span>
         {!playing ? (
           <span
             aria-hidden
@@ -232,7 +274,20 @@ function groupByCategory(designs: RemotionDesignTemplate[]): [RemotionDesignCate
     .filter(([, entries]) => entries.length > 0)
 }
 
-export function DesignGallery({ designs, activeDesignId, onSelect, inputProps }: DesignGalleryProps): React.JSX.Element {
+export function DesignGallery({
+  designs: allDesigns,
+  activeDesignId,
+  onSelect,
+  inputProps,
+  slot = 'overlay',
+  noneLabel = 'None: no animated design',
+}: DesignGalleryProps): React.JSX.Element {
+  const designs = allDesigns.filter((design) => designFitsSlot(design, slot))
+  // Overlays are grouped by type; the scene rows are short enough to list flat.
+  const groups: [string, RemotionDesignTemplate[]][] =
+    slot === 'overlay'
+      ? groupByCategory(designs).map(([category, entries]) => [DESIGN_CATEGORY_LABELS[category], entries])
+      : [['', designs]]
   const grid: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
@@ -260,12 +315,12 @@ export function DesignGallery({ designs, activeDesignId, onSelect, inputProps }:
             cursor: 'pointer',
           }}
         >
-          None: no animated design
+          {noneLabel}
         </button>
       </div>
-      {groupByCategory(designs).map(([category, entries]) => (
-        <div key={category}>
-          <div style={{ ...labelStyle, marginBottom: 6 }}>{DESIGN_CATEGORY_LABELS[category]}</div>
+      {groups.map(([label, entries]) => (
+        <div key={label || 'all'}>
+          {label ? <div style={{ ...labelStyle, marginBottom: 6 }}>{label}</div> : null}
           <div style={grid}>
             {entries.map((design) => (
               <DesignCard
@@ -274,6 +329,7 @@ export function DesignGallery({ designs, activeDesignId, onSelect, inputProps }:
                 active={activeDesignId === design.id}
                 onSelect={() => onSelect(activeDesignId === design.id ? null : design.id)}
                 inputProps={inputProps}
+                slot={slot}
               />
             ))}
           </div>

@@ -64,6 +64,7 @@ import {
   RVE_CATALOG_ENTRIES,
   RVE_LICENSE_NOTICE,
 } from './designs/rveCatalogEntries'
+import { SCENE_CATALOG_ENTRIES } from './designs/sceneCatalogEntries'
 import { DESIGN_FONT_ALIAS_NOTE, DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE } from './typography'
 
 // The typeface constants are re-exported from the catalog lane (like the
@@ -974,11 +975,15 @@ export const REMOTION_DESIGN_BATCH2_TEMPLATES: RemotionDesignTemplate[] = [
   ...RVE_CATALOG_ENTRIES,
 ]
 
+/** The full-screen opening/closing scenes (`role: 'scene'`). */
+export const REMOTION_DESIGN_SCENE_TEMPLATES: RemotionDesignTemplate[] = [...SCENE_CATALOG_ENTRIES]
+
 /** Every design, in registration order. */
 export const REMOTION_DESIGN_TEMPLATES: RemotionDesignTemplate[] = [
   ...REMOTION_DESIGN_PHASE1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH2_TEMPLATES,
+  ...REMOTION_DESIGN_SCENE_TEMPLATES,
 ]
 
 // The catalog registers itself on import, so the designs exist before the

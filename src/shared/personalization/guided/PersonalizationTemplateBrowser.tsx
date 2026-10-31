@@ -43,7 +43,7 @@ import type { PreviewLayoutId, PreviewLayerKind } from '../preview/types'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { buildPreviewInput } from './buildPreviewInput'
-import { FALLBACK_BACKDROP, LiveCompositionPreview } from './LiveCompositionPreview'
+import { LiveCompositionPreview, useCardBackdrop, useHoverPlay } from './LiveCompositionPreview'
 import { applyLayoutPreset, removeDesignLayer } from '../preview/presets'
 import type { PreviewInputProps } from '../preview/types'
 
@@ -433,7 +433,7 @@ function TemplateCard({
   if (!layout) return <></>
   const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? []
   const clip = previewVideoUrl(layoutId)
-  const [hovering, setHovering] = useState(false)
+  const { playing: hovering, handlers: hoverHandlers } = useHoverPlay()
 
   return (
     <div
@@ -450,8 +450,8 @@ function TemplateCard({
           onSelect(layoutId)
         }
       }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onPointerEnter={hoverHandlers.onPointerEnter}
+      onPointerLeave={hoverHandlers.onPointerLeave}
       style={{
         ...tileStyle(active),
         display: 'flex',
@@ -541,7 +541,7 @@ const LAYOUT_CARD_WIDTH = 1280
 const LAYOUT_CARD_HEIGHT = 720
 
 /** This layout applied to the customer's brand, on a still or playing backdrop. */
-function layoutCardInputProps(layoutId: PreviewLayoutId, base: PreviewInputProps, playing: boolean): PreviewInputProps {
+function layoutCardInputProps(layoutId: PreviewLayoutId, base: PreviewInputProps, playing: boolean, backdrop: string): PreviewInputProps {
   const fps = base.settings.fps > 0 ? base.settings.fps : 30
   const settings = applyLayoutPreset(removeDesignLayer(base.settings), layoutId)
   const hasVideo = Boolean(base.videoUrl) && !base.isImageSource
@@ -550,7 +550,7 @@ function layoutCardInputProps(layoutId: PreviewLayoutId, base: PreviewInputProps
     // The still card never decodes the video; the one playing card does.
     videoUrl: playing && hasVideo ? base.videoUrl : null,
     isImageSource: !(playing && hasVideo),
-    posterUrl: base.posterUrl || FALLBACK_BACKDROP,
+    posterUrl: backdrop,
     audioUrl: null,
     settings: {
       ...settings,
@@ -579,13 +579,14 @@ function LayoutLivePreview({
 }): React.JSX.Element {
   const fps = base.settings.fps > 0 ? base.settings.fps : 30
   const durationInFrames = Math.round(LAYOUT_PREVIEW_SECONDS * fps)
+  const backdrop = useCardBackdrop(base)
   return (
     <span
       data-testid="personalization-template-player"
       style={{ position: 'relative', display: 'block', width: '100%', aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: '#06090d' }}
     >
       <LiveCompositionPreview
-        buildInputProps={() => layoutCardInputProps(layoutId, base, playing)}
+        buildInputProps={() => layoutCardInputProps(layoutId, base, playing, backdrop)}
         playing={playing}
         stillFrame={durationInFrames - 1}
         durationInFrames={durationInFrames}

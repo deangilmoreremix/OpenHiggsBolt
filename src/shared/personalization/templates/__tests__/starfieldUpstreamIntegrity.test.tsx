@@ -75,6 +75,23 @@ const FROZEN_UPSTREAM: Record<string, { file: string; upstream?: string }> = {
   'rve-slide-text/SlideText.tsx': { file: '16a857cb4cc7ddce25e4277accbff51ca0a9e896362e648845d5f7d94679e668' },
   'starfield-warp/Starfield.tsx': { file: '44ad5c24e690d2e3cb4b6aba9a447e4424d096add6c7c94695c3416e3da8aa80', upstream: 'a77d1319855413f1c4fec4794d7ab9d714aba3de726ff8c418998da4ff049bf7' },
   'text-mask-reveal/TextMaskReveal.tsx': { file: '4c8544ea743fe59382b8b23099670ef9d96cad1eb298f69ee92244e743b437e6', upstream: 'bb8fbe64c4a39c339ffe92a7a269c8d3ee5c0bfec9c0139a409bf2c40ebd361a' },
+  'fireworks-burst/FireworksBurst.tsx': { file: 'cb5f48b29edac63b56d10aaafa5de44768cb7dc36089b06b4a55b0de61a0c4fa', upstream: 'b08ffc709dd50715d847a6a7a2d297eb37049cfe73bc106f9af827dddc5ed63d' },
+  'gradient-text-sweep/GradientTextSweep.tsx': { file: 'e1778611f2e074d9553e5d70557e2784ab6f07fe78fa49a23157267e9c36ffeb', upstream: 'b092c0776b24a8ff79247bfac538c4f818e4595e1b76dc6214b73fd3fe4b41c8' },
+  'kinetic-word-stack/KineticWordStack.tsx': { file: 'a76e867f1cda212981e3a303ee3385460a7f126b8cf51fa8493dc78f0ade6a63', upstream: 'ca427232be7c2955006af56218ba7cfaf536ce745aa40c2f19687ccf73f2e755' },
+  'neon-sign/NeonSign.tsx': { file: 'e9e2ddec97b7d358c9bcbaf853659e830ebb944fc92ac8c39d6ef68d28a5676d', upstream: 'e67abad94f47fd49ffb33b06adaaac586be9639c731c505635df90e1845a074d' },
+  'remotion-video-templates/lib/colors.ts': { file: '5ec85e5694b0138bbb7c4a5dc856d88b90bcc8c549438c666d179cceb1c34e44', upstream: 'e2cc736db68c74c0c228211035ccb992830ad5c956a1dd04ff49835eb2bcf857' },
+  'remotion-video-templates/lib/fonts.ts': { file: '499989cf613d2186db763c8cc38487f8a8696391686f0596c500c4f3e75b50a6' },
+  'remotion-video-templates/lib/layout.tsx': { file: '37f45797ed18f3a73d3e2d9852a6ed29cc4fb03866b042a04cd30109e544d8ee', upstream: 'fb92bc6f98220e0916debd11f72fb721a69c88d76a00a51fc83d1269334bf545' },
+  'remotion-video-templates/lib/springs.ts': { file: '02e640a8a4999bacc789bfdbdb7e3737fdaedcf6b0f92fc7a44edf1ba90ba575', upstream: '92f5a5c0b2713db256734683a6cb5ef44336c5d64470db530f4103888ae0b361' },
+  'remotion-video-templates/templates/KineticText/KineticText.tsx': { file: '81868638a0212b7175ed34655a1ad2202706077f2ba41dcad292f76e33f598ea', upstream: 'b3c588f010c34676436377ca0de6e614e4f2ac0db13bb13fdc859fecd9365f27' },
+  'remotion-video-templates/templates/LogoIntro/LogoIntro.tsx': { file: '66732e9dbb9545bbf0173402ec2e5f9293ea1ff0edc5f5c2defa0def9c1aaedf' },
+  'remotion-video-templates/templates/LowerThirds/styles.tsx': { file: 'f021d59fbaa974f22ccaba7002fce6d64d697329ab2f8da850cbb61fa553c51a', upstream: '605d717fb1fcb9b19b40b69027cce91714b0bdeed1ccb54d013bbbc99d2b58fa' },
+  'rve-cinematic-title-intro/CinematicTitleIntro.tsx': { file: '0721ec2e93680d96bcf363713cfc1fe7bd17522467516ba0a066251f64ce06d2' },
+  'rve-logo-typewriter/LogoTypewriter.tsx': { file: 'a7f9971bd48e40bd7e500965f33ddfc00ae9fac3d7f77f0490311fe99b72a5f9' },
+  'rve-quote-card/QuoteCard.tsx': { file: '3e351839132e1239e6d6f3de465b636f165419cb20ea94a6dadbbdd7adbaf11c' },
+  'rve-text-highlight/TextHighlight.tsx': { file: '7284d2621b14e796aa2a0612e5fd26fe9c539fe63c5602f40ca38c3eb1ede0c3' },
+  'shatter-reveal/ShatterReveal.tsx': { file: '262e5f2ffb6795a0594c476f0ee6e93ec7b570ccb3f3d7375e492b4f3d79ba1a', upstream: '1c0f2fc578a52d0b2bb46aaef010d24ee47301d1bf290a960fbb823344f60b45' },
+  'typewriter/Typewriter.tsx': { file: 'da732d6102e064230021ddae6b9228fddd83522480255e385b8defa5a02d95d5', upstream: '6b56266a1c7ca6053f37f5626262ed6d5b74d0a6f92990df1ec71c0fe20c2842' },
 }
 
 const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex')

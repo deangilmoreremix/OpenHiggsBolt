@@ -212,7 +212,20 @@ export interface RemotionDesignTemplate {
   previewCompatible?: boolean
   /** Why the design is not preview compatible, when it is not. */
   previewCompatibleReason?: string
+  /**
+   * How the design is used. `overlay` (the default) sits on top of the
+   * customer's video; `scene` owns the whole frame, background included, for
+   * a few seconds at the start (opening scene) or end (closing scene).
+   */
+  role?: RemotionDesignRole
+  /** How long a scene plays, in frames at 30fps (scenes only). */
+  sceneDurationInFrames?: number
+  /** Frame a preview card shows when the animation's end is not its best moment. */
+  posterFrame?: number
 }
+
+/** How a design is used in the video. */
+export type RemotionDesignRole = 'overlay' | 'scene'
 
 /** Result of a support check. */
 export interface RemotionDesignSupportCheck {

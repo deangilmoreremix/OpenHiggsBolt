@@ -11,6 +11,7 @@ import { createElement } from 'react'
 import { useDemoPersonalize } from '../../DemoPersonalizeProvider'
 import { OverlayEditor } from '../OverlayEditor'
 import { createDefaultPreviewSettings, createLayer } from '../../preview/presets'
+import { TEXT_CHAR_WIDTH_RATIO } from '../../preview/presets'
 import type { PreviewInputProps, PreviewLayer } from '../../preview/types'
 import type { AssetLibrary, PersonalizationAsset } from '../../types'
 import {
@@ -128,8 +129,10 @@ describe('layerBoxMetrics', () => {
     expect(wrapping.heightPx).toBeGreaterThan(short.heightPx)
 
     // Wrap count uses toBox's own character width, on the unrounded box width.
-    expect(estimateTextLineCount('Acme Roofing', 59, 389.4)).toBe(1)
-    expect(estimateTextLineCount('x'.repeat(200), 59, 1728)).toBe(4)
+    // 'Acme Roofing' is 12 characters: its own estimated width fits one line.
+    expect(estimateTextLineCount('Acme Roofing', 59, 59 * 12 * TEXT_CHAR_WIDTH_RATIO)).toBe(1)
+    // 1728 px holds floor(1728 / (59 * ratio)) = 47 characters per line.
+    expect(estimateTextLineCount('x'.repeat(200), 59, 1728)).toBe(Math.ceil(200 / Math.floor(1728 / (59 * TEXT_CHAR_WIDTH_RATIO))))
     expect(estimateTextLineCount('', 59, 1728)).toBe(1)
     expect(estimateTextLineCount('x'.repeat(5000), 59, 1728)).toBe(8) // capped
   })

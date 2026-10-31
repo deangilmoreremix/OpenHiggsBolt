@@ -17,7 +17,8 @@ import type {
   PreviewLayoutId,
   PreviewPositionId,
 } from './types'
-import { DEFAULT_PREVIEW_BRAND_COLORS, DEFAULT_PREVIEW_FPS } from './types'
+import { DEFAULT_PREVIEW_BRAND_COLORS, DEFAULT_PREVIEW_FPS, DESIGN_SLOT_LAYER_IDS } from './types'
+import type { DesignSlot } from './types'
 import { getRemotionDesignTemplate } from '../templates/registry'
 import type {
   RemotionDesignMediaRole,
@@ -542,23 +543,36 @@ export function applyLayoutPreset(
     if (kept) return clampLayer({ ...kept })
     return createSeededLayer(kind, ctx, { layoutId, width: settings.width, height: settings.height })
   })
-  // An applied design stacks ON TOP of the layout: switching the layout keeps
-  // the design layer (and the customer's edits to it) after the layout layers.
-  const designLayer = findDesignLayer(settings)
+  // Applied designs and scenes stack ON TOP of the layout: switching the
+  // layout keeps them (and the customer's edits to them) after the layout.
+  const designLayers = findDesignLayers(settings)
+  const overlay = designLayers.find((layer) => designSlotOf(layer) === 'overlay')
   return {
     ...settings,
     layout: layoutId,
-    layers: designLayer ? [...layers, clampLayer({ ...designLayer })] : layers,
+    layers: [...layers, ...designLayers.map((layer) => clampLayer({ ...layer }))],
     brandColors: { ...settings.brandColors },
-    remotionDesignId: designLayer ? (settings.remotionDesignId ?? designLayer.designId ?? null) : null,
+    remotionDesignId: overlay ? (settings.remotionDesignId ?? overlay.designId ?? null) : null,
   }
 }
 
-/** The applied design layer, if the settings carry one. */
-function findDesignLayer(settings: PersonalizationPreviewSettings): PreviewLayer | undefined {
-  return (Array.isArray(settings.layers) ? settings.layers : []).find(
+/** Every applied design layer (overlay and scenes), in layer order. */
+function findDesignLayers(settings: PersonalizationPreviewSettings): PreviewLayer[] {
+  return (Array.isArray(settings.layers) ? settings.layers : []).filter(
     (layer) => layer && layer.kind === 'design',
   )
+}
+
+/** Which slot a design layer occupies, from its id. */
+export function designSlotOf(layer: Pick<PreviewLayer, 'id'>): DesignSlot {
+  if (layer.id === DESIGN_SLOT_LAYER_IDS.intro) return 'intro'
+  if (layer.id === DESIGN_SLOT_LAYER_IDS.outro) return 'outro'
+  return 'overlay'
+}
+
+/** True for the full-frame opening and closing scene layers. */
+export function isSceneLayer(layer: Pick<PreviewLayer, 'id' | 'kind'>): boolean {
+  return layer.kind === 'design' && designSlotOf(layer) !== 'overlay'
 }
 
 /**
@@ -610,13 +624,19 @@ export function resetLayoutToDefaults(
     brandColors: { ...settings.brandColors },
     remotionDesignId: null,
   }
-  // An applied design stays applied: it goes back to the design's own default
-  // placement while keeping the text the customer typed into it.
-  const designLayer = findDesignLayer(settings)
-  if (designLayer?.designId && getRemotionDesignTemplate(designLayer.designId)) {
-    return applyDesignTemplate({ ...reset, layers: [...layers, designLayer] }, designLayer.designId, ctx)
+  // Applied designs stay applied: each goes back to its own default placement
+  // and timing while keeping the text the customer typed into it.
+  let restored = reset
+  for (const designLayer of findDesignLayers(settings)) {
+    if (!designLayer.designId || !getRemotionDesignTemplate(designLayer.designId)) continue
+    restored = applyDesignTemplate(
+      { ...restored, layers: [...restored.layers, designLayer] },
+      designLayer.designId,
+      ctx,
+      designSlotOf(designLayer),
+    )
   }
-  return reset
+  return restored
 }
 
 /**
@@ -683,12 +703,14 @@ export function applyDesignTemplate(
   prev: PersonalizationPreviewSettings,
   designId: string,
   ctx?: ApplyLayoutContext,
+  slot: DesignSlot = 'overlay',
 ): PersonalizationPreviewSettings {
   const design = getRemotionDesignTemplate(designId)
   if (!design) return prev
+  const layerId = DESIGN_SLOT_LAYER_IDS[slot]
 
   const existing = (Array.isArray(prev.layers) ? prev.layers : []).find(
-    (layer) => layer && layer.kind === 'design' && layer.designId === design.id,
+    (layer) => layer && layer.id === layerId && layer.designId === design.id,
   )
 
   const primarySlot = pickPrimaryTextSlot(design)
@@ -724,20 +746,76 @@ export function applyDesignTemplate(
   if (imageUrl !== undefined) overrides.imageUrl = imageUrl
   if (textSlotOverrides) overrides.textSlotOverrides = textSlotOverrides
 
-  const layer = createLayer('design', overrides)
-
-  // The design stacks ON TOP of the layout: every layout layer is kept, and
-  // the design layer replaces any previously applied design.
-  const layoutLayers = (Array.isArray(prev.layers) ? prev.layers : []).filter(
-    (entry) => entry && entry.kind !== 'design',
-  )
-
-  return {
-    ...prev,
-    layers: [...layoutLayers, layer],
-    brandColors: { ...prev.brandColors },
-    remotionDesignId: design.id,
+  if (slot !== 'overlay') {
+    // A scene owns the whole frame for its own time window.
+    Object.assign(overrides, { x: 0.5, y: 0.5, scale: 1, opacity: 1, animation: 'fade' }, sceneWindow(design, prev, slot))
   }
+
+  const layer = createLayer('design', { ...overrides, id: layerId })
+
+  // The design stacks ON TOP of the layout: every other layer is kept, and
+  // this slot's previous design is replaced. Scenes are drawn last, so they
+  // cover the video and any overlay while they play.
+  const others = (Array.isArray(prev.layers) ? prev.layers : []).filter((entry) => entry && entry.id !== layerId)
+  const layers = [...others, layer].sort((a, b) => sceneOrder(a) - sceneOrder(b))
+
+  const next: PersonalizationPreviewSettings = { ...prev, layers, brandColors: { ...prev.brandColors } }
+  if (slot === 'overlay') {
+    next.remotionDesignId = design.id
+  } else {
+    next.remotionSceneIds = { ...sceneIdsOf(prev), [slot]: design.id }
+    // A closing scene replaces the branded end card: both own the last seconds.
+    if (slot === 'outro') next.showEndCard = false
+  }
+  return next
+}
+
+/** Layout and overlay layers first, then the opening and closing scenes. */
+function sceneOrder(layer: PreviewLayer): number {
+  return isSceneLayer(layer) ? 1 : 0
+}
+
+function sceneIdsOf(settings: PersonalizationPreviewSettings): { intro: string | null; outro: string | null } {
+  return { intro: settings.remotionSceneIds?.intro ?? null, outro: settings.remotionSceneIds?.outro ?? null }
+}
+
+/** Default scene length: three seconds. */
+const DEFAULT_SCENE_SECONDS = 3
+
+/** The frames an opening or closing scene plays for in this video. */
+export function sceneWindow(
+  design: RemotionDesignTemplate,
+  settings: Pick<PersonalizationPreviewSettings, 'fps' | 'durationInFrames'>,
+  slot: Exclude<DesignSlot, 'overlay'>,
+): { startFrame: number; endFrame: number } {
+  const fps = settings.fps > 0 ? settings.fps : DEFAULT_PREVIEW_FPS
+  const total = Math.max(1, Math.round(settings.durationInFrames))
+  const authored = design.sceneDurationInFrames
+    ? Math.round((design.sceneDurationInFrames / 30) * fps)
+    : Math.round(DEFAULT_SCENE_SECONDS * fps)
+  // A scene never takes more than half the video, so both can fit.
+  const length = Math.max(1, Math.min(authored, Math.floor(total / 2)))
+  return slot === 'intro'
+    ? { startFrame: 0, endFrame: length - 1 }
+    : { startFrame: total - length, endFrame: total - 1 }
+}
+
+/**
+ * Re-times the opening and closing scenes after the video's length or frame
+ * rate changes, so the closing scene still ends on the last frame. Pure.
+ */
+export function retimeScenes(settings: PersonalizationPreviewSettings): PersonalizationPreviewSettings {
+  let changed = false
+  const layers = settings.layers.map((layer) => {
+    if (!isSceneLayer(layer) || !layer.designId) return layer
+    const design = getRemotionDesignTemplate(layer.designId)
+    if (!design) return layer
+    const window = sceneWindow(design, settings, designSlotOf(layer) as 'intro' | 'outro')
+    if (window.startFrame === layer.startFrame && window.endFrame === layer.endFrame) return layer
+    changed = true
+    return { ...layer, ...window }
+  })
+  return changed ? { ...settings, layers } : settings
 }
 
 /**
@@ -747,15 +825,23 @@ export function applyDesignTemplate(
  */
 export function removeDesignLayer(
   prev: PersonalizationPreviewSettings,
+  slot: DesignSlot | 'all' = 'overlay',
 ): PersonalizationPreviewSettings {
-  return {
+  const drop = (layer: PreviewLayer) =>
+    layer.kind === 'design' && (slot === 'all' || designSlotOf(layer) === slot)
+  const next: PersonalizationPreviewSettings = {
     ...prev,
-    layers: (Array.isArray(prev.layers) ? prev.layers : []).filter(
-      (layer) => layer && layer.kind !== 'design',
-    ),
+    layers: (Array.isArray(prev.layers) ? prev.layers : []).filter((layer) => layer && !drop(layer)),
     brandColors: { ...prev.brandColors },
-    remotionDesignId: null,
   }
+  if (slot === 'overlay' || slot === 'all') next.remotionDesignId = null
+  if (slot !== 'overlay') {
+    const ids = sceneIdsOf(prev)
+    next.remotionSceneIds = slot === 'all' ? { intro: null, outro: null } : { ...ids, [slot]: null }
+    // Removing the closing scene brings the branded end card back.
+    if (slot === 'outro' && ids.outro) next.showEndCard = true
+  }
+  return next
 }
 
 /**
@@ -768,7 +854,7 @@ export function resetPreviewDesign(
   ctx?: ApplyLayoutContext,
 ): PersonalizationPreviewSettings {
   return resetLayoutToDefaults(
-    removeDesignLayer(prev),
+    removeDesignLayer(prev, 'all'),
     DEFAULT_PREVIEW_LAYOUT_ID,
     ctx,
   )
@@ -790,9 +876,11 @@ export function isImageLayerKind(kind: PreviewLayerKind): boolean {
 
 /**
  * Average glyph width as a fraction of the font size, used to estimate how
- * wide a text box must be. Shared with the editor's wrap estimate.
+ * wide a text box must be. Shared with the editor's wrap estimate. Measured
+ * against the bundled bold face: 0.55 was too narrow, so short two-word names
+ * like "SmartVideo GO" wrapped onto a second line and ran into the next layer.
  */
-export const TEXT_CHAR_WIDTH_RATIO = 0.55
+export const TEXT_CHAR_WIDTH_RATIO = 0.62
 
 /**
  * Converts normalized center coordinates plus scale into pixels.
@@ -1010,6 +1098,11 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    // The applied Remotion design. Absent in projects saved before the design
    // registry existed, so it falls back to null instead of throwing.
    out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
+   const rawScenes = isRecord(raw.remotionSceneIds) ? raw.remotionSceneIds : {}
+   out.remotionSceneIds = {
+     intro: nonEmptyString(rawScenes.intro) ?? null,
+     outro: nonEmptyString(rawScenes.outro) ?? null,
+   }
 
    return out
   } catch {

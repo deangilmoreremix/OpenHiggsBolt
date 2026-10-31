@@ -9,11 +9,19 @@ import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { DEFAULT_PREVIEW_BRAND_COLORS, PREVIEW_ASPECT_RATIOS } from '../preview/types'
+import type { DesignSlot } from '../preview/types'
 import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS } from '../preview/presets'
 import { LAYER_LABELS } from './layerChanges'
 import { DesignGallery } from './DesignGallery'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import { chooseFinalOutputPath } from '../finalOutput'
+
+/** The three places an animated design can go, in the order they play. */
+const DESIGN_TABS: { slot: DesignSlot; label: string; hint: string; none: string }[] = [
+  { slot: 'intro', label: 'Opening scene', hint: 'A full-screen scene that plays for the first few seconds.', none: 'None: start straight on your video' },
+  { slot: 'overlay', label: 'On-screen design', hint: 'An animated design shown on top of your video.', none: 'None: no on-screen design' },
+  { slot: 'outro', label: 'Closing scene', hint: 'A full-screen scene for the last few seconds. It replaces the branded end card.', none: 'None: keep the branded end card' },
+]
 
 const BRAND_COLOR_FIELDS = [
   ['Primary', 'primary'],
@@ -66,6 +74,7 @@ export function StepPreviewApprove(): React.JSX.Element {
     setPreviewLayout,
     remotionDesignTemplates = [],
     activeRemotionDesignId = null,
+    activeRemotionSceneIds = { intro: null, outro: null },
     setRemotionDesign = () => {},
     remotionDesignError = null,
     previewApproved,
@@ -96,6 +105,7 @@ export function StepPreviewApprove(): React.JSX.Element {
   const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) ?? null
   const activeDesign = remotionDesignTemplates.find((design) => design.id === activeRemotionDesignId) ?? null
   const [showVideoAdvanced, setShowVideoAdvanced] = useState(false)
+  const [designTab, setDesignTab] = useState<DesignSlot>('overlay')
   const [showCompare, setShowCompare] = useState(false)
 
   const [isUploading, setIsUploading] = useState(false)
@@ -186,17 +196,50 @@ export function StepPreviewApprove(): React.JSX.Element {
         {remotionDesignTemplates.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <div style={stepLabelStyle}>
-              <span style={stepNumberStyle}>2</span> Animated design <span style={{ color: C.muted, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(optional — added on top of your starting look)</span>
+              <span style={stepNumberStyle}>2</span> Animated designs <span style={{ color: C.muted, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(optional — added on top of your starting look)</span>
+            </div>
+            <div role="tablist" aria-label="Where the design goes" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {DESIGN_TABS.map((tab) => {
+                const chosenId = tab.slot === 'overlay' ? activeRemotionDesignId : activeRemotionSceneIds[tab.slot]
+                const chosen = remotionDesignTemplates.find((design) => design.id === chosenId)
+                const selectedTab = designTab === tab.slot
+                return (
+                  <button
+                    key={tab.slot}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedTab}
+                    onClick={() => setDesignTab(tab.slot)}
+                    style={{
+                      ...chipStyle(selectedTab),
+                      display: 'inline-flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: 1,
+                      padding: '6px 12px',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: chosen ? C.cyan : C.muted }}>
+                      {chosen ? chosen.name : 'None'}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
             <p style={{ ...hintStyle, marginTop: 0, marginBottom: 8 }}>
-              Each card shows the design with your own logo, text and colors. Hover a card to watch it play,
-              click to add it.
+              {DESIGN_TABS.find((tab) => tab.slot === designTab)?.hint} Each card uses your own logo, text and
+              colors. Hover a card to watch it play, click to add it.
             </p>
             <DesignGallery
+              key={designTab}
               designs={remotionDesignTemplates}
-              activeDesignId={activeRemotionDesignId}
-              onSelect={setRemotionDesign}
+              activeDesignId={designTab === 'overlay' ? activeRemotionDesignId : activeRemotionSceneIds[designTab]}
+              onSelect={(designId) => setRemotionDesign(designId, designTab)}
               inputProps={inputProps}
+              slot={designTab}
+              noneLabel={DESIGN_TABS.find((tab) => tab.slot === designTab)?.none}
             />
             {activeDesign ? <p style={{ ...hintStyle, marginTop: 8 }}>{activeDesign.description}</p> : null}
             {fixedSvgIdWarning ? (
