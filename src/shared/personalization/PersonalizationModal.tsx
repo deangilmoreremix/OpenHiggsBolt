@@ -343,6 +343,7 @@ function UploadZone({
       <button
         type="button"
         data-testid="pz-upload-collapsed"
+        data-pz-upload-zone
         onClick={() => setExpanded(true)}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -402,6 +403,7 @@ function UploadZone({
         </div>
       )}
       <div
+        data-pz-upload-zone
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -443,13 +445,17 @@ function UploadZone({
 }
 
 /** Thumb pill for placeholder slots in the asset cards. */
-function ThumbPlaceholder({ label, add = false, onClick }: { label: string; add?: boolean; onClick?: () => void }) {
+function ThumbPlaceholder({ label, add = false, onClick, title }: { label: string; add?: boolean; onClick?: () => void; title?: string }) {
+  // Clickable slots are real buttons (keyboard + screen readers); the label
+  // says what kind of photo goes there.
+  const Tag = onClick ? 'button' : 'div'
   return (
-    <div
+    <Tag
+      {...(onClick ? { type: 'button' as const, 'aria-label': title || (add ? 'Add' : `Add ${label.toLowerCase()} photo`), title: title || (add ? undefined : `Add a ${label.toLowerCase()} photo`) } : {})}
       onClick={onClick}
       className={classNames(
         'w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden flex items-end justify-center p-1.5 text-[9px] font-extrabold',
-        add && onClick && 'cursor-pointer',
+        onClick && 'cursor-pointer hover:brightness-125',
       )}
       style={{
         borderColor: add ? 'rgba(255,255,255,.22)' : C.border,
@@ -462,7 +468,7 @@ function ThumbPlaceholder({ label, add = false, onClick }: { label: string; add?
       }}
     >
       {label}
-    </div>
+    </Tag>
   )
 }
 
@@ -476,6 +482,7 @@ function ThumbUploaded({
   onRetry,
   onEdit,
   onRevert,
+  onMakePrimary,
   onMoveToSection,
   light = false,
   draggable = false,
@@ -488,6 +495,8 @@ function ThumbUploaded({
   onRetry?: () => void
   onEdit?: () => void
   onRevert?: () => void
+  /** Shown when this isn't the primary photo/logo yet. */
+  onMakePrimary?: () => void
   onMoveToSection?: (section: AssignedSection) => void
   light?: boolean
   draggable?: boolean
@@ -552,10 +561,11 @@ function ThumbUploaded({
         </button>
       )}
       {asset.edited && onRevert && (
+        // Bottom-left, clear of the Remove ✕ in the top-right corner.
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRevert() }}
-          className="absolute right-1 top-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          className={`absolute left-1 ${onMakePrimary && isReady ? 'bottom-6' : 'bottom-1'} z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase`}
           style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
           aria-label="Revert to original"
         >
@@ -567,12 +577,26 @@ function ThumbUploaded({
           {label}
         </span>
       )}
-      {onRemove && !isError && (
+      {onMakePrimary && isReady && (
+        <button
+          type="button"
+          data-testid="pz-make-primary"
+          onClick={(e) => { e.stopPropagation(); onMakePrimary() }}
+          className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          style={{ background: 'rgba(0,0,0,.75)', color: C.cyan }}
+          aria-label="Make primary"
+        >
+          ★ Primary
+        </button>
+      )}
+      {/* Failed uploads can be removed too, not only retried. */}
+      {onRemove && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove() }}
-          className="absolute top-0.5 right-0.5 z-20 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`absolute top-0.5 right-0.5 z-20 rounded-full p-0.5 transition-opacity ${isError ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
           style={{ background: 'rgba(239,91,103,.85)' }}
+          aria-label="Remove"
         >
           <X size={8} className="text-white" />
         </button>
@@ -747,7 +771,8 @@ export default function PersonalizationModal() {
   const isAnonymous = access !== 'authenticated'
 
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [copiedPrompt, setCopiedPrompt] = useState(false)
+  // true = copied, 'failed' = the browser refused the clipboard.
+  const [copiedPrompt, setCopiedPrompt] = useState<boolean | 'failed'>(false)
   const [isPersonalizing, setIsPersonalizing] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -834,6 +859,9 @@ export default function PersonalizationModal() {
     sectionDragCountersRef.current[section] = 0
     setDragOverSection(null)
     setDragPayload(null)
+
+    // A file dropped on the card's own upload area is handled there.
+    if ((e.target as HTMLElement | null)?.closest?.('[data-pz-upload-zone]')) return
 
     // Reject arbitrary text/HTML drops
     const hasText = e.dataTransfer.types.includes('text/plain') || e.dataTransfer.types.includes('text/html')
@@ -1338,8 +1366,10 @@ export default function PersonalizationModal() {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedPrompt(true)
-      setTimeout(() => setCopiedPrompt(false), 1800)
-    } catch { /* ignore */ }
+    } catch {
+      setCopiedPrompt('failed')
+    }
+    setTimeout(() => setCopiedPrompt(false), 1800)
   }, [promptState])
 
   const handlePersonalize = useCallback(async () => {
@@ -1462,7 +1492,8 @@ export default function PersonalizationModal() {
           </div>
           {/* Actions stay together on the right, so the title never runs under them. */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {guidedApiAvailable && (
+            {/* Prompt-only sources have no Simple Mode, so no toggle. */}
+            {guidedApiAvailable && source.mediaType !== 'prompt-only' && (
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === 'simple' ? 'advanced' : 'simple')}
@@ -2062,7 +2093,6 @@ function ConfigurationView(props: any) {
     discoveredAssets,
     discoveryStatus,
     discoveryError,
-    setDiscoveryError,
     importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
@@ -2118,8 +2148,12 @@ function ConfigurationView(props: any) {
   // Saved clients are picked one way at a time: the cards (customer audience)
   // or else the dropdown in the profile form.
   const showSavedClientCards = !isAnonymous && clientForm.audience === 'customer' && clients.length > 0
-  /** Clear the form for a client that isn't saved yet. */
-  const startNewClient = () => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }
+  /** Clear the form for a client that isn't saved yet (keeping who it's for). */
+  const startNewClient = () => {
+    const audience = clientForm.audience
+    selectClient('')
+    if (audience) updateClientForm({ audience })
+  }
   const isFreeDiscovery = isAnonymous && source?.sourceMetadata?.freeDiscovery === true
   // Generation config/output sections only exist for entitled users.
   const showGenerationSections = !isAnonymous && !isPromptOnly
@@ -2133,6 +2167,7 @@ function ConfigurationView(props: any) {
   const [searchNiche, setSearchNiche] = useState('')
   const [searchLocation, setSearchLocation] = useState('')
   const [searchRadius, setSearchRadius] = useState(15)
+  const [clientSaveStatus, setClientSaveStatus] = useState<'saved' | 'error' | null>(null)
 
   const searchFormReady = Boolean(searchNiche && searchLocation.trim())
 
@@ -2270,10 +2305,17 @@ function ConfigurationView(props: any) {
   }, [businessSearchQuery, isAnonymous, savedLeadsLoaded, searchLocation, searchNiche])
 
   const handleDeleteLead = useCallback(async (leadId: string) => {
-    const res = await fetch(`/api/personalization/leads/${leadId}`, {
-      method: 'DELETE',
-      credentials: 'same-origin',
-    })
+    if (!window.confirm('Remove this saved lead?')) return
+    let res: Response
+    try {
+      res = await fetch(`/api/personalization/leads/${leadId}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      })
+    } catch {
+      setSavedLeadsError("Couldn't reach the server — check your connection and try again.")
+      return
+    }
     if (!res.ok) {
       const message = res.status === 401 ? 'Sign in to delete saved leads.' : `Delete failed (HTTP ${res.status})`
       setSavedLeadsError(message)
@@ -2316,12 +2358,14 @@ function ConfigurationView(props: any) {
   // all users — never behind a paid entitlement or plan check.
   const handleSelectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
     if (!business.website || !business.website.trim()) {
-      setDiscoveryError('No website is listed for this business. Paste one in the Website field and use Find My Brand.')
+      // No website to read: select it anyway, so the Selected panel opens with
+      // its Website field and "Load from website".
+      selectBusiness(business)
       return
     }
     // Populate, research and discover in one automated run.
     void runDiscoveryWorkflow(business.website.trim(), { business })
-  }, [runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
+  }, [runDiscoveryWorkflow, selectBusiness])
 
   const handleOpenSavedLead = useCallback((lead: LeadRecord) => {
     // Same selection path the result cards use, so the Personalization handoff
@@ -2737,7 +2781,11 @@ function ConfigurationView(props: any) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleClientEntryDismiss}
+                  onClick={() => {
+                    handleClientEntryDismiss()
+                    goToSection('client', 'profile')
+                    focusRequirementControl('businessName')
+                  }}
                   className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
                   style={{
                     minHeight: 38,
@@ -2871,7 +2919,11 @@ function ConfigurationView(props: any) {
               <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,.72)', fontSize: 11, lineHeight: 1.5 }}>{businessSearchError}</p>
               <button
                 type="button"
-                onClick={() => setBusinessSearchMode && setBusinessSearchMode('searching')}
+                onClick={() => {
+                  // Re-run the same search; without one, reopen the form.
+                  if (searchNiche && searchLocation.trim()) runBusinessSearch(searchRadius)
+                  else setBusinessSearchMode?.('searching')
+                }}
                 className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
               >
@@ -3243,7 +3295,7 @@ function ConfigurationView(props: any) {
                 )}
                 <button
                   type="button"
-                  onClick={() => clearBusinessSearch()}
+                  onClick={() => (businessSearchResults.length > 0 ? setBusinessSearchMode?.('results') : clearBusinessSearch())}
                   className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
                   style={{
                     minHeight: 38,
@@ -3337,47 +3389,57 @@ function ConfigurationView(props: any) {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2" style={{ maxHeight: 132, overflowY: 'auto' }} data-testid="pz-saved-clients">
-                {clients.map((c: any) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => useSavedClient(c.id)}
-                    className="text-left"
-                    style={{
-                      minWidth: 160,
-                      padding: '10px 12px',
-                      border: `1px solid ${selectedClientId === c.id ? C.cyan : C.border}`,
-                      borderRadius: 10,
-                      background: selectedClientId === c.id ? 'rgba(34,211,242,.08)' : C.panelSoft,
-                      color: C.text,
-                    }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{c.businessName || c.name || 'Untitled'}</div>
-                    <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-                      {[c.industry, c.location].filter(Boolean).join(' • ') || 'No details'}
+                {clients.map((c: any) => {
+                  const isSelected = selectedClientId === c.id
+                  // The card picks the client; Edit/Delete sit beside the pick
+                  // button (not inside it), so each action works on its own.
+                  return (
+                    <div
+                      key={c.id}
+                      data-testid="pz-saved-client-card"
+                      style={{
+                        minWidth: 160,
+                        border: `1px solid ${isSelected ? C.cyan : C.border}`,
+                        borderRadius: 10,
+                        background: isSelected ? 'rgba(34,211,242,.08)' : C.panelSoft,
+                        color: C.text,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => useSavedClient(c.id)}
+                        aria-pressed={isSelected}
+                        className="block w-full text-left"
+                        style={{ padding: '10px 12px 6px', background: 'none', border: 0, color: 'inherit', cursor: 'pointer' }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>{c.businessName || c.name || 'Untitled'}</div>
+                        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                          {[c.industry, c.location].filter(Boolean).join(' • ') || 'No details'}
+                        </div>
+                      </button>
+                      {isSelected && (
+                        <div style={{ padding: '0 12px 10px', display: 'flex', gap: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => focusRequirementControl('businessName')}
+                            className="text-[10px] font-extrabold uppercase"
+                            style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { if (window.confirm('Delete this client and their saved assets?')) deleteSavedClient(c.id) }}
+                            className="text-[10px] font-extrabold uppercase"
+                            style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    {selectedClientId === c.id && (
-                      <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); updateClientForm({ ...clientForm, ...c }) }}
-                          className="text-[10px] font-extrabold uppercase"
-                          style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this client and their saved assets?')) deleteSavedClient(c.id) }}
-                          className="text-[10px] font-extrabold uppercase"
-                          style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -3437,7 +3499,9 @@ function ConfigurationView(props: any) {
                   <button
                     type="button"
                     onClick={() => discoverAssets(clientForm.website)}
-                    className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                    disabled={!clientForm.website?.trim()}
+                    title={clientForm.website?.trim() ? undefined : 'Enter a website first'}
+                    className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                     style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
                   >
                     Retry
@@ -3485,7 +3549,11 @@ function ConfigurationView(props: any) {
             {!isAnonymous && (
               <div className="col-span-full flex gap-2">
                 <button
-                  onClick={saveClient}
+                  onClick={async () => {
+                    const saved = await saveClient()
+                    setClientSaveStatus(saved ? 'saved' : 'error')
+                    window.setTimeout(() => setClientSaveStatus(null), 2500)
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
                   style={{ background: 'rgba(41,211,242,.12)', border: `1px solid ${C.cyanBorder}`, color: C.cyan }}
                 >
@@ -3493,12 +3561,19 @@ function ConfigurationView(props: any) {
                 </button>
                 {selectedClientId && (
                   <button
-                    onClick={() => deleteClient(selectedClientId)}
+                    // Same as the saved-client card's Delete: confirm, and the
+                    // client's saved assets go too.
+                    onClick={() => { if (window.confirm('Delete this client and their saved assets?')) deleteSavedClient(selectedClientId) }}
                     className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium border"
                     style={{ color: C.danger, borderColor: 'rgba(239,91,103,.25)' }}
                   >
                     <Trash2 size={14} /> Delete
                   </button>
+                )}
+                {clientSaveStatus && (
+                  <span role="status" data-testid="pz-client-save-status" className="self-center text-[11px] font-bold" style={{ color: clientSaveStatus === 'saved' ? C.green : C.danger }}>
+                    {clientSaveStatus === 'saved' ? 'Saved ✓' : "Couldn't save this client — try again"}
+                  </span>
                 )}
               </div>
             )}
@@ -3564,6 +3639,7 @@ function ConfigurationView(props: any) {
                     onRetry={() => retryAssetUpload(asset.id)}
                     onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                     onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                    onMakePrimary={assets.identities.length > 1 && assets.primaryIdentity?.id !== asset.id ? () => setPrimaryIdentity(asset.id) : undefined}
                     draggable
                     onDragStart={(e) => handleAssetDragStart({
                       assetId: asset.id,
@@ -3584,9 +3660,9 @@ function ConfigurationView(props: any) {
                 ))
               ) : (
                 <>
-                  <ThumbPlaceholder label="FACE" />
-                  <ThumbPlaceholder label="BODY" />
-                  <ThumbPlaceholder label="SIDE" />
+                  <ThumbPlaceholder label="FACE" onClick={handleIdentityAddClick} />
+                  <ThumbPlaceholder label="BODY" onClick={handleIdentityAddClick} />
+                  <ThumbPlaceholder label="SIDE" onClick={handleIdentityAddClick} />
                 </>
               )}
               <ThumbPlaceholder label="+" add onClick={handleIdentityAddClick} />
@@ -3654,10 +3730,10 @@ function ConfigurationView(props: any) {
               ) : (
                 'Logo'
               )}
-              {assets.primaryLogo?.uploadStatus === 'ready' && isImageEditSupported(assets.primaryLogo) && (
+              {onEditLibrary && assets.primaryLogo?.uploadStatus === 'ready' && isImageEditSupported(assets.primaryLogo) && (
                 <button
                   type="button"
-                  onClick={() => openLibraryImageEditor(assets.primaryLogo)}
+                  onClick={() => onEditLibrary(assets.primaryLogo)}
                   className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
@@ -3674,6 +3750,32 @@ function ConfigurationView(props: any) {
                   Retry
                 </button>
               )}
+              {assets.primaryLogo && (
+                <>
+                  {assets.primaryLogo.edited && (
+                    <button
+                      type="button"
+                      onClick={() => revertLibraryAssetToOriginal(assets.primaryLogo!.id)}
+                      className="absolute right-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                      style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
+                    >
+                      Revert
+                    </button>
+                  )}
+                  {assets.primaryLogo.uploadStatus !== 'error' && (
+                    <button
+                      type="button"
+                      data-testid="pz-primary-logo-remove"
+                      onClick={() => removeLogo(assets.primaryLogo!.id)}
+                      className="absolute top-1 right-1 z-20 rounded-full p-1"
+                      style={{ background: 'rgba(239,91,103,.85)' }}
+                      aria-label="Remove logo"
+                    >
+                      <X size={10} className="text-white" />
+                    </button>
+                  )}
+                </>
+              )}
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {assets.logos.filter((a) => a.id !== assets.primaryLogo?.id).map((asset: PersonalizationAsset) => (
@@ -3685,6 +3787,7 @@ function ConfigurationView(props: any) {
                    onRetry={() => retryAssetUpload(asset.id)}
                    onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                    onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                   onMakePrimary={() => setPrimaryLogo(asset.id)}
                    draggable
                    onDragStart={(e) => handleAssetDragStart({
                      assetId: asset.id,
@@ -3763,9 +3866,9 @@ function ConfigurationView(props: any) {
                 ))
               ) : (
                 <>
-                  <ThumbPlaceholder label="1" />
-                  <ThumbPlaceholder label="2" />
-                  <ThumbPlaceholder label="3" />
+                  <ThumbPlaceholder label="1" title="Add a product photo" onClick={handleProductAddClick} />
+                  <ThumbPlaceholder label="2" title="Add a product photo" onClick={handleProductAddClick} />
+                  <ThumbPlaceholder label="3" title="Add a product photo" onClick={handleProductAddClick} />
                 </>
               )}
               <ThumbPlaceholder label="+" add onClick={handleProductAddClick} />
@@ -3822,11 +3925,12 @@ function ConfigurationView(props: any) {
                 ))
               ) : (
                 <>
-                  <ThumbPlaceholder label="STORE" />
-                  <ThumbPlaceholder label="TEAM" />
-                  <ThumbPlaceholder label="VEHICLE" />
+                  <ThumbPlaceholder label="STORE" onClick={handleBrandRefAddClick} />
+                  <ThumbPlaceholder label="TEAM" onClick={handleBrandRefAddClick} />
+                  <ThumbPlaceholder label="VEHICLE" onClick={handleBrandRefAddClick} />
                 </>
               )}
+              <ThumbPlaceholder label="+" add onClick={handleBrandRefAddClick} />
             </div>
             <div style={{ marginTop: 9, color: C.muted2, fontSize: 10 }}>Storefront • Team • Vehicle • Packaging • Brand Photography</div>
           </article>
@@ -3888,10 +3992,10 @@ function ConfigurationView(props: any) {
               ) : (
                 'First Frame'
               )}
-                {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
+                {onEditLibrary && assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
                 <button
                   type="button"
-                  onClick={() => openLibraryImageEditor(assets.firstFrame)}
+                  onClick={() => onEditLibrary(assets.firstFrame)}
                   className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
@@ -3992,10 +4096,10 @@ function ConfigurationView(props: any) {
               ) : (
                 'Last Frame/CTA'
               )}
-              {assets.lastFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.lastFrame) && (
+              {onEditLibrary && assets.lastFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.lastFrame) && (
                 <button
                   type="button"
-                  onClick={() => openLibraryImageEditor(assets.lastFrame)}
+                  onClick={() => onEditLibrary(assets.lastFrame)}
                   className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
@@ -4117,20 +4221,28 @@ function ConfigurationView(props: any) {
                      cursor: 'grab',
                    }}
                  >
-                   <div
+                   {/* Clicking adds the saved asset to this project (once). */}
+                   <button
+                     type="button"
+                     data-testid="pz-saved-asset-add"
+                     disabled={isAssetInCurrentJob(asset, assets)}
+                     title={isAssetInCurrentJob(asset, assets) ? 'Already in this project' : 'Add to this project'}
                      style={{
+                       display: 'block',
                        width: '100%',
                        height: 80,
+                       padding: 0,
+                       border: 0,
                        borderRadius: 8,
                        overflow: 'hidden',
                        background: '#000',
                        marginBottom: 6,
-                       cursor: 'pointer',
+                       cursor: isAssetInCurrentJob(asset, assets) ? 'default' : 'pointer',
                      }}
                      onClick={() => selectSavedAsset(asset)}
                    >
                      <img src={asset.uploadedUrl || asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                   </div>
+                   </button>
                    <div style={{ fontSize: 10, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'ASSET'}</div>
                    <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
                      {asset.isPrimary && (
@@ -4149,17 +4261,17 @@ function ConfigurationView(props: any) {
                          Edit with AI
                        </button>
                      )}
-                     <button
-                       type="button"
-                       onClick={() => {
-                         if (savedAssetLibraryTab === 'identities') setPrimarySavedAsset('identity', asset.id)
-                         else if (savedAssetLibraryTab === 'logos') setPrimarySavedAsset('logo', asset.id)
-                       }}
-                       className="text-[9px] font-extrabold uppercase"
-                       style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                     >
-                       Set Primary
-                     </button>
+                     {/* Only people and logos have a primary. */}
+                     {(savedAssetLibraryTab === 'identities' || savedAssetLibraryTab === 'logos') && !asset.isPrimary && (
+                       <button
+                         type="button"
+                         onClick={() => setPrimarySavedAsset(savedAssetLibraryTab === 'identities' ? 'identity' : 'logo', asset.id)}
+                         className="text-[9px] font-extrabold uppercase"
+                         style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                       >
+                         Set Primary
+                       </button>
+                     )}
                      <button
                        type="button"
                        onClick={() => { if (window.confirm('Remove this asset from the saved client library?')) removeSavedAsset(asset.id) }}
@@ -4210,7 +4322,10 @@ function ConfigurationView(props: any) {
                   <button
                     type="button"
                     onClick={selectRecommendedDiscoveredAssets}
-                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                    // With nothing flagged it would only clear the selection.
+                    disabled={!discoveredAssets.some((a) => a.recommended && !a.rejected)}
+                    title={discoveredAssets.some((a) => a.recommended && !a.rejected) ? undefined : 'No recommended assets — run GO Vision or pick assets yourself'}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                     style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
                   >
                     Select Recommended
@@ -4242,7 +4357,10 @@ function ConfigurationView(props: any) {
               )}
               <button
                 type="button"
-                onClick={cancelDiscovery}
+                onClick={() => {
+                  // Cancelling throws away every found asset.
+                  if (discoveredAssets.length === 0 || window.confirm('Discard all assets found on this website?')) cancelDiscovery()
+                }}
                 className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
               >
@@ -4482,15 +4600,15 @@ function ConfigurationView(props: any) {
             </button>
             <button
               onClick={handleCopyPrompt}
-              disabled={!promptState.personalized}
+              disabled={!promptState.personalized && !promptState.edited}
               className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
             >
-              {copiedPrompt ? 'Copied!' : 'Copy'}
+              {copiedPrompt === 'failed' ? "Couldn't copy" : copiedPrompt ? 'Copied!' : 'Copy'}
             </button>
             <button
               onClick={resetPrompt}
-              disabled={!promptState.personalized}
+              disabled={!promptState.personalized && !promptState.edited}
               className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
             >
@@ -4820,13 +4938,13 @@ function ConfigurationView(props: any) {
               </div>
             ) : (
               <div className="flex items-center justify-center w-full h-full">
-                <button
-                  className="w-[62px] h-[62px] rounded-full flex items-center justify-center text-2xl"
-                  style={{ border: '1px solid rgba(255,255,255,.3)', background: 'rgba(255,255,255,.18)', color: 'white', backdropFilter: 'blur(8px)' }}
-                  aria-label="Play source preview"
+                {/* Nothing to play here (no media): a label, not a button. */}
+                <span
+                  className="rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)' }}
                 >
-                  ▶
-                </button>
+                  No preview
+                </span>
               </div>
             )}
           </div>

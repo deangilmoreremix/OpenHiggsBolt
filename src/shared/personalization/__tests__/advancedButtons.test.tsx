@@ -1,0 +1,158 @@
+// @vitest-environment jsdom
+/* eslint-disable @typescript-eslint/no-explicit-any -- test harness shared with PersonalizationModalLayout.test.tsx */
+/**
+ * Advanced Editing buttons that used to do nothing (or the wrong thing) when
+ * clicked: each now does its job.
+ */
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
+vi.mock('@/components/SocialPublishProvider', () => ({
+  SocialPublishContext: { Provider: ({ children }: any) => children, Consumer: ({ children }: any) => children(null) } as any,
+  useSocialPublish: () => {
+    throw new Error('useSocialPublish must be used within a <SocialPublishProvider>')
+  },
+}))
+
+vi.mock('@/lib/authConfig', () => ({
+  useAuthConfig: () => ({
+    apiKey: 'test-key',
+    openaiKey: '',
+    setApiKey: vi.fn(),
+    setOpenAiKey: vi.fn(),
+    clearApiKey: vi.fn(),
+    clearOpenAiKey: vi.fn(),
+    clearAllKeys: vi.fn(),
+    hasApiKey: true,
+    hasOpenAiKey: false,
+    isAuthenticated: true,
+  }),
+}))
+
+vi.mock('studio/src/muapi', () => ({
+  uploadFile: vi.fn(),
+}))
+
+URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+URL.revokeObjectURL = vi.fn()
+
+let latestCtx: any = null
+
+function TestOpener({ onMounted }: { onMounted: (open: (opts: any) => void) => void }) {
+  const ctx = useDemoPersonalize();
+  latestCtx = ctx;
+  onMounted(ctx.openPersonalize);
+  return null;
+}
+
+/** Renders the provider + modal and opens it on the standard demo source. */
+async function openModal() {
+  const container = document.createElement('div');
+  container.setAttribute('data-testid', 'personalization-root')
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  let openPersonalize: ((opts: any) => void) | null = null;
+
+  await act(async () => {
+    root.render(
+      <DemoPersonalizeProvider>
+        <TestOpener
+          onMounted={(open) => {
+            openPersonalize = open;
+          }}
+        />
+      </DemoPersonalizeProvider>,
+    );
+  });
+
+  await act(async () => {
+    openPersonalize?.({
+      source: {
+        id: 'demo-1',
+        title: 'Test Demo',
+        mediaType: 'video',
+        originalPrompt: 'test prompt',
+        sourceMedia: null,
+        poster: null,
+        fullPrompt: 'test',
+        shortPrompt: 'test',
+        sourceType: 'landing-demo',
+        sourceMetadata: {},
+      },
+    });
+  });
+
+  // Simple Mode is the default customer presentation; these layout guards
+  // assert the full Advanced Editing layout, so opt into it after opening.
+  await act(async () => {
+    const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      /advanced editing/i.test(candidate.textContent || ''),
+    );
+    button?.click();
+  });
+
+  return container;
+}
+
+
+const $ = (container: HTMLElement, testId: string) => container.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null
+const buttonByText = (container: HTMLElement, text: string) =>
+  Array.from(container.querySelectorAll('button')).find((b) => (b.textContent || '').trim() === text) as HTMLButtonElement | undefined
+
+describe('Advanced Editing buttons', () => {
+  afterEach(() => {
+    document.querySelectorAll('[data-testid="personalization-root"]').forEach((el) => el.remove())
+    latestCtx = null
+    vi.restoreAllMocks()
+  })
+
+  it('"New" clears every client field, not just the name', async () => {
+    const container = await openModal();
+    await act(async () => {
+      latestCtx.updateClientForm({ businessName: 'Joe Roofing', industry: 'Roofing', website: 'https://joe.example', phone: '555', audience: 'self' })
+    });
+    await act(async () => { await latestCtx.saveClient(); });
+    await act(async () => { $(container, 'pz-pill-client-profile')!.click(); });
+
+    await act(async () => { buttonByText(container, 'New')!.click(); });
+    expect(latestCtx.clientForm.businessName || '').toBe('')
+    expect(latestCtx.clientForm.industry || '').toBe('')
+    expect(latestCtx.clientForm.website || '').toBe('')
+    expect(latestCtx.clientForm.phone || '').toBe('')
+    expect(latestCtx.clientForm.audience).toBe('self')
+  });
+
+  it('the FACE / BODY / SIDE slots open the photo picker', async () => {
+    const container = await openModal();
+    await act(async () => { $(container, 'pz-tab-assets')!.click(); });
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    for (const name of ['Add face photo', 'Add body photo', 'Add side photo', 'Add a product photo', 'Add store photo']) {
+      const slot = container.querySelector(`button[aria-label="${name}"]`) as HTMLButtonElement
+      expect(slot, name).toBeTruthy()
+      await act(async () => { slot.click(); });
+    }
+    expect(click).toHaveBeenCalledTimes(5)
+  });
+
+  it('Save Client says it saved', async () => {
+    const container = await openModal();
+    await act(async () => { latestCtx.updateClientForm({ businessName: 'Joe Roofing', audience: 'self' }) });
+    await act(async () => { $(container, 'pz-pill-client-profile')!.click(); });
+    await act(async () => { buttonByText(container, 'Save Client')!.click(); });
+    expect($(container, 'pz-client-save-status')!.textContent).toContain('Saved')
+  });
+});
