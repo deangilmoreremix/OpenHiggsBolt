@@ -58,7 +58,8 @@ export function buildPreviewInput(
       // The headline text itself lives on the layers; this is only the fallback
       // the composition uses when a text layer has no explicit text.
       businessName,
-      headline: businessName,
+      // Prefer real copy over repeating the business name.
+      headline: clientForm.ctaHeadline || clientForm.productService || businessName,
       offer: clientForm.offer || '',
       cta: callToAction,
       phone: clientForm.phone || '',

@@ -419,6 +419,9 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       frame >= layer.startFrame &&
       (layer.endFrame === undefined || frame <= layer.endFrame),
   )
+  const businessNameShown = visibleLayers.some(
+    (layer) => layer.kind === 'businessName' && resolveLayerText(layer, brand).trim() !== '',
+  )
 
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
   const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
@@ -443,6 +446,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           const text = isText ? resolveLayerText(layer, brand) : ''
           const imageUrl = isImage ? resolveLayerImageUrl(layer, brand) : ''
           if (isText && !text.trim()) return null
+          // A headline/tagline with no text of its own that would only repeat
+          // the business name already on screen isn't drawn twice.
+          if (
+            (layer.kind === 'headline' || layer.kind === 'tagline') &&
+            layer.text == null &&
+            businessNameShown &&
+            text.trim().toLowerCase() === brand.businessName.trim().toLowerCase()
+          ) return null
           if (isImage && !imageUrl) return null
 
           const box = toBox(layer, compW, compH)

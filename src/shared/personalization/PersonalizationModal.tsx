@@ -561,11 +561,12 @@ function ThumbUploaded({
         </button>
       )}
       {asset.edited && onRevert && (
-        // Bottom-left, clear of the Remove ✕ in the top-right corner.
+        // Left column (Edit / Primary / Revert), clear of the Remove ✕ in the
+        // top-right and the section menu along the bottom.
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRevert() }}
-          className={`absolute left-1 ${onMakePrimary && isReady ? 'bottom-6' : 'bottom-1'} z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase`}
+          className="absolute left-1 top-11 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
           style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
           aria-label="Revert to original"
         >
@@ -582,7 +583,7 @@ function ThumbUploaded({
           type="button"
           data-testid="pz-make-primary"
           onClick={(e) => { e.stopPropagation(); onMakePrimary() }}
-          className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
           style={{ background: 'rgba(0,0,0,.75)', color: C.cyan }}
           aria-label="Make primary"
         >
@@ -613,7 +614,8 @@ function ThumbUploaded({
               if (e.target.value) onMoveToSection(e.target.value as AssignedSection)
             }}
             onClick={(e) => e.stopPropagation()}
-            className="text-[7px] font-bold rounded px-0.5 py-0.5 outline-none"
+            // Narrow, so it stays in its corner and doesn't cover the buttons.
+            className="text-[7px] font-bold rounded px-0.5 py-0.5 outline-none max-w-[46px]"
             style={{
               background: 'rgba(0,0,0,.7)',
               color: 'white',

@@ -75,6 +75,19 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
   return ''
 }
 
+/**
+ * True for a headline/tagline without its own text whose fallback is just
+ * the business name while a business-name layer is showing it (the video
+ * doesn't draw it twice; see PersonalizationComposition).
+ */
+function isRepeatedBusinessName(layer: PreviewLayer, brand: PreviewInputProps['brand'], layers: PreviewLayer[]): boolean {
+  if (layer.kind !== 'headline' && layer.kind !== 'tagline') return false
+  if (typeof layer.text === 'string' && layer.text.trim()) return false
+  const name = brand.businessName.trim().toLowerCase()
+  if (!name || layerText(layer, brand).trim().toLowerCase() !== name) return false
+  return layers.some((other) => other.kind === 'businessName' && other.visible && layerText(other, brand).trim() !== '')
+}
+
 /* ── Design text slots ─────────────────────────────────────────────────────── */
 
 /**
@@ -420,7 +433,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
             editableLayers.filter((layer) => layer.visible).map((layer) => {
               const box = toStageBox(layer, compW, compH, stageWidth)
               const isDesign = layer.kind === 'design'
-              const text = layerText(layer, brand)
+              // A headline/tagline that would only repeat the business name on
+              // screen isn't drawn in the video, so here it's a faded "add
+              // your text" placeholder you can still grab and move.
+              const repeatsName = isRepeatedBusinessName(layer, brand, editableLayers)
+              const text = repeatsName ? `${LAYER_LABELS[layer.kind]} — add your text` : layerText(layer, brand)
               const imageUrl = layerImageUrl(layer, brand)
               if (!isDesign && !isImageLayerKind(layer.kind) && !text.trim()) return null
               if (isImageLayerKind(layer.kind) && !imageUrl) return null
@@ -501,7 +518,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         width: '100%',
                         wordBreak: 'break-word',
                         pointerEvents: 'none',
+                        ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),
                       }}
+                      data-testid={repeatsName ? 'overlay-repeat-placeholder' : undefined}
                     >
                       {text}
                     </div>
