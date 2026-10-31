@@ -117,10 +117,14 @@ export async function captureSite(
     opts.onProgress?.(Math.round((Date.now() - started) / 1000));
     try {
       const res = await fetch(`/api/motion-studio/capture/status?jobId=${encodeURIComponent(first.jobId)}`, { cache: 'no-store' });
-      const job = (await res.json().catch(() => ({}))) as { state?: string; capture?: SiteCapture; code?: string; error?: string };
+      const job = (await res.json().catch(() => ({}))) as { state?: string; capture?: SiteCapture; code?: string; error?: string; timing?: Record<string, number> };
       if (!res.ok) throw new DirectorError(String(job.error || `Request failed (${res.status})`), String(job.code || 'FAILED'), res.status);
       if (job.state === 'done' && job.capture) return job.capture;
-      if (job.state === 'error') throw new DirectorError(job.error || 'The page could not be captured', job.code || 'CAPTURE_FAILED', 422);
+      if (job.state === 'error') {
+        // Say where the time went, so a failure explains itself.
+        const steps = Object.entries(job.timing ?? {}).filter(([, ms]) => typeof ms === 'number').map(([k, ms]) => `${k} ${(ms / 1000).toFixed(1)}s`).join(', ');
+        throw new DirectorError(`${job.error || 'The page could not be captured'}${steps ? ` (${steps})` : ''}`, job.code || 'CAPTURE_FAILED', 422);
+      }
       failures = 0;
     } catch (error) {
       // A poll that fails (network blip, record not visible yet) is tried again a few times; the capture goes on without it.
