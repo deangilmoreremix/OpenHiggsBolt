@@ -1540,11 +1540,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [assets.presenterVideos])
 
   const removePresenterVideo = useCallback((assetId: string) => {
+    const removed = (assets.presenterVideos || []).find((asset) => asset.id === assetId)
     setAssets((prev) => ({
       ...prev,
       presenterVideos: (prev.presenterVideos || []).filter((asset) => asset.id !== assetId),
     }))
-  }, [])
+    // Removing the video in use goes back to the video from before the recast.
+    if (removed && previewVideoRef.current?.kind === 'recast' && previewVideoRef.current.url === removed.url) {
+      setPreviewVideo(preRecastVideo)
+      setPreRecastVideo(null)
+    }
+  }, [assets.presenterVideos, preRecastVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
   const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
   // ── Remotion design registry ───────────────────────────────────────────────

@@ -441,6 +441,16 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     }
   }, [asset, aspectRatio, displayUrl, modelMode, prepareDataUrl])
 
+  /** "Analyze Image" button: same analysis, with failures shown. */
+  const runAnalyzeButton = useCallback(async () => {
+    setError(null)
+    try {
+      await analyzeCurrentImage()
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Image analysis failed')
+    }
+  }, [analyzeCurrentImage])
+
   const buildPrompt = useCallback((operationId: EditorOperationId, custom = '') => {
     const operation = getOperation(operationId)
     const businessContext = [asset?.businessName, asset?.industry].filter(Boolean).join(' - ')
@@ -851,6 +861,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
 
     setSaving(true)
     setError(null)
+    let applied = false
     try {
       const dataUrl = await prepareDataUrl(currentVersion.dataUrl)
       let validation = currentVersion.visionValidation
@@ -861,17 +872,29 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         !validation?.passed
       ) {
         setBusyLabel('SmartVideo GO Vision is validating the edit')
-      const originalUrlForValidation = await prepareDataUrl(asset.originalImageUrl)
-      validation = await validatePersonalizationImageEdit({
-        originalImageUrl: originalUrlForValidation,
-        editedImageUrl: dataUrl,
-        preserve: mergedPreserve,
-        intendedOperation: currentVersion.operation,
-        businessContext: {
-          businessName: asset.businessName,
-          industry: asset.industry,
-        },
-      })
+        try {
+          const originalUrlForValidation = await prepareDataUrl(asset.originalImageUrl)
+          validation = await validatePersonalizationImageEdit({
+            originalImageUrl: originalUrlForValidation,
+            editedImageUrl: dataUrl,
+            preserve: mergedPreserve,
+            intendedOperation: currentVersion.operation,
+            businessContext: {
+              businessName: asset.businessName,
+              industry: asset.industry,
+            },
+          })
+        } catch (checkError) {
+          // The check couldn't run (no key, limit, network): say so and let
+          // the user decide, instead of blocking the edit for good.
+          setValidationOverrideVersionId(currentVersion.id)
+          setError(
+            "SmartVideo GO Vision couldn't check this edit (" +
+            (checkError instanceof Error ? checkError.message : 'unknown error') +
+            '). Review it, then click Use Anyway to apply it.',
+          )
+          return
+        }
 
         setVersions((previous) => previous.map((version) => (
           version.id === currentVersion.id ? { ...version, visionValidation: validation } : version
@@ -906,6 +929,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         outputCompression,
         inputFidelity: getOperation(currentVersion.operation as EditorOperationId)?.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
       })
+      applied = true
     } catch (err) {
       if (mountedRef.current) setError(err instanceof Error ? err.message : 'Unable to save edited asset')
     } finally {
@@ -913,7 +937,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         setBusyLabel(null)
         setSaving(false)
       }
-      onClose()
+      // Close only once the edit is applied; otherwise stay open so the
+      // warning (and "Use Anyway") or the error can be seen.
+      if (applied) onClose()
     }
   }, [
     asset,
@@ -944,6 +970,32 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     e.stopPropagation()
     setDragOver(false)
 
+    // An image file from the computer replaces the image as a new version
+    // (so Undo brings the previous one back).
+    const file = Array.from(e.dataTransfer.files || []).find((candidate) => candidate.type.startsWith('image/'))
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const dataUrl = await ensureModelSupportedImage(String(reader.result))
+          appendVersion({
+            dataUrl,
+            label: 'Dropped Image',
+            operation: 'original',
+            prompt: '',
+            model: 'local',
+            transparent: false,
+            videoReady: false,
+          })
+        } catch (err) {
+          setError("Couldn't use that image: " + (err instanceof Error ? err.message : 'unknown error'))
+        }
+      }
+      reader.onerror = () => setError("Couldn't read that file.")
+      reader.readAsDataURL(file)
+      return
+    }
+
     if (!onDropAsset) return
 
     let payload: { assetId: string; source: string; assetType: string } | null = null
@@ -955,10 +1007,18 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     }
     if (payload) {
       onDropAsset(payload)
+    } else {
+      setError('Drop an image file, or an asset from the personalization panel.')
     }
-  }, [onDropAsset])
+  }, [appendVersion, onDropAsset])
 
   if (!open || !asset || !currentVersion) return null
+
+  // "Local Adjustments" is the canvas edit (free, uses the sliders), not a
+  // paid AI call with nothing to go on.
+  const runOperation = (operationId: EditorOperationId) => (
+    operationId === 'local_adjustments' ? applyLocalAdjustments() : runAiEdit(operationId)
+  )
 
   const recommendedOperationIds = (visionAnalysis?.recommendedOperations || recipe.recommended)
     .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
@@ -1035,16 +1095,21 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                 type="button"
                 onClick={async () => {
                   if (!asset) return
-                  const originalDataUrl = await prepareDataUrl(asset.originalImageUrl)
-                  appendVersion({
-                    dataUrl: originalDataUrl,
-                    label: 'Reverted to Original',
-                    operation: 'original',
-                    prompt: '',
-                    model: 'local',
-                    transparent: false,
-                    videoReady: false,
-                  })
+                  setError(null)
+                  try {
+                    const originalDataUrl = await prepareDataUrl(asset.originalImageUrl)
+                    appendVersion({
+                      dataUrl: originalDataUrl,
+                      label: 'Reverted to Original',
+                      operation: 'original',
+                      prompt: '',
+                      model: 'local',
+                      transparent: false,
+                      videoReady: false,
+                    })
+                  } catch (err) {
+                    setError("Couldn't load the original image: " + (err instanceof Error ? err.message : 'unknown error'))
+                  }
                 }}
                 className="rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white/70 transition hover:bg-white/10 hover:text-white"
                 aria-label="Revert to original"
@@ -1102,7 +1167,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => analyzeCurrentImage()} disabled={visionAnalyzing || Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
+                  <button type="button" onClick={runAnalyzeButton} disabled={visionAnalyzing || Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
                     {visionAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
                     {visionAnalysis ? 'Re-analyze' : 'Analyze Image'}
                   </button>
@@ -1115,7 +1180,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
 
             <div className="flex flex-wrap gap-2">
               {quickOperations.map((operation) => (
-                <button key={operation.id} type="button" onClick={() => runAiEdit(operation.id)} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
+                <button key={operation.id} type="button" onClick={() => runOperation(operation.id)} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
                   <Wand2 size={13} /> {operation.label}
                 </button>
               ))}
@@ -1190,7 +1255,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               <div className="flex flex-col items-end gap-1">
                 <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || noEditYet} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  {currentVersion.visionValidation && !currentVersion.visionValidation.passed && validationOverrideVersionId === currentVersion.id ? 'Use Anyway' : 'Use Edited Asset'}
+                  {validationOverrideVersionId === currentVersion.id && !currentVersion.visionValidation?.passed ? 'Use Anyway' : 'Use Edited Asset'}
                 </button>
                 {noEditYet && <span data-testid="image-editor-apply-hint" className="text-[10px] text-white/40">Make an edit first — try a quick action</span>}
               </div>
@@ -1211,7 +1276,11 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                 ))}
               </div>
               <div className="mt-4 border-t border-white/10 pt-3">
-                <button type="button" onClick={() => setMaskMode((value) => !value)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold" style={maskMode ? buttons.activePill : buttons.ghost}>
+                <button type="button" onClick={() => {
+                  // Turning the mask off also drops it, so later edits apply to the whole image.
+                  if (maskMode) setMaskBlob(null)
+                  setMaskMode(!maskMode)
+                }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold" style={maskMode ? buttons.activePill : buttons.ghost}>
                   <Paintbrush size={14} /> Select / Mask Area
                 </button>
               </div>
@@ -1252,7 +1321,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                 <div className="mb-2 text-[10px] font-bold uppercase tracking-[.15em] text-white/30">{GROUP_LABELS[activeGroup]} AI Tools</div>
                 <div className="space-y-2">
                   {activeOperations.map((operation) => (
-                    <button key={operation.id} type="button" onClick={() => runAiEdit(operation.id)} disabled={Boolean(busyLabel)} className="w-full rounded-xl p-3 text-left disabled:opacity-50" style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)' }}>
+                    <button key={operation.id} type="button" onClick={() => runOperation(operation.id)} disabled={Boolean(busyLabel)} className="w-full rounded-xl p-3 text-left disabled:opacity-50" style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)' }}>
                       <div className="text-xs font-semibold text-white">{operation.label}</div>
                       <div className="mt-1 text-[10px] leading-4 text-white/40">{operation.description}</div>
                     </button>
@@ -1340,6 +1409,17 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                       <button key={position} type="button" onClick={() => setTextPosition(position)} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={textPosition === position ? buttons.activePill : buttons.inactivePill}>{position}</button>
                     ))}
                   </div>
+                  {/* The text is drawn by the local canvas edit. */}
+                  <button
+                    type="button"
+                    data-testid="image-editor-apply-text"
+                    onClick={applyLocalAdjustments}
+                    disabled={!overlayText.trim() || Boolean(busyLabel)}
+                    className="w-full rounded-xl px-3 py-2.5 text-xs font-bold disabled:opacity-50"
+                    style={buttons.primary}
+                  >
+                    Apply text
+                  </button>
                 </div>
               </details>
 

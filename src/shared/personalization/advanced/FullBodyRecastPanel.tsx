@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useDemoPersonalize, getGenerationAssetUrl } from '../DemoPersonalizeProvider'
 import { uploadPersonalizationAsset } from '../assetUploadService'
+import { resolveModelCapabilities } from '../modelCapabilityResolver'
 import type { PersonalizationAsset, PersonalizationSource } from '../types'
 import { C } from '../guided/tokens'
 import {
@@ -165,6 +166,8 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
   }, [currentVideoUrl, clip.kind])
 
   const identities = assets.identities || []
+  // The provider ignores photos past the model's limit, so say so up front.
+  const photoLimitReached = Boolean(source) && identities.length >= resolveModelCapabilities(source!, genOptions).maxImages
   const selectedIdentity: PersonalizationAsset | null =
     identities.find((asset) => asset.id === identityId) || assets.primaryIdentity || identities[0] || null
   const identityUrl = getGenerationAssetUrl(selectedIdentity)
@@ -275,7 +278,8 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
       {usingRecast && (
         <div data-testid="pz-recast-applied" role="status" className="flex items-center flex-wrap" style={{ gap: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, fontSize: 11 }}>
           <span style={{ color: C.text, fontWeight: 700 }}>✓ Using the recast video for the preview, overlays and Step 4.</span>
-          {preRecastVideo !== undefined && (
+          {/* The original is the earlier preview video, else the demo's own clip. */}
+          {(preRecastVideo || source?.mediaType === 'video') && (
             <button type="button" onClick={restoreOriginalVideo} style={{ minHeight: 28, padding: '0 10px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 10, fontWeight: 800 }}>
               Use original video
             </button>
@@ -402,8 +406,15 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
               </button>
             )
           })}
-          <button type="button" disabled={running} onClick={() => photoInputRef.current?.click()} style={{ height: 36, padding: '0 10px', borderRadius: 8, border: `1px dashed ${C.border}`, background: 'transparent', color: C.muted, fontSize: 10, fontWeight: 800 }}>
-            + Photo
+          <button
+            type="button"
+            data-testid="pz-recast-add-photo"
+            disabled={running || isAnonymous || photoLimitReached}
+            title={photoLimitReached ? 'Photo limit reached — remove a photo in Assets first' : undefined}
+            onClick={() => photoInputRef.current?.click()}
+            style={{ height: 36, padding: '0 10px', borderRadius: 8, border: `1px dashed ${C.border}`, background: 'transparent', color: C.muted, fontSize: 10, fontWeight: 800, opacity: running || isAnonymous || photoLimitReached ? 0.5 : 1 }}
+          >
+            {photoLimitReached ? 'Photo limit reached' : '+ Photo'}
           </button>
           <input
             ref={photoInputRef}

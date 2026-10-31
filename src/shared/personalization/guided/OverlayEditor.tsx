@@ -547,6 +547,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
                 aria-pressed={selected?.id === layer.id}
                 onKeyDown={(event) => {
+                  // Keys aimed at the row's own buttons (show/hide) are theirs.
+                  if (event.target !== event.currentTarget) return
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
                     setSelectedId(layer.id)
