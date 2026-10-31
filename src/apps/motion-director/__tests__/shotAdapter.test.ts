@@ -50,7 +50,7 @@ describe('adapted shot sandbox', () => {
   });
 
   it('refuses a file with no default component and a syntax error', async () => {
-    expect(await bad(`export const A = () => null`)).toMatch(/export default/);
+    expect(await bad(`export const a = 1`)).toMatch(/export/);
     expect(await bad(`export default function A( {`)).toMatch(/syntax/);
   });
 

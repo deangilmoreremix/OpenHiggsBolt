@@ -20,6 +20,7 @@ import {
   validateRetext,
 } from '@/apps/motion-director/lib/directorPlan'
 import { rulesOf } from '@/apps/motion-director/lib/shotRules'
+import { ADAPT_INSTRUCTIONS, ADAPT_JSON_SCHEMA, ADAPT_MAX_SOURCE, cleanAdaptedCode } from '@/apps/motion-director/lib/adaptPrompt'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { requireMotionStudioUser } from '../lib/auth'
@@ -277,6 +278,39 @@ export async function POST(req: NextRequest) {
         RETEXT_JSON_SCHEMA,
       )
       return NextResponse.json({ texts: validateRetext(raw, allowed, structural) })
+    }
+
+    if (body.mode === 'adapt') {
+      const recipe = str(body.recipe, 80)
+      const source = typeof body.source === 'string' ? body.source : ''
+      if (!/^\w+$/.test(recipe) || !source || source.length > ADAPT_MAX_SOURCE) return NextResponse.json({ error: 'A recipe and its source are required', code: 'BAD_REQUEST' }, { status: 400 })
+      const rules = rulesOf(recipe)
+      const layout = body.layout && typeof body.layout === 'object' ? (body.layout as Record<string, any>) : {}
+      const brand = body.brand && typeof body.brand === 'object' ? (body.brand as Record<string, any>) : {}
+      const raw = await callDirector(
+        key,
+        ADAPT_INSTRUCTIONS,
+        JSON.stringify({
+          recipe,
+          rules: rules ? { role: rules.role, text: rules.text, technique: rules.technique, energy: rules.energy, sound: rules.sound } : null,
+          source,
+          words: (DEMO_TEXTS as Record<string, string[]>)[recipe]?.slice(0, 40) ?? [],
+          layout: {
+            pageH: typeof layout.pageH === 'number' ? layout.pageH : null,
+            sections: (Array.isArray(layout.sections) ? layout.sections : []).slice(0, 12),
+            cards: (Array.isArray(layout.cards) ? layout.cards : []).slice(0, 24),
+          },
+          slots: { screens: Math.min(Number(body.screens) || 0, 8), crops: Math.min(Number(body.crops) || 0, 24) },
+          brand: { name: str(brand.name, 80), accent: str(brand.accent, 20), background: str(brand.background, 20), text: str(brand.text, 20), font: str(brand.font, 80) },
+          site: siteContent(body.content),
+          problems: (Array.isArray(body.problems) ? body.problems : []).slice(0, 6).map((p: unknown) => str(p, 240)).filter(Boolean),
+        }),
+        'motion_studio_adapt',
+        ADAPT_JSON_SCHEMA,
+      )
+      const code = cleanAdaptedCode(raw?.code)
+      if (!code) return NextResponse.json({ error: 'The agent returned no usable code', code: 'BAD_OUTPUT' }, { status: 502 })
+      return NextResponse.json({ code, notes: str(raw?.notes, 400) })
     }
 
     if (body.mode === 'review') {

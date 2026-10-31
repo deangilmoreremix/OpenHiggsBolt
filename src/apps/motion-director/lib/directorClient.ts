@@ -242,6 +242,35 @@ export async function requestFrameReview(body: { frames: Array<{ second: number;
   return { findings: Array.isArray(res.findings) ? res.findings : [], summary: typeof res.summary === 'string' ? res.summary : '' };
 }
 
+export interface AdaptRequest {
+  recipe: string;
+  source: string;
+  layout?: unknown;
+  screens?: number;
+  crops?: number;
+  brand?: { name?: string; accent?: string; background?: string; text?: string; font?: string };
+  content?: unknown;
+  /** What was wrong with the previous try (render errors, reviewer findings). */
+  problems?: string[];
+}
+
+/** The agent's rewrite of one recipe for the person's site (needs their key). The caller must still check the code. */
+export async function requestAdapt(body: AdaptRequest): Promise<{ code: string; notes: string }> {
+  const res = await post<{ code?: string; notes?: string }>('/api/motion-studio/director', { mode: 'adapt', ...body }, 55_000);
+  if (typeof res.code !== 'string' || !res.code) throw new DirectorError('The agent returned no code', 'BAD_OUTPUT', 502);
+  return { code: res.code, notes: typeof res.notes === 'string' ? res.notes : '' };
+}
+
+/** A recipe's source text, as published by scripts/gen-demo-sources.mjs. */
+export async function fetchRecipeSource(stem: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.tsx.txt`);
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The editable text prop of a card, if it has one. */
 const textKey = (cardId: string): string | null => {
   if (cardId === 'inkpress-title-card' || cardId === 'inkpress-caption') return 'text';

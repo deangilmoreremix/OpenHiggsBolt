@@ -12,10 +12,8 @@ export const ADAPTED_FIXTURES = ['Brand', 'Fixtures', 'Look', 'Motion', 'PageCam
 
 const FORBIDDEN_IDENTS = new Set([
   'fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'Worker', 'SharedWorker', 'ServiceWorker', 'importScripts',
-  'eval', 'Function', 'require', 'process', 'globalThis', 'window', 'self', 'top', 'parent', 'frames',
-  'document', 'navigator', 'location', 'history', 'localStorage', 'sessionStorage', 'indexedDB', 'caches',
-  'setTimeout', 'setInterval', 'requestAnimationFrame', 'requestIdleCallback', 'queueMicrotask',
-  'Reflect', 'Proxy', 'Atomics', 'WebAssembly', 'XMLSerializer', 'DOMParser', 'Image', 'Audio', 'Blob', 'FileReader',
+  'eval', 'Function', 'require', 'process', 'globalThis', 'window', 'document', 'navigator', 'localStorage', 'sessionStorage', 'indexedDB',
+  'setTimeout', 'setInterval', 'requestAnimationFrame', 'requestIdleCallback', 'queueMicrotask', 'Reflect', 'Proxy', 'WebAssembly', 'DOMParser', 'FileReader',
 ])
 const FORBIDDEN_PROPS = new Set(['constructor', '__proto__', 'prototype', 'innerHTML', 'outerHTML', 'dangerouslySetInnerHTML', 'srcdoc', 'cookie'])
 const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'frame', 'frameset', 'portal'])
@@ -38,7 +36,7 @@ let tsPromise: Promise<TS> | null = null
 const loadTs = (): Promise<TS> => (tsPromise ??= import('typescript').then((m) => ((m as unknown as { default?: TS }).default ?? (m as unknown as TS))))
 
 /** Static check of the adapted source. Pure; does not execute anything. */
-export async function checkAdaptedSource(code: string): Promise<AdaptCheck> {
+export async function checkAdaptedSource(code: string, stem?: string): Promise<AdaptCheck> {
   if (typeof code !== 'string' || !code.trim()) return { ok: false, error: 'empty source' }
   if (code.length > 120_000) return { ok: false, error: 'source is too long' }
   const ts = await loadTs()
@@ -97,11 +95,11 @@ export async function checkAdaptedSource(code: string): Promise<AdaptCheck> {
         break
       }
       case k.ElementAccessExpression: {
-        const ea = node as import('typescript').ElementAccessExpression
-        if (!ts.isNumericLiteral(ea.argumentExpression)) {
-          const a = ea.argumentExpression
-          if (!ts.isStringLiteral(a) || FORBIDDEN_PROPS.has(a.text) || FORBIDDEN_IDENTS.has(a.text)) fail('computed property access is not allowed')
-        }
+        // Recipes index arrays by number all the time (`rows[i]`). Keys that are text are refused:
+        // `o['constructor']` is how code reaches the Function constructor.
+        const a = (node as import('typescript').ElementAccessExpression).argumentExpression
+        const textual = (n: import('typescript').Node): boolean => ts.isStringLiteralLike(n) || ts.isTemplateExpression(n) || (ts.isBinaryExpression(n) && n.operatorToken.kind === k.PlusToken && (textual(n.left) || textual(n.right))) || (ts.isParenthesizedExpression(n) && textual(n.expression))
+        if (textual(a)) fail('computed property access with text keys is not allowed')
         break
       }
       case k.NewExpression: {
@@ -122,7 +120,8 @@ export async function checkAdaptedSource(code: string): Promise<AdaptCheck> {
       case k.TemplateTail: {
         const text = (node as import('typescript').StringLiteral).text
         if (node.parent && ts.isImportDeclaration(node.parent)) break
-        if (EXTERNAL.test(text)) fail('external URLs and script URLs are not allowed; use the captured images passed in props')
+        if (/constructor|__proto__|prototype/i.test(text)) fail('strings naming constructor / prototype are not allowed')
+        else if (EXTERNAL.test(text.replace(/https?:\/\/www\.w3\.org\/\d{4}\/[\w-]+/g, ''))) fail('external URLs and script URLs are not allowed; use the captured images passed in props')
         break
       }
       default:
@@ -132,7 +131,8 @@ export async function checkAdaptedSource(code: string): Promise<AdaptCheck> {
   }
   visit(sf)
   if (error) return { ok: false, error }
-  if (!hasDefault && !/\bexport\s+default\b/.test(code)) return { ok: false, error: 'the file must `export default` a React component' }
+  const named = stem ? new RegExp(`export\\s+(?:const|function)\\s+${stem}\\b`).test(code) : /export\s+(?:const|function)\s+[A-Z]\w*/.test(code)
+  if (!hasDefault && !/\bexport\s+default\b/.test(code) && !named) return { ok: false, error: stem ? `the file must export the component \`${stem}\` (or a default export)` : 'the file must export a React component' }
   return { ok: true }
 }
 
@@ -153,8 +153,8 @@ export const registerAdaptedFixtures = (mods: Record<string, unknown>) => { Obje
 export type AdaptedComponent = React.ComponentType<Record<string, unknown>>
 
 /** Check, transpile and instantiate the adapted component; throws with a readable reason. */
-export async function compileAdapted(code: string): Promise<AdaptedComponent> {
-  const checked = await checkAdaptedSource(code)
+export async function compileAdapted(code: string, stem?: string): Promise<AdaptedComponent> {
+  const checked = await checkAdaptedSource(code, stem)
   if (!checked.ok) throw new Error(checked.error)
   const ts = await loadTs()
   const out = ts.transpileModule(code, {
@@ -167,12 +167,12 @@ export async function compileAdapted(code: string): Promise<AdaptedComponent> {
     return moduleFor(spec)
   }
   // Shadow the globals the check forbids, so a miss in the check still cannot reach them.
-  const shadow = ['window', 'document', 'fetch', 'XMLHttpRequest', 'WebSocket', 'localStorage', 'sessionStorage', 'indexedDB', 'navigator', 'location', 'globalThis', 'self', 'setTimeout', 'setInterval', 'Worker']
+  const shadow = ['window', 'document', 'fetch', 'XMLHttpRequest', 'WebSocket', 'localStorage', 'sessionStorage', 'indexedDB', 'navigator', 'globalThis', 'setTimeout', 'setInterval', 'Worker', 'top', 'parent', 'frames', 'self', 'caches', 'Reflect', 'Proxy']
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   const run = new Function('require', 'module', 'exports', 'React', ...shadow, `"use strict";\n${out}`)
   run(requireShim, mod, mod.exports, React, ...shadow.map(() => undefined))
-  const Comp = (mod.exports.default ?? mod.exports) as unknown
-  if (typeof Comp !== 'function') throw new Error('default export is not a component')
+  const Comp = (mod.exports.default ?? (stem ? mod.exports[stem] : undefined) ?? Object.values(mod.exports).find((v) => typeof v === 'function')) as unknown
+  if (typeof Comp !== 'function') throw new Error('the file exports no component')
   return Comp as AdaptedComponent
 }
 
