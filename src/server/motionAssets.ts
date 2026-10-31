@@ -51,7 +51,7 @@ export function pickLogoAsset(found: readonly DiscoveredAsset[]): DiscoveredAsse
 export async function findMotionAssets(websiteUrl: string, opts: { budgetMs?: number; max?: number } = {}): Promise<MotionAssetResult> {
   const deadlineAt = Date.now() + (opts.budgetMs ?? 200_000)
   try {
-    const found = await discoverBusinessAssets({ websiteUrl, maxPages: 40, maxImages: 200, thorough: true, deadlineAt: deadlineAt - 20_000 })
+    const found = await discoverBusinessAssets({ websiteUrl, maxPages: 80, maxImages: 400, thorough: true, deadlineAt: deadlineAt - 20_000 })
     const picked = pickMotionAssets(found, opts.max ?? Infinity)
     const logoPick = pickLogoAsset(found)
     const logoFile = logoPick ? await downloadImage(logoPick.sourceUrl, deadlineAt) : null

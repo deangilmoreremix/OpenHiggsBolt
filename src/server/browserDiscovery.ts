@@ -1707,11 +1707,11 @@ const CAPTURE_FIRST_SHOT_MS = 7_000
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** A deep capture (the background worker has minutes, not seconds) takes more routes, more cards and the whole length of the page. */
 /** Deep captures stop on time, not on a count: these are only guards against runaway pages. */
-export const DEEP_MAX_ROUTES = 25
-export const DEEP_MAX_CROPS = 40
+export const DEEP_MAX_ROUTES = 40
+export const DEEP_MAX_CROPS = 80
 export const DEEP_MAX_Y = 40_000
-export const DEEP_MAX_BANDS = 60
-export const DEEP_MAX_IMAGES = 120
+export const DEEP_MAX_BANDS = 120
+export const DEEP_MAX_IMAGES = 200
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
 /** A film wants this many distinct pictures of the site; page slices make up the difference. */
@@ -2067,7 +2067,7 @@ async function waitForFonts(maxMs: number): Promise<boolean> {
   return Promise.race([document.fonts.ready.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxMs))])
 }
 
-const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?/i
+const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?|team|people|leadership|staff|case-stud|stories|testimonial|reviews?|work|portfolio|projects?|industr|locations?|contact|company/i
 const ROUTE_SKIP_RE =
   /log-?in|sign-?in|sign-?up|register|account|auth|cart|checkout|privacy|terms|legal|cookie|gdpr|careers|jobs|status|wp-|cdn-cgi|\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|txt|json)$/i
 

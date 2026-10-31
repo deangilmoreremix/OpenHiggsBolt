@@ -111,7 +111,7 @@ export async function captureSite(
   const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url }, 32_000);
   if (!first.jobId) return first;
   const started = Date.now();
-  const maxWait = opts.maxWaitMs ?? 540_000;
+  const maxWait = opts.maxWaitMs ?? 840_000;
   let failures = 0;
   while (Date.now() - started < maxWait) {
     await sleep(opts.pollMs ?? 2_000);

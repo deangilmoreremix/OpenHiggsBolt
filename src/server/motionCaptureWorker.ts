@@ -20,7 +20,7 @@ import {
 } from './motionCapture'
 
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
-export const WORKER_CAPTURE_OPTIONS = { hardMs: 300_000, budgetMs: 240_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
+export const WORKER_CAPTURE_OPTIONS = { hardMs: 720_000, budgetMs: 600_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
 
 export interface MotionCaptureJobRequest {
   jobId: string
@@ -72,7 +72,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
 
   const run = async () => {
     // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
-    const assetsRun = findMotionAssets(url, { budgetMs: 200_000 }).catch(() => ({ assets: [], logo: null }))
+    const assetsRun = findMotionAssets(url, { budgetMs: 600_000 }).catch(() => ({ assets: [], logo: null }))
     let capture: PageCapture
     try {
       capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
