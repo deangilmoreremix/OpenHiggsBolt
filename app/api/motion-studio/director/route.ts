@@ -285,6 +285,11 @@ export async function POST(req: NextRequest) {
       const source = typeof body.source === 'string' ? body.source : ''
       if (!/^\w+$/.test(recipe) || !source || source.length > ADAPT_MAX_SOURCE) return NextResponse.json({ error: 'A recipe and its source are required', code: 'BAD_REQUEST' }, { status: 400 })
       const rules = rulesOf(recipe)
+      // Pictures the agent compares: the recipe as designed and its own last try (small JPEG/PNG data URLs).
+      const pictures = (v: unknown) =>
+        (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string' && /^data:image\/(jpeg|png);base64,/.test(x) && x.length < 400_000).slice(0, 3)
+      const reference = pictures(body.reference)
+      const stills = pictures(body.stills)
       const layout = body.layout && typeof body.layout === 'object' ? (body.layout as Record<string, any>) : {}
       const brand = body.brand && typeof body.brand === 'object' ? (body.brand as Record<string, any>) : {}
       const raw = await callDirector(
@@ -304,9 +309,15 @@ export async function POST(req: NextRequest) {
           brand: { name: str(brand.name, 80), accent: str(brand.accent, 20), background: str(brand.background, 20), text: str(brand.text, 20), font: str(brand.font, 80) },
           site: siteContent(body.content),
           problems: (Array.isArray(body.problems) ? body.problems : []).slice(0, 6).map((p: unknown) => str(p, 240)).filter(Boolean),
+          card: typeof body.card === 'string' ? body.card.slice(0, 30_000) : '',
+          images: [
+            ...reference.map((_, i) => `image ${i + 1}: the recipe as designed, ${['entering', 'peak', 'settled'][i] ?? 'frame'}`),
+            ...stills.map((_, i) => `image ${reference.length + i + 1}: your previous try as rendered, ${['entering', 'peak', 'settled'][i] ?? 'frame'}`),
+          ],
         }),
         'motion_studio_adapt',
         ADAPT_JSON_SCHEMA,
+        [...reference, ...stills],
       )
       const code = cleanAdaptedCode(raw?.code)
       if (!code) return NextResponse.json({ error: 'The agent returned no usable code', code: 'BAD_OUTPUT' }, { status: 502 })

@@ -1,20 +1,23 @@
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import type { ClipData, ProjectData } from '../types';
-import { fetchRecipeSource, requestAdapt, DirectorError, type AdaptRequest } from './directorClient';
+import { fetchRecipeCard, fetchRecipeSource, fetchReferenceFrames, requestAdapt, DirectorError, type AdaptRequest } from './directorClient';
 import { checkAdaptedSource } from './shotAdapter';
 import { prepareAdapted } from './adaptedRuntime';
 import { rulesOf } from './shotRules';
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
 
 /**
- * Upstream's coding agent edits each shot's source for the product, looks at stills and fixes what
- * it sees. This is the hosted version: the model rewrites a recipe (route mode `adapt`), the
- * sandbox checks and compiles it, three stills are rendered, and what fails goes back to the model
- * (at most two rounds). A shot keeps its adapted source only when it came out clean; otherwise the
- * plain recipe stays.
+ * Upstream's coding agent reads the shot card in full, edits the shot's source for the product,
+ * renders stills, compares them with how the shot is meant to look and fixes what it sees. This is
+ * the hosted version: the model gets the card, the source and the recipe's reference frames
+ * (public/motion-studio/previews) and rewrites the recipe (route mode `adapt`); the sandbox checks
+ * and compiles it; three stills are rendered and reviewed; what fails goes back to the model with
+ * those stills next to the reference (at most three rounds). A shot keeps its adapted source only
+ * when it came out clean; otherwise the plain recipe stays.
  */
 
-export const ADAPT_LIMITS = { shots: 4, rounds: 3, budgetMs: 90_000 } as const;
+/** Every recipe shot of the film is adapted (as upstream builds each shot), three at a time, within the budget. */
+export const ADAPT_LIMITS = { shots: 12, rounds: 3, lanes: 3, budgetMs: 240_000 } as const;
 
 export type AdaptLog = (label: string, status: 'running' | 'done' | 'error') => void;
 
@@ -25,6 +28,10 @@ export interface AdaptDeps {
   review?: (project: ProjectData, frames: number[], signal: AbortSignal) => Promise<string[]>;
   request?: (body: AdaptRequest) => Promise<{ code: string; notes: string }>;
   source?: (stem: string) => Promise<string | null>;
+  card?: (stem: string) => Promise<string | null>;
+  reference?: (stem: string) => Promise<string[]>;
+  /** Turn what `render` returned into an image (data URL) to show the model; omitted = no pictures. */
+  snapshot?: (rendered: unknown) => Promise<string | null>;
 }
 
 export interface AdaptContext {
@@ -46,7 +53,9 @@ export function adaptTargets(project: ProjectData): ClipData[] {
       if (!stem || clip.props?.adaptedCode) continue;
       const template = MOTION_TEMPLATES.find((t) => t.componentName === stem);
       const rules = rulesOf(stem);
-      if (!template || !rules || rules.text === 'fixed' || rules.technique) continue;
+      // Technique cards (seams) have no shot of their own; recipes whose words are the effect are adapted
+      // too, with the card's measured-length rule (the route passes rules.text).
+      if (!template || !rules || rules.technique) continue;
       out.push({ clip, weight: drawsSampleScreen(template) ? 0 : isProductTextureShot(stem) ? 1 : 2 });
     }
   }
@@ -68,12 +77,17 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
   if (!source) return null;
   const request = deps.request ?? requestAdapt;
   const slots = { screens: ctx.screens, crops: ctx.crops, layout: ctx.layout, brand: ctx.brand };
+  const [card, reference] = await Promise.all([(deps.card ?? fetchRecipeCard)(stem).catch(() => null), (deps.reference ?? fetchReferenceFrames)(stem).catch(() => [])]);
   let problems: string[] = [];
+  let stills: string[] = [];
   for (let round = 0; round < ADAPT_LIMITS.rounds; round++) {
     if (signal.aborted) return null;
     let reply: { code: string; notes: string };
     try {
-      reply = await request({ recipe: stem, source, layout: ctx.layout, screens: ctx.screens.length, crops: ctx.crops.length, brand: ctx.brand, content: ctx.content, problems });
+      reply = await request({
+        recipe: stem, source, layout: ctx.layout, screens: ctx.screens.length, crops: ctx.crops.length, brand: ctx.brand, content: ctx.content, problems,
+        ...(card ? { card } : {}), ...(reference.length ? { reference } : {}), ...(stills.length ? { stills } : {}),
+      });
     } catch (error) {
       // No key, a refusal or a rate limit will not get better on a second round.
       if (error instanceof DirectorError && [401, 403, 429].includes(error.status)) throw error;
@@ -92,9 +106,12 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
     const props = { adaptedCode: reply.code, adaptedStem: stem, ...slots };
     const trial = withClip(project, clip.id, props);
     const failed: string[] = [];
+    const shots: string[] = [];
     for (const frame of stillFrames(clip)) {
       try {
-        await deps.render(trial, frame, signal);
+        const rendered = await deps.render(trial, frame, signal);
+        const image = deps.snapshot ? await deps.snapshot(rendered).catch(() => null) : null;
+        if (image) shots.push(image);
       } catch (error) {
         if (signal.aborted) return null;
         failed.push(`frame ${frame - clip.start} of the shot failed to render: ${error instanceof Error ? error.message : 'error'}`);
@@ -103,6 +120,7 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
     if (!failed.length && deps.review) failed.push(...(await deps.review(trial, stillFrames(clip), signal).catch(() => [])));
     if (!failed.length) return { props, notes: reply.notes };
     problems = failed.slice(0, 6);
+    stills = shots;
   }
   return null;
 }
@@ -116,13 +134,16 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   outer?.addEventListener('abort', () => controller.abort(), { once: true });
   let result = project;
   let adapted = 0;
-  try {
-    for (const clip of targets) {
-      if (controller.signal.aborted) break;
+  let stop = false;
+  const queue = [...targets];
+  const lane = async () => {
+    while (queue.length && !controller.signal.aborted && !stop) {
+      const clip = queue.shift()!;
       const name = MOTION_TEMPLATES.find((t) => t.componentName === stemOf(clip))?.nameEn ?? stemOf(clip);
       log(`Adapting ${name} to your site`, 'running');
       try {
-        const done = await adaptShot(result, clip, ctx, deps, controller.signal);
+        // Each shot is tried against the film as it was (adapting one shot never depends on another).
+        const done = await adaptShot(project, clip, ctx, deps, controller.signal);
         if (done) {
           result = withClip(result, clip.id, done.props);
           adapted++;
@@ -132,10 +153,13 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
         }
       } catch (error) {
         // No key or refusal: say so once and stop asking.
-        log(error instanceof Error ? error.message : 'Shot adaptation is unavailable', 'error');
-        break;
+        if (!stop) log(error instanceof Error ? error.message : 'Shot adaptation is unavailable', 'error');
+        stop = true;
       }
     }
+  };
+  try {
+    await Promise.all(Array.from({ length: Math.min(ADAPT_LIMITS.lanes, targets.length) }, lane));
   } finally {
     clearTimeout(timer);
   }

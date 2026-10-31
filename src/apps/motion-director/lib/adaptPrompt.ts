@@ -7,7 +7,7 @@
 export const ADAPT_MAX_SOURCE = 60_000
 export const ADAPT_MAX_CODE = 100_000
 
-export const ADAPT_INSTRUCTIONS = `You adapt ONE Remotion shot recipe (a TSX file) to a person's product, the way a careful motion engineer edits a tuned template. You receive the recipe's source, the shot card's rules, the product's captured page layout, the picture slots that carry the product's real screenshots, and its brand tokens.
+export const ADAPT_INSTRUCTIONS = `You adapt ONE Remotion shot recipe (a TSX file) to a person's product, the way a careful motion engineer edits a tuned template. You receive the recipe's source, its shot card in full (card: read all of it — intent, parameters, known pitfalls; they are the quality), the product's captured page layout, the picture slots that carry the product's real screenshots, and its brand tokens. Images: the first ones show the recipe as designed (its motion preview at entering / peak / settled); when a previous try was rendered, the next ones show that try at the same moments. Your shot must read like the reference — same composition, motion and rhythm — with the product's pictures, words, colours and font in it.
 Return JSON {code, notes}. code is the COMPLETE new file as plain text (no markdown fences) keeping the file's exports exactly as they are (the shot component keeps its name, e.g. export const RowEmbed, and the duration constant stays).
 Rules (these come from the shot library's method; breaking them ruins the shot):
 - Keep every easing, duration, delay, spring, hold and the number of frames exactly as they are. Do not speed up, slow down or shorten anything. The motion is the quality.
@@ -18,6 +18,7 @@ Rules (these come from the shot library's method; breaking them ruins the shot):
 - No network, storage, window/document, timers, Math.random, Date.now or eval. Every frame must be a pure function of useCurrentFrame().
 - Never invent URLs, handles, people, prices or statistics. Use only the words the product's site gave you; if a number is not given, leave the recipe's number.
 - If the recipe cannot be adapted without breaking its motion, return the source unchanged and say why in notes.
+- Compare your previous try with the reference: anything blank, clipped, unreadable, overlapping, or a sample-UI picture still showing where the product's own should be, is a problem to fix even when not listed.
 notes: at most three short sentences on what you changed and what you left alone. When problems are listed, fix exactly those and nothing else.`
 
 export const ADAPT_JSON_SCHEMA = {

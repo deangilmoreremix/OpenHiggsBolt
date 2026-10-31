@@ -258,6 +258,12 @@ export interface AdaptRequest {
   content?: unknown;
   /** What was wrong with the previous try (render errors, reviewer findings). */
   problems?: string[];
+  /** The recipe's shot card in full (upstream's agent reads it before editing). */
+  card?: string;
+  /** The recipe as designed: entering / peak / settled frames (data URLs). */
+  reference?: string[];
+  /** The previous try as rendered, same three moments (data URLs), to compare with the reference. */
+  stills?: string[];
 }
 
 /** The agent's rewrite of one recipe for the person's site (needs their key). The caller must still check the code. */
@@ -265,6 +271,37 @@ export async function requestAdapt(body: AdaptRequest): Promise<{ code: string; 
   const res = await post<{ code?: string; notes?: string }>('/api/motion-studio/director', { mode: 'adapt', ...body }, 55_000);
   if (typeof res.code !== 'string' || !res.code) throw new DirectorError('The agent returned no code', 'BAD_OUTPUT', 502);
   return { code: res.code, notes: typeof res.notes === 'string' ? res.notes : '' };
+}
+
+/** A recipe's shot card (markdown), as published by scripts/gen-demo-sources.mjs. */
+export async function fetchRecipeCard(stem: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.card.md`);
+    return res.ok ? (await res.text()).slice(0, 30_000) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The recipe's reference frames as designed (public/motion-studio/previews, entering / peak / settled), as data URLs. */
+export async function fetchReferenceFrames(stem: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const k of ['a', 'b', 'c']) {
+    try {
+      const res = await fetch(`/motion-studio/previews/${encodeURIComponent(stem)}-${k}.jpg`);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      out.push(await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+      }));
+    } catch {
+      /* a missing frame is fine */
+    }
+  }
+  return out;
 }
 
 /** A recipe's source text, as published by scripts/gen-demo-sources.mjs. */

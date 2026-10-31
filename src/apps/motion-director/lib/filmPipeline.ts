@@ -316,6 +316,7 @@ export async function buildFilmProject(
       { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
       {
         render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+        snapshot: async (r) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
         review: async (p, frames, signal) => {
           const render = (await import('../webRenderer')).renderStillOnWebExport;
           const images: Array<{ second: number; image: string }> = [];

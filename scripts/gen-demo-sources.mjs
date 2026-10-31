@@ -2,7 +2,8 @@
 /**
  * Publishes each Motion Director recipe's source as plain text, so the browser can send it to the
  * shot-adapter agent (the model rewrites a recipe for the person's site, as upstream's coding agent
- * does). Output: `public/motion-studio/sources/<Stem>.tsx.txt` and `index.json` ({ Stem: bytes }).
+ * does). Output: `public/motion-studio/sources/<Stem>.tsx.txt`, the recipe's shot card in full as
+ * `<Stem>.card.md` (upstream's agent reads the card before it edits the shot), and `index.json` ({ Stem: bytes }).
  * Legacy recipes are skipped. Run by `prebuild`; the output is generated, not committed.
  */
 import fs from 'node:fs'
@@ -10,6 +11,7 @@ import path from 'node:path'
 
 const ROOT = path.resolve('src/apps/motion-director/demosrc')
 const OUT = path.resolve('public/motion-studio/sources')
+const CARDS = path.resolve('.claude/skills/video-shotcraft/references/shots')
 
 const files = []
 const walk = (dir) => {
@@ -25,6 +27,7 @@ walk(ROOT)
 fs.rmSync(OUT, { recursive: true, force: true })
 fs.mkdirSync(OUT, { recursive: true })
 const index = {}
+let cards = 0
 for (const file of files.sort()) {
   const stem = path.basename(file, '.tsx')
   if (!new RegExp(`export\\s+(?:const|function)\\s+${stem}\\b`).test(fs.readFileSync(file, 'utf8'))) continue
@@ -32,6 +35,13 @@ for (const file of files.sort()) {
   if (text.length > 60_000) continue
   fs.writeFileSync(path.join(OUT, `${stem}.tsx.txt`), text)
   index[stem] = text.length
+  // demosrc/<category>/<slug>/<Stem>.tsx <-> references/shots/<category>/<slug>.md
+  const rel = path.relative(ROOT, path.dirname(file)).split(path.sep)
+  const card = path.join(CARDS, `${rel.join('/')}.md`)
+  if (rel.length === 2 && fs.existsSync(card)) {
+    fs.copyFileSync(card, path.join(OUT, `${stem}.card.md`))
+    cards++
+  }
 }
 fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(index))
-console.log(`gen-demo-sources: ${Object.keys(index).length} recipes`)
+console.log(`gen-demo-sources: ${Object.keys(index).length} recipes, ${cards} shot cards`)

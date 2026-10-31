@@ -25,6 +25,8 @@ const deps = (over: Partial<AdaptDeps> = {}): AdaptDeps => ({
   render: vi.fn(async () => undefined),
   request: vi.fn(async () => ({ code: GOOD, notes: 'swapped the page' })),
   source: vi.fn(async () => 'export const RowEmbed = () => null'),
+  card: vi.fn(async () => '---\nname: row-embed\n---\n## 已知坑\n- land in the real slot'),
+  reference: vi.fn(async () => ['data:image/jpeg;base64,REF']),
   ...over,
 });
 
@@ -78,5 +80,25 @@ describe('adapting shots', () => {
     const none = await adaptFilm(p, ctx, deps({ request: vi.fn(async () => ({ code: 'nope', notes: '' })) }), (l) => logs.push(l));
     expect(JSON.stringify(none)).not.toContain('adaptedCode');
     expect(logs.join('\n')).toMatch(/Kept the original/);
+  });
+
+  it('works like the coding agent: reads the card and the reference, then sees its own stills next to it', async () => {
+    const p = project();
+    const clip = adaptTargets(p)[0];
+    const render = vi.fn().mockRejectedValueOnce(new Error('blank frame')).mockResolvedValue({ blob: 'ok' });
+    const d = deps({ render, snapshot: vi.fn(async () => 'data:image/jpeg;base64,MINE') });
+    const done = await adaptShot(p, clip, ctx, d, new AbortController().signal);
+    expect(done).not.toBeNull();
+    const calls = (d.request as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as AdaptRequest);
+    expect(calls[0].card).toContain('row-embed');
+    expect(calls[0].reference).toEqual(['data:image/jpeg;base64,REF']);
+    expect(calls[0].stills).toBeUndefined();
+    expect(calls[1].problems?.[0]).toContain('blank frame');
+    expect(calls[1].stills).toEqual(['data:image/jpeg;base64,MINE', 'data:image/jpeg;base64,MINE']);
+  });
+
+  it('adapts every recipe shot of the film, not just the first few', () => {
+    const many: DirectorPlan = { ...plan, scenes: ['RowEmbed', 'SpotlightHeroCard', 'DeckDealFlyin', 'PageWaterfallWall', 'CardStack', 'ListReveal'].map((c) => ({ kind: 'shot' as const, recipeId: id(c), durationSec: 4, headline: 'a', caption: 'b', transition: 'cut' as const })) };
+    expect(adaptTargets(planToProject(many, { aspectRatio: '16:9' })).length).toBe(6);
   });
 });
