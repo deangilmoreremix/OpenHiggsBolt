@@ -3,17 +3,19 @@
 /**
  * Layout shell for the personalization modal's Advanced Editing view.
  *
- * Advanced Editing used to be one long page (every section flowed through a
- * CSS multi-column body). It is now a four-tab workspace with a sticky preview
- * column, so each task fits on one screen and the result stays in view.
+ * On wide screens Advanced Editing is a fixed frame: a step bar (4 tabs), a
+ * row of section pills for the active tab, then two panes that scroll on their
+ * own — the active section on the left, the live preview on the right. Nothing
+ * is sticky, so nothing can hide anything else, and each section fits roughly
+ * one screen. On narrow screens it falls back to one normal scroll.
  *
- * Every existing section is kept: tabs only regroup them. All four panels stay
- * mounted (inactive ones are hidden), so switching tabs never loses typed
- * input or editor selection, and every section id stays in the DOM for links.
+ * Every existing section is kept: tabs and pills only regroup them. All
+ * panels stay mounted (inactive ones are hidden), so switching never loses
+ * typed input or editor selection, and every section id stays in the DOM.
  */
 
 import type { ReactNode } from 'react'
-import type { AdvancedEditingTab } from '../types'
+import type { AdvancedEditingSections, AdvancedEditingTab } from '../types'
 import { C } from '../guided/tokens'
 
 export const ADVANCED_TABS: ReadonlyArray<{ id: AdvancedEditingTab; label: string; hint: string }> = [
@@ -23,20 +25,46 @@ export const ADVANCED_TABS: ReadonlyArray<{ id: AdvancedEditingTab; label: strin
   { id: 'create', label: 'Overlays & Create', hint: 'Prompt, output, engine' },
 ]
 
-/** Which tab holds each Advanced Editing section (for links and deep scrolls). */
-export const SECTION_TAB: Record<string, AdvancedEditingTab> = {
-  'pz-overview': 'client',
-  'pz-discovered': 'assets',
-  'pz-client-assets': 'assets',
-  'pz-saved-assets': 'assets',
-  'pz-content': 'assets',
-  'pz-recast': 'recast',
-  'pz-onvideo-overlays': 'create',
-  'pz-prompt': 'create',
-  'pz-output': 'create',
-  'pz-mode': 'create',
-  'pz-engine': 'create',
+/** The sections (pills) of each tab, in order. A tab with one section shows no pills. */
+export const ADVANCED_SECTIONS: Record<AdvancedEditingTab, ReadonlyArray<{ id: string; label: string }>> = {
+  client: [
+    { id: 'find', label: 'Find business' },
+    { id: 'profile', label: 'Profile' },
+  ],
+  assets: [
+    { id: 'yours', label: 'Your assets' },
+    { id: 'found', label: 'Found on website' },
+    { id: 'content', label: 'Business content' },
+  ],
+  recast: [{ id: 'recast', label: 'Full Body Recast' }],
+  create: [
+    { id: 'overlays', label: 'Overlays' },
+    { id: 'prompt', label: 'Prompt' },
+    { id: 'output', label: 'Output & engine' },
+  ],
 }
+
+/** Where each Advanced Editing section lives (for links, jumps and tests). */
+export const SECTION_LOCATION: Record<string, { tab: AdvancedEditingTab; section: string }> = {
+  'pz-overview': { tab: 'client', section: 'find' },
+  'pz-find-business': { tab: 'client', section: 'find' },
+  'pz-client-profile': { tab: 'client', section: 'profile' },
+  'pz-client-assets': { tab: 'assets', section: 'yours' },
+  'pz-saved-assets': { tab: 'assets', section: 'yours' },
+  'pz-discovered': { tab: 'assets', section: 'found' },
+  'pz-content': { tab: 'assets', section: 'content' },
+  'pz-recast': { tab: 'recast', section: 'recast' },
+  'pz-onvideo-overlays': { tab: 'create', section: 'overlays' },
+  'pz-prompt': { tab: 'create', section: 'prompt' },
+  'pz-output': { tab: 'create', section: 'output' },
+  'pz-mode': { tab: 'create', section: 'output' },
+  'pz-engine': { tab: 'create', section: 'output' },
+}
+
+/** Which tab holds each section id. */
+export const SECTION_TAB: Record<string, AdvancedEditingTab> = Object.fromEntries(
+  Object.entries(SECTION_LOCATION).map(([id, location]) => [id, location.tab]),
+) as Record<string, AdvancedEditingTab>
 
 export function AdvancedStepBar({
   active,
@@ -51,8 +79,8 @@ export function AdvancedStepBar({
     <div
       role="tablist"
       aria-label="Advanced Editing steps"
-      className="pz-adv-steps sticky top-0 z-10 grid grid-cols-2 md:grid-cols-4"
-      style={{ gap: 8, padding: '12px 0', background: C.modal, borderBottom: `1px solid ${C.border}` }}
+      className="pz-adv-steps grid grid-cols-2 md:grid-cols-4 flex-none"
+      style={{ gap: 8, padding: '10px 0', background: C.modal }}
     >
       {ADVANCED_TABS.map((tab, index) => {
         const isActive = tab.id === active
@@ -71,7 +99,7 @@ export function AdvancedStepBar({
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              padding: '9px 12px',
+              padding: '8px 12px',
               borderRadius: 12,
               border: `1px solid ${isActive ? C.cyanBorder : C.border}`,
               background: isActive ? C.cyanSoft : 'transparent',
@@ -83,8 +111,8 @@ export function AdvancedStepBar({
             <span
               aria-hidden
               style={{
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 borderRadius: 999,
                 flexShrink: 0,
                 display: 'inline-flex',
@@ -106,6 +134,67 @@ export function AdvancedStepBar({
                 {tab.hint}
               </span>
             </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** The section pills of the active tab (nothing for a single-section tab). */
+export function AdvancedSectionPills({
+  tab,
+  active,
+  onSelect,
+  badges = {},
+}: {
+  tab: AdvancedEditingTab
+  active: string
+  onSelect: (section: string) => void
+  badges?: Record<string, number | undefined>
+}) {
+  const sections = ADVANCED_SECTIONS[tab]
+  if (sections.length < 2) return null
+  return (
+    <div
+      role="tablist"
+      aria-label="Sections"
+      data-testid="pz-section-pills"
+      className="flex flex-wrap items-center flex-none"
+      style={{ gap: 6, padding: '0 0 10px', borderBottom: `1px solid ${C.border}` }}
+    >
+      {sections.map((section) => {
+        const isActive = section.id === active
+        const badge = badges[section.id]
+        return (
+          <button
+            key={section.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            data-testid={`pz-pill-${tab}-${section.id}`}
+            onClick={() => onSelect(section.id)}
+            style={{
+              minHeight: 30,
+              padding: '0 12px',
+              borderRadius: 999,
+              border: `1px solid ${isActive ? C.cyanBorder : C.border}`,
+              background: isActive ? C.cyanSoft : 'transparent',
+              color: isActive ? C.cyan : C.text,
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            {section.label}
+            {typeof badge === 'number' && badge > 0 && (
+              <span style={{ minWidth: 18, padding: '1px 6px', borderRadius: 999, background: C.cyan, color: '#041014', fontSize: 9, fontWeight: 900 }}>
+                {badge}
+              </span>
+            )}
           </button>
         )
       })}
@@ -135,17 +224,53 @@ export function AdvancedTabPanel({
   )
 }
 
-/** "← Back / Next →" links at the bottom of each tab. */
-export function AdvancedTabFooter({
-  active,
-  onSelect,
+/** One section inside a tab; hidden unless it is the tab's active section. */
+export function AdvancedSectionPanel({
+  tab,
+  section,
+  sections,
+  children,
 }: {
-  active: AdvancedEditingTab
-  onSelect: (tab: AdvancedEditingTab) => void
+  tab: AdvancedEditingTab
+  section: string
+  sections: AdvancedEditingSections
+  children: ReactNode
 }) {
-  const index = ADVANCED_TABS.findIndex((tab) => tab.id === active)
-  const prev = index > 0 ? ADVANCED_TABS[index - 1] : null
-  const next = index < ADVANCED_TABS.length - 1 ? ADVANCED_TABS[index + 1] : null
+  return (
+    <div data-testid={`pz-section-${tab}-${section}`} hidden={sections[tab] !== section}>
+      {children}
+    </div>
+  )
+}
+
+/** The next / previous stop: the next pill in this tab, else the next tab. */
+export function adjacentStop(
+  tab: AdvancedEditingTab,
+  section: string,
+  direction: 1 | -1,
+): { tab: AdvancedEditingTab; section: string; label: string } | null {
+  const stops = ADVANCED_TABS.flatMap((t) => ADVANCED_SECTIONS[t.id].map((s) => ({
+    tab: t.id,
+    section: s.id,
+    label: ADVANCED_SECTIONS[t.id].length > 1 ? s.label : t.label,
+  })))
+  const index = stops.findIndex((stop) => stop.tab === tab && stop.section === section)
+  const next = stops[(index < 0 ? 0 : index) + direction]
+  return next || null
+}
+
+/** "← Back / Next →" at the bottom of each section. */
+export function AdvancedTabFooter({
+  tab,
+  section,
+  onGo,
+}: {
+  tab: AdvancedEditingTab
+  section: string
+  onGo: (tab: AdvancedEditingTab, section: string) => void
+}) {
+  const prev = adjacentStop(tab, section, -1)
+  const next = adjacentStop(tab, section, 1)
   const linkStyle = {
     minHeight: 34,
     padding: '0 14px',
@@ -160,13 +285,13 @@ export function AdvancedTabFooter({
   return (
     <div className="flex items-center justify-between" style={{ padding: '18px 0 6px', gap: 10 }}>
       {prev ? (
-        <button type="button" style={linkStyle} onClick={() => onSelect(prev.id)}>← {prev.label}</button>
+        <button type="button" style={linkStyle} onClick={() => onGo(prev.tab, prev.section)}>← {prev.label}</button>
       ) : <span />}
       {next && (
         <button
           type="button"
           style={{ ...linkStyle, border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
-          onClick={() => onSelect(next.id)}
+          onClick={() => onGo(next.tab, next.section)}
         >
           Next: {next.label} →
         </button>
@@ -175,14 +300,14 @@ export function AdvancedTabFooter({
   )
 }
 
-/** The sticky right-hand column: live preview + what will be used. */
+/** The right-hand pane: live preview + what will be used. Scrolls on its own on wide screens. */
 export function AdvancedPreviewColumn({ children }: { children: ReactNode }) {
   return (
     <aside
       aria-label="Live preview"
       data-testid="pz-preview-column"
-      className="pz-adv-preview xl:sticky"
-      style={{ top: 72, alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 16 }}
+      className="pz-adv-preview xl:h-full xl:overflow-y-auto xl:min-h-0"
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 2px 16px' }}
     >
       {children}
     </aside>

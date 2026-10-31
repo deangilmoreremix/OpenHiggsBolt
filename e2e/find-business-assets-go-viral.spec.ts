@@ -719,9 +719,11 @@ test.describe('Find Business Assets — Go-Viral Studio', () => {
       });
 
       await dialog.getByTestId('pz-tab-assets').click();
+      await dialog.getByTestId('pz-pill-assets-content').click();
       await expect(dialog.locator('#pz-content'), 'The Business content (Assets tab) did not open.').toBeVisible({
         timeout: 15_000,
       });
+      await dialog.getByTestId('pz-pill-assets-yours').click();
       await expect(
         dialog.locator('#pz-client-assets'),
         'The Client Assets section did not open.',

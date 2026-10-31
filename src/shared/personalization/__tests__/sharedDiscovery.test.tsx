@@ -873,10 +873,10 @@ describe('shared modal stays contained across viewports', () => {
     await flush()
 
     expectNoFixedOverflow(container, 390)
-    // The narrow-viewport layout uses single-column responsive wrappers.
-    const overview = container.querySelector('#pz-overview') as HTMLElement | null
-    expect(overview?.className).toContain('grid-cols-1')
-    expect(overview?.className).toContain('lg:grid-cols-2')
+    // The narrow-viewport layout is a single column (two panes only from xl).
+    const layout = container.querySelector('.pz-adv-layout') as HTMLElement | null
+    expect(layout?.className).toContain('grid-cols-1')
+    expect(layout?.className).toContain('xl:grid-cols-')
     restoreViewport()
   })
 
@@ -904,9 +904,15 @@ describe('pre-existing modal features survive the integration', () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId('pz-tab-assets'))
     })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-content'))
+    })
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy()
     await act(async () => {
       fireEvent.click(screen.getByTestId('pz-tab-create'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-create-output'))
     })
 
     // Engine + audio control
@@ -918,9 +924,12 @@ describe('pre-existing modal features survive the integration', () => {
     expect(screen.getByText('Preserve Audio')).toBeTruthy()
 
     // onRevert: edit a product asset, then revert it through the thumb control
-    // (product thumbnails live on the Assets tab).
+    // (product thumbnails live on Assets → Your assets).
     await act(async () => {
       fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-yours'))
     })
     await act(async () => {
       ctx().addProductUrl('https://example.com/product.png')

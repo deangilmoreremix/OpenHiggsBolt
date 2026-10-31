@@ -52,6 +52,7 @@ import type {
   GuidedStep,
   PersonalizationViewMode,
   AdvancedEditingTab,
+  AdvancedEditingSections,
   PersonalizationPreviewSettings,
   PreviewLayer,
   PreviewVideoRef,
@@ -219,6 +220,7 @@ interface PersistedPreviewState {
   guidedStep?: unknown
   viewMode?: unknown
   advancedTab?: unknown
+  advancedSections?: unknown
   /** Motion Studio template selected in Step 2 (full metadata), so the
    *  in-modal preview survives a reload. The provider re-resolves it through
    *  `getMotionTemplate` on restore; storing the full object (not just an id)
@@ -231,6 +233,22 @@ const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
 const ADVANCED_TAB_IDS: AdvancedEditingTab[] = ['client', 'assets', 'recast', 'create']
 function toAdvancedTab(value: unknown): AdvancedEditingTab {
   return ADVANCED_TAB_IDS.includes(value as AdvancedEditingTab) ? (value as AdvancedEditingTab) : 'client'
+}
+
+/** First section of each tab; must match ADVANCED_SECTIONS in advanced/AdvancedWorkspace.tsx. */
+export const DEFAULT_ADVANCED_SECTIONS: AdvancedEditingSections = {
+  client: 'find',
+  assets: 'yours',
+  recast: 'recast',
+  create: 'overlays',
+}
+function toAdvancedSections(value: unknown): AdvancedEditingSections {
+  const stored = value && typeof value === 'object' ? (value as Partial<AdvancedEditingSections>) : {}
+  const next = { ...DEFAULT_ADVANCED_SECTIONS }
+  for (const tab of ADVANCED_TAB_IDS) {
+    if (typeof stored[tab] === 'string' && stored[tab]) next[tab] = stored[tab] as string
+  }
+  return next
 }
 /** The download route accepts at most this many URLs per request. */
 const DOWNLOAD_BATCH_SIZE = 20
@@ -788,6 +806,9 @@ export type DemoPersonalizeContextValue = {
   /** Active tab of the Advanced Editing workspace. */
   advancedTab: AdvancedEditingTab
   setAdvancedTab: (tab: AdvancedEditingTab) => void
+  /** The section (pill) shown inside each Advanced Editing tab. */
+  advancedSections: AdvancedEditingSections
+  setAdvancedSection: (tab: AdvancedEditingTab, section: string) => void
 
   // Full Body Recast (Advanced Editing). The job outlives the panel and the
   // modal, and resumes after a reload.
@@ -1429,6 +1450,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Guided Simple Mode + free Remotion preview
   const [viewMode, setViewMode] = useState<PersonalizationViewMode>('simple')
   const [advancedTab, setAdvancedTab] = useState<AdvancedEditingTab>('client')
+  const [advancedSections, setAdvancedSections] = useState<AdvancedEditingSections>(DEFAULT_ADVANCED_SECTIONS)
+  const setAdvancedSection = useCallback((tab: AdvancedEditingTab, section: string) => {
+    setAdvancedSections((prev) => (prev[tab] === section ? prev : { ...prev, [tab]: section }))
+  }, [])
   const [guidedStep, setGuidedStepState] = useState<GuidedStep>(1)
   const [previewSettings, setPreviewSettings] = useState<PersonalizationPreviewSettings>(() =>
     createDefaultPreviewSettings(),
@@ -1867,11 +1892,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         guidedStep,
         viewMode,
         advancedTab,
+        advancedSections,
         motionTemplate: motionTemplate ?? null,
       })
     }, 800)
     return () => clearTimeout(timer)
-  }, [previewSettings, previewVideo, guidedStep, viewMode, advancedTab, motionTemplate, source?.id, access, previewUserScope])
+  }, [previewSettings, previewVideo, guidedStep, viewMode, advancedTab, advancedSections, motionTemplate, source?.id, access, previewUserScope])
 
   // Cancel pending project persistence and release every still-owned blob URL
   // on unmount
@@ -1927,6 +1953,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const storedViewMode = stored.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
     setAdvancedTab(toAdvancedTab(stored.advancedTab))
+    setAdvancedSections(toAdvancedSections(stored.advancedSections))
     setPreviewApproved(false)
     // Re-resolve the stored Motion Studio template through the catalog so a
     // stale id resolves to the current canonical entry (or null if it was
@@ -2096,6 +2123,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         : stored?.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
     setAdvancedTab(toAdvancedTab(stored?.advancedTab))
+    setAdvancedSections(toAdvancedSections(stored?.advancedSections))
     setPreviewApproved(false)
     // Re-resolve the stored Motion Studio template through the catalog so a
     // stale id (e.g. from an older session) maps to the current canonical
@@ -5368,6 +5396,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setViewMode,
     advancedTab,
     setAdvancedTab,
+    advancedSections,
+    setAdvancedSection,
     recastJob: recast.job,
     startRecast: recast.start,
     cancelRecast: recast.cancel,

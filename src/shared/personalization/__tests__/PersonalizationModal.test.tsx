@@ -295,19 +295,25 @@ describe('PersonalizationModal', () => {
     // Verify the full-width design sections are present. Advanced Editing
     // groups them into tabs (all mounted, inactive ones hidden), so each
     // heading is checked on the tab that shows it.
-    const showTab = async (tab: string) => {
+    const show = async (tab: string, pill?: string) => {
       await act(async () => {
         (document.querySelector(`[data-testid="pz-tab-${tab}"]`) as HTMLElement | null)?.click();
       });
+      if (!pill) return;
+      await act(async () => {
+        (document.querySelector(`[data-testid="pz-pill-${tab}-${pill}"]`) as HTMLElement | null)?.click();
+      });
     };
-    expect(screen.getByRole('heading', { name: 'Source Demo' })).toBeTruthy();
-    await showTab('assets');
+    expect(document.querySelector('#pz-overview')).toBeTruthy();
+    await show('assets', 'yours');
     expect(screen.getByRole('heading', { name: /CLIENT ASSETS/i })).toBeTruthy();
+    await show('assets', 'content');
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy();
-    await showTab('create');
+    await show('create', 'prompt');
     expect(screen.getByRole('heading', { name: /Personalize The Prompt/i })).toBeTruthy();
+    await show('create', 'output');
     expect(screen.getByRole('heading', { name: /SmartVideo Engine/i })).toBeTruthy();
-    await showTab('client');
+    await show('assets', 'yours');
 
     // Verify SmartVideo Recommended is prominently visible (check container text)
     expect(container.textContent).toMatch(/SmartVideo/)

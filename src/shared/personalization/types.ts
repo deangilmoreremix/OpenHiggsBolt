@@ -649,3 +649,6 @@ export type PersonalizationViewMode = 'simple' | 'advanced'
 
 /** The four tabs of the modal's Advanced Editing workspace. */
 export type AdvancedEditingTab = 'client' | 'assets' | 'recast' | 'create'
+
+/** The section (pill) shown inside each Advanced Editing tab. */
+export type AdvancedEditingSections = Record<AdvancedEditingTab, string>
