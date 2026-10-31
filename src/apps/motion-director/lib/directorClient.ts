@@ -31,6 +31,8 @@ export interface SiteCapture {
   partial?: boolean;
   page: { url: string; width: number; height: number };
   crops: string[];
+  /** What each crop shows, same order as `crops` (src/server/browserDiscovery CropInfo). */
+  cropInfo?: Array<{ route: string; cut: 'card' | 'band'; width: number; height: number; text: string; imageShare: number; portraits: number; map: boolean }>;
   /** The site's own images (product shots, hero art), largest first. */
   images?: string[];
   /** The site's logo (transparent PNG), when one was found. */

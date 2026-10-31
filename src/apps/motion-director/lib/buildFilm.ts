@@ -38,6 +38,8 @@ export interface FilmCapture {
   ctas?: string[];
   /** The site's address as typed (host and path). */
   address?: string;
+  /** The pictures chosen for each scene (lib/assignPictures), by scene index; when present they replace the rotation. */
+  scenes?: Array<{ screens: string[]; crops: string[] } | undefined>;
 }
 
 /** A video the user attached; it plays as its own scene before the closing card. */
@@ -318,10 +320,14 @@ const INSET_PAGE_H = 1200;
         const pageH = opts.capture?.pageH ?? 0;
         const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
-        props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
+        const own = opts.capture?.scenes?.[i];
+        // The page of this scene's feature when one was matched; else a section of the home page.
+        props = own?.screens[0] && own.screens[0] !== screens[0] ? { ...look, file: own.screens[0], focusY: 0, label: '', text: title } : { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
       } else if (scene.recipeId === 'brand/people-gallery') {
         const assets = opts.capture?.assets ?? [];
-        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6); // the scene shows six; the rest feed the recipes' picture slots and insets
+        const chosen = opts.capture?.scenes?.[i]?.crops ?? [];
+        // The people and photos chosen for this scene; without a catalogue, the finder's pictures then the crops.
+        const pics = (chosen.length ? chosen : [...assets.map((a) => a.url), ...crops, ...screens.slice(1)]).filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6);
         // Each picture the asset finder labelled keeps its own caption (what it shows); the rest take the site's section names in order.
         const label = (a: { category: string; alt: string }) => (a.alt || a.category.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
         const notes = [...assets.map(label), ...(opts.capture?.sectionNames ?? [])];
@@ -348,7 +354,11 @@ const INSET_PAGE_H = 1200;
         clip(cardId, at, frames, {
           accent: palette.accent,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
-          ...(usesCapture ? { screens: rotated(screens, i), crops: rotated(crops, i * 3) } : {}),
+          ...(usesCapture
+            ? opts.capture?.scenes?.[i]?.crops.length
+              ? { screens: opts.capture.scenes[i]!.screens, crops: opts.capture.scenes[i]!.crops }
+              : { screens: rotated(screens, i), crops: rotated(crops, i * 3) }
+            : {}),
           ...(opts.texts?.[i] && Object.keys(opts.texts[i]).length ? { texts: opts.texts[i] } : {}),
         }, { speed: fitSpeed(card, frames) }),
       );
@@ -362,7 +372,7 @@ const INSET_PAGE_H = 1200;
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
         const label = (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || opts.capture?.title || '';
         insets.push(
-          clip('site-inset', at, frames, { file: bySection ? screens[0] : insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
+          clip('site-inset', at, frames, { file: opts.capture?.scenes?.[i]?.crops[0] ?? (bySection ? screens[0] : insetPool[k % insetPool.length]), side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
         );
       }
       // `*word*` marks emphasis on the title card only; everywhere else the markers are dropped.

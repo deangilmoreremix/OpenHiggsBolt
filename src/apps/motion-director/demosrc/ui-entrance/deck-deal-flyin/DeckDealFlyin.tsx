@@ -29,7 +29,7 @@ import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import layout from '../../_textures/live-layout.json';
 import { MotionStudioMark } from '../../_fixtures/Brand';
-import { liveTexture } from '../../_fixtures/liveTexture';
+import { liveCard, liveTexture } from '../../_fixtures/liveTexture';
 
 export const DECK_DEAL_FLYIN_DURATION = 150;
 
@@ -251,7 +251,7 @@ export const DeckDealFlyin: React.FC = () => {
                         opacity: 0.28 * (1 - diveT), filter: 'blur(7px)', borderRadius: 16, overflow: 'hidden',
                       }}
                     >
-                      <Img src={liveTexture(c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                      <Img src={liveCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                     </div>
                   ) : null}
                   <div
@@ -260,7 +260,7 @@ export const DeckDealFlyin: React.FC = () => {
                       transform, boxShadow: shadow, borderRadius: 16, overflow: 'hidden',
                     }}
                   >
-                    <Img src={liveTexture(c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                    <Img src={liveCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                     {pileShade > 0.005 && <div style={{ position: 'absolute', inset: 0, background: `rgba(10,10,12,${pileShade.toFixed(3)})` }} />}
                   </div>
                 </div>

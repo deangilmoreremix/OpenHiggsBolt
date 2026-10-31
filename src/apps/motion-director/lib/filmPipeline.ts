@@ -7,6 +7,8 @@
  * key, director down) the Ink Press template storyboard is built locally, so a
  * film request always ends in a film.
  */
+import { buildCatalogue, catalogueSummary } from './pictureCatalogue';
+import { assignPictures, picturesShown } from './assignPictures';
 import { AS_DESIGNED, SITE_THEME, luma, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
@@ -276,6 +278,15 @@ export async function buildFilmProject(
     : images.length
       ? { screens: images, crops: images }
       : null;
+  // Every picture the capture brought back, labelled, and the pictures each scene shows (upstream's feature -> shot map).
+  if (film && opts.capture) {
+    const catalogue = buildCatalogue(opts.capture);
+    const perScene = assignPictures(plan, catalogue);
+    film.scenes = perScene.map((p) => (p.ids.length ? { screens: p.screens, crops: p.crops } : undefined));
+    const summary = catalogueSummary(catalogue);
+    if (summary) log(`Sorted the site's pictures: ${summary}`, 'done');
+    log(`Each scene gets its own pictures: ${picturesShown(perScene)} different pictures across ${perScene.filter((p) => p.ids.length).length} scenes`, 'done');
+  }
   const attached = opts.media.find((m) => m.kind === 'audio');
   // No track attached: the film still gets music, as upstream's finished films do, unless the person asked for none.
   const noMusic = /\b(?:no|without|skip)\s+(?:the\s+)?(?:music|bgm|soundtrack|background music)\b/i.test(opts.prompt ?? '') || opts.music === false;

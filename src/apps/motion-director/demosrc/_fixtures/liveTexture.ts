@@ -82,6 +82,24 @@ export function textureOverrides(screens: readonly unknown[] = [], crops: readon
   if (cards.length) {
     CROP_TEXTURES.forEach((file, i) => { out[file] = cards[i % cards.length]; });
     out['card4-hires.png'] = out['card4.png'];
+    // Every card of the clip, numbered: recipes that draw many cards show this many distinct pictures.
+    cards.forEach((url, i) => { out[`card:${i}`] = url; });
+    out['card:count'] = String(cards.length);
   }
   return out;
+}
+
+/** How many pictures of its own the clip carries (0 = the recipe's sample cards). */
+export function liveCardCount(): number {
+  return Number(use(LiveTextureContext)['card:count'] ?? 0);
+}
+
+/**
+ * Card `index` of the clip's own pictures (each distinct while there are enough of them), else the
+ * sample file the recipe was designed with. For recipes that draw many cards (deck deal, wall, stack).
+ */
+export function liveCard(index: number, sampleFile: string): string {
+  const overrides = use(LiveTextureContext);
+  const n = Number(overrides['card:count'] ?? 0);
+  return n > 0 ? overrides[`card:${((index % n) + n) % n}`] : liveTexture(sampleFile);
 }

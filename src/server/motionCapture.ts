@@ -94,6 +94,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     partial: !capture.page,
     pages,
     crops: capture.crops.map((_, i) => at(`crop-${i + 1}.jpg`)!),
+    // What each crop shows (route, words, picture share, people, map), same order as `crops`.
+    cropInfo: capture.cropInfo?.length === capture.crops.length ? capture.cropInfo : undefined,
     images: (capture.images ?? []).map((_, i) => at(`image-${i + 1}.jpg`)!),
     // The asset finder's pictures of the site (people, team, products…), with what each one shows.
     assets: assets.map((a) => ({ url: at(a.name), category: a.category, alt: a.alt })).filter((a): a is { url: string; category: string; alt: string } => Boolean(a.url)),
