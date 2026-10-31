@@ -42,6 +42,10 @@ import { LAYER_IDS_BY_LAYOUT } from '../preview/presets'
 import type { PreviewLayoutId, PreviewLayerKind } from '../preview/types'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { buildPreviewInput } from './buildPreviewInput'
+import { FALLBACK_BACKDROP, LiveCompositionPreview } from './LiveCompositionPreview'
+import { applyLayoutPreset, removeDesignLayer } from '../preview/presets'
+import type { PreviewInputProps } from '../preview/types'
 
 /** Category keys for personalization layouts. */
 export type PersonalizationCategoryKey =
@@ -219,6 +223,18 @@ export interface PersonalizationTemplateBrowserProps {
 export function PersonalizationTemplateBrowser({ onSelect }: PersonalizationTemplateBrowserProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const { previewSettings, setPreviewLayout } = ctx
+  // The customer's brand, colors and selected video: every card previews its
+  // layout with them, through the same composition the editor renders.
+  const baseInputProps =
+    previewSettings && typeof previewSettings.fps === 'number'
+      ? buildPreviewInput({
+          source: ctx.source ?? null,
+          previewSettings,
+          previewVideo: ctx.previewVideo ?? null,
+          clientForm: ctx.clientForm || {},
+          assets: ctx.assets,
+        })
+      : null
   const [activeCategory, setActiveCategory] = useState<PersonalizationCategoryKey | 'all'>('all')
   const [query, setQuery] = useState('')
   const searchId = useId()
@@ -348,6 +364,7 @@ export function PersonalizationTemplateBrowser({ onSelect }: PersonalizationTemp
                   layoutId={layoutId}
                   active={previewSettings.layout === layoutId}
                   onSelect={handleSelect}
+                  baseInputProps={baseInputProps}
                 />
               ))}
             </div>
@@ -405,10 +422,12 @@ function TemplateCard({
   layoutId,
   active,
   onSelect,
+  baseInputProps = null,
 }: {
   layoutId: PreviewLayoutId
   active: boolean
   onSelect: (layoutId: PreviewLayoutId) => void
+  baseInputProps?: PreviewInputProps | null
 }): React.JSX.Element {
   const layout = PREVIEW_LAYOUTS.find((l) => l.id === layoutId)
   if (!layout) return <></>
@@ -443,7 +462,9 @@ function TemplateCard({
         borderColor: hovering || active ? C.cyanBorder : C.border,
       }}
     >
-      {clip ? (
+      {baseInputProps ? (
+        <LayoutLivePreview layoutId={layoutId} base={baseInputProps} playing={active || hovering} />
+      ) : clip ? (
         <TemplatePreview src={clip} active={active} hovering={hovering} />
       ) : (
         <TemplateLayerPreview layoutId={layoutId} />
@@ -511,6 +532,68 @@ function TemplateCard({
         </span>
       </button>
     </div>
+  )
+}
+
+/** Length of a layout card's looping preview, in seconds. */
+const LAYOUT_PREVIEW_SECONDS = 4
+const LAYOUT_CARD_WIDTH = 1280
+const LAYOUT_CARD_HEIGHT = 720
+
+/** This layout applied to the customer's brand, on a still or playing backdrop. */
+function layoutCardInputProps(layoutId: PreviewLayoutId, base: PreviewInputProps, playing: boolean): PreviewInputProps {
+  const fps = base.settings.fps > 0 ? base.settings.fps : 30
+  const settings = applyLayoutPreset(removeDesignLayer(base.settings), layoutId)
+  const hasVideo = Boolean(base.videoUrl) && !base.isImageSource
+  return {
+    ...base,
+    // The still card never decodes the video; the one playing card does.
+    videoUrl: playing && hasVideo ? base.videoUrl : null,
+    isImageSource: !(playing && hasVideo),
+    posterUrl: base.posterUrl || FALLBACK_BACKDROP,
+    audioUrl: null,
+    settings: {
+      ...settings,
+      // Cards are always 16:9 at the card's own resolution, so the layout's
+      // normalized positions land where they will in the video.
+      aspectRatio: '16:9',
+      width: LAYOUT_CARD_WIDTH,
+      height: LAYOUT_CARD_HEIGHT,
+      // The branded end card belongs to every layout; showing it here would
+      // make the short card loop end on the same frame for all of them.
+      showEndCard: layoutId === 'branded-ending',
+      durationInFrames: Math.round(LAYOUT_PREVIEW_SECONDS * fps),
+    },
+  }
+}
+
+/** Live preview of a layout card, drawn with the customer's own brand. */
+function LayoutLivePreview({
+  layoutId,
+  base,
+  playing,
+}: {
+  layoutId: PreviewLayoutId
+  base: PreviewInputProps
+  playing: boolean
+}): React.JSX.Element {
+  const fps = base.settings.fps > 0 ? base.settings.fps : 30
+  const durationInFrames = Math.round(LAYOUT_PREVIEW_SECONDS * fps)
+  return (
+    <span
+      data-testid="personalization-template-player"
+      style={{ position: 'relative', display: 'block', width: '100%', aspectRatio: '16 / 9', borderRadius: 8, overflow: 'hidden', background: '#06090d' }}
+    >
+      <LiveCompositionPreview
+        buildInputProps={() => layoutCardInputProps(layoutId, base, playing)}
+        playing={playing}
+        stillFrame={durationInFrames - 1}
+        durationInFrames={durationInFrames}
+        width={LAYOUT_CARD_WIDTH}
+        height={LAYOUT_CARD_HEIGHT}
+        fps={fps}
+      />
+    </span>
   )
 }
 

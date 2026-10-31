@@ -10,8 +10,8 @@ import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { DEFAULT_PREVIEW_BRAND_COLORS, PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS } from '../preview/presets'
-import { DESIGN_CATEGORY_LABELS, LAYER_LABELS } from './layerChanges'
-import type { RemotionDesignCategory, RemotionDesignTemplate } from '../templates/types'
+import { LAYER_LABELS } from './layerChanges'
+import { DesignGallery } from './DesignGallery'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import { chooseFinalOutputPath } from '../finalOutput'
 
@@ -41,16 +41,6 @@ const stepNumberStyle: React.CSSProperties = {
   color: C.cyan,
   fontSize: 9,
   fontWeight: 800,
-}
-
-/** Designs grouped into chip rows by category, in the catalog's label order. */
-function groupDesignsByCategory(
-  designs: RemotionDesignTemplate[],
-): [RemotionDesignCategory, RemotionDesignTemplate[]][] {
-  const order = Object.keys(DESIGN_CATEGORY_LABELS) as RemotionDesignCategory[]
-  return order
-    .map((category) => [category, designs.filter((design) => (design.category in DESIGN_CATEGORY_LABELS ? design.category : 'other') === category)] as [RemotionDesignCategory, RemotionDesignTemplate[]])
-    .filter(([, entries]) => entries.length > 0)
 }
 
 /**
@@ -105,7 +95,6 @@ export function StepPreviewApprove(): React.JSX.Element {
   const brandColors = { ...DEFAULT_PREVIEW_BRAND_COLORS, ...(previewSettings.brandColors ?? {}) }
   const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) ?? null
   const activeDesign = remotionDesignTemplates.find((design) => design.id === activeRemotionDesignId) ?? null
-  const designGroups = groupDesignsByCategory(remotionDesignTemplates)
   const [showVideoAdvanced, setShowVideoAdvanced] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
 
@@ -199,37 +188,16 @@ export function StepPreviewApprove(): React.JSX.Element {
             <div style={stepLabelStyle}>
               <span style={stepNumberStyle}>2</span> Animated design <span style={{ color: C.muted, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(optional — added on top of your starting look)</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setRemotionDesign(null)}
-                  aria-pressed={activeRemotionDesignId === null}
-                  style={chipStyle(activeRemotionDesignId === null)}
-                >
-                  None
-                </button>
-              </div>
-              {designGroups.map(([category, designs]) => (
-                <div key={category}>
-                  <div style={{ ...labelStyle, marginBottom: 4 }}>{DESIGN_CATEGORY_LABELS[category]}</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {designs.map((design) => (
-                      <button
-                        key={design.id}
-                        type="button"
-                        onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
-                        aria-pressed={activeRemotionDesignId === design.id}
-                        title={design.description}
-                        style={chipStyle(activeRemotionDesignId === design.id)}
-                      >
-                        {design.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p style={{ ...hintStyle, marginTop: 0, marginBottom: 8 }}>
+              Each card shows the design with your own logo, text and colors. Hover a card to watch it play,
+              click to add it.
+            </p>
+            <DesignGallery
+              designs={remotionDesignTemplates}
+              activeDesignId={activeRemotionDesignId}
+              onSelect={setRemotionDesign}
+              inputProps={inputProps}
+            />
             {activeDesign ? <p style={{ ...hintStyle, marginTop: 8 }}>{activeDesign.description}</p> : null}
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
