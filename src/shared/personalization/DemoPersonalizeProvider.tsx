@@ -87,7 +87,7 @@ import {
 import { registerSupabaseSharedMedia } from './supabaseSharedMedia'
 import { personalizePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
-import { optionsForGeneration, resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
+import { fitToModel, optionsForGeneration, resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { uploadPersonalizationAsset } from './assetUploadService'
@@ -98,6 +98,7 @@ import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
@@ -4682,9 +4683,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         setGeneration((prev) => ({ ...prev, progress: 88, progressMessage: 'Adding your layers to the video…' }))
         try {
           const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
+          // Draw the layers at the generated clip's own length and shape.
+          const clip = await readClipMetadata(genResult.url)
           const inputProps = buildPreviewInput({
             source,
-            previewSettings,
+            previewSettings: fitSettingsToClip(previewSettings, clip),
             previewVideo: { url: genResult.url, poster: null, title: source.title, kind: 'source' },
             clientForm,
             assets,
@@ -4975,7 +4978,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
     // video keep the existing generate() flow exactly.
-    if (access !== 'authenticated') return
+    if (access !== 'authenticated' || !source) return
     const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
 
     if (finalPath === 'ai-generation') {
@@ -4987,9 +4990,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // The approved preview's settings for this run. They're also saved to
       // the options, but passed directly: a setGenOptions in the same tick
       // isn't visible to generate yet.
+      // What the user chose, limited to what this mode's model can make.
+      const fitted = fitToModel(
+        resolveModelCapabilities(source, optionsForGeneration(source, genOptions, mode)),
+        { aspectRatio: previewSettings.aspectRatio, durationSeconds: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)) },
+        genOptions.aspectRatio,
+      )
       const finalOptions: Partial<GenerationOptions> = {
-        aspectRatio: previewSettings.aspectRatio,
-        duration: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)),
+        aspectRatio: fitted.aspectRatio,
+        duration: fitted.duration,
         ...(hasLogo ? { exactLogoHandling: 'final-overlay' as const } : {}),
         ...(hasCta ? { exactCtaHandling: 'final-end-card' as const } : {}),
       }
@@ -5135,7 +5144,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         errorMessage: error instanceof Error ? error.message : 'Branded render failed',
       })
     }
-  }, [previewSettings, previewSeed, previewVideo, source, runGenerate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun])
+  }, [previewSettings, previewSeed, previewVideo, source, runGenerate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun, genOptions])
 
   const cancelExport = useCallback(() => {
     cancelActiveExport()

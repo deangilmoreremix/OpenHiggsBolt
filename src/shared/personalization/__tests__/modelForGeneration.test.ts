@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  fitToModel,
   FACE_SWAP_MODEL,
   FULL_BODY_MODEL,
   optionsForGeneration,
@@ -51,5 +52,22 @@ describe('generation uses the model the mode really calls', () => {
 
   it('an advanced model choice still applies to Recreate', () => {
     expect(optionsForGeneration(demo, { ...options, advancedModel: 'kling-v2' }, 'recreate').model).toBe('kling-v2')
+  })
+})
+
+describe('fitToModel', () => {
+  const veo = { aspectRatioOptions: ['16:9', '9:16', '1:1'], durationOptions: [4, 6, 8] }
+
+  it('keeps what the user chose when the model supports it', () => {
+    expect(fitToModel(veo, { aspectRatio: '9:16', durationSeconds: 6 })).toEqual({ aspectRatio: '9:16', duration: 6 })
+  })
+
+  it('never sends a ratio the model lacks; uses the nearest length it offers', () => {
+    expect(fitToModel(veo, { aspectRatio: '4:5', durationSeconds: 5 }, '1:1')).toEqual({ aspectRatio: '1:1', duration: 4 })
+    expect(fitToModel(veo, { aspectRatio: '4:5', durationSeconds: 30 })).toEqual({ aspectRatio: '16:9', duration: 8 })
+  })
+
+  it('passes values through for models without fixed options', () => {
+    expect(fitToModel({ aspectRatioOptions: [], durationOptions: [] }, { aspectRatio: '4:5', durationSeconds: 12 })).toEqual({ aspectRatio: '4:5', duration: 12 })
   })
 })

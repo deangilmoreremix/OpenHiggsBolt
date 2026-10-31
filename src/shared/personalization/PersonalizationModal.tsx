@@ -2046,6 +2046,7 @@ function ConfigurationView(props: any) {
     moveDiscoveredAssetToSection: ctxMoveDiscoveredAssetToSection,
     previewSettings: ctxPreviewSettings,
     promptNotice,
+    updatePreviewComposition: ctxUpdatePreviewComposition,
   } = useDemoPersonalize()
   const isAuto = (key: AutoFillKey) => Boolean(autoFilledKeys?.has(key))
   // Contexts without the tab API (partial test doubles) still get a working
@@ -2173,6 +2174,8 @@ function ConfigurationView(props: any) {
   // affordances exist — the modal never renders a paid action the server has not
   // granted.
   const isAnonymous = access !== 'authenticated'
+  // Face only / Full presenter models set their own resolution and quality.
+  const modelSetsQuality = mode === 'face_only' || mode === 'full_body'
   // Saved clients are picked one way at a time: the cards (customer audience)
   // or else the dropdown in the profile form.
   const showSavedClientCards = !isAnonymous && clientForm.audience === 'customer' && clients.length > 0
@@ -4798,9 +4801,19 @@ function ConfigurationView(props: any) {
             {capabilities.aspectRatioOptions.length > 0 ? (
               <div>
                 <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Aspect Ratio</label>
+                {/* One aspect ratio for the preview, the AI run and the final
+                    file (the preview's own setting used to override this). */}
                 <select
-                  value={genOptions?.aspectRatio || source.aspectRatio || capabilities.aspectRatioOptions[0] || ''}
-                  onChange={(e) => updateGenOptions({ ...genOptions, aspectRatio: e.target.value })}
+                  value={
+                    (ctxPreviewSettings && capabilities.aspectRatioOptions.includes(ctxPreviewSettings.aspectRatio) ? ctxPreviewSettings.aspectRatio : '') ||
+                    genOptions?.aspectRatio || source.aspectRatio || capabilities.aspectRatioOptions[0] || ''
+                  }
+                  onChange={(e) => {
+                    updateGenOptions({ ...genOptions, aspectRatio: e.target.value })
+                    if (['16:9', '9:16', '1:1', '4:5'].includes(e.target.value)) {
+                      ctxUpdatePreviewComposition?.({ aspectRatio: e.target.value as '16:9' | '9:16' | '1:1' | '4:5' })
+                    }
+                  }}
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   style={{ borderColor: C.border, background: C.field, color: C.text }}
                 >
@@ -4819,6 +4832,8 @@ function ConfigurationView(props: any) {
               <div>
                 <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Resolution</label>
                 <select
+                  disabled={modelSetsQuality}
+                  title={modelSetsQuality ? 'Set by the face-swap / recast model' : undefined}
                   value={genOptions?.resolution || ''}
                   onChange={(e) => updateGenOptions({ ...genOptions, resolution: e.target.value })}
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
@@ -4835,6 +4850,8 @@ function ConfigurationView(props: any) {
               <div>
                 <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Quality</label>
                 <select
+                  disabled={modelSetsQuality}
+                  title={modelSetsQuality ? 'Set by the face-swap / recast model' : undefined}
                   value={genOptions?.quality || ''}
                   onChange={(e) => updateGenOptions({ ...genOptions, quality: e.target.value })}
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
@@ -4852,7 +4869,12 @@ function ConfigurationView(props: any) {
                 <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Duration</label>
                 <select
                   value={genOptions?.duration || source.duration || ''}
-                  onChange={(e) => updateGenOptions({ ...genOptions, duration: e.target.value ? parseInt(e.target.value) : undefined })}
+                  onChange={(e) => {
+                    const seconds = e.target.value ? parseInt(e.target.value) : undefined
+                    updateGenOptions({ ...genOptions, duration: seconds })
+                    // Same length for the preview and the final file.
+                    if (seconds && ctxPreviewSettings) ctxUpdatePreviewComposition?.({ durationInFrames: seconds * ctxPreviewSettings.fps })
+                  }}
                   className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
                   style={{ borderColor: C.border, background: C.field, color: C.text }}
                 >
@@ -4862,17 +4884,11 @@ function ConfigurationView(props: any) {
                 </select>
               </div>
             )}
-            <div>
-              <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Engine</label>
-              <select
-                value={genOptions?.engine || 'smartvideo-recommended'}
-                onChange={(e) => updateGenOptions({ ...genOptions, engine: e.target.value })}
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                style={{ borderColor: C.border, background: C.field, color: C.text }}
-              >
-                <option value="smartvideo-recommended">SmartVideo Recommended</option>
-              </select>
-            </div>
+            {modelSetsQuality && (
+              <div className="col-span-2" style={{ color: C.muted, fontSize: 11 }}>
+                Resolution and quality are set by the {mode === 'face_only' ? 'face-swap' : 'recast'} model.
+              </div>
+            )}
             <div className="flex items-end">
               <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: C.muted }}>
                 <input
@@ -4881,7 +4897,7 @@ function ConfigurationView(props: any) {
                   onChange={(e) => updateGenOptions({ ...genOptions, preserveAudio: e.target.checked })}
                   className="rounded"
                 />
-                Preserve Audio
+                Keep the original video&apos;s sound
               </label>
             </div>
           </div>

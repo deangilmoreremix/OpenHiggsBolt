@@ -18,6 +18,13 @@ import {
   type HarnessRef,
 } from './_createFinalVideoHarness'
 import { runGeneration } from '../generationRouter'
+import { readClipMetadata } from '../preview/fitSettingsToClip'
+
+// The generated clip: 8 s, portrait.
+vi.mock('../preview/fitSettingsToClip', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../preview/fitSettingsToClip')>()),
+  readClipMetadata: vi.fn(async () => ({ durationSeconds: 8, width: 720, height: 1280 })),
+}))
 import { applyPostProcessing } from '../postProcessor'
 
 const GENERATED = 'https://cdn.example/generated.mp4'
@@ -65,6 +72,11 @@ describe('createFinalVideo with an AI mode', () => {
     // The layers are rendered over the generated clip; no MuAPI watermark.
     expect(renderMediaOnWeb).toHaveBeenCalledTimes(1)
     expect(renderMediaOnWeb.mock.calls[0][0].inputProps.videoUrl).toBe(GENERATED)
+    // …at the clip's own length and shape, so it isn't cut, padded or cropped.
+    expect(readClipMetadata).toHaveBeenCalledWith(GENERATED)
+    const composition = renderMediaOnWeb.mock.calls[0][0].composition
+    expect(composition.durationInFrames).toBe(8 * settings.fps)
+    expect([composition.width, composition.height]).toEqual([1080, 1920])
     expect(applyPostProcessing).not.toHaveBeenCalled()
 
     const result = getCtx(ref).result

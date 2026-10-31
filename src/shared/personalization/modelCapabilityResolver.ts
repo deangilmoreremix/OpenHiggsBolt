@@ -184,6 +184,27 @@ export function optionsForGeneration(
   return { ...options, advancedModel: undefined, model }
 }
 
+/**
+ * The aspect ratio and length a run should ask the model for: what the user
+ * chose (the preview's settings) when the model supports it, otherwise the
+ * closest thing it does support.
+ */
+export function fitToModel(
+  capabilities: Pick<ModelCapabilities, 'aspectRatioOptions' | 'durationOptions'>,
+  wanted: { aspectRatio: string; durationSeconds: number },
+  fallbackAspectRatio?: string,
+): { aspectRatio: string; duration: number } {
+  const ratios = capabilities.aspectRatioOptions
+  const aspectRatio = !ratios.length || ratios.includes(wanted.aspectRatio)
+    ? wanted.aspectRatio
+    : fallbackAspectRatio && ratios.includes(fallbackAspectRatio) ? fallbackAspectRatio : ratios[0]
+  const durations = capabilities.durationOptions
+  const duration = !durations.length
+    ? wanted.durationSeconds
+    : durations.reduce((best, d) => (Math.abs(d - wanted.durationSeconds) < Math.abs(best - wanted.durationSeconds) ? d : best), durations[0])
+  return { aspectRatio, duration }
+}
+
 // ── Capabilities Resolution ──────────────────────────────────────────────────
 
 export function resolveModelCapabilities(
