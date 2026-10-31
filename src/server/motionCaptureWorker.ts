@@ -20,7 +20,7 @@ import {
 } from './motionCapture'
 
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
-export const WORKER_CAPTURE_OPTIONS = { hardMs: 360_000, budgetMs: 300_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
+export const WORKER_CAPTURE_OPTIONS = { hardMs: 300_000, budgetMs: 240_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
 
 export interface MotionCaptureJobRequest {
   jobId: string

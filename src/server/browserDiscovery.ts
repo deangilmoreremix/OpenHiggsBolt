@@ -2225,7 +2225,7 @@ export async function capturePageScreenshots(
         const cards: CaptureRect[] = acc?.cards ?? []
         for (const rect of rects) {
           if (left() < 5_000 && crops.length >= 2) break
-          const crop = await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }).catch(() => null)
+          const crop = await page.screenshot({ type: 'jpeg', quality: deep ? 76 : 85, fullPage: true, clip: rect }).catch(() => null)
           if (!crop) continue
           crops.push(crop)
           cards.push(rect)
@@ -2246,7 +2246,7 @@ export async function capturePageScreenshots(
           const bottom = Math.min(DEEP_MAX_Y, docHeight || 0)
           for (const clip of bandRects(pageHeight, bottom, CAPTURE_VIEWPORT.width, Math.round(CAPTURE_VIEWPORT.width * (9 / 16)), DEEP_MAX_BANDS)) {
             if (left() < 6_000) break
-            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip }).catch(() => null)
+            const band = await page.screenshot({ type: 'jpeg', quality: 72, fullPage: true, clip }).catch(() => null)
             if (band) crops.push(band)
           }
         }
