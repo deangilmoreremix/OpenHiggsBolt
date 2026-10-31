@@ -973,7 +973,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
       role="dialog"
       aria-modal="true"
       aria-labelledby="smartvideo-go-image-editor-title"
-      className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto"
+      // Top-aligned below lg: a centered dialog taller than the screen
+      // would push its header above the top, out of scroll reach.
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto lg:items-center"
       style={{ background: 'rgba(0,0,0,0.8)' }}
       onClick={onClose}
       onDragOver={handleDragOver}
@@ -982,11 +984,14 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     >
       <div
         ref={modalRef}
-        className={'relative mx-4 my-8 w-full rounded-2xl border border-white/10 ' + (editorMode === 'advanced' ? 'max-w-7xl' : 'max-w-4xl') + (dragOver ? ' border-cyan-400/60' : '')}
+        // Large screens: a fixed frame (header + panes that scroll on their
+        // own), so the image, the AI controls and "Use Edited Asset" are all
+        // on screen at once. Small screens keep one normal scroll.
+        className={'relative mx-4 my-8 w-full rounded-2xl border border-white/10 lg:my-0 lg:flex lg:h-[92vh] lg:flex-col lg:overflow-hidden ' + (editorMode === 'advanced' ? 'max-w-7xl' : 'max-w-6xl') + (dragOver ? ' border-cyan-400/60' : '')}
         style={{ background: 'var(--bg-panel)', boxShadow: dragOver ? '0 0 40px rgba(34,211,238,.18)' : undefined }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
+        <div className="flex flex-none items-center justify-between border-b border-white/10 p-4">
           {dragOver && (
             <div className="absolute inset-x-0 top-0 z-50 flex items-center justify-center rounded-t-2xl border border-cyan-400/40 bg-cyan-400/10 py-3 text-xs font-bold uppercase tracking-wide text-cyan-300">
               Drop asset to replace current image
@@ -1042,7 +1047,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         </div>
 
         {editorMode === 'simple' ? (
-          <div className="space-y-4 p-4">
+          <div data-testid="image-editor-simple" className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="flex flex-col gap-3 p-4 lg:min-h-0 lg:overflow-y-auto">
             <MediaStage
               src={streamingPreview || displayUrl}
               originalSrc={asset.originalImageUrl}
@@ -1051,6 +1057,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               aspectRatio={aspectRatio}
               busyLabel={busyLabel}
               progressive={Boolean(streamingPreview)}
+              fill
             />
 
             <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: semantic.textMuted }}>
@@ -1062,6 +1069,11 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               {asset.source === 'discovered' && <><span>•</span><span>Discovered Asset</span></>}
             </div>
 
+            <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={(index) => { setVersionIndex(index); setValidationOverrideVersionId(null) }} compact />
+          </div>
+
+          <div className="flex flex-col border-white/10 lg:min-h-0 lg:border-l">
+          <div data-testid="image-editor-controls" className="space-y-4 p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1099,7 +1111,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/80"><MessageSquare size={14} /> Ask SmartVideo GO AI</div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                 <textarea
                   value={customPrompt}
                   onChange={(event) => setCustomPrompt(event.target.value)}
@@ -1107,13 +1119,11 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                   placeholder="Example: Remove the truck behind the contractor, but keep the contractor exactly the same."
                   className="min-h-[78px] flex-1 resize-none rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-400/50"
                 />
-                <button type="button" onClick={runResponsesSmartEdit} disabled={!customPrompt.trim() || Boolean(busyLabel)} className="inline-flex min-w-[120px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
+                <button type="button" onClick={runResponsesSmartEdit} disabled={!customPrompt.trim() || Boolean(busyLabel)} className="inline-flex min-h-[38px] min-w-[120px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
                   <Sparkles size={14} /> Smart Edit
                 </button>
               </div>
             </div>
-
-            <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={(index) => { setVersionIndex(index); setValidationOverrideVersionId(null) }} />
 
             {currentVersion.revisedPrompt && (
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[10px] leading-4 text-white/40">
@@ -1140,8 +1150,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                 )}
               </div>
             )}
+          </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <div data-testid="image-editor-actions" className="sticky bottom-0 z-10 flex flex-none flex-wrap items-center justify-between gap-3 rounded-b-2xl border-t border-white/10 p-4 lg:static" style={{ background: 'var(--bg-panel)' }}>
               <div className="flex flex-wrap gap-2">
                 {versions.length > 1 && (
                   <button type="button" onClick={() => setCompareMode((value) => !value)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={buttons.ghost}>
@@ -1162,9 +1173,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               </button>
             </div>
           </div>
+          </div>
         ) : (
-          <div className="grid min-h-[700px] grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)_300px]">
-            <aside className="border-r border-white/10 p-3">
+          <div data-testid="image-editor-advanced" className="grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:grid-cols-[210px_minmax(0,1fr)_300px]">
+            <aside className="border-r border-white/10 p-3 lg:min-h-0 lg:overflow-y-auto">
               <button type="button" onClick={() => setEditorMode('simple')} className="mb-3 w-full rounded-xl px-3 py-2 text-left text-xs font-semibold" style={buttons.ghost}>← Back to Simple</button>
               <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[.15em] text-white/30">Tools</div>
               <div className="space-y-1">
@@ -1181,7 +1193,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               </div>
             </aside>
 
-            <main className="min-w-0 border-r border-white/10 p-4">
+            <main className="flex min-w-0 flex-col border-r border-white/10 p-4 lg:min-h-0 lg:overflow-y-auto">
               {maskMode ? (
                 <MaskEditor imageUrl={displayUrl} active={maskMode} onMaskChange={setMaskBlob} />
               ) : (
@@ -1194,6 +1206,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                     aspectRatio={aspectRatio}
                     busyLabel={busyLabel}
                     progressive={Boolean(streamingPreview)}
+                    fill
                     previewStyle={{
                       transform: 'scale(' + (zoom / 100) + ') rotate(' + rotation + 'deg) scaleX(' + (flipX ? -1 : 1) + ') scaleY(' + (flipY ? -1 : 1) + ')',
                       filter:
@@ -1209,7 +1222,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               {error && <div className="mt-3"><ErrorBox message={error} /></div>}
             </main>
 
-            <aside className="max-h-[700px] overflow-y-auto p-4 custom-scrollbar">
+            <aside className="flex flex-col lg:min-h-0">
+              <div className="p-4 custom-scrollbar lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               <div className="mb-4">
                 <div className="mb-2 text-[10px] font-bold uppercase tracking-[.15em] text-white/30">{GROUP_LABELS[activeGroup]} AI Tools</div>
                 <div className="space-y-2">
@@ -1318,8 +1332,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                   ))}
                 </div>
               </div>
+              </div>
 
-              <div className="mt-4 flex gap-2">
+              <div data-testid="image-editor-advanced-actions" className="sticky bottom-0 z-10 flex-none rounded-b-2xl border-t border-white/10 p-4 lg:static" style={{ background: 'var(--bg-panel)' }}>
+              <div className="flex gap-2">
                 <button type="button" onClick={() => setSafeArea((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={safeArea ? buttons.activePill : buttons.ghost}><Grid3X3 size={13} className="mr-1 inline" /> Safe Area</button>
                 {versions.length > 1 && <button type="button" onClick={() => setCompareMode((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={buttons.ghost}><GitCompare size={13} className="mr-1 inline" /> Compare</button>}
               </div>
@@ -1327,6 +1343,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || versionIndex === 0} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Use Edited Asset
               </button>
+              </div>
             </aside>
           </div>
         )}
@@ -1344,6 +1361,7 @@ function MediaStage({
   busyLabel,
   progressive = false,
   previewStyle,
+  fill = false,
 }: {
   src: string
   originalSrc: string
@@ -1353,6 +1371,8 @@ function MediaStage({
   busyLabel: string | null
   progressive?: boolean
   previewStyle?: CSSProperties
+  /** Grow to the height of its pane (fixed-frame layout) on large screens. */
+  fill?: boolean
 }) {
   if (compareMode) {
     return (
@@ -1364,9 +1384,9 @@ function MediaStage({
   }
 
   return (
-    <div className="relative flex min-h-[360px] w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+    <div className={'relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-black ' + (fill ? 'min-h-[220px] lg:min-h-[240px] lg:flex-1' : 'min-h-[360px]')}>
       <div className="absolute inset-0 opacity-25" style={{ backgroundImage: 'linear-gradient(45deg,#222 25%,transparent 25%),linear-gradient(-45deg,#222 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#222 75%),linear-gradient(-45deg,transparent 75%,#222 75%)', backgroundSize: '22px 22px', backgroundPosition: '0 0,0 11px,11px -11px,-11px 0' }} />
-      <img src={src} alt="SmartVideo GO edit preview" className="relative z-[1] max-h-[64vh] max-w-full object-contain transition-all" style={previewStyle} />
+      <img src={src} alt="SmartVideo GO edit preview" className={'relative z-[1] max-w-full object-contain transition-all ' + (fill ? 'max-h-[40vh] lg:absolute lg:inset-0 lg:m-auto lg:max-h-full' : 'max-h-[64vh]')} style={previewStyle} />
 
       {safeArea && (
         <div className="pointer-events-none absolute inset-[7%] z-[2] rounded-lg border border-dashed border-cyan-300/70">
