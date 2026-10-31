@@ -58,6 +58,71 @@ function RecastPanel({ caption, children }: { caption: string; children: ReactNo
 
 const mediaStyle: CSSProperties = { width: '100%', height: '100%', objectFit: 'cover', display: 'block' }
 
+/** Bundled example (open-genjutsu sample media, MIT) in public/media/recast-example. */
+export const RECAST_EXAMPLE = {
+  source: '/media/recast-example/source-performance.mp4',
+  sourcePoster: '/media/recast-example/source-poster.jpg',
+  character: '/media/recast-example/character.jpg',
+  result: '/media/recast-example/recast-result.mp4',
+  resultPoster: '/media/recast-example/result-poster.jpg',
+} as const
+
+/**
+ * "See an example result": what a recast does, before the user spends
+ * anything. The source and result clips play in sync.
+ */
+function RecastExample({ defaultOpen }: { defaultOpen: boolean }) {
+  const sourceRef = useRef<HTMLVideoElement | null>(null)
+  const resultRef = useRef<HTMLVideoElement | null>(null)
+  const sync = () => {
+    const source = sourceRef.current
+    const result = resultRef.current
+    if (!source || !result) return
+    source.currentTime = result.currentTime
+  }
+  const exampleCaption: CSSProperties = { ...panelCaption(''), fontSize: 9, padding: '6px 8px' }
+  const tile: CSSProperties = { position: 'relative', margin: 0, aspectRatio: '9 / 16', maxHeight: 300, background: '#0b0d10', overflow: 'hidden' }
+  return (
+    <details open={defaultOpen} data-testid="pz-recast-example" style={{ margin: '12px 0 4px', border: `1px solid ${C.border}`, borderRadius: 14, background: C.panel, padding: '10px 12px' }}>
+      <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 800, color: C.text }}>
+        ▶ See an example result
+      </summary>
+      <div className="grid grid-cols-3" style={{ gap: 4, marginTop: 10, borderRadius: 12, overflow: 'hidden', background: '#000', maxWidth: 520 }}>
+        <figure style={tile}>
+          <figcaption style={exampleCaption}>Source performance</figcaption>
+          <video ref={sourceRef} src={RECAST_EXAMPLE.source} poster={RECAST_EXAMPLE.sourcePoster} muted loop playsInline autoPlay preload="metadata" style={mediaStyle} />
+        </figure>
+        <figure style={tile}>
+          <figcaption style={exampleCaption}>Character image</figcaption>
+          <img src={RECAST_EXAMPLE.character} alt="Example character" style={mediaStyle} loading="lazy" />
+        </figure>
+        <figure style={tile}>
+          <figcaption style={exampleCaption}>Recast result</figcaption>
+          <video
+            ref={resultRef}
+            src={RECAST_EXAMPLE.result}
+            poster={RECAST_EXAMPLE.resultPoster}
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            onPlay={sync}
+            onSeeked={sync}
+            style={mediaStyle}
+            data-testid="pz-recast-example-result"
+          />
+        </figure>
+      </div>
+      <p style={{ margin: '8px 0 0', color: C.muted2, fontSize: 10, lineHeight: 1.5, maxWidth: 520 }}>
+        Example with a fictional performer and character: the studio, movement and camera stay the same and the
+        person is swapped. Your result uses your clip and your client’s photo. Sample media:{' '}
+        <a href="https://github.com/deangilmoreremix/open-genjutsu" target="_blank" rel="noreferrer" style={{ color: C.muted }}>open-genjutsu</a> (MIT).
+      </p>
+    </details>
+  )
+}
+
 export function FullBodyRecastSection({ source }: { source: PersonalizationSource | null }) {
   const ctx = useDemoPersonalize()
   const {
@@ -182,6 +247,8 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
         the performer is replaced. The result becomes the video for the preview, overlays and Step 4.
       </p>
 
+      <RecastExample defaultOpen={!recastJob && presenterVideos.length === 0} />
+
       <ol aria-label="Recast steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 6, listStyle: 'none', margin: '14px 0', padding: 0 }}>
         {STEPS.map((label, index) => {
           const active = index === stepIndex
@@ -279,7 +346,7 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
               <span style={{ color: 'rgba(255,255,255,.55)' }}>You can switch tabs or close this — it keeps going.</span>
             </div>
           ) : (
-            <span style={{ color: 'rgba(255,255,255,.45)', fontSize: 11 }}>✦ Your recast appears here</span>
+            <span style={{ color: 'rgba(255,255,255,.45)', fontSize: 11, textAlign: 'center', padding: 12 }}>✦ Your recast appears here<br />(see the example above)</span>
           )}
         </RecastPanel>
       </div>

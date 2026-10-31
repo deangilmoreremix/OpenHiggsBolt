@@ -389,9 +389,10 @@ describe('Full Body Recast tab', () => {
     muapi.processMotionControl.mockReset()
     const container = await openRecastTab()
     const panel = container.querySelector('#pz-tabpanel-recast') as HTMLElement
-    expect(within(panel).getByText('Source performance')).toBeTruthy()
-    expect(within(panel).getByText('Character image')).toBeTruthy()
-    expect(within(panel).getByText('Recast result')).toBeTruthy()
+    // Each caption appears twice: the example result and the real panels.
+    expect(within(panel).getAllByText('Source performance')).toHaveLength(2)
+    expect(within(panel).getAllByText('Character image')).toHaveLength(2)
+    expect(within(panel).getAllByText('Recast result')).toHaveLength(2)
     const run = screen.getByTestId('pz-recast-run') as HTMLButtonElement
     expect(run.disabled).toBe(true)
     expect(within(panel).getByText(/Choose a 4–30 s source clip/)).toBeTruthy()
@@ -438,6 +439,15 @@ describe('Full Body Recast tab', () => {
     expect(ctx().previewVideo).toBeNull()
     await act(async () => { fireEvent.click(screen.getByText('Use')) })
     expect(ctx().previewVideo).toMatchObject({ url: RESULT, kind: 'recast' })
+  })
+
+  it('shows the bundled example result, open until the client has a recast', async () => {
+    const container = await openRecastTab()
+    const example = container.querySelector('[data-testid="pz-recast-example"]') as HTMLDetailsElement
+    expect(example.open).toBe(true)
+    const result = container.querySelector('[data-testid="pz-recast-example-result"]') as HTMLVideoElement
+    expect(result.getAttribute('src')).toBe('/media/recast-example/recast-result.mp4')
+    expect(within(example).getByAltText('Example character').getAttribute('src')).toBe('/media/recast-example/character.jpg')
   })
 
   it('rejects a clip that is not MP4/MOV without uploading', async () => {
