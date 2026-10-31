@@ -306,7 +306,7 @@ describe('PersonalizationModal', () => {
     };
     expect(document.querySelector('#pz-overview')).toBeTruthy();
     await show('assets', 'yours');
-    expect(screen.getByRole('heading', { name: /CLIENT ASSETS/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /^YOUR ASSETS$/i })).toBeTruthy();
     await show('assets', 'content');
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy();
     await show('create', 'prompt');

@@ -297,7 +297,7 @@ test.describe('Personalization Remaining Flows — Live Verification', () => {
     await openPersonalization(page);
 
     // The lead-finder entry flow needs THREE clicks before the search form renders:
-    // (1) the "Client" audience button in STEP 1 — WHO IS THIS FOR?,
+    // (1) the "Client" audience button in WHO IS THIS FOR?,
     // (2) "Find Local Business" in the "How would you like to add this client?" chooser,
     // (3) only then do #business-niche / #business-location exist.
     const clientButton = page.getByRole('button', { name: /Client/i }).first();

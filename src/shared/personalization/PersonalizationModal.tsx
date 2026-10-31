@@ -55,6 +55,9 @@ import {
   SECTION_LOCATION,
 } from './advanced/AdvancedWorkspace'
 import { FullBodyRecastSection } from './advanced/FullBodyRecastPanel'
+import { ReadinessChecklist, blockingByTab, focusRequirementControl, requirementLocation } from './advanced/ReadinessChecklist'
+import { validateProjectRequirements } from './ai/toolExecutor'
+import type { AIMissingRequirement } from './ai/types'
 import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, BusinessOwnership, PersonalizationSource } from './types'
 import { LEAD_STAGES, isLeadStage } from './leadStages'
 import { ownershipBadgeStyle, ownershipLabel } from './ownershipBadge'
@@ -194,11 +197,20 @@ function isUsableImageSource(url?: string): boolean {
   }
 }
 
-function Field({ label, value, placeholder, onChange, full = false, autoFilled = false }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean; autoFilled?: boolean }) {
+function Field({ label, value, placeholder, onChange, full = false, autoFilled = false, required = false, focusId }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean; autoFilled?: boolean; required?: boolean; focusId?: string }) {
+  const missing = required && !String(value || '').trim()
   return (
-    <div className={full ? 'col-span-full' : ''}>
+    <div className={full ? 'col-span-full' : ''} data-pz-focus={focusId}>
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: C.muted, fontSize: 10 }}>
         {label}
+        {required && (
+          <span
+            data-testid="pz-required-tag"
+            style={{ padding: '1px 6px', borderRadius: 999, background: 'rgba(251,191,36,.1)', border: '1px solid rgba(251,191,36,.35)', color: '#fcd34d', fontSize: 9, fontWeight: 700 }}
+          >
+            Required
+          </span>
+        )}
         {autoFilled && (
           <span
             data-testid="pz-autofilled-tag"
@@ -213,11 +225,13 @@ function Field({ label, value, placeholder, onChange, full = false, autoFilled =
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={label}
+        aria-required={required || undefined}
         className="w-full outline-none"
         style={{
           minHeight: 40,
           padding: '0 11px',
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${missing ? 'rgba(251,191,36,.45)' : C.border}`,
           borderRadius: 8,
           background: C.field,
           color: C.text,
@@ -260,6 +274,8 @@ function UploadZone({
   urlLabel,
   urlPlaceholder,
   onUrl,
+  collapsed = false,
+  addLabel = '+ Add more',
 }: {
   primary: string
   secondary?: string
@@ -270,10 +286,14 @@ function UploadZone({
   urlLabel?: string
   urlPlaceholder?: string
   onUrl?: (url: string) => void
+  /** The card already has images: show one compact row until it is opened. */
+  collapsed?: boolean
+  addLabel?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [urlValue, setUrlValue] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault()
@@ -310,6 +330,32 @@ function UploadZone({
       handleUrlSubmit()
     }
   }, [handleUrlSubmit])
+
+  if (collapsed && !expanded) {
+    // Filled card: the URL box and big dropzone fold into one row (files can
+    // still be dropped on it).
+    return (
+      <button
+        type="button"
+        data-testid="pz-upload-collapsed"
+        onClick={() => setExpanded(true)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        disabled={disabled}
+        className="w-full rounded-[10px] border border-dashed text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+        style={{
+          minHeight: 36,
+          borderColor: isDragOver ? C.cyanBorder : 'rgba(255,255,255,.22)',
+          background: isDragOver ? 'rgba(41,211,242,.06)' : 'transparent',
+          color: C.cyan,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {disabled ? 'Limit reached — remove one to add another' : isDragOver ? 'Drop to add' : addLabel}
+      </button>
+    )
+  }
 
   return (
     <div>
@@ -1319,6 +1365,17 @@ export default function PersonalizationModal() {
     ? '✦ Personalize Video'
     : '✦ Generate Everything'
 
+  // What is still missing, shown before the click (checklist, step bar, footer).
+  const projectRequirements = validateProjectRequirements(ctx)
+  const blockingRequirement = projectRequirements.find((r) => r.severity === 'error' && requirementLocation(r.field))
+  const fixRequirement = (field: string) => {
+    const location = requirementLocation(field)
+    if (!location) return
+    ctx.setAdvancedSection?.(location.tab, location.section)
+    ctx.setAdvancedTab?.(location.tab)
+    focusRequirementControl(location.focus)
+  }
+
   return (
       <div
         className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-5"
@@ -1558,7 +1615,8 @@ export default function PersonalizationModal() {
               updateGenOptions={updateGenOptions}
                generate={generate}
                closePersonalize={closePersonalize}
-               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode))}
+               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) && !blockingRequirement}
+               requirements={projectRequirements}
                effectiveModelId={effectiveModelId}
                recommendedModelId={recommendedModelId}
                recommendedModel={recommendedModel}
@@ -1620,13 +1678,25 @@ export default function PersonalizationModal() {
         {/* Simple Mode replaces the footer with the wizard's own step navigation. */}
         {!isAnonymous && !personalizationInProgress && !simpleModeActive && generation.status !== 'complete' && generation.status !== 'error' && (
           <footer
-            className="flex justify-end gap-2.5 flex-shrink-0"
+            className="flex flex-wrap items-center justify-end gap-2.5 flex-shrink-0"
             style={{
               padding: '18px 26px 22px',
               borderTop: `1px solid ${C.border}`,
               background: '#0e1216',
             }}
           >
+            {blockingRequirement && (
+              // Why the main button is disabled, and a jump to fix it.
+              <button
+                type="button"
+                data-testid="pz-footer-reason"
+                onClick={() => fixRequirement(blockingRequirement.field)}
+                className="w-full sm:w-auto sm:mr-auto text-left text-[11px] font-bold"
+                style={{ background: 'transparent', border: 0, color: '#fcd34d', cursor: 'pointer', padding: 0 }}
+              >
+                ⚠ {blockingRequirement.message} <span style={{ color: C.cyan, textDecoration: 'underline' }}>Fix it</span>
+              </button>
+            )}
             <button
               onClick={closePersonalize}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
@@ -1642,7 +1712,8 @@ export default function PersonalizationModal() {
             </button>
             <button
               onClick={outputType === 'prompt' ? handlePersonalize : generate}
-              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || personalizationInProgress}
+              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || Boolean(blockingRequirement) || personalizationInProgress}
+              title={blockingRequirement ? blockingRequirement.message : undefined}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{
                 minWidth: 190,
@@ -1941,6 +2012,14 @@ function ConfigurationView(props: any) {
     selectAdvancedSection(tab, section)
     selectAdvancedTab(tab)
   }, [selectAdvancedSection, selectAdvancedTab])
+  const requirements = (props.requirements || []) as AIMissingRequirement[]
+  /** Open where a missing requirement is fixed and focus that control. */
+  const fixRequirement = (field: string) => {
+    const location = requirementLocation(field)
+    if (!location) return
+    goToSection(location.tab, location.section)
+    focusRequirementControl(location.focus)
+  }
   const {
     source, clients, selectedClientId, clientForm,
     selectClient, saveClient, deleteClient, updateClientForm,
@@ -2427,7 +2506,12 @@ function ConfigurationView(props: any) {
        <input ref={productInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
        <input ref={brandRefInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
 
-      <AdvancedStepBar active={advancedTab} onSelect={selectAdvancedTab} done={advancedTabsDone} />
+      <AdvancedStepBar
+        active={advancedTab}
+        onSelect={selectAdvancedTab}
+        done={advancedTabsDone}
+        issues={isAnonymous ? {} : blockingByTab(requirements)}
+      />
       <AdvancedSectionPills
         tab={advancedTab}
         active={activeSection}
@@ -2503,7 +2587,7 @@ function ConfigurationView(props: any) {
         {/* Client: "Find business" and "Profile" sections */}
         <AdvancedSectionPanel tab="client" section="find" sections={advancedSections}>
         <div id="pz-find-business" className="panel" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>STEP 1 — WHO IS THIS FOR?</h2>
+          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>WHO IS THIS FOR?</h2>
 
           {/* ── FIND MY BRAND — the single primary starting action ───────────
               Available in every personalization modal (anonymous and
@@ -3279,7 +3363,10 @@ function ConfigurationView(props: any) {
           )}
 
           <ResumeProjectBanner />
-          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
+          <h2 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
+          <p data-testid="pz-profile-required-hint" style={{ margin: '0 0 13px', color: C.muted, fontSize: 11 }}>
+            Only the business name is required — everything else improves the result.
+          </p>
           {businessLoadSummary && businessLoadSummary.details > 0 && (
             <div
               data-testid="pz-business-load-summary"
@@ -3369,7 +3456,7 @@ function ConfigurationView(props: any) {
                 </div>
               </div>
             )}
-            <Field autoFilled={isAuto('businessName')} label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
+            <Field autoFilled={isAuto('businessName')} required focusId="businessName" label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
             <Field autoFilled={isAuto('industry')} label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
             <Field autoFilled={isAuto('location')} label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
             <Field autoFilled={isAuto('phone')} label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
@@ -3405,7 +3492,7 @@ function ConfigurationView(props: any) {
       <AdvancedSectionPanel tab="assets" section="yours" sections={advancedSections}>
       {/* ── CLIENT ASSETS (full width, 6 numbered cards) ──────────── */}
       <section id="pz-client-assets" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 2 — CLIENT ASSETS</h2>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>YOUR ASSETS</h2>
         <p style={{ margin: '6px 0 18px', color: C.muted, fontSize: 12, lineHeight: 1.5 }}>
           Add the people, products, branding and visual references SmartVideo should use when personalizing this demo.
         </p>
@@ -3435,7 +3522,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Upload one or more photos of the person who should appear in the content.</p>
               </div>
             </div>
-            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" onFiles={handleIdentityUpload} multiple disabled={assets.identities.length >= capabilities.maxImages && capabilities.maxImages > 0} onUrl={handleIdentityUrl} urlLabel="Add Photo URL" urlPlaceholder="Paste image URL and press Enter" />
+            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" collapsed={assets.identities.length > 0} addLabel="+ Add more photos" onFiles={handleIdentityUpload} multiple disabled={assets.identities.length >= capabilities.maxImages && capabilities.maxImages > 0} onUrl={handleIdentityUrl} urlLabel="Add Photo URL" urlPlaceholder="Paste image URL and press Enter" />
             {capabilities.maxImages > 1 && (
               <div style={{ marginTop: 8, fontSize: 10, color: C.muted }}>{assets.identities.length} / {capabilities.maxImages} images uploaded</div>
             )}
@@ -3504,7 +3591,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Upload the client&apos;s exact logo for exact branding.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
+            <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" collapsed={assets.logos.length > 0} addLabel="+ Add another logo" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
             <div
               className="logo-preview frame-preview"
               draggable
@@ -3620,7 +3707,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Add products, finished work, locations or service images.</p>
               </div>
             </div>
-            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={handleProductUpload} multiple onUrl={handleProductUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
+            <UploadZone primary="Add Images" secondary="Drag & drop or browse" collapsed={assets.products.length > 0} onFiles={handleProductUpload} multiple onUrl={handleProductUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
             <div className="asset-label" style={{ marginTop: 13, marginBottom: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Uploaded Images</div>
             <div className="flex flex-wrap gap-2">
               {assets.products.length > 0 ? (
@@ -3679,7 +3766,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Show SmartVideo what the client&apos;s business and brand look like.</p>
               </div>
             </div>
-            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={handleBrandRefUpload} multiple onUrl={handleBrandRefUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
+            <UploadZone primary="Add Images" secondary="Drag & drop or browse" collapsed={assets.brandReferences.length > 0} onFiles={handleBrandRefUpload} multiple onUrl={handleBrandRefUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
             <div className="asset-label" style={{ marginTop: 13, marginBottom: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Brand Images</div>
             <div className="flex flex-wrap gap-2">
               {assets.brandReferences.length > 0 ? (
@@ -3738,7 +3825,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Control how the personalized video begins.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Image" onFiles={handleFirstFrameUpload} onUrl={handleFirstFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
+            <UploadZone primary="Upload Image" collapsed={Boolean(assets.firstFrame)} addLabel="Replace image" onFiles={handleFirstFrameUpload} onUrl={handleFirstFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
               draggable={!!assets.firstFrame}
@@ -3841,7 +3928,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Control how the personalized video ends.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Image" onFiles={handleLastFrameUpload} onUrl={handleLastFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
+            <UploadZone primary="Upload Image" collapsed={Boolean(assets.lastFrame)} addLabel="Replace image" onFiles={handleLastFrameUpload} onUrl={handleLastFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
               draggable={!!assets.lastFrame}
@@ -4263,7 +4350,7 @@ function ConfigurationView(props: any) {
           }}
         >
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>CTA Graphic</div>
-          <UploadZone primary="Upload CTA Graphic" secondary="Drag & drop or browse" onFiles={handleCtaUpload} onUrl={handleCtaUrl} urlLabel="Add CTA URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
+          <UploadZone primary="Upload CTA Graphic" secondary="Drag & drop or browse" collapsed={Boolean(assets.ctaGraphic)} addLabel="Replace graphic" onFiles={handleCtaUpload} onUrl={handleCtaUrl} urlLabel="Add CTA URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
           {assets.ctaGraphic?.url && (
             <div className="mt-3" style={{ maxWidth: 200 }}>
               <ThumbUploaded
@@ -4318,8 +4405,8 @@ function ConfigurationView(props: any) {
 
       <AdvancedSectionPanel tab="create" section="prompt" sections={advancedSections}>
       {/* ── PERSONALIZE THE PROMPT ──────────────────────────── */}
-      <section id="pz-prompt" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 3 — PERSONALIZE THE PROMPT</h2>
+      <section id="pz-prompt" data-pz-focus="prompt" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>PERSONALIZE THE PROMPT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 14 }}>
           <div className="prompt-box" style={{ minHeight: 150, border: `1px solid ${C.border}`, borderRadius: 12, background: C.field, padding: 14 }}>
             <h4 style={{ margin: '0 0 9px', fontSize: 11, textTransform: 'uppercase' }}>Original Prompt</h4>
@@ -4387,7 +4474,7 @@ function ConfigurationView(props: any) {
           Generation configuration only exists for entitled users. */}
       {!isPromptOnly && !isAnonymous && (
         <section id="pz-output" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
-          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 4 — CREATE</h2>
+          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>OUTPUT &amp; ENGINE</h2>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginTop: 18, gap: 12 }}>
             {outputOptions.map(({ key, label, description }: any) => {
               const active = outputType === key
@@ -4419,7 +4506,7 @@ function ConfigurationView(props: any) {
       {/* ── PERSONALIZATION MODE ──────────────────────────────
           Same entitlement gate as the output selector above. */}
       {showModes && !isAnonymous && (
-        <section id="pz-mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
+        <section id="pz-mode" data-pz-focus="mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
             {eligibleModes.map((m: any) => {
@@ -4603,13 +4690,18 @@ function ConfigurationView(props: any) {
           </div>
         )}
         {mode && ['face_only', 'full_body', 'replace_face', 'replace_person'].includes(mode) && (
-          <label className="flex gap-2 items-center pt-[18px] text-[11px]" style={{ color: 'rgba(255,255,255,.72)' }}>
+          <label data-pz-focus="consent" className="flex gap-2 items-center pt-[18px] text-[11px]" style={{ color: 'rgba(255,255,255,.72)' }}>
             <input
               type="checkbox"
               checked={genOptions?.consentGiven ?? false}
               onChange={(e) => updateGenOptions({ ...genOptions, consentGiven: e.target.checked })}
             />
             I confirm that I have permission to use this person&apos;s likeness.
+            {!genOptions?.consentGiven && (
+              <span style={{ padding: '1px 6px', borderRadius: 999, background: 'rgba(251,191,36,.1)', border: '1px solid rgba(251,191,36,.35)', color: '#fcd34d', fontSize: 9, fontWeight: 700 }}>
+                Required
+              </span>
+            )}
           </label>
         )}
       </section>
@@ -4625,6 +4717,7 @@ function ConfigurationView(props: any) {
 
         <div className={`order-first xl:order-last xl:h-full xl:min-h-0 ${mobilePreviewOpen ? '' : 'hidden xl:block'}`}>
           <AdvancedPreviewColumn>
+            {!isAnonymous && <ReadinessChecklist requirements={requirements} onFix={fixRequirement} />}
             {/* The source demo shows here whenever the live preview cannot. */}
             {!((source?.mediaType === 'video' || source?.mediaType === 'image') && ctxPreviewSettings) && (
               <>

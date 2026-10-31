@@ -95,7 +95,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     expect(bodyText).toContain('CTA & BUSINESS CONTENT');
     expect(bodyText).toContain('Original Prompt');
     expect(bodyText).toContain('Personalized Prompt');
-    expect(bodyText).toContain('STEP 4 — CREATE');
+    expect(bodyText).toContain('OUTPUT & ENGINE');
     expect(bodyText).toContain('SMARTVIDEO ENGINE');
     expect(bodyText).toContain('SmartVideo Recommended');
   });

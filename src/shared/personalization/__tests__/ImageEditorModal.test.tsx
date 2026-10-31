@@ -52,6 +52,10 @@ describe('ImageEditorModal', () => {
     expect(screen.getByText('Advanced Edit')).toBeTruthy()
     expect(screen.getByText('SmartVideo GO recommends')).toBeTruthy()
     expect(screen.getByText('Use Edited Asset')).toBeTruthy()
+    // Plain quick actions and a reason while there is nothing to apply yet.
+    expect(screen.getByText('Remove Background')).toBeTruthy()
+    expect(screen.getByText('Crop / Rotate')).toBeTruthy()
+    expect(screen.getByTestId('image-editor-apply-hint').textContent).toMatch(/Make an edit first/)
   })
 
   it('does not render while closed', () => {

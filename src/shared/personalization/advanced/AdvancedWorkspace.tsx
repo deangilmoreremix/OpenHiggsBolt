@@ -70,10 +70,13 @@ export function AdvancedStepBar({
   active,
   onSelect,
   done,
+  issues = {},
 }: {
   active: AdvancedEditingTab
   onSelect: (tab: AdvancedEditingTab) => void
   done: Partial<Record<AdvancedEditingTab, boolean>>
+  /** The first thing still needed on a tab ("Business Name"), shown as its hint. */
+  issues?: Partial<Record<AdvancedEditingTab, string>>
 }) {
   return (
     <div
@@ -84,7 +87,8 @@ export function AdvancedStepBar({
     >
       {ADVANCED_TABS.map((tab, index) => {
         const isActive = tab.id === active
-        const complete = Boolean(done[tab.id]) && !isActive
+        const issue = issues[tab.id]
+        const complete = Boolean(done[tab.id]) && !isActive && !issue
         return (
           <button
             key={tab.id}
@@ -94,6 +98,7 @@ export function AdvancedStepBar({
             aria-selected={isActive}
             aria-controls={`pz-tabpanel-${tab.id}`}
             data-testid={`pz-tab-${tab.id}`}
+            data-issue={issue ? 'true' : undefined}
             onClick={() => onSelect(tab.id)}
             style={{
               display: 'flex',
@@ -120,18 +125,18 @@ export function AdvancedStepBar({
                 justifyContent: 'center',
                 fontSize: 11,
                 fontWeight: 800,
-                background: complete ? C.green : isActive ? C.cyan : 'rgba(255,255,255,.06)',
-                color: complete || isActive ? '#041014' : C.muted,
+                background: issue ? '#fbbf24' : complete ? C.green : isActive ? C.cyan : 'rgba(255,255,255,.06)',
+                color: issue || complete || isActive ? '#041014' : C.muted,
               }}
             >
-              {complete ? '✓' : index + 1}
+              {issue ? '!' : complete ? '✓' : index + 1}
             </span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', color: isActive ? C.cyan : C.text, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {tab.label}
               </span>
-              <span style={{ display: 'block', color: C.muted2, fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {tab.hint}
+              <span style={{ display: 'block', color: issue ? '#fcd34d' : C.muted2, fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {issue ? `${issue} needed` : tab.hint}
               </span>
             </span>
           </button>
