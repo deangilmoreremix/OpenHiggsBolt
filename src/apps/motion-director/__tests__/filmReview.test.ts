@@ -50,3 +50,27 @@ describe('A5 long sound samples', () => {
     expect(reviewFilm(project).find((i) => i.code === 'A5')?.ok).toBe(false);
   });
 });
+
+describe('D2 and P3', () => {
+  const withWords = (extra: Record<string, unknown>, brief = 'a promo') => {
+    const p = planToProject(samplePlan(), { aspectRatio: '16:9' });
+    p.spec = { ...(p.spec ?? ({} as never)), version: 1, brief, product: 'Acme', url: null, sampleOnly: false, tokens: { background: '#000', text: '#fff', accent: '#8b6bff', font: null }, scenes: [], dataRules: [] } as never;
+    p.tracks[0].clips.push({ id: 'w1', cardId: 'inkpress-caption', start: 0, duration: 30, inOffset: 0, speed: 1, opacity: 1, scale: 1, x: 0, y: 0, props: { text: 'x', fontSize: 80, ...extra } } as never);
+    return reviewFilm(p);
+  };
+  const code = (items: ReturnType<typeof reviewFilm>, c: string) => items.find((i) => i.code === c)!;
+
+  it('flags a named person nobody asked for, and accepts them when the brief asked for people', () => {
+    const named = { text: 'Andrew Garnett President & CEO' };
+    expect(code(withWords(named), 'D2').ok).toBe(false);
+    expect(code(withWords(named, 'use its images and people'), 'D2').ok).toBe(true);
+    expect(code(withWords({ text: 'Meet Acme.' }), 'D2').ok).toBe(true);
+  });
+
+  it('flags a number, rank or guarantee the brief did not give', () => {
+    expect(code(withWords({ text: '99% faster, guaranteed' }), 'P3').ok).toBe(false);
+    expect(code(withWords({ text: 'Ranked #1 in town' }), 'P3').ok).toBe(false);
+    expect(code(withWords({ text: 'Your IT, handled.' }), 'P3').ok).toBe(true);
+    expect(code(withWords({ text: '99% faster' }, 'show 99% faster'), 'P3').ok).toBe(true);
+  });
+});

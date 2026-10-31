@@ -16,6 +16,29 @@ export interface ReviewItem {
   text: string;
 }
 
+/** "Andrew Garnett President & CEO": a first and last name followed by a job title. */
+const NAMED_PERSON = /\b[A-Z][a-z]{1,15}\s+[A-Z][a-z]{1,20}\b[\s,·|-]*(?:President|CEO|CFO|CTO|COO|Founder|Co-?founder|Owner|Director|Manager|Partner|Principal|VP|Vice President|Strategist|Engineer|Specialist)/;
+/** A number with a unit, a rank or a guarantee: the kind of claim that goes stale or is not true. */
+const CLAIM = /(?:\b\d[\d,.]*\s?(?:%|x\b|\+)|#\s?1\b|\bno\.?\s?1\b|\b(?:best|number one|guaranteed?|award-winning|world'?s (?:first|best|leading))\b)/i;
+const TEXT_KEYS = ['text', 'title', 'label', 'sub', 'cta', 'name', 'headline', 'caption'];
+
+/** Every line of words the film draws itself (titles, captions, labels, gallery captions, rewritten recipe words). */
+function onScreenWords(clips: ReadonlyArray<{ cardId: string; props: Record<string, unknown> }>): string[] {
+  const out: string[] = [];
+  for (const c of clips) {
+    if (c.cardId.startsWith('audio')) continue;
+    for (const k of TEXT_KEYS) {
+      const v = c.props[k];
+      if (typeof v === 'string' && v.trim()) out.push(v.replace(/\*/g, '').trim());
+    }
+    const caps = c.props.captions;
+    if (typeof caps === 'string') out.push(...caps.split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
+    const texts = c.props.texts;
+    if (texts && typeof texts === 'object') out.push(...Object.values(texts as Record<string, unknown>).filter((x): x is string => typeof x === 'string'));
+  }
+  return out;
+}
+
 const sec = (frame: number, fps: number) => `${(frame / fps).toFixed(1)}s`;
 
 export function reviewFilm(project: ProjectData): ReviewItem[] {
@@ -64,6 +87,19 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
     return !!whole && whole > 5000 && c.duration > fps * 3;
   });
   items.push({ code: 'A5', ok: ringing.length === 0, text: ringing.length ? `Long sound sample left to ring for over 3 s at ${ringing.map((c) => sec(c.start, fps)).join(', ')}; give it a shorter duration.` : 'Long sound samples are cut to their action.' });
+
+  // D2 / P3: what the film says about people and about the product, from the words on screen.
+  const words = onScreenWords(clips);
+  const brief = (project.spec?.brief ?? '').toLowerCase();
+  const asked = /\b(?:people|person|team|faces?|staff|photos?|images?|customers?|testimonials?)\b/.test(brief);
+  const named = words.filter((w) => NAMED_PERSON.test(w));
+  items.push({
+    code: 'D2',
+    ok: named.length === 0 || asked,
+    text: named.length && !asked ? `Names a person on screen ("${named[0].slice(0, 60)}"); they were not asked for, so check it is public and wanted.` : named.length ? 'Shows people by name, as asked.' : 'No named people on screen.',
+  });
+  const claims = words.filter((w) => CLAIM.test(w) && !brief.includes(w.toLowerCase().slice(0, 30)));
+  items.push({ code: 'P3', ok: claims.length === 0, text: claims.length ? `A claim on screen the brief did not give ("${claims[0].slice(0, 60)}"): check the site really says it.` : 'No numbers, rankings or guarantees that the brief did not give.' });
 
   // A8: with music, deliver it with and without.
   if (clips.some((c) => c.cardId === 'audio-clip' && !/sfxlib/.test(String(c.props.file)))) items.push({ code: 'A8', ok: true, text: 'Render both the version with music and the one without.' });
