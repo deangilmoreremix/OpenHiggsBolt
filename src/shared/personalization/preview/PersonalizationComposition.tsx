@@ -13,6 +13,9 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { resolveDesignSlotValues } from './designSlots'
+// Pure geometry only (imports nothing but `./presets` and types), so this
+// cannot form the Composition -> OverlayEditor -> Provider require cycle.
+import { renderedLayerGeometry } from '../guided/overlayGeometry'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -445,7 +448,12 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           if (isText && !text.trim()) return null
           if (isImage && !imageUrl) return null
 
-          const box = toBox(layer, compW, compH)
+          // The box width is estimated from the text that is actually drawn
+          // (a layer without its own text shows the brand field), so a long
+          // brand headline gets a box wide enough to hold it. The geometry is
+          // the editor's own (`renderedLayerGeometry`), so nothing the editor
+          // shows inside the frame can render off its edge.
+          const box = toBox(renderedLayerGeometry(isText ? { ...layer, text } : layer, compW, compH), compW, compH)
           const entrance = entranceFor(layer, frame, settings.fps)
           const textColor =
             layer.color ??

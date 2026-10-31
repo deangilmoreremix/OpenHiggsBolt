@@ -52,6 +52,7 @@ async function openStep4(page: import('@playwright/test').Page) {
   // player. The default "toggle" mode renders a single player that starts on
   // the original, so the personalized composition — where the design layer
   // lives — is not in the DOM until the user flips it.
+  await dialog.getByRole('button', { name: 'Compare with the original video' }).click();
   await dialog.getByRole('button', { name: 'Compare' }).click();
   await expect(page.getByRole('region', { name: 'After: personalized preview' })).toBeVisible();
 

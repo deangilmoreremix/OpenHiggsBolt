@@ -145,6 +145,7 @@ async function openStep4(page: Page): Promise<Locator> {
   await dialog.getByRole('button', { name: /Step 4/i }).click();
   await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
 
+  await dialog.getByRole('button', { name: 'Compare with the original video' }).click();
   await dialog.getByRole('button', { name: 'Compare' }).click();
   await expect(page.getByRole('region', { name: 'After: personalized preview' })).toBeVisible();
 

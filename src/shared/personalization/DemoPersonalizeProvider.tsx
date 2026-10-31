@@ -102,7 +102,7 @@ import {
   applyLayoutPreset,
   applyDesignTemplate,
   resetLayoutToDefaults,
-  resetPreviewDesign,
+  removeDesignLayer,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
@@ -4462,8 +4462,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * Applies a registered Remotion design to the preview, or clears the applied
    * design when given null.
    *
-   * The design replaces the preview's layer list with its own `design` layer;
-   * brand colours, aspect ratio, fps and duration are untouched. An unknown
+   * The design is added as a `design` layer on top of the layout's layers
+   * (null removes only that layer); brand colours, aspect ratio, fps and
+   * duration are untouched. An unknown
    * design id is refused and reported through `remotionDesignError` instead of
    * silently doing nothing.
    */
@@ -4472,7 +4473,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (designId === null) {
       remotionDesignErrorIdRef.current = null
       setRemotionDesignError(null)
-      setPreviewSettings((prev) => resetPreviewDesign(prev, previewSeedRef.current))
+      setPreviewSettings((prev) => removeDesignLayer(prev))
       return
     }
     if (!getRemotionDesignTemplate(designId)) {

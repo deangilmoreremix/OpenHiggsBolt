@@ -1,8 +1,26 @@
 'use client'
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
+import type { PlayerRef } from '@remotion/player'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Layers,
+  Move,
+  Pause,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Type,
+  X,
+} from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
 import {
   PREVIEW_ANIMATIONS,
   PREVIEW_FONTS,
@@ -25,6 +43,8 @@ import {
   MIN_LAYER_SCALE,
   SAFE_AREA_MARGIN,
   clampLayerToBounds,
+  layerBoxMetrics,
+  renderedLayerGeometry,
   imageAssetDefaultLabel,
   imageAssetOptions,
   nudgeDeltaForKey,
@@ -35,19 +55,16 @@ import {
   toStageBox,
 } from './overlayGeometry'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
-
-const LAYER_LABELS: Record<PreviewLayerKind, string> = {
-  logo: 'Logo',
-  businessName: 'Business name',
-  headline: 'Headline',
-  offer: 'Offer',
-  cta: 'Call to action',
-  productImage: 'Product image',
-  serviceImage: 'Service image',
-  tagline: 'Tagline',
-  endCard: 'End card',
-  design: 'Design',
-}
+import {
+  DESIGN_CATEGORY_LABELS,
+  LAYER_LABELS,
+  describeLayerChanges,
+  diffLayers,
+  framesToSeconds,
+  layerRevealFrame,
+  lookChanged,
+  secondsToFrames,
+} from './layerChanges'
 
 const TEXT_KINDS: PreviewLayerKind[] = [
   'businessName',
@@ -61,6 +78,19 @@ const TEXT_KINDS: PreviewLayerKind[] = [
 /** Corner-handle keyboard step: 2% of the frame per press, 10% with Shift. */
 const RESIZE_KEYBOARD_STEP = 0.02
 const RESIZE_KEYBOARD_STEP_LARGE = 0.1
+
+/**
+ * The text the composition actually draws for a text layer (its own text, or
+ * the brand field when the customer has not typed any). Used for geometry so
+ * the editor's boxes are sized exactly like the rendered ones.
+ */
+function renderedText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
+  if (layer.kind === 'businessName') return layer.text ?? brand.businessName
+  if (layer.kind === 'headline' || layer.kind === 'tagline') return layer.text ?? brand.headline
+  if (layer.kind === 'offer') return layer.text ?? brand.offer
+  if (layer.kind === 'cta') return layer.text ?? brand.cta
+  return layer.text ?? ''
+}
 
 function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
   if (typeof layer.text === 'string' && layer.text.trim()) return layer.text
@@ -162,21 +192,98 @@ export interface OverlayEditorProps {
   inputProps: PreviewInputProps
 }
 
+/** Saves the "Advanced" disclosure per browser; storage may be unavailable. */
+const ADVANCED_STORAGE_KEY = 'pz-overlay-editor-advanced'
+
+function readAdvancedPreference(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(ADVANCED_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeAdvancedPreference(open: boolean): void {
+  try {
+    window.localStorage.setItem(ADVANCED_STORAGE_KEY, open ? '1' : '0')
+  } catch {
+    /* storage blocked: the toggle still works for this visit */
+  }
+}
+
+/** 3×3 placement grid shown in the simple inspector (centers, 0..1). */
+const POSITION_GRID: { id: string; label: string; x: number; y: number }[] = [
+  { id: 'top-left', label: 'Top left', x: 0.06, y: 0.06 },
+  { id: 'top-center', label: 'Top center', x: 0.5, y: 0.06 },
+  { id: 'top-right', label: 'Top right', x: 0.94, y: 0.06 },
+  { id: 'middle-left', label: 'Middle left', x: 0.06, y: 0.5 },
+  { id: 'center', label: 'Center', x: 0.5, y: 0.5 },
+  { id: 'middle-right', label: 'Middle right', x: 0.94, y: 0.5 },
+  { id: 'bottom-left', label: 'Bottom left', x: 0.06, y: 0.88 },
+  { id: 'bottom-center', label: 'Bottom center', x: 0.5, y: 0.88 },
+  { id: 'bottom-right', label: 'Bottom right', x: 0.94, y: 0.88 },
+]
+
+/** How long a freshly added layer's outline pulses after a Quick Adjustment. */
+const PULSE_MS = 1400
+/** Delay before the preview restarts after a Quick Adjustment. */
+const REPLAY_AFTER_CHANGE_MS = 250
+/** How long the "what changed" note stays up unless dismissed. */
+const NOTICE_MS = 7000
+
+type LayerStatus = 'shown' | 'hidden' | 'missing-image' | 'empty-text' | 'missing-design'
+
+function layerStatus(layer: PreviewLayer, brand: PreviewInputProps['brand']): LayerStatus {
+  if (layer.kind === 'endCard') return 'shown'
+  if (!layer.visible) return 'hidden'
+  if (isImageLayerKind(layer.kind) && !layerImageUrl(layer, brand)) return 'missing-image'
+  if (layer.kind === 'design') {
+    return layer.designId && getRemotionDesignTemplate(layer.designId) ? 'shown' : 'missing-design'
+  }
+  if (TEXT_KINDS.includes(layer.kind) && !renderedText(layer, brand).trim()) return 'empty-text'
+  return 'shown'
+}
+
+function statusText(status: LayerStatus, kind: PreviewLayerKind): string {
+  if (status === 'hidden') return 'Hidden'
+  if (status === 'missing-image') return kind === 'logo' ? 'No logo yet: choose one' : 'No photo yet: choose one'
+  if (status === 'empty-text') return 'No text yet: type some'
+  if (status === 'missing-design') return 'Design unavailable'
+  return ''
+}
+
+function kindIcon(kind: PreviewLayerKind) {
+  if (kind === 'design') return <Sparkles size={13} />
+  if (kind === 'endCard') return <Layers size={13} />
+  if (isImageLayerKind(kind)) return <ImageIcon size={13} />
+  return <Type size={13} />
+}
+
+/** Mirrors the composition's end-card timing. */
+function endCardStartFrame(durationInFrames: number): number {
+  const length = Math.min(90, Math.max(45, Math.round(durationInFrames * 0.2)))
+  return Math.max(0, durationInFrames - length)
+}
+
 /**
  * Direct-on-video overlay editor.
  *
- * Renders the selected video's poster as a stage and draws every preview layer
- * on top of it at the same normalized coordinates the Remotion composition
- * uses, so dragging here is exactly what the preview renders. Used both in
- * Simple Mode step 4 and in the modal's Advanced Editing section.
+ * The stage IS the Remotion preview: it mounts `PersonalizationPlayer` with
+ * the same `inputProps` the final render uses, so designs, animations, colors
+ * and text look exactly as they will in the exported video. A transparent
+ * handle layer on top draws only the selection outlines and resize handles,
+ * at the same normalized coordinates the composition uses (`./overlayGeometry`).
+ * Used both in Simple Mode step 4 and in the modal's Advanced Editing section.
  *
  * All layer state lives in the provider: this component never keeps a second
  * copy of it — it reads `previewSettings` from context and writes through
- * `updatePreviewLayer`. Only `selectedId` is local (which layer is selected),
- * so switching between Simple Mode and Advanced Editing keeps every edit.
+ * `updatePreviewLayer`. Only UI state (selection, playback, the "what changed"
+ * note) is local, so switching between Simple Mode and Advanced Editing keeps
+ * every edit.
  *
- * Geometry (cross-aspect mapping, safe-area clamping, keyboard nudges and the
- * image-asset option mapping) lives in `./overlayGeometry`.
+ * When a Quick Adjustment changes the layout or the applied design, the editor
+ * explains what was added or removed, selects the new layer, pulses its
+ * outline and replays the preview from the start.
  */
 export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
@@ -187,17 +294,29 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     resetPreviewLayout,
     assets,
   } = ctx
+  const setGuidedStep = (ctx as { setGuidedStep?: (step: 1 | 2 | 3 | 4) => void }).setGuidedStep
   const settings: PersonalizationPreviewSettings = previewSettings
   const fieldPrefix = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const stageWidth = useStageWidth(stageRef)
+  const playerRef = useRef<PlayerRef | null>(null)
+  const [frame, setFrame] = useState(0)
+  const [playing, setPlaying] = useState(false)
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [pulseId, setPulseId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [advanced, setAdvanced] = useState<boolean>(readAdvancedPreference)
   const dragRef = useRef<DragState | null>(null)
+  const previousSettingsRef = useRef<PersonalizationPreviewSettings>(settings)
 
   const brand = inputProps.brand
   const { width: compW, height: compH } = resolveCompositionSize(settings.width, settings.height)
   // One factor for both axes: stagePx = compositionPx * (stageWidth / compW).
   const factor = stageScaleFactor(stageWidth, compW)
+  const fps = settings.fps > 0 ? settings.fps : 30
+  const durationInFrames = Math.max(1, Math.round(settings.durationInFrames))
 
   const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
   const selected = settings.layers.find((layer) => layer.id === selectedId) || settings.layers[0] || null
@@ -214,8 +333,24 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   const selectedSlotValues: Record<string, string | undefined> =
     selectedDesign && selected ? resolveDesignSlotValues(selectedDesign, selected, brand) : {}
 
+  // Rows in the order they appear on screen; the end card always comes last.
+  const orderedLayers = [...settings.layers].sort((a, b) => {
+    if (a.kind === 'endCard') return 1
+    if (b.kind === 'endCard') return -1
+    return a.startFrame + a.animationDelay - (b.startFrame + b.animationDelay)
+  })
+
   const controlId = (name: string) => `${fieldPrefix}-${name}`
   const round = (value: number) => Number(value.toFixed(4))
+
+  /** The layer as the composition sizes it (text layers carry their drawn text). */
+  const geometryLayer = useCallback(
+    (layer: PreviewLayer): PreviewLayer =>
+      TEXT_KINDS.includes(layer.kind) && layer.kind !== 'design'
+        ? { ...layer, text: renderedText(layer, brand) }
+        : layer,
+    [brand],
+  )
 
   /**
    * Writes one slot's new value.
@@ -251,6 +386,92 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     },
     [updatePreviewLayer],
   )
+
+  // ── Playback helpers ──────────────────────────────────────────────────────
+
+  /** Pauses and, if the layer is not on screen yet, jumps to where it is. */
+  const revealLayer = useCallback(
+    (layer: PreviewLayer) => {
+      const player = playerRef.current
+      if (!player || layer.kind === 'endCard') return
+      try {
+        if (player.isPlaying()) player.pause()
+      } catch {
+        /* a player without media cannot report its state yet */
+      }
+      const target = Math.min(durationInFrames - 1, layerRevealFrame(layer, fps))
+      const beforeReveal = frame < target
+      const afterEnd = layer.endFrame !== undefined && frame > layer.endFrame
+      if (beforeReveal || afterEnd) player.seekTo(target)
+    },
+    [durationInFrames, fps, frame],
+  )
+
+  const togglePlay = () => {
+    const player = playerRef.current
+    if (!player) return
+    try {
+      if (player.isPlaying()) player.pause()
+      else player.play()
+    } catch {
+      /* autoplay policies can reject play() */
+    }
+  }
+
+  const replay = useCallback(() => {
+    const player = playerRef.current
+    if (!player) return
+    player.seekTo(0)
+    try {
+      player.play()
+    } catch {
+      /* autoplay policies can reject play(); the seek still applied */
+    }
+  }, [])
+
+  const seekTo = (target: number) => {
+    playerRef.current?.seekTo(Math.max(0, Math.min(durationInFrames - 1, Math.round(target))))
+  }
+
+  const selectLayer = (layer: PreviewLayer) => {
+    setSelectedId(layer.id)
+    revealLayer(layer)
+  }
+
+  // ── Quick Adjustment feedback ─────────────────────────────────────────────
+
+  useEffect(() => {
+    const previous = previousSettingsRef.current
+    previousSettingsRef.current = settings
+    if (previous === settings || !lookChanged(previous, settings)) return
+    const changes = diffLayers(previous.layers, settings.layers)
+    setNotice(describeLayerChanges(changes))
+    const focus =
+      changes.added.find((layer) => layer.kind === 'design') ?? changes.added.find((layer) => layer.kind !== 'endCard')
+    if (focus) {
+      setSelectedId(focus.id)
+      setPulseId(focus.id)
+    }
+    panelRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+    // Restart once the Player has taken the new settings: seeking and playing
+    // in the same commit that swaps its input props can loop its updates.
+    const timer = window.setTimeout(replay, REPLAY_AFTER_CHANGE_MS)
+    return () => window.clearTimeout(timer)
+  }, [settings, replay])
+
+  useEffect(() => {
+    if (!pulseId) return
+    const timer = window.setTimeout(() => setPulseId(null), PULSE_MS)
+    return () => window.clearTimeout(timer)
+  }, [pulseId])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  // ── Dragging ──────────────────────────────────────────────────────────────
 
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
@@ -300,6 +521,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
+    // Never drag an invisible, not-yet-animated layer: pause on a frame where
+    // it is fully on screen.
+    revealLayer(layer)
     dragRef.current = {
       layerId: layer.id,
       pointerId: typeof event.pointerId === 'number' ? event.pointerId : null,
@@ -308,7 +532,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
       // Snapshot the bounded geometry so the layer follows the pointer from
       // exactly where the customer sees it, even if the saved values were
       // out of the safe area.
-      origin: clampLayerToBounds(layer, compW, compH),
+      origin: clampLayerToBounds(geometryLayer(layer), compW, compH),
       mode,
     }
     if (mode === 'move') {
@@ -322,7 +546,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   const onLayerKeyDown = (event: React.KeyboardEvent, layer: PreviewLayer) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      setSelectedId(layer.id)
+      selectLayer(layer)
       return
     }
     if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -334,7 +558,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     if (!delta) return
     event.preventDefault()
     setSelectedId(layer.id)
-    commitPosition(layer.id, offsetLayer(layer, delta.dx, delta.dy, compW, compH))
+    commitPosition(layer.id, offsetLayer(geometryLayer(layer), delta.dx, delta.dy, compW, compH))
   }
 
   /** Arrow keys on the corner handle resize by 2% (Shift 10%). */
@@ -347,14 +571,39 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     if (!delta) return
     event.preventDefault()
     const grows = delta.dx > 0 || delta.dy > 0
-    const factor = event.shiftKey ? 1 + RESIZE_KEYBOARD_STEP_LARGE : 1 + RESIZE_KEYBOARD_STEP
-    commitScale(layer.id, scaleLayerTo(layer, grows ? layer.scale * factor : layer.scale / factor, compW, compH))
+    const step = event.shiftKey ? 1 + RESIZE_KEYBOARD_STEP_LARGE : 1 + RESIZE_KEYBOARD_STEP
+    const base = geometryLayer(layer)
+    commitScale(layer.id, scaleLayerTo(base, grows ? layer.scale * step : layer.scale / step, compW, compH))
   }
 
   const imageOptions = (layer: PreviewLayer) => imageAssetOptions(layer, assets)
 
+  const toggleAdvanced = () => {
+    setAdvanced((open) => {
+      writeAdvancedPreference(!open)
+      return !open
+    })
+  }
+
+  // ── Timeline ──────────────────────────────────────────────────────────────
+
+  const timelineRows = editableLayers
+    .filter((layer) => layer.visible)
+    .map((layer) => ({
+      layer,
+      start: Math.min(durationInFrames, layer.startFrame + layer.animationDelay),
+      end: Math.min(durationInFrames, layer.endFrame ?? durationInFrames),
+    }))
+  const endCardStart = endCardStartFrame(durationInFrames)
+  /** Timeline click: select the layer and show it, or jump to the end card. */
+  const activateTimelineRow = (layer: PreviewLayer | null) => {
+    if (layer) selectLayer(layer)
+    else seekTo(endCardStart + 1)
+  }
+  const percent = (value: number) => `${Math.max(0, Math.min(100, (value / durationInFrames) * 100))}%`
+
   return (
-    <div style={panelStyle}>
+    <div ref={panelRef} style={panelStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
         <Move size={15} color={C.cyan} />
         <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
@@ -369,206 +618,313 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
           <RotateCcw size={11} /> Restore default layout
         </button>
       </div>
-      <p style={hintStyle}>
-        Drag any layer on the video to move it, or use its corner handle to resize. Arrow keys nudge the
-        selected layer by 1% (Shift for 5%), Delete hides it. Layers stay inside the 2% safe area of the
-        frame, and positions are saved with your project.
+      <p
+        style={hintStyle}
+        title={`Arrow keys nudge the selected item by 1% (Shift for 5%), Delete hides it. Items stay inside the ${Math.round(SAFE_AREA_MARGIN * 100)}% safe area of the frame, and positions are saved with your project.`}
+      >
+        This is exactly what your final video will look like. Click an item to edit it, drag to move, use the
+        corner to resize.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
-        {/* ── Stage ─────────────────────────────────────────────────────── */}
+      {notice ? (
         <div
-          ref={stageRef}
-          role="group"
-          aria-label="Video overlay stage"
+          role="status"
           style={{
-            position: 'relative',
-            width: '100%',
-            aspectRatio: `${compW} / ${compH}`,
-            borderRadius: 12,
-            overflow: 'hidden',
-            border: `1px solid ${C.border}`,
-            background: '#05070a',
-            touchAction: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 10,
+            padding: '8px 10px',
+            borderRadius: 10,
+            border: `1px solid ${C.cyanBorder}`,
+            background: C.cyanSoft,
+            color: C.text,
+            fontSize: 12,
           }}
         >
-          {inputProps.posterUrl ? (
-            <img
-              src={inputProps.posterUrl}
-              alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-            />
-          ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>
-              Your video
-            </div>
-          )}
-          <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: settings.brandColors.backgroundDim, pointerEvents: 'none' }} />
-          {/* Safe-area guide: the same 2% inset the clamp enforces. */}
+          <CheckCircle2 size={14} color={C.cyan} />
+          <span style={{ flex: 1 }}>{notice}</span>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setNotice(null)}
+            style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', padding: 2 }}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ) : null}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
+        {/* ── Stage: the live Remotion preview + handles ─────────────────── */}
+        <div style={{ minWidth: 0 }}>
           <div
-            aria-hidden
+            ref={stageRef}
+            role="group"
+            aria-label="Video overlay stage"
             style={{
-              position: 'absolute',
-              inset: `${SAFE_AREA_MARGIN * 100}%`,
-              border: '1px dashed rgba(255,255,255,.22)',
-              borderRadius: 8,
-              pointerEvents: 'none',
+              position: 'relative',
+              width: '100%',
+              aspectRatio: `${compW} / ${compH}`,
+              borderRadius: 12,
+              overflow: 'hidden',
+              border: `1px solid ${C.border}`,
+              background: '#05070a',
+              touchAction: 'none',
             }}
-          />
+          >
+            {/* The Player only mounts once the stage has a size to draw at. */}
+            {stageWidth > 0 ? (
+              <div style={{ position: 'absolute', inset: 0 }}>
+                <PersonalizationPlayer
+                  inputProps={inputProps}
+                  hideTransport
+                  playerRefOverride={playerRef}
+                  onFrameChange={setFrame}
+                  onPlayingChange={setPlaying}
+                  ariaLabel="Editable video preview"
+                />
+              </div>
+            ) : null}
+            {/* Safe-area guide: the same 2% inset the clamp enforces. */}
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: `${SAFE_AREA_MARGIN * 100}%`,
+                border: '1px dashed rgba(255,255,255,.16)',
+                borderRadius: 8,
+                pointerEvents: 'none',
+              }}
+            />
 
-          {factor > 0 &&
-            editableLayers.filter((layer) => layer.visible).map((layer) => {
-              const box = toStageBox(layer, compW, compH, stageWidth)
-              const isDesign = layer.kind === 'design'
-              const text = layerText(layer, brand)
-              const imageUrl = layerImageUrl(layer, brand)
-              if (!isDesign && !isImageLayerKind(layer.kind) && !text.trim()) return null
-              if (isImageLayerKind(layer.kind) && !imageUrl) return null
-              const isSelected = selected?.id === layer.id
-              const color = layer.color ?? (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
-              const design = isDesign && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+            {/* Handle layer: outlines and resize handles only — the Player
+                draws the content, so empty space still plays/pauses. */}
+            {factor > 0 &&
+              editableLayers.filter((layer) => layer.visible).map((layer) => {
+                const status = layerStatus(layer, brand)
+                if (status === 'missing-image' || status === 'empty-text' || status === 'missing-design') return null
+                const metrics = layerBoxMetrics(renderedLayerGeometry(geometryLayer(layer), compW, compH), compW, compH)
+                const box = toStageBox(geometryLayer(layer), compW, compH, stageWidth)
+                const height = box.height ?? metrics.heightPx * factor
+                const isSelected = selected?.id === layer.id
+                const isHovered = hoveredId === layer.id
+                const isPulsing = pulseId === layer.id
+                const outline = isSelected || isPulsing
+                  ? `2px solid ${C.cyan}`
+                  : isHovered
+                    ? `1px dashed ${C.cyanBorder}`
+                    : '1px dashed rgba(255,255,255,.18)'
 
-              return (
-                <div
-                  key={layer.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
-                  aria-pressed={isSelected}
-                  onPointerDown={(event) => startDrag(event, layer, 'move')}
-                  onKeyDown={(event) => onLayerKeyDown(event, layer)}
-                  style={{
-                    position: 'absolute',
-                    left: box.left,
-                    top: box.top,
-                    width: box.width,
-                    height: box.height,
-                    cursor: 'move',
-                    outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
-                    outlineOffset: 2,
-                    opacity: layer.opacity,
-                    userSelect: 'none',
-                  }}
-                >
-                  {isImageLayerKind(layer.kind) ? (
-                    <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                  ) : isDesign ? (
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        color: settings.brandColors.text,
-                        fontSize: Math.max(10, Math.round(compH * 0.024)),
-                        fontWeight: 700,
-                        border: `1px dashed ${C.cyanBorder}`,
-                        borderRadius: 10,
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {design ? design.name : 'Design'}
-                    </div>
-                  ) : layer.kind === 'cta' ? (
-                    <div style={{ width: '100%', textAlign: 'center' }}>
+                return (
+                  <div
+                    key={layer.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
+                    aria-pressed={isSelected}
+                    onPointerDown={(event) => startDrag(event, layer, 'move')}
+                    onPointerEnter={() => setHoveredId(layer.id)}
+                    onPointerLeave={() => setHoveredId((current) => (current === layer.id ? null : current))}
+                    onKeyDown={(event) => onLayerKeyDown(event, layer)}
+                    style={{
+                      position: 'absolute',
+                      left: box.left,
+                      top: box.top,
+                      width: box.width,
+                      height,
+                      cursor: 'move',
+                      outline,
+                      outlineOffset: 2,
+                      borderRadius: 4,
+                      boxShadow: isPulsing ? `0 0 0 6px ${C.cyanSoft}` : undefined,
+                      transition: 'box-shadow 300ms ease',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {(isSelected || isHovered) && (
                       <span
                         style={{
-                          background: settings.brandColors.accent,
-                          color: '#041014',
-                          padding: '0.4em 1.1em',
-                          borderRadius: 999,
-                          display: 'inline-block',
-                          fontFamily: fontStackById(layer.fontFamily),
-                          fontSize: box.fontSize,
+                          position: 'absolute',
+                          left: 0,
+                          // Inside the box when there is no room above it.
+                          top: box.top < 22 ? 2 : -20,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          background: isSelected ? C.cyan : 'rgba(5,7,10,.85)',
+                          color: isSelected ? '#041014' : C.text,
+                          fontSize: 10,
                           fontWeight: 800,
+                          whiteSpace: 'nowrap',
                           pointerEvents: 'none',
                         }}
                       >
-                        {text}
+                        {LAYER_LABELS[layer.kind]}
                       </span>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        fontFamily: fontStackById(layer.fontFamily),
-                        color,
-                        fontSize: box.fontSize,
-                        fontWeight: layer.kind === 'businessName' ? 800 : 600,
-                        lineHeight: 1.15,
-                        textAlign: 'center',
-                        width: '100%',
-                        wordBreak: 'break-word',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {text}
-                    </div>
-                  )}
-                  {isSelected && (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Resize ${LAYER_LABELS[layer.kind]}`}
-                      onPointerDown={(event) => startDrag(event, layer, 'resize')}
-                      onKeyDown={(event) => onHandleKeyDown(event, layer)}
+                    )}
+                    {isSelected && (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Resize ${LAYER_LABELS[layer.kind]}`}
+                        onPointerDown={(event) => startDrag(event, layer, 'resize')}
+                        onKeyDown={(event) => onHandleKeyDown(event, layer)}
+                        style={{
+                          position: 'absolute',
+                          right: -7,
+                          bottom: -7,
+                          width: 14,
+                          height: 14,
+                          borderRadius: 4,
+                          background: C.cyan,
+                          border: '2px solid #041014',
+                          cursor: 'nwse-resize',
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+          </div>
+
+          {/* ── Transport + timeline ──────────────────────────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pause preview' : 'Play preview'}
+              style={{ ...secondaryButtonStyle, minHeight: 30, width: 34, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {playing ? <Pause size={13} /> : <Play size={13} />}
+            </button>
+            <button
+              type="button"
+              onClick={replay}
+              aria-label="Replay preview"
+              style={{ ...secondaryButtonStyle, minHeight: 30, width: 34, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <RotateCcw size={13} />
+            </button>
+            <span style={{ color: C.muted, fontSize: 11, fontVariantNumeric: 'tabular-nums', minWidth: 72 }}>
+              {framesToSeconds(frame, fps).toFixed(1)}s / {framesToSeconds(durationInFrames, fps).toFixed(1)}s
+            </span>
+          </div>
+
+          <div aria-label="When each item appears" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {[...timelineRows, ...(settings.showEndCard ? [null] : [])].map((row) => {
+              const isEndCard = row === null
+              const label = isEndCard ? LAYER_LABELS.endCard : LAYER_LABELS[row.layer.kind]
+              const start = isEndCard ? endCardStart : row.start
+              const end = isEndCard ? durationInFrames : row.end
+              const isSelected = !isEndCard && selected?.id === row.layer.id
+              return (
+                <div
+                  key={isEndCard ? 'end-card' : row.layer.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${label} appears at ${framesToSeconds(start, fps).toFixed(1)} seconds`}
+                  onClick={() => activateTimelineRow(isEndCard ? null : row.layer)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    activateTimelineRow(isEndCard ? null : row.layer)
+                  }}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '92px minmax(0, 1fr)',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ color: isSelected ? C.cyan : C.muted, fontSize: 10, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {label}
+                  </span>
+                  <span style={{ position: 'relative', height: 8, borderRadius: 4, background: 'rgba(255,255,255,.06)' }}>
+                    <span
                       style={{
                         position: 'absolute',
-                        right: -7,
-                        bottom: -7,
-                        width: 14,
-                        height: 14,
+                        top: 0,
+                        bottom: 0,
+                        left: percent(start),
+                        width: `calc(${percent(end)} - ${percent(start)})`,
                         borderRadius: 4,
-                        background: C.cyan,
-                        border: '2px solid #041014',
-                        cursor: 'nwse-resize',
+                        background: isSelected ? C.cyan : C.cyanBorder,
                       }}
                     />
-                  )}
+                    <span
+                      aria-hidden
+                      style={{ position: 'absolute', top: -2, bottom: -2, left: percent(frame), width: 1, background: C.text }}
+                    />
+                  </span>
                 </div>
               )
             })}
+          </div>
         </div>
 
-        {/* ── Layer list + controls ─────────────────────────────────────── */}
+        {/* ── What's on the video + controls ──────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-          <div style={labelStyle}>Layers</div>
-          {settings.layers.map((layer) => {
+          <div style={labelStyle}>What&apos;s on your video</div>
+          {orderedLayers.map((layer) => {
             const layerDesign =
               layer.kind === 'design' && layer.designId
                 ? getRemotionDesignTemplate(layer.designId)
                 : undefined
+            const status = layerStatus(layer, brand)
+            const warning = status === 'missing-image' || status === 'empty-text' || status === 'missing-design'
+            const isSelected = selected?.id === layer.id
+            const appearsAt = framesToSeconds(layer.startFrame + layer.animationDelay, fps)
+            const subtitle =
+              layer.kind === 'endCard'
+                ? settings.showEndCard
+                  ? 'Last few seconds'
+                  : 'Off'
+                : warning || status === 'hidden'
+                  ? statusText(status, layer.kind)
+                  : layerDesign
+                    ? `${layerDesign.name} · ${DESIGN_CATEGORY_LABELS[layerDesign.category] ?? ''} · from ${appearsAt.toFixed(1)}s`
+                    : `Appears at ${appearsAt.toFixed(1)}s`
             return (
               <div
                 key={layer.id}
                 role="button"
                 tabIndex={0}
                 aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
-                aria-pressed={selected?.id === layer.id}
+                aria-pressed={isSelected}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    setSelectedId(layer.id)
+                    selectLayer(layer)
                   }
                 }}
-                onClick={() => setSelectedId(layer.id)}
+                onClick={() => selectLayer(layer)}
+                onPointerEnter={() => setHoveredId(layer.id)}
+                onPointerLeave={() => setHoveredId((current) => (current === layer.id ? null : current))}
                 style={{
                   ...softPanelStyle,
+                  padding: '10px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  border: `1px solid ${selected?.id === layer.id ? C.cyanBorder : C.border}`,
+                  border: `1px solid ${isSelected ? C.cyanBorder : warning ? 'rgba(245,184,64,.45)' : C.border}`,
                   cursor: 'pointer',
+                  opacity: status === 'hidden' ? 0.6 : 1,
                 }}
               >
-                <span style={{ color: C.text, fontSize: 12, fontWeight: 700, flex: 1 }}>{LAYER_LABELS[layer.kind]}</span>
-                {layerDesign ? (
-                  <span style={{ color: C.muted, fontSize: 10 }}>{layerDesign.name}</span>
-                ) : null}
-                {layer.kind === 'endCard' ? (
-                  <span style={{ color: C.muted, fontSize: 10 }}>{settings.showEndCard ? 'On' : 'Off'}</span>
-                ) : (
+                <span style={{ color: warning ? '#f5b840' : isSelected ? C.cyan : C.muted, display: 'inline-flex' }}>
+                  {warning ? <AlertTriangle size={13} /> : kindIcon(layer.kind)}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', color: C.text, fontSize: 12, fontWeight: 700 }}>{LAYER_LABELS[layer.kind]}</span>
+                  <span style={{ display: 'block', color: warning ? '#f5b840' : C.muted, fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {subtitle}
+                  </span>
+                </span>
+                {layer.kind === 'endCard' ? null : (
                   <button
                     type="button"
                     aria-label={`${layer.visible ? 'Hide' : 'Show'} ${LAYER_LABELS[layer.kind]}`}
@@ -633,24 +989,183 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         id={controlId('text')}
                         aria-label="Layer text"
                         value={selected.text ?? ''}
+                        placeholder={layerText(selected, brand)}
                         onChange={(event) => updatePreviewLayer(selected.id, { text: event.target.value })}
                         rows={2}
                         style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }}
                       />
                     </div>
                   )}
-                  <div className="grid grid-cols-2" style={{ gap: 8 }}>
+                  {selected.kind !== 'design' ? (
                     <div>
                       <label style={labelStyle} htmlFor={controlId('color')}>Color</label>
-                      <input
-                        id={controlId('color')}
-                        type="color"
-                        aria-label="Text color"
-                        value={selected.color || settings.brandColors.text}
-                        onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
-                        style={{ width: '100%', height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
-                      />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          id={controlId('color')}
+                          type="color"
+                          aria-label="Text color"
+                          value={
+                            selected.color ||
+                            (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
+                          }
+                          onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
+                          style={{ width: 52, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
+                        />
+                        <span style={{ color: C.muted, fontSize: 10, flex: 1 }}>
+                          {selected.color
+                            ? 'Custom color'
+                            : selected.kind === 'cta'
+                              ? 'Using your brand Accent color'
+                              : 'Using your brand Text color'}
+                        </span>
+                        {selected.color ? (
+                          <button
+                            type="button"
+                            onClick={() => updatePreviewLayer(selected.id, { color: undefined })}
+                            style={{ ...chipStyle(false), minHeight: 26, fontSize: 10 }}
+                          >
+                            Match brand
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
+                  ) : (
+                    <div style={{ color: C.muted, fontSize: 10 }}>
+                      Uses your brand colors — change them under Colors above.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {isImageLayerKind(selected.kind) && (
+                <div>
+                  <label style={labelStyle} htmlFor={controlId('image')}>Image</label>
+                  <select
+                    id={controlId('image')}
+                    aria-label="Layer image"
+                    value={selected.imageUrl || ''}
+                    onChange={(event) => updatePreviewLayer(selected.id, { imageUrl: event.target.value || undefined })}
+                    style={inputStyle}
+                  >
+                    <option value="">{imageAssetDefaultLabel(selected.kind)}</option>
+                    {imageOptions(selected).map((option, index) => (
+                      <option key={`${index}-${option.value}`} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  {!layerImageUrl(selected, brand) ? (
+                    <p style={{ ...hintStyle, color: '#f5b840', marginTop: 6 }}>
+                      Nothing to show yet, so this item is left off the video.{' '}
+                      {setGuidedStep ? (
+                        <button
+                          type="button"
+                          onClick={() => setGuidedStep(3)}
+                          style={{ background: 'transparent', border: 'none', color: C.cyan, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}
+                        >
+                          Add one in Personalize
+                        </button>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              <div>
+                <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>
+                <input
+                  id={controlId('scale')}
+                  type="range"
+                  aria-label="Layer size"
+                  min={MIN_LAYER_SCALE}
+                  max={MAX_LAYER_SCALE}
+                  step={0.01}
+                  value={selected.scale}
+                  onChange={(event) => {
+                    const next = scaleLayerTo(geometryLayer(selected), Number(event.target.value), compW, compH)
+                    commitScale(selected.id, next)
+                  }}
+                  style={{ width: '100%', accentColor: C.cyan }}
+                />
+              </div>
+
+              <div>
+                <div style={labelStyle}>Position</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, maxWidth: 180 }}>
+                  {POSITION_GRID.map((position) => (
+                    <button
+                      key={position.id}
+                      type="button"
+                      aria-label={`Move layer to ${position.label}`}
+                      title={position.label}
+                      onClick={() => {
+                        const next = clampLayerToBounds({ ...geometryLayer(selected), x: position.x, y: position.y }, compW, compH)
+                        commitPosition(selected.id, next)
+                      }}
+                      style={{ ...chipStyle(false), minHeight: 26, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <span aria-hidden style={{ width: 6, height: 6, borderRadius: 2, background: C.muted }} />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Move layer to Lower Third"
+                  onClick={() => {
+                    const lowerThird = PREVIEW_POSITIONS.find((position) => position.id === 'lower-third')
+                    if (!lowerThird) return
+                    const next = clampLayerToBounds({ ...geometryLayer(selected), x: lowerThird.x, y: lowerThird.y }, compW, compH)
+                    commitPosition(selected.id, next)
+                  }}
+                  style={{ ...chipStyle(false), minHeight: 26, fontSize: 10, marginTop: 6 }}
+                >
+                  Lower third
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={toggleAdvanced}
+                aria-expanded={advanced}
+                style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}
+              >
+                {advanced ? <ChevronDown size={12} /> : <ChevronRight size={12} />} Advanced
+              </button>
+
+              {advanced && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label style={labelStyle} htmlFor={controlId('opacity')}>Opacity</label>
+                    <input
+                      id={controlId('opacity')}
+                      type="range"
+                      aria-label="Layer opacity"
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                      value={selected.opacity}
+                      onChange={(event) => updatePreviewLayer(selected.id, { opacity: Number(event.target.value) })}
+                      style={{ width: '100%', accentColor: C.cyan }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle} htmlFor={controlId('animation')}>Entrance animation</label>
+                    <select
+                      id={controlId('animation')}
+                      aria-label="Layer animation"
+                      value={selected.animation}
+                      onChange={(event) => {
+                        updatePreviewLayer(selected.id, { animation: event.target.value as PreviewLayer['animation'] })
+                        replay()
+                      }}
+                      style={inputStyle}
+                    >
+                      {PREVIEW_ANIMATIONS.map((animation) => (
+                        <option key={animation.id} value={animation.id}>{animation.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {TEXT_KINDS.includes(selected.kind) && selected.kind !== 'design' && (
                     <div>
                       <label style={labelStyle} htmlFor={controlId('font')}>Font</label>
                       <select
@@ -679,131 +1194,49 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         ))}
                       </select>
                     </div>
+                  )}
+
+                  <div className="grid grid-cols-2" style={{ gap: 8 }}>
+                    <div>
+                      <label style={labelStyle} htmlFor={controlId('start')}>Show from (seconds)</label>
+                      <input
+                        id={controlId('start')}
+                        type="number"
+                        aria-label="Show from seconds"
+                        min={0}
+                        max={framesToSeconds(durationInFrames, fps)}
+                        step={0.1}
+                        value={framesToSeconds(selected.startFrame, fps)}
+                        onChange={(event) =>
+                          updatePreviewLayer(selected.id, { startFrame: secondsToFrames(Number(event.target.value), fps) })
+                        }
+                        style={{ ...inputStyle, minHeight: 34 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle} htmlFor={controlId('delay')}>Animation delay (seconds)</label>
+                      <input
+                        id={controlId('delay')}
+                        type="number"
+                        aria-label="Animation delay seconds"
+                        min={0}
+                        max={framesToSeconds(durationInFrames, fps)}
+                        step={0.1}
+                        value={framesToSeconds(selected.animationDelay, fps)}
+                        onChange={(event) =>
+                          updatePreviewLayer(selected.id, { animationDelay: secondsToFrames(Number(event.target.value), fps) })
+                        }
+                        style={{ ...inputStyle, minHeight: 34 }}
+                      />
+                    </div>
                   </div>
-                </>
-              )}
 
-              {isImageLayerKind(selected.kind) && (
-                <div>
-                  <label style={labelStyle} htmlFor={controlId('image')}>Image</label>
-                  <select
-                    id={controlId('image')}
-                    aria-label="Layer image"
-                    value={selected.imageUrl || ''}
-                    onChange={(event) => updatePreviewLayer(selected.id, { imageUrl: event.target.value || undefined })}
-                    style={inputStyle}
-                  >
-                    <option value="">{imageAssetDefaultLabel(selected.kind)}</option>
-                    {imageOptions(selected).map((option, index) => (
-                      <option key={`${index}-${option.value}`} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <div style={{ color: C.muted, fontSize: 10 }}>
+                    Position {Math.round(selected.x * 100)}% / {Math.round(selected.y * 100)}% · Size{' '}
+                    {Math.round(selected.scale * 100)}% · kept inside the {Math.round(SAFE_AREA_MARGIN * 100)}% safe area
+                  </div>
                 </div>
               )}
-
-              <div>
-                <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>
-                <input
-                  id={controlId('scale')}
-                  type="range"
-                  aria-label="Layer size"
-                  min={MIN_LAYER_SCALE}
-                  max={MAX_LAYER_SCALE}
-                  step={0.01}
-                  value={selected.scale}
-                  onChange={(event) => {
-                    const next = scaleLayerTo(selected, Number(event.target.value), compW, compH)
-                    commitScale(selected.id, next)
-                  }}
-                  style={{ width: '100%', accentColor: C.cyan }}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle} htmlFor={controlId('opacity')}>Opacity</label>
-                <input
-                  id={controlId('opacity')}
-                  type="range"
-                  aria-label="Layer opacity"
-                  min={0.1}
-                  max={1}
-                  step={0.05}
-                  value={selected.opacity}
-                  onChange={(event) => updatePreviewLayer(selected.id, { opacity: Number(event.target.value) })}
-                  style={{ width: '100%', accentColor: C.cyan }}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle} htmlFor={controlId('animation')}>Animation</label>
-                <select
-                  id={controlId('animation')}
-                  aria-label="Layer animation"
-                  value={selected.animation}
-                  onChange={(event) =>
-                    updatePreviewLayer(selected.id, { animation: event.target.value as PreviewLayer['animation'] })
-                  }
-                  style={inputStyle}
-                >
-                  {PREVIEW_ANIMATIONS.map((animation) => (
-                    <option key={animation.id} value={animation.id}>{animation.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: 8 }}>
-                <div>
-                  <label style={labelStyle} htmlFor={controlId('delay')}>Appear after (frames)</label>
-                  <input
-                    id={controlId('delay')}
-                    type="number"
-                    aria-label="Appear after frames"
-                    min={0}
-                    max={Math.max(0, settings.durationInFrames)}
-                    value={selected.animationDelay}
-                    onChange={(event) => updatePreviewLayer(selected.id, { animationDelay: Math.max(0, Number(event.target.value) || 0) })}
-                    style={{ ...inputStyle, minHeight: 34 }}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor={controlId('start')}>Show from (frames)</label>
-                  <input
-                    id={controlId('start')}
-                    type="number"
-                    aria-label="Show from frames"
-                    min={0}
-                    max={Math.max(0, settings.durationInFrames)}
-                    value={selected.startFrame}
-                    onChange={(event) => updatePreviewLayer(selected.id, { startFrame: Math.max(0, Number(event.target.value) || 0) })}
-                    style={{ ...inputStyle, minHeight: 34 }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div style={labelStyle}>Position presets</div>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                  {PREVIEW_POSITIONS.map((position) => (
-                    <button
-                      key={position.id}
-                      type="button"
-                      aria-label={`Move layer to ${position.label}`}
-                      onClick={() => {
-                        const next = clampLayerToBounds({ ...selected, x: position.x, y: position.y }, compW, compH)
-                        commitPosition(selected.id, next)
-                      }}
-                      style={{ ...chipStyle(false), minHeight: 28, fontSize: 10 }}
-                    >
-                      {position.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ color: C.muted, fontSize: 10 }}>
-                Position {Math.round(selected.x * 100)}% / {Math.round(selected.y * 100)}% · Size{' '}
-                {Math.round(selected.scale * 100)}% · kept inside the {Math.round(SAFE_AREA_MARGIN * 100)}% safe area
-              </div>
             </div>
           )}
 

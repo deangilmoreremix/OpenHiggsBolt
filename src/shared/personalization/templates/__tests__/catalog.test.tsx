@@ -340,9 +340,9 @@ describe('Remotion design catalog', () => {
       offer: '20% off',
     })
     expect(settings.remotionDesignId).toBe('lower-third')
-    expect(settings.layers).toHaveLength(1)
+    expect(settings.layers.filter((entry) => entry.kind === 'design')).toHaveLength(1)
 
-    const layer = settings.layers[0]
+    const layer = settings.layers.find((entry) => entry.kind === 'design')!
     expect(layer.kind).toBe('design')
     expect(layer.designId).toBe('lower-third')
     expect(layer.text).toBe('Acme Roofing')

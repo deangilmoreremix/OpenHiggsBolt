@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   applyDesignTemplate,
   createDefaultPreviewSettings,
+  applyLayoutPreset,
   normalizePreviewSettings,
+  removeDesignLayer,
+  resetLayoutToDefaults,
   resetPreviewDesign,
 } from '../../preview/presets'
 import {
@@ -10,6 +13,7 @@ import {
   registerRemotionDesignTemplate,
 } from '../registry'
 import type { RemotionDesignComponent, RemotionDesignTemplate } from '../types'
+import type { PreviewLayer } from '../../preview/types'
 
 const Design: RemotionDesignComponent = () => null
 
@@ -44,6 +48,13 @@ function makeTemplate(overrides: Partial<RemotionDesignTemplate> = {}): Remotion
   }
 }
 
+/** The design layer applied on top of the layout layers. */
+function designOf(settings: { layers: PreviewLayer[] }): PreviewLayer {
+  const layer = settings.layers.find((entry) => entry.kind === 'design')
+  if (!layer) throw new Error('no design layer')
+  return layer
+}
+
 const SEED = {
   businessName: 'Acme Roofing',
   headline: 'The friendly neighborhood roofers',
@@ -55,23 +66,36 @@ describe('applyDesignTemplate', () => {
     __resetRemotionDesignRegistry()
   })
 
-  it('replaces the layers with a single design layer', () => {
+  it('adds a single design layer on top of the layout layers', () => {
     registerRemotionDesignTemplate(makeTemplate())
     const settings = createDefaultPreviewSettings()
 
     const next = applyDesignTemplate(settings, 'demo-design', SEED)
 
-    expect(next.layers).toHaveLength(1)
-    expect(next.layers[0].kind).toBe('design')
-    expect(next.layers[0].designId).toBe('demo-design')
-    expect(next.layers[0].id).toBe('design')
+    expect(next.layers.map((layer) => layer.kind)).toEqual(['logo', 'businessName', 'headline', 'design'])
+    const design = next.layers[next.layers.length - 1]
+    expect(design.designId).toBe('demo-design')
+    expect(design.id).toBe('design')
+  })
+
+  it('replaces a previously applied design instead of stacking two', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    registerRemotionDesignTemplate(makeTemplate({ id: 'other-design', name: 'Other design' }))
+    const first = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+
+    const next = applyDesignTemplate(first, 'other-design', SEED)
+
+    const designs = next.layers.filter((layer) => layer.kind === 'design')
+    expect(designs).toHaveLength(1)
+    expect(designs[0].designId).toBe('other-design')
+    expect(next.layers.filter((layer) => layer.kind !== 'design')).toHaveLength(3)
   })
 
   it('applies the design placement, animation timing and opacity', () => {
     registerRemotionDesignTemplate(makeTemplate())
     const next = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
 
-    const layer = next.layers[0]
+    const layer = designOf(next)
     expect(layer.x).toBe(0.4)
     expect(layer.y).toBe(0.3)
     expect(layer.scale).toBe(0.8)
@@ -85,7 +109,7 @@ describe('applyDesignTemplate', () => {
     registerRemotionDesignTemplate(makeTemplate())
     const next = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
 
-    const layer = next.layers[0]
+    const layer = designOf(next)
     expect(layer.text).toBe('The friendly neighborhood roofers')
     expect(layer.imageUrl).toBe('https://cdn.example.com/logo.png')
   })
@@ -144,7 +168,7 @@ describe('applyDesignTemplate', () => {
 
     const second = applyDesignTemplate(typed, 'demo-design', SEED)
 
-    expect(second.layers[0].text).toBe('Typed by the customer')
+    expect(designOf(second).text).toBe('Typed by the customer')
   })
 
   it('keeps the per-slot overrides when the same design is re-applied', () => {
@@ -160,7 +184,7 @@ describe('applyDesignTemplate', () => {
 
     const second = applyDesignTemplate(edited, 'demo-design', SEED)
 
-    expect(second.layers[0].textSlotOverrides).toEqual({
+    expect(designOf(second).textSlotOverrides).toEqual({
       business: 'Edited business name',
     })
   })
@@ -179,8 +203,8 @@ describe('applyDesignTemplate', () => {
 
     const second = applyDesignTemplate(edited, 'other-design', SEED)
 
-    expect(second.layers[0].designId).toBe('other-design')
-    expect(second.layers[0].textSlotOverrides).toBeUndefined()
+    expect(designOf(second).designId).toBe('other-design')
+    expect(designOf(second).textSlotOverrides).toBeUndefined()
   })
 
   it('is a no-op for an unknown design id', () => {
@@ -200,6 +224,71 @@ describe('applyDesignTemplate', () => {
     applyDesignTemplate(settings, 'demo-design', SEED)
 
     expect(JSON.parse(JSON.stringify(settings))).toEqual(snapshot)
+  })
+})
+
+describe('stacking designs on layouts', () => {
+  beforeEach(() => {
+    __resetRemotionDesignRegistry()
+  })
+
+  it('keeps the applied design, and its edits, when the layout changes', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    const applied = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+    const edited = {
+      ...applied,
+      layers: applied.layers.map((layer) => (layer.kind === 'design' ? { ...layer, text: 'Typed', x: 0.2 } : layer)),
+    }
+
+    const next = applyLayoutPreset(edited, 'service-promotion', SEED)
+
+    expect(next.layout).toBe('service-promotion')
+    expect(next.remotionDesignId).toBe('demo-design')
+    expect(next.layers.map((layer) => layer.kind)).toEqual(['logo', 'serviceImage', 'headline', 'tagline', 'design'])
+    const design = next.layers.find((layer) => layer.kind === 'design')
+    expect(design?.text).toBe('Typed')
+    expect(design?.x).toBe(0.2)
+  })
+
+  it('restores the design placement but keeps its text on "Restore default layout"', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    const applied = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+    const moved = {
+      ...applied,
+      layers: applied.layers.map((layer) => (layer.kind === 'design' ? { ...layer, text: 'Typed', x: 0.9 } : layer)),
+    }
+
+    const reset = resetLayoutToDefaults(moved, moved.layout, SEED)
+
+    expect(reset.remotionDesignId).toBe('demo-design')
+    const design = reset.layers.find((layer) => layer.kind === 'design')
+    expect(design?.x).toBe(0.4)
+    expect(design?.text).toBe('Typed')
+    expect(reset.layers.filter((layer) => layer.kind !== 'design')).toHaveLength(3)
+  })
+
+  it('removeDesignLayer drops only the design and keeps the layout layers', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    const applied = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+
+    const next = removeDesignLayer(applied)
+
+    expect(next.remotionDesignId).toBeNull()
+    expect(next.layers.map((layer) => layer.kind)).toEqual(['logo', 'businessName', 'headline'])
+    expect(applied.layers).toHaveLength(4)
+  })
+
+  it('a legacy design-only project gains layout layers when a layout is picked', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    const legacy = normalizePreviewSettings({
+      ...createDefaultPreviewSettings(),
+      layers: [{ id: 'design', kind: 'design', designId: 'demo-design', visible: true, x: 0.4, y: 0.3, scale: 0.8, animation: 'fade', animationDelay: 0, startFrame: 0, opacity: 1 }],
+      remotionDesignId: 'demo-design',
+    })
+
+    const next = applyLayoutPreset(legacy, 'special-offer', SEED)
+
+    expect(next.layers.map((layer) => layer.kind)).toEqual(['headline', 'offer', 'cta', 'design'])
   })
 })
 

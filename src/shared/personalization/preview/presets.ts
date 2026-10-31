@@ -475,15 +475,23 @@ export function applyLayoutPreset(
     if (kept) return clampLayer({ ...kept })
     return createSeededLayer(kind, ctx)
   })
+  // An applied design stacks ON TOP of the layout: switching the layout keeps
+  // the design layer (and the customer's edits to it) after the layout layers.
+  const designLayer = findDesignLayer(settings)
   return {
     ...settings,
     layout: layoutId,
-    layers,
+    layers: designLayer ? [...layers, clampLayer({ ...designLayer })] : layers,
     brandColors: { ...settings.brandColors },
-    // A layout replaces the layer list, so an applied design is no longer
-    // rendered and must not stay selected.
-    remotionDesignId: null,
+    remotionDesignId: designLayer ? (settings.remotionDesignId ?? designLayer.designId ?? null) : null,
   }
+}
+
+/** The applied design layer, if the settings carry one. */
+function findDesignLayer(settings: PersonalizationPreviewSettings): PreviewLayer | undefined {
+  return (Array.isArray(settings.layers) ? settings.layers : []).find(
+    (layer) => layer && layer.kind === 'design',
+  )
 }
 
 /**
@@ -528,15 +536,20 @@ export function resetLayoutToDefaults(
     if (Object.keys(carry).length === 0) return seeded
     return { ...seeded, ...carry }
   })
-  return {
+  const reset: PersonalizationPreviewSettings = {
     ...settings,
     layout: layoutId,
     layers,
     brandColors: { ...settings.brandColors },
-    // Restoring a layout also drops an applied design: the design layer is
-    // not part of any layout.
     remotionDesignId: null,
   }
+  // An applied design stays applied: it goes back to the design's own default
+  // placement while keeping the text the customer typed into it.
+  const designLayer = findDesignLayer(settings)
+  if (designLayer?.designId && getRemotionDesignTemplate(designLayer.designId)) {
+    return applyDesignTemplate({ ...reset, layers: [...layers, designLayer] }, designLayer.designId, ctx)
+  }
+  return reset
 }
 
 /** The layout a fresh preview starts from. */
@@ -564,8 +577,9 @@ function pickPrimaryMediaBinding(design: RemotionDesignTemplate) {
 /**
  * Applies a registered Remotion design to the preview settings.
  *
- * The design replaces the layer list with a single `design` layer that carries
- * the design's own placement, its primary text slot and its primary media
+ * The design is added as a single `design` layer ON TOP of the layout's
+ * layers (replacing any previously applied design). The layer carries the
+ * design's own placement, its primary text slot and its primary media
  * binding. Brand colours, aspect ratio, fps, duration, the selected layout and
  * the audio track are all preserved, and the applied design is remembered in
  * `remotionDesignId` so it survives a reload.
@@ -622,11 +636,35 @@ export function applyDesignTemplate(
 
   const layer = createLayer('design', overrides)
 
+  // The design stacks ON TOP of the layout: every layout layer is kept, and
+  // the design layer replaces any previously applied design.
+  const layoutLayers = (Array.isArray(prev.layers) ? prev.layers : []).filter(
+    (entry) => entry && entry.kind !== 'design',
+  )
+
   return {
     ...prev,
-    layers: [layer],
+    layers: [...layoutLayers, layer],
     brandColors: { ...prev.brandColors },
     remotionDesignId: design.id,
+  }
+}
+
+/**
+ * Removes the applied Remotion design and keeps the layout layers untouched.
+ *
+ * Pure: `prev` is never mutated and a new settings object is returned.
+ */
+export function removeDesignLayer(
+  prev: PersonalizationPreviewSettings,
+): PersonalizationPreviewSettings {
+  return {
+    ...prev,
+    layers: (Array.isArray(prev.layers) ? prev.layers : []).filter(
+      (layer) => layer && layer.kind !== 'design',
+    ),
+    brandColors: { ...prev.brandColors },
+    remotionDesignId: null,
   }
 }
 
@@ -640,7 +678,7 @@ export function resetPreviewDesign(
   ctx?: ApplyLayoutContext,
 ): PersonalizationPreviewSettings {
   return resetLayoutToDefaults(
-    { ...prev, remotionDesignId: null },
+    removeDesignLayer(prev),
     DEFAULT_PREVIEW_LAYOUT_ID,
     ctx,
   )
@@ -659,6 +697,12 @@ export function positionForLayer(
 export function isImageLayerKind(kind: PreviewLayerKind): boolean {
   return IMAGE_LAYER_KINDS.includes(kind)
 }
+
+/**
+ * Average glyph width as a fraction of the font size, used to estimate how
+ * wide a text box must be. Shared with the editor's wrap estimate.
+ */
+export const TEXT_CHAR_WIDTH_RATIO = 0.55
 
 /**
  * Converts normalized center coordinates plus scale into pixels.
@@ -694,7 +738,7 @@ export function toBox(
   }
 
   const fontSizePx = Math.round(scale * height)
-  const chars = Math.max(4, (layer.text?.length ?? 8) * 0.55)
+  const chars = Math.max(4, (layer.text?.length ?? 8) * TEXT_CHAR_WIDTH_RATIO)
   const widthPx = Math.round(Math.min(width * 0.9, fontSizePx * chars))
   const leftPx = Math.round(x * width - widthPx / 2)
   const topPx = Math.max(0, Math.round(y * height - fontSizePx / 2))

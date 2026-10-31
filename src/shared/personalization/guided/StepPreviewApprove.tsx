@@ -8,10 +8,50 @@ import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
-import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
-import { PREVIEW_LAYOUTS } from '../preview/presets'
+import { DEFAULT_PREVIEW_BRAND_COLORS, PREVIEW_ASPECT_RATIOS } from '../preview/types'
+import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS } from '../preview/presets'
+import { DESIGN_CATEGORY_LABELS, LAYER_LABELS } from './layerChanges'
+import type { RemotionDesignCategory, RemotionDesignTemplate } from '../templates/types'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import { chooseFinalOutputPath } from '../finalOutput'
+
+const BRAND_COLOR_FIELDS = [
+  ['Primary', 'primary'],
+  ['Accent', 'accent'],
+  ['Text', 'text'],
+] as const
+
+const stepLabelStyle: React.CSSProperties = {
+  ...labelStyle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  marginBottom: 6,
+}
+
+const stepNumberStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 16,
+  height: 16,
+  borderRadius: 999,
+  background: C.cyanSoft,
+  border: `1px solid ${C.cyanBorder}`,
+  color: C.cyan,
+  fontSize: 9,
+  fontWeight: 800,
+}
+
+/** Designs grouped into chip rows by category, in the catalog's label order. */
+function groupDesignsByCategory(
+  designs: RemotionDesignTemplate[],
+): [RemotionDesignCategory, RemotionDesignTemplate[]][] {
+  const order = Object.keys(DESIGN_CATEGORY_LABELS) as RemotionDesignCategory[]
+  return order
+    .map((category) => [category, designs.filter((design) => (design.category in DESIGN_CATEGORY_LABELS ? design.category : 'other') === category)] as [RemotionDesignCategory, RemotionDesignTemplate[]])
+    .filter(([, entries]) => entries.length > 0)
+}
 
 /**
  * Simple Mode step 4 — free Before/After preview, direct on-video overlay
@@ -32,6 +72,7 @@ export function StepPreviewApprove(): React.JSX.Element {
     previewSettings,
     previewVideo,
     updatePreviewComposition,
+    updatePreviewBrandColors = () => {},
     setPreviewLayout,
     remotionDesignTemplates = [],
     activeRemotionDesignId = null,
@@ -60,6 +101,13 @@ export function StepPreviewApprove(): React.JSX.Element {
   // declares which designs are constrained; Step 4 shows a non-blocking
   // note next to the "Designs" chip row when the selected one is affected.
   const fixedSvgIdWarning = getRemotionDesignFixedSvgIdWarning(activeRemotionDesignId)
+
+  const brandColors = { ...DEFAULT_PREVIEW_BRAND_COLORS, ...(previewSettings.brandColors ?? {}) }
+  const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) ?? null
+  const activeDesign = remotionDesignTemplates.find((design) => design.id === activeRemotionDesignId) ?? null
+  const designGroups = groupDesignsByCategory(remotionDesignTemplates)
+  const [showVideoAdvanced, setShowVideoAdvanced] = useState(false)
+  const [showCompare, setShowCompare] = useState(false)
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -109,51 +157,80 @@ export function StepPreviewApprove(): React.JSX.Element {
       <div>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Preview and approve</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
-          Watch the original and your personalized version side by side. Drag, resize and edit your branding
-          directly on the video below. Previews are free and run in your browser.
+          Pick a starting look, optionally add an animated design, then fine-tune each item directly on the
+          video. Previews are free and run in your browser.
         </p>
-      </div>
-
-      {/* ── Before / After ──────────────────────────────────────────────── */}
-      <div style={panelStyle}>
-        <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" />
       </div>
 
       {/* ── Quick adjustments ───────────────────────────────────────────── */}
       <div style={panelStyle}>
-        <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
           Quick adjustments
         </h3>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        <p style={{ ...hintStyle, marginTop: 0, marginBottom: 12 }}>
+          Every choice here shows up straight away in the editor below — that preview is exactly what gets rendered.
+        </p>
+
+        <div style={stepLabelStyle}>
+          <span style={stepNumberStyle}>1</span> Starting look
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {PREVIEW_LAYOUTS.map((layout) => (
             <button
               key={layout.id}
               type="button"
               onClick={() => setPreviewLayout(layout.id)}
               aria-pressed={previewSettings.layout === layout.id}
+              title={layout.description}
               style={chipStyle(previewSettings.layout === layout.id)}
             >
               {layout.name}
             </button>
           ))}
         </div>
+        {activeLayout ? (
+          <p style={{ ...hintStyle, marginTop: 6 }}>
+            {activeLayout.description} Places: {LAYER_IDS_BY_LAYOUT[activeLayout.id].map((kind) => LAYER_LABELS[kind]).join(', ')}.
+          </p>
+        ) : null}
+
         {remotionDesignTemplates.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...labelStyle, marginBottom: 6 }}>Designs</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {remotionDesignTemplates.map((design) => (
+          <div style={{ marginTop: 14 }}>
+            <div style={stepLabelStyle}>
+              <span style={stepNumberStyle}>2</span> Animated design <span style={{ color: C.muted, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(optional — added on top of your starting look)</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button
-                  key={design.id}
                   type="button"
-                  onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
-                  aria-pressed={activeRemotionDesignId === design.id}
-                  title={design.description}
-                  style={chipStyle(activeRemotionDesignId === design.id)}
+                  onClick={() => setRemotionDesign(null)}
+                  aria-pressed={activeRemotionDesignId === null}
+                  style={chipStyle(activeRemotionDesignId === null)}
                 >
-                  {design.name}
+                  None
                 </button>
+              </div>
+              {designGroups.map(([category, designs]) => (
+                <div key={category}>
+                  <div style={{ ...labelStyle, marginBottom: 4 }}>{DESIGN_CATEGORY_LABELS[category]}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {designs.map((design) => (
+                      <button
+                        key={design.id}
+                        type="button"
+                        onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
+                        aria-pressed={activeRemotionDesignId === design.id}
+                        title={design.description}
+                        style={chipStyle(activeRemotionDesignId === design.id)}
+                      >
+                        {design.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
+            {activeDesign ? <p style={{ ...hintStyle, marginTop: 8 }}>{activeDesign.description}</p> : null}
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
                 {fixedSvgIdWarning}
@@ -164,7 +241,45 @@ export function StepPreviewApprove(): React.JSX.Element {
             ) : null}
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={stepLabelStyle}>
+            <span style={stepNumberStyle}>{remotionDesignTemplates.length > 0 ? 3 : 2}</span> Colors
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            {BRAND_COLOR_FIELDS.map(([label, key]) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, color: C.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                {label}
+                <input
+                  type="color"
+                  aria-label={`${label} color`}
+                  value={brandColors[key]}
+                  onChange={(event) => updatePreviewBrandColors({ [key]: event.target.value })}
+                  style={{ width: 52, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field, padding: 3 }}
+                />
+              </label>
+            ))}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: C.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', minWidth: 140, flex: '1 1 140px' }}>
+              Shade behind text
+              <input
+                type="range"
+                aria-label="Shade behind text"
+                min={0}
+                max={0.6}
+                step={0.02}
+                value={brandColors.backgroundDim}
+                onChange={(event) => updatePreviewBrandColors({ backgroundDim: Number(event.target.value) })}
+                style={{ width: '100%', accentColor: C.cyan }}
+              />
+            </label>
+          </div>
+          <p style={{ ...hintStyle, marginTop: 6 }}>
+            Primary → design backgrounds and shapes · Accent → buttons and highlights · Text → headlines and
+            captions. A color picked on a single item overrides these.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12, marginTop: 14 }}>
           <div>
             <label style={labelStyle} htmlFor="guided-aspect">Video shape</label>
             <select
@@ -178,19 +293,6 @@ export function StepPreviewApprove(): React.JSX.Element {
               {PREVIEW_ASPECT_RATIOS.map((ratio) => (
                 <option key={ratio} value={ratio}>{ratio}</option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle} htmlFor="guided-fps">Smoothness (frames per second)</label>
-            <select
-              id="guided-fps"
-              value={previewSettings.fps}
-              onChange={(event) => updatePreviewComposition({ fps: Number(event.target.value) })}
-              style={{ ...softPanelStyle, width: '100%', color: C.text, fontSize: 12 }}
-            >
-              <option value={24}>24</option>
-              <option value={30}>30</option>
-              <option value={60}>60</option>
             </select>
           </div>
           <div>
@@ -217,10 +319,50 @@ export function StepPreviewApprove(): React.JSX.Element {
           />
           End with a branded card (logo, contact details and final call to action)
         </label>
+        <button
+          type="button"
+          onClick={() => setShowVideoAdvanced((open) => !open)}
+          aria-expanded={showVideoAdvanced}
+          style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, marginTop: 10 }}
+        >
+          {showVideoAdvanced ? '▾' : '▸'} Advanced
+        </button>
+        {showVideoAdvanced && (
+          <div style={{ marginTop: 8, maxWidth: 240 }}>
+            <label style={labelStyle} htmlFor="guided-fps">Smoothness (frames per second)</label>
+            <select
+              id="guided-fps"
+              value={previewSettings.fps}
+              onChange={(event) => updatePreviewComposition({ fps: Number(event.target.value) })}
+              style={{ ...softPanelStyle, width: '100%', color: C.text, fontSize: 12 }}
+            >
+              <option value={24}>24</option>
+              <option value={30}>30</option>
+              <option value={60}>60</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* ── Direct on-video overlay editing ─────────────────────────────── */}
       <OverlayEditor inputProps={inputProps} />
+
+      {/* ── Before / After (on demand) ──────────────────────────────────── */}
+      <div style={panelStyle}>
+        <button
+          type="button"
+          onClick={() => setShowCompare((open) => !open)}
+          aria-expanded={showCompare}
+          style={{ ...secondaryButtonStyle, minHeight: 32 }}
+        >
+          {showCompare ? 'Hide comparison' : 'Compare with the original video'}
+        </button>
+        {showCompare ? (
+          <div style={{ marginTop: 12 }}>
+            <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" />
+          </div>
+        ) : null}
+      </div>
 
       {/* ── Approve & create ────────────────────────────────────────────── */}
       <div style={{ ...panelStyle, border: `1px solid ${previewApproved ? 'rgba(40,201,139,.45)' : C.border}` }}>
