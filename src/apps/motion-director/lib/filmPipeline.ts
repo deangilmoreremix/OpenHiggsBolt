@@ -312,7 +312,7 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
  * last frame (in the browser, with the same composition the export uses) and
  * report the ones that fail. Skipped when the browser cannot render stills; bounded by `budgetMs`.
  */
-export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 20_000): Promise<{ checked: number; failed: string[] }> {
+export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000): Promise<{ checked: number; failed: string[] }> {
   let render: typeof import('../webRenderer').renderStillOnWebExport;
   try {
     render = (await import('../webRenderer')).renderStillOnWebExport;
@@ -321,8 +321,12 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
   }
   const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
   const frames = new Set<number>();
-  // The middle of every shot, plus the film's first and last frame.
-  for (const c of shotTrack?.clips ?? []) frames.add(c.start + Math.floor(c.duration / 2));
+  // Upstream's three checks per shot: entering, at the peak, settled; plus the film's first and last frame.
+  for (const c of shotTrack?.clips ?? []) {
+    frames.add(c.start + Math.floor(c.duration * 0.2));
+    frames.add(c.start + Math.floor(c.duration / 2));
+    frames.add(c.start + Math.max(0, c.duration - 3));
+  }
   frames.add(0);
   frames.add(Math.max(0, projectEndFrame(project) - 1));
   const list = [...frames].sort((a, b) => a - b);
