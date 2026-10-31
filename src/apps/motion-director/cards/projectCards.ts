@@ -9,6 +9,7 @@ export { unitsOf } from "./manifest";
 export type { UnitKind } from "./manifest";
 
 /** 已链接成片工程的清单（未链接 / 工程没写 workbench.ts 时为 null） */
+import { AS_DESIGNED, DIRECTOR_THEMES } from "../lib/palette";
 export const MANIFEST: WorkbenchManifest | null = (RAW ?? null) as WorkbenchManifest | null;
 
 const KIND_LABEL = { shot: "镜头", transition: "转场", caption: "字幕", overlay: "叠加层" } as const;
@@ -68,3 +69,10 @@ export const cardIdOfUnit = (u: ManifestUnit) => built.cardIdOfUnit.get(u)!;
 
 /** 原成片整条合成（清单可选提供），Studio 注册为 ProjOriginal 供逐帧对照 */
 export const ORIGINAL = MANIFEST?.original ?? null;
+
+/** Themes for the colour editor and every player: the linked film's own, else the director's
+ *  (upstream presets + "As designed" + "Your site", lib/palette). */
+export const THEME_MANIFEST: WorkbenchManifest = MANIFEST?.themes?.length
+  ? MANIFEST
+  : ({ name: "Motion Director", fps: 30, width: 1920, height: 1080, total: 0, shots: [], transitions: [], captions: [], sfx: [],
+      themes: DIRECTOR_THEMES, defaultTheme: AS_DESIGNED, themeProp: "__theme", paletteProp: "__palette" } as unknown as WorkbenchManifest);

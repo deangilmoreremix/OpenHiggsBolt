@@ -27,6 +27,7 @@ export const DEMO_CARDS: CardDef[] = DEMO_MODULES.map((m) => {
     durationInFrames: Math.max(2, Math.round(m.duration)),
     component: withDemoProps(m.component),
     schema: DEMO_CARD_SCHEMA,
+    themeKey: "demo",
     accent: "#c58a2a",
     preview: meta?.preview ? `cardpreviews/${meta.preview}` : undefined,
     summary: meta?.summary,

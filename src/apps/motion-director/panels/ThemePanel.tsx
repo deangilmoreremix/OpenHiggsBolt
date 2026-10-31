@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MANIFEST } from '../cards/projectCards';
+import { THEME_MANIFEST } from '../cards/projectCards';
 import { useStore } from '../store';
 import { selectedTheme, switchTheme, validThemeColors, FALLBACK_THEME } from '../theme';
 import { applyPalette, paletteFromProject, parsePalette, type PalettePreset } from '../palettePresets';
@@ -7,14 +7,14 @@ import { t, themeLabel, useT } from '../i18n';
 
 // Kept for backwards compatibility with palettes saved by the original "shotcraft"
 // tool so a user's "My themes" survive the rebrand.
-const savedKey = `shotcraft:palettes:${MANIFEST?.name ?? 'default'}`;
+const savedKey = `shotcraft:palettes:${THEME_MANIFEST?.name ?? 'default'}`;
 type SavedPalette = {id:string;preset:PalettePreset};
 const readSaved = ():SavedPalette[] => {
   try {
     const items:unknown=JSON.parse(localStorage.getItem(savedKey) ?? '[]');
     if(!Array.isArray(items))return [];
     return items.slice(0,50).flatMap(item=>{
-      try{return typeof item?.id==='string' ? [{id:item.id,preset:parsePalette(JSON.stringify(item.preset),MANIFEST)}] : []}catch{return []}
+      try{return typeof item?.id==='string' ? [{id:item.id,preset:parsePalette(JSON.stringify(item.preset),THEME_MANIFEST)}] : []}catch{return []}
     });
   }catch{return []}
 };
@@ -63,15 +63,15 @@ export const ThemePanel = () => {
   };
   // 没接入成片清单时没有清单自带的主题——用 Studio 自带的纸墨配色兜底，
   // 否则配色编辑器整块都不渲染，`setThemeColors` 也就没有入口。
-  const themes = MANIFEST?.themes?.length ? MANIFEST.themes : [FALLBACK_THEME];
-  const current = selectedTheme(MANIFEST,project.themeId);
-  const custom = validThemeColors(MANIFEST,project.themeId,project.themeColors);
+  const themes = THEME_MANIFEST?.themes?.length ? THEME_MANIFEST.themes : [FALLBACK_THEME];
+  const current = selectedTheme(THEME_MANIFEST,project.themeId);
+  const custom = validThemeColors(THEME_MANIFEST,project.themeId,project.themeColors);
   const modified = Object.keys(custom).length > 0;
   const palette = {...current?.palette,...custom};
   const updateColor = (key:string,value:string,begin=true) => {
     const store = useStore.getState();
-    const base = selectedTheme(MANIFEST,store.project.themeId)?.palette;
-    const colors = validThemeColors(MANIFEST,store.project.themeId,store.project.themeColors);
+    const base = selectedTheme(THEME_MANIFEST,store.project.themeId)?.palette;
+    const colors = validThemeColors(THEME_MANIFEST,store.project.themeId,store.project.themeColors);
     if(!base?.[key] || !/^#[0-9a-f]{6}$/i.test(value) || value.toLowerCase()===(colors[key] ?? base[key]).toLowerCase()) return;
     const next = {...colors,[key]:value};
     if(value.toLowerCase()===base[key].toLowerCase()) delete next[key];
@@ -87,7 +87,7 @@ export const ThemePanel = () => {
       const active=theme.id===current?.id;
       const colors=theme.palette ?? {page:theme.background ?? '#f2eee6',text:'#13110f',accent:'#955905'};
       return <button key={theme.id} className={`theme-option${active?' active':''}`} aria-label={themeLabel(theme.label)} aria-pressed={active}
-        onClick={()=>{const store=useStore.getState();store.setPreview(null);if(!active)store.setProject(switchTheme(store.project,MANIFEST,theme.id));}}>
+        onClick={()=>{const store=useStore.getState();store.setPreview(null);if(!active)store.setProject(switchTheme(store.project,THEME_MANIFEST,theme.id));}}>
         <span className="theme-palette" aria-hidden="true">{[colors.page,colors.surface ?? colors.page,colors.accent].map((c,i)=><span key={i} style={{background:c}} />)}</span>
         <span className="theme-option-label"><strong>{themeLabel(theme.label)}</strong><span>{active?'✓':''}</span></span>
       </button>;
@@ -102,12 +102,12 @@ export const ThemePanel = () => {
       <div className="palette-actions">
         <button className="btn" disabled={!current?.palette} onClick={()=>{
           if(saved.length>=50){setMessage(t("theme.limit"));return;}
-          const preset=paletteFromProject(MANIFEST,useStore.getState().project,name);
+          const preset=paletteFromProject(THEME_MANIFEST,useStore.getState().project,name);
           if(persist([...saved,{id:crypto.randomUUID(),preset}])){setName(preset.name);setMessage(t("theme.saved", { name: preset.name }));}
         }}>{t("theme.save")}</button>
         <button className="btn" onClick={()=>fileInput.current?.click()}>{t("theme.import")}</button>
         <button className="btn" disabled={!current?.palette} onClick={()=>{
-          const preset=paletteFromProject(MANIFEST,useStore.getState().project,name);
+          const preset=paletteFromProject(THEME_MANIFEST,useStore.getState().project,name);
           const url=URL.createObjectURL(new Blob([JSON.stringify(preset,null,2)],{type:'application/json'}));
           const a=document.createElement('a');a.href=url;a.download=`${preset.name.replace(/[\\/:*?"<>|]/g,'-')}.palette.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
           setMessage(t("theme.exported"));
@@ -115,7 +115,7 @@ export const ThemePanel = () => {
       </div>
       <input ref={fileInput} type="file" hidden accept=".json,application/json" aria-label={t("theme.file.aria")} onChange={async e=>{
         const file=e.target.files?.[0];e.target.value='';if(!file)return;
-        try{if(file.size>65536)throw Error(t("theme.tooBig"));apply(parsePalette(await file.text(),MANIFEST));setMessage(t("theme.imported"));}
+        try{if(file.size>65536)throw Error(t("theme.tooBig"));apply(parsePalette(await file.text(),THEME_MANIFEST));setMessage(t("theme.imported"));}
         catch(error){setMessage(error instanceof Error?error.message:t("theme.importFailed"));}
       }} />
       {!!message && <p className="theme-panel-hint" role="status">{message}</p>}

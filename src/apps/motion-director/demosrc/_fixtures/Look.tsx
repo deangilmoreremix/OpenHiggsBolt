@@ -6,6 +6,8 @@
 import React from 'react';
 import { spring, useCurrentFrame } from 'remotion';
 import { EASE, FONT, Grain, Vignette, tracking } from './Polish';
+import { type FilmPalette, skinLook } from '../../lib/palette';
+import { activePalette, setFilmPalette } from './skin';
 
 // ───────────────────────── 调色板 ─────────────────────────
 // 每个 look = 一套完整的明暗、表面、文字、强调色与光色。一个镜头只用一个 look；
@@ -30,7 +32,7 @@ export type Look = {
   shadow: string; // 阴影色（带色相）
 };
 
-export const LOOKS: Record<LookName, Look> = {
+const DESIGNED: Record<LookName, Look> = {
   // 深蓝夜：科技产品、AI、数据——冷静、电光蓝
   midnight: {
     name: 'midnight', dark: true, bg: ['#0d1426', '#090d1a', '#05070e'], light: '#3d63ff',
@@ -81,66 +83,57 @@ export const LOOKS: Record<LookName, Look> = {
   },
 };
 
-// hex → "r,g,b"，配 rgba(${rgbOf(c)},a) 用
-/** The palettes as designed; `skinLooks` paints over them and restores from this copy. */
-const DESIGNED: Record<LookName, Look> = JSON.parse(JSON.stringify(LOOKS));
-
-const hexRgb = (hex: string): [number, number, number] | null => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+const LOOK_NAMES = Object.keys(DESIGNED) as LookName[];
+const skinned = new Map<string, Look>();
+/** The look as this clip draws it: designed, then the film's palette, then the clip's own (lib/palette). */
+const resolved = (name: LookName): Look => {
+  const p = activePalette();
+  if (!p) return DESIGNED[name];
+  const key = `${name}|${JSON.stringify(p)}`;
+  let look = skinned.get(key);
+  if (!look) {
+    if (skinned.size > 256) skinned.clear();
+    // Graphite stays monochrome (white accent) and takes the brand colour as its second tone.
+    look = skinLook(DESIGNED[name], p, name === 'graphite');
+    skinned.set(key, look);
+  }
+  return look;
 };
-const toHex = (c: number[]) => `#${c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('')}`;
-const mixHex = (a: string, b: string, t: number) => {
-  const x = hexRgb(a);
-  const y = hexRgb(b);
-  return x && y ? toHex(x.map((v, i) => v + (y[i] - v) * t)) : a;
-};
-const luma = (hex: string) => {
-  const c = hexRgb(hex);
-  return c ? (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255 : 0.5;
-};
-const onColor = (hex: string) => (luma(hex) > 0.55 ? '#0b0b0f' : '#ffffff');
 
 /**
- * Paint the looks in the colours of a company: a film of that company should speak one visual
- * language. Accent, spot light and the text on the accent follow the brand; when the brand's
- * background is of the same family as the look (dark brand + dark look, light + light) the
- * background, surfaces and text follow it too. Graphite stays monochrome (white accent) and
- * takes the brand colour as its second tone. `null` restores the designed palettes. The recipes
- * read `LOOKS.x` objects, so the change reaches them on the next frame.
+ * The 8 looks. Each entry is a live view: recipes keep `const L = LOOKS.midnight` and read `L.accent`
+ * while rendering, and get the palette of the clip being rendered (set by the demo wrapper,
+ * cards/demoProps.tsx) or the film's. Values copied at import time stay as designed.
+ */
+export const LOOKS: Record<LookName, Look> = Object.fromEntries(
+  LOOK_NAMES.map((name) => [
+    name,
+    new Proxy(DESIGNED[name], {
+      get: (_t, k) => (resolved(name) as unknown as Record<PropertyKey, unknown>)[k],
+      ownKeys: () => Reflect.ownKeys(DESIGNED[name]),
+      getOwnPropertyDescriptor: (_t, k) => {
+        const d = Reflect.getOwnPropertyDescriptor(DESIGNED[name], k);
+        return d ? { ...d, value: (resolved(name) as unknown as Record<PropertyKey, unknown>)[k] } : d;
+      },
+    }),
+  ]),
+) as Record<LookName, Look>;
+
+/** The palettes as designed (no film or clip palette applied). */
+export const designedLook = (name: LookName): Look => DESIGNED[name];
+
+/**
+ * Paint the looks in a company's colours for the whole film (legacy entry point, kept for
+ * `setBrand`): accent, second tone, text and background. `null` restores the designed palettes.
  */
 export function skinLooks(skin: { accent?: string; accent2?: string; ink?: string; paper?: string } | null): void {
-  for (const name of Object.keys(LOOKS) as LookName[]) Object.assign(LOOKS[name], JSON.parse(JSON.stringify(DESIGNED[name])));
-  if (!skin) return;
-  const accent = skin.accent && hexRgb(skin.accent) ? skin.accent : null;
-  const paper = skin.paper && hexRgb(skin.paper) ? skin.paper : null;
-  const ink = skin.ink && hexRgb(skin.ink) ? skin.ink : null;
-  const second = skin.accent2 && hexRgb(skin.accent2) && skin.accent2 !== skin.accent ? skin.accent2 : accent ? mixHex(accent, luma(accent) > 0.5 ? '#000000' : '#ffffff', 0.35) : null;
-  for (const name of Object.keys(LOOKS) as LookName[]) {
-    const look = LOOKS[name];
-    if (accent) {
-      if (name === 'graphite') look.accent2 = accent;
-      else {
-        look.accent = accent;
-        look.accent2 = second ?? look.accent2;
-        look.onAccent = onColor(accent);
-        look.light = accent;
-      }
-    }
-    // Same family only: a dark brand must not turn a paper look dark (its inks would vanish).
-    if (paper && ink && (luma(paper) < 0.5) === look.dark) {
-      look.bg = [look.dark ? mixHex(paper, '#ffffff', 0.05) : paper, paper, mixHex(paper, '#000000', look.dark ? 0.35 : 0.06)];
-      look.surface = look.dark ? mixHex(paper, '#ffffff', 0.06) : '#ffffff';
-      look.surface2 = look.dark ? mixHex(paper, '#ffffff', 0.12) : mixHex(paper, '#000000', 0.04);
-      look.ink = ink;
-      look.ink2 = mixHex(ink, paper, 0.35);
-      look.ink3 = mixHex(ink, paper, 0.62);
-      const c = hexRgb(ink)!;
-      look.line = `rgba(${c[0]},${c[1]},${c[2]},${look.dark ? 0.12 : 0.1})`;
-    }
-  }
+  if (!skin) return setFilmPalette(null);
+  const p: FilmPalette = {};
+  if (skin.accent) p.accent = skin.accent;
+  if (skin.accent2) p.accent2 = skin.accent2;
+  if (skin.ink) p.text = skin.ink;
+  if (skin.paper) p.page = skin.paper;
+  setFilmPalette(p);
 }
 
 export const rgbOf = (hex: string) => {

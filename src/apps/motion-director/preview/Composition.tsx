@@ -2,7 +2,9 @@ import React from "react";
 import { AbsoluteFill, Freeze, Sequence, useCurrentFrame } from "remotion";
 import type { ProjectData } from "../types";
 import { CARDS } from "../cards/registry";
-import { MANIFEST } from '../cards/projectCards';
+import { THEME_MANIFEST } from '../cards/projectCards';
+import { resolvePalette } from '../lib/palette';
+import { setFilmPalette } from '../demosrc/_fixtures/skin';
 import { themedProps, themedBackground } from '../theme';
 import { setBrand } from "../demosrc/_fixtures/Brand";
 
@@ -21,10 +23,12 @@ const TimeRemap: React.FC<{
 
 export const MainComposition: React.FC<{ project: ProjectData }> = ({ project }) => {
   setBrand(project.brand);
+  // A film with a theme (Themes tab / director) draws every recipe in that theme; older films keep the brand skin.
+  if (project.themeId !== undefined) setFilmPalette(resolvePalette(project.themeId, project.themeColors));
   // UI 中 tracks[0] 是最上层轨 → 最后渲染（覆盖在上）
   const ordered = [...project.tracks].reverse();
   return (
-    <AbsoluteFill style={{ background: themedBackground(project, MANIFEST) ?? "#0e0e10" }}>
+    <AbsoluteFill style={{ background: themedBackground(project, THEME_MANIFEST) ?? "#0e0e10" }}>
       {ordered.map(
         (track) =>
           !track.hidden &&
@@ -33,7 +37,7 @@ export const MainComposition: React.FC<{ project: ProjectData }> = ({ project })
             if (!card) return null;
             const Comp = card.component;
             const duration = Math.max(1, Math.round(clip.duration));
-            const props: Record<string, unknown> = themedProps(MANIFEST, card, project.themeId, clip.props, project.themeColors);
+            const props: Record<string, unknown> = themedProps(THEME_MANIFEST, card, project.themeId, clip.props, project.themeColors);
             // 成片组件按 `duration`/`dur` 算出场淡出：注入 clip 的源时长，拉长/裁短后淡出跟着挪
             if (card.durationProp)
               props[card.durationProp] = Math.max(1, Math.round(clip.inOffset + duration * clip.speed));

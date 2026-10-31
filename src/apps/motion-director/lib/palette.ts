@@ -1,0 +1,137 @@
+import type { ManifestTheme } from '../cards/manifest';
+import palettes from './palettes.json';
+
+/**
+ * Film colours the upstream way (video-shotcraft template/src/themes + THEMES.md): seven semantic
+ * colours per palette, a preset per film, and per-clip edits that win over it.
+ *
+ * Motion Director adds two presets to upstream's eight palettes:
+ * - `as-designed`: every recipe keeps the Look it was designed in (the 2026-10 library), like Ink Press upstream.
+ * - `site`: the colours read from the captured site (the film's own tokens, SKILL principle 2).
+ */
+export const PALETTE_KEYS = ['page', 'surface', 'field', 'text', 'muted', 'accent', 'border'] as const;
+export type PaletteKey = (typeof PALETTE_KEYS)[number];
+export type Palette = Record<PaletteKey, string>;
+/** A palette plus what the product adds beyond colour. */
+export type FilmPalette = Partial<Palette> & { accent2?: string; font?: string };
+
+export const AS_DESIGNED = 'as-designed';
+export const SITE_THEME = 'site';
+export const PRESET_PALETTES = palettes as Record<string, Palette>;
+
+const LABELS: Array<[string, string]> = [
+  [AS_DESIGNED, 'As designed · each recipe in its own look'],
+  [SITE_THEME, 'Your site'],
+  ['modern-light', 'Modern Light'],
+  ['midnight', 'Midnight'],
+  ['solar-pop', 'Sage'],
+  ['coral-burst', 'Coral'],
+  ['color-play', 'Iris'],
+  ['deep-ocean', 'Deep Ocean'],
+  ['obsidian-violet', 'Obsidian Violet'],
+  ['vintage-kraft', 'Vintage Kraft'],
+];
+
+const HEX = /^#[0-9a-f]{6}$/i;
+export const isHex = (v: unknown): v is string => typeof v === 'string' && HEX.test(v);
+
+/** The themes the workbench offers for a director film (THEMES.md presets + the two above). */
+export const DIRECTOR_THEMES: ManifestTheme[] = LABELS.map(([id, label]) => {
+  const palette = id === AS_DESIGNED ? undefined : PRESET_PALETTES[id === SITE_THEME ? 'modern-light' : id];
+  return { id, label, background: palette?.page ?? '#0e0e10', ...(palette ? { palette: { ...palette } } : {}) } as ManifestTheme;
+});
+
+/** Keep only valid colours of known keys (same filter as upstream `resolveTheme`). */
+export const cleanPalette = (colors: unknown): FilmPalette => {
+  if (!colors || typeof colors !== 'object') return {};
+  const out: FilmPalette = {};
+  for (const [k, v] of Object.entries(colors as Record<string, unknown>)) {
+    if ((PALETTE_KEYS as readonly string[]).includes(k) || k === 'accent2') {
+      if (isHex(v)) (out as Record<string, string>)[k] = v;
+    } else if (k === 'font' && typeof v === 'string' && v.trim() && v.length < 200) out.font = v;
+  }
+  return out;
+};
+
+/**
+ * Resolution order, as upstream: the preset, then the film's colours, then this clip's own.
+ * `as-designed` with no colours anywhere returns null: the recipe draws in its own look.
+ */
+export const resolvePalette = (themeId?: unknown, filmColors?: unknown, clipColors?: unknown): FilmPalette | null => {
+  const id = typeof themeId === 'string' ? themeId : AS_DESIGNED;
+  const film = cleanPalette(filmColors);
+  const clip = cleanPalette(clipColors);
+  const base = id === AS_DESIGNED ? {} : PRESET_PALETTES[id === SITE_THEME ? 'modern-light' : id] ?? {};
+  const out = { ...base, ...film, ...clip };
+  return Object.keys(out).length ? out : null;
+};
+
+// ───────── colour helpers ─────────
+const rgb = (hex: string): [number, number, number] => {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const toHex = (c: number[]) => `#${c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('')}`;
+export const mixHex = (a: string, b: string, t: number) => {
+  if (!isHex(a) || !isHex(b)) return a;
+  const x = rgb(a);
+  const y = rgb(b);
+  return toHex(x.map((v, i) => v + (y[i] - v) * t));
+};
+export const luma = (hex: string) => {
+  if (!isHex(hex)) return 0.5;
+  const c = rgb(hex);
+  return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+};
+export const isDarkPalette = (p: FilmPalette) => (p.page ? luma(p.page) < 0.5 : null);
+const onColor = (hex: string) => (luma(hex) > 0.55 ? '#0b0b0f' : '#ffffff');
+
+/** The roles of a recipe Look (see demosrc/_fixtures/Look.tsx). */
+export interface LookRoles {
+  dark: boolean;
+  bg: [string, string, string];
+  light: string;
+  surface: string;
+  surface2: string;
+  line: string;
+  ink: string;
+  ink2: string;
+  ink3: string;
+  accent: string;
+  accent2: string;
+  onAccent: string;
+  shadow: string;
+}
+
+/**
+ * Re-skin one designed Look with a film palette (SKILL principle 2: structure and motion stay,
+ * colours follow the product). The recipe's polarity is part of its technique (screen vs multiply,
+ * glow on dark ground…), so a palette of the other polarity only brings its accent: the cards say a
+ * dark-only recipe on light ground "needs a full re-palette", which a colour swap cannot do.
+ */
+export function skinLook<T extends LookRoles>(look: T, p: FilmPalette, monochrome = false): T {
+  const out: T = { ...look, bg: [...look.bg] as [string, string, string] };
+  const accent = isHex(p.accent) ? p.accent : null;
+  if (accent) {
+    const second = isHex(p.accent2) && p.accent2 !== accent ? p.accent2 : mixHex(accent, luma(accent) > 0.5 ? '#000000' : '#ffffff', 0.35);
+    if (monochrome) out.accent2 = accent;
+    else {
+      out.accent = accent;
+      out.accent2 = second;
+      out.onAccent = onColor(accent);
+      out.light = accent;
+    }
+  }
+  const dark = isDarkPalette(p);
+  if (dark === null || dark !== look.dark || !isHex(p.page)) return out;
+  const page = p.page;
+  const text = isHex(p.text) ? p.text : look.ink;
+  out.bg = [dark ? mixHex(page, '#ffffff', 0.05) : mixHex(page, '#ffffff', 0.3), page, mixHex(page, '#000000', dark ? 0.35 : 0.06)];
+  out.surface = isHex(p.surface) ? p.surface : dark ? mixHex(page, '#ffffff', 0.06) : '#ffffff';
+  out.surface2 = isHex(p.field) ? p.field : dark ? mixHex(page, '#ffffff', 0.12) : mixHex(page, '#000000', 0.04);
+  out.ink = text;
+  out.ink2 = isHex(p.muted) ? p.muted : mixHex(text, page, 0.35);
+  out.ink3 = mixHex(out.ink2, page, 0.45);
+  out.line = isHex(p.border) ? p.border : mixHex(text, page, dark ? 0.85 : 0.88);
+  return out;
+}

@@ -6,7 +6,7 @@ import { setBrand } from '../demosrc/_fixtures/Brand';
 import { CARDS } from '../cards/registry';
 import { cardFps, cardSize } from '../cards/types';
 import { themedProps } from '../theme';
-import { MANIFEST } from '../cards/projectCards';
+import { THEME_MANIFEST } from '../cards/projectCards';
 import { MOTION_CATEGORIES, motionCardId, type MotionTemplate } from '@/data/motionRecipeCatalog';
 
 const CATEGORY_LABEL_EN = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
@@ -56,7 +56,7 @@ export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; pla
         <div className="absolute inset-0" style={{ background: '#000', pointerEvents: 'none' }}>
           <Player
             component={card.component}
-            inputProps={themedProps(MANIFEST, card, undefined, {}, undefined)}
+            inputProps={themedProps(THEME_MANIFEST, card, undefined, {}, undefined)}
             durationInFrames={Math.max(2, card.durationInFrames)}
             compositionWidth={cardSize(card).width}
             compositionHeight={cardSize(card).height}
