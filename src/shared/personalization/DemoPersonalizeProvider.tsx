@@ -87,7 +87,7 @@ import {
 import { registerSupabaseSharedMedia } from './supabaseSharedMedia'
 import { personalizePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
-import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
+import { optionsForGeneration, resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { uploadPersonalizationAsset } from './assetUploadService'
@@ -4616,8 +4616,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setResult(null)
 
     try {
-      const capabilities = resolveModelCapabilities(source, options)
-      let resolved = resolveAssetsForModel(source, assets, mode, options, capabilities)
+      // Capabilities for the model this mode really calls (see optionsForGeneration).
+      const modelOptions = optionsForGeneration(source, options, mode)
+      const capabilities = resolveModelCapabilities(source, modelOptions)
+      let resolved = resolveAssetsForModel(source, assets, mode, modelOptions, capabilities)
 
       // Generate from the video the user is looking at (a picked demo, an
       // upload, or a Full Body Recast) wherever a source video is used. Modes

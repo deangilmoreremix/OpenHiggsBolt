@@ -133,6 +133,57 @@ function getFallbackModel(modelId: string, sourceMediaType: string): string {
   return DEFAULT_T2V_MODEL
 }
 
+// ── Which model a run calls ──────────────────────────────────────────────────
+
+function resolveModelId(
+  source: PersonalizationSource,
+  options: GenerationOptions,
+  fallback: string,
+): string {
+  if (options.advancedModel) return options.advancedModel
+  if (options.model) return options.model
+  if (source.model) return source.model
+  return fallback
+}
+
+export function pickVideoModel(source: PersonalizationSource, options: GenerationOptions, mode: VideoPersonalizationMode): string {
+  if (mode === 'face_only') return FACE_SWAP_MODEL
+  if (mode === 'full_body') return FULL_BODY_MODEL
+  return resolveModelId(source, options, DEFAULT_T2V_MODEL)
+}
+
+export function pickImageModel(source: PersonalizationSource, options: GenerationOptions, mode: ImagePersonalizationMode): string {
+  return resolveModelId(source, options, DEFAULT_I2I_MODEL)
+}
+
+/**
+ * The model a run will actually call for this source and mode (face only and
+ * full body always use their own models, whatever else is selected).
+ */
+export function modelForGeneration(
+  source: PersonalizationSource,
+  options: GenerationOptions,
+  mode: string | null | undefined,
+): string {
+  return source.mediaType === 'video'
+    ? pickVideoModel(source, options, (mode || 'recreate') as VideoPersonalizationMode)
+    : pickImageModel(source, options, (mode || 'recreate') as ImagePersonalizationMode)
+}
+
+/**
+ * Options as the generation will see them: capabilities (and so which inputs
+ * get sent, e.g. the presenter photo for a face swap) must be worked out for
+ * the model the mode really uses, not the demo's own model.
+ */
+export function optionsForGeneration(
+  source: PersonalizationSource,
+  options: GenerationOptions,
+  mode: string | null | undefined,
+): GenerationOptions {
+  const model = modelForGeneration(source, options, mode)
+  return { ...options, advancedModel: undefined, model }
+}
+
 // ── Capabilities Resolution ──────────────────────────────────────────────────
 
 export function resolveModelCapabilities(

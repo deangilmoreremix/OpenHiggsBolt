@@ -28,6 +28,8 @@ import {
   FULL_BODY_MODEL,
   DEFAULT_T2V_MODEL,
   DEFAULT_I2I_MODEL,
+  pickImageModel,
+  pickVideoModel,
 } from './modelCapabilityResolver'
 import type {
   PersonalizationSource,
@@ -54,27 +56,6 @@ export interface GenerationInput {
 }
 
 // ── Logging ──────────────────────────────────────────────────────────────────
-
-function resolveModelId(
-  source: PersonalizationSource,
-  options: GenerationOptions,
-  fallback: string,
-): string {
-  if (options.advancedModel) return options.advancedModel
-  if (options.model) return options.model
-  if (source.model) return source.model
-  return fallback
-}
-
-function pickVideoModel(source: PersonalizationSource, options: GenerationOptions, mode: VideoPersonalizationMode): string {
-  if (mode === 'face_only') return FACE_SWAP_MODEL
-  if (mode === 'full_body') return FULL_BODY_MODEL
-  return resolveModelId(source, options, DEFAULT_T2V_MODEL)
-}
-
-function pickImageModel(source: PersonalizationSource, options: GenerationOptions, mode: ImagePersonalizationMode): string {
-  return resolveModelId(source, options, DEFAULT_I2I_MODEL)
-}
 
 // ── Error Handling ───────────────────────────────────────────────────────────
 
