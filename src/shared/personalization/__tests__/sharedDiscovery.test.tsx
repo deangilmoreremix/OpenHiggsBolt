@@ -921,7 +921,7 @@ describe('pre-existing modal features survive the integration', () => {
       fireEvent.click(screen.getByText('Advanced Settings ›'))
     })
     await flush(20)
-    expect(screen.getByText('Preserve Audio')).toBeTruthy()
+    expect(screen.getByText("Keep the original video's sound")).toBeTruthy()
 
     // onRevert: edit a product asset, then revert it through the thumb control
     // (product thumbnails live on Assets → Your assets).
