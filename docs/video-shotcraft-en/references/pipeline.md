@@ -27,7 +27,7 @@ has already completed and confirmed stages 0–3; continue directly from stage 4
 Two execution principles (absorbed from real-world post-mortems):
 
 1. **The final design spec and the storyboard together constitute the production release.** The storyboard table lives inside the design spec
-   (four columns `| # | 时间 | 镜头 | 关键动效 |`); confirming the release does not reopen already-confirmed
+   (four columns `| # | Time | Shot | Key motion |`); confirming the release does not reopen already-confirmed
    business or creative questions, it only fills in open items necessary for implementation.
 2. **Acceptance runs throughout; it is not the last stage.** Every shot task ends with `npx remotion still`
    still-frame visual acceptance (outputs archived by version in `out/qa/`), and after each round of feedback changes the whole video is re-rendered.
@@ -148,7 +148,7 @@ implementation plan. In autonomous free creation the Agent releases it itself, w
    too fast always means rework, slowing down has never been rejected.
 5. After the Agent checks that the storyboard is consistent with the product brief, requirement decisions, visual direction and shot mapping, it releases it itself,
    and translates the storyboard into a frame-level timeline in the implementation plan:
-   `| shot | from | duration | 内容 |` (for beat-synced videos, express from/to entirely with `beatF(n)`),
+   `| shot | from | duration | content |` (for beat-synced videos, express from/to entirely with `beatF(n)`),
    and assign each shot a source file and acceptance frame numbers.
 
 **Output**: design spec (including style tokens + motion breakdown + storyboard table);
@@ -278,7 +278,7 @@ includes "realign the SFX frame numbers across the whole table"; audio-picture m
 
 **Concrete steps** (details and precedents in `references/sound-design.md`):
 
-1. Read `references/sound-design.md`, and copy sound effects from `assets/audio/sfx/<类别>/`
+1. Read `references/sound-design.md`, and copy sound effects from `assets/audio/sfx/<category>/`
    (free commercial-use license, sources in `assets/audio/ATTRIBUTION.md`). Sound effects are divided by scenario into 16
    category directories; first decide the category by the action needed (camera move → transition, landing → impact,
    typing → text, page-turn → paper, light effect → **light** …), then pick the timbre within the category.
@@ -381,7 +381,7 @@ produce an item-by-item report against the final review and aesthetic rules, the
 
 **Deliverables**: review report + two versions of the finished video (with BGM + without BGM).
 
-After delivery, first proactively open the motion workbench with `node workbench/scripts/open.mjs <工程目录>` (the browser automatically
+After delivery, first proactively open the motion workbench with `node workbench/scripts/open.mjs <project-dir>` (the browser automatically
 splits the finished video into multiple tracks; the user can fine-tune visually and export directly; see `references/workbench.md`), then at the very end say
 three things in order 1-2-3: ① when publishing, it is recommended (not required) to @ the
 skill author in the description (all three platform accounts with links); ② invite them to put the finished video on the showcase page (say it in everyday

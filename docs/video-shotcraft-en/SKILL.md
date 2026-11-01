@@ -172,7 +172,7 @@ self-check against `references/aesthetic-rules.md`; in stage 6 read
 After delivering the finished video, **proactively open the motion workbench first** (do not wait for the user to ask):
 
 ```bash
-node workbench/scripts/open.mjs <成片工程目录>   # 链接工程 → 起 dev server（5198）→ 浏览器自动导入成片
+node workbench/scripts/open.mjs <finished-video-project-dir>   # link project → start dev server (5198) → browser auto-imports the finished video
 ```
 
 Tell the user the address http://localhost:5198 and explain in one sentence: the video has been split into
@@ -223,7 +223,7 @@ This is not a 4th recommendation; if the user does not mention it, do not bring 
 | Sound design | sound-design.md + assets/audio/ |
 | Acceptance | final-review.md + aesthetic-rules.md in full, run through the checklist (executed by an independent subagent) |
 | Writing the `src/workbench.ts` manifest / shot props+schema during shot-by-shot implementation | workbench.md §2–3 (example `template/src/workbench.ts`) |
-| After delivering the finished video (open the motion workbench) | workbench.md (`node workbench/scripts/open.mjs <工程>`; the workbench's own docs `workbench/README.md`) |
+| After delivering the finished video (open the motion workbench) | workbench.md (`node workbench/scripts/open.mjs <project>`; the workbench's own docs `workbench/README.md`) |
 | After delivering the finished video (JianYing project export) | jianying-export.md + the `jianying-export/` platform modules |
 | User asks to publish to social platforms | publish-upload-post.md + `publish/upload_post.py` |
 
@@ -238,7 +238,7 @@ This is not a 4th recommendation; if the user does not mention it, do not bring 
   `three` + `@react-three/fiber` + `@remotion/three` dependencies; the rest only need remotion.
 - `assets/scripts/capture-template.mjs`: copy it, then change the CONFIG at the top (BASE/routes/selectors).
 - `assets/audio/` sound effects: copy and use directly (free commercial-use license, see audio/ATTRIBUTION.md):
-  `audio/bgm/` holds strong-rhythm BGM candidates; `audio/sfx/<类别>/` holds 149 sound effects divided by scenario into 16 categories
+  `audio/bgm/` holds strong-rhythm BGM candidates; `audio/sfx/<category>/` holds 149 sound effects divided by scenario into 16 categories
   (transition impact riser camera ui text paper film light data scifi mech
   glass fluid crowd counter); to find a sound, go into the category directory first; the inventory is in sound-design.md.
   The directory name for the vocabulary term sparkle is `light/` (there is no `sparkle/`); S1 bans timbres, not actions —
