@@ -70,20 +70,24 @@ describe('branded render evidence — free for visitors', () => {
     expect(getCtx(ref).result.url).toMatch(/^blob:/)
   })
 
-  it('still asks a visitor to sign in before paid AI generation', async () => {
+  it('runs AI generation for a visitor with their own key, even with no AI mode chosen', async () => {
+    const { runGeneration } = await import('../generationRouter')
+    vi.mocked(runGeneration).mockResolvedValue({ type: 'video', url: 'https://cdn.example.com/ai.mp4' } as never)
     const ref: HarnessRef = { current: null }
     await renderProvider(ref, { access: 'anonymous' })
     await openSource(ref)
-    await act(async () => {
-      getCtx(ref).setMode('face_only')
-    })
-    await act(async () => {
-      await getCtx(ref).createFinalVideo()
-    })
+    expect(getCtx(ref).mode).toBeNull()
 
+    await act(async () => {
+      await getCtx(ref).createFinalVideo({ path: 'ai-generation' })
+    })
+    await act(async () => {})
+
+    expect(runGeneration).toHaveBeenCalledTimes(1)
+    const input = vi.mocked(runGeneration).mock.calls[0][0] as { prompt: string }
+    // Never an empty prompt.
+    expect(input.prompt.trim().length).toBeGreaterThan(0)
     expect(renderMediaOnWeb).not.toHaveBeenCalled()
-    expect(getCtx(ref).generation.status).toBe('error')
-    expect(getCtx(ref).generation.errorMessage).toMatch(/Sign in to generate with AI/)
   })
 })
 

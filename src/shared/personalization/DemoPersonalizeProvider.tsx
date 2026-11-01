@@ -102,6 +102,7 @@ import { probeVideoMetadata } from './guided/videoMetadata'
 /** The aspect ratios the preview supports, for validating catalog values. */
 const PREVIEW_ASPECT_RATIO_SET = new Set<string>(['16:9', '9:16', '1:1', '4:5'])
 import { chooseFinalOutputPath } from './finalOutput'
+import type { FinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
@@ -751,7 +752,11 @@ export type DemoPersonalizeContextValue = {
    remotionDesignError: string | null
    previewApproved: boolean
    approvePersonalization: () => void
-   createFinalVideo: () => Promise<void>
+   /**
+    * Produces the final video. `path` picks it explicitly (Step 4 has one
+    * button per path); without it the personalization mode decides.
+    */
+   createFinalVideo: (options?: { path?: FinalOutputPath }) => Promise<void>
    cancelExport: () => void
    apiKey: string
    setPreviewAudio: (file: File) => Promise<void>
@@ -4230,7 +4235,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [closePersonalize, loadedProjectIdRef, router, source])
 
   const generate = useCallback(async () => {
-    if (!source || !apiKey) return
+    if (!source || !apiKey) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: !apiKey
+          ? 'Add your MuAPI key to generate with AI.'
+          : 'Choose a video first, then generate with AI.',
+      })
+      return
+    }
 
     // Guard: block blob URLs from reaching generation
     const allAssets: PersonalizationAsset[] = [
@@ -4280,7 +4294,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const capabilities = resolveModelCapabilities(source, genOptions)
       let resolved = resolveAssetsForModel(source, assets, mode, genOptions, capabilities)
 
-      const finalPrompt = promptState.edited || promptState.personalized || promptState.original
+      // A video picked straight from the demo library may carry no prompt:
+      // describe the personalization from the business details instead of
+      // sending the model an empty prompt.
+      const businessName = (clientForm.businessName || clientForm.name || '').trim()
+      const fallbackPrompt = [
+        `Recreate this video as a short promotional clip${businessName ? ` for ${businessName}` : ''}.`,
+        clientForm.offer ? `Feature the offer: ${clientForm.offer}.` : '',
+        clientForm.callToAction ? `End on: ${clientForm.callToAction}.` : '',
+        'Keep the original style, pacing and camera movement.',
+      ]
+        .filter(Boolean)
+        .join(' ')
+      const finalPrompt =
+        promptState.edited || promptState.personalized || promptState.original || source.fullPrompt || fallbackPrompt
 
       // Pre-generate CTA end card if exact end-card handling is requested
       if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
@@ -4606,7 +4633,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     projectPersistence.current.flush(buildProjectPayload())
   }, [source, access, buildProjectPayload])
 
-  const createFinalVideo = useCallback(async () => {
+  const createFinalVideo = useCallback(async (options?: { path?: FinalOutputPath }) => {
     // Overlay-only personalizations (branding on the EXISTING selected video)
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
@@ -4615,14 +4642,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // The branded render runs entirely in the visitor's browser (no server,
     // no storage, no paid request), so it is free and needs no account. Only
     // AI generation, which spends account credits, requires signing in.
-    const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
+    const finalPath = options?.path ?? chooseFinalOutputPath({ personalizationMode: mode || null })
 
     if (finalPath === 'ai-generation') {
-      if (access !== 'authenticated') {
+      // AI generation runs on the visitor's own MuAPI key (kept in their
+      // browser), not on an account. Without one, say so instead of failing
+      // silently.
+      if (!apiKey) {
         setGeneration({
           ...EMPTY_GENERATION_STATE,
           status: 'error',
-          errorMessage: 'Sign in to generate with AI. Branded videos are free and need no account.',
+          errorMessage: 'Add your MuAPI key to generate with AI.',
+        })
+        return
+      }
+      if (!source && !previewVideo?.url) {
+        setGeneration({
+          ...EMPTY_GENERATION_STATE,
+          status: 'error',
+          errorMessage: 'Choose a video in step 2 first, then generate with AI.',
         })
         return
       }
@@ -4643,6 +4681,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // A selected preview video replaces the source media. The source update and
       // generate() cannot share a tick (generate would read the stale source), so
       // the pending ref lets the effect below run generate on the next commit.
+      // Opened straight from the demo library there may be no source yet:
+      // the selected preview video becomes the source.
+      if (!source && previewVideo?.url) {
+        setSource({
+          id: previewVideo.demoId || `preview-${previewVideo.url}`,
+          title: previewVideo.title || 'Your video',
+          mediaType: 'video',
+          originalPrompt: '',
+          sourceMedia: previewVideo.url,
+          poster: previewVideo.poster ?? null,
+          fullPrompt: '',
+          shortPrompt: '',
+          sourceType: 'landing-demo',
+          sourceMetadata: {},
+        } as PersonalizationSource)
+        pendingFinalGenerateRef.current = true
+        setGeneration({ ...EMPTY_GENERATION_STATE, status: 'generating', progress: 2, progressMessage: 'Preparing AI generation…' })
+        return
+      }
       if (previewVideo && source && previewVideo.url !== source.sourceMedia) {
         setSource((prev) =>
           prev

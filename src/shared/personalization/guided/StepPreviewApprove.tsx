@@ -1,20 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
-import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
+import { C, badgeStyle, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { DEFAULT_PREVIEW_BRAND_COLORS, PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import type { DesignSlot } from '../preview/types'
 import { LAYER_IDS_BY_LAYOUT, PREVIEW_LAYOUTS, totalDurationInFrames } from '../preview/presets'
 import { LAYER_LABELS } from './layerChanges'
 import { DesignGallery } from './DesignGallery'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
-import { chooseFinalOutputPath } from '../finalOutput'
+import type { FinalOutputPath } from '../finalOutput'
+import { setApiKey as setAuthApiKey } from '@/lib/authConfig'
 
 /** The three places an animated design can go, in the order they play. */
 const DESIGN_TABS: { slot: DesignSlot; label: string; hint: string; none: string }[] = [
@@ -84,17 +85,19 @@ export function StepPreviewApprove(): React.JSX.Element {
     apiKey,
     generation,
     result,
-    mode,
   } = ctx
 
   const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
-  // Overlay-only personalizations render locally; AI modes keep the generation
-  // pipeline. The active path is the primary action; the other stays visible
-  // (and disabled) so the two operations are never conflated.
-  const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
-  const isBrandedPath = finalPath === 'branded-render'
+  // Two separate buttons, two separate operations: the free in-browser branded
+  // render, and AI generation on the visitor's own MuAPI key. Both are always
+  // available; `runningPath` remembers which one is in progress.
+  const [runningPath, setRunningPath] = useState<FinalOutputPath | null>(null)
+  const isBrandedPath = runningPath !== 'ai-generation'
+  const [showKeyForm, setShowKeyForm] = useState(false)
+  const [keyDraft, setKeyDraft] = useState('')
+  const [runAiAfterKey, setRunAiAfterKey] = useState(false)
   // Phase 3 item 13: some frozen upstream designs hardcode SVG `id`s, so a
   // second instance of the same design is clipped by the first. The catalog
   // declares which designs are constrained; Step 4 shows a non-blocking
@@ -116,14 +119,43 @@ export function StepPreviewApprove(): React.JSX.Element {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState(false)
 
-  const handleCreate = async () => {
+  const runPath = async (path: FinalOutputPath) => {
     if (generating) return
+    setRunningPath(path)
     try {
-      await createFinalVideo()
+      await createFinalVideo({ path })
     } catch {
       /* generation errors surface through the existing generation state */
     }
   }
+
+  const handleRender = () => runPath('branded-render')
+
+  const handleGenerateAi = () => {
+    // AI generation needs the visitor's own MuAPI key: ask for it in place.
+    if (!apiKey) {
+      setShowKeyForm(true)
+      return
+    }
+    void runPath('ai-generation')
+  }
+
+  const saveKeyAndGenerate = () => {
+    const key = keyDraft.trim()
+    if (!key) return
+    setAuthApiKey(key)
+    setKeyDraft('')
+    setShowKeyForm(false)
+    // The provider sees the new key on its next render; generate then.
+    setRunAiAfterKey(true)
+  }
+
+  useEffect(() => {
+    if (!runAiAfterKey || !apiKey) return
+    setRunAiAfterKey(false)
+    void runPath('ai-generation')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runAiAfterKey, apiKey])
 
   const handleDownload = () => {
     if (!result?.url) return
@@ -413,15 +445,14 @@ export function StepPreviewApprove(): React.JSX.Element {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
-                  onClick={handleCreate}
-                  disabled={generating || !isBrandedPath}
-                  aria-pressed={isBrandedPath}
+                  onClick={handleRender}
+                  disabled={generating}
                   style={{
-                    ...(isBrandedPath ? primaryButtonStyle : secondaryButtonStyle),
+                    ...primaryButtonStyle,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath ? 1 : 0.5,
+                    opacity: generating ? 0.6 : 1,
                   }}
                 >
                   {generating && isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
@@ -431,16 +462,14 @@ export function StepPreviewApprove(): React.JSX.Element {
                 </button>
                 <button
                   type="button"
-                  onClick={handleCreate}
-                  disabled={generating || isBrandedPath || isAnonymous}
-                  aria-pressed={!isBrandedPath}
-                  title={isAnonymous ? 'Sign in to use AI generation' : undefined}
+                  onClick={handleGenerateAi}
+                  disabled={generating}
                   style={{
-                    ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
+                    ...secondaryButtonStyle,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath || isAnonymous ? 0.5 : 1,
+                    opacity: generating ? 0.6 : 1,
                   }}
                 >
                   {generating && !isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -449,15 +478,42 @@ export function StepPreviewApprove(): React.JSX.Element {
                     : 'Generate with AI'}
                 </button>
               </div>
+              {showKeyForm && !apiKey ? (
+                <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={labelStyle} htmlFor="guided-muapi-key">Your MuAPI key</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      id="guided-muapi-key"
+                      type="password"
+                      autoComplete="off"
+                      value={keyDraft}
+                      onChange={(event) => setKeyDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') saveKeyAndGenerate()
+                      }}
+                      placeholder="Paste your key"
+                      style={{ ...inputStyle, flex: '1 1 220px' }}
+                    />
+                    <button type="button" onClick={saveKeyAndGenerate} disabled={!keyDraft.trim()} style={primaryButtonStyle}>
+                      Save key and generate
+                    </button>
+                    <button type="button" onClick={() => setShowKeyForm(false)} style={secondaryButtonStyle}>
+                      Cancel
+                    </button>
+                  </div>
+                  <p style={{ ...hintStyle, margin: 0 }}>
+                    AI generation runs on your own MuAPI account. The key is saved only in this browser.
+                  </p>
+                </div>
+              ) : null}
               <p style={{ ...hintStyle, color: isBrandedPath ? C.cyan : C.muted }}>
                 <strong style={{ fontWeight: 800 }}>Render branded video</strong> bakes your approved
                 overlays (logo, text, CTA, end card) onto the selected video. It&apos;s free, renders in your
                 browser and needs no account.
               </p>
               <p style={{ ...hintStyle, color: isBrandedPath ? C.muted : C.cyan }}>
-                <strong style={{ fontWeight: 800 }}>Generate with AI</strong> uses your account&apos;s AI
-                generation for changes that need new imagery or footage.
-                {isAnonymous ? ' Sign in to use it.' : ''}
+                <strong style={{ fontWeight: 800 }}>Generate with AI</strong> creates new footage from your
+                video with AI, using your own MuAPI key{apiKey ? '' : ' (you will be asked for it)'}.
               </p>
               {generating && isBrandedPath && (
                 <button
