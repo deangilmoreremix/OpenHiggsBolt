@@ -176,6 +176,15 @@ interface GenerateOverrides {
  * when the video only exists in this browser (a blob: render whose upload
  * failed, or a branded render that is downloaded, not stored).
  */
+/**
+ * The video URL another studio can load: the stored copy when the result
+ * itself is browser-only (layers burned in locally), else a non-blob result URL.
+ */
+export function studioVideoUrl(result: GenerationResult | null | undefined): string {
+  if (!result) return ''
+  return publishableUrl(result) || (result.url && !result.url.startsWith('blob:') ? result.url : '')
+}
+
 export function publishableUrl(result: GenerationResult | null | undefined): string {
   if (!result) return ''
   const isRemote = (url: unknown): url is string => typeof url === 'string' && /^https?:\/\//.test(url)
@@ -5050,6 +5059,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         postProcessingFailed: postResult.failed,
         originalUrl: postResult.originalUrl,
         postProcessingInput,
+        // Publish sends the newly branded video, not the earlier output.
+        publishUrl: finalUrl,
       }
       const updatedResult: GenerationResult = {
         ...lastResult,
@@ -5502,7 +5513,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const result = lastResultRef.current
     const project = lastProjectRef.current
     const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
-    const videoUrl = result.url && !result.url.startsWith('blob:') ? result.url : null
+    const videoUrl = studioVideoUrl(result) || null
     const referenceImageUrl = getGenerationAssetUrl(project.assets.primaryIdentity)
     const firstFrameUrl = getGenerationAssetUrl(project.assets.firstFrame)
 
@@ -5802,8 +5813,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       : '',
     canEditInVideoStudio: Boolean(
       result?.type === 'video' &&
-      result.url &&
-      !result.url.startsWith('blob:') &&
+      studioVideoUrl(result) &&
       getGenerationAssetUrl(lastProjectRef.current?.assets.primaryIdentity ?? null),
     ),
 
