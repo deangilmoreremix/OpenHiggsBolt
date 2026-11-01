@@ -410,11 +410,12 @@ function TemplateCard({
   active: boolean
   onSelect: (layoutId: PreviewLayoutId) => void
 }): React.JSX.Element {
+  // Hooks first: they must run in the same order on every render.
+  const [hovering, setHovering] = useState(false)
   const layout = PREVIEW_LAYOUTS.find((l) => l.id === layoutId)
   if (!layout) return <></>
   const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? []
   const clip = previewVideoUrl(layoutId)
-  const [hovering, setHovering] = useState(false)
 
   return (
     <div
@@ -503,7 +504,11 @@ function TemplateCard({
       <button
         type="button"
         data-testid="personalization-template-use"
-        onClick={() => onSelect(layoutId)}
+        onClick={(event) => {
+          // The card is clickable too; one click selects once.
+          event.stopPropagation()
+          onSelect(layoutId)
+        }}
         style={{ ...primaryButtonStyle, flex: 1, minHeight: 36, fontSize: 11, padding: '0 12px' }}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>

@@ -63,7 +63,6 @@ export function StepFindBusiness({
     selectBusiness,
     researchBusiness,
     runDiscoveryWorkflow,
-    discoverAssets,
     discoveryStatus,
     discoveryError,
     discoveredAssets = [],
@@ -141,7 +140,9 @@ export function StepFindBusiness({
     if (!website.trim() || busy) return
     setBusy(true)
     try {
-      await discoverAssets(website.trim())
+      // The full workflow (as in Advanced Editing's Find My Brand): fills the
+      // business name and details, then finds and places the logo and photos.
+      await runDiscoveryWorkflow(website.trim())
     } catch {
       /* errors surface through discoveryError */
     } finally {
@@ -287,6 +288,14 @@ export function StepFindBusiness({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]" style={{ gap: 10, alignItems: 'end' }}>
           <div>
+            <label style={labelStyle} htmlFor="guided-business-name-step1">Business name</label>
+            <input
+              id="guided-business-name-step1"
+              value={clientForm.businessName || ''}
+              onChange={(event) => updateClientForm({ ...clientForm, businessName: event.target.value })}
+              placeholder="Your business name"
+              style={{ ...inputStyle, marginBottom: 10 }}
+            />
             <label style={labelStyle} htmlFor="guided-business-website">Website</label>
             <input
               id="guided-business-website"
