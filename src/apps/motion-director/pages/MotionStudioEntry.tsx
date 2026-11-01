@@ -93,7 +93,8 @@ MOTION_TEMPLATES.forEach((t) => {
 });
 
 const ASPECT_RATIOS: AspectRatio[] = ['16:9', '9:16', '1:1'];
-const DURATIONS = [5, 6, 8, 10, 12, 15, 20, 25, 30, 45, 60];
+/** The film's length comes from the message ("a 30 second video"); this is only used when it does not say. */
+const DEFAULT_DURATION_SEC = 20;
 
 /** Typewriter prompts for the composer (Design Agent pattern, Motion Studio copy). */
 const PLACEHOLDERS = [
@@ -111,7 +112,7 @@ const EXAMPLE_PROMPTS = [
   'Design a product close-up inspired by spotlight-hero-card.',
 ];
 
-/** Pill that opens a small option menu (aspect ratio / duration). */
+/** Pill that opens a small option menu (aspect ratio). */
 function OptionPill<T extends string | number>({ label, options, value, onChange, format }: {
   label: string;
   options: readonly T[];
@@ -188,7 +189,6 @@ export default function MotionStudioEntry() {
 
   const [description, setDescription] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
-  const [duration, setDuration] = useState(20);
   const [selectedRecipes, setSelectedRecipes] = useState<string[]>([]);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   /** The category chip chosen in the template picker ('all' shows every category, grouped). */
@@ -233,7 +233,7 @@ export default function MotionStudioEntry() {
   const director = useFilmDirector({
     settings: () => ({
       aspectRatio,
-      durationSec: duration,
+      durationSec: DEFAULT_DURATION_SEC,
       brandKit: person
         ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null, logo: person.logos?.main ?? null }
         : null,
@@ -520,7 +520,6 @@ export default function MotionStudioEntry() {
                 <SelectedChip key={tpl.id} label={motionTemplateTitle(tpl)} onClear={() => setSelectedRecipes((prev) => prev.filter((id) => id !== tpl.id))} clearLabel={`Remove ${motionTemplateTitle(tpl)}`} />
               ))}
               <OptionPill<AspectRatio> label="Aspect ratio" options={ASPECT_RATIOS} value={aspectRatio} onChange={setAspectRatio} format={(v) => v} />
-              <OptionPill<number> label="Duration" options={DURATIONS} value={duration} onChange={setDuration} format={(v) => `${v}s`} />
               <span className="text-[10px]" style={{ color: semantic.textMuted }}>{media.length} references</span>
               <div className="flex-1" />
               <SendButton onClick={handleCreate} disabled={!canCreate || busy} active={canCreate} label={director.stage === 'idle' || director.stage === 'film' ? 'Generate' : 'Send'} />

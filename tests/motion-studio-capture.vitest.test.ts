@@ -276,3 +276,15 @@ describe('capture the way upstream ShotCraft does', () => {
     expect(mod.captureHasWords(result)).toBe(true)
   })
 })
+
+describe('deep capture helpers', () => {
+  it('slices the rest of a page into 16:9 bands and keeps a last band of at least half a slice', async () => {
+    const { bandRects } = await import('../src/server/browserDiscovery');
+    const bands = bandRects(1746, 5000, 1920, 1080, 8);
+    expect(bands.map((b) => b.y)).toEqual([1746, 2826, 3906]);
+    expect(bands[2].height).toBe(1080);
+    expect(bandRects(1746, 2000, 1920, 1080, 8)).toEqual([]);
+    expect(bandRects(0, 10_000, 1920, 1080, 3)).toHaveLength(3);
+    expect(bandRects(1000, 1600, 1920, 1080, 8)).toEqual([{ x: 0, y: 1000, width: 1920, height: 600 }]);
+  });
+});

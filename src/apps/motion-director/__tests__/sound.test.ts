@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
-import { OUTPUT_AUDIO_OFFSET_F, planToProject } from '../lib/buildFilm';
+import { OUTPUT_AUDIO_OFFSET_F, planToProject, sfxGain } from '../lib/buildFilm';
 import type { DirectorPlan } from '../lib/directorPlan';
 import { SFX_PEAKS } from '../demosrc/_generated/sfxPeaks';
 
@@ -69,5 +69,31 @@ describe('sound design', () => {
     expect(build!.start + build!.duration).toBeLessThanOrEqual(peakAt + 3);
     expect(build!.start + build!.duration).toBeGreaterThanOrEqual(peakAt - 4);
     expect(spark!.start).toBeGreaterThan(impact!.start);
+  });
+
+  it('boosts only the quietly recorded sounds (true peak below -12 dB, the seven the library lists) toward -8 dB', () => {
+    expect(sfxGain('impact/impact-deep-whoosh')).toBe(1);
+    expect(sfxGain('not/a-file')).toBe(1);
+    // A file whose smoothed envelope is low but whose peak is near full scale is not quiet.
+    expect(SFX_PEAKS['text/typewriter-hit-soft'].peakDb).toBeGreaterThan(-12);
+    expect(sfxGain('text/typewriter-hit-soft')).toBe(1);
+    expect(sfxGain('light/light-sweep-magic')).toBe(1);
+    const quiet = Object.entries(SFX_PEAKS).filter(([, v]) => v.peakDb < -12);
+    expect(quiet.map(([n]) => n).sort()).toEqual(['camera/ui-zoom-in', 'counter/clock-knob-spin', 'counter/clock-tick-single', 'data/data-load-os', 'text/pencil-write-short', 'text/write-fast', 'transition/wing-flutter']);
+    for (const [name, v] of quiet) {
+      const gain = sfxGain(name);
+      expect(gain, name).toBeGreaterThan(1);
+      expect(gain, name).toBeLessThanOrEqual(5);
+      if (gain < 5) expect(v.peakDb + 20 * Math.log10(gain), name).toBeCloseTo(-8, 0);
+    }
+  });
+
+  it('never pins a sound loud enough to clip: file peak + clip volume stays below -1 dBFS', () => {
+    for (const c of sfxClips()) {
+      const name = String(c.props.file).replace(/^motion-studio\/sfxlib\//, '').replace(/\.mp3$/, '');
+      const peak = SFX_PEAKS[name]?.peakDb;
+      expect(typeof peak, name).toBe('number');
+      expect(peak + 20 * Math.log10(Math.max(1e-6, Number(c.props.volume))), `${name} at ${c.props.volume}`).toBeLessThanOrEqual(-1);
+    }
   });
 });

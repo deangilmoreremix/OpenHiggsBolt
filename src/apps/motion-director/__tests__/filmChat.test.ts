@@ -18,6 +18,8 @@ import {
   isQuestion,
   singleShotPlan,
   startsDifferentFilm,
+  addGalleryScene,
+  wantsSitePictures,
 } from '../lib/filmChat';
 import { planToProject } from '../lib/buildFilm';
 import { checkFilmStructure } from '../lib/filmPipeline';
@@ -314,5 +316,34 @@ describe('questions about the storyboard', () => {
     expect(isQuestion('What will the closing card say')).toBe(true);
     expect(isQuestion('make the ending shorter')).toBe(false);
     expect(isQuestion('use deck-deal-flyin instead?')).toBe(false);
+  });
+});
+
+describe('a named shot on a captured site', () => {
+  it('keeps the site story scenes around the picked shot', () => {
+    const shot = MOTION_TEMPLATES.find((t) => t.componentName === 'DatavizLandscapeOpen')!;
+    const plan = inkPressPlan({ prompt: 'film for acme.com', durationSec: 30, recipes: [shot], productName: 'Acme', siteScenes: true });
+    const ids = plan.scenes.map((s) => s.recipeId);
+    expect(ids).toContain('brand/url-scan');
+    expect(ids).toContain('brand/hub');
+    expect(ids).toContain(shot.id);
+  });
+});
+
+describe('the site\'s own pictures', () => {
+  it('adds a gallery scene when images or people are asked for, once, and not without pictures', () => {
+    const base = inkPressPlan({ prompt: 'film for acme.com', durationSec: 30, productName: 'Acme', siteScenes: true });
+    expect(wantsSitePictures('using its images and people in the screenshots')).toBe(true);
+    const out = addGalleryScene(base, { pictures: 3, prompt: 'use its images and people' });
+    const ids = out.scenes.map((s) => s.recipeId);
+    expect(ids.filter((i) => i === 'brand/people-gallery')).toHaveLength(1);
+    expect(addGalleryScene(out, { pictures: 3, prompt: 'images' }).scenes).toHaveLength(out.scenes.length);
+    expect(addGalleryScene(base, { pictures: 1, prompt: 'images' }).scenes).toHaveLength(base.scenes.length);
+    expect(addGalleryScene(base, { pictures: 3, prompt: 'a calm film' }).scenes).toHaveLength(base.scenes.length);
+  });
+
+  it('the template story includes the gallery when the site gave pictures', () => {
+    const plan = inkPressPlan({ prompt: 'film for acme.com', durationSec: 30, productName: 'Acme', siteScenes: true, pictures: 5 });
+    expect(plan.scenes.map((s) => s.recipeId)).toContain('brand/people-gallery');
   });
 });

@@ -116,7 +116,14 @@ export interface DesignSpec {
   product: string;
   url: string | null;
   sampleOnly: boolean;
-  tokens: { background: string; text: string; accent: string; font: string | null };
+  tokens: {
+    background: string;
+    text: string;
+    accent: string;
+    font: string | null;
+    /** The motion voice picked from the brand (lib/motionPreset). */
+    motion?: { id: string; label: string; mainFrames: number; easing: string; overshoot: number; squash: number };
+  };
   scenes: Array<{ n: number; start: number; durationSec: number; kind: 'shot' | 'title'; recipeId: string; line: string }>;
   dataRules: string[];
 }

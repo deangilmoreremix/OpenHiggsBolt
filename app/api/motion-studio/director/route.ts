@@ -20,6 +20,7 @@ import {
   validateRetext,
 } from '@/apps/motion-director/lib/directorPlan'
 import { rulesOf } from '@/apps/motion-director/lib/shotRules'
+import { ADAPT_INSTRUCTIONS, ADAPT_JSON_SCHEMA, ADAPT_MAX_SOURCE, cleanAdaptedCode } from '@/apps/motion-director/lib/adaptPrompt'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { requireMotionStudioUser } from '../lib/auth'
@@ -85,7 +86,7 @@ Return JSON {rows, questions}.
 - questions: at most 3, only what cannot be decided from the material, each starting with your recommendation and why (e.g. "Open on the headline "…"? I'd recommend yes because the site leads with it."). Empty when nothing needs confirming.`
 
 const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short product film. ${COCREATE_RULES}
-Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff. Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
+Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff, palette ({background, text, accent}: three #rrggbb colours of that direction, taken from productCapture.brand when the direction stays on-brand; they colour the preview frames shown with the options). Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
 
 const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
 Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
@@ -277,6 +278,39 @@ export async function POST(req: NextRequest) {
         RETEXT_JSON_SCHEMA,
       )
       return NextResponse.json({ texts: validateRetext(raw, allowed, structural) })
+    }
+
+    if (body.mode === 'adapt') {
+      const recipe = str(body.recipe, 80)
+      const source = typeof body.source === 'string' ? body.source : ''
+      if (!/^\w+$/.test(recipe) || !source || source.length > ADAPT_MAX_SOURCE) return NextResponse.json({ error: 'A recipe and its source are required', code: 'BAD_REQUEST' }, { status: 400 })
+      const rules = rulesOf(recipe)
+      const layout = body.layout && typeof body.layout === 'object' ? (body.layout as Record<string, any>) : {}
+      const brand = body.brand && typeof body.brand === 'object' ? (body.brand as Record<string, any>) : {}
+      const raw = await callDirector(
+        key,
+        ADAPT_INSTRUCTIONS,
+        JSON.stringify({
+          recipe,
+          rules: rules ? { role: rules.role, text: rules.text, technique: rules.technique, energy: rules.energy, sound: rules.sound } : null,
+          source,
+          words: (DEMO_TEXTS as Record<string, string[]>)[recipe]?.slice(0, 40) ?? [],
+          layout: {
+            pageH: typeof layout.pageH === 'number' ? layout.pageH : null,
+            sections: (Array.isArray(layout.sections) ? layout.sections : []).slice(0, 12),
+            cards: (Array.isArray(layout.cards) ? layout.cards : []).slice(0, 24),
+          },
+          slots: { screens: Math.min(Number(body.screens) || 0, 8), crops: Math.min(Number(body.crops) || 0, 24) },
+          brand: { name: str(brand.name, 80), accent: str(brand.accent, 20), background: str(brand.background, 20), text: str(brand.text, 20), font: str(brand.font, 80) },
+          site: siteContent(body.content),
+          problems: (Array.isArray(body.problems) ? body.problems : []).slice(0, 6).map((p: unknown) => str(p, 240)).filter(Boolean),
+        }),
+        'motion_studio_adapt',
+        ADAPT_JSON_SCHEMA,
+      )
+      const code = cleanAdaptedCode(raw?.code)
+      if (!code) return NextResponse.json({ error: 'The agent returned no usable code', code: 'BAD_OUTPUT' }, { status: 502 })
+      return NextResponse.json({ code, notes: str(raw?.notes, 400) })
     }
 
     if (body.mode === 'review') {

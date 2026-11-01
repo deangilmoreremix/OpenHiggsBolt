@@ -1,5 +1,6 @@
 'use client';
 
+import { audioReport, measureRenderedAudio } from '../lib/renderedAudio';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
@@ -10,7 +11,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
-import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
+import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, supportsHtmlInCanvas } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
@@ -58,6 +59,7 @@ const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
+  const [fasterExportHint] = useState(() => isChromiumBrowser() && !supportsHtmlInCanvas());
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -67,10 +69,12 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     if (render.url) URL.revokeObjectURL(render.url);
   }, [render.url]);
 
+  const [audioNote, setAudioNote] = useState<string[]>([]);
   /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
   const start = async (draft = false, withoutMusic = false) => {
     abort.current = new AbortController();
     setRender({ status: 'running', progress: 0, draft });
+    setAudioNote([]);
     // Same path as the toolbar export: browser check, then the Remotion web renderer in this tab.
     const releaseGuard = guardTabWhileRendering();
     try {
@@ -82,6 +86,8 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
       setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
+      // Measure the sound of the file that was just made (the preview cannot show clipping).
+      void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
       setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
@@ -133,6 +139,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
               Download MP4{render.draft ? ` (draft ${draftSize})` : ''}
             </a>
             {project.spec && <SpecLink spec={project.spec} />}
+            {audioNote.length > 0 && <div className="w-full text-[11px]" style={{ color: semantic.textSecondary }} data-testid="film-audio-check">{audioNote.join(' ')}</div>}
             {render.draft && (
               <button type="button" onClick={() => void start(false)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>
                 Render full {project.width}×{project.height}
@@ -158,6 +165,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
               <button type="button" onClick={() => void start(false, true)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-render-nomusic" title="Same film without the music bed, sound effects kept: for your own music">
                 Render without music
               </button>
+            )}
+            {fasterExportHint && (
+              <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-faster-hint" title="Chrome's experimental HTML-in-canvas lets the renderer draw the page natively; it is off by default.">
+                Faster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.
+              </span>
             )}
             <span className="text-[11px]" style={{ color: semantic.textMuted }} data-testid="film-estimate" title="Rough export time on a slow computer; most machines are faster.">
               ~{Math.max(1, Math.round(estimateExportSec(project) / 60))} min to render
@@ -297,6 +309,23 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           <button type="button" onClick={() => { director.reset(); onNewFilm?.(); }} className="px-3 py-1.5 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-new" title="Clear this conversation and start a different film">
             ↺ New film
           </button>
+        </div>
+      )}
+      {stage === 'direction' && director.styleframes.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="film-styleframes">
+          <span className="text-[11px]" style={{ color: semantic.textMuted }}>The options as frames (a real page and the closing logo in each direction's colours):</span>
+          <div className="flex flex-wrap gap-3">
+            {director.styleframes.map((sf, i) => (
+              <div key={sf.direction + i} className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold" style={{ color: semantic.textSecondary }}>{String.fromCharCode(65 + i)} · {sf.direction}</span>
+                <div className="flex gap-1">
+                  {sf.frames.map((src, k) => (
+                    <img key={src} src={src} alt={`${sf.direction}, frame ${k + 1}`} className="h-20 rounded object-cover" style={{ border: '1px solid var(--border-color)' }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {activity.length > 0 && <ActivityList items={activity} />}

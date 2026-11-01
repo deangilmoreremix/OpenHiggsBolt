@@ -18,6 +18,7 @@ export const BRAND_SCENES = {
   'brand/url-scan': { cardId: 'brand-url-scan', title: 'URL scan' },
   'brand/hub': { cardId: 'brand-hub', title: 'Brand hub' },
   'brand/feature-zoom': { cardId: 'brand-feature-zoom', title: 'Feature zoom' },
+  'brand/people-gallery': { cardId: 'brand-gallery', title: 'People & pictures' },
   'brand/logo-reveal': { cardId: 'brand-logo-reveal', title: 'Logo reveal' },
 } as const;
 export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id in BRAND_SCENES;
@@ -84,6 +85,7 @@ const BRAND_SCENE_NOTES: Record<string, string> = {
   'brand/url-scan': 'the address typed into a bar, then the captured page scanned and tagged (use it to open a film of a captured site)',
   'brand/hub': 'the captured page in the middle with the site\'s own menu / feature names as glowing nodes (headline = the promise)',
   'brand/feature-zoom': 'slow push-in on one real section of the captured page with a label (one per feature)',
+  'brand/people-gallery': 'the site\'s own pictures (people, products, cards) shown one after another with the site\'s captions — use it when the person asks for the site\'s images or people',
   'brand/logo-reveal': 'the site\'s logo and name with sparks, then its call to action and address (use it to close a film of a captured site)',
 };
 
@@ -359,7 +361,17 @@ export function validateRetext(raw: unknown, allowed: ReadonlyMap<number, Readon
 
 export interface BriefRow { item: string; judgment: string; evidence: string }
 export interface DirectorBrief { rows: BriefRow[]; questions: string[] }
-export interface VisualDirection { name: string; claim: string; keywords: string[]; look: string; motion: string; why: string; tradeoff: string }
+export interface VisualDirection {
+  name: string;
+  claim: string;
+  keywords: string[];
+  look: string;
+  motion: string;
+  why: string;
+  tradeoff: string;
+  /** The direction's colours (hex), used for its styleframe stills. */
+  palette?: DirectorPalette;
+}
 export interface DirectionOptions { directions: VisualDirection[]; recommended: number }
 export interface MappingRow { feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }
 
@@ -391,8 +403,14 @@ export const DIRECTION_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'claim', 'keywords', 'look', 'motion', 'why', 'tradeoff'],
+        required: ['name', 'claim', 'keywords', 'look', 'motion', 'why', 'tradeoff', 'palette'],
         properties: {
+          palette: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['background', 'text', 'accent'],
+            properties: { background: { type: 'string' }, text: { type: 'string' }, accent: { type: 'string' } },
+          },
           name: { type: 'string' },
           claim: { type: 'string' },
           keywords: { type: 'array', items: { type: 'string' } },
@@ -446,6 +464,13 @@ export function validateBrief(raw: unknown): DirectorBrief {
   return { rows, questions: list(input.questions, 3, 260) };
 }
 
+/** A direction's colours when all three are 6-digit hex; otherwise none (its stills use the site's own colours). */
+function directionPalette(raw: unknown): DirectorPalette | undefined {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const [background, textColor, accent] = [o.background, o.text, o.accent].map((v) => (typeof v === 'string' ? v.trim() : ''));
+  return HEX.test(background) && HEX.test(textColor) && HEX.test(accent) ? { background, text: textColor, accent } : undefined;
+}
+
 /** At most three directions; `recommended` always points at one of them. */
 export function validateDirections(raw: unknown): DirectionOptions {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -454,7 +479,7 @@ export function validateDirections(raw: unknown): DirectionOptions {
     const name = text(o.name, 50);
     const claim = text(o.claim, 200);
     return name && claim
-      ? [{ name, claim, keywords: list(o.keywords, 5, 24), look: text(o.look, 220), motion: text(o.motion, 200), why: text(o.why, 220), tradeoff: text(o.tradeoff, 200) }]
+      ? [{ name, claim, keywords: list(o.keywords, 5, 24), look: text(o.look, 220), motion: text(o.motion, 200), why: text(o.why, 220), tradeoff: text(o.tradeoff, 200), ...(directionPalette(o.palette) ? { palette: directionPalette(o.palette)! } : {}) }]
       : [];
   });
   if (!directions.length) throw new Error('The director returned no visual directions');

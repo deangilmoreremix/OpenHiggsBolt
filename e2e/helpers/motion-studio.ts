@@ -179,11 +179,11 @@ export async function captureEvidence(
   return size;
 }
 
-/** Set the entry composer's Duration pill (its label is the current value, e.g. "20s"). */
-export async function setEntryDuration(page: Page, seconds: string): Promise<void> {
-  await page.getByRole('button', { name: /^\d+s$/ }).first().click();
-  await page.getByRole('menuitemradio', { name: seconds, exact: true }).click();
-}
+/**
+ * The entry composer no longer has a Duration pill: the film's length comes from the message
+ * ("a 15 second film"). Kept so older specs compile; put the length in the prompt instead.
+ */
+export async function setEntryDuration(_page: Page, _seconds: string): Promise<void> {}
 
 /** The chat introduces Ink Press for a plain film request; answer it when it asks. */
 export async function answerInkPressOffer(page: Page, choice: 'inkpress' | 'director'): Promise<void> {

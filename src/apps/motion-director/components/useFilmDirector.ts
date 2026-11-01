@@ -21,6 +21,7 @@ import {
 import { videoSceneSec } from '../lib/buildFilm';
 import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, type GuidedContext, type SiteCapture } from '../lib/directorClient';
 import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
+import { renderStyleframes, type Styleframe } from '../lib/styleframes';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
@@ -34,6 +35,7 @@ import {
   type FilmQaReport,
   type StoryboardResult,
 } from '../lib/filmPipeline';
+import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 
 /**
@@ -111,6 +113,15 @@ export function useFilmDirector(opts: {
   const [stage, setStage] = useState<FilmStage>('idle');
   const [activity, setActivity] = useState<Array<{ label: string; status: ActivityStatus }>>([]);
   const [storyboard, setStoryboard] = useState<StoryboardResult | null>(null);
+  /** Two real stills per visual direction, shown while the person chooses (best effort; empty when stills cannot be rendered). */
+  const [styleframes, setStyleframes] = useState<Styleframe[]>([]);
+  const styleframeUrls = useRef<string[]>([]);
+  const setFrames = useCallback((frames: Styleframe[]) => {
+    for (const url of styleframeUrls.current) URL.revokeObjectURL(url);
+    styleframeUrls.current = frames.flatMap((f) => f.frames);
+    setStyleframes(frames);
+  }, []);
+  useEffect(() => () => { for (const url of styleframeUrls.current) URL.revokeObjectURL(url); }, []);
   const [film, setFilm] = useState<BuiltFilm | null>(null);
   /** The seven workflow steps (Product → Deliver) with their live state. */
   const [steps, setSteps] = useState<FilmStep[]>(initialSteps);
@@ -223,6 +234,7 @@ export function useFilmDirector(opts: {
           const found = [
             `${(c.pages?.length ?? 1)} page${(c.pages?.length ?? 1) === 1 ? '' : 's'}`,
             c.crops.length ? `${c.crops.length} card crop${c.crops.length === 1 ? '' : 's'}` : '',
+            c.assets?.length ? `${c.assets.length} found pictures (${[...new Set(c.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '',
             c.images?.length ? `${c.images.length} site image${c.images.length === 1 ? '' : 's'}` : '',
             c.logo ? 'the logo' : '',
           ].filter(Boolean);
@@ -293,10 +305,15 @@ export function useFilmDirector(opts: {
           if (!live()) return;
           g.options = options;
           say('assistant', directionMessage(options));
+          // Each option as two real frames in its colours, while the person reads (never blocks the choice).
+          void renderStyleframes({ options, capture: g.capture ?? null, product: g.req.prompt.slice(0, 60) }).then((frames) => {
+            if (live() && frames.length) setFrames(frames);
+          });
         } else {
           const mapping = await requestMapping(guidedContext(g, { brief: g.brief ? briefText(g.brief) : '', direction: g.direction ?? '' }));
           if (!live()) return;
           g.mapping = mapping;
+          setFrames([]);
           say('assistant', mappingMessage(mapping));
         }
         setStage(step);
@@ -567,7 +584,9 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      // Findings the program can repair safely are repaired once, and said.
+      const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const music = media.find((m) => m.kind === 'audio');
@@ -592,6 +611,7 @@ export function useFilmDirector(opts: {
           qa.ok ? `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.` : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
           ...qa.warnings,
           ...(qa.review ? reviewSummary(qa.review) : []),
+          ...(fixed.length ? ['Fixed before showing you:', ...fixed.map((f) => `- ${f}`)] : []),
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );
@@ -646,9 +666,10 @@ export function useFilmDirector(opts: {
     setActivity([]);
     setMessages([]);
     setSteps(initialSteps());
-  }, []);
+    setFrames([]);
+  }, [setFrames]);
 
-  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, coCreate, approve, revise, stop, reset };
+  return { messages, stage, activity, steps, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

@@ -38,6 +38,8 @@ export interface SiteCapture {
   brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
   /** Every route captured, the page asked for first (upstream captures several routes of the site). */
   pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
+  /** Pictures of the site found by the asset finder (people, team, products…), with what each one shows. */
+  assets?: Array<{ url: string; category: string; alt: string }>;
   /** Floating UI cutouts: the nav bar, and transparent PNGs of the search pill and main button. */
   cutouts?: { nav: string | null; search: string | null; button: string | null };
   /** The page with its cards hidden, for fly-in shots. */
@@ -109,7 +111,7 @@ export async function captureSite(
   const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url }, 32_000);
   if (!first.jobId) return first;
   const started = Date.now();
-  const maxWait = opts.maxWaitMs ?? 150_000;
+  const maxWait = opts.maxWaitMs ?? 540_000;
   let failures = 0;
   while (Date.now() - started < maxWait) {
     await sleep(opts.pollMs ?? 2_000);
@@ -117,10 +119,14 @@ export async function captureSite(
     opts.onProgress?.(Math.round((Date.now() - started) / 1000));
     try {
       const res = await fetch(`/api/motion-studio/capture/status?jobId=${encodeURIComponent(first.jobId)}`, { cache: 'no-store' });
-      const job = (await res.json().catch(() => ({}))) as { state?: string; capture?: SiteCapture; code?: string; error?: string };
+      const job = (await res.json().catch(() => ({}))) as { state?: string; capture?: SiteCapture; code?: string; error?: string; timing?: Record<string, number> };
       if (!res.ok) throw new DirectorError(String(job.error || `Request failed (${res.status})`), String(job.code || 'FAILED'), res.status);
       if (job.state === 'done' && job.capture) return job.capture;
-      if (job.state === 'error') throw new DirectorError(job.error || 'The page could not be captured', job.code || 'CAPTURE_FAILED', 422);
+      if (job.state === 'error') {
+        // Say where the time went, so a failure explains itself.
+        const steps = Object.entries(job.timing ?? {}).filter(([, ms]) => typeof ms === 'number').map(([k, ms]) => `${k} ${(ms / 1000).toFixed(1)}s`).join(', ');
+        throw new DirectorError(`${job.error || 'The page could not be captured'}${steps ? ` (${steps})` : ''}`, job.code || 'CAPTURE_FAILED', 422);
+      }
       failures = 0;
     } catch (error) {
       // A poll that fails (network blip, record not visible yet) is tried again a few times; the capture goes on without it.
@@ -240,6 +246,35 @@ export interface FrameFinding {
 export async function requestFrameReview(body: { frames: Array<{ second: number; image: string }>; spec: unknown }): Promise<{ findings: FrameFinding[]; summary: string }> {
   const res = await post<{ findings?: FrameFinding[]; summary?: string }>('/api/motion-studio/director', { mode: 'review', frames: body.frames, spec: body.spec }, 50_000);
   return { findings: Array.isArray(res.findings) ? res.findings : [], summary: typeof res.summary === 'string' ? res.summary : '' };
+}
+
+export interface AdaptRequest {
+  recipe: string;
+  source: string;
+  layout?: unknown;
+  screens?: number;
+  crops?: number;
+  brand?: { name?: string; accent?: string; background?: string; text?: string; font?: string };
+  content?: unknown;
+  /** What was wrong with the previous try (render errors, reviewer findings). */
+  problems?: string[];
+}
+
+/** The agent's rewrite of one recipe for the person's site (needs their key). The caller must still check the code. */
+export async function requestAdapt(body: AdaptRequest): Promise<{ code: string; notes: string }> {
+  const res = await post<{ code?: string; notes?: string }>('/api/motion-studio/director', { mode: 'adapt', ...body }, 55_000);
+  if (typeof res.code !== 'string' || !res.code) throw new DirectorError('The agent returned no code', 'BAD_OUTPUT', 502);
+  return { code: res.code, notes: typeof res.notes === 'string' ? res.notes : '' };
+}
+
+/** A recipe's source text, as published by scripts/gen-demo-sources.mjs. */
+export async function fetchRecipeSource(stem: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.tsx.txt`);
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The editable text prop of a card, if it has one. */

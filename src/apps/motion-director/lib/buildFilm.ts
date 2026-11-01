@@ -26,6 +26,8 @@ export interface FilmCapture {
   crops: string[];
   /** The site's name, shown on the inset pictures. */
   title?: string;
+  /** The site's own pictures from the asset finder, best first; they also lead `crops`. */
+  assets?: Array<{ url: string; category: string; alt: string }>;
   /** Where the page's sections start (CSS px from the top of `screens[0]`) and its height; the insets show them one by one. */
   sections?: number[];
   pageH?: number;
@@ -78,6 +80,18 @@ const peakLagF = (name: string): number => ((SFX_PEAKS[name]?.peakMs ?? 0) / 100
  * own peak lag and the output offset (sound-design 4.6). A hit that would have to start before frame 0 is
  * trimmed at its head instead. `tailMs` is how much after the peak is heard (long samples are cut, never played whole).
  */
+/**
+ * Volume is a multiplier of the file's own level, so a quietly recorded file (peak below −12 dB: 26 of the
+ * library's 141) pinned at the usual 0.2–0.6 vanishes under the music. Those get a gain that brings their peak
+ * to about −8 dB (capped at 5×; a file below −45 dB is practically silent and gets only the cap). The web
+ * renderer plays gains above 1 for real (the preview clamps at 1); the mixed result was checked on an export.
+ */
+export const sfxGain = (name: string): number => {
+  const db = SFX_PEAKS[name]?.peakDb;
+  if (typeof db !== 'number' || db >= -12) return 1;
+  return Math.min(5, Math.round(10 ** ((-8 - db) / 20) * 100) / 100);
+};
+
 const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string } = {}): ClipData => {
   const lag = peakLagF(name);
   const raw = peakFrame - lag - OUTPUT_AUDIO_OFFSET_F;
@@ -85,7 +99,7 @@ const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: 
   const trim = raw < 0 ? Math.round(-raw) : 0;
   const frames = Math.max(2, Math.ceil(((o.tailMs ?? 700) / 1000) * FPS + (lag - trim)));
   const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
-  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: o.volume ?? 0.6 }, { label: o.label, inOffset: trim });
+  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100 }, { label: o.label, inOffset: trim });
 };
 /** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
 const LOGO_IMPACT_F = 12;
@@ -305,6 +319,13 @@ const INSET_PAGE_H = 1200;
         const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
         props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
+      } else if (scene.recipeId === 'brand/people-gallery') {
+        const assets = opts.capture?.assets ?? [];
+        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6); // the scene shows six; the rest feed the recipes' picture slots and insets
+        // Each picture the asset finder labelled keeps its own caption (what it shows); the rest take the site's section names in order.
+        const label = (a: { category: string; alt: string }) => (a.alt || a.category.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
+        const notes = [...assets.map(label), ...(opts.capture?.sectionNames ?? [])];
+        props = { ...look, images: (pics.length ? pics : [page]).join('\n'), captions: notes.slice(0, 6).join('\n'), text: title };
       } else {
         props = { ...look, logo: opts.brand?.logo ?? opts.logo ?? '', name: opts.brand?.name ?? opts.capture?.title ?? '', cta: title, url: opts.capture?.address ?? opts.brand?.repo ?? '' };
       }
@@ -375,8 +396,8 @@ const INSET_PAGE_H = 1200;
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
-      // Music sits under the SFX at about a third of full volume, with a 1 s fade in and out.
-      clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 30, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
+      // Music sits under the SFX at about a third of full volume, with a 1 s fade in and a 1.7 s fade out (sound-design 3).
+      clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 50, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
     });
   }
 

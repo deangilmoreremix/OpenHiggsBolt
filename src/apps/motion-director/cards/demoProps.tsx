@@ -1,7 +1,9 @@
 import React from "react";
-import { AbsoluteFill } from "remotion";
+import { AbsoluteFill, cancelRender, continueRender, delayRender } from "remotion";
 import { applyTextOverrides, parseTextMap } from "../lib/textOverrides";
 import { LiveTextureContext, textureOverrides } from "../demosrc/_fixtures/liveTexture";
+import { adaptedNow, prepareAdapted } from "../lib/adaptedRuntime";
+import { AdaptedBoundary, type AdaptedComponent } from "../lib/shotAdapter";
 
 /**
  * 动效库（demo 卡）的 props 包装层。
@@ -27,7 +29,34 @@ interface DemoOverlayProps {
   crops?: string[];
   /** Words the recipe draws -> the words to draw instead (see lib/textOverrides). */
   texts?: unknown;
+  /** The recipe's source as the shot-adapter agent rewrote it for this site (see lib/adaptLoop). */
+  adaptedCode?: string;
+  /** Which recipe the adapted source replaces (its exported name). */
+  adaptedStem?: string;
 }
+
+/** The adapted component of a clip, compiled on demand; frames wait for it (delayRender) so stills and exports never show the plain recipe by mistake. */
+const useAdapted = (code: unknown, stem: unknown): AdaptedComponent | null => {
+  const src = typeof code === "string" && code ? code : "";
+  const name = typeof stem === "string" ? stem : "";
+  const [, bump] = React.useReducer((n: number) => n + 1, 0);
+  const ready = src ? adaptedNow(src) : null;
+  React.useEffect(() => {
+    if (!src || ready !== undefined) return;
+    const handle = delayRender("adapted shot");
+    let live = true;
+    prepareAdapted(src, name)
+      .then(() => {
+        if (live) bump();
+      })
+      .catch((e) => cancelRender(e))
+      .finally(() => continueRender(handle));
+    return () => {
+      live = false;
+    };
+  }, [src, name, ready]);
+  return ready ?? null;
+};
 
 const num = (v: unknown, fallback: number) => {
   const n = typeof v === "number" ? v : Number(v);
@@ -49,6 +78,7 @@ export const withDemoProps = (
       crops,
       texts,
     } = props as DemoOverlayProps;
+    const Adapted = useAdapted((props as DemoOverlayProps).adaptedCode, (props as DemoOverlayProps).adaptedStem);
     const textMap = React.useMemo(() => parseTextMap(texts), [texts]);
     const hasTexts = Object.keys(textMap).length > 0;
     const innerRef = React.useRef<HTMLDivElement>(null);
@@ -69,8 +99,10 @@ export const withDemoProps = (
         <LiveTextureContext.Provider value={textures}>
           {hasTexts ? (
             <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-              <Inner />
+              {Adapted ? <AdaptedBoundary fallback={<Inner />}><Adapted {...props} /></AdaptedBoundary> : <Inner />}
             </div>
+          ) : Adapted ? (
+            <AdaptedBoundary fallback={<Inner />}><Adapted {...props} /></AdaptedBoundary>
           ) : (
             <Inner />
           )}

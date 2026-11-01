@@ -40,16 +40,21 @@ export function captureImages(capture: PageCapture): StoredImage[] {
 /** Uploads every image at once under the caller's prefix; returns its public URL by name. */
 export async function storeCaptureImages(storage: CaptureStorage, userId: string, images: StoredImage[]): Promise<Map<string, string>> {
   const folder = `${sanitizeName(userId)}/motion-capture/${randomUUID()}`
-  const stored = await Promise.all(
-    images.map(async (image) => {
+  // Many pictures: upload eight at a time rather than all at once.
+  const stored: Array<readonly [string, string]> = []
+  let next = 0
+  const lanes = Array.from({ length: Math.min(8, images.length) }, async () => {
+    while (next < images.length) {
+      const image = images[next++]
       const path = `${folder}/${image.name}`
       const { error } = await storage.upload(path, image.body, { contentType: image.contentType, upsert: false })
       if (error) throw new Error(`storage upload failed: ${error.message}`)
       const { data } = storage.getPublicUrl(path)
       if (!data?.publicUrl) throw new Error('storage returned no public URL')
-      return [image.name, data.publicUrl] as const
-    }),
-  )
+      stored.push([image.name, data.publicUrl] as const)
+    }
+  })
+  await Promise.all(lanes)
   return new Map(stored)
 }
 
@@ -57,7 +62,17 @@ export async function storeCaptureImages(storage: CaptureStorage, userId: string
 export const captureIsEmpty = (capture: PageCapture): boolean => !capture.page && !captureHasWords(capture)
 
 /** The JSON the client receives, from a capture and the URLs its images were stored at. */
-export function buildCaptureResponse(capture: PageCapture, urls: Map<string, string>, transient = false) {
+/** A picture the asset finder found on the site, stored under `name`. */
+export interface StoredAssetInfo {
+  name: string
+  category: string
+  alt: string
+}
+
+/** Stored file names of the asset finder's pictures: asset-1.jpg … */
+export const assetFileName = (index: number, contentType: string) => `asset-${index + 1}.${contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : contentType === 'image/gif' ? 'gif' : 'jpg'}`
+
+export function buildCaptureResponse(capture: PageCapture, urls: Map<string, string>, transient = false, assets: readonly StoredAssetInfo[] = []) {
   const at = (name: string) => urls.get(name) ?? null
   const width = CAPTURE_VIEWPORT.width * CAPTURE_DEVICE_SCALE
   let homePath = '/'
@@ -80,6 +95,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     pages,
     crops: capture.crops.map((_, i) => at(`crop-${i + 1}.jpg`)!),
     images: (capture.images ?? []).map((_, i) => at(`image-${i + 1}.jpg`)!),
+    // The asset finder's pictures of the site (people, team, products…), with what each one shows.
+    assets: assets.map((a) => ({ url: at(a.name), category: a.category, alt: a.alt })).filter((a): a is { url: string; category: string; alt: string } => Boolean(a.url)),
     logo: at('logo.png'),
     cutouts: { nav: at('nav.jpg'), search: at('float-search.png'), button: at('float-button.png') },
     emptyPlate: at('page-empty.jpg'),
@@ -97,7 +114,7 @@ export type CaptureJob =
   | { state: 'error'; finishedAt: string; code: string; error: string; timing?: Record<string, number> }
 
 /** The whole background job (capture + upload) gets this long, then the worker writes a `timed out` record. */
-export const WORKER_WATCHDOG_MS = 120_000
+export const WORKER_WATCHDOG_MS = 480_000
 /** A record still `running` this long after it started belongs to a worker that died (memory, host limit). */
 export const CAPTURE_JOB_STALE_MS = WORKER_WATCHDOG_MS + 15_000
 

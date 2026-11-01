@@ -17,7 +17,8 @@ import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
-import { applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { pickMotionPreset, presetText } from './motionPreset';
+import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -25,6 +26,7 @@ import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
+import { adaptFilm } from './adaptLoop';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -57,6 +59,9 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
 });
 
 /** Capture (when the request has a URL) and storyboard the film. */
+/** The site's own pictures the film can show: the images found on the page plus its card crops. */
+export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
+
 export async function storyboardFilm(
   req: FilmRequest,
   opts: {
@@ -82,7 +87,7 @@ export async function storyboardFilm(
         onProgress: (sec) => log(`Capturing ${req.siteUrl} · ${sec}s (reading the page and taking screenshots)`, 'running'),
       });
       const pages = capture.pages?.length || 1;
-      const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
+      const pulled = [capture.logo ? 'logo' : '', capture.assets?.length ? `${capture.assets.length} found pictures (${[...new Set(capture.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(
         capture.partial
           ? `Captured ${capture.title || req.siteUrl} · its words only (no screenshots in time)`
@@ -115,7 +120,7 @@ export async function storyboardFilm(
         : [];
   log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
   try {
-    const plan = await requestPlan({
+    const ask = () => requestPlan({
       prompt: req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
@@ -125,23 +130,33 @@ export async function storyboardFilm(
       requiredRecipes: required.map((r) => r.id),
       template: opts.template === 'inkpress' ? 'inkpress' : null,
     });
+    // One more try when the director is slow or briefly down; a missing key or a refusal is final.
+    const plan = await ask().catch(async (error) => {
+      if (error instanceof DirectorError && (error.status === 401 || error.status === 403 || error.status === 429)) throw error;
+      log('The director did not answer; trying once more', 'running');
+      return ask();
+    });
     // Picked / named shots are the whole film (plus framing title cards): no other recipes.
     const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
     const shaped = restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec, { siteScenes });
     // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
     const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
-    const fitted = fitNativeLengths(ruled.plan, planSec, new Set(req.recipes.map((r) => r.id)));
+    // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
+    log(`Motion voice: ${voice.label}`, 'done');
+    const withPictures = addGalleryScene(ruled.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
+    const fitted = fitNativeLengths(withPictures, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(applySiteContent(fitted, capture?.content)), capture, source: 'director' };
+    return { plan: chooseSeams(applySiteContent(fitted, capture?.content), voice), capture, source: 'director' };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url) });
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(plan), capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan, pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: plan.palette?.accent ?? palette.accent })), capture, source: 'inkpress', note };
   }
 }
 
@@ -208,7 +223,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
@@ -217,7 +232,9 @@ export async function buildFilmProject(
     ? {
         // Every captured route of the site, the page asked for first.
         screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images].filter(Boolean),
-        crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
+        // The asset finder's pictures lead (people and products first), then the images the page showed, then card crops.
+        crops: [...(opts.capture.assets ?? []).map((a) => a.url), ...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
+        assets: opts.capture.assets ?? [],
         title: opts.capture.title,
         // Where each section of the home page starts, so the insets can show them one at a time.
         sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),
@@ -262,8 +279,29 @@ export async function buildFilmProject(
     const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
     log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
-  log(`Film built · ${project.tracks.length} tracks`, 'done');
-  return { ...project, spec: buildDesignSpec(plan, opts.capture, opts.prompt) };
+  const spec = buildDesignSpec(plan, opts.capture, opts.prompt);
+  let built: ProjectData = { ...project, spec };
+  // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
+  if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {
+    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture.brand?.fontFamily ?? undefined };
+    built = await adaptFilm(
+      built,
+      { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
+      {
+        render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+        review: async (p, frames, signal) => {
+          const render = (await import('../webRenderer')).renderStillOnWebExport;
+          const images: Array<{ second: number; image: string }> = [];
+          for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
+          const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
+          return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
+        },
+      },
+      log,
+    ).catch(() => built);
+  }
+  log(`Film built · ${built.tracks.length} tracks`, 'done');
+  return built;
 }
 
 export interface FilmQaReport {
@@ -308,7 +346,7 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
  * last frame (in the browser, with the same composition the export uses) and
  * report the ones that fail. Skipped when the browser cannot render stills; bounded by `budgetMs`.
  */
-export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 20_000): Promise<{ checked: number; failed: string[] }> {
+export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000): Promise<{ checked: number; failed: string[] }> {
   let render: typeof import('../webRenderer').renderStillOnWebExport;
   try {
     render = (await import('../webRenderer')).renderStillOnWebExport;
@@ -317,8 +355,12 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
   }
   const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
   const frames = new Set<number>();
-  // The middle of every shot, plus the film's first and last frame.
-  for (const c of shotTrack?.clips ?? []) frames.add(c.start + Math.floor(c.duration / 2));
+  // Upstream's three checks per shot: entering, at the peak, settled; plus the film's first and last frame.
+  for (const c of shotTrack?.clips ?? []) {
+    frames.add(c.start + Math.floor(c.duration * 0.2));
+    frames.add(c.start + Math.floor(c.duration / 2));
+    frames.add(c.start + Math.max(0, c.duration - 3));
+  }
   frames.add(0);
   frames.add(Math.max(0, projectEndFrame(project) - 1));
   const list = [...frames].sort((a, b) => a - b);
@@ -331,7 +373,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
     for (const f of list) {
       if (controller.signal.aborted) break;
       try {
-        await render(project, f, controller.signal);
+        await render(project, f, controller.signal, 0.5);
         checked++;
       } catch (error) {
         if (controller.signal.aborted) break;
@@ -388,7 +430,7 @@ export async function reviewFramesWithModel(project: ProjectData, budgetMs = 30_
     const images: Array<{ second: number; image: string }> = [];
     for (const f of frames) {
       if (controller.signal.aborted) break;
-      const still = await render(project, f, controller.signal);
+      const still = await render(project, f, controller.signal, 0.5);
       images.push({ second: Math.round((f / project.fps) * 10) / 10, image: await stillToJpeg(still.blob) });
     }
     if (!images.length) return [];

@@ -224,6 +224,24 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
   };
 };
 
+/**
+ * Whether this browser can draw page content to a canvas natively (Chrome's experimental HTML-in-canvas,
+ * `drawElementImage`). The web renderer uses it when present and is then noticeably quicker (measured here:
+ * 720p 36 vs 50 ms a frame with no GPU); without it the renderer paints each element itself.
+ */
+export const supportsHtmlInCanvas = (): boolean => {
+  if (typeof document === 'undefined') return false;
+  try {
+    const ctx = document.createElement('canvas').getContext('2d') as (CanvasRenderingContext2D & { drawElementImage?: unknown }) | null;
+    return typeof ctx?.drawElementImage === 'function';
+  } catch {
+    return false;
+  }
+};
+
+/** A Chromium-based browser (Chrome, Edge, Brave…): the only ones the flag exists in. */
+export const isChromiumBrowser = (): boolean => typeof navigator !== 'undefined' && /Chrome\/\d+/.test(navigator.userAgent) && !/OPR\//.test(navigator.userAgent);
+
 export class RenderUnsupportedError extends Error {}
 
 /**
@@ -275,6 +293,8 @@ export const renderStillOnWebExport = async (
   project: ProjectData,
   frame: number,
   signal?: AbortSignal,
+  /** Output size factor; the frame checks and the frame review do not need full size (a half-size still is ~3× quicker). */
+  scale = 1,
 ): Promise<StillResult> => {
   const { width, height, fps } = project;
   const inputProps = { project, renderExact: true };
@@ -295,6 +315,7 @@ export const renderStillOnWebExport = async (
     inputProps,
     frame,
     signal,
+    scale,
   };
 
   const result = await renderStillOnWeb(renderOpts);

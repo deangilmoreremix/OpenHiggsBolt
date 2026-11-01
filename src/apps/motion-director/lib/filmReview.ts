@@ -8,6 +8,7 @@ import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import type { ProjectData } from '../types';
 import { filmRuleViolations, rulesOf } from './shotRules';
 import { reviewAgainstSpec } from './designSpec';
+import { SFX_PEAKS } from '../demosrc/_generated/sfxPeaks';
 
 export interface ReviewItem {
   code: string;
@@ -54,6 +55,15 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
   // A7: no synthetic interface sounds.
   const synthetic = clips.filter((c) => c.cardId === 'audio-clip' && /sfxlib\/ui\/ui-/.test(String(c.props.file)));
   items.push({ code: 'A7', ok: synthetic.length === 0, text: synthetic.length ? `${synthetic.length} interface-alert sounds (they sound like a game).` : 'Sound effects are real objects and film vocabulary.' });
+
+  // A5: a sample longer than 5 s must be cut to its action, not left to ring on.
+  const ringing = clips.filter((c) => {
+    if (c.cardId !== 'audio-clip') return false;
+    const name = /sfxlib\/(.+)\.mp3$/.exec(String(c.props.file))?.[1];
+    const whole = name ? SFX_PEAKS[name]?.durationMs : undefined;
+    return !!whole && whole > 5000 && c.duration > fps * 3;
+  });
+  items.push({ code: 'A5', ok: ringing.length === 0, text: ringing.length ? `Long sound sample left to ring for over 3 s at ${ringing.map((c) => sec(c.start, fps)).join(', ')}; give it a shorter duration.` : 'Long sound samples are cut to their action.' });
 
   // A8: with music, deliver it with and without.
   if (clips.some((c) => c.cardId === 'audio-clip' && !/sfxlib/.test(String(c.props.file)))) items.push({ code: 'A8', ok: true, text: 'Render both the version with music and the one without.' });

@@ -87,3 +87,4 @@ supabase/.temp/
 # Built by scripts/build-fast-discovery.mjs (runs in prebuild)
 netlify/lib/fast-discovery.cjs
 netlify/lib/motion-capture.cjs
+/public/motion-studio/sources/

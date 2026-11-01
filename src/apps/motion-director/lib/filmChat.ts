@@ -18,6 +18,7 @@ import {
   type MotionCategoryKey,
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
+import type { MotionPreset } from './motionPreset';
 import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type SceneTransition } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
 
@@ -285,6 +286,8 @@ export function inkPressPlan(opts: {
   content?: SiteContent | null;
   /** The site was captured with pictures: tell its story with the URL scan and hub scenes, then close on its logo. */
   siteScenes?: boolean;
+  /** How many of the site's own pictures (crops, people, products) were captured. */
+  pictures?: number;
 }): DirectorPlan {
   const name = opts.productName || productNameFrom(opts.prompt);
   const site = opts.content ?? null;
@@ -302,10 +305,13 @@ export function inkPressPlan(opts: {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: fit(site?.headline || site?.description, PLAN_LIMITS.captionChars), transition: 'cut' });
   }
   // The template's own arc for a captured site: the address scanned, then the product as a hub of its features.
-  const story = Boolean(opts.siteScenes) && !named && withTitles && target >= (shots.length + 4) * PLAN_LIMITS.minSceneSec && shots.length + 4 <= PLAN_LIMITS.maxScenes;
+  const story = Boolean(opts.siteScenes) && withTitles && target >= (shots.length + 4) * PLAN_LIMITS.minSceneSec && shots.length + 4 <= PLAN_LIMITS.maxScenes;
   if (story) {
     scenes.push({ kind: 'shot', recipeId: 'brand/url-scan', durationSec: 3.5, headline: '', caption: '', transition: 'cut', feature: 'We read your site', action: 'address typed, page scanned', asset: 'your page' });
     scenes.push({ kind: 'shot', recipeId: 'brand/hub', durationSec: 3.5, headline: fit(site?.headline || site?.description, PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'Everything in one place', action: 'features as nodes around your page', asset: 'your page + menu' });
+  }
+  if (story && (opts.pictures ?? 0) >= 2 && shots.length + 5 <= PLAN_LIMITS.maxScenes && target >= (shots.length + 5) * PLAN_LIMITS.minSceneSec) {
+    scenes.push({ kind: 'shot', recipeId: 'brand/people-gallery', durationSec: 4, headline: fit(site?.headings?.[0], PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'The people and pictures', action: 'the site\'s own pictures, one after another', asset: 'your images' });
   }
   shots.forEach((shot, i) => {
     const scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
@@ -500,13 +506,15 @@ const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | nul
  * two shots are then dressed in turn (wipe, barn-door, dip) on every other seam, never next to a
  * title card (a breathing card is cut to plainly) and always a dip into the closing scene.
  */
-export function chooseSeams(plan: DirectorPlan): DirectorPlan {
+export function chooseSeams(plan: DirectorPlan, preset?: MotionPreset): DirectorPlan {
+  // A seam out of character for the film's motion voice is not used (a plain cut is always in character).
+  const fits = (t: SceneTransition) => !preset || t === 'cut' || preset.seams.includes(t);
   const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0, ring: 0 };
   const last = plan.scenes.length - 1;
   const seams: SceneTransition[] = plan.scenes.map((scene, i) => {
     if (i === last) return 'cut';
     const group = seamGroup(scene.transition);
-    if (group && used[group] < SEAM_CAPS[group]) {
+    if (group && fits(scene.transition!) && used[group] < SEAM_CAPS[group]) {
       used[group]++;
       return scene.transition!;
     }
@@ -527,7 +535,7 @@ export function chooseSeams(plan: DirectorPlan): DirectorPlan {
       return;
     }
     // Into the closing logo: a dip, so the name arrives on a calm frame.
-    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip) {
+    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip && fits('dip')) {
       seams[i] = 'dip';
       used.dip++;
       sinceDressed = 0;
@@ -540,7 +548,7 @@ export function chooseSeams(plan: DirectorPlan): DirectorPlan {
     for (let k = 0; k < order.length; k++) {
       const pick = order[(turn + k) % order.length];
       const group = seamGroup(pick)!;
-      if (used[group] < SEAM_CAPS[group]) {
+      if (fits(pick) && used[group] < SEAM_CAPS[group]) {
         seams[i] = pick;
         used[group]++;
         turn += k + 1;
@@ -563,7 +571,7 @@ const BRAND_NATIVE_SEC: Record<string, number> = { 'brand/url-scan': 4.3, 'brand
  * site scenes, extra title cards, then recipes nobody named, from the end); under it, holds grow
  * (recipes up to +30 %, cards to 3 s) and the film simply ends a little short of the request.
  */
-export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: ReadonlySet<string> = new Set()): DirectorPlan {
+export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: ReadonlySet<string> = new Set(), holdGrowth = 1.3): DirectorPlan {
   const nativeOf = (s: DirectorScene): number => {
     if (s.kind === 'title') return clamp(s.durationSec, 1.8, 3);
     if (isBrandScene(s.recipeId)) return BRAND_NATIVE_SEC[s.recipeId] ?? 3;
@@ -584,7 +592,7 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
   const spare = target - sum();
   if (spare > 0.5) {
     // Longer holds, shared in proportion to what each can still take.
-    const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * 0.3));
+    const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * Math.max(0, holdGrowth - 1)));
     const total = room.reduce((n, r) => n + r, 0) || 1;
     scenes.forEach((s, i) => {
       s.durationSec += Math.min(room[i], (spare * room[i]) / total);
@@ -672,4 +680,22 @@ export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTe
   }
   // Few scenes stretch to the requested length instead of stopping at the usual per-scene cap.
   return validatePlan({ ...plan, scenes }, { targetSec, maxSceneSec: Math.ceil(filmSec / scenes.length) });
+}
+
+/** The person asked for the site's own pictures or people. */
+export const wantsSitePictures = (prompt: string): boolean => /\b(?:images?|photos?|pictures?|people|team|faces?|staff|screenshots?)\b/i.test(prompt);
+
+/**
+ * A film of a site that has pictures shows them: when the person asked for images or people (or the
+ * site gave four or more), a gallery scene goes in after the hub / first scene unless the plan has one.
+ */
+export function addGalleryScene(plan: DirectorPlan, opts: { pictures: number; prompt: string; headline?: string }): DirectorPlan {
+  if (opts.pictures < 2 || plan.scenes.some((s) => s.recipeId === 'brand/people-gallery')) return plan;
+  if (!wantsSitePictures(opts.prompt) && opts.pictures < 4) return plan;
+  if (plan.scenes.length + 1 > PLAN_LIMITS.maxScenes) return plan;
+  const scenes = plan.scenes.slice();
+  const hub = scenes.findIndex((s) => s.recipeId === 'brand/hub');
+  const at = hub >= 0 ? hub + 1 : Math.min(1, scenes.length);
+  scenes.splice(at, 0, { kind: 'shot', recipeId: 'brand/people-gallery', durationSec: 4, headline: (opts.headline ?? '').slice(0, PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'The people and pictures', action: "the site's own pictures, one after another", asset: 'your images' });
+  return { ...plan, scenes };
 }
