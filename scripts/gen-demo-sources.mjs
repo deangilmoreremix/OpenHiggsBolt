@@ -12,6 +12,8 @@ import path from 'node:path'
 const ROOT = path.resolve('src/apps/motion-director/demosrc')
 const OUT = path.resolve('public/motion-studio/sources')
 const CARDS = path.resolve('.claude/skills/video-shotcraft/references/shots')
+// The English translation of the cards (docs/video-shotcraft-en), used when it exists.
+const CARDS_EN = path.resolve('docs/video-shotcraft-en/references/shots')
 
 const files = []
 const walk = (dir) => {
@@ -37,7 +39,8 @@ for (const file of files.sort()) {
   index[stem] = text.length
   // demosrc/<category>/<slug>/<Stem>.tsx <-> references/shots/<category>/<slug>.md
   const rel = path.relative(ROOT, path.dirname(file)).split(path.sep)
-  const card = path.join(CARDS, `${rel.join('/')}.md`)
+  const english = path.join(CARDS_EN, `${rel.join('/')}.md`)
+  const card = fs.existsSync(english) ? english : path.join(CARDS, `${rel.join('/')}.md`)
   if (rel.length === 2 && fs.existsSync(card)) {
     fs.copyFileSync(card, path.join(OUT, `${stem}.card.md`))
     cards++
