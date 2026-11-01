@@ -59,7 +59,7 @@ export function buildPreviewInput(
       // the composition uses when a text layer has no explicit text.
       businessName,
       // Prefer real copy over repeating the business name.
-      headline: clientForm.ctaHeadline || clientForm.productService || businessName,
+      headline: clientForm.ctaHeadline?.trim() || clientForm.productService?.trim() || businessName,
       offer: clientForm.offer || '',
       cta: callToAction,
       phone: clientForm.phone || '',

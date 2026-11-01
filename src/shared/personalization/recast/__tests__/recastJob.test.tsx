@@ -21,8 +21,10 @@ import {
 } from '../recastJob'
 import { useRecastJob } from '../useRecastJob'
 
+const OWNER = 'owner-a'
 const INPUT = {
   sourceId: 'demo-1',
+  ownerKey: OWNER,
   sourceUrl: 'https://cdn.example.com/source.mp4',
   sourceLabel: 'Current video',
   identityId: 'person-1',
@@ -34,7 +36,7 @@ const INPUT = {
 
 function storedJob(patch: Partial<RecastJob> = {}): RecastJob {
   return {
-    id: 'recast_1', sourceId: 'demo-1', status: 'running', requestId: 'req-9',
+    id: 'recast_1', sourceId: 'demo-1', ownerKey: OWNER, status: 'running', requestId: 'req-9',
     sourceUrl: INPUT.sourceUrl, sourceLabel: 'Current video', identityId: 'person-1', identityName: 'Ana',
     identityUrl: INPUT.identityUrl, duration: 7, prompt: '', startedAt: Date.now() - 60_000,
     finishedAt: 0, resultUrl: '', error: '', applied: false, ...patch,
@@ -91,10 +93,10 @@ describe('useRecastJob', () => {
       return new Promise((resolve) => { resolveRun = resolve })
     })
     const onDone = vi.fn()
-    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', onDone }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone }))
 
     act(() => { void result.current.start(INPUT) })
-    await waitFor(() => expect(loadRecastJob('demo-1')?.requestId).toBe('req-1'))
+    await waitFor(() => expect(loadRecastJob('demo-1', OWNER)?.requestId).toBe('req-1'))
     expect(muapi.processMotionControl).toHaveBeenCalledWith('k', expect.objectContaining({
       model: 'seedance-2.5-motion-control',
       video_url: INPUT.sourceUrl,
@@ -114,7 +116,7 @@ describe('useRecastJob', () => {
     saveRecastJob(storedJob())
     muapi.resumeGeneration.mockResolvedValue({ url: 'https://cdn.example.com/out.mp4' })
     const onDone = vi.fn()
-    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', onDone }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone }))
 
     await waitFor(() => expect(result.current.job?.status).toBe('done'))
     expect(muapi.resumeGeneration).toHaveBeenCalledWith('k', 'req-9', expect.objectContaining({ signal: expect.any(AbortSignal) }))
@@ -129,7 +131,7 @@ describe('useRecastJob', () => {
       return new Promise((resolve) => { resolveRun = resolve })
     })
     const onDone = vi.fn()
-    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', onDone }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone }))
     act(() => { void result.current.start(INPUT) })
     await waitFor(() => expect(result.current.job?.requestId).toBe('req-1'))
 
@@ -147,7 +149,7 @@ describe('useRecastJob', () => {
     })
     muapi.resumeGeneration.mockResolvedValue({ outputs: ['https://cdn.example.com/out.mp4'] })
     const onDone = vi.fn()
-    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', onDone }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone }))
     await act(async () => { await result.current.start(INPUT) })
     expect(result.current.job).toMatchObject({ status: 'error', error: 'Network down', requestId: 'req-1' })
 
@@ -161,8 +163,43 @@ describe('useRecastJob', () => {
   it('a finished job that was already applied is not applied again on reopen', async () => {
     saveRecastJob(storedJob({ status: 'done', resultUrl: 'https://cdn.example.com/out.mp4', applied: true }))
     const onDone = vi.fn()
-    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', onDone }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone }))
     await waitFor(() => expect(result.current.job?.status).toBe('done'))
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it("never restores another account's job from this browser", async () => {
+    saveRecastJob(storedJob())
+    localStorage.setItem('pz_recast_job:demo-1', JSON.stringify(storedJob({ ownerKey: undefined as unknown as string })))
+    const onDone = vi.fn()
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k2', sourceId: 'demo-1', ownerKey: 'owner-b', onDone }))
+    await act(async () => {})
+    expect(result.current.job).toBeNull()
+    expect(muapi.resumeGeneration).not.toHaveBeenCalled()
+    // The old unscoped entry can't be attributed to anyone, so it is dropped.
+    expect(localStorage.getItem('pz_recast_job:demo-1')).toBeNull()
+  })
+
+  it('keeps the request id and result when another demo is opened mid-run', async () => {
+    let sendRequestId!: (id: string) => void
+    let resolveRun!: (value: unknown) => void
+    muapi.processMotionControl.mockImplementation((_key: string, params: { onRequestId: (id: string) => void }) => {
+      sendRequestId = params.onRequestId
+      return new Promise((resolve) => { resolveRun = resolve })
+    })
+    const onDone = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ sourceId }) => useRecastJob({ apiKey: 'k', sourceId, ownerKey: OWNER, onDone }),
+      { initialProps: { sourceId: 'demo-1' } },
+    )
+    act(() => { void result.current.start(INPUT) })
+    rerender({ sourceId: 'demo-2' })
+
+    act(() => sendRequestId('req-1'))
+    expect(loadRecastJob('demo-1', OWNER)?.requestId).toBe('req-1')
+    await act(async () => { resolveRun({ url: 'https://cdn.example.com/out.mp4' }) })
+    // Finished in the background: stored, applied when demo-1 is opened again.
+    expect(loadRecastJob('demo-1', OWNER)).toMatchObject({ status: 'done', resultUrl: 'https://cdn.example.com/out.mp4', applied: false })
     expect(onDone).not.toHaveBeenCalled()
   })
 })

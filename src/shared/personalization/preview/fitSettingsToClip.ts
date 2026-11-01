@@ -1,5 +1,4 @@
 import type { PersonalizationPreviewSettings, PreviewAspectRatio } from './types'
-import { getCompositionDimensions } from './presets'
 
 /** What a video file reports about itself. */
 export interface ClipMetadata {
@@ -28,8 +27,12 @@ export function fitSettingsToClip(
   if (!clip || !(clip.durationSeconds > 0)) return settings
   const next = { ...settings, durationInFrames: Math.max(1, Math.round(clip.durationSeconds * settings.fps)) }
   if (clip.width > 0 && clip.height > 0) {
+    // The frame takes the clip's exact shape (also 4:3, 3:4…), so nothing is
+    // cropped; the nearest preset only names it. The shorter side is 1080.
     const aspectRatio = closestAspectRatio(clip.width, clip.height)
-    Object.assign(next, { aspectRatio }, getCompositionDimensions(aspectRatio))
+    const scale = 1080 / Math.min(clip.width, clip.height)
+    const even = (value: number) => Math.max(2, Math.round(value / 2) * 2)
+    Object.assign(next, { aspectRatio, width: even(clip.width * scale), height: even(clip.height * scale) })
   }
   return next
 }

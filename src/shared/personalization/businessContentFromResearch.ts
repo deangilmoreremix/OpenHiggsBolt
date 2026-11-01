@@ -69,6 +69,11 @@ function flattenJsonLd(items: unknown[]): JsonObject[] {
   return out
 }
 
+const NOT_A_BUSINESS_TYPES = new Set([
+  'product', 'service', 'offer', 'aggregateoffer', 'review', 'aggregaterating',
+  'article', 'blogposting', 'newsarticle', 'event', 'faqpage', 'question', 'videoobject', 'recipe',
+])
+
 /** The node that best describes the business itself. */
 function findBusinessNode(nodes: JsonObject[]): JsonObject | null {
   const score = (node: JsonObject) => {
@@ -80,6 +85,8 @@ function findBusinessNode(nodes: JsonObject[]): JsonObject | null {
     if (node.telephone) value += 1
     if (text(node.name)) value += 1
     if (types.some((t) => ['website', 'webpage', 'breadcrumblist', 'imageobject'].includes(t))) value -= 5
+    // Things the business sells or posts are not the business itself.
+    if (types.some((t) => NOT_A_BUSINESS_TYPES.has(t))) value -= 4
     return value
   }
   const ranked = nodes

@@ -104,6 +104,17 @@ function entranceFor(layer: PreviewLayer, frame: number, fps: number): EntranceS
   }
 }
 
+/** Dark text on light colors, white on dark ones (hex colors; else the default). */
+export function readableTextOn(background: string, dark: string): string {
+  const match = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(background.trim())
+  if (!match) return dark
+  const hex = match[1].length === 3 ? match[1].split('').map((c) => c + c).join('') : match[1]
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+  return luminance > 0.18 ? dark : '#ffffff'
+}
+
 /** The layer's own text, or null when it has none (unset or cleared). */
 function ownText(layer: PreviewLayer): string | null {
   return typeof layer.text === 'string' && layer.text.trim() ? layer.text : null
@@ -425,8 +436,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       frame >= layer.startFrame &&
       (layer.endFrame === undefined || frame <= layer.endFrame),
   )
-  const businessNameShown = visibleLayers.some(
-    (layer) => layer.kind === 'businessName' && resolveLayerText(layer, brand).trim() !== '',
+  // The business name is on screen right now: its layer shows the brand
+  // name itself (not custom text) and has faded in.
+  const brandName = brand.businessName.trim().toLowerCase()
+  const businessNameShown = Boolean(brandName) && visibleLayers.some(
+    (layer) =>
+      layer.kind === 'businessName' &&
+      resolveLayerText(layer, brand).trim().toLowerCase() === brandName &&
+      layer.opacity * entranceFor(layer, frame, settings.fps).opacity > 0,
   )
 
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
@@ -561,9 +578,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   <span
                     style={{
-                      // The layer's color is the button color (default: accent).
+                      // The layer's color is the button color (default: accent);
+                      // the label is dark or white, whichever reads on it.
                       background: textColor,
-                      color: PILL_TEXT_COLOR,
+                      color: readableTextOn(textColor, PILL_TEXT_COLOR),
                       padding: '0.4em 1.1em',
                       borderRadius: 999,
                       display: 'inline-block',

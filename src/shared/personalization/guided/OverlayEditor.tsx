@@ -88,7 +88,18 @@ function isRepeatedBusinessName(layer: PreviewLayer, brand: PreviewInputProps['b
   if (typeof layer.text === 'string' && layer.text.trim()) return false
   const name = brand.businessName.trim().toLowerCase()
   if (!name || layerText(layer, brand).trim().toLowerCase() !== name) return false
-  return layers.some((other) => other.kind === 'businessName' && other.visible && layerText(other, brand).trim() !== '')
+  // Same rule as the video: a visible name layer showing the brand name itself,
+  // on screen during (some of) the same frames.
+  return layers.some((other) =>
+    other.kind === 'businessName' &&
+    other.visible &&
+    layerText(other, brand).trim().toLowerCase() === name &&
+    framesOverlap(layer, other),
+  )
+}
+
+function framesOverlap(a: PreviewLayer, b: PreviewLayer): boolean {
+  return Math.max(a.startFrame, b.startFrame) <= Math.min(a.endFrame ?? Infinity, b.endFrame ?? Infinity)
 }
 
 /* ── Design text slots ─────────────────────────────────────────────────────── */

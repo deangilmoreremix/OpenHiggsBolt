@@ -23,6 +23,18 @@ function num(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+const MAX_METADATA_BYTES = 20_000
+
+/** Metadata as an object, dropped when it is too big to store. */
+function boundedMetadata(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  try {
+    return JSON.stringify(value).length <= MAX_METADATA_BYTES ? (value as Record<string, unknown>) : { truncated: true }
+  } catch {
+    return {}
+  }
+}
+
 function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string') return false
   try {
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
     resolution: text(entry.resolution, 20),
     quality: text(entry.quality, 50),
     effect: text(entry.effect, 100),
-    metadata: entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : {},
+    metadata: boundedMetadata(entry.metadata),
   }
 
   try {

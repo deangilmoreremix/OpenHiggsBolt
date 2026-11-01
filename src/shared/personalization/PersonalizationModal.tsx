@@ -21,6 +21,7 @@
 
 'use client'
 
+import { RECAST_MAX_SECONDS } from './recast/recastJob'
 import {
   useState,
   useRef,
@@ -57,6 +58,7 @@ import {
 import { FullBodyRecastSection } from './advanced/FullBodyRecastPanel'
 import { ReadinessChecklist, blockingByTab, focusRequirementControl, requirementLocation } from './advanced/ReadinessChecklist'
 import { validateProjectRequirements } from './ai/toolExecutor'
+import { chooseFinalOutputPath } from './finalOutput'
 import type { AIMissingRequirement } from './ai/types'
 import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, BusinessOwnership, PersonalizationSource } from './types'
 import { LEAD_STAGES, isLeadStage } from './leadStages'
@@ -1378,6 +1380,15 @@ export default function PersonalizationModal() {
     try { await personalizePrompt() } finally { if (mountedRef.current) setIsRegenerating(false) }
   }, [personalizePrompt])
 
+  const brandedRenderInWizard =
+    simpleModeActive &&
+    ctx.guidedStep === 4 &&
+    chooseFinalOutputPath({ personalizationMode: mode || null }) === 'branded-render' &&
+    (generation.status === 'generating' ||
+      generation.status === 'processing' ||
+      generation.status === 'error' ||
+      (generation.status === 'complete' && result?.metadata?.source === 'branded-render'))
+
   // Advanced Editing is the body: on wide screens the dialog becomes a fixed
   // frame whose panes scroll on their own (see advanced/AdvancedWorkspace.tsx).
   const advancedFrame =
@@ -1535,7 +1546,11 @@ export default function PersonalizationModal() {
           data-pz-scroll-root
           style={{ padding: '0 26px' }}
         >
-          {generation.status === 'complete' && result ? (
+          {brandedRenderInWizard ? (
+            // A branded render started from Simple Mode stays in Step 4, which
+            // shows its progress, Cancel, any error and Download / Upload.
+            <SimpleModeWizard onEditDiscoveredAsset={isAnonymous ? undefined : openDiscoveredImageEditor} />
+          ) : generation.status === 'complete' && result ? (
             <ResultView
               canPublish={ctx.canPublish}
               canEditInVideoStudio={ctx.canEditInVideoStudio}
@@ -4797,6 +4812,18 @@ function ConfigurationView(props: any) {
             Advanced Settings ›
           </button>
         </div>
+        {mode === 'full_body' && ctxPreviewSettings && ctxPreviewSettings.durationInFrames > RECAST_MAX_SECONDS * ctxPreviewSettings.fps && (
+          <div data-testid="pz-full-body-too-long" style={{ color: '#f59e0b', fontSize: 11, margin: '8px 0' }}>
+            Full presenter makes clips up to {RECAST_MAX_SECONDS} s, but the preview is {Math.round(ctxPreviewSettings.durationInFrames / ctxPreviewSettings.fps)} s; layers after {RECAST_MAX_SECONDS} s would be cut.{' '}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => ctxUpdatePreviewComposition?.({ durationInFrames: RECAST_MAX_SECONDS * ctxPreviewSettings.fps })}
+            >
+              Trim preview to {RECAST_MAX_SECONDS} s
+            </button>
+          </div>
+        )}
         {showAdvanced && (
           <div className="grid grid-cols-2 gap-3 p-4 mt-2 rounded-xl border" style={{ borderColor: C.border, background: '#0c1014' }}>
             {mode === 'full_body' ? (

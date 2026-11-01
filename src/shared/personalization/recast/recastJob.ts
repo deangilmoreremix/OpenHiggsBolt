@@ -17,12 +17,15 @@ export const RECAST_MAX_VIDEO_BYTES = 50 * 1024 * 1024
 export const RECAST_MAX_RUN_MS = 60 * 60 * 1000
 const RECAST_VIDEO_TYPES = ['video/mp4', 'video/quicktime']
 const STORAGE_PREFIX = 'pz_recast_job:'
+const VIDEOS_PREFIX = 'pz_recast_videos:'
 
 export type RecastStatus = 'running' | 'done' | 'error' | 'cancelled'
 
 export interface RecastJob {
   id: string
   sourceId: string
+  /** Who started it (see recastOwnerKey); a job is only restored for its owner. */
+  ownerKey: string
   status: RecastStatus
   requestId: string
   sourceUrl: string
@@ -42,6 +45,7 @@ export interface RecastJob {
 
 export interface StartRecastInput {
   sourceId: string
+  ownerKey: string
   sourceUrl: string
   sourceLabel: string
   identityId: string
@@ -109,6 +113,7 @@ export function createRecastJob(input: StartRecastInput): RecastJob {
   return {
     id: `recast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     sourceId: input.sourceId,
+    ownerKey: input.ownerKey,
     status: 'running',
     requestId: '',
     sourceUrl: input.sourceUrl,
@@ -126,35 +131,81 @@ export function createRecastJob(input: StartRecastInput): RecastJob {
   }
 }
 
-function storageKey(sourceId: string): string {
-  return `${STORAGE_PREFIX}${sourceId}`
+/**
+ * A short, non-reversible key for the signed-in user (the scope can be an API
+ * key, which must not appear in storage key names). Jobs and saved recast
+ * videos are stored per owner, so another account in the same browser never
+ * picks them up.
+ */
+export function recastOwnerKey(scope: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < scope.length; i += 1) {
+    hash ^= scope.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(36)
 }
 
-export function loadRecastJob(sourceId: string): RecastJob | null {
-  if (!sourceId || typeof window === 'undefined') return null
+function storageKey(ownerKey: string, sourceId: string): string {
+  return `${STORAGE_PREFIX}${ownerKey}:${sourceId}`
+}
+
+export function loadRecastJob(sourceId: string, ownerKey: string): RecastJob | null {
+  if (!sourceId || !ownerKey || typeof window === 'undefined') return null
   try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey(sourceId)) || 'null')
-    return parsed && typeof parsed === 'object' && typeof parsed.id === 'string' ? (parsed as RecastJob) : null
+    // Jobs stored before they had an owner can't be attributed: drop them.
+    localStorage.removeItem(`${STORAGE_PREFIX}${sourceId}`)
+    const parsed = JSON.parse(localStorage.getItem(storageKey(ownerKey, sourceId)) || 'null')
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.id !== 'string') return null
+    return parsed.ownerKey === ownerKey ? (parsed as RecastJob) : null
   } catch {
     return null
   }
 }
 
 export function saveRecastJob(job: RecastJob): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || !job.ownerKey) return
   try {
-    localStorage.setItem(storageKey(job.sourceId), JSON.stringify(job))
+    localStorage.setItem(storageKey(job.ownerKey, job.sourceId), JSON.stringify(job))
   } catch {
     // The job keeps running in memory; it just won't survive a reload.
   }
 }
 
-export function clearRecastJob(sourceId: string): void {
+export function clearRecastJob(sourceId: string, ownerKey: string): void {
   if (typeof window === 'undefined') return
   try {
-    localStorage.removeItem(storageKey(sourceId))
+    localStorage.removeItem(storageKey(ownerKey, sourceId))
   } catch {
     // Nothing stored.
+  }
+}
+
+/** A finished recast kept for reuse (Saved recast videos), per owner and demo. */
+export interface SavedRecastVideo {
+  id: string
+  url: string
+  name: string
+}
+
+export function loadRecastVideos(sourceId: string, ownerKey: string): SavedRecastVideo[] {
+  if (!sourceId || !ownerKey || typeof window === 'undefined') return []
+  try {
+    const parsed = JSON.parse(localStorage.getItem(`${VIDEOS_PREFIX}${ownerKey}:${sourceId}`) || '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter((v): v is SavedRecastVideo => v && typeof v.id === 'string' && typeof v.url === 'string' && /^https?:\/\//.test(v.url))
+      : []
+  } catch {
+    return []
+  }
+}
+
+export function saveRecastVideos(sourceId: string, ownerKey: string, videos: SavedRecastVideo[]): void {
+  if (!sourceId || !ownerKey || typeof window === 'undefined') return
+  try {
+    localStorage.setItem(`${VIDEOS_PREFIX}${ownerKey}:${sourceId}`, JSON.stringify(videos.slice(-20)))
+  } catch {
+    // Kept in memory only.
   }
 }
 

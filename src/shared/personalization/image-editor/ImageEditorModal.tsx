@@ -864,6 +864,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     let applied = false
     try {
       const dataUrl = await prepareDataUrl(currentVersion.dataUrl)
+      // Saving rejects images over 10 MB; say so before trying.
+      if (dataUrlToBlob(dataUrl).size > 10 * 1024 * 1024) {
+        throw new Error('That image is over 10 MB. Choose a smaller image or edit it to reduce its size.')
+      }
       let validation = currentVersion.visionValidation
 
       if (
@@ -1449,7 +1453,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
               </div>
 
               <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || noEditYet} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Use Edited Asset
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {validationOverrideVersionId === currentVersion.id && !currentVersion.visionValidation?.passed ? 'Use Anyway' : 'Use Edited Asset'}
               </button>
               {noEditYet && <p className="mt-1.5 text-center text-[10px] text-white/40">Make an edit first — pick a tool above</p>}
               </div>

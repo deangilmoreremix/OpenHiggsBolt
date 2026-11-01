@@ -194,7 +194,7 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
       const duration = await readVideoDuration(previewUrl)
       const durationError = validateRecastDuration(duration)
       if (durationError) throw new Error(durationError)
-      setClip((prev) => ({ ...prev, duration, status: 'uploading' }))
+      setClip((prev) => (prev.previewUrl === previewUrl ? { ...prev, duration, status: 'uploading' } : prev))
       const uploaded = await uploadPersonalizationAsset(apiKey, { file })
       setClip((prev) => (prev.previewUrl === previewUrl ? { ...prev, url: uploaded.url, status: 'ready' } : prev))
     } catch (error) {
@@ -206,7 +206,7 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
 
   const useCurrentVideo = () => setClip({ ...EMPTY_CLIP, kind: 'current' })
 
-  const canRecast = !isAnonymous && !running && clip.status === 'ready' && Boolean(clip.url) && Boolean(identityUrl) && Boolean(genOptions.consentGiven)
+  const canRecast = !isAnonymous && !running && !clip.error && clip.status === 'ready' && Boolean(clip.url) && Boolean(identityUrl) && Boolean(genOptions.consentGiven)
   const blocker = isAnonymous
     ? 'Sign in to recast videos.'
     : !clip.url || clip.status !== 'ready'

@@ -58,12 +58,15 @@ function TestOpener({ onMounted }: { onMounted: (open: (opts: any) => void) => v
   return null;
 }
 
+const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
+
 /** Renders the provider + modal and opens it on the standard demo source. */
 async function openModal() {
   const container = document.createElement('div');
   container.setAttribute('data-testid', 'personalization-root')
   document.body.appendChild(container);
   const root = createRoot(container);
+  mountedRoots.push(root);
 
   let openPersonalize: ((opts: any) => void) | null = null;
 
@@ -115,6 +118,8 @@ const buttonByText = (container: HTMLElement, text: string) =>
 
 describe('Advanced Editing buttons', () => {
   afterEach(() => {
+    // Unmount first so provider effects and timers are cleaned up between tests.
+    act(() => { mountedRoots.splice(0).forEach((root) => root.unmount()) })
     document.querySelectorAll('[data-testid="personalization-root"]').forEach((el) => el.remove())
     latestCtx = null
     vi.restoreAllMocks()
@@ -190,5 +195,21 @@ describe('Advanced Editing buttons', () => {
     await act(async () => { $(container, 'pz-pill-client-profile')!.click(); });
     await act(async () => { buttonByText(container, 'Save Client')!.click(); });
     expect($(container, 'pz-client-save-status')!.textContent).toContain('Saved')
+  });
+
+  it('Full presenter warns when the preview is longer than 30 s and trims it', async () => {
+    const container = await openModal();
+    await act(async () => {
+      latestCtx.setMode('full_body')
+      latestCtx.updatePreviewComposition({ durationInFrames: 45 * latestCtx.previewSettings.fps })
+      latestCtx.setAdvancedTab?.('create')
+      latestCtx.setAdvancedSection?.('create', 'output')
+    });
+    const warning = $(container, 'pz-full-body-too-long')
+    expect(warning?.textContent).toContain('up to 30 s')
+    expect(warning?.textContent).toContain('45 s')
+    await act(async () => { buttonByText(container, 'Trim preview to 30 s')!.click() });
+    expect(latestCtx.previewSettings.durationInFrames).toBe(30 * latestCtx.previewSettings.fps)
+    expect($(container, 'pz-full-body-too-long')).toBeNull()
   });
 });

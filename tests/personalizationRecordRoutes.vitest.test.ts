@@ -63,8 +63,10 @@ describe('POST /api/personalization/persist-edited-asset', () => {
     const res = await POST(editedImageRequest())
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(uploads).toEqual([{ path: 'user-123/edited/asset-1/edited.png', type: 'image/png' }])
-    expect(body).toMatchObject({ ok: true, assetId: 'asset-1', publicUrl: 'https://cdn.example/user-123/edited/asset-1/edited.png', hasTransparency: true })
+    // A new object per edit, so a cached earlier edit is never shown.
+    expect(uploads).toHaveLength(1)
+    expect(uploads[0].path).toMatch(/^user-123\/edited\/asset-1\/edited-[a-z0-9]+\.png$/)
+    expect(body).toMatchObject({ ok: true, assetId: 'asset-1', publicUrl: `https://cdn.example/${uploads[0].path}`, hasTransparency: true })
   })
 
   it('reports a storage failure', async () => {
@@ -72,6 +74,15 @@ describe('POST /api/personalization/persist-edited-asset', () => {
     const { POST } = await import('@/app/api/personalization/persist-edited-asset/route')
     const res = await POST(editedImageRequest())
     expect(res.status).toBe(500)
+  })
+
+  it('rejects metadata that is not an object', async () => {
+    const { POST } = await import('@/app/api/personalization/persist-edited-asset/route')
+    const form = new FormData()
+    form.append('image', new Blob([new Uint8Array([1])], { type: 'image/png' }), 'x.png')
+    form.append('metadata', 'null')
+    const res = await POST(new NextRequest('http://localhost/api/personalization/persist-edited-asset', { method: 'POST', body: form }))
+    expect(res.status).toBe(400)
   })
 
   it('rejects a request without an asset id', async () => {

@@ -33,15 +33,23 @@ function isCancel(error: unknown, signal: AbortSignal): boolean {
 export function useRecastJob({
   apiKey,
   sourceId,
+  ownerKey,
   onDone,
 }: {
   apiKey: string
   sourceId: string | null | undefined
+  /** The signed-in user (recastOwnerKey); jobs are only restored for their owner. */
+  ownerKey: string
   onDone: (job: RecastJob) => void
 }) {
   const [job, setJobState] = useState<RecastJob | null>(null)
   const jobRef = useRef<RecastJob | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  // One controller per job, so a job for another demo keeps running (and
+  // keeps its stored record up to date) while a different demo is open.
+  const controllersRef = useRef(new Map<string, AbortController>())
+  // Every job this page started or restored, by id, so updates to a job that
+  // is no longer on screen still reach its stored record.
+  const knownJobsRef = useRef(new Map<string, RecastJob>())
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
   // The source open in the modal right now (null while the modal is closed).
@@ -51,16 +59,40 @@ export function useRecastJob({
   const setJob = useCallback((next: RecastJob | null) => {
     jobRef.current = next
     setJobState(next)
-    if (next) saveRecastJob(next)
+    if (next) {
+      knownJobsRef.current.set(next.id, next)
+      saveRecastJob(next)
+    }
   }, [])
 
+  /** Update a job; the on-screen one also updates the UI. Returns it if on screen. */
   const patch = useCallback((id: string, changes: Partial<RecastJob>) => {
     const current = jobRef.current
-    if (!current || current.id !== id) return null
-    const next = { ...current, ...changes }
-    setJob(next)
-    return next
+    if (current && current.id === id) {
+      const next = { ...current, ...changes }
+      setJob(next)
+      return next
+    }
+    const known = knownJobsRef.current.get(id)
+    if (known) {
+      const next = { ...known, ...changes }
+      knownJobsRef.current.set(id, next)
+      saveRecastJob(next)
+    }
+    return null
   }, [setJob])
+
+  const controllerFor = (id: string) => {
+    controllersRef.current.get(id)?.abort()
+    const controller = new AbortController()
+    controllersRef.current.set(id, controller)
+    return controller
+  }
+  const stop = (id: string | undefined) => {
+    if (!id) return
+    controllersRef.current.get(id)?.abort()
+    controllersRef.current.delete(id)
+  }
 
   const finish = useCallback((id: string, url: string) => {
     if (!url) {
@@ -81,9 +113,7 @@ export function useRecastJob({
   }, [patch])
 
   const poll = useCallback(async (current: RecastJob) => {
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
+    const controller = controllerFor(current.id)
     try {
       const result = await resumeGeneration(apiKey, current.requestId, { signal: controller.signal })
       if (controller.signal.aborted) return
@@ -96,18 +126,29 @@ export function useRecastJob({
 
   // Closing the modal (no source) leaves a running recast alone. Opening a
   // source picks up its job: the one already in memory, or one stored by an
-  // earlier page load (resumed if it is still running).
+  // earlier page load (resumed if it is still running) — only ever the
+  // signed-in user's own.
   useEffect(() => {
     if (!sourceId) return
     const current = jobRef.current
-    if (current && current.sourceId === sourceId) return
-    // A different source: stop watching the old job (it stays stored and
-    // resumes when its own source is opened again).
-    abortRef.current?.abort()
-    const stored = loadRecastJob(sourceId)
+    if (current && current.sourceId === sourceId && current.ownerKey === ownerKey) return
+    if (current && current.ownerKey !== ownerKey) {
+      // Signed out or another account: stop everything this page was watching.
+      controllersRef.current.forEach((controller) => controller.abort())
+      controllersRef.current.clear()
+      knownJobsRef.current.clear()
+    }
+    const stored = loadRecastJob(sourceId, ownerKey)
     if (!stored) {
       jobRef.current = null
       setJobState(null)
+      return
+    }
+    const known = knownJobsRef.current.get(stored.id)
+    if (known && controllersRef.current.has(stored.id)) {
+      // Still running in this page: just show it again.
+      jobRef.current = known
+      setJobState(known)
       return
     }
     const { job: restored, resume } = restoredRecastJob(stored)
@@ -118,21 +159,23 @@ export function useRecastJob({
     }
     setJob(restored)
     if (resume) void poll(restored)
-  }, [sourceId, apiKey, poll, setJob])
+  }, [sourceId, ownerKey, apiKey, poll, setJob])
 
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => () => {
+    controllersRef.current.forEach((controller) => controller.abort())
+  }, [])
 
   const start = useCallback(async (input: StartRecastInput) => {
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
+    stop(jobRef.current?.id)
     const created = createRecastJob(input)
+    const controller = controllerFor(created.id)
     setJob(created)
     try {
       const result = await processMotionControl(apiKey, {
         ...buildRecastParams(created),
         signal: controller.signal,
-        // Stored straight away so a reload can resume this exact request.
+        // Stored straight away (even if another demo is open by then) so a
+        // reload can resume this exact request.
         onRequestId: (requestId: string) => { patch(created.id, { requestId }) },
       })
       if (controller.signal.aborted) return
@@ -140,12 +183,14 @@ export function useRecastJob({
     } catch (error) {
       if (isCancel(error, controller.signal)) return
       fail(created.id, error)
+    } finally {
+      if (controllersRef.current.get(created.id) === controller) controllersRef.current.delete(created.id)
     }
   }, [apiKey, finish, fail, patch, setJob])
 
   const cancel = useCallback(() => {
-    abortRef.current?.abort()
     const current = jobRef.current
+    stop(current?.id)
     if (current?.status === 'running') {
       patch(current.id, { status: 'cancelled', finishedAt: Date.now() })
     }
@@ -166,9 +211,12 @@ export function useRecastJob({
   }, [patch])
 
   const dismiss = useCallback(() => {
-    abortRef.current?.abort()
     const current = jobRef.current
-    if (current) clearRecastJob(current.sourceId)
+    stop(current?.id)
+    if (current) {
+      clearRecastJob(current.sourceId, current.ownerKey)
+      knownJobsRef.current.delete(current.id)
+    }
     jobRef.current = null
     setJobState(null)
   }, [])

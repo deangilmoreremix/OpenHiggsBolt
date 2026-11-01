@@ -62,7 +62,11 @@ export async function POST(req: NextRequest) {
   let metadata: Record<string, unknown> = {}
   try {
     const raw = form.get('metadata')
-    if (typeof raw === 'string' && raw) metadata = JSON.parse(raw)
+    if (typeof raw === 'string' && raw) {
+      const parsed: unknown = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new SyntaxError('metadata must be a JSON object')
+      metadata = parsed as Record<string, unknown>
+    }
   } catch {
     return NextResponse.json({ error: 'Invalid metadata.' }, { status: 400 })
   }
@@ -71,7 +75,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing assetId.' }, { status: 400 })
   }
 
-  const objectPath = `${sanitizeSegment(userId)}/edited/${sanitizeSegment(assetId)}/edited.${EXTENSION[image.type]}`
+  // A new object per edit, so a cached earlier edit is never shown in place
+  // of a newer one (the client stores whichever URL comes back).
+  const objectPath = `${sanitizeSegment(userId)}/edited/${sanitizeSegment(assetId)}/edited-${Date.now().toString(36)}.${EXTENSION[image.type]}`
   try {
     const storage = createServerClient().storage.from(BUCKET)
     const { error } = await storage.upload(objectPath, image, { upsert: true, contentType: image.type })

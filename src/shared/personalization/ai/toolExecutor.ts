@@ -137,7 +137,9 @@ export function validateProjectRequirements(
       ...assets.identities, ...assets.logos, ...assets.products, ...assets.brandReferences,
       assets.firstFrame, assets.lastFrame, assets.ctaGraphic,
     ].filter(Boolean) as PersonalizationAsset[]
-    const uploading = all.filter((a) => a.uploadStatus === 'uploading').length
+    // A local (blob:) image that isn't a failed upload is still on its way
+    // to storage, just like one marked uploading.
+    const uploading = all.filter((a) => a.uploadStatus === 'uploading' || (a.uploadStatus !== 'error' && typeof a.url === 'string' && a.url.startsWith('blob:'))).length
     const failed = all.filter((a) => a.uploadStatus === 'error').length
     if (uploading) {
       missing.push({ field: 'uploads', label: 'Uploads', severity: 'error', message: `${uploading} image${uploading === 1 ? ' is' : 's are'} still uploading.` })
