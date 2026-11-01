@@ -310,6 +310,7 @@ export function StepFindBusiness({
               type="button"
               onClick={handleWebsiteDiscovery}
               disabled={!website.trim() || busy}
+              title={!website.trim() ? 'Enter your website first' : undefined}
               style={{ ...primaryButtonStyle, opacity: !website.trim() || busy ? 0.5 : 1 }}
             >
               {busy && discoveryStatus === 'discovering' ? 'Finding…' : 'Find my brand'}
@@ -319,6 +320,7 @@ export function StepFindBusiness({
               type="button"
               onClick={handleFindAssets}
               disabled={!website.trim() || busy}
+              title={!website.trim() ? 'Enter your website first' : undefined}
               style={{ ...primaryButtonStyle, opacity: !website.trim() || busy ? 0.5 : 1 }}
             >
               {busy && discoveryStatus === 'discovering' ? 'Finding…' : 'Find business assets'}
