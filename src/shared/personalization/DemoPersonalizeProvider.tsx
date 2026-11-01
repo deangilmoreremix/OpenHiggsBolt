@@ -4271,6 +4271,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     //     selectBusiness already wrote (business name, industry, location,
     //     phone, website) and anything the visitor edited are never clobbered.
     const research = businessResearchFromDemoPayload(data)
+    // A late result for a business that is no longer selected must not fill
+    // the new business's details.
+    if (discoverySession !== businessSessionRef.current) return
     mergeResearchIntoClientForm(research)
     setBusinessResearch({ status: 'done', result: research })
 
