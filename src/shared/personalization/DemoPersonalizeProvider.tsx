@@ -4964,6 +4964,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         outputUrls: resultWithPostProcessing.urls || (storedUrl ? [storedUrl] : []),
         outputType: resultWithPostProcessing.type,
         clientId: selectedClientId || undefined,
+        ...(burned && !layeredStored ? { layersMissing: true } : {}),
       })
       setSharedMediaEntries(getSharedMedia())
 

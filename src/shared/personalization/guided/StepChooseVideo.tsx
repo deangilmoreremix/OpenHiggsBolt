@@ -751,6 +751,9 @@ export function StepChooseVideo(): React.JSX.Element {
                   </div>
                   <div style={{ color: C.text, fontSize: 12, fontWeight: 700, marginTop: 8 }}>{entry.sourceDemoSlug || 'Saved video'}</div>
                   <div style={{ color: C.muted2, fontSize: 10, marginTop: 2 }}>From {entry.originStudio || 'your library'}</div>
+                  {entry.layersMissing && (
+                    <div data-testid="saved-video-layers-missing" style={{ color: '#fcd34d', fontSize: 10, marginTop: 2 }}>Without your on-video layers</div>
+                  )}
                 </button>
               )
             })}

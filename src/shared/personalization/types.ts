@@ -419,6 +419,9 @@ export interface SharedMediaEntry {
   outputUrls: string[]
   outputType: string
   clientId?: string
+  /** The saved video is the generated clip without the on-video layers
+   *  (the layered version could not be stored). */
+  layersMissing?: boolean
   createdAt: string
 }
 
