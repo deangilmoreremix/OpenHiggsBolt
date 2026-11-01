@@ -17,9 +17,9 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
-import { captureSite, fetchRecipeCard, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
+import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
-import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow } from './directorPlan';
+import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
 import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
@@ -59,6 +59,8 @@ export interface StoryboardResult {
   mapping?: MappingRow[];
   /** Stage 3: the release check run before the storyboard was shown. */
   release?: ReleaseItem[];
+  /** Stage 1: the visual direction the director chose for an autonomous film, and the ones it weighed. */
+  direction?: { chosen: VisualDirection; others: string[] };
 }
 
 /**
@@ -118,7 +120,7 @@ const filmTheme = (capture: SiteCapture | null | undefined): { id: string; color
 export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
 
 /** The capture without testimonial "Name Title Company" lines in its headings (they feed captions, titles and recipe words; D2). */
-const withoutPeopleLines = <T extends SiteCapture | null>(capture: T): T =>
+export const withoutPeopleLines = <T extends SiteCapture | null>(capture: T): T =>
   capture?.content?.headings?.length ? { ...capture, content: { ...capture.content, headings: capture.content.headings.filter((h) => !looksLikePersonLine(h)) } } : capture;
 
 /** "Andrew Garnett President & CEO Special Needs Group": a name followed by a job title. */
@@ -184,17 +186,32 @@ export async function storyboardFilm(
       : opts.template === 'inkpress'
         ? INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)
         : [];
+  const autonomous = !req.mapping?.length && opts.template !== 'inkpress' && !req.recipes.length;
+  const guidedAsk = {
+    prompt: req.prompt,
+    durationSec: planSec,
+    aspectRatio: opts.aspectRatio,
+    capture,
+    brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
+  };
+  // Stage 1: up to three visual directions grown from the product; an autonomous film takes the director's
+  // recommendation and records why and what it gives up (it does not stop to ask).
+  let direction: StoryboardResult['direction'];
+  if (autonomous) {
+    log('Weighing visual directions for the product', 'running');
+    const options = await requestDirections(guidedAsk).catch(() => null);
+    const chosen = options?.directions[options.recommended] ?? options?.directions[0];
+    if (options && chosen) {
+      direction = { chosen, others: options.directions.filter((d) => d !== chosen).map((d) => d.name) };
+      log(`Visual direction: ${chosen.name} — ${chosen.claim}${chosen.why ? ` · why: ${chosen.why}` : ''}${chosen.tradeoff ? ` · trade-off: ${chosen.tradeoff}` : ''}${direction.others.length ? ` (weighed against ${direction.others.join(', ')})` : ''}`, 'done');
+    }
+  }
+  const directionNote = direction ? `Direction: ${direction.chosen.name}: ${direction.chosen.claim} Look: ${direction.chosen.look}. Motion: ${direction.chosen.motion}.` : '';
   // Stage 2: the feature → shot map. Co-creation brings the confirmed map; an autonomous film has the director write one too.
   let mapping: MappingRow[] | null = req.mapping?.length ? req.mapping : null;
-  if (!mapping && opts.template !== 'inkpress' && !req.recipes.length) {
+  if (autonomous) {
     log('Mapping each feature to a first-choice and a fallback shot card', 'running');
-    mapping = await requestMapping({
-      prompt: req.prompt,
-      durationSec: planSec,
-      aspectRatio: opts.aspectRatio,
-      capture,
-      brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
-    }).catch(() => null);
+    mapping = await requestMapping({ ...guidedAsk, direction: directionNote }).catch(() => null);
     if (mapping?.length) {
       log(`Feature → shot map · ${mapping.length} features`, 'done');
       for (const r of mapping) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
@@ -207,7 +224,7 @@ export async function storyboardFilm(
     const ask = () => requestPlan({
       mapping: mapping ?? undefined,
       cards,
-      prompt: req.prompt,
+      prompt: directionNote ? `${req.prompt}\n\n${directionNote}`.slice(0, 3900) : req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
       capture,
@@ -244,7 +261,7 @@ export async function storyboardFilm(
     const release = releaseCheck(final, mapping, { keep, ground }).items;
     log(releaseLine(release), 'done');
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release };
+    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release, direction };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
@@ -326,7 +343,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[] },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string },
   log: ActivityLog,
 ): Promise<ProjectData> {
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
@@ -399,7 +416,7 @@ export async function buildFilmProject(
     const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
     log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
-  const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}) };
+  const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}), ...(opts.direction ? { direction: opts.direction } : {}) };
   let built: ProjectData = { ...project, spec };
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
   if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {

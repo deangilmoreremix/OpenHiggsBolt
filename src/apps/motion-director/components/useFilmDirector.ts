@@ -221,6 +221,14 @@ export function useFilmDirector(opts: {
         result.media = media;
         setStoryboard(result);
         setStage('plan');
+        // Stage 1: the chosen direction as still key frames (opening, the site, the close), while the person reads the storyboard.
+        setFrames([]);
+        if (result.direction) {
+          const chosen = result.direction.chosen;
+          void renderStyleframes({ options: { directions: [chosen], recommended: 0 }, capture: result.capture, product: result.plan.title, opening: true }).then((frames) => {
+            if (live() && frames.length) setFrames(frames);
+          });
+        }
         const videoSec = videos.reduce((sum, v) => sum + v.sec, 0);
         mark(
           'storyboard',
@@ -584,7 +592,7 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });

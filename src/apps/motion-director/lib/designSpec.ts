@@ -52,6 +52,7 @@ export function specMarkdown(spec: DesignSpec): string {
     spec.brief ? `**Brief:** ${spec.brief}` : undefined,
     spec.url ? `**Site:** ${spec.url}` : '**Site:** none (sample pages)',
     `**Tokens:** background ${spec.tokens.background}, text ${spec.tokens.text}, accent ${spec.tokens.accent}${spec.tokens.font ? `, font ${spec.tokens.font}` : ''}`,
+    spec.direction ? `**Visual direction:** ${spec.direction}` : undefined,
     spec.tokens.motion ? `**Motion voice:** ${spec.tokens.motion.label} (main move ${spec.tokens.motion.mainFrames} f, ${spec.tokens.motion.easing}, overshoot ${spec.tokens.motion.overshoot}, squash ${spec.tokens.motion.squash})` : undefined,
     '',
     '## Storyboard',

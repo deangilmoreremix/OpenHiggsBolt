@@ -14,12 +14,15 @@ vi.mock('../lib/directorClient', () => {
     DirectorError,
     captureSite: vi.fn(),
     requestMapping: vi.fn(),
+    requestDirections: vi.fn(async () => {
+      throw new Error('no directions');
+    }),
     fetchRecipeCard: vi.fn(async (stem: string) => `---\nname: ${stem}\n---\n## Intent\nThe whole card of ${stem}.`),
     requestPlan: vi.fn(),
   };
 });
 
-import { requestMapping, requestPlan, fetchRecipeCard } from '../lib/directorClient';
+import { requestDirections, requestMapping, requestPlan, fetchRecipeCard } from '../lib/directorClient';
 import { storyboardFilm } from '../lib/filmPipeline';
 import { parseFilmRequest } from '../lib/filmChat';
 import { releaseCheck, releaseLine } from '../lib/releaseCheck';
@@ -120,5 +123,49 @@ describe('the card as the storyboard reads it', () => {
     expect(at('## Motion core')).toBeGreaterThan(at('## Intent'));
     expect(at('## Known pitfalls')).toBeGreaterThan(at('## Motion core'));
     expect(out).not.toContain('## Reference implementation');
+  });
+});
+
+describe('stage 1 in an autonomous film', () => {
+  it('weighs up to three directions, takes the recommended one, says why and what it gives up, and hands it to the map and the storyboard', async () => {
+    const d = (name: string) => ({ name, claim: `${name} claim.`, keywords: [], look: 'dark ground', motion: 'fast pushes', why: 'fits a startup', tradeoff: 'less calm' });
+    vi.mocked(requestDirections).mockResolvedValueOnce({ directions: [d('Quiet'), d('Launch'), d('Paper')], recommended: 1 });
+    vi.mocked(requestMapping).mockResolvedValueOnce([{ feature: 'Proof', firstShot: id('RowEmbed'), altShot: '', expresses: 'trust', pageState: 'testimonials' }]);
+    vi.mocked(requestPlan).mockResolvedValueOnce(plan([title(3), shot(id('RowEmbed'), 'Proof'), title(2)]));
+    const lines: string[] = [];
+    const result = await storyboardFilm(parseFilmRequest('a 10 second promo for Acme'), { template: 'director', durationSec: 10, aspectRatio: '16:9' }, (l) => lines.push(l));
+    expect(result.direction!.chosen.name).toBe('Launch');
+    expect(result.direction!.others).toEqual(['Quiet', 'Paper']);
+    expect(lines).toContain('Visual direction: Launch — Launch claim. · why: fits a startup · trade-off: less calm (weighed against Quiet, Paper)');
+    expect(vi.mocked(requestMapping).mock.calls.at(-1)![0].direction).toContain('Direction: Launch');
+    expect(vi.mocked(requestPlan).mock.calls.at(-1)![0].prompt).toContain('Direction: Launch: Launch claim. Look: dark ground. Motion: fast pushes.');
+  });
+
+  it('the chosen direction is rendered as three still key frames: the opening, the site, the close', async () => {
+    const { styleframeProject } = await import('../lib/styleframes');
+    const { project, frames } = styleframeProject({ background: '#101820', text: '#f5f5f5', accent: '#ff6b35' }, 'Acme', null, { opening: true });
+    const shots = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId.startsWith('brand-'));
+    expect(shots.map((c) => c.cardId)).toEqual(['brand-url-scan', 'brand-hub', 'brand-logo-reveal']);
+    expect(frames).toHaveLength(3);
+    frames.forEach((f, i) => {
+      expect(f).toBeGreaterThan(shots[i].start);
+      expect(f).toBeLessThan(shots[i].start + shots[i].duration);
+    });
+  });
+
+  it('the six motion presets are the pipeline table, value for value', async () => {
+    const { MOTION_PRESETS } = await import('../lib/motionPreset');
+    const fs = await import('node:fs');
+    const md = fs.readFileSync('docs/video-shotcraft-en/references/pipeline.md', 'utf8');
+    const rows = md.split('\n').filter((l) => /^\| (Professional|Refined|Energetic|Playful|Calm|Approachable)/.test(l)).map((l) => l.split('|').map((c) => c.trim()));
+    expect(rows).toHaveLength(6);
+    const order = ['trust', 'premium', 'bold', 'playful', 'calm', 'friendly'] as const;
+    rows.forEach((r, i) => {
+      const p = MOTION_PRESETS[order[i]];
+      expect(Number(r[2].match(/\d+/)![0]), order[i]).toBe(p.mainFrames);
+      if (r[3].startsWith('bezier')) expect(r[3]).toBe(p.easing);
+      expect(Number(r[4].match(/[\d.]+/)![0])).toBe(p.overshoot);
+      expect(Number(r[5].match(/[\d.]+/)![0])).toBe(p.squash);
+    });
   });
 });

@@ -308,7 +308,8 @@ const INSET_PAGE_H = 1200;
       const page = screens[0] ?? crops[0] ?? '';
       const look = { bg: palette.background, ink: palette.text, accent: palette.accent, ...(opts.brand?.font ? { font: opts.brand.font } : {}) };
       const title = scene.headline.replace(/\*/g, '');
-      const names = [...(opts.capture?.nav ?? []), ...(opts.capture?.sectionNames ?? [])].filter((v, n, all) => v && all.indexOf(v) === n);
+      // Accessibility links ("Skip to content") are not features of the product.
+      const names = [...(opts.capture?.nav ?? []), ...(opts.capture?.sectionNames ?? [])].filter((v, n, all) => v && all.indexOf(v) === n && !/^\s*skip (?:to|navigation)\b/i.test(v));
       let props: Record<string, unknown> = look;
       if (scene.recipeId === 'brand/url-scan') {
         props = { ...look, file: page, url: opts.capture?.address ?? opts.brand?.repo ?? '', labels: (opts.capture?.sectionNames ?? []).slice(0, 5).join('\n') || 'BRANDING\nPEOPLE\nPRODUCTS\nOFFERS\nSERVICES' };

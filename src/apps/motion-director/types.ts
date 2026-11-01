@@ -132,4 +132,6 @@ export interface DesignSpec {
   mapping?: Array<{ feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }>;
   /** Stage 3: the release check run before the storyboard was shown. */
   release?: Array<{ code: string; ok: boolean; text: string }>;
+  /** Stage 1: the chosen visual direction, why, and its trade-off. */
+  direction?: string;
 }
