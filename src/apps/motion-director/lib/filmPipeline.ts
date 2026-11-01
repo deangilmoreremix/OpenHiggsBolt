@@ -17,14 +17,15 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
-import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
-import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
+import { captureSite, fetchRecipeCard, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
+import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
+import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
 import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
-import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
@@ -54,7 +55,51 @@ export interface StoryboardResult {
   videos?: Array<{ name: string; sec: number }>;
   /** The attachments this storyboard was planned with; the build uses exactly these. */
   media?: MediaAttachment[];
+  /** Stage 2: the feature → shot map (first-choice + fallback card per feature). */
+  mapping?: MappingRow[];
+  /** Stage 3: the release check run before the storyboard was shown. */
+  release?: ReleaseItem[];
 }
+
+/**
+ * A card in the order the storyboard needs it, so the parts that decide a scene come first when a long
+ * card is cut to fit the request: front matter, intent, motion core, known pitfalls, sound, then the
+ * parameters and the rest (the reference implementation is for the shot's code step, not the storyboard).
+ */
+export function cardForStoryboard(md: string, max = 6_000): string {
+  const m = md.match(/^---\n[\s\S]*?\n---\n?/);
+  const head = m ? m[0] : '';
+  const sections = (m ? md.slice(head.length) : md).split(/\n(?=## )/).map((s) => s.trim()).filter(Boolean);
+  const rank = (s: string) => {
+    const h = s.split('\n', 1)[0].toLowerCase();
+    if (h.startsWith('## intent')) return 0;
+    if (h.startsWith('## motion core') || h.startsWith('## approach') || h.startsWith('## action phases')) return 1;
+    if (h.startsWith('## known pitfalls')) return 2;
+    if (h.startsWith('## sound')) return 3;
+    if (h.startsWith('## variant') || h.startsWith('## choosing')) return 4;
+    if (h.startsWith('## parameters')) return 5;
+    if (h.startsWith('## reference implementation')) return 9;
+    return 6;
+  };
+  const body = sections.map((s, i) => ({ s, i, r: rank(s) })).filter((x) => x.r < 9).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.s);
+  const out = [head.trim(), ...body].filter(Boolean).join('\n\n');
+  return out.length > max ? `${out.slice(0, max - 1)}…` : out;
+}
+
+/** Stage 2, "read the chosen cards in full": the English cards of the film's chosen shots (at most 8). */
+async function chosenCards(ids: readonly string[]): Promise<Array<{ id: string; text: string }>> {
+  const stems = [...new Set(ids.filter((id) => id && !isBrandScene(id)))]
+    .map((id) => ({ id, stem: resolveMotionTemplate(id)?.componentName }))
+    .filter((x): x is { id: string; stem: string } => Boolean(x.stem))
+    .slice(0, 8);
+  const texts = await Promise.all(stems.map(async ({ id, stem }) => ({ id, text: cardForStoryboard((await fetchRecipeCard(stem)) ?? '') })));
+  return texts.filter((c) => c.text);
+}
+
+const shotName = (id: string) => {
+  const t = id ? resolveMotionTemplate(id) : undefined;
+  return t ? motionTemplateTitle(t) : id;
+};
 
 const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | undefined): Partial<DirectorPalette> => ({
   background: capture?.brand.background ?? kit?.colors?.background ?? undefined,
@@ -139,9 +184,29 @@ export async function storyboardFilm(
       : opts.template === 'inkpress'
         ? INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)
         : [];
+  // Stage 2: the feature → shot map. Co-creation brings the confirmed map; an autonomous film has the director write one too.
+  let mapping: MappingRow[] | null = req.mapping?.length ? req.mapping : null;
+  if (!mapping && opts.template !== 'inkpress' && !req.recipes.length) {
+    log('Mapping each feature to a first-choice and a fallback shot card', 'running');
+    mapping = await requestMapping({
+      prompt: req.prompt,
+      durationSec: planSec,
+      aspectRatio: opts.aspectRatio,
+      capture,
+      brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
+    }).catch(() => null);
+    if (mapping?.length) {
+      log(`Feature → shot map · ${mapping.length} features`, 'done');
+      for (const r of mapping) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
+    }
+  }
+  const cards = await chosenCards(required.length ? required.map((r) => r.id) : (mapping ?? []).flatMap((r) => [r.firstShot]));
+  if (cards.length) log(`Read ${cards.length} shot card${cards.length === 1 ? '' : 's'} in full: ${cards.map((c) => shotName(c.id)).join(', ')}`, 'done');
   log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
   try {
     const ask = () => requestPlan({
+      mapping: mapping ?? undefined,
+      cards,
       prompt: req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
@@ -163,15 +228,23 @@ export async function storyboardFilm(
     // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
     const site = capture ? paletteFromBrand(capture.brand) : null;
     const ground = site ? (luma(site.page) < 0.5 ? 'dark' : 'light') : null;
-    const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes, ground });
+    const keep = new Set(req.recipes.map((r) => r.id));
+    const ruled = applyFilmRules(shaped, { keep, siteScenes, ground });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    // A feature whose first-choice card a rule ruled out gets its fallback card.
+    const covered = releaseCheck(ruled.plan, mapping, { keep, ground });
+    for (const s of covered.swapped) log(`Feature map: ${s}`, 'done');
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
     log(`Motion voice: ${voice.label}`, 'done');
-    const withPictures = addGalleryScene(ruled.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
+    const withPictures = addGalleryScene(covered.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
     const fitted = fitNativeLengths(withPictures, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
+    const final = chooseSeams(applySiteContent(fitted, capture?.content), voice);
+    // Stage 3: the consistency check before the storyboard is released.
+    const release = releaseCheck(final, mapping, { keep, ground }).items;
+    log(releaseLine(release), 'done');
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(applySiteContent(fitted, capture?.content), voice), capture, source: 'director' };
+    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
@@ -253,7 +326,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[] },
   log: ActivityLog,
 ): Promise<ProjectData> {
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
@@ -326,7 +399,7 @@ export async function buildFilmProject(
     const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
     log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
-  const spec = buildDesignSpec(plan, opts.capture, opts.prompt);
+  const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}) };
   let built: ProjectData = { ...project, spec };
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
   if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {

@@ -60,6 +60,10 @@ export function specMarkdown(spec: DesignSpec): string {
     '|---|---|',
     ...rows,
     '',
+    ...(spec.mapping?.length
+      ? ['## Feature → shot map', '', '| Feature | First choice | Fallback | Expresses | Page state |', '|---|---|---|---|---|', ...spec.mapping.map((m) => `| ${[m.feature, m.firstShot, m.altShot || '—', m.expresses, m.pageState].map((c) => c.replace(/\|/g, '/')).join(' | ')} |`), '']
+      : []),
+    ...(spec.release?.length ? ['## Release check', '', ...spec.release.map((r) => `- ${r.ok ? '✓' : '✗'} ${r.code}: ${r.text}`), ''] : []),
     '## Data rules',
     '',
     ...spec.dataRules.map((r) => `- ${r}`),

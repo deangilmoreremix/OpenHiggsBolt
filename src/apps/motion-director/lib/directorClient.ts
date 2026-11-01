@@ -149,6 +149,10 @@ export async function requestPlan(body: {
   requiredRecipes?: string[];
   /** 'inkpress': follow the Ink Press template structure. */
   template?: 'inkpress' | null;
+  /** The feature → shot map (stage 2) the storyboard is written from. */
+  mapping?: MappingRow[];
+  /** The chosen shots' cards, in full (stage 2: "read the chosen cards in full"). */
+  cards?: Array<{ id: string; text: string }>;
 }): Promise<DirectorPlan> {
   const { plan } = await post<{ plan: unknown }>('/api/motion-studio/director', {
     mode: 'plan',
@@ -168,7 +172,9 @@ export async function requestPlan(body: {
     brandKit: body.brandKit ?? null,
     requiredRecipes: body.requiredRecipes ?? [],
     template: body.template ?? null,
-  }, 45_000);
+    mapping: body.mapping ?? [],
+    cards: body.cards ?? [],
+  }, 60_000);
   return validatePlan(plan, { targetSec: body.durationSec });
 }
 

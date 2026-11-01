@@ -128,4 +128,8 @@ export interface DesignSpec {
   };
   scenes: Array<{ n: number; start: number; durationSec: number; kind: 'shot' | 'title'; recipeId: string; line: string }>;
   dataRules: string[];
+  /** Stage 2: feature → first-choice card, fallback card, what it expresses, the page state it needs. */
+  mapping?: Array<{ feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }>;
+  /** Stage 3: the release check run before the storyboard was shown. */
+  release?: Array<{ code: string; ok: boolean; text: string }>;
 }

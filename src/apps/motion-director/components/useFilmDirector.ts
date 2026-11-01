@@ -351,7 +351,7 @@ export function useFilmDirector(opts: {
     const recipes = g.req.recipes.length ? g.req.recipes : lead;
     void runStoryboard(
       // Without a captured site the pages are sample pages; the site address is not captured a second time.
-      { ...g.req, prompt: `${g.req.prompt}\n\n${decisions.join('\n\n')}`.slice(0, 3900), recipes, siteUrl: g.capture ? g.req.siteUrl : null },
+      { ...g.req, prompt: `${g.req.prompt}\n\n${decisions.join('\n\n')}`.slice(0, 3900), recipes, siteUrl: g.capture ? g.req.siteUrl : null, mapping: g.mapping ?? undefined },
       'director',
       false,
       g.capture,
@@ -584,7 +584,7 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });

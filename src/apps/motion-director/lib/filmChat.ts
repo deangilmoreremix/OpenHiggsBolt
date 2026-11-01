@@ -19,7 +19,7 @@ import {
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
 import type { MotionPreset } from './motionPreset';
-import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type SceneTransition } from './directorPlan';
+import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type MappingRow, type SceneTransition } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -72,6 +72,8 @@ export interface FilmRequest {
   siteUrl: string | null;
   /** Frame size stated in the message ("vertical", "9:16", "square", "for TikTok"…); null = the size picker's. */
   aspectRatio?: '16:9' | '9:16' | '1:1' | null;
+  /** The feature → shot map already confirmed (co-creation); autonomous films have the director write one. */
+  mapping?: MappingRow[];
 }
 
 /** The frame size a message asks for, if it names one. */

@@ -11,6 +11,10 @@ vi.mock('../lib/directorClient', () => {
   return {
     DirectorError,
     captureSite: vi.fn(),
+    requestMapping: vi.fn(async () => {
+      throw new DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401);
+    }),
+    fetchRecipeCard: vi.fn(async () => null),
     requestPlan: vi.fn(async () => {
       throw new DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401);
     }),

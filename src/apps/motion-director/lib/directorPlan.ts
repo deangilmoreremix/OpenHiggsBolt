@@ -12,6 +12,7 @@ import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotion
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
 import { isSlowToExport } from './exportCost';
 import { ruleTags } from './shotRules';
+import { SHOT_FACTS } from '../demosrc/_generated/shotFacts';
 
 /** Scene cards that tell a product's story from its captured site (no catalog recipe behind them). */
 export const BRAND_SCENES = {
@@ -89,6 +90,13 @@ const BRAND_SCENE_NOTES: Record<string, string> = {
   'brand/logo-reveal': 'the site\'s logo and name with sparks, then its call to action and address (use it to close a film of a captured site)',
 };
 
+/** The English card's own words for a recipe: what it looks like, then when to use it (stage 2 picks from these). */
+export function cardLine(componentName: string): string {
+  const f = SHOT_FACTS[componentName];
+  if (!f?.oneLiner) return '';
+  return `${f.oneLiner}${f.useWhen ? ` USE WHEN: ${f.useWhen}` : ''}`;
+}
+
 export function buildCatalogBrief(): string {
   const label = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
   const brand = Object.entries(BRAND_SCENES).map(([id, b]) => `${id} | ${b.title} | Brand scenes | 3-5s | BRAND-SCENE | ${BRAND_SCENE_NOTES[id]}`);
@@ -96,7 +104,7 @@ export function buildCatalogBrief(): string {
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
         (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '') + (ruleTags(t.componentName) ? ` | ${ruleTags(t.componentName)}` : '')
-      } | ${t.summaryEn}`,
+      } | ${cardLine(t.componentName) || t.summaryEn}`,
   ), ...brand].join('\n');
 }
 

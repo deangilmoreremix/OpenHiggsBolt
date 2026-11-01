@@ -69,6 +69,8 @@ Return a storyboard as JSON. Rules:
 - Scene durations in seconds should sum to the requested length. Keep scenes short: 2–6 s each (a title card ≤ 3 s), and use one shot for each part of the page the person asked to show.
 - Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
 - When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
+- featureMap (stage 2 of the method): one row per feature with its first-choice shot and a fallback shot. Give every feature a scene, in that order, using its first-choice shot; use the fallback only when the first choice breaks a rule above. Put the row's feature in the scene's "feature" and its page state in "asset".
+- cardsInFull: the chosen shots' cards, in full (intent, motion core, parameters, holds, known pitfalls). Read each before placing it: plan the scene at the card's length with its holds, write a "action" that is the card's own main motion, and keep any word counts or text lengths the card says are part of the technique.
 - Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
 - targetScenes: plan about this many scenes (title cards included), 2–6 s each, one scene per feature or part of the page the person asked to show. Fewer scenes stretch each one too long.
 - requiredRecipes: when this list is NOT empty the person picked these shots by name. Use ONLY these shots — never another recipe. Use each at least once, in that order first, and REPEAT them for as many scenes as targetScenes needs, each repeat with different copy and a different part of the site. You may add one opening title card and one closing call-to-action title card. When the list is empty, choose the shots yourself from the catalog.
@@ -89,7 +91,7 @@ const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short prod
 Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff, palette ({background, text, accent}: three #rrggbb colours of that direction, taken from productCapture.brand when the direction stays on-brand; they colour the preview frames shown with the options). Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
 
 const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
-Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
+Return JSON {rows}: one row per feature, in film order, 3–8 rows. First list the product's features (its feature inventory) from the site's words and the request; then, for each, read the catalog lines (what the shot looks like and USE WHEN) and pick a first-choice shot and a different fallback shot that would also express it. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -433,6 +435,19 @@ export async function POST(req: NextRequest) {
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
       template: body.template === 'inkpress' ? 'inkpress' : null,
+      featureMap: (Array.isArray(body.mapping) ? body.mapping : []).slice(0, 10).map((r: unknown) => {
+        const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>
+        return { feature: str(o.feature, 120), firstShot: str(o.firstShot, 120), altShot: str(o.altShot, 120), expresses: str(o.expresses, 200), pageState: str(o.pageState, 120) }
+      }).filter((r: { feature: string; firstShot: string }) => r.feature && r.firstShot),
+      cardsInFull: (() => {
+        let room = 36_000
+        return (Array.isArray(body.cards) ? body.cards : []).slice(0, 8).map((c: unknown) => {
+          const o = (c && typeof c === 'object' ? c : {}) as Record<string, unknown>
+          const text = str(o.text, Math.min(6_000, Math.max(0, room)))
+          room -= text.length
+          return { id: str(o.id, 120), text }
+        }).filter((c: { id: string; text: string }) => c.id && c.text)
+      })(),
     }
     const targetScenes = targetSceneCount(durationSec)
     const started = Date.now()

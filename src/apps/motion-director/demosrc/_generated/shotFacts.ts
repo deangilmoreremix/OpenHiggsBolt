@@ -9,6 +9,12 @@ export interface ShotFacts {
   sound: boolean
   /** A technique card: no native length of its own. */
   technique: boolean
+  /** The English card's one-line description (what the shot looks like). */
+  oneLiner: string
+  /** When the English card says to use it. */
+  useWhen: string
+  /** The English card's energy line. */
+  energyText: string
 }
 export const SHOT_FACTS: Record<string, ShotFacts> = {
  "Basic3DScene": {
@@ -16,1049 +22,1499 @@ export const SHOT_FACTS: Record<string, ShotFacts> = {
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "impress.js-style spatial presentation: cards are scattered through 3D space at different positions/rotations/scales; the camera takes the inverse of each step's pose…",
+  "useWhen": "Spatial storytelling for concepts / roadmaps / three-step methods; replaces flat slides with \"every step gets a new spatial…",
+  "energyText": "medium (every transition brings a spatial surprise; dwell segments are quiet for reading…"
  },
  "CrashImpactReal": {
   "slug": "crash-zoom-punch",
   "look": "lime",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A one-beat crash zoom from the wide shot to a target close-up (6f), with one of two landings — overshoot-and-rebound (elasticity) or slam-stop with screen shake (weight)",
+  "useWhen": "The \"call-out\" shot in a feature section — pins the viewer's gaze onto the target card/module in a single beat; use the…",
+  "energyText": "high (instantaneous impact, not sustained high energy)"
  },
  "CrashZoomReal": {
   "slug": "crash-zoom-punch",
   "look": "ember",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A one-beat crash zoom from the wide shot to a target close-up (6f), with one of two landings — overshoot-and-rebound (elasticity) or slam-stop with screen shake (weight)",
+  "useWhen": "The \"call-out\" shot in a feature section — pins the viewer's gaze onto the target card/module in a single beat; use the…",
+  "energyText": "high (instantaneous impact, not sustained high energy)"
  },
  "CursorFlyover": {
   "slug": "cursor-flyover",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "After an overhead view of the whole page, the camera flies in turn to four feature areas for zoom-in close-ups; an SVG cursor arrives a step ahead to point, each click…",
+  "useWhen": "Feature tour of a single-page product: one shot takes the viewer through four feature areas, with the cursor as the \"tour…",
+  "energyText": "medium (evenly spaced cruising; the rhythm is punctuated by the click ripples)"
  },
  "MultiplaneReal": {
   "slug": "depth-layer-moves",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Layered-depth camera move — a multi-layer parallax slide: 3 layers with a speed gradient pan sideways to create depth, and the hero lifts when the slide settles",
+  "useWhen": "Sections where a flat screenshot needs \"thickness\": horizontal tours of card groups / lists / whole pages",
+  "energyText": "medium (texture-driven)"
  },
  "GrazeFaceTour": {
   "slug": "graze-face-tour",
   "look": "sand",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Steep-angle surface-grazing roaming close-up — the camera flies low, skimming across the UI surface (sidebar tree / top bar / lists as terrain); the page text starts…",
+  "useWhen": "Feature-area tours (flying over the UI as landscape); paired with a dark field + neon rim light for a product \"inner world\"…",
+  "energyText": "medium-high (the camera keeps advancing + elements keep landing; high information density)"
  },
  "OverheadTabletopDrop": {
   "slug": "overhead-camera-moves",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two overhead-reveal variants — tilt-reveal (tilt up to level for a reveal) and overhead-tabletop-drop (pan across a tabletop card array, then plunge down into one)",
+  "useWhen": "Openings/transitions that tell the story with \"tilt angle\": use A for a single-page establishing shot, B for touring multiple…",
+  "energyText": "A medium / B medium-high"
  },
  "TiltReveal": {
   "slug": "overhead-camera-moves",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two overhead-reveal variants — tilt-reveal (tilt up to level for a reveal) and overhead-tabletop-drop (pan across a tabletop card array, then plunge down into one)",
+  "useWhen": "Openings/transitions that tell the story with \"tilt angle\": use A for a single-page establishing shot, B for touring multiple…",
+  "energyText": "A medium / B medium-high"
  },
  "DroneDiveLanding": {
   "slug": "space-camera-moves",
   "look": "lime",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two 3D spatial camera-move variants — exploded-view (components blow apart along Z and then reassemble) and drone-dive-landing (a drone-style dive and landing)",
+  "useWhen": "Highlight sections that shoot a flat page as a 3D object; both variants are \"big moves\", ≤2 in total per video",
+  "energyText": "high"
  },
  "ExplodedView": {
   "slug": "space-camera-moves",
   "look": "porcelain",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two 3D spatial camera-move variants — exploded-view (components blow apart along Z and then reassemble) and drone-dive-landing (a drone-style dive and landing)",
+  "useWhen": "Highlight sections that shoot a flat page as a 3D object; both variants are \"big moves\", ≤2 in total per video",
+  "energyText": "high"
  },
  "SteepTiltGlide": {
   "slug": "steep-tilt-glide",
   "look": "lime",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "With a locked-off camera, an upright page stands sideways at a strong 60° perspective (right near, left far), and the page itself slides along its own 3D horizontal…",
+  "useWhen": "Showpiece tours of long pages/multi-section UIs (content slides past a fixed camera position in sequence); dark-field neon tone…",
+  "energyText": "medium-high (perspective showpiece + continuous motion, but the rhythm is even)"
  },
  "BulletTimeFreezeOrbit": {
   "slug": "tension-camera-moves",
   "look": "midnight",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two emotional camera-move variants — bullet-time freeze orbit and pull-back isolation; the camera \"feels\" on the viewer's behalf rather than just \"looks\"",
+  "useWhen": "Camera language for emotional beats (awe/closure); complements space-camera-moves' \"showpiece big moves\" — these two variants…",
+  "energyText": "A high / B low, winding down"
  },
  "PullBackIsolation": {
   "slug": "tension-camera-moves",
   "look": "graphite",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two emotional camera-move variants — bullet-time freeze orbit and pull-back isolation; the camera \"feels\" on the viewer's behalf rather than just \"looks\"",
+  "useWhen": "Camera language for emotional beats (awe/closure); complements space-camera-moves' \"showpiece big moves\" — these two variants…",
+  "energyText": "A high / B low, winding down"
  },
  "Terminal3D": {
   "slug": "terminal-3d",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three terminal windows scattered through 3D space; the camera flies between windows with a sinusoidal pull-out mid-flight, and at each window a typewriter types the…",
+  "useWhen": "CLI/workflow demos for developer products: shooting \"three commands\" as a three-station spatial journey",
+  "energyText": "medium (flight gives movement, typing gives rhythm; overall a steady technical…"
  },
  "BeforeAfterSliderScrub": {
   "slug": "before-after-slider-scrub",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Before/after comparison slider — the \"before/after processing\" versions are stacked, the divider bar first whips fast then sweeps slowly, and the new version \"develops\"…",
+  "useWhen": "Effect-comparison passages for AI enhancement/optimisation/refactoring features (\"before vs after\" explained in one shot)",
+  "energyText": "medium (the fast whip is the hit, the slow sweep is the reading period)"
  },
  "AxisRescaleShockV2": {
   "slug": "chart-live-moves",
   "look": "sand",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of living charts — oscilloscope-stream (the curve's right end writes in real time + a sudden spike), unit-dot-swarm-regroup (a dot swarm migrates in…",
+  "useWhen": "Data storytelling passages; respectively telling \"real-time\", \"every number is a person\", \"growth that doesn't fit\"",
+  "energyText": "medium-high (data is the plot)"
  },
  "OscilloscopeStreamV2": {
   "slug": "chart-live-moves",
   "look": "midnight",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of living charts — oscilloscope-stream (the curve's right end writes in real time + a sudden spike), unit-dot-swarm-regroup (a dot swarm migrates in…",
+  "useWhen": "Data storytelling passages; respectively telling \"real-time\", \"every number is a person\", \"growth that doesn't fit\"",
+  "energyText": "medium-high (data is the plot)"
  },
  "UnitDotSwarmRegroupV2": {
   "slug": "chart-live-moves",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of living charts — oscilloscope-stream (the curve's right end writes in real time + a sudden spike), unit-dot-swarm-regroup (a dot swarm migrates in…",
+  "useWhen": "Data storytelling passages; respectively telling \"real-time\", \"every number is a person\", \"growth that doesn't fit\"",
+  "energyText": "medium-high (data is the plot)"
  },
  "NeedleSweepSelftest": {
   "slug": "gauge-readout-moves",
   "look": "graphite",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of gauge readouts — needle-sweep-selftest, full-arc needle sweep (on ignition self-test the needle flicks across the full arc then drops back to the true…",
+  "useWhen": "Dashboard opening ceremony / performance metric reveal; A for multi-gauge power-on feel, B for a single metric's big jump",
+  "energyText": "medium-high (mechanical-ceremony type)"
  },
  "TapeScrollFixedPointer": {
   "slug": "gauge-readout-moves",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of gauge readouts — needle-sweep-selftest, full-arc needle sweep (on ignition self-test the needle flicks across the full arc then drops back to the true…",
+  "useWhen": "Dashboard opening ceremony / performance metric reveal; A for multi-gauge power-on feel, B for a single metric's big jump",
+  "energyText": "medium-high (mechanical-ceremony type)"
  },
  "BrakeReticleLock": {
   "slug": "scroll-brake-moves",
   "look": "sand",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of long-scroll hard braking — changelog-scroll-brake, the basic version (high-speed long scroll, exponential deceleration, precise stop + target lift), and…",
+  "useWhen": "changelog/release history/long list passages: \"we've been shipping all along, and today's is the biggest\"; use B to give the…",
+  "energyText": "high opening, medium close (speed-contrast type)"
  },
  "ChangelogScrollBrake": {
   "slug": "scroll-brake-moves",
   "look": "midnight",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of long-scroll hard braking — changelog-scroll-brake, the basic version (high-speed long scroll, exponential deceleration, precise stop + target lift), and…",
+  "useWhen": "changelog/release history/long list passages: \"we've been shipping all along, and today's is the biggest\"; use B to give the…",
+  "energyText": "high opening, medium close (speed-contrast type)"
  },
  "TimelineTravel": {
   "slug": "timeline-travel",
   "look": "ember",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Timeline lateral move — the camera accelerates along a horizontal tick axis past version ticks, a card springs upright with a short stop at each tick, and it hard-stops…",
+  "useWhen": "changelog/milestone/history passages (another way to shoot \"we've been shipping all along\"); division of labour with…",
+  "energyText": "medium-high (an accelerate → hard-brake rhythm shot)"
  },
  "AssembleThenTypeFlyin": {
   "slug": "assemble-then-type-flyin",
   "look": "graphite",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On an empty dark grid, text-free component skeletons first fly in from every direction and snap into place; then text everywhere flies in character by character…",
+  "useWhen": "Openers where a page/poster \"grows itself\"; capability showcases for typography products; two-stage narratives from skeleton to…",
+  "energyText": "medium-high (skeleton segment sparse, text segment dense, energy rising monotonically to…"
  },
  "AuroraBloomBgFlip": {
   "slug": "aurora-bloom-bg-flip",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Purple-orange soft-focus blobs rise from the bottom of a light grey base, then the whole base colour darkens to near-black in about 0.36s and the blobs are pressed into…",
+  "useWhen": "Narrative turning points (\"For many years… → everything changed\"); the beat in a brand film where setup is pulled up into the…",
+  "energyText": "low to high (the first 2/3 is building up, the instant of darkening is the film's accent)"
  },
  "BrandFrameSnap": {
   "slug": "brand-frame-snap",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Brand-colour frame grammar: a thick solid-colour frame grows before the content and wraps the full screen, and the screen recording window drops into the frame; on a…",
+  "useWhen": "The whole-film packaging layer for dual-mode/dual-chapter product films (blue = mode A, green = mode B colour coding); branded…",
+  "energyText": "medium (high at the instant of the flip, a quiet packaging layer the rest of the time)"
  },
  "ReticleLockOn": {
   "slug": "fui-hud-moves",
   "look": "sand",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "FUI/HUD reticle bite: reticle-lock-on, a viewfinder made of four L-shaped corner marks flies in from out of frame, overshoots, bounces back and bites onto the target to…",
+  "useWhen": "Any \"look here\" target call-out (replacing arrows and red circles, without freezing the frame)",
+  "energyText": "medium-high (the bite frame is the hit point)"
  },
  "FlylineArc": {
   "slug": "glow-flyline-moves",
   "look": "ember",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field light-orb and flyline styles: glow-orb-ambient light-orb ambience, flyline-arc flyline connection, orb-flyline-relay same-frame resonance combination",
+  "useWhen": "Atmosphere and data narrative for the film's only dark-field section: A for laying ambience, B for telling data flow direction…",
+  "energyText": "A low (ambience level) / B medium / C medium-high"
  },
  "GlowOrbAmbient": {
   "slug": "glow-flyline-moves",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field light-orb and flyline styles: glow-orb-ambient light-orb ambience, flyline-arc flyline connection, orb-flyline-relay same-frame resonance combination",
+  "useWhen": "Atmosphere and data narrative for the film's only dark-field section: A for laying ambience, B for telling data flow direction…",
+  "energyText": "A low (ambience level) / B medium / C medium-high"
  },
  "OrbFlylineRelay": {
   "slug": "glow-flyline-moves",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field light-orb and flyline styles: glow-orb-ambient light-orb ambience, flyline-arc flyline connection, orb-flyline-relay same-frame resonance combination",
+  "useWhen": "Atmosphere and data narrative for the film's only dark-field section: A for laying ambience, B for telling data flow direction…",
+  "energyText": "A low (ambience level) / B medium / C medium-high"
  },
  "AttentionBounce": {
   "slug": "icon-performance-moves",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Icon performance: attention-bounce (an icon bounces repeatedly with increasing height + squashes on landing + the camera is drawn in)",
+  "useWhen": "Half-screen icon close-up sections; introducing a new feature",
+  "energyText": "building-up lead-in"
  },
  "AnimeImpact": {
   "slug": "impact-feedback",
   "look": "paper",
   "energy": "high",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Two hit-feedback styles: hit-counter combo counter (hit-stop + damage numbers + combo jump text), anime-impact anime impact frame (negative + speed lines + chromatic…",
+  "useWhen": "The \"moment of impact\" when an element lands/collides: giving slam-ins and crash stops game-grade feel; pick the style on an…",
+  "energyText": "high (instantaneous impact)"
  },
  "HitCounter": {
   "slug": "impact-feedback",
   "look": "custom",
   "energy": "high",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Two hit-feedback styles: hit-counter combo counter (hit-stop + damage numbers + combo jump text), anime-impact anime impact frame (negative + speed lines + chromatic…",
+  "useWhen": "The \"moment of impact\" when an element lands/collides: giving slam-ins and crash stops game-grade feel; pick the style on an…",
+  "energyText": "high (instantaneous impact)"
  },
  "SheenSweepRetry": {
   "slug": "light-play-moves",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two light-effect styles: spotlight-sweep spotlight sweeping over text, sheen single-point light sweep",
+  "useWhen": "Treating light as another kind of brushstroke (sweep/wipe): dark-field title reveal (A), crowning the hero card (B)",
+  "energyText": "A medium / B low"
  },
  "SpotlightSweepReveal": {
   "slug": "light-play-moves",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two light-effect styles: spotlight-sweep spotlight sweeping over text, sheen single-point light sweep",
+  "useWhen": "Treating light as another kind of brushstroke (sweep/wipe): dark-field title reveal (A), crowning the hero card (B)",
+  "energyText": "A medium / B low"
  },
  "RadialRipplePhoneChips": {
   "slug": "radial-ripple-phone-chips",
   "look": "sand",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Four layers of concentric circles on a warm sand base breathe out of phase like water ripples, the feed inside the central phone mockup's screen scrolls slowly on its…",
+  "useWhen": "The \"this is it\" hold shot for mobile products; introduction sections with feature points arranged on both sides; product…",
+  "energyText": "low (quiet, breathing, kept from going dead by the concentric circles' continuous rise…"
  },
  "RisoMisregistrationHit": {
   "slug": "riso-print-hits",
   "look": "custom",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Misregistration impact frame: riso-misregistration-hit single shot: the instant a title crash-stops it splits into two-colour riso plates, shakes twice and \"snaps\" into…",
+  "useWhen": "Hit emphasis for titles/cards, the paper-and-ink aesthetic version of a \"glitch flash\"; a single-shot climax used 1–2 times per…",
+  "energyText": "high"
  },
  "ScanBracketSweep": {
   "slug": "scan-bracket-sweep",
   "look": "ember",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A document pops to the centre, L-shaped viewfinder brackets drop onto its four corners, and a scan light band trailing a gradient wake sweeps back and forth over the…",
+  "useWhen": "Process shots of \"this content is being parsed/verified\"; capability demos for document products; the middle of an upload →…",
+  "energyText": "low-medium (mechanical, restrained, the rhythm entirely in the breathing of the…"
  },
  "ScanlineAnnotateFocus": {
   "slug": "scanline-annotate-focus",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A scanline sweeps at constant speed from top to bottom over an existing page; whichever block's bottom edge it passes, that block is aimed at by a four-corner…",
+  "useWhen": "Analysis shots of \"AI is reading your page/brand\"; breakdown introductions of design systems/brand guidelines; self-explanatory…",
+  "energyText": "medium (mechanically calm, the rhythm pushed by the constant-speed scanline, annotations…"
  },
  "ScanlineAssembleFlyin": {
   "slug": "scanline-assemble-flyin",
   "look": "midnight",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The page opens as a blueprint artboard with only a grid and dashed slots, and a bright scanline sweeps from top to bottom; at each slot it reaches, that component flies…",
+  "useWhen": "Openers where \"the page generates itself\"; core demos of AI site builder/auto-layout products; capability narratives from blank…",
+  "energyText": "medium-high (the scanline is steady, but each component fly-in is a burst point, density…"
  },
  "ImpactBurstKit": {
   "slug": "slam-entrance-moves",
   "look": "porcelain",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three high-energy slam-in styles: kanada-perspective-snap Kanada perspective hard stop, score-slam score slam-down, impact-burst-kit landing impact kit (affecting…",
+  "useWhen": "Heavy-punch entrances for hero cards/KPI cards; impact-feedback handles the feedback after landing, this card handles an…",
+  "energyText": "high"
  },
  "KanadaPerspectiveSnap": {
   "slug": "slam-entrance-moves",
   "look": "aurora",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three high-energy slam-in styles: kanada-perspective-snap Kanada perspective hard stop, score-slam score slam-down, impact-burst-kit landing impact kit (affecting…",
+  "useWhen": "Heavy-punch entrances for hero cards/KPI cards; impact-feedback handles the feedback after landing, this card handles an…",
+  "energyText": "high"
  },
  "ScoreSlam": {
   "slug": "slam-entrance-moves",
   "look": "graphite",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three high-energy slam-in styles: kanada-perspective-snap Kanada perspective hard stop, score-slam score slam-down, impact-burst-kit landing impact kit (affecting…",
+  "useWhen": "Heavy-punch entrances for hero cards/KPI cards; impact-feedback handles the feedback after landing, this card handles an…",
+  "energyText": "high"
  },
  "CornerSpotlightReveal": {
   "slug": "spotlight-sweep-moves",
   "look": "sand",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field spotlight reveal styles: A wake-sleep sweep (light arrives and it brightens, light leaves and it darkens), B edge-glow pan (purple light hugging the UI…",
+  "useWhen": "Introducing UI panels/feature areas one by one in dark-toned brand films; a black-field opener where the interface is \"lit up\"…",
+  "energyText": "low-medium (restrained, mysterious, the burst point at the instant of \"lighting up\")"
  },
  "GlowWakeSleepPanel": {
   "slug": "spotlight-sweep-moves",
   "look": "aurora",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field spotlight reveal styles: A wake-sleep sweep (light arrives and it brightens, light leaves and it darkens), B edge-glow pan (purple light hugging the UI…",
+  "useWhen": "Introducing UI panels/feature areas one by one in dark-toned brand films; a black-field opener where the interface is \"lit up\"…",
+  "energyText": "low-medium (restrained, mysterious, the burst point at the instant of \"lighting up\")"
  },
  "SlideSpotlightPan": {
   "slug": "spotlight-sweep-moves",
   "look": "midnight",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three dark-field spotlight reveal styles: A wake-sleep sweep (light arrives and it brightens, light leaves and it darkens), B edge-glow pan (purple light hugging the UI…",
+  "useWhen": "Introducing UI panels/feature areas one by one in dark-toned brand films; a black-field opener where the interface is \"lit up\"…",
+  "energyText": "low-medium (restrained, mysterious, the burst point at the instant of \"lighting up\")"
  },
  "AutolayoutGapDial": {
   "slug": "autolayout-gap-dial",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A spacing dial drives the layout: a row of link blocks with a selection outline + gap spacing annotations; the badge number ticks frame by frame, the blocks are pushed…",
+  "useWhen": "The \"change one number and the interface moves with it\" selling-point shot for design-tool/low-code products; the category…",
+  "energyText": ""
  },
  "DiagramCascadeBuild": {
   "slug": "canvas-materialize-moves",
   "look": "aurora",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two styles of content \"materialising onto the canvas\": panel-to-canvas row-to-card (panel table rows fly out along an arc and morph across containers into canvas cards)…",
+  "useWhen": "Narrative sections for AI/collaboration tools where \"the generated result lands on the canvas\"; style A tells \"existing content…",
+  "energyText": "medium"
  },
  "PanelToCanvasMaterialize": {
   "slug": "canvas-materialize-moves",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two styles of content \"materialising onto the canvas\": panel-to-canvas row-to-card (panel table rows fly out along an arc and morph across containers into canvas cards)…",
+  "useWhen": "Narrative sections for AI/collaboration tools where \"the generated result lands on the canvas\"; style A tells \"existing content…",
+  "energyText": "medium"
  },
  "ChipGridSingleSelectBlackout": {
   "slug": "chip-grid-single-select-blackout",
   "look": "porcelain",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Five option chips in a centred 3+2 layout fade in one by one; on the selection frame a gray press block is inserted for one frame first, then within a few frames the…",
+  "useWhen": "Interaction demos of single choice/plan/tier selection; the causal shot of \"what happens after you pick it\"; price/parameter…",
+  "energyText": "low-medium (the only burst is that one-frame gray flash; everything else is winding down)"
  },
  "CursorCastEnsemble": {
   "slug": "collab-cursor-moves",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Collaboration cursors as actors: cast-ensemble, a five-cursor crowd atmosphere layer (staggered fly-in + sine drift + typing cameo + gathering round to watch)",
+  "useWhen": "Canvas scenes on a collaboration/multiplayer theme, laying down the warmth of \"the team is here\" over the frame",
+  "energyText": "A low-medium (an atmosphere layer, can pad any duration)"
  },
  "GlassPillDictationTyping": {
   "slug": "glass-pill-dictation-typing",
   "look": "sand",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A fixed-width glass pill pops out about 1.25× slightly oversized and then settles gently into place, with a layer of warm accent-colour light inside fading from light…",
+  "useWhen": "The entrance of a voice/AI input box; an interaction-hint shot for \"talk to it\"; a quiet transitional beat between high-energy…",
+  "energyText": "low (the quietest beat of the whole film; only the light is receding)"
  },
  "HashtagToPillMaterialize": {
   "slug": "hashtag-to-pill-materialize",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A hashtag typed into a solid entity: \"#word\" is typed out centred (red solid cursor always lit), a 1-frame hard cut turns it into a wide pill tag, after a hold it…",
+  "useWhen": "Demo segments for tag/category/keyword features (typing a tag in a notes app, topic aggregation); three-part narratives of…",
+  "energyText": "medium (crisp and clean, getting its punch from hard cuts, not bounces)"
  },
  "PickerCarouselFeatureCycle": {
   "slug": "picker-carousel-feature-cycle",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A mobile-style vertical picker: the focus pill stays still and the content passes through it, each item snaps in with a clear outQuint deceleration and then comes to a…",
+  "useWhen": "List shots that read out feature names/scenario names one by one; interaction demos of \"pick one\"; showcasing picker-type…",
+  "energyText": "medium (each snap is a beat; 5 beats advancing at an even pace)"
  },
  "SegmentedThumbHero": {
   "slug": "segmented-thumb-hero",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The segmented control's thumb displacement as the protagonist in close-up: an oversized pill segmented control springs up into place, an outlined arrow cursor slides in…",
+  "useWhen": "Announcement shots for \"mode switch / pick one of two\" features (in the demo, the video-shotcraft Prompt→Film, Chat→Agent…",
+  "energyText": "medium (a micro-interaction close-up, refined rather than loud)"
  },
  "PaletteThemeRipple": {
   "slug": "theme-switch-moves",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two styles of theme switch: theme-sweep diagonal sweep (the skin changes in place wherever the boundary passes) and palette-ripple combo (the ⌘K panel shrinks to a dot…",
+  "useWhen": "Narrative sections for dark-mode/theme features; the same UI \"changing colour before your eyes\" rather than cutting to a new scene",
+  "energyText": "A medium / B medium-high (the combo has a complete causal chain)"
  },
  "ThemeSweepToggle": {
   "slug": "theme-switch-moves",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two styles of theme switch: theme-sweep diagonal sweep (the skin changes in place wherever the boundary passes) and palette-ripple combo (the ⌘K panel shrinks to a dot…",
+  "useWhen": "Narrative sections for dark-mode/theme features; the same UI \"changing colour before your eyes\" rather than cutting to a new scene",
+  "energyText": "A medium / B medium-high (the combo has a complete causal chain)"
  },
  "TypeAndFilter": {
   "slug": "type-and-filter",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Typing a search into the real UI, the grid converges by itself into one card, and a click punches through into the detail page",
+  "useWhen": "The \"operation narrative\" segment of a feature demo; any interaction chain of searching/filtering/entering details",
+  "energyText": "medium (an unhurried beat after the high-energy card-dealing segment)"
  },
  "VoiceWaveformLive": {
   "slug": "voice-waveform-live",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Live voiceprint in a recording pill: 64 thin vertical bars rise and fall with \"speaking\", towering in the middle while talking and shrinking to a dotted line during…",
+  "useWhen": "Feature shots of voice input/an AI assistant \"listening to you\"; segments with no UI content to show but needing sustained…",
+  "energyText": "medium (functional liveliness, not showing off)"
  },
  "CraneRiseReveal": {
   "slug": "crane-rise-reveal",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Crane-rise reveal: the opening is jammed up against a close-up of one row of data; the camera decelerates as it rises along the Y axis and pulls back, rows flood in row…",
+  "useWhen": "An establishing opening that goes \"from detail to the whole\"; the mirror of drone-dive-landing (whole → single point dive)",
+  "energyText": "medium-high (sustained one-directional motion, no impact beat)"
  },
  "DatavizLandscapeOpen": {
   "slug": "dataviz-landscape-open",
   "look": "lime",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Dark-field tributary line-bundle landscape opening: many flow lines converge into a main trunk, fictional ID labels float on the lines, the camera flies over slowly…",
+  "useWhen": "Brand-level abstract opening (the \"data universe\" metaphor), followed by a bright-field product segment or wordmark; division of…",
+  "energyText": "starts low and rises gently (the starting position, leaving room to climb later)"
  },
  "Fracture": {
   "slug": "fracture",
   "look": "graphite",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "5×5 tiles reassemble ring by ring in a centre ripple from a 3D shard state into a whole poster, hold a beat with the text lit up, then all the shards spin away from the…",
+  "useWhen": "First shot of an opening, a \"from chaos to form\" brand/poster reveal; played in reverse or taking only the second half, it can…",
+  "energyText": "high (high energy at both ends, still in the middle; good for landing on BGM accents at…"
  },
  "IconFieldColorize": {
   "slug": "icon-field-colorize",
   "look": "ember",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A grayscale dot-matrix of small icons surfaces with staggered overlap until it fills the screen, holds a beat, then several bands of brand colour ripple downward…",
+  "useWhen": "An opening that lays out the product's capability surface (icons = feature universe) and then hits it with brand colour in one…",
+  "energyText": "medium (the surfacing is setup; the instant of the colour flip is the only burst)"
  },
  "LetterspaceMaterialize": {
   "slug": "letterspace-materialize",
   "look": "sand",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A widely letterspaced wordmark crystallises with all characters drawn continuously in parallel: every letter starts its stroke on the same frame, strokes grow…",
+  "useWhen": "Brand wordmark entrance at the end/start of a film (widely spaced thin-skeleton wordmark; the demo is video-shotcraft in all…",
+  "energyText": "low (a quiet sense of ceremony, completed in one breath)"
  },
  "MagicianCardFlourish": {
   "slug": "magician-card-flourish",
   "look": "midnight",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On a midnight-blue dark field a blue starburst flashes for 0.3s (X-shaped needle beams rotating 90° + a central glow radiating small rays), and a card is ejected from…",
+  "useWhen": "A magical entrance for a single card/poster/cover (title key visual, product card reveal); pure black dark field; bursts that…",
+  "energyText": "high (a one-off burst, still immediately after the freeze)"
  },
  "OrbitRingTitleOpen": {
   "slug": "orbit-ring-title-open",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On a graphite dark field, eight dark 16:9 content cards are evenly distributed at 45° on a 720×380 ellipse and orbit at constant speed (the card bodies never tilt…",
+  "useWhen": "First shot of an opening = \"this product has a whole set of things\"; the storefront shot for an asset library/template…",
+  "energyText": "medium (the only sustained motion is the constant-speed orbit; the whole film has only…"
  },
  "SpotlightHeroCard": {
   "slug": "spotlight-hero-card",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "In a theatre with the lights off, a tungsten spotlight (with a volumetric light shaft) sweeps across the page and locks onto one card; after an oblique side push-in the…",
+  "useWhen": "A \"single protagonist\" style product opening; establishing one core object (card/item/module) as the protagonist of the whole film",
+  "energyText": "medium (the highest-quality shot, a slow and steady rhythm)"
  },
  "StrokeSegmentBuild": {
   "slug": "stroke-segment-build",
   "look": "aurora",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Broken strokes become letters: the title is split into a dozen-plus mutually disconnected stroke segments that light up one by one in scrambled order; for the first 70%…",
+  "useWhen": "A suspense-building product-name/big-number reveal in an opening; ≤1 per film; division of labour with…",
+  "energyText": "starts low, ends medium (suspense type; the landing frame is the energy point)"
  },
  "TextAsMask": {
   "slug": "text-as-mask",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Text as a video mask: extra-bold large title letters are cut out of a porcelain-white stage, revealing a slowly panning dark live product panel inside; at the end…",
+  "useWhen": "An opening or chapter card that combines a brand word/slogan with product footage in one; the letters are the door, the product…",
+  "energyText": "medium-high (the drift segment is calm, the takeover segment is a single burst)"
  },
  "GrainDissolve": {
   "slug": "grain-dissolve",
   "look": "ember",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A whole line of text bursts into boiling grain noise as a hatched selection box emerges; the noise cloud rapidly condenses into a larger, glowing short wordmark…",
+  "useWhen": "Closing \"XX. Now Live\"-style launch announcements; the energy-gathering beat that compresses a long sentence into a short brand…",
+  "energyText": "medium-high (a short, one-off energy pulse; a natural outro hit point)"
  },
  "LogoShrinkWordmarkLockup": {
   "slug": "logo-shrink-wordmark-lockup",
   "look": "aurora",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A large notched neon ring rapidly contracts into a solid small white O at centre, swaps to the video-shotcraft logo during the overshoot brake, the icon shifts left to…",
+  "useWhen": "End-of-film brand sign-off: converging from full-screen graphic energy to the standard \"icon + wordmark + tagline\" lockup",
+  "energyText": "medium (the contraction has impact; overall a calm settling rhythm)"
  },
  "NeonTripleMarquee": {
   "slug": "neon-triple-marquee",
   "look": "custom",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three-row opposing neon marquee recap — giant hollow neon-tube letters of a three-word phrase fill the top, middle and bottom of an obliquely shot brick wall; odd and…",
+  "useWhen": "End-of-film passage replaying the theme words; an \"afterglow\" treatment for a three-word slogan; narration-free laying out over…",
+  "energyText": "medium-high (continuous flow + row-by-row pulses, no instantaneous impact)"
  },
  "OutroGroupPhotoLaunch": {
   "slug": "outro-group-photo-launch",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Elements from the whole film fly in from all directions to surround the wordmark for a group photo; a crane-down camera + stage lighting + gold dust make it a…",
+  "useWhen": "outro / brand closing; a \"family photo\" final shot for a multi-feature product",
+  "energyText": "peak (the highest point of the whole film)"
  },
  "UiStripAwayOutro": {
   "slug": "ui-strip-away-outro",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A subtractive closing — after Publish is clicked, the whole editor UI evaporates layer by layer from the periphery to the centre in staggered overlap, leaving only that…",
+  "useWhen": "outros with \"publish/done\" semantics; product closings that want to say \"after one click, all complexity disappears\"",
+  "energyText": "medium (quiet operation at the start, continuous exit in the middle, no instantaneous…"
  },
  "IconFlipBloomLogo": {
   "slug": "ui-to-brand-morph",
   "look": "custom",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of UI turning into the brand — icon-flip-bloom: the icon flattens on the Y axis into a vertical line, expands from the line into the brand logo (the amber…",
+  "useWhen": "The final beat of the brand closing / before the outro; the visual argument that \"the UI you use every day is this brand\"",
+  "energyText": "medium-high (the closing finishing touch; one complete transformation tells it all)"
  },
  "InputMorphsIntoLogo": {
   "slug": "ui-to-brand-morph",
   "look": "custom",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of UI turning into the brand — icon-flip-bloom: the icon flattens on the Y axis into a vertical line, expands from the line into the brand logo (the amber…",
+  "useWhen": "The final beat of the brand closing / before the outro; the visual argument that \"the UI you use every day is this brand\"",
+  "energyText": "medium-high (the closing finishing touch; one complete transformation tells it all)"
  },
  "PaparazziFlash": {
   "slug": "beat-cut-moves",
   "look": "graphite",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The hard cut as a percussion instrument — paparazzi-flash freeze: three white flashes, each hard-cutting to a different crop of the same frame (wide → card → close-up)…",
+  "useWhen": "Highlight passages where the \"cut\" itself is played as a drumbeat; awards-photo-burst ceremony, crowning a key piece of…",
+  "energyText": "high"
  },
  "BeatStepListThemeCycle": {
   "slug": "beat-step-list-theme-cycle",
   "look": "custom",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three-channel metronome — a list of adjectives on a dark field steps up one row per beat, a fixed pill at the centre of the viewport \"catches\" the next word and changes…",
+  "useWhen": "Passages showing \"one product, many personalities / many themes\" (rapid-fire adjectives like modern/playful/expressive); the…",
+  "energyText": "high (three channels jump together every 0.6s; density-type high energy)"
  },
  "ComicPanelSplit": {
   "slug": "panel-grid-moves",
   "look": "custom",
   "energy": "mid-high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Panel rhythm — comic-panel-split slices diagonal comic panels showing three camera angles of the same subject; snap-snap-snap three panels freeze, then the last panel's…",
+  "useWhen": "Using \"panels\" as a rhythm device: multiple frozen angles of the same subject side by side, sliced out panel by panel on the…",
+  "energyText": "medium-high"
  },
  "QuadSplitParallelScenes": {
   "slug": "quad-split-parallel-scenes",
   "look": "ember",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The frame hard-cuts to a 2×2 quad grid; the four quadrants run their own micro-scenes in parallel (typing, whip push-in, word-by-word, interaction chain), with key…",
+  "useWhen": "The montage beat in a rhythm passage where \"there are many features, all happening at once\"; the density peak in the middle of a…",
+  "energyText": "high (four parallel threads + offbeat impacts; the standard BGM chorus slot)"
  },
  "JumpCutPunchIn": {
   "slug": "rhythm-interrupt-moves",
   "look": "ember",
   "energy": "mid",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Interrupting the rhythm — jump-cut-punch-in three-step jump-cut push-in: same composition, three un-tweened hard jumps in scale, closing in on the target step by step",
+  "useWhen": "Using \"breaking continuity\" itself as the rhythm device: a jerky push-in (A); complementary to beat-cut-moves (cut-point…",
+  "energyText": "A medium"
  },
  "SakugaTimingShift": {
   "slug": "sakuga-timing-shift",
   "look": "paper",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On threes to on ones — the element first moves in the jerky flipbook steps of one drawing every 3 frames, then at the climax switches to a frame-by-frame silky sprint…",
+  "useWhen": "Emphatic displacement of a single element (card entrance, a metric crossing the finish line); passages that need a \"handmade…",
+  "energyText": "medium-high"
  },
  "FreezeAnnotateReal": {
   "slug": "speed-ramp-freeze",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A rhythm technique of non-linear frame-number remapping — freeze-and-annotate (flow → freeze with circled annotation → thaw)",
+  "useWhen": "In a card flow / long lateral move, \"stopping\" on one key point to show it; tutorial explainers, review contexts",
+  "energyText": "medium-high (the speed contrast itself is the energy beat)"
  },
  "TrailerBumper": {
   "slug": "trailer-grammar-moves",
   "look": "custom",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "One variant of trailer grammar — trailer-bumper, a fast-cut hook up front: three shots at 9f each + one beat of silent black, then the opening title",
+  "useWhen": "A trailer's opening hook (cold open): before the main film, pack in the three most eye-catching shots, then one beat of silence…",
+  "energyText": "A high"
  },
  "BottomPushStackWipe": {
   "slug": "bottom-push-stack-wipe",
   "look": "custom",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Bottom-edge push chapter change: the new scene, base colour and all, pushes in full-screen from the bottom edge and physically shoves the old scene out of frame…",
+  "useWhen": "The chapter-change skeleton of a multi-chapter product film (one selling point and one base colour per chapter); section…",
+  "energyText": "medium"
  },
  "CardFlipReveal": {
   "slug": "card-flip-reveal",
   "look": "graphite",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Feature-card 3D flip reveal: the card flips 180° about the Y axis, and as the front UI turns to its thinnest edge-on moment a band of light sweeps across, moving with…",
+  "useWhen": "Paired \"feature → result\" narratives: a row of feature cards flips one by one to reveal each one's metric/conclusion…",
+  "energyText": "medium-high"
  },
  "CardFlockTumble": {
   "slug": "card-flock-tumble",
   "look": "aurora",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three UI page cards tumble in 3D from their thin side edges into a standing staircase (sharp throughout, spline-continuous and silky); once standing they keep turning…",
+  "useWhen": "Energy climax sections (a burst transition from a group of feature pages → brand slogan); neon/aurora dark-field tone; sections…",
+  "energyText": "very high (use at the film's energy peak)"
  },
  "CircleMatchIris": {
   "slug": "circle-match-iris",
   "look": "lime",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Centre-matched iris cut: the iris bursts open from the centre of a circular element on the page, and the circular chart of the new page inside the iris connects onto…",
+  "useWhen": "Seams where the foreground has a circular element (avatar/icon/round button) and the background has a circular subject (donut…",
+  "energyText": "medium-high"
  },
  "GradientTransition": {
   "slug": "gradient-transition",
   "look": "aurora",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The background transitions smoothly between three kinds of CSS gradient, linear, radial and conic: angle, colour stops, centre and radius interpolated parameter by…",
+  "useWhen": "Continuous variations on ambient bases/chapter base colours; providing a \"living\" background layer for static typographic sections",
+  "energyText": "low (pure background motion, making way for foreground content)"
  },
  "LineCarryTransition": {
   "slug": "line-carry-transition",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Line relay lateral-move transition: scene A's progress bar extends out of frame, the camera tracks the line sideways, and while moving the line turns corners to enclose…",
+  "useWhen": "Between two scenes with graphic kinship (progress bar → card frame, underline → chart axis); a film's signature transition slot…",
+  "energyText": "medium"
  },
  "MosaicReframe": {
   "slug": "mosaic-reframe",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "12 tiles morph continuously between three layouts, a regular grid, a feature mosaic and a diagonal cascade, with position, width and height each interpolated, slight…",
+  "useWhen": "Display transitions about \"many ways of looking at the same batch of content\": showcasing the layout capabilities of…",
+  "energyText": "medium (continuously flowing rearrangement, no burst point, a composed temperament)"
  },
  "BarnDoorSplit": {
   "slug": "page-turn-transitions",
   "look": "ember",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Whole-page volume transition: barn-door-split, a double-door split curtain (the old page splits in two and slides out, the new page comes up to meet you)",
+  "useWhen": "Chapter-level page changes: the \"turning the page\" ritual between two big sections where old gives way to new; division of…",
+  "energyText": "medium-high"
  },
  "InkBleedReveal": {
   "slug": "print-texture-transitions",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Print-texture transition: ink-bleed-reveal (a feathery bleeding edge spreads and eats the old scene)",
+  "useWhen": "The paper-and-ink aesthetic option for scene-change seams; the third family alongside the three handover styles/travel styles: a…",
+  "energyText": "medium (gradual reveal, no impact beat)"
  },
  "PortalWipeV2": {
   "slug": "shot-transitions",
   "look": "porcelain",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Three shot-handover styles: push-in white flow, whip-pan (hard-brake version), mask-wipe through-the-window (depth version), chosen by energy drop and seam semantics",
+  "useWhen": "Any junction between two shots (technique card: after the shots are laid out at the storyboard stage, pick one style per seam)",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "WhipBrakeReal": {
   "slug": "shot-transitions",
   "look": "paper",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Three shot-handover styles: push-in white flow, whip-pan (hard-brake version), mask-wipe through-the-window (depth version), chosen by energy drop and seam semantics",
+  "useWhen": "Any junction between two shots (technique card: after the shots are laid out at the storyboard stage, pick one style per seam)",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "GlitchDisplace": {
   "slug": "tear-streak-transitions",
   "look": "midnight",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Tear transition: glitch-displace noise tear (hard cut in the middle of 16 horizontal strips jittering out of alignment), a strip-level tear with digital-glitch semantics",
+  "useWhen": "High-energy page changes: digital glitch/rupture semantics; a strip-level tear that keeps page integrity intact while maxing out…",
+  "energyText": "high"
  },
  "InvisibleCut": {
   "slug": "transition-hidden-cut",
   "look": "sand",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Three hidden-cut-point transition styles: foreground-occlusion invisible cut, versus slam opener, warm light leak; the hard cut is hidden inside 1-3 frames of…",
+  "useWhen": "Junctions between two shots that need a \"seamless scene change\" or a \"ceremonial opener\" (technique card, same-layer selection…",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "LightLeakBurn": {
   "slug": "transition-hidden-cut",
   "look": "ember",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Three hidden-cut-point transition styles: foreground-occlusion invisible cut, versus slam opener, warm light leak; the hard cut is hidden inside 1-3 frames of…",
+  "useWhen": "Junctions between two shots that need a \"seamless scene change\" or a \"ceremonial opener\" (technique card, same-layer selection…",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "VersusSlam": {
   "slug": "transition-hidden-cut",
   "look": "paper",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Three hidden-cut-point transition styles: foreground-occlusion invisible cut, versus slam opener, warm light leak; the hard cut is hidden inside 1-3 frames of…",
+  "useWhen": "Junctions between two shots that need a \"seamless scene change\" or a \"ceremonial opener\" (technique card, same-layer selection…",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "LetterformZoom": {
   "slug": "transition-travel",
   "look": "ember",
   "energy": "n/a",
   "sound": false,
-  "technique": true
+  "technique": true,
+  "oneLiner": "Travel-style transition, letterform-counter travel: the letterform of a giant chapter title is a window, and the camera burrows into the letter's stroke to complete the…",
+  "useWhen": "Seams where the two shots have an \"element/container\"-level spatial relationship (technique card, chosen as a complement to the…",
+  "energyText": "n/a (technique card, doesn't take an energy slot)"
  },
  "WhiteFlashLogoSimplifyCut": {
   "slug": "white-flash-logo-simplify-cut",
   "look": "aurora",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A colourful wordmark with a liquid-metal texture sits still with flowing light; after a wind-up a white-flash overexposure bursts from the centre of the type, and as…",
+  "useWhen": "Closing a brand section (lavish performance → clean final look); the transition beat where the mood switches from showing off to…",
+  "energyText": "medium-high (a single pulse-like accent, with still scenes before and after)"
  },
  "BlindsSlice": {
   "slug": "wipe-transitions",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Geometric wipe transition: blinds-slice venetian-blind strips (12 3D slats flip in staggered overlap to form a wave; once the wave has swept past, the whole page has…",
+  "useWhen": "A general-purpose transition where neither old nor new page moves and one geometric boundary sweeps across to complete the…",
+  "energyText": "medium"
  },
  "BlurSlide": {
   "slug": "blur-slide",
   "look": "paper",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The title enters word by word, with y 0.38em→0 + blur 18→0 + opacity 0→1 — three channels converging in sync on one shared ease-out, about 4f between words; the…",
+  "useWhen": "Almost any place a title/subtitle appear as a pair; product-page hero copy, section subheads; whenever you need a default text…",
+  "energyText": "low (a single convergence, no peak, no loop)"
  },
  "BraceExpand": {
   "slug": "brace-expand",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A pair of small, touching curly braces appears dead centre, then springs apart left and right with one overshoot while scaling up to title size; the text's clip width…",
+  "useWhen": "Title cards for developer/technical products; chapter openers; a minimalist single beat where \"one symbol does the whole reveal\"",
+  "energyText": "medium (a single overshoot is the only peak; everything else is still)"
  },
  "BrandInkOpen": {
   "slug": "brand-ink-open",
   "look": "sand",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Ink-line crosshair draws on → wordmark letterpresses in letter by letter → typewriter subtitle → a full second of stillness, then it floats up and dissolves",
+  "useWhen": "Brand opening; any title sequence that \"establishes the name first, then goes into the product\"",
+  "energyText": "low (the starting position, leaving room for later shots to climb)"
  },
  "CountdownArcScatter": {
   "slug": "countdown-arc-scatter",
   "look": "paper",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On a paper dial, 9 equal-sized numbers are laid out tangentially along a large arc; the whole dial sweeps 96°, decelerates and stops hard, the \"5\" stops at the top of…",
+  "useWhen": "Countdown / time-promise copy (\"5 min to install\"); a data-reveal beat; short light-background shots that want a \"gauge\"…",
+  "energyText": "high (a 96° large sweep compressed into ~20 frames, pure impact)"
  },
  "FlyingWords": {
   "slug": "flying-words",
   "look": "midnight",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "22 keywords laid out by the golden angle on a flattened elliptical cross-section fly along the z axis from far away to brush past the camera, opacity following a…",
+  "useWhen": "A dynamic background for keyword clouds / capability lists; an \"information density\" underlay for openers and closers…",
+  "energyText": "high (continuous full-screen 3D motion, the frame is never still for a moment)"
  },
  "GlitchCycle": {
   "slug": "glitch-cycle",
   "look": "aurora",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A single line of fixed-width monospace slots cycles through 4 status phrases; each phrase is fully scrambled at its head and tail by the probability keyframes…",
+  "useWhen": "Status announcements for loading/building/deploying processes; the \"system speaking for itself\" in a technical opener; an…",
+  "energyText": "medium-high (continuous high-frequency noise pulses, the switch points are the peaks)"
  },
  "GradientWordSweep": {
   "slug": "gradient-word-sweep",
   "look": "aurora",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "In a tagline on black, the keyword is \"charged\" by a gradient colour light sweeping quickly left to right — characters at the wavefront glow brightest, decaying behind…",
+  "useWhen": "Charging a single verb / selling-point word in a tagline (Supercharged/faster/AI…); text action for the energy climax; the…",
+  "energyText": "high (one word is the explosive point; everything before and after should give way)"
  },
  "LeadWordZoomAssemble": {
   "slug": "lead-word-zoom-assemble",
   "look": "midnight",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The lead word occupies the centre of the frame at 2.3× font size and keeps pushing in 6% during the hold, then a single curve simultaneously \"shrinks it back to final…",
+  "useWhen": "An \"Introducing\" title card for a brand/product name; the second shot of a launch-event-style opener; any one-line claim that…",
+  "energyText": "medium-high (it opens with frame-filling large text, but there is only one motion…"
  },
  "MarkerUnderlineTitle": {
   "slug": "marker-underline-title",
   "look": "sand",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "After the large title lands, a marker-pen underline is drawn quickly left to right beneath the keyword — a variable-width stroke, rough edges, rising slightly to follow…",
+  "useWhen": "Emphasising a single keyword in a title (new/free/AI…); a hand-drawn / human brand tone; annotation-style emphasis in body text",
+  "energyText": "low (one finishing stroke, doesn't steal the title's scene)"
  },
  "OutlineWordFill": {
   "slug": "outline-word-fill",
   "look": "ember",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A hollow word (thin warm-grey stroke, weight 500) snaps down from 3.2× with a fast-then-slow ease and lands; a large dashed circle then shrinks from 2.8× to sit around…",
+  "useWhen": "A hammer-blow beat for a single-word benefit/slogan; the \"nail\" shot on a rhythm hit point; an emphasis frame in a…",
+  "energyText": "high (3.2× shrink + instant light-up, high impact in a short time)"
  },
  "PaperTitleCard": {
   "slug": "paper-title-card",
   "look": "paper",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A sentence is pressed onto paper word by word, one word marked in the accent colour and italics, closed off by a short dash",
+  "useWhen": "Chapter transitions / value-proposition title cards; a lead-in card before an important feature appears; a breathing spot in the…",
+  "energyText": "low (a breathing spot that separates two high-energy shots)"
  },
  "PillChipSlotCycleHandled": {
   "slug": "pill-chip-slot-cycle-handled",
   "look": "sand",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "On a white background, in the sentence \"Your `chip` Handled\", the word inside a dark pill rotates on a vertical reel; the pill's width interpolates smoothly from…",
+  "useWhen": "Selling-point sentences of the \"we handle ___ for you\" kind; a one-sentence wrap-up of a SaaS feature list; a key-visual beat in…",
+  "energyText": "medium (three steady beats; the width change is the only continuous motion)"
  },
  "PillSlotCycle": {
   "slug": "pill-slot-cycle",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Word-slot rotation within a sentence — the fixed sentence stem is nailed in place, while the pill badge at the end of the sentence rolls one notch like a slot machine…",
+  "useWhen": "The most elegant solution for \"feature list\" type copy (faster than a line-by-line list, more meaningful than character-level…",
+  "energyText": "medium (a steady metronome, no peak)"
  },
  "TextColumnConverge": {
   "slug": "text-column-converge",
   "look": "paper",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A two-word face-off that closes together — \"NEW\" on the left and a feature word on the right are nailed to equal screen margins on either side and hard-cut through a…",
+  "useWhen": "A passage where a feature list wraps up into the product name / slogan (\"NEW × a string of features → NEW <product name>\"…",
+  "energyText": "low-medium (machine rhythm, the temperament of a small-print spec list, not word-slamming)"
  },
  "TitleDemoteToLabel": {
   "slug": "title-demote-to-label",
   "look": "paper",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of a big title demoted to a section label — A: the big title develops in the centre, holds for a beat, then continuously shrinks to 0.3x and translates to…",
+  "useWhen": "Chapter openings (the title is the hero first, then gives way to the content); section handovers in tutorial / feature-demo…",
+  "energyText": "low-medium (layout-transformation type, an atmosphere shot)"
  },
  "LetterformDriftAssembly": {
   "slug": "type-assembly-moves",
   "look": "ember",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of text assembly — split-text-stagger character-by-character split rise, letterform-drift-assembly drifting together, text-on-path flowing in along a line",
+  "useWhen": "Entrances for big titles / slogans; belongs to the same broad title-entrance category as type-entrance-moves and…",
+  "energyText": "A medium / B medium-high / C medium"
  },
  "SplitTextStagger": {
   "slug": "type-assembly-moves",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of text assembly — split-text-stagger character-by-character split rise, letterform-drift-assembly drifting together, text-on-path flowing in along a line",
+  "useWhen": "Entrances for big titles / slogans; belongs to the same broad title-entrance category as type-entrance-moves and…",
+  "energyText": "A medium / B medium-high / C medium"
  },
  "TextOnPath": {
   "slug": "type-assembly-moves",
   "look": "midnight",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three variants of text assembly — split-text-stagger character-by-character split rise, letterform-drift-assembly drifting together, text-on-path flowing in along a line",
+  "useWhen": "Entrances for big titles / slogans; belongs to the same broad title-entrance category as type-entrance-moves and…",
+  "energyText": "A medium / B medium-high / C medium"
  },
  "LetterDropPhysics": {
   "slug": "type-entrance-moves",
   "look": "paper",
   "energy": "mid-high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "One title-text entrance variant — letter-drop-physics character drop (slammed down by gravity, bouncing, standing crooked, and on the final beat all snapping to…",
+  "useWhen": "Entrances for big titles / chapter title cards; same category as type-assembly-moves (assembly family) and…",
+  "energyText": "medium-high (physical fun)"
  },
  "FontWeightPump": {
   "slug": "type-rhythm-sync",
   "look": "aurora",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of text synced to sound — font-weight-pump weight pulse (strokes thicken on the drum hit and spring back) and karaoke-fill-sync karaoke fill (words light…",
+  "useWhen": "Passages where a title/slogan is tightly bound to the audio track; A binds to the beat (drum hits), B binds to speech (narration…",
+  "energyText": "A high (clubbing feel) / B medium (read-along guidance)"
  },
  "KaraokeFillSync": {
   "slug": "type-rhythm-sync",
   "look": "ember",
   "energy": "high",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two variants of text synced to sound — font-weight-pump weight pulse (strokes thicken on the drum hit and spring back) and karaoke-fill-sync karaoke fill (words light…",
+  "useWhen": "Passages where a title/slogan is tightly bound to the audio track; A binds to the beat (drum hits), B binds to speech (narration…",
+  "energyText": "A high (clubbing feel) / B medium (read-along guidance)"
  },
  "TypewriterErrorRetype": {
   "slug": "typewriter-moves",
   "look": "paper",
   "energy": "low-mid",
   "sound": true,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Typewriter error-retype — a three-act \"change of wording\" with a mistaken delete and retype: type a mediocre word → hesitate → backspace it away → type the…",
+  "useWhen": "Slogan/selling-point title cards, negation-style copy; entrances where the text carries its own sense of time",
+  "energyText": "low-medium"
  },
  "VerticalWordRollBlurCycle": {
   "slug": "vertical-word-roll-blur-cycle",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The word at the end of a sentence becomes a vertical reel; 3 word changes of 0.55s each (70% outQuint + 30% outBack — fast at first, then extremely slow, with a slight…",
+  "useWhen": "One-sentence selling points of the \"Crafted for ___\" / \"Built for ___\" kind, a stem + a list of audiences/objects; a clean beat…",
+  "energyText": "medium (three steady beats, no peak)"
  },
  "WordRelayFilmstrip": {
   "slug": "word-relay-filmstrip",
   "look": "graphite",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "In the left column, equal-height page cards alternating black and white scroll in steps (the focus card fully lit, neighbouring cards defocused and darkened); on the…",
+  "useWhen": "Enumeration passages of \"one subject × many capabilities\" (Shotcraft frames/builds/ships…); portfolio / case-study stream…",
+  "energyText": "low-medium (editorial temperament; the rhythm comes from the \"click\" of the word switch)"
  },
  "WordRelayGeometry": {
   "slug": "word-relay-geometry",
   "look": "graphite",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Three benefit words, each with its own dedicated set of geometry in a relay — a large dashed circle rotating and decelerating + a comet arc racing around → three…",
+  "useWhen": "Three-point benefit statements (faster/better/stronger); brand-values passages; a mid-film push that needs \"one word, one world\"",
+  "energyText": "medium-high (a three-beat push + geometry in motion throughout + background particles…"
  },
  "AvatarBracketCarousel": {
   "slug": "avatar-bracket-carousel",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Fill-in-the-blank \"Your ___ agent\" layout. A four-corner focus bracket is pinned in the sentence and stays still while an avatar queue rotates vertically inside it…",
+  "useWhen": "Enumerating capabilities as \"one slot, many roles\"; the core one-sentence shot for team / identity / preset / persona products",
+  "energyText": "medium (three evenly spaced switches form a steady metronome; the bracket pulse is the…"
  },
  "BezierSourceConvergeMerge": {
   "slug": "bezier-source-converge-merge",
   "look": "aurora",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Four source nodes on the left each have a thin Bezier curve to the same convergence point on the right. The curves first draw on left to right with staggered overlap…",
+  "useWhen": "The core mechanism shot for \"multi-source integration / unified access / data aggregation\"; explanatory passages for…",
+  "energyText": "medium (a long, slow-advancing shot kept alive by the sliding data packets; the moment…"
  },
  "CardStack": {
   "slug": "card-stack",
   "look": "porcelain",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A set of template cards (9 in the demo) spring in one by one from below the screen, landing faster and faster into a stack; once all have landed, the whole stack fans…",
+  "useWhen": "Product passages that need to say \"we have a set of things\"; the establishing shot for card walls / template libraries / plan…",
+  "energyText": "medium-high (the entrance is a continuous run of small bursts; the fan-out resolves into…"
  },
  "Carousel3D": {
   "slug": "carousel-3d",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "8 cards arranged in a ring; the whole ring spins one full turn (a constant-speed base + a stepped component that docks every 45°). Each card only revolves around Y and…",
+  "useWhen": "Looping showcases of portfolios / template libraries / integration lists; background plates or landing-page heroes that need a…",
+  "energyText": "medium (steady-state motion that can loop forever; one dock every 45° supplies the beat)"
  },
  "ClonerDepthEcho": {
   "slug": "cloner-depth-echo",
   "look": "lime",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Clone column — the main card instantly \"photocopies\" 7 semi-transparent doubles that line up in a column receding diagonally into depth; after a beat they all…",
+  "useWhen": "\"Multiple copies / multi-tenant / sense of scale / batch processing\" selling points; saying \"one = many\" in a single shot",
+  "energyText": "medium (display-then-gather type)"
  },
  "DeckDealFlyin": {
   "slug": "deck-deal-flyin",
   "look": "graphite",
   "energy": "high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Opens with an orbiting close-up of a physical card pile on a dark graphite tabletop; the light spreads from the pile to the page board beside it; the stack is dealt…",
+  "useWhen": "Showing list pages and card walls where \"there's a lot of content / it keeps flowing in\"; establishing a first impression of…",
+  "energyText": "high (a mainstay of the rhythm-climbing section; not used as the opening first shot)"
  },
  "DocParkLeftPillDeal": {
   "slug": "doc-park-left-pill-deal",
   "look": "porcelain",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The document doesn't fade out; instead it slides out to the left until only about 35% of its width shows, shrinking slightly to 0.92. On the right, three white outlined…",
+  "useWhen": "Narration-driven \"conclusions given one by one\" passages; the core explanatory shot for document understanding, recommendation…",
+  "energyText": "low (a slow dealing rhythm, no peak in the whole clip; kept alive by the auto-scroll)"
  },
  "DocumentTypewriterReveal": {
   "slug": "document-typewriter-reveal",
   "look": "aurora",
   "energy": "low-mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A full page of genuinely typeset document window floating in a dark field \"writes\" itself behind a cursor, the sidebar follows, history entries drop one by one into…",
+  "useWhen": "Feature shots for documents/reports/notes; the beat with the highest information density",
+  "energyText": "low-medium (highest information density; keep the rhythm steady so viewers can read)"
  },
  "DrawSvgTrace": {
   "slug": "draw-svg-trace",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Stroke-growth outline callout — an ink line with a pen tip runs once around an element's outline, \"drawing\" it; at the moment it closes, it flashes black and hands off…",
+  "useWhen": "A single card / chart / title being called out as it enters; an element-level technique (the page-level blueprint trace belongs…",
+  "energyText": "medium"
  },
  "ContactShadowLift": {
   "slug": "element-body-moves",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Element body feel — contact-shadow-lift raises off the surface with a contact shadow: as a card lifts, its shadow on the table grows larger and fainter in sync, and the…",
+  "useWhen": "Adding \"the body is changing\" on top of \"the position is changing\": giving a called-out card evidence of floating; pairs with…",
+  "energyText": "A low-medium"
  },
  "IntegrationHubMap": {
   "slug": "integration-hub-map",
   "look": "aurora",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "The old page does one quick 180° flip (its side edge flashing for an instant) and lands as a new hub page; five integration app icons pop in on the same frame, then…",
+  "useWhen": "Integration / ecosystem capability passages (one product connects everything); version-renewal narratives (the old page turns…",
+  "energyText": "medium-high (the flip is the burst, the transport section is the afterglow)"
  },
  "ListReveal": {
   "slug": "list-reveal",
   "look": "graphite",
   "energy": "low",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A vertical menu's 6 items find their place one after another at 10f intervals via scale, settling with a slight soft-back overshoot, while the whole list container…",
+  "useWhen": "Entrance of navigation / sidebars / settings panels; any UI passage where \"the interface grows itself\"; also suitable as a…",
+  "energyText": "low (steady beat, no peak; drift keeps the frame from going dead)"
  },
  "ListStackPress": {
   "slug": "list-stack-press",
   "look": "ember",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "List cards fly up from the bottom of the frame one by one and stack; each landing press-bounces the whole stack, and a counter ticks up one step in sync",
+  "useWhen": "Feed / radar / inbox shots of the \"something new every day\" kind; asset lists that emphasise continuous accumulation",
+  "energyText": "medium"
  },
  "NeonFrameForerun": {
   "slug": "neon-frame-forerun",
   "look": "aurora",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A strongly perspective right-angled neon frame races in from the left edge, drawn from both ends, and takes shape first; the page inside the frame goes from dark to…",
+  "useWhen": "Giving a UI panel an \"entrance ceremony\" in a dark-field brand film (frame arrives first, content lands after); a feature area's…",
+  "energyText": "medium-high (three layers of action stacked, but all serving the same entrance)"
  },
  "NeonFrameForerunOrbit": {
   "slug": "neon-frame-orbit-drop",
   "look": "midnight",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "After the neon frame draws itself first, the camera rotates around the page in a left→right arc, and all of the page's components/text drop from the air onto it **in…",
+  "useWhen": "A one-off grand entrance for a single UI page (as opposed to a tour / zone-by-zone reveal); the main visual unveiling of a…",
+  "energyText": "medium-high (one big one-off action; still once settled)"
  },
  "PageWaterfallWall": {
   "slug": "page-waterfall-wall",
   "look": "paper",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Page waterfall wall: real page screenshots cut into 3–4 columns scroll endlessly at different speeds and in opposite directions on a 3D wall tilted back; parallax + a…",
+  "useWhen": "Passages about the scale of \"many pages / many features / many templates\"; the middle laying-out section of a montage, or a…",
+  "energyText": "medium (flowing display type)"
  },
  "ProductCardProgressiveAssemble": {
   "slug": "product-card-progressive-assemble",
   "look": "porcelain",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A detail card builds itself as if being scraped field by field: a \"fill cursor\" jumps ahead from slot to slot; image → title → category pills pop in turn → the original…",
+  "useWhen": "Capability showcases for product/item detail pages; the main shot for \"structured extraction\", \"autofill\", \"data grows by…",
+  "energyText": "medium (densely arranged small continuous events, no single-point burst; the forward…"
  },
  "RadialWave": {
   "slug": "radial-wave",
   "look": "aurora",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "A 17×9 dot array lights up in staggered order by Euclidean distance from the wave source; each dot overshoots in scale to 1.5 then falls back to a steady glow; after…",
+  "useWhen": "The \"system powers on\" beat of a product/brand opening; also as the establishing shot for data grid, node map, coverage-area…",
+  "energyText": "medium-high (one burst at the start; after the wavefront passes it turns into a…"
  },
  "ResearchCardStackScroll": {
   "slug": "research-card-stack-scroll",
   "look": "graphite",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Dark paper cards fly in one every 12 frames along a lower-right axis to stack at the centre, landing with a 1-frame squash; only the top card renders title + authors +…",
+  "useWhen": "Conveying scale like \"read a huge amount of material / processed vast numbers of documents\"; capability shots for research…",
+  "energyText": "medium-high (constant speed, high frequency; no burst but sustained pressure)"
  },
  "RowEmbed": {
   "slug": "row-embed",
   "look": "ember",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Content rows descend from the air like cards, level out via rotateX, and at the moment of embedding a seam of accent colour lights up along the bottom edge",
+  "useWhen": "Detail-page/list shots of \"structured data growing into the page\"; batch entrance of row-level content",
+  "energyText": "medium"
  },
  "ValueStaggerGradient": {
   "slug": "value-stagger-gradient",
   "look": "lime",
   "energy": "mid-high",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "As 16 bars enter, the delay is a time stagger, while four properties (height / hue / offset / blur) each spread into a numeric gradient from first to last; on the…",
+  "useWhen": "Showcase shots for technique demos and parametric capability; can also serve directly as the entrance for data / spectrum /…",
+  "energyText": "medium-high (the first beat is a continuous spread, the second beat's centre pulse is…"
  },
  "BentoLightUp": {
   "slug": "wall-reveal-moves",
   "look": "aurora",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two moves for a whole wall's batch entrance: bento cell-by-cell light-up and blueprint line-draw forming; both reveal in place without displacement, complementing…",
+  "useWhen": "The overall reveal of a feature wall / card wall / full-page interface; passages where the content is already in place and…",
+  "energyText": "medium"
  },
  "WireframeDrawOn": {
   "slug": "wall-reveal-moves",
   "look": "graphite",
   "energy": "mid",
   "sound": false,
-  "technique": false
+  "technique": false,
+  "oneLiner": "Two moves for a whole wall's batch entrance: bento cell-by-cell light-up and blueprint line-draw forming; both reveal in place without displacement, complementing…",
+  "useWhen": "The overall reveal of a feature wall / card wall / full-page interface; passages where the content is already in place and…",
+  "energyText": "medium"
  }
 } as Record<string, ShotFacts>
