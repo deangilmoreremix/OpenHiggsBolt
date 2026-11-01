@@ -1553,6 +1553,7 @@ export default function PersonalizationModal() {
           ) : generation.status === 'complete' && result ? (
             <ResultView
               canPublish={ctx.canPublish}
+              publishNote={ctx.publishNote}
               canEditInVideoStudio={ctx.canEditInVideoStudio}
               result={result}
               resultTab={resultTab}
@@ -1844,7 +1845,7 @@ function ResultView(props: any) {
     generateAgain, retryBranding, outputType, setOutputType, download,
     editInImageStudio, editInVideoStudio, publish,
     sharedMediaCount, isVideo, eligibleModes, mode, setMode,
-    canPublish = true, canEditInVideoStudio = true,
+    canPublish = true, canEditInVideoStudio = true, publishNote = '',
   } = props
 
   return (
@@ -1919,6 +1920,9 @@ function ResultView(props: any) {
                 <Share2 size={14} /> Publish
               </button>
             )}
+            {!canPublish && publishNote && (
+              <span data-testid="pz-publish-note" className="self-center text-xs" style={{ color: C.muted }}>{publishNote}</span>
+            )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again
             </button>
@@ -1954,6 +1958,9 @@ function ResultView(props: any) {
               <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
                 <Share2 size={14} /> Publish
               </button>
+            )}
+            {!canPublish && publishNote && (
+              <span data-testid="pz-publish-note" className="self-center text-xs" style={{ color: C.muted }}>{publishNote}</span>
             )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again

@@ -171,6 +171,19 @@ interface GenerateOverrides {
   burnInLayers?: boolean
 }
 
+/**
+ * The URL a remote service (social publishing) can fetch for a result, or ''
+ * when the video only exists in this browser (a blob: render whose upload
+ * failed, or a branded render that is downloaded, not stored).
+ */
+export function publishableUrl(result: GenerationResult | null | undefined): string {
+  if (!result) return ''
+  const isRemote = (url: unknown): url is string => typeof url === 'string' && /^https?:\/\//.test(url)
+  const meta = result.metadata as Record<string, unknown> | undefined
+  if (meta && 'publishUrl' in meta) return isRemote(meta.publishUrl) ? meta.publishUrl : ''
+  return isRemote(result.url) ? result.url : ''
+}
+
 function clampPreviewNumber(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback
   return Math.min(max, Math.max(min, n))
@@ -865,6 +878,8 @@ export type DemoPersonalizeContextValue = {
   promptNotice?: string | null
   /** Publish only works where a SocialPublishProvider is mounted. */
   canPublish?: boolean
+  /** Why Publish is unavailable for this result ('' when it is available). */
+  publishNote?: string
   /** Video Studio needs a stored video URL and a presenter photo. */
   canEditInVideoStudio?: boolean
 
@@ -4858,13 +4873,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Shared media and history keep a stored (non-blob) URL: the layered
       // video itself, saved to storage; if that fails, the generated clip.
       let storedUrl = finalUrl
+      let layeredStored = false
       if (burned) {
         storedUrl = genResult.url || ''
         try {
           const stored = await uploadPersonalizationAsset('', {
             file: new File([burned.blob], burned.fileName, { type: burned.mimeType }),
           })
-          if (stored?.durableUrl && /^https?:\/\//.test(stored.durableUrl)) storedUrl = stored.durableUrl
+          if (stored?.durableUrl && /^https?:\/\//.test(stored.durableUrl)) {
+            storedUrl = stored.durableUrl
+            layeredStored = true
+          }
         } catch {
           // History keeps the generated clip (without the layers).
         }
@@ -4879,6 +4898,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           originalUrl: postResult.originalUrl || genResult.url,
           postProcessingInput: resolved.postProcessing,
           ...(burned ? { layersBurnedIn: true, generatedUrl: genResult.url, storedUrl, container: burned.mimeType, extension: burned.extension } : {}),
+          // What Publish sends: the stored layered video. If storing it failed,
+          // nothing (the generated clip lacks the layers the user approved).
+          publishUrl: burned ? (layeredStored ? storedUrl : '') : finalUrl,
           ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}).` } : {}),
         },
       }
@@ -5526,9 +5548,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (!socialPublish) return
     const result = lastResultRef.current
     const project = lastProjectRef.current
+    // Never hand a browser-only blob: URL to the publishing service.
+    const mediaUrl = publishableUrl(result)
+    if (!mediaUrl) return
 
     socialPublish.openPublish({
-      mediaUrl: result.url || '',
+      mediaUrl,
       mediaType: result.type === 'video' ? 'video' : 'image',
       title: project?.source?.title || 'Personalized content',
       caption: result.prompt || project?.personalizedPrompt || project?.source?.originalPrompt || '',
@@ -5731,7 +5756,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
      removePreviewAudio,
      previewAudioError,
     promptNotice,
-    canPublish: Boolean(socialPublish),
+    canPublish: Boolean(socialPublish) && (!result || Boolean(publishableUrl(result))),
+    publishNote: socialPublish && result && !publishableUrl(result)
+      ? 'This video is only saved in this browser, so it can’t be published from here. Download it to share it.'
+      : '',
     canEditInVideoStudio: Boolean(
       result?.type === 'video' &&
       result.url &&

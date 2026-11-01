@@ -1,0 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- partial result doubles */
+/**
+ * Publish must never hand a browser-only blob: URL to the publishing service.
+ */
+import { describe, expect, it } from 'vitest'
+import { publishableUrl } from '../DemoPersonalizeProvider'
+
+describe('publishableUrl', () => {
+  it('uses the stored layered video when layers were burned in', () => {
+    expect(publishableUrl({ type: 'video', url: 'blob:http://x/1', metadata: { publishUrl: 'https://cdn.example/layered.mp4' } } as any))
+      .toBe('https://cdn.example/layered.mp4')
+  })
+  it('offers nothing when the layered upload failed', () => {
+    expect(publishableUrl({ type: 'video', url: 'blob:http://x/1', metadata: { publishUrl: '' } } as any)).toBe('')
+  })
+  it('offers nothing for a branded render that only exists in this browser', () => {
+    expect(publishableUrl({ type: 'video', url: 'blob:http://x/2', metadata: { source: 'branded-render' } } as any)).toBe('')
+  })
+  it('keeps a plain http(s) result URL', () => {
+    expect(publishableUrl({ type: 'video', url: 'https://cdn.example/out.mp4', metadata: {} } as any)).toBe('https://cdn.example/out.mp4')
+  })
+  it('handles no result', () => {
+    expect(publishableUrl(null)).toBe('')
+  })
+})
