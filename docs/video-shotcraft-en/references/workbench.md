@@ -128,7 +128,7 @@ The workbench ships 4 parameterized native cards: generic text, Ink Press title 
 
 ## 5. Export, Studio and lossless verification
 
-- **Export the final cut**: top bar "导出成片" (Export final cut) → the dev server starts the Remotion CLI to render the current project (`workbench/exports/`).
+- **Export the final cut**: top bar "Export final cut" → the dev server starts the Remotion CLI to render the current project (`workbench/exports/`).
   Before rendering, `public/` is dereferenced and synced to `.render-public/` (Remotion's static server refuses to serve symlinks).
   `remotion.config.ts` uses the same settings as template: jpeg frames, ANGLE GL, concurrency 4.
 - **Remotion Studio**: `cd workbench && npm run studio` — `Main` (paste project JSON), `ProjImported`
