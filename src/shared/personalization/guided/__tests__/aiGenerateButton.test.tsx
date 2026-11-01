@@ -13,7 +13,15 @@ vi.mock('../../DemoPersonalizeProvider', () => ({ useDemoPersonalize: () => mock
 vi.mock('../OverlayEditor', () => ({ OverlayEditor: () => null }))
 vi.mock('../../preview/BeforeAfterPreview', () => ({ BeforeAfterPreview: () => null }))
 vi.mock('../buildPreviewInput', () => ({ buildPreviewInput: () => ({}) }))
-vi.mock('@/lib/authConfig', () => ({ setApiKey: (key: string) => setApiKey(key) }))
+const keys = { muapi: '', openai: '' }
+vi.mock('@/lib/authConfig', () => ({
+  useAuthConfig: () => ({
+    apiKey: keys.muapi,
+    openaiKey: keys.openai,
+    setApiKey: (key: string) => setApiKey(key),
+    setOpenAiKey: vi.fn(),
+  }),
+}))
 
 const { StepPreviewApprove } = await import('../StepPreviewApprove')
 
@@ -45,6 +53,8 @@ function makeCtx(overrides: Record<string, unknown> = {}): Record<string, unknow
 
 beforeEach(() => {
   setApiKey.mockReset()
+  keys.muapi = ''
+  keys.openai = ''
 })
 
 afterEach(() => {
@@ -68,8 +78,8 @@ describe('Generate with AI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key and generate' }))
     expect(setApiKey).toHaveBeenCalledWith('sk-test-123')
 
-    // The provider re-renders with the saved key.
-    mockCtx = { ...mockCtx, apiKey: 'sk-test-123' }
+    // The key store notifies and the step re-renders with the saved key.
+    keys.muapi = 'sk-test-123'
     await act(async () => {
       view.rerender(<StepPreviewApprove />)
     })
@@ -77,7 +87,8 @@ describe('Generate with AI', () => {
   })
 
   it('generates straight away when a key is already saved', async () => {
-    mockCtx = makeCtx({ apiKey: 'sk-saved' })
+    keys.muapi = 'sk-saved'
+    mockCtx = makeCtx()
     render(<StepPreviewApprove />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Generate with AI/ }))

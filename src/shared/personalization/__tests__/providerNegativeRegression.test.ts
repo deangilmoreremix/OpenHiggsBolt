@@ -232,6 +232,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'recreate',
         options: baseOptions,
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('image')
@@ -263,6 +264,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'replace_face',
         options: baseOptions,
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('image')
@@ -292,6 +294,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'keep_design',
         options: baseOptions,
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('image')
@@ -319,6 +322,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'replace_person',
         options: baseOptions,
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('image')
@@ -343,6 +347,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'recreate',
         options: { ...baseOptions, model: 'veo-4-text-to-video' },
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('video')
@@ -378,6 +383,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'face_only',
         options: { ...baseOptions, model: 'ai-video-face-swap' },
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('video')
@@ -403,6 +409,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'recreate',
         options: { ...baseOptions, model: 'seedance-2-t2v' },
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('video')
@@ -433,6 +440,7 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         mode: 'full_body',
         options: { ...baseOptions, model: 'ai-video-recast' },
         apiKey: 'sk-test',
+        openaiKey: 'sk-openai-test',
       })
 
       expect(result.type).toBe('video')

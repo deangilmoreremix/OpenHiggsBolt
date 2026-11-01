@@ -15,7 +15,7 @@ import { LAYER_LABELS } from './layerChanges'
 import { DesignGallery } from './DesignGallery'
 import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import type { FinalOutputPath } from '../finalOutput'
-import { setApiKey as setAuthApiKey } from '@/lib/authConfig'
+import { useAuthConfig } from '@/lib/authConfig'
 
 /** The three places an animated design can go, in the order they play. */
 const DESIGN_TABS: { slot: DesignSlot; label: string; hint: string; none: string }[] = [
@@ -93,6 +93,13 @@ export function StepPreviewApprove(): React.JSX.Element {
   // Two separate buttons, two separate operations: the free in-browser branded
   // render, and AI generation on the visitor's own MuAPI key. Both are always
   // available; `runningPath` remembers which one is in progress.
+  // Videos are generated on MuAPI, images on OpenAI; each with the visitor's
+  // own key for that service, kept in their browser.
+  const auth = useAuthConfig()
+  const isImageSource = source?.mediaType === 'image'
+  const aiKeyName = isImageSource ? 'OpenAI' : 'MuAPI'
+  const aiKey = isImageSource ? auth.openaiKey : auth.apiKey
+  const saveAiKey = isImageSource ? auth.setOpenAiKey : auth.setApiKey
   const [runningPath, setRunningPath] = useState<FinalOutputPath | null>(null)
   const isBrandedPath = runningPath !== 'ai-generation'
   const [showKeyForm, setShowKeyForm] = useState(false)
@@ -132,8 +139,8 @@ export function StepPreviewApprove(): React.JSX.Element {
   const handleRender = () => runPath('branded-render')
 
   const handleGenerateAi = () => {
-    // AI generation needs the visitor's own MuAPI key: ask for it in place.
-    if (!apiKey) {
+    // AI generation needs the visitor's own key: ask for it in place.
+    if (!aiKey) {
       setShowKeyForm(true)
       return
     }
@@ -143,7 +150,7 @@ export function StepPreviewApprove(): React.JSX.Element {
   const saveKeyAndGenerate = () => {
     const key = keyDraft.trim()
     if (!key) return
-    setAuthApiKey(key)
+    saveAiKey(key)
     setKeyDraft('')
     setShowKeyForm(false)
     // The provider sees the new key on its next render; generate then.
@@ -151,11 +158,11 @@ export function StepPreviewApprove(): React.JSX.Element {
   }
 
   useEffect(() => {
-    if (!runAiAfterKey || !apiKey) return
+    if (!runAiAfterKey || !aiKey) return
     setRunAiAfterKey(false)
     void runPath('ai-generation')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runAiAfterKey, apiKey])
+  }, [runAiAfterKey, aiKey])
 
   const handleDownload = () => {
     if (!result?.url) return
@@ -478,9 +485,9 @@ export function StepPreviewApprove(): React.JSX.Element {
                     : 'Generate with AI'}
                 </button>
               </div>
-              {showKeyForm && !apiKey ? (
+              {showKeyForm && !aiKey ? (
                 <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={labelStyle} htmlFor="guided-muapi-key">Your MuAPI key</label>
+                  <label style={labelStyle} htmlFor="guided-muapi-key">Your {aiKeyName} key</label>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <input
                       id="guided-muapi-key"
@@ -502,7 +509,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                     </button>
                   </div>
                   <p style={{ ...hintStyle, margin: 0 }}>
-                    AI generation runs on your own MuAPI account. The key is saved only in this browser.
+                    AI generation runs on your own {aiKeyName} account. The key is saved only in this browser.
                   </p>
                 </div>
               ) : null}
@@ -513,7 +520,7 @@ export function StepPreviewApprove(): React.JSX.Element {
               </p>
               <p style={{ ...hintStyle, color: isBrandedPath ? C.muted : C.cyan }}>
                 <strong style={{ fontWeight: 800 }}>Generate with AI</strong> creates new footage from your
-                video with AI, using your own MuAPI key{apiKey ? '' : ' (you will be asked for it)'}.
+                video with AI, using your own {aiKeyName} key{aiKey ? '' : ' (you will be asked for it)'}.
               </p>
               {generating && isBrandedPath && (
                 <button

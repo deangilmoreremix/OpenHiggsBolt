@@ -1109,7 +1109,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
-  const { apiKey } = useAuthConfig()
+  const { apiKey, openaiKey } = useAuthConfig()
   // Modal
   const [isOpen, setIsOpen] = useState(false)
   const [source, setSource] = useState<PersonalizationSource | null>(null)
@@ -4235,13 +4235,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [closePersonalize, loadedProjectIdRef, router, source])
 
   const generate = useCallback(async () => {
-    if (!source || !apiKey) {
+    // Videos are generated on MuAPI, images on OpenAI: each needs the
+    // visitor's own key for that service.
+    const isImage = source?.mediaType === 'image'
+    const missingKey = isImage ? !openaiKey : !apiKey
+    if (!source || missingKey) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
         status: 'error',
-        errorMessage: !apiKey
-          ? 'Add your MuAPI key to generate with AI.'
-          : 'Choose a video first, then generate with AI.',
+        errorMessage: !source
+          ? 'Choose a video first, then generate with AI.'
+          : isImage
+            ? 'Add your OpenAI key to personalize images with AI.'
+            : 'Add your MuAPI key to generate with AI.',
       })
       return
     }
@@ -4342,6 +4348,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         mode,
         options: genOptions,
         apiKey,
+        openaiKey,
         onProgress: (percent, message) => {
           setGeneration((prev) => ({ ...prev, progress: percent, progressMessage: message }))
         },
@@ -4433,7 +4440,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         failedStage: 'generation',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun])
+  }, [source, apiKey, openaiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun])
 
   const retry = useCallback(async () => {
     await generate()
@@ -4648,11 +4655,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // AI generation runs on the visitor's own MuAPI key (kept in their
       // browser), not on an account. Without one, say so instead of failing
       // silently.
-      if (!apiKey) {
+      const imageSource = source?.mediaType === 'image'
+      if (imageSource ? !openaiKey : !apiKey) {
         setGeneration({
           ...EMPTY_GENERATION_STATE,
           status: 'error',
-          errorMessage: 'Add your MuAPI key to generate with AI.',
+          errorMessage: imageSource
+            ? 'Add your OpenAI key to personalize images with AI.'
+            : 'Add your MuAPI key to generate with AI.',
         })
         return
       }
@@ -4836,7 +4846,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         errorMessage: error instanceof Error ? error.message : 'Branded render failed',
       })
     }
-  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved, promptState, completeRun])
+  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, openaiKey, clientForm, assets, previewApproved, promptState, completeRun])
 
   const cancelExport = useCallback(() => {
     cancelActiveExport()
