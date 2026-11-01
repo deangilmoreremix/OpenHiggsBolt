@@ -407,11 +407,8 @@ export function StepPreviewApprove(): React.JSX.Element {
           >
             {previewApproved ? 'Approved' : 'Approve this personalization'}
           </button>
-          {isAnonymous ? (
-            <span style={{ color: C.muted, fontSize: 12 }}>
-              Sign in to create your final video — the preview is always free.
-            </span>
-          ) : (
+          {(
+            // Everyone can render the branded video; only AI generation needs an account.
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
@@ -435,14 +432,15 @@ export function StepPreviewApprove(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={generating || isBrandedPath}
+                  disabled={generating || isBrandedPath || isAnonymous}
                   aria-pressed={!isBrandedPath}
+                  title={isAnonymous ? 'Sign in to use AI generation' : undefined}
                   style={{
                     ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath ? 0.5 : 1,
+                    opacity: generating ? 0.6 : isBrandedPath || isAnonymous ? 0.5 : 1,
                   }}
                 >
                   {generating && !isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -453,11 +451,13 @@ export function StepPreviewApprove(): React.JSX.Element {
               </div>
               <p style={{ ...hintStyle, color: isBrandedPath ? C.cyan : C.muted }}>
                 <strong style={{ fontWeight: 800 }}>Render branded video</strong> bakes your approved
-                overlays (logo, text, CTA, end card) onto the selected video — no AI credits used.
+                overlays (logo, text, CTA, end card) onto the selected video. It&apos;s free, renders in your
+                browser and needs no account.
               </p>
               <p style={{ ...hintStyle, color: isBrandedPath ? C.muted : C.cyan }}>
                 <strong style={{ fontWeight: 800 }}>Generate with AI</strong> uses your account&apos;s AI
                 generation for changes that need new imagery or footage.
+                {isAnonymous ? ' Sign in to use it.' : ''}
               </p>
               {generating && isBrandedPath && (
                 <button
@@ -497,6 +497,8 @@ export function StepPreviewApprove(): React.JSX.Element {
               <Download size={14} />
               Download video
             </button>
+            {/* Saving to the Asset Library needs an account; downloading does not. */}
+            {!isAnonymous && (
             <button
               type="button"
               onClick={handleUpload}
@@ -506,6 +508,7 @@ export function StepPreviewApprove(): React.JSX.Element {
               {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {isUploading ? 'Uploading…' : uploadSuccess ? 'Uploaded' : 'Upload to Asset Library'}
             </button>
+            )}
             {uploadError && <p style={{ ...hintStyle, color: C.danger }}>{uploadError}</p>}
             {uploadSuccess && <p style={{ ...hintStyle, color: C.green }}>Uploaded to Asset Library</p>}
           </div>

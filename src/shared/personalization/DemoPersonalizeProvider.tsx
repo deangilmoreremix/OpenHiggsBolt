@@ -4611,10 +4611,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
     // video keep the existing generate() flow exactly.
-    if (access !== 'authenticated') return
+    //
+    // The branded render runs entirely in the visitor's browser (no server,
+    // no storage, no paid request), so it is free and needs no account. Only
+    // AI generation, which spends account credits, requires signing in.
     const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
 
     if (finalPath === 'ai-generation') {
+      if (access !== 'authenticated') {
+        setGeneration({
+          ...EMPTY_GENERATION_STATE,
+          status: 'error',
+          errorMessage: 'Sign in to generate with AI. Branded videos are free and need no account.',
+        })
+        return
+      }
       const hasLogo = previewSettings.layers.some(
         (layer) => layer.kind === 'logo' && layer.visible && Boolean(layer.imageUrl || previewSeed.logoUrl),
       )

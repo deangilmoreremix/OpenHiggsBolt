@@ -47,6 +47,46 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+describe('branded render evidence — free for visitors', () => {
+  it('lets a visitor who is not signed in render the branded video', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref, { access: 'anonymous' })
+    await openSource(ref)
+    expect(getCtx(ref).access).toBe('anonymous')
+
+    await act(async () => {
+      getCtx(ref).approvePersonalization()
+    })
+    await act(async () => {})
+    renderMediaOnWeb.mockImplementation(async () => ({
+      getBlob: async () => new Blob(['fake-branded-video-bytes'], { type: 'video/mp4' }),
+    }))
+    await act(async () => {
+      await getCtx(ref).createFinalVideo()
+    })
+
+    expect(renderMediaOnWeb).toHaveBeenCalledTimes(1)
+    expect(getCtx(ref).generation.status).toBe('complete')
+    expect(getCtx(ref).result.url).toMatch(/^blob:/)
+  })
+
+  it('still asks a visitor to sign in before paid AI generation', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref, { access: 'anonymous' })
+    await openSource(ref)
+    await act(async () => {
+      getCtx(ref).setMode('face_only')
+    })
+    await act(async () => {
+      await getCtx(ref).createFinalVideo()
+    })
+
+    expect(renderMediaOnWeb).not.toHaveBeenCalled()
+    expect(getCtx(ref).generation.status).toBe('error')
+    expect(getCtx(ref).generation.errorMessage).toMatch(/Sign in to generate with AI/)
+  })
+})
+
 describe('branded render evidence — opening and closing scenes', () => {
   it('renders the opening scene, the whole video and the closing scene', async () => {
     const ref: HarnessRef = { current: null }
