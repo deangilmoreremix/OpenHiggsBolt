@@ -86,7 +86,10 @@ function findBusinessNode(nodes: JsonObject[]): JsonObject | null {
     if (text(node.name)) value += 1
     if (types.some((t) => ['website', 'webpage', 'breadcrumblist', 'imageobject'].includes(t))) value -= 5
     // Things the business sells or posts are not the business itself.
-    if (types.some((t) => NOT_A_BUSINESS_TYPES.has(t))) value -= 4
+    // (A node typed as the business itself keeps its score even if it also
+    // lists a Service or Product type.)
+    const namedAsBusiness = types.some((t) => t === 'localbusiness' || t === 'organization')
+    if (!namedAsBusiness && types.some((t) => NOT_A_BUSINESS_TYPES.has(t))) value -= 4
     return value
   }
   const ranked = nodes

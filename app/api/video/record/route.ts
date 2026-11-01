@@ -29,7 +29,7 @@ const MAX_METADATA_BYTES = 20_000
 function boundedMetadata(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   try {
-    return JSON.stringify(value).length <= MAX_METADATA_BYTES ? (value as Record<string, unknown>) : { truncated: true }
+    return new TextEncoder().encode(JSON.stringify(value)).length <= MAX_METADATA_BYTES ? (value as Record<string, unknown>) : { truncated: true }
   } catch {
     return {}
   }

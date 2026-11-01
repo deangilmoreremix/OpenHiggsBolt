@@ -182,6 +182,8 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
     return () => clearInterval(timer)
   }, [running])
 
+  // The clip picked last, so an older pick's upload is skipped.
+  const latestPreviewRef = useRef('')
   const handleClipFile = async (file: File | null) => {
     const fileError = validateRecastClipFile(file)
     if (fileError || !file) {
@@ -189,11 +191,13 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
       return
     }
     const previewUrl = URL.createObjectURL(file)
+    latestPreviewRef.current = previewUrl
     setClip({ kind: 'upload', url: '', label: file.name, previewUrl, duration: 0, status: 'reading', error: '' })
     try {
       const duration = await readVideoDuration(previewUrl)
       const durationError = validateRecastDuration(duration)
       if (durationError) throw new Error(durationError)
+      if (latestPreviewRef.current !== previewUrl) return
       setClip((prev) => (prev.previewUrl === previewUrl ? { ...prev, duration, status: 'uploading' } : prev))
       const uploaded = await uploadPersonalizationAsset(apiKey, { file })
       setClip((prev) => (prev.previewUrl === previewUrl ? { ...prev, url: uploaded.url, status: 'ready' } : prev))
@@ -206,11 +210,20 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
 
   const useCurrentVideo = () => setClip({ ...EMPTY_CLIP, kind: 'current' })
 
-  const canRecast = !isAnonymous && !running && !clip.error && clip.status === 'ready' && Boolean(clip.url) && Boolean(identityUrl) && Boolean(genOptions.consentGiven)
+  // The recast service fetches the clip itself: a site-relative demo path
+  // becomes a full address; a browser-only blob: URL can't be fetched.
+  const remoteClipUrl = /^https?:\/\//.test(clip.url)
+    ? clip.url
+    : clip.url.startsWith('/') && typeof window !== 'undefined' ? new URL(clip.url, window.location.origin).href : ''
+  const canRecast = !isAnonymous && Boolean(apiKey) && !running && !clip.error && clip.status === 'ready' && Boolean(remoteClipUrl) && Boolean(identityUrl) && Boolean(genOptions.consentGiven)
   const blocker = isAnonymous
     ? 'Sign in to recast videos.'
+    : !apiKey
+      ? 'Connect your SmartVideo (MuAPI) API key in Settings.'
     : !clip.url || clip.status !== 'ready'
       ? 'Choose a 4–30 s source clip.'
+      : !remoteClipUrl
+        ? 'This video is only in your browser. Upload it as a clip instead.'
       : !selectedIdentity
         ? 'Add a photo of the person.'
         : !identityUrl
@@ -223,7 +236,7 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
     if (!canRecast || !selectedIdentity || !identityUrl || !source) return
     void startRecast({
       sourceId: source.id,
-      sourceUrl: clip.url,
+      sourceUrl: remoteClipUrl,
       sourceLabel: clip.label,
       identityId: selectedIdentity.id,
       identityName: selectedIdentity.name?.replace(/\.[a-z0-9]+$/i, '') || 'Presenter',

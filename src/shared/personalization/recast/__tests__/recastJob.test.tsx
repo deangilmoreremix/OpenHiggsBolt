@@ -202,4 +202,23 @@ describe('useRecastJob', () => {
     expect(loadRecastJob('demo-1', OWNER)).toMatchObject({ status: 'done', resultUrl: 'https://cdn.example.com/out.mp4', applied: false })
     expect(onDone).not.toHaveBeenCalled()
   })
+
+  it('aborts a pending run and hides its job when another account signs in', async () => {
+    let signal!: AbortSignal
+    muapi.processMotionControl.mockImplementation((_key: string, params: { signal: AbortSignal }) => {
+      signal = params.signal
+      return new Promise(() => {})
+    })
+    const { result, rerender } = renderHook(
+      ({ ownerKey }) => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey, onDone: vi.fn() }),
+      { initialProps: { ownerKey: OWNER } },
+    )
+    act(() => { void result.current.start(INPUT) })
+    expect(result.current.job?.status).toBe('running')
+    rerender({ ownerKey: 'owner-b' })
+    expect(signal.aborted).toBe(true)
+    expect(result.current.job).toBeNull()
+    expect(loadRecastJob('demo-1', 'owner-b')).toBeNull()
+  })
 })
+

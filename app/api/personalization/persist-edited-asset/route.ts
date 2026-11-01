@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   // A new object per edit, so a cached earlier edit is never shown in place
   // of a newer one (the client stores whichever URL comes back).
-  const objectPath = `${sanitizeSegment(userId)}/edited/${sanitizeSegment(assetId)}/edited-${Date.now().toString(36)}.${EXTENSION[image.type]}`
+  const objectPath = `${sanitizeSegment(userId)}/edited/${sanitizeSegment(assetId)}/edited-${crypto.randomUUID()}.${EXTENSION[image.type]}`
   try {
     const storage = createServerClient().storage.from(BUCKET)
     const { error } = await storage.upload(objectPath, image, { upsert: true, contentType: image.type })

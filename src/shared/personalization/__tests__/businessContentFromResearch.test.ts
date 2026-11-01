@@ -57,6 +57,20 @@ describe('businessContentFromResearch', () => {
     })
   })
 
+  it('keeps a node typed as both LocalBusiness and Service ahead of a bare Organization', () => {
+    const content = businessContentFromResearch(baseResearch({
+      jsonLd: [{
+        '@context': 'https://schema.org',
+        '@graph': [
+          { '@type': 'Organization', name: 'Parent Holdings', telephone: '800-555-0000', address: { '@type': 'PostalAddress', addressLocality: 'Miami' } },
+          { '@type': ['LocalBusiness', 'Service'], name: "Joe's Roofing", telephone: '813-555-0199', address: { '@type': 'PostalAddress', addressLocality: 'Tampa' } },
+        ],
+      }],
+    }))
+    expect(content.businessName).toBe("Joe's Roofing")
+    expect(content.phone).toBe('813-555-0199')
+  })
+
   it('falls back to Open Graph, the page title and contact info', () => {
     const content = businessContentFromResearch(baseResearch({
       openGraph: { site_name: 'Joe’s Roofing Co', description: 'OG description' },

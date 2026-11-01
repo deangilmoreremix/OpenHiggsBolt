@@ -1779,6 +1779,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const recastVideosLoadedForRef = useRef<string | null>(null)
   // What storage holds now, so only a real change is written.
   const recastVideosSavedRef = useRef('[]')
+  const recastVideosOwnerRef = useRef<string | null>(null)
   useEffect(() => {
     if (!source?.id) {
       recastVideosLoadedForRef.current = null
@@ -1787,6 +1788,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const key = `${recastOwner}:${source.id}`
     if (recastVideosLoadedForRef.current === key) return
     recastVideosLoadedForRef.current = key
+    // Another account signed in: the previous account's recasts leave the
+    // library, so they are never saved under the new account.
+    const ownerChanged = recastVideosOwnerRef.current !== null && recastVideosOwnerRef.current !== recastOwner
+    recastVideosOwnerRef.current = recastOwner
+    if (ownerChanged) {
+      setAssets((prev) => ({
+        ...prev,
+        presenterVideos: (prev.presenterVideos || []).filter((asset) => asset.editMetadata?.operation !== 'full_body_recast'),
+      }))
+    }
     const saved = loadRecastVideos(source.id, recastOwner)
     recastVideosSavedRef.current = JSON.stringify(saved)
     if (!saved.length) return
@@ -1807,7 +1818,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   useEffect(() => {
     if (!source?.id || recastVideosLoadedForRef.current !== `${recastOwner}:${source.id}`) return
     const videos = (assets.presenterVideos || [])
-      .filter((asset) => /^https?:\/\//.test(asset.url))
+      .filter((asset) => asset.editMetadata?.operation === 'full_body_recast' && /^https?:\/\//.test(asset.url))
       .map((asset) => ({ id: asset.id, url: asset.url, name: asset.name || 'Full Body Recast' }))
     const serialized = JSON.stringify(videos)
     if (serialized === recastVideosSavedRef.current) return
@@ -2436,6 +2447,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const selectClient = useCallback((id: string) => {
     // A saved client's fields are the user's own, not website auto-fill.
     autoFilledRef.current = {}
+    placeholderNameRef.current = ''
     setAutoFilledContent({})
     setSelectedClientId(id)
     if (!id) {
@@ -3891,9 +3903,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return
     }
     for (const asset of picks) autoImportedDiscoveredIdsRef.current.add(asset.id)
+    // Only assets that were actually placed count as automatic; the rest can
+    // still be placed by hand without being removed on a business switch.
+    const forgetUnplaced = (placedIds: string[]) => {
+      for (const asset of picks) if (!placedIds.includes(asset.id)) autoImportedDiscoveredIdsRef.current.delete(asset.id)
+    }
     void importDiscoveredAssets({ ids: picks.map((asset) => asset.id) })
-      .then((placedIds) => summarize(picks.filter((asset) => placedIds.includes(asset.id))))
-      .catch(() => summarize([]))
+      .then((placedIds) => {
+        forgetUnplaced(placedIds)
+        summarize(picks.filter((asset) => placedIds.includes(asset.id)))
+      })
+      .catch(() => {
+        forgetUnplaced([])
+        summarize([])
+      })
   }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website])
 
   const cancelDiscovery = useCallback(() => {
@@ -4127,11 +4150,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // (see `clientFormFromBusiness`) that the automated "Find My Brand"
     // workflow uses too. These values count as auto-filled.
     const fromRecord = clientFormFromBusiness(business)
+    // A record made from a typed website only knows the hostname, so it never
+    // replaces what the user typed (a business picked from search results does).
+    const fromTypedWebsite = business.id.startsWith('url:')
     setClientForm((prev) => {
       const next: Partial<ClientProfile> = clearAutoFilledContent(prev, previousAutoFilled)
       const filled: AutoFilledValues = {}
       for (const [key, value] of Object.entries(fromRecord) as Array<[AutoFillKey, unknown]>) {
         if (typeof value !== 'string' || !value.trim()) continue
+        const typed = next[key]
+        if (fromTypedWebsite && typeof typed === 'string' && typed.trim()) {
+          if (key === 'businessName') placeholderNameRef.current = ''
+          continue
+        }
         next[key] = value
         filled[key] = value
       }
@@ -4459,10 +4490,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return
     }
 
+    // Dropped if another business is picked while this runs.
+    const researchSession = businessSessionRef.current
     setBusinessResearch({ status: 'researching' })
 
     try {
       const research = await fetchBusinessResearch(website)
+      if (researchSession !== businessSessionRef.current) return
 
       // Update business research state
       setBusinessResearch({
@@ -4475,6 +4509,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // missing (this replaces the old canonical-URL overwrite).
       mergeResearchIntoClientForm(research)
     } catch (err) {
+      if (researchSession !== businessSessionRef.current) return
       const message = err instanceof Error ? err.message : 'Research failed'
       setBusinessResearch({ status: 'error', error: message })
     }
@@ -5152,8 +5187,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     settings: previewSettings,
     video: previewVideo?.url || null,
     client: [clientForm.businessName, clientForm.name, clientForm.website, clientForm.phone, clientForm.offer, clientForm.ctaHeadline, clientForm.callToAction, clientForm.productService],
-    assets: [assets.primaryLogo?.id, assets.primaryIdentity?.id, assets.logos.map((a) => a.id), assets.products.map((a) => a.id)],
-  }), [previewSettings, previewVideo?.url, clientForm, assets.primaryLogo?.id, assets.primaryIdentity?.id, assets.logos, assets.products])
+    // The image too, not just the id: an edit replaces the image in place.
+    // (A blob: URL is an upload in progress; it can't be rendered yet anyway.)
+    assets: [assets.primaryLogo, assets.primaryIdentity, ...assets.logos, ...assets.products].map((a) => (
+      a ? `${a.id}|${a.url?.startsWith('blob:') ? 'pending' : a.url}` : null
+    )),
+  }), [previewSettings, previewVideo?.url, clientForm, assets.primaryLogo, assets.primaryIdentity, assets.logos, assets.products])
   const approvedSignatureRef = useRef<string | null>(null)
   useEffect(() => {
     if (!previewApproved) {

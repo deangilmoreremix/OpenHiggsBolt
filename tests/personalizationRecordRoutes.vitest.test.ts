@@ -65,7 +65,7 @@ describe('POST /api/personalization/persist-edited-asset', () => {
     const body = await res.json()
     // A new object per edit, so a cached earlier edit is never shown.
     expect(uploads).toHaveLength(1)
-    expect(uploads[0].path).toMatch(/^user-123\/edited\/asset-1\/edited-[a-z0-9]+\.png$/)
+    expect(uploads[0].path).toMatch(/^user-123\/edited\/asset-1\/edited-[0-9a-f-]{36}\.png$/)
     expect(body).toMatchObject({ ok: true, assetId: 'asset-1', publicUrl: `https://cdn.example/${uploads[0].path}`, hasTransparency: true })
   })
 
