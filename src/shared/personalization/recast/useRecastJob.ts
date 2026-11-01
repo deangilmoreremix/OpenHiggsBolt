@@ -124,6 +124,20 @@ export function useRecastJob({
     }
   }, [apiKey, finish, fail])
 
+  // Another account signed in (or signed out): stop every job this page was
+  // watching and forget them, whether or not the modal is open and whatever
+  // job is on screen.
+  const ownerRef = useRef(ownerKey)
+  useEffect(() => {
+    if (ownerRef.current === ownerKey) return
+    ownerRef.current = ownerKey
+    controllersRef.current.forEach((controller) => controller.abort())
+    controllersRef.current.clear()
+    knownJobsRef.current.clear()
+    jobRef.current = null
+    setJobState(null)
+  }, [ownerKey])
+
   // Closing the modal (no source) leaves a running recast alone. Opening a
   // source picks up its job: the one already in memory, or one stored by an
   // earlier page load (resumed if it is still running) — only ever the
@@ -132,12 +146,6 @@ export function useRecastJob({
     if (!sourceId) return
     const current = jobRef.current
     if (current && current.sourceId === sourceId && current.ownerKey === ownerKey) return
-    if (current && current.ownerKey !== ownerKey) {
-      // Signed out or another account: stop everything this page was watching.
-      controllersRef.current.forEach((controller) => controller.abort())
-      controllersRef.current.clear()
-      knownJobsRef.current.clear()
-    }
     const stored = loadRecastJob(sourceId, ownerKey)
     if (!stored) {
       jobRef.current = null

@@ -220,5 +220,42 @@ describe('useRecastJob', () => {
     expect(result.current.job).toBeNull()
     expect(loadRecastJob('demo-1', 'owner-b')).toBeNull()
   })
+
+  it('aborts a pending run when the account changes while the modal is closed', async () => {
+    let signal!: AbortSignal
+    muapi.processMotionControl.mockImplementation((_key: string, params: { signal: AbortSignal }) => {
+      signal = params.signal
+      return new Promise(() => {})
+    })
+    const { result, rerender } = renderHook(
+      ({ ownerKey, sourceId }: { ownerKey: string; sourceId: string | null }) => useRecastJob({ apiKey: 'k', sourceId, ownerKey, onDone: vi.fn() }),
+      { initialProps: { ownerKey: OWNER, sourceId: 'demo-1' as string | null } },
+    )
+    act(() => { void result.current.start(INPUT) })
+    rerender({ ownerKey: OWNER, sourceId: null })
+    expect(signal.aborted).toBe(false)
+    rerender({ ownerKey: 'owner-b', sourceId: null })
+    expect(signal.aborted).toBe(true)
+    expect(result.current.job).toBeNull()
+  })
+
+  it('aborts a background run when the account changes after opening a demo with no job', async () => {
+    let signal!: AbortSignal
+    muapi.processMotionControl.mockImplementation((_key: string, params: { signal: AbortSignal }) => {
+      signal = params.signal
+      return new Promise(() => {})
+    })
+    const { result, rerender } = renderHook(
+      ({ ownerKey, sourceId }) => useRecastJob({ apiKey: 'k', sourceId, ownerKey, onDone: vi.fn() }),
+      { initialProps: { ownerKey: OWNER, sourceId: 'demo-1' } },
+    )
+    act(() => { void result.current.start(INPUT) })
+    rerender({ ownerKey: OWNER, sourceId: 'demo-2' })
+    expect(result.current.job).toBeNull()
+    expect(signal.aborted).toBe(false)
+    rerender({ ownerKey: 'owner-b', sourceId: 'demo-2' })
+    expect(signal.aborted).toBe(true)
+    expect(loadRecastJob('demo-1', 'owner-b')).toBeNull()
+  })
 })
 
