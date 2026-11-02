@@ -70,6 +70,7 @@ Return a storyboard as JSON. Rules:
 - Scene durations in seconds should sum to the requested length. Keep scenes short: 2–6 s each (a title card ≤ 3 s), and use one shot for each part of the page the person asked to show.
 - Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
 - When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
+- siteGround: the product's own ground. Use only cards of that look family (LIGHT-tagged for "light", DARK-tagged for "dark") or untagged ones; the others are ruled out after you answer.
 - featureMap (stage 2 of the method): one row per feature with its first-choice shot and a fallback shot. Give every feature a scene, in that order, using its first-choice shot; use the fallback only when the first choice breaks a rule above. Put the row's feature in the scene's "feature" and its page state in "asset".
 - cardsInFull: the chosen shots' cards, in full (intent, motion core, parameters, holds, known pitfalls). Read each before placing it: plan the scene at the card's length with its holds, write a "action" that is the card's own main motion, and keep any word counts or text lengths the card says are part of the technique.
 - Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
@@ -92,7 +93,7 @@ const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short prod
 Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff, palette ({background, text, accent}: three #rrggbb colours of that direction, taken from productCapture.brand when the direction stays on-brand; they colour the preview frames shown with the options). Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
 
 const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
-Return JSON {rows}: one row per feature, in film order, 3–8 rows. First list the product's features (its feature inventory) from the site's words and the request; then, for each, read the catalog lines (what the shot looks like and USE WHEN) and pick a first-choice shot and a different fallback shot that would also express it. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
+Return JSON {rows}: one row per feature, in film order, 3–8 rows. First list the product's features (its feature inventory) from the site's words and the request; then, for each, read the catalog lines (what the shot looks like and USE WHEN) and pick a first-choice shot and a different fallback shot that would also express it. siteGround is the product's own ground: when it is "light", choose LIGHT-tagged (or untagged) cards; when "dark", DARK-tagged (or untagged) — a card of the other look family is ruled out of the film after you answer. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -484,6 +485,7 @@ export async function POST(req: NextRequest) {
         brief: str(body.brief, 2000),
         direction: str(body.direction, 600),
         requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
+        siteGround: body.siteGround === 'dark' || body.siteGround === 'light' ? body.siteGround : null,
       }
       if (body.mode === 'brief') {
         return NextResponse.json({ brief: validateBrief(await callDirector(key, BRIEF_INSTRUCTIONS, JSON.stringify(context), 'motion_studio_brief', BRIEF_JSON_SCHEMA)) })
@@ -515,6 +517,7 @@ export async function POST(req: NextRequest) {
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
       template: body.template === 'inkpress' ? 'inkpress' : null,
+      siteGround: body.siteGround === 'dark' || body.siteGround === 'light' ? body.siteGround : null,
       featureMap: (Array.isArray(body.mapping) ? body.mapping : []).slice(0, 10).map((r: unknown) => {
         const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>
         return { feature: str(o.feature, 120), firstShot: str(o.firstShot, 120), altShot: str(o.altShot, 120), expresses: str(o.expresses, 200), pageState: str(o.pageState, 120) }

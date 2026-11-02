@@ -169,3 +169,14 @@ describe('stage 1 in an autonomous film', () => {
     });
   });
 });
+
+describe('the director picks cards of the product\'s look family', () => {
+  it('sends the site\'s ground to the map and the storyboard', async () => {
+    vi.mocked(requestMapping).mockResolvedValueOnce([{ feature: 'Proof', firstShot: id('RowEmbed'), altShot: '', expresses: 'trust', pageState: 'testimonials' }]);
+    vi.mocked(requestPlan).mockResolvedValueOnce(plan([title(3), shot(id('ListStackPress'), 'Proof'), title(2)]));
+    const capture = { url: 'https://acme.test/', title: 'Acme', page: { url: 'p', width: 3840, height: 3000 }, crops: [], brand: { background: '#ffffff', text: '#111111', accent: '#2563eb', fontFamily: null }, content: null, transient: false } as never;
+    await storyboardFilm(parseFilmRequest('a 10 second promo for https://acme.test'), { template: 'director', durationSec: 10, aspectRatio: '16:9', capture }, () => {});
+    expect(vi.mocked(requestMapping).mock.calls.at(-1)![0].siteGround).toBe('light');
+    expect(vi.mocked(requestPlan).mock.calls.at(-1)![0].siteGround).toBe('light');
+  });
+});

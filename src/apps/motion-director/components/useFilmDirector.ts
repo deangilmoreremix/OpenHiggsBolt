@@ -24,6 +24,7 @@ import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directo
 import { renderStyleframes, type Styleframe } from '../lib/styleframes';
 import { applyReviewFixes, finalReviewLines, reviewStillApplies, runFinalReview } from '../lib/finalReview';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
+import { releaseLine } from '../lib/releaseCheck';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
@@ -275,6 +276,15 @@ export function useFilmDirector(opts: {
         // Attached videos play just before the closing scene (after a one-scene film), as the build places them.
         lines.splice(lines.length > 1 ? lines.length - 1 : lines.length, 0, ...videos.map((v) => `Your video ${v.name} · ${v.sec}s`));
         const numbered = lines.map((line, i) => `${i + 1}. ${line}`);
+        // The method's decisions stay in the chat (the step list only keeps the last few lines):
+        // the visual direction (stage 1), the feature → shot map (stage 2) and the release check (stage 3).
+        const d = result.direction?.chosen;
+        const decided = [
+          d ? `Visual direction: ${d.name} — ${d.claim}${d.why ? ` Why: ${d.why}.` : ''}${d.tradeoff ? ` Trade-off: ${d.tradeoff}.` : ''}${result.direction!.others.length ? ` (weighed against ${result.direction!.others.join(', ')})` : ''}` : '',
+          result.mapping?.length ? `Feature → shot map:\n${mappingMessage(result.mapping).split('\n').slice(1).filter((l) => /^\d+\./.test(l)).join('\n')}` : '',
+          result.release?.length ? releaseLine(result.release) : '',
+        ].filter(Boolean);
+        if (decided.length) say('assistant', decided.join('\n\n'));
         say(
           'assistant',
           `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}${result.source === 'director' && result.plan.summary ? `${result.plan.summary}\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${result.capture ? ', using your captured pages' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, ask me why I chose something, or tell me what to change.`,
