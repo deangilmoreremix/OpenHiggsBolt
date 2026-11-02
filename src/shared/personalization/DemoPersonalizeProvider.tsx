@@ -180,6 +180,15 @@ interface GenerateOverrides {
  * The video URL another studio can load: the stored copy when the result
  * itself is browser-only (layers burned in locally), else a non-blob result URL.
  */
+/** The URL a saved project keeps for a result: the result itself unless it
+ *  is browser-only, else its stored copy ('' if there is none). */
+export function projectOutputUrl(result: GenerationResult | null | undefined): string {
+  if (!result) return ''
+  if (result.url && !result.url.startsWith('blob:')) return result.url
+  const stored = (result.metadata as Record<string, unknown> | undefined)?.storedUrl
+  return typeof stored === 'string' && /^https?:\/\//.test(stored) ? stored : ''
+}
+
 export function studioVideoUrl(result: GenerationResult | null | undefined): string {
   if (!result) return ''
   return publishableUrl(result) || (result.url && !result.url.startsWith('blob:') ? result.url : '')
@@ -1908,7 +1917,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         ].map((a) => [a.id, a.uploadedUrl || a.url]),
       ),
     ),
-    outputUrls: result?.urls || (result?.url ? [result.url] : []),
+    // A layered video plays from a browser-only blob: URL; the project keeps
+    // the stored copy (the blob would be stripped before saving).
+    outputUrls: result?.urls || (projectOutputUrl(result) ? [projectOutputUrl(result)] : []),
     outputType,
     clientId: selectedClientId || null,
     status: generation.status === 'complete' ? 'complete' : 'draft',

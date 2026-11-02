@@ -3,7 +3,7 @@
  * Publish must never hand a browser-only blob: URL to the publishing service.
  */
 import { describe, expect, it } from 'vitest'
-import { publishableUrl, studioVideoUrl } from '../DemoPersonalizeProvider'
+import { projectOutputUrl, publishableUrl, studioVideoUrl } from '../DemoPersonalizeProvider'
 
 describe('publishableUrl', () => {
   it('uses the stored layered video when layers were burned in', () => {
@@ -36,3 +36,17 @@ describe('studioVideoUrl', () => {
     expect(studioVideoUrl({ type: 'video', url: 'https://cdn.example/out.mp4', metadata: {} } as any)).toBe('https://cdn.example/out.mp4')
   })
 })
+
+describe('projectOutputUrl', () => {
+  it('saves the stored copy when the result plays from a blob', () => {
+    expect(projectOutputUrl({ type: 'video', url: 'blob:http://x/1', metadata: { storedUrl: 'https://cdn.example/layered.mp4' } } as any))
+      .toBe('https://cdn.example/layered.mp4')
+  })
+  it('saves a normal result URL as is', () => {
+    expect(projectOutputUrl({ type: 'video', url: 'https://cdn.example/out.mp4', metadata: {} } as any)).toBe('https://cdn.example/out.mp4')
+  })
+  it('saves nothing when only a blob exists', () => {
+    expect(projectOutputUrl({ type: 'video', url: 'blob:http://x/1', metadata: {} } as any)).toBe('')
+  })
+})
+
