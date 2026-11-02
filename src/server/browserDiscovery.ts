@@ -1804,6 +1804,8 @@ export interface PageCapture {
   emptyPlate: Buffer | null
   /** More routes of the same site (features, pricing…), each captured the same way. */
   routes: CapturedRoute[]
+  /** The site's pages found in its links (captured or not), for a later targeted capture. */
+  links?: Array<{ name: string; path: string; url: string }>
 }
 
 /** True when a capture read anything the page says (title, headline, sections, calls to action). */
@@ -2532,6 +2534,9 @@ export async function capturePageScreenshots(
 
         // More routes of the same site, captured the same way, while time allows.
         let cropBudget = (deep ? 400 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
+        // The site's other pages (name, path, address), captured or not: a storyboard row that needs a page
+        // the capture did not reach can have it captured on its own afterwards (pipeline stage 4).
+        result.links = pickCaptureRoutes(read?.links ?? [], url, 80)
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
           if (deep ? left() < 12_000 : elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
           try {

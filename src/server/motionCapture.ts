@@ -104,6 +104,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     emptyPlate: at('page-empty.jpg'),
     content: capture.content ?? null,
     brand: capture.brand,
+    // The site's pages from its links (captured or not), for a targeted capture after the storyboard.
+    links: (capture.links ?? []).slice(0, 80),
     transient,
   }
 }

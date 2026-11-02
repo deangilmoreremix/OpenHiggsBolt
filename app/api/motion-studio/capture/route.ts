@@ -42,7 +42,7 @@ const INTERNAL_FUNCTION_SECRET = process.env.INTERNAL_FUNCTION_SECRET || ''
 const backgroundCaptureEnabled = () => (process.env.NETLIFY === 'true' || process.env.NODE_ENV === 'production') && Boolean(INTERNAL_FUNCTION_SECRET)
 
 /** Starts the background capture; returns its job id, or null when it could not be started. */
-async function startBackgroundCapture(req: NextRequest, userId: string, url: string): Promise<string | null> {
+async function startBackgroundCapture(req: NextRequest, userId: string, url: string, targeted = false): Promise<string | null> {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '') || req.nextUrl?.origin || ''
   if (!base) return null
   const jobId = randomUUID()
@@ -51,7 +51,7 @@ async function startBackgroundCapture(req: NextRequest, userId: string, url: str
     const response = await fetch(`${base}/.netlify/functions/motion-studio-capture-background`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-internal-service-token': INTERNAL_FUNCTION_SECRET },
-      body: JSON.stringify({ jobId, userId, url }),
+      body: JSON.stringify({ jobId, userId, url, ...(targeted ? { targeted: true } : {}) }),
       signal: AbortSignal.timeout(10_000),
     })
     return response.ok ? jobId : null
@@ -66,9 +66,12 @@ export async function POST(req: NextRequest) {
   if (!user.ok) return user.response
 
   let url = ''
+  // Pipeline stage 4, after the storyboard: a page a storyboard row needs that the first capture lacks.
+  let targeted = false
   try {
     const body = await req.json()
     url = typeof body?.url === 'string' ? body.url.trim() : ''
+    targeted = body?.targeted === true
   } catch {
     // fall through to validation
   }
@@ -87,14 +90,14 @@ export async function POST(req: NextRequest) {
       }
       throw err
     }
-    const jobId = await startBackgroundCapture(req, user.userId, url)
+    const jobId = await startBackgroundCapture(req, user.userId, url, targeted)
     if (jobId) return NextResponse.json({ jobId, state: 'running' }, { status: 202 })
     // The background function could not be started: capture inside this request instead (shorter, but something).
   }
 
   let capture
   try {
-    capture = await capturePageScreenshots(url)
+    capture = targeted ? await capturePageScreenshots(url, { maxRoutes: 0 }) : await capturePageScreenshots(url)
   } catch (err) {
     if (err instanceof BrowserSsrfError) {
       return NextResponse.json({ error: 'That address cannot be captured. Use a public http(s) page.', code: 'URL_REJECTED' }, { status: 400 })

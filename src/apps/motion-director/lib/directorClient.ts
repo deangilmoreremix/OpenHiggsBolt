@@ -38,6 +38,8 @@ export interface SiteCapture {
   /** The site's logo (transparent PNG), when one was found. */
   logo?: string | null;
   brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null; surface?: string | null; field?: string | null; muted?: string | null; border?: string | null; bodyFont?: string | null; radius?: number | null };
+  /** The site's pages found in its links (captured or not), for a targeted capture after the storyboard. */
+  links?: Array<{ name: string; path: string; url: string }>;
   /** Every route captured, the page asked for first (upstream captures several routes of the site). */
   pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
   /** Pictures of the site found by the asset finder (people, team, products…), with what each one shows. */
@@ -108,9 +110,9 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  */
 export async function captureSite(
   url: string,
-  opts: { onProgress?: (elapsedSec: number) => void; cancelled?: () => boolean; pollMs?: number; maxWaitMs?: number } = {},
+  opts: { onProgress?: (elapsedSec: number) => void; cancelled?: () => boolean; pollMs?: number; maxWaitMs?: number; targeted?: boolean } = {},
 ): Promise<SiteCapture> {
-  const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url }, 32_000);
+  const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url, ...(opts.targeted ? { targeted: true } : {}) }, 32_000);
   if (!first.jobId) return first;
   const started = Date.now();
   const maxWait = opts.maxWaitMs ?? 840_000;

@@ -19,6 +19,7 @@ import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
+import { mergeCaptures, neededPages } from './targetedCapture';
 import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
@@ -358,9 +359,22 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
+  // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
+  const needed = opts.targetedCapture === false ? [] : neededPages(plan, opts.capture);
+  if (opts.capture && needed.length) {
+    log(`Capturing ${needed.length} page${needed.length === 1 ? '' : 's'} the storyboard needs: ${needed.map((n) => n.link.path).join(', ')}`, 'running');
+    const got = await Promise.all(
+      needed.map((n) => captureSite(n.link.url, { targeted: true, maxWaitMs: 240_000 }).then((c) => ({ n, c })).catch(() => null)),
+    );
+    let merged = opts.capture;
+    for (const g of got) if (g) merged = mergeCaptures(merged, g.c, { name: g.n.link.name, path: g.n.link.path });
+    const ok = got.filter(Boolean).length;
+    log(ok ? `Captured ${ok} more page${ok === 1 ? '' : 's'} for scene${ok === 1 ? '' : 's'} ${got.filter(Boolean).map((g) => g!.n.scene + 1).join(', ')}` : 'The extra pages could not be captured; those scenes use the nearest captured page', 'done');
+    opts = { ...opts, capture: merged };
+  }
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
