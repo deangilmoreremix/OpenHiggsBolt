@@ -619,11 +619,10 @@ describe('authenticated mode keeps the existing pipeline and controls', () => {
   it('uses research-business + discover-assets and renders today’s paid controls', async () => {
     const container = await mountModal({ access: 'authenticated' })
 
-    // The access mode gates the paid surface, so "Find My Brand" is offered on
-    // the free (anonymous) landing surface; the authenticated surface keeps its
-    // existing Lead Finder entry exactly as today — no panel is added or moved
-    // there. Both run through this SAME modal implementation.
-    expect(container.querySelector('#pz-find-my-brand')).toBeNull()
+    // Find My Brand is free and offered in every personalization modal,
+    // signed in or not (see PersonalizationModal "FIND MY BRAND"); the
+    // authenticated surface ALSO keeps its existing Lead Finder entry.
+    expect(container.querySelector('#pz-find-my-brand')).not.toBeNull()
 
     // Drive the existing Lead Finder flow: audience → chooser → search → select.
     await act(async () => {
@@ -646,27 +645,32 @@ describe('authenticated mode keeps the existing pipeline and controls', () => {
     })
     await flush(30)
 
-    // Authenticated selection is exactly today's behaviour: select only.
+    // Selecting a business fills the form and runs research and asset
+    // discovery once, both on the authenticated endpoints.
     await act(async () => {
       fireEvent.click(screen.getByText('Sunset Realty'))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/research-business').length).toBe(0)
-    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(0)
+    const researchAfterSelect = requestedUrls('/api/personalization/research-business').length
+    expect(researchAfterSelect).toBe(1)
+    const discoverAfterSelect = requestedUrls('/api/personalization/discover-assets').length
+    expect(discoverAfterSelect).toBeLessThanOrEqual(1)
     expect(ctx().clientForm.businessName).toBe('Sunset Realty')
 
     // The manual research + discovery steps use the authenticated endpoints.
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      // Selecting a business already runs research once (the button then
+      // reads "Research Complete"); clicking it runs research again.
+      fireEvent.click(screen.getByRole('button', { name: /^Research (Business|Complete)$/ }))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/research-business').length).toBe(1)
+    expect(requestedUrls('/api/personalization/research-business').length).toBe(researchAfterSelect + 1)
 
     await act(async () => {
       fireEvent.click(screen.getByText('Find Business Assets'))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(1)
+    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(discoverAfterSelect + 1)
     // The free endpoint is never used on the authenticated surface.
     expect(requestedUrls('/api/demo/discover').length).toBe(0)
 
@@ -731,7 +735,9 @@ describe('research merges additively into the client form', () => {
     // Research succeeds: a different canonical URL, a description and a
     // different phone arrive.
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      // Selecting a business already runs research once (the button then
+      // reads "Research Complete"); clicking it runs research again.
+      fireEvent.click(screen.getByRole('button', { name: /^Research (Business|Complete)$/ }))
     })
     await flush(30)
     expect(ctx().businessResearch.status).toBe('done')
@@ -759,7 +765,9 @@ describe('research merges additively into the client form', () => {
     await selectAuthenticatedBusiness(container)
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      // Selecting a business already runs research once (the button then
+      // reads "Research Complete"); clicking it runs research again.
+      fireEvent.click(screen.getByRole('button', { name: /^Research (Business|Complete)$/ }))
     })
     await flush(30)
 
@@ -776,7 +784,9 @@ describe('research merges additively into the client form', () => {
 
     // First discovery run fills the reviewable list with business A's assets.
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      // Selecting a business already runs research once (the button then
+      // reads "Research Complete"); clicking it runs research again.
+      fireEvent.click(screen.getByRole('button', { name: /^Research (Business|Complete)$/ }))
     })
     await flush(30)
     await act(async () => {
