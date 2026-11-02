@@ -121,15 +121,19 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   }
 
   const entitlements = (data?.entitlements || {}) as UserEntitlements;
-  const status = data?.status || 'inactive';
+  // The row's real status: undefined when the user has no row. Access checks
+  // must see that, not the 'inactive' display placeholder, or every user
+  // without a row (e.g. invited by the owner) is shown Preview Mode.
+  const rowStatus: string | undefined = data?.status || undefined;
+  const status = rowStatus || 'inactive';
   const email = data?.email || '';
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
   // A purchased row only needs to confirm it; it is never required.
-  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, rowStatus);
 
   // go-ai-viral requires a paid smartvideo_viral entitlement (or super user).
-  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, rowStatus);
 
   const hasAccess = baseAccess;
 
@@ -170,12 +174,16 @@ export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promi
   }
 
   const entitlements = (data?.entitlements || {}) as UserEntitlements;
-  const status = data?.status || 'inactive';
+  // The row's real status: undefined when the user has no row. Access checks
+  // must see that, not the 'inactive' display placeholder, or every user
+  // without a row (e.g. invited by the owner) is shown Preview Mode.
+  const rowStatus: string | undefined = data?.status || undefined;
+  const status = rowStatus || 'inactive';
   const email = data?.email || '';
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
-  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
-  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, rowStatus);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, rowStatus);
 
   return {
     clerkUserId,

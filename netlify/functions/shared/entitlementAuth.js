@@ -211,11 +211,10 @@ function isSuperUserEmail(email) {
  * revoked) removes it unless the user is a super user.
  */
 function hasSmartVideoGo(entitlements, status) {
-  if (status === undefined || status === null || status === '') {
-    return true;
-  }
   const ents = entitlements || {};
-  return ents.smartvideo_go === true || ents.founders === true;
+  if (ents.smartvideo_go === true || ents.founders === true) return true;
+  if (status === 'revoked') return false;
+  return true;
 }
 
 /**
@@ -272,8 +271,9 @@ async function resolveHasSmartVideoGo(supabase, userId, email) {
     }
   }
 
-  const entitlements = (row?.entitlements || {}) as any;
-  const status = row?.status || 'inactive';
+  const entitlements = row?.entitlements || {};
+  // Real row status (undefined when there is no row) — see hasSmartVideoGo.
+  const status = row?.status || undefined;
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
   const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
@@ -334,4 +334,5 @@ module.exports = {
   resolveIssuer,
   extractSessionToken,
   hasSmartVideoGo,
+  resolveHasSmartVideoGo,
 };
