@@ -64,8 +64,27 @@ export interface FilmMusic {
 const FPS = 30;
 const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
-const SFX_CUT = 'transition/swoosh-quick';
-const SFX_FLASH = 'impact/impact-transition';
+/**
+ * The sound of a scene change, by the seam's style (sound-design 4.2, anti-machine-gun): each style has two
+ * similar but different samples that alternate, so the film never repeats one whoosh at every cut. None is
+ * one of the library's byte-identical pairs (sound-design 3: swoosh-quick = sweep-fast-small, …).
+ */
+const SEAM_SOUNDS: Record<string, readonly [string, string]> = {
+  cut: ['transition/swoosh-quick', 'transition/air-woosh-quick'],
+  whip: ['transition/whoosh-fast', 'transition/sweep-fast'],
+  window: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  portal: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  iris: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  wipe: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  barn: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  line: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  ink: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  push: ['transition/transition-tech-slide', 'transition/warp-slide'],
+  dip: ['transition/swoosh-slow', 'light/light-transition-magic'],
+  leak: ['light/light-transition-magic', 'transition/swoosh-slow'],
+  flash: ['impact/impact-transition', 'impact/impact-zoom-quick'],
+  glitch: ['impact/impact-zoom-quick', 'impact/impact-transition'],
+};
 const sfxFile = (name: string) => `motion-studio/sfxlib/${name}.mp3`;
 /**
  * The output's audio runs late by a fixed amount (the encoder's priming), so a sound pinned at its
@@ -270,10 +289,13 @@ const INSET_PAGE_H = 1200;
    * is placed (`connectSeams`): both real shots play through it, so here only where and how is recorded.
    */
   const seams: Array<{ at: number; kind: SceneTransition; n: number }> = [];
+  const soundTurn: Record<string, number> = {};
   const cut = (kind: SceneTransition, wipeIndex: number) => {
-    const flash = kind === 'flash';
+    const hit = kind === 'flash' || kind === 'glitch';
     if (kind !== 'cut') seams.push({ at, kind, n: wipeIndex });
-    sfx.push(pinSfx(flash ? SFX_FLASH : SFX_CUT, at, { tailMs: flash ? 900 : 500, volume: 0.6, label: flash ? 'Impact' : 'Whoosh' }));
+    const pair = SEAM_SOUNDS[kind] ?? SEAM_SOUNDS.cut;
+    const turn = (soundTurn[kind] = (soundTurn[kind] ?? -1) + 1);
+    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh' }));
   };
   let wipes = 0;
 

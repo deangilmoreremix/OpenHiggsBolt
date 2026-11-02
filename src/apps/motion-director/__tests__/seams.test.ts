@@ -154,3 +154,13 @@ describe('seams in a vertical film', () => {
     expect(Number(m[1])).toBeLessThan(st.y + st.h);
   });
 });
+
+describe('seam sounds (sound-design 4.2, anti-machine-gun)', () => {
+  it('never plays the same sample at two scene changes in a row', () => {
+    const p = plan(Array.from({ length: 7 }, (_, i) => ({ ...scene('shot', 'brand/feature-zoom', (['whip', 'whip', 'cut', 'cut', 'window', 'window', 'cut'] as const)[i]), durationSec: 4 })));
+    const project = planToProject(p, {} as never);
+    const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && (c.label === 'Whoosh' || c.label === 'Impact')).sort((a, b) => a.start - b.start).map((c) => String(c.props.file));
+    expect(cuts.length).toBe(6);
+    cuts.slice(1).forEach((f, i) => expect(f).not.toBe(cuts[i]));
+  });
+});
