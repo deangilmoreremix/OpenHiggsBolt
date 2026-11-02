@@ -8,7 +8,8 @@ import { createContext, use } from 'react';
 export const TextMapContext = createContext<Readonly<Record<string, string>>>({});
 
 /** `text` as this clip says it (the replacement when the clip has one). Call during render. */
-export function useClipText(text: string): string {
+export function useClipText(text: string | undefined): string {
   const map = use(TextMapContext);
-  return map[text] ?? map[text.trim()] ?? text;
+  const t = text ?? '';
+  return map[t] ?? map[t.trim()] ?? t;
 }
