@@ -37,9 +37,12 @@ import {
   Box,
   ChevronRight,
 } from 'lucide-react'
-import { PREVIEW_LAYOUTS } from '../preview/presets'
-import { LAYER_IDS_BY_LAYOUT } from '../preview/presets'
-import type { PreviewLayoutId, PreviewLayerKind } from '../preview/types'
+import { Player } from '@remotion/player'
+import type { PlayerRef } from '@remotion/player'
+import { PREVIEW_LAYOUTS, LAYER_IDS_BY_LAYOUT, applyLayoutPreset } from '../preview/presets'
+import { PersonalizationComposition } from '../preview/PersonalizationComposition'
+import type { PreviewInputProps, PreviewLayoutId, PreviewLayerKind } from '../preview/types'
+import { buildPreviewInput } from './buildPreviewInput'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 
@@ -110,52 +113,6 @@ function resolveLabel(key: PersonalizationCategoryKey): string {
   return CATEGORIES.find((c) => c.key === key)?.label ?? key
 }
 
-/** Preview video clip for each layout. Every template has a published MP4. */
-const PREVIEW_VIDEO_URLS: Record<string, string | null> = {
-  'business-introduction': '/media/personalization-templates/business-introduction.mp4',
-  'product-showcase': '/media/personalization-templates/product-showcase.mp4',
-  'service-promotion': '/media/personalization-templates/service-promotion.mp4',
-  'special-offer': '/media/personalization-templates/special-offer.mp4',
-  'branded-ending': '/media/personalization-templates/branded-ending.mp4',
-  'customer-testimonial': '/media/personalization-templates/customer-testimonial.mp4',
-  'before-after-transformation': '/media/personalization-templates/before-after-transformation.mp4',
-  'team-member-intro': '/media/personalization-templates/team-member-intro.mp4',
-  'event-promotion': '/media/personalization-templates/event-promotion.mp4',
-  'menu-item-highlight': '/media/personalization-templates/menu-item-highlight.mp4',
-}
-
-/** Still poster frame for each layout, or null when none is published. */
-const PREVIEW_POSTER_URLS: Record<string, string | null> = {
-  'business-introduction': null,
-  'product-showcase': null,
-  'service-promotion': null,
-  'special-offer': null,
-  'branded-ending': null,
-  'customer-testimonial': null,
-  'before-after-transformation': null,
-  'team-member-intro': null,
-  'event-promotion': null,
-  'menu-item-highlight': null,
-}
-
-/** Normalise a media reference into a URL a `<video>`/`` can load. */
-function resolveMediaUrl(value: string | null | undefined): string | null {
-  if (!value) return null
-  if (value.startsWith('http://') || value.startsWith('https://')) return value
-  if (value.startsWith('/')) return value
-  return `/${value}`
-}
-
-/** The MP4 clip for a layout, or null when no preview video exists. */
-function previewVideoUrl(layoutId: PreviewLayoutId): string | null {
-  return resolveMediaUrl(PREVIEW_VIDEO_URLS[layoutId])
-}
-
-/** The still poster frame for a layout, or null when none exists. */
-function posterUrl(layoutId: PreviewLayoutId): string | null {
-  return resolveMediaUrl(PREVIEW_POSTER_URLS[layoutId])
-}
-
 /** Placeholder tile showing the layer arrangement as colored dots. */
 function TemplateLayerPreview({ layoutId }: { layoutId: PreviewLayoutId }): React.JSX.Element {
   const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? []
@@ -218,7 +175,14 @@ export interface PersonalizationTemplateBrowserProps {
 /** Categorized gallery of personalization layout templates. */
 export function PersonalizationTemplateBrowser({ onSelect }: PersonalizationTemplateBrowserProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
-  const { previewSettings, setPreviewLayout } = ctx
+  const { previewSettings, setPreviewLayout, source, previewVideo, clientForm, assets } = ctx
+  const baseInput = useMemo<PreviewInputProps | null>(
+    () =>
+      previewSettings
+        ? buildPreviewInput({ source, previewSettings, previewVideo, clientForm: clientForm ?? {}, assets })
+        : null,
+    [source, previewSettings, previewVideo, clientForm, assets],
+  )
   const [activeCategory, setActiveCategory] = useState<PersonalizationCategoryKey | 'all'>('all')
   const [query, setQuery] = useState('')
   const searchId = useId()
@@ -348,6 +312,7 @@ export function PersonalizationTemplateBrowser({ onSelect }: PersonalizationTemp
                   layoutId={layoutId}
                   active={previewSettings.layout === layoutId}
                   onSelect={handleSelect}
+                  baseInput={baseInput}
                 />
               ))}
             </div>
@@ -405,15 +370,36 @@ function TemplateCard({
   layoutId,
   active,
   onSelect,
+  baseInput,
 }: {
   layoutId: PreviewLayoutId
   active: boolean
   onSelect: (layoutId: PreviewLayoutId) => void
+  /** The customer's current preview input; the card re-lays it out. */
+  baseInput: PreviewInputProps | null
 }): React.JSX.Element {
+  const inputProps = useMemo<PreviewInputProps | null>(() => {
+    if (!baseInput) return null
+    const { brand } = baseInput
+    return {
+      ...baseInput,
+      settings: applyLayoutPreset(baseInput.settings, layoutId, {
+        businessName: brand.businessName || 'Your Business',
+        headline: brand.headline || brand.businessName || 'Your headline here',
+        offer: brand.offer || '20% off this week',
+        cta: brand.cta || 'Book now',
+        phone: brand.phone,
+        website: brand.website,
+        logoUrl: brand.logoUrl ?? undefined,
+        productUrl: brand.productUrl ?? undefined,
+        serviceUrl: brand.serviceUrl ?? undefined,
+      }),
+    }
+  }, [baseInput, layoutId])
+
   const layout = PREVIEW_LAYOUTS.find((l) => l.id === layoutId)
   if (!layout) return <></>
   const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? []
-  const clip = previewVideoUrl(layoutId)
   const [hovering, setHovering] = useState(false)
 
   return (
@@ -443,8 +429,8 @@ function TemplateCard({
         borderColor: hovering || active ? C.cyanBorder : C.border,
       }}
     >
-      {clip ? (
-        <TemplatePreview src={clip} active={active} hovering={hovering} />
+      {inputProps ? (
+        <TemplateLivePreview inputProps={inputProps} playing={active || hovering} />
       ) : (
         <TemplateLayerPreview layoutId={layoutId} />
       )}
@@ -515,48 +501,97 @@ function TemplateCard({
 }
 
 /**
- * The playing preview for a personalization layout template card.
+ * Live Remotion preview for a layout template card.
  *
- * Every card shows a real `<video>` (never a still image). Selected cards
- * autoplay; unselected cards show the first frame paused so the user still
- * sees the template in motion context without ten videos playing at once.
+ * Renders the real `PersonalizationComposition` — the customer's selected
+ * video with this template's layers on top — so each card shows exactly what
+ * the template will look like. The Player mounts only once the card scrolls
+ * near the viewport, and plays only while the card is selected or hovered so
+ * a grid of cards never decodes ten videos at once.
  */
-function TemplatePreview({
-  src,
-  active,
-  hovering,
+function TemplateLivePreview({
+  inputProps,
+  playing,
 }: {
-  src: string
-  active: boolean
-  hovering: boolean
+  inputProps: PreviewInputProps
+  playing: boolean
 }): React.JSX.Element {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<PlayerRef>(null)
+  const [inView, setInView] = useState(false)
 
   useEffect(() => {
-    const el = videoRef.current
+    const el = containerRef.current
     if (!el) return
-    const shouldPlay = active || hovering
-    const attempt = shouldPlay ? el.play() : el.pause()
-    if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {})
-  }, [src, active, hovering])
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setInView(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
+    try {
+      if (playing) player.play()
+      else player.pause()
+    } catch {
+      // Autoplay policies can reject play(); the still frame stays visible.
+    }
+  }, [playing, inView])
+
+  const settings = inputProps.settings
+  const durationInFrames = Math.max(1, Math.round(settings.durationInFrames))
+  // Paused cards rest on a frame where the overlays have finished animating in.
+  const restFrame = Math.min(durationInFrames - 1, Math.round(settings.fps * 1.5))
+  const PreviewComposition = PersonalizationComposition as unknown as React.ComponentType<
+    Record<string, unknown>
+  >
 
   return (
-    <video
-      ref={videoRef}
+    <div
+      ref={containerRef}
       data-testid="personalization-template-player"
-      src={src}
-      muted
-      playsInline
-      loop
-      autoPlay={active || hovering}
       style={{
         width: '100%',
-        aspectRatio: '16 / 9',
-        objectFit: 'cover',
+        aspectRatio: `${settings.width} / ${settings.height}`,
         borderRadius: 8,
-        display: 'block',
+        overflow: 'hidden',
         background: '#000',
+        // Clicks select the card; the preview itself is not interactive.
+        pointerEvents: 'none',
       }}
-    />
+    >
+      {inView ? (
+        <Player
+          ref={playerRef}
+          component={PreviewComposition}
+          inputProps={inputProps as unknown as Record<string, unknown>}
+          durationInFrames={durationInFrames}
+          compositionWidth={settings.width}
+          compositionHeight={settings.height}
+          fps={settings.fps}
+          initialFrame={restFrame}
+          loop
+          controls={false}
+          clickToPlay={false}
+          initiallyMuted
+          autoPlay={playing}
+          acknowledgeRemotionLicense
+          style={{ width: '100%', height: '100%' }}
+        />
+      ) : null}
+    </div>
   )
 }
