@@ -104,6 +104,10 @@ export interface PreviewVideoRef {
    *  original video" goes back to this project's own footage. Saved and
    *  restored with the preview, so it never comes from another project. */
   beforeRecast?: PreviewVideoRef | null
+  /** Sound played under this video when it has none of its own: a Full Body
+   *  Recast comes back silent, so "Keep the original video's sound" plays
+   *  the performance clip's sound with it. A chosen audio track wins. */
+  audioUrl?: string | null
 }
 
 /** Optional customer audio track applied to the personalized preview. */

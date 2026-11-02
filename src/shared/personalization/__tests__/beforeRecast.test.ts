@@ -39,4 +39,9 @@ describe('restorablePreviewVideo', () => {
   it('a non-recast video carries no original', () => {
     expect(restorablePreviewVideo({ ...demo, beforeRecast: demo })).toEqual(demo)
   })
+
+  it("keeps a recast's stored sound and drops an in-browser one", () => {
+    expect(restorablePreviewVideo({ ...recastOf(demo), audioUrl: 'https://cdn.example.com/clip.mp4' })?.audioUrl).toBe('https://cdn.example.com/clip.mp4')
+    expect(restorablePreviewVideo({ ...recastOf(demo), audioUrl: 'blob:http://x/2' })?.audioUrl).toBeNull()
+  })
 })

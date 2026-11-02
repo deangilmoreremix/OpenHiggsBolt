@@ -95,7 +95,7 @@ describe('applying a recast sets the preview length', () => {
       ctx().openPersonalize({
         source: { id: 'demo-len', title: 'Demo', mediaType: 'video', originalPrompt: 'p', sourceMedia: ORIGINAL, poster: null, fullPrompt: 'p', shortPrompt: 'p', sourceType: 'landing-demo', sourceMetadata: {} },
         initialAssets: {
-          presenterVideos: [{ id: 'pv-1', url: RECAST, name: 'Recast', type: 'presenter_video', source: 'url', mimeType: 'video/mp4' }],
+          presenterVideos: [{ id: 'pv-1', url: RECAST, name: 'Recast', type: 'presenter_video', source: 'url', mimeType: 'video/mp4', editMetadata: { operation: 'full_body_recast', sourceUrl: 'https://cdn.example.com/performance.mp4' } }],
         },
       })
     })
@@ -144,5 +144,23 @@ describe('applying a recast sets the preview length', () => {
     })
     expect(ctx().previewVideo).toBeNull()
     expect(ctx().previewSettings.durationInFrames).toBe(5 * fps)
+  })
+
+  it("a recast keeps its performance clip's sound with \"Keep the original video's sound\" on, and not with it off", async () => {
+    await act(async () => {
+      ctx().applyPresenterVideo('pv-1')
+    })
+    expect(ctx().previewVideo.audioUrl).toBe('https://cdn.example.com/performance.mp4')
+
+    await act(async () => {
+      ctx().restoreOriginalVideo()
+    })
+    await act(async () => {
+      ctx().updateGenOptions({ ...ctx().genOptions, preserveAudio: false })
+    })
+    await act(async () => {
+      ctx().applyPresenterVideo('pv-1')
+    })
+    expect(ctx().previewVideo.audioUrl).toBeNull()
   })
 })

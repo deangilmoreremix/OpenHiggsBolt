@@ -207,6 +207,8 @@ export interface PersonalizationAsset {
     outputFormat?: 'png' | 'jpeg' | 'webp'
     outputCompression?: number | null
     inputFidelity?: 'high' | 'low'
+    /** Full Body Recast: the performance clip it was made from (its sound). */
+    sourceUrl?: string
   }
   visionAnalysis?: PersonalizationVisionAnalysis
   visionValidation?: PersonalizationVisionValidation

@@ -258,7 +258,12 @@ export function restorablePreviewVideo(stored: unknown): PreviewVideoRef | null 
     delete rest.beforeRecast
     return rest
   }
-  return { ...video, beforeRecast: restorablePreviewVideo(video.beforeRecast) }
+  const restored: PreviewVideoRef = { ...video, beforeRecast: restorablePreviewVideo(video.beforeRecast) }
+  // An in-browser sound URL doesn't survive a reload either.
+  if (restored.audioUrl !== undefined && (typeof restored.audioUrl !== 'string' || restored.audioUrl.startsWith('blob:'))) {
+    restored.audioUrl = null
+  }
+  return restored
 }
 
 function clampPreviewNumber(value: unknown, min: number, max: number, fallback: number): number {
@@ -1515,6 +1520,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [outputType, setOutputType] = useState<OutputType>('prompt')
   const [mode, setMode] = useState<VideoPersonalizationMode | ImagePersonalizationMode | null>(null)
   const [genOptions, setGenOptions] = useState<GenerationOptions>({ ...EMPTY_GENERATION_OPTIONS })
+  // Read when a recast is applied ("Keep the original video's sound").
+  const preserveAudioRef = useRef(true)
+  preserveAudioRef.current = genOptions.preserveAudio !== false
   const [consent, setConsent] = useState(false)
 
   // Generation
@@ -1613,6 +1621,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       title: `Full Body Recast — ${job.identityName || 'Presenter'}`,
       kind: 'recast',
       beforeRecast: videoBeforeRecast(previewVideoRef.current),
+      // The recast is silent; keep the performance clip's sound under it.
+      audioUrl: preserveAudioRef.current && job.sourceUrl ? job.sourceUrl : null,
     })
     previewVideoRef.current = { url: job.resultUrl, poster: null, title: '', kind: 'recast' }
     void fitPreviewLengthToVideo(job.resultUrl, job.duration)
@@ -1621,7 +1631,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return updateAssetInLibrary(prev, createAssetFromUrl(job.resultUrl, 'presenter_video', {
         name: `${job.identityName || 'Presenter'} — Full Body Recast`,
         mimeType: 'video/mp4',
-        editMetadata: { operation: 'full_body_recast', model: RECAST_MODEL, prompt: job.prompt },
+        editMetadata: { operation: 'full_body_recast', model: RECAST_MODEL, prompt: job.prompt, sourceUrl: job.sourceUrl },
       }))
     })
     try {
@@ -1687,6 +1697,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       title: asset.name,
       kind: 'recast',
       beforeRecast: videoBeforeRecast(previewVideoRef.current),
+      audioUrl: preserveAudioRef.current && asset.editMetadata?.sourceUrl ? asset.editMetadata.sourceUrl : null,
     })
     previewVideoRef.current = { url: asset.url, poster: null, title: asset.name, kind: 'recast' }
     void fitPreviewLengthToVideo(asset.url)
