@@ -22,7 +22,7 @@ import { videoSceneSec } from '../lib/buildFilm';
 import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, requestFinalReview, fetchReferenceFrames, type GuidedContext, type SiteCapture } from '../lib/directorClient';
 import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
 import { renderStyleframes, type Styleframe } from '../lib/styleframes';
-import { applyReviewFixes, finalReviewLines, runFinalReview } from '../lib/finalReview';
+import { applyReviewFixes, finalReviewLines, reviewStillApplies, runFinalReview } from '../lib/finalReview';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
@@ -101,6 +101,11 @@ export function useFilmDirector(opts: {
   onMessage?: (m: FilmChatMessage) => void;
   /** Called when a film is built (the Agent panel installs it straight into the workbench). */
   onBuilt?: (film: BuiltFilm) => void;
+  /**
+   * The film as it is now where the caller keeps it (the workbench's project). A late review fix is only
+   * applied while this is still the film that was reviewed, so edits made in the meantime are never lost.
+   */
+  currentProject?: () => unknown;
   /** Which messages start a new film (default `isFilmRequest`). */
   isRequest?: (text: string) => boolean;
   /**
@@ -124,6 +129,11 @@ export function useFilmDirector(opts: {
   }, []);
   useEffect(() => () => { for (const url of styleframeUrls.current) URL.revokeObjectURL(url); }, []);
   const [film, setFilm] = useState<BuiltFilm | null>(null);
+  // The film this hook last installed, to tell whether a late review is still about the film on screen.
+  const lastFilm = useRef<BuiltFilm | null>(null);
+  useEffect(() => {
+    lastFilm.current = film;
+  }, [film]);
   /** The seven workflow steps (Product → Deliver) with their live state. */
   const [steps, setSteps] = useState<FilmStep[]>(initialSteps);
   const mark = useCallback((id: FilmStepId, state: FilmStepState, detail?: string) => setSteps((prev) => markStep(prev, id, state, detail)), []);
@@ -636,12 +646,17 @@ export function useFilmDirector(opts: {
         .then((report) => {
           if (!live() || !report.items.length) return;
           const { project: repaired, fixed } = applyReviewFixes(project, report.items);
-          if (fixed.length) {
+          // Only the film that was reviewed is repaired: if it was edited (here or in the workbench) while the
+          // review ran, the fix is offered instead of replacing the edited film.
+          const reader = optsRef.current.currentProject;
+          const unchanged = reviewStillApplies({ installed: lastFilm.current, reviewed: built, current: reader, project });
+          if (fixed.length && unchanged) {
             const next = { ...built, project: repaired };
             setFilm(next);
             optsRef.current.onBuilt?.(next);
           }
-          say('assistant', [...finalReviewLines(report), ...(fixed.length ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : [])].join('\n'));
+          const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
+          say('assistant', [...finalReviewLines(report), ...notes].join('\n'));
         })
         .catch(() => {
           /* no key or no answer: the program's checks above stand */

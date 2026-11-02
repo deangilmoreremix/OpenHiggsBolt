@@ -1,3 +1,4 @@
+import { SITE_THEME, themeBase } from './lib/palette';
 import type { WorkbenchManifest } from './cards/manifest';
 import type { ProjectData } from './types';
 import { selectedTheme, themeById, validThemeColors } from './theme';
@@ -11,7 +12,9 @@ export type PalettePreset = {format:'shotcraft-palette';version:1;name:string;ba
 export const paletteFromProject = (m:WorkbenchManifest | null,p:ProjectData,name:string):PalettePreset => {
   const theme=selectedTheme(m,p.themeId);
   if(!theme?.palette)throw Error(t("palette.needTheme"));
-  return {format:'shotcraft-palette',version:1,name:name.trim().slice(0,60)||`${themeLabel(theme.label)} · ${t("palette.custom")}`,baseThemeId:theme.id,colors:{...theme.palette,...validThemeColors(m,p.themeId,p.themeColors)}};
+  // "Your site": the base colours are the captured site's (the manifest only holds a placeholder for it).
+  const base=theme.id===SITE_THEME?themeBase(SITE_THEME,p.sitePalette)??theme.palette:theme.palette;
+  return {format:'shotcraft-palette',version:1,name:name.trim().slice(0,60)||`${themeLabel(theme.label)} · ${t("palette.custom")}`,baseThemeId:theme.id,colors:{...base,...validThemeColors(m,p.themeId,p.themeColors)}};
 };
 export const parsePalette = (text:string,m:WorkbenchManifest | null):PalettePreset => {
   if(text.length>65536)throw Error(t("palette.tooBig"));

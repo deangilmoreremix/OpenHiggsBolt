@@ -2346,11 +2346,14 @@ export async function capturePageScreenshots(
         const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
         const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
         // A heavy page may not give a tall picture in time: fall back to what is on screen rather than lose the page.
-        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip, timeout: 25_000 }).catch(() =>
-          page.screenshot({ type: 'jpeg', quality: 80, animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: Math.min(pageHeight, CAPTURE_VIEWPORT.height) }, timeout: 15_000 }),
-        )
+        // The height the picture really has: the tall shot, or only the viewport when that is all there was time for.
+        let shotHeight = pageHeight
+        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip, timeout: 25_000 }).catch(() => {
+          shotHeight = Math.min(pageHeight, CAPTURE_VIEWPORT.height)
+          return page.screenshot({ type: 'jpeg', quality: 80, animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: shotHeight }, timeout: 15_000 })
+        })
         // The page is usable from here: a stalled crop below must not lose it.
-        onShot?.(shot, pageHeight)
+        onShot?.(shot, shotHeight)
 
         // A deep capture looks for cards down the whole page, not only in the band that is photographed whole.
         const searchY = deep ? Math.max(pageHeight, Math.min(DEEP_MAX_Y, docHeight || 0)) : pageHeight
@@ -2406,8 +2409,10 @@ export async function capturePageScreenshots(
             }
           }
         }
-        const layout: RouteLayout = { pageH: pageHeight, sections: found?.sections ?? [], cards }
-        return { shot, pageHeight, pageClip, found, semantic, crops, layout, info }
+        // The layout describes the picture: sections and cards below what was photographed are left out.
+        const inShot = (r: CaptureRect) => r.y < shotHeight
+        const layout: RouteLayout = { pageH: shotHeight, sections: (found?.sections ?? []).filter(inShot), cards: shotHeight < pageHeight ? cards.filter(inShot) : cards }
+        return { shot, pageHeight: shotHeight, pageClip: shotHeight < pageHeight ? { ...pageClip, height: shotHeight } : pageClip, found, semantic, crops, layout, info }
       }
 
       /** What has been captured so far: the capture can end at any step and still return this. */

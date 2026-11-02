@@ -58,3 +58,17 @@ describe('stage 7: the independent review gets everything the pipeline lists', (
     expect(notes[0]).toMatch(/whip seam at 5\.0s is a plain cut now/);
   });
 });
+
+describe('a late review never throws away edits', () => {
+  it('applies only while the film on screen and the workbench copy are still the reviewed ones', async () => {
+    const { reviewStillApplies } = await import('../lib/finalReview');
+    const built = { project: {} };
+    const project = built.project;
+    expect(reviewStillApplies({ installed: built, reviewed: built, project })).toBe(true);
+    expect(reviewStillApplies({ installed: built, reviewed: built, current: () => project, project })).toBe(true);
+    // Edited in the workbench meanwhile (the store holds a new project object).
+    expect(reviewStillApplies({ installed: built, reviewed: built, current: () => ({ ...project }), project })).toBe(false);
+    // A new film was built meanwhile.
+    expect(reviewStillApplies({ installed: { project: {} }, reviewed: built, project })).toBe(false);
+  });
+});

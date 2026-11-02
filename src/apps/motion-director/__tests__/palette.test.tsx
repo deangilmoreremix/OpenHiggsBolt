@@ -114,3 +114,15 @@ describe('frame size', () => {
     expect(parseFilmRequest('a 9:16 promo for https://example.com/1:1').aspectRatio).toBe('9:16');
   });
 });
+
+describe('saving a palette with "Your site" selected', () => {
+  it('keeps the captured site colours, not the placeholder', async () => {
+    const { paletteFromProject } = await import('../palettePresets');
+    const { THEME_MANIFEST } = await import('../cards/projectCards');
+    const site = { page: '#ffffff', surface: '#f2f4f7', field: '#eef0f3', text: '#1c1d29', muted: '#5b6070', accent: '#a6c937', border: '#d9dce3' };
+    const preset = paletteFromProject(THEME_MANIFEST, { themeId: SITE_THEME, sitePalette: site, tracks: [] } as never, 'Mine');
+    expect(preset.baseThemeId).toBe(SITE_THEME);
+    expect(preset.colors.accent).toBe('#a6c937');
+    expect(preset.colors.page).toBe('#ffffff');
+  });
+});

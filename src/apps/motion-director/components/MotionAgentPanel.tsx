@@ -127,6 +127,8 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
       };
     },
     onMessage: (m) => useStore.getState().appendSessionMessage(ensureSession(), { role: m.role, content: m.content, ts: m.ts }),
+    // A late review fix applies only while the workbench still holds the film that was reviewed.
+    currentProject: () => useStore.getState().project,
     // Already in the workbench: the built film replaces the project (one undo step brings the old one back).
     onBuilt: (film) => {
       const sid = ensureSession();
