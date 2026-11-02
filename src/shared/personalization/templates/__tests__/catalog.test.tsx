@@ -27,8 +27,6 @@ import {
 
   RVE_ATTRIBUTION,
   RVE_LICENSE_NOTICE,
-  BRITO_ATTRIBUTION,
-  BRITO_LICENSE_NOTICE,
   animatedHeadlineTemplate,
   getRemotionDesignAttributionLine,
   getRemotionDesignLicenseNotice,
@@ -37,13 +35,13 @@ import {
   promoCtaTemplate,
   visualEffectTemplate,
 } from '../catalog'
+import { BRITO_ATTRIBUTION } from '../designs/batch3d/britoShared'
 import type {
   RemotionDesignCategory,
   RemotionDesignComponentProps,
   RemotionDesignTemplate,
   RemotionDesignTextField,
 } from '../types'
-import { DESIGN_VIDEO_CREDIT } from '../designs/shared'
 import {
   applyDesignTemplate,
   createDefaultPreviewSettings,
@@ -86,6 +84,20 @@ vi.mock('remotion', async (importOriginal) => {
     ),
   }
 })
+
+// @remotion/transitions also needs a registered composition. These tests do
+// not cover transition timing, so the series renders its scenes directly.
+vi.mock('@remotion/transitions', async () => {
+  const ReactMod = await import('react')
+  const pass = ({ children }: { children?: React.ReactNode }) =>
+    ReactMod.createElement(ReactMod.Fragment, null, children)
+  return {
+    TransitionSeries: Object.assign(pass, { Sequence: pass, Transition: () => null }),
+    linearTiming: (options: unknown) => options,
+  }
+})
+vi.mock('@remotion/transitions/fade', () => ({ fade: () => ({}) }))
+vi.mock('@remotion/transitions/slide', () => ({ slide: () => ({}) }))
 
 const EXPECTED_IDS = [
   'animated-headline',
@@ -297,11 +309,6 @@ describe('Remotion design catalog', () => {
     }
   })
 
-  it('includes the repo-3 (Alejandro Brito) MIT notice in the credits surface', () => {
-    expect(getRemotionDesignLicenseNotice()).toContain(BRITO_LICENSE_NOTICE)
-    expect(getRemotionDesignAttributionLine()).toContain(BRITO_ATTRIBUTION)
-  })
-
   it('exposes the MIT attribution and permission notice for the product UI', () => {
     // The credits surface shows BOTH upstream credit lines (contract
     // addition C10): a project can use designs from both repositories.
@@ -333,13 +340,6 @@ describe('Remotion design catalog', () => {
     // The licence file stays reachable from the credits surface (OFL clause 2).
     expect(notice).toContain(DESIGN_FONT_LICENSE_FILE)
     expect(DESIGN_FONT_LICENSE_FILE).toBe('/fonts/OFL.txt')
-  })
-
-  it('carries the OFL typeface attribution in the rendered credit line', () => {
-    // BOTH notices in one line: the MIT upstream credit (which the e2e
-    // spec asserts) and the OFL typeface attribution (D2).
-    expect(DESIGN_VIDEO_CREDIT).toContain('MIT')
-    expect(DESIGN_VIDEO_CREDIT).toContain(DESIGN_FONT_ATTRIBUTION)
   })
 
   it('declares the fixed-SVG-id constraint for the affected designs (item 13)', () => {
@@ -491,20 +491,11 @@ describe('Remotion design adapters', () => {
     }
   })
 
-  it('draws the MIT credit line inside every design', () => {
+  it('draws no copyright or licence credit inside any design', () => {
     for (const template of REMOTION_DESIGN_TEMPLATES) {
       const { container, unmount } = renderTemplate(template)
-      const credit = container.querySelector('[data-remotion-design-credit]')
-      expect(credit).not.toBeNull()
-      // The credit names the upstream the design came from.
-      if (template.source.repository === 'free-remotion-templates') {
-        expect(credit?.textContent).toContain('Trimora')
-      } else if (template.source.repository === 'remotion-video-templates') {
-        expect(credit?.textContent).toContain('Alejandro Brito')
-      } else {
-        expect(credit?.textContent).toContain('React Video Editor')
-        expect(credit?.textContent).not.toContain('RenderComp')
-      }
+      expect(container.querySelector('[data-remotion-design-credit]'), template.id).toBeNull()
+      expect(container.textContent ?? '', template.id).not.toMatch(/MIT License|Permission is hereby granted|©/)
       unmount()
     }
   })

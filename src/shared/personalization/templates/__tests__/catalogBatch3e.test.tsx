@@ -296,8 +296,7 @@ describe('batch 3e — adapters render with brand data', () => {
             <Component {...makeProps({ width, height, frame })} />,
           )
           expect(container.querySelector(`[data-remotion-design="${id}"]`), id).not.toBeNull()
-          const credit = container.querySelector('[data-remotion-design-credit="rve"]')
-          expect(credit?.textContent ?? '', id).toContain('React Video Editor')
+          expect(container.querySelector('[data-remotion-design-credit]'), id).toBeNull()
           const text = plainText(container)
           for (const demo of DEMO_COPY[id] ?? []) expect(text, `${id} @${frame}`).not.toContain(demo)
           // No broken image: none of these designs draws one.

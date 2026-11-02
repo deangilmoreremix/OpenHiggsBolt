@@ -567,12 +567,6 @@ function TemplateCard({
         </div>
       )}
 
-      {item.kind === 'design' ? (
-        <p style={{ ...hintStyle, margin: 0, fontSize: 9, color: C.muted2 }} title={item.design.source.attribution}>
-          From {item.design.source.repository} · {item.design.source.license}
-        </p>
-      ) : null}
-
       <button
         type="button"
         data-testid="personalization-template-use"

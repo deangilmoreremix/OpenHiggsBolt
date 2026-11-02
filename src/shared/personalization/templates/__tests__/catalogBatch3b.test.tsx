@@ -161,7 +161,7 @@ function expectRendered(host: HTMLElement, id: string) {
   const error = host.querySelector('[data-render-error]')
   expect(error?.textContent ?? null, `${id} render error`).toBeNull()
   expect(host.querySelector(`[data-remotion-design="${id}"]`), `${id} stage`).not.toBeNull()
-  expect(host.querySelector('[data-remotion-design-credit]')?.textContent ?? '').toContain('Trimora')
+  expect(host.querySelector('[data-remotion-design-credit]'), `${id} credit`).toBeNull()
   expect(host.innerHTML, `${id} NaN`).not.toMatch(/NaN/)
 }
 

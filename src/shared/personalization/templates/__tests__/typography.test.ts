@@ -33,7 +33,6 @@ import {
 } from '../typography'
 import {
   DESIGN_BODY_FONT_STACK,
-  DESIGN_CREDIT_FONT_STACK,
   DESIGN_DISPLAY_FONT_STACK,
   DESIGN_FONT_STACKS,
 } from '../designs/fonts'
@@ -281,7 +280,6 @@ describe('the design layer exposes the same stacks', () => {
   it('re-exports the canonical stack', () => {
     expect(DESIGN_BODY_FONT_STACK).toBe(DESIGN_FONT_STACK)
     expect(DESIGN_DISPLAY_FONT_STACK).toBe(DESIGN_FONT_STACK)
-    expect(DESIGN_CREDIT_FONT_STACK).toBe(DESIGN_FONT_STACK)
   })
 
   it('gives every role a stack', () => {

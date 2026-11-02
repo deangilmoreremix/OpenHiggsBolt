@@ -360,10 +360,10 @@ describe('batch 3a adapters', () => {
     expect(at(140)).toContain('Like')
   })
 
-  it('draws the MIT credit line inside every design', () => {
+  it('draws no credit line inside any design', () => {
     for (const template of BATCH_3A_TEMPLATES) {
       const { container, unmount } = renderTemplate(template)
-      expect(container.querySelector('[data-remotion-design-credit]')?.textContent).toContain('Trimora')
+      expect(container.querySelector('[data-remotion-design-credit]')).toBeNull()
       unmount()
     }
   })

@@ -298,9 +298,7 @@ describe('batch 3g — adapters render with brand data', () => {
       for (const frame of [0, Math.round(end / 3), Math.round(end / 2), end]) {
         const { container, unmount } = renderAt(entry, frame)
         expect(container.innerHTML.length, `${entry.id}@${frame}`).toBeGreaterThan(0)
-        const credit = container.querySelector('[data-remotion-design-credit]')
-        expect(credit?.textContent, entry.id).toContain('React Video Editor')
-        expect(credit?.textContent, entry.id).not.toContain('RenderComp')
+        expect(container.querySelector('[data-remotion-design-credit]'), entry.id).toBeNull()
         const stage = container.querySelector('[data-remotion-design]') as HTMLElement
         expect(stage.getAttribute('data-remotion-design'), entry.id).toBe(entry.id)
         expect(stage.style.backgroundColor, entry.id).toBe('transparent')

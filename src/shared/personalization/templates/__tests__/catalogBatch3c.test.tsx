@@ -255,7 +255,7 @@ describe('batch 3c adapters', () => {
           clock.frame = frame
           const { container, unmount } = renderTemplate(t)
           expect(container.querySelector(`[data-remotion-design="${t.id}"]`)).not.toBeNull()
-          expect(container.querySelector('[data-remotion-design-credit]')?.textContent).toContain('Trimora')
+          expect(container.querySelector('[data-remotion-design-credit]')).toBeNull()
           unmount()
         }
       }

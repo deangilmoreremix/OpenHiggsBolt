@@ -286,14 +286,12 @@ describe('batch 3h — registry entries', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('batch 3h — adapters render', () => {
-  it.each(EXPECTED_IDS)('%s renders at several frames with the repo-2 credit', (id) => {
+  it.each(EXPECTED_IDS)('%s renders at several frames with no credit line', (id) => {
     for (const frame of [0, 15, 45, 90, 149]) {
       clock.frame = frame
       const { container, unmount } = renderDesign(id, { frame })
       expect(container.querySelector(`[data-remotion-design="${id}"]`)).not.toBeNull()
-      expect(container.querySelector('[data-remotion-design-credit="rve"]')?.textContent).toContain(
-        RVE_ATTRIBUTION,
-      )
+      expect(container.querySelector('[data-remotion-design-credit]')).toBeNull()
       expect(canvasOf(container).innerHTML.length).toBeGreaterThan(0)
       unmount()
     }

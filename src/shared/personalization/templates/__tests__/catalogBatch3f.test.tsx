@@ -291,14 +291,10 @@ describe('batch 3f — adapters render', () => {
     }
   })
 
-  it('draws the React Video Editor credit inside every design', () => {
+  it('draws no credit inside any design', () => {
     for (const t of BATCH_3F_TEMPLATES) {
       const { container, unmount } = renderTemplate(t)
-      const credit = container.querySelector('[data-remotion-design-credit]')
-      expect(credit, t.id).not.toBeNull()
-      expect(credit?.textContent, t.id).toContain('React Video Editor')
-      expect(credit?.textContent, t.id).toContain('Permission is hereby granted')
-      expect(credit?.textContent, t.id).not.toContain('RenderComp')
+      expect(container.querySelector('[data-remotion-design-credit]'), t.id).toBeNull()
       unmount()
     }
   })

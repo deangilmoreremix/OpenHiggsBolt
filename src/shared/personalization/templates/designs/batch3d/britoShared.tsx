@@ -29,11 +29,7 @@
 import React from 'react'
 import { AbsoluteFill } from 'remotion'
 import type { RemotionDesignComponentProps, RemotionDesignTemplate } from '../../types'
-import { DESIGN_CREDIT_FONT_STACK, DESIGN_FONT_STACK, useDesignFonts } from '../fonts'
-// The OFL typeface attribution joins the credit line exactly as it does in the
-// repo-1 and repo-2 credits (Phase 3 decision D2). `designs/fonts.ts` does not
-// re-export it, so it comes from the typography module directly.
-import { DESIGN_FONT_ATTRIBUTION } from '../../typography'
+import { DESIGN_FONT_STACK, useDesignFonts } from '../fonts'
 import { mix, withAlpha } from '../../_upstream/brito-lib/colors'
 
 /* -------------------------------------------------------------------------- */
@@ -308,50 +304,8 @@ export function britoChartBackground(primary: string, accent: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Stage + credit                                                              */
+/* Stage                                                                       */
 /* -------------------------------------------------------------------------- */
-
-/**
- * The credit drawn inside every repo-3 design: the attribution line, the
- * bundled-typeface attribution, and — as small print — the upstream's MIT
- * licence with its copyright line.
- */
-export function BritoCreditBlock(): React.ReactElement {
-  return (
-    <div
-      data-remotion-design-credit="brito"
-      style={{
-        position: 'absolute',
-        right: 8,
-        bottom: 6,
-        maxWidth: '72%',
-        textAlign: 'right',
-        fontFamily: DESIGN_CREDIT_FONT_STACK,
-        fontSize: 9,
-        lineHeight: 1.25,
-        fontWeight: 500,
-        letterSpacing: 0.2,
-        color: 'rgba(255,255,255,0.55)',
-        textShadow: '0 1px 3px rgba(0,0,0,0.65)',
-        pointerEvents: 'none',
-      }}
-    >
-      <div>{BRITO_ATTRIBUTION}</div>
-      <div style={{ whiteSpace: 'nowrap' }}>{DESIGN_FONT_ATTRIBUTION}</div>
-      <div
-        style={{
-          marginTop: 2,
-          fontSize: 6,
-          lineHeight: 1.2,
-          whiteSpace: 'pre-line',
-          opacity: 0.85,
-        }}
-      >
-        {BRITO_LICENSE_NOTICE}
-      </div>
-    </div>
-  )
-}
 
 /**
  * The stage every repo-3 design renders into.
@@ -360,11 +314,9 @@ export function BritoCreditBlock(): React.ReactElement {
  * (`../rveSharedDesign.tsx`): the same DOM hooks (`data-remotion-design`,
  * `data-remotion-design-canvas`), the same composition-sized canvas scaled
  * into the design box, the same "omit the transform when the box already is
- * the composition" rule and the same `useDesignFonts()` render gate. Two
- * differences:
+ * the composition" rule and the same `useDesignFonts()` render gate. No
+ * copyright or licence credit is drawn inside the design. One difference:
  *
- *  - it draws the repo-3 credit (`BritoCreditBlock`) instead of the
- *    RenderComp or React Video Editor credit;
  *  - `overlay` makes the stage explicitly transparent (overlays), and `css`
  *    injects a scoped stylesheet (canvas-fill overrides, see
  *    `britoRootBackgroundCss`).
@@ -419,7 +371,6 @@ export function BritoDesignStage({
       >
         {children}
       </AbsoluteFill>
-      <BritoCreditBlock />
     </AbsoluteFill>
   )
 }
