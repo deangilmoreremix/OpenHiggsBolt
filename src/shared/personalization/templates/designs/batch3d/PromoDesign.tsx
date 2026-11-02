@@ -7,9 +7,8 @@
  * The upstream is a complete product promo: an "Introducing" hook card with
  * the product name and tagline, feature scenes (a numbered callout beside a
  * Ken-Burns-panned screenshot) that slide in from the right, and a dark CTA
- * card that fades in. Scene changes used `@remotion/transitions`, which is
- * not installed — the copy uses a local re-implementation with the same
- * timing and look (`_upstream/brito-promo/transitions.tsx`, deviation D3).
+ * card that fades in. Scene changes use the upstream's own
+ * `@remotion/transitions` (slide and fade).
  *
  * Brand mapping:
  *  - product name ← business name; tagline ← headline;

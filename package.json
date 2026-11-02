@@ -156,7 +156,9 @@
     "@remotion/media": "4.0.499",
     "@remotion/motion-blur": "4.0.499",
     "@remotion/player": "4.0.499",
+    "@remotion/transitions": "4.0.499",
     "@remotion/web-renderer": "4.0.499",
+    "@remotion/zod-types": "4.0.499",
     "@sparticuz/chromium": "^153.0.0",
     "@supabase/supabase-js": "^2.108.2",
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
@@ -191,9 +193,8 @@
     "tailwindcss": "^3.4.0",
     "three": "0.186.1",
     "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
-    "zustand": "5.0.8",
     "zod": "4.3.6",
-    "@remotion/zod-types": "4.0.499"
+    "zustand": "5.0.8"
   },
   "devDependencies": {
     "@clerk/testing": "^2.2.6",

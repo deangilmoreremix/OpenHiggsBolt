@@ -17,14 +17,8 @@
 //    @remotion/google-fonts (not installed, and it would fetch the face
 //    from Google at runtime). INTER now resolves to the app-bundled Inter
 //    subset (DESIGN_FONT_STACK) — see _upstream/brito-lib/fonts.ts.
-// D3 @remotion/transitions: the package is not installed (and must not be),
-//    so the three imports ("@remotion/transitions", ".../fade", ".../slide")
-//    now point at "./transitions" — a local re-implementation of exactly the
-//    API used here (TransitionSeries / .Sequence / .Transition, linearTiming,
-//    slide({ direction }), fade()) built on plain remotion <Sequence> +
-//    interpolate() with the same overlap timing and the same look (slide
-//    pushes the outgoing scene out while the incoming one enters; fade fades
-//    the incoming scene in over the outgoing one). The JSX below is unchanged.
+// D3 (withdrawn): the upstream's own @remotion/transitions imports are used
+//    unchanged — the package is installed at the app's Remotion version.
 // D4 staticFile(): `staticFile` was dropped from the remotion import and the
 //    feature screenshot `<Img src={staticFile(screenshot)} .../>` became
 //    `<Img src={screenshot} .../>`: entries of `screenshots` are now resolved
@@ -51,9 +45,9 @@ import {
 import {
   TransitionSeries,
   linearTiming,
-} from "./transitions";
-import { fade } from "./transitions";
-import { slide } from "./transitions";
+} from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
 import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
 import { SNAPPY, GENTLE } from "../brito-lib/springs";

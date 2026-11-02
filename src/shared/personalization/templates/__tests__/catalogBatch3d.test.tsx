@@ -7,7 +7,7 @@
  * The designs are rendered for real inside a Remotion composition context
  * (`<Thumbnail>` from `@remotion/player`), not with mocked hooks: several of
  * the upstreams lay themselves out with `<Sequence>` / `<Series>` (and the
- * promo with the local `@remotion/transitions` replacement), which need a
+ * promo with `@remotion/transitions`), which need a
  * real timeline.
  */
 import React, { act } from 'react'
@@ -29,7 +29,6 @@ import {
 } from '../designs/batch3d/britoShared'
 import { britoBrandCaptions } from '../designs/batch3d/CaptionedShortDesign'
 import { britoKineticLines } from '../designs/batch3d/KineticTextDesign'
-import { layoutTransitionSeries, TransitionSeries, linearTiming, slide, fade } from '../_upstream/brito-promo/transitions'
 import { promoTemplateCalculateMetadata, promoTemplateDefaultProps } from '../_upstream/brito-promo/PromoTemplate'
 import { RVE_ATTRIBUTION } from '../designs/rveSharedDesign'
 import { listRemotionDesignTemplates } from '../registry'
@@ -360,22 +359,11 @@ describe('batch 3d — the designs render with brand data', () => {
     }
   }, 60000)
 
-  it('draws the right credit block inside every design', async () => {
+  it('draws no credit block inside any design', async () => {
     for (const entry of BATCH_3D_TEMPLATES) {
       const host = await renderAt(entry, 30)
-      const credit = host.querySelector('[data-remotion-design-credit]')
-      expect(credit, entry.id).not.toBeNull()
-      const text = credit?.textContent ?? ''
-      if (entry.id.startsWith('brito-')) {
-        expect(text, entry.id).toContain(BRITO_ATTRIBUTION)
-        expect(text, entry.id).toContain('Copyright (c) 2026 Alejandro Brito')
-        expect(text, entry.id).toContain('Permission is hereby granted')
-        expect(text, entry.id).not.toContain('React Video Editor')
-        expect(text, entry.id).not.toContain('RenderComp')
-      } else {
-        expect(text, entry.id).toContain('React Video Editor')
-        expect(text, entry.id).not.toContain('Alejandro Brito')
-      }
+      expect(host.querySelector('[data-remotion-design-credit]'), entry.id).toBeNull()
+      expect(host.textContent ?? '', entry.id).not.toContain('Permission is hereby granted')
       cleanup()
     }
   }, 60000)
@@ -496,22 +484,7 @@ describe('batch 3d — captions and transitions', () => {
     expect((many[many.length - 1].endMs / 1000) * 30 + 20).toBeLessThan(300)
   })
 
-  it('lays the promo scenes out with the same overlap as @remotion/transitions', () => {
-    const scenes = layoutTransitionSeries([
-      <TransitionSeries.Sequence key="a" durationInFrames={70} />,
-      <TransitionSeries.Transition key="t1" presentation={slide({ direction: 'from-right' })} timing={linearTiming({ durationInFrames: 20 })} />,
-      <TransitionSeries.Sequence key="b" durationInFrames={90} />,
-      <TransitionSeries.Transition key="t2" presentation={fade()} timing={linearTiming({ durationInFrames: 20 })} />,
-      <TransitionSeries.Sequence key="c" durationInFrames={80} />,
-    ])
-    expect(scenes.map((s) => [s.from, s.durationInFrames])).toEqual([
-      [0, 70],
-      [50, 90],
-      [120, 80],
-    ])
-    expect(scenes[0].exit?.presentation).toEqual({ kind: 'slide', direction: 'from-right' })
-    expect(scenes[1].enter?.presentation).toEqual({ kind: 'slide', direction: 'from-right' })
-    expect(scenes[2].enter?.presentation).toEqual({ kind: 'fade' })
+  it('gives the promo the same length as the upstream calculateMetadata', () => {
     // Same total as the upstream's own calculateMetadata, for the 1-feature promo.
     const meta = promoTemplateCalculateMetadata({
       props: { ...promoTemplateDefaultProps, features: promoTemplateDefaultProps.features.slice(0, 1) },
@@ -527,9 +500,11 @@ describe('batch 3d — captions and transitions', () => {
     )
       .map((el) => el.style.transform)
       .filter((t) => t.startsWith('translateX(') && t.endsWith('%)'))
-    // 10 frames into the 20-frame slide: entering at +50 %, exiting at −50 %.
-    expect(transforms).toContain('translateX(50%)')
-    expect(transforms).toContain('translateX(-50%)')
+    // 10 frames into the 20-frame slide: entering at +50 %, exiting at −50 %
+    // (@remotion/transitions adds a tiny epsilon to the entering scene).
+    const offsets = transforms.map((t) => Number.parseFloat(t.slice('translateX('.length)))
+    expect(offsets.some((v) => Math.abs(v - 50) < 0.01), transforms.join(', ')).toBe(true)
+    expect(offsets.some((v) => Math.abs(v + 50) < 0.01), transforms.join(', ')).toBe(true)
     cleanup()
   })
 })
@@ -588,13 +563,12 @@ describe('batch 3d — the upstream copies', () => {
     )
   })
 
-  it('contain no URLs, staticFile(), google-fonts or transitions imports outside comments', () => {
+  it('contain no URLs, staticFile() or google-fonts imports outside comments', () => {
     for (const file of files) {
       const body = code(file)
       expect(body, file).not.toMatch(/https?:\/\//)
       expect(body, file).not.toContain('staticFile(')
       expect(body, file).not.toContain('@remotion/google-fonts')
-      expect(body, file).not.toContain('@remotion/transitions')
       expect(body, file).not.toContain('.json"')
       expect(body, file).not.toMatch(/Math\.random|Date\.now/)
     }
@@ -603,10 +577,6 @@ describe('batch 3d — the upstream copies', () => {
   it('carry a provenance header and record every deviation', () => {
     for (const file of files) {
       const source = fs.readFileSync(path.join(upstreamDir, file), 'utf-8')
-      if (file === path.join('brito-promo', 'transitions.tsx')) {
-        expect(source).toContain('NOT UPSTREAM CODE')
-        continue
-      }
       if (file.startsWith('brito-')) {
         expect(source, file).toContain(
           'https://github.com/deangilmoreremix/remotion-video-templates (main @ 90149464d51a43fcb90e15491bf0d681c1b0fa49)',

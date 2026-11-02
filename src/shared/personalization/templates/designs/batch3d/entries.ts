@@ -376,7 +376,7 @@ export const britoPromoTemplate: RemotionDesignTemplate = {
       `Renders in the browser export path: springs, transforms and opacity only. A full-frame intro (${BRITO_PROMO_FRAMES} ` +
       'frames: hook, one feature scene, CTA) that then reveals the video. The screenshot comes from brand media ' +
       '(product, then service image); without one, a brand-coloured app-window mock-up (plain DOM) is shown. The ' +
-      'upstream\'s @remotion/transitions slide/fade are rebuilt with plain Sequence + interpolate. 16:9 only: the ' +
+      'scene changes use the upstream\'s own @remotion/transitions slide and fade. 16:9 only: the ' +
       'upstream\'s fixed-px callout column is too narrow on a 1080-wide canvas.',
   },
   previewCompatible: true,
