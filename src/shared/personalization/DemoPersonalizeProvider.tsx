@@ -1738,6 +1738,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     previewSeedRef.current = previewSeed
   }, [previewSeed])
 
+  // Ends the current business session: a Find My Brand run, research or
+  // auto-import still in flight belongs to the project being closed or
+  // replaced, so its late results are dropped instead of filling the next one.
+  const endBusinessSession = useCallback(() => {
+    businessSessionRef.current += 1
+    autoImportPendingRef.current = false
+    autoImportedDiscoveredIdsRef.current = new Set()
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+    setDiscoveryError(null)
+    setBusinessResearch({ status: 'idle' })
+  }, [])
+
   // ── Reset on source change ─────────────────────────────────────────────────
 
   // Tracks the id the reset last ran for. `createFinalVideo` patches the
@@ -1751,6 +1764,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const nextId = source.id ?? null
     if (resetSourceIdRef.current === nextId) return
     resetSourceIdRef.current = nextId
+    endBusinessSession()
     // Revoke any outstanding blob URLs before resetting state. A studio that
     // seeded its own brand assets gets them back instead of an empty library;
     // every other caller still starts from the empty library.
@@ -1784,7 +1798,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo(null)
     setPreviewApproved(false)
     setApprovalStale(false)
-  }, [source?.id, source])
+  }, [source?.id, source, endBusinessSession])
 
   // A Full Body Recast that finished while the modal was closed (or before a
   // reload) is applied once its source is open again. Declared after the reset
@@ -2445,6 +2459,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Reopening the same source must reset the form again: the personalizer
     // always opens empty, with the last project offered rather than kept.
     resetSourceIdRef.current = undefined
+    endBusinessSession()
     // Revoke outstanding blob URLs (reference-counted, idempotent;
     // outside the state updater — updaters must stay pure for Strict Mode replay)
     releaseAllBlobUrls()
@@ -2464,7 +2479,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     onCompleteFiredRef.current = false
     triggerRef.current?.focus()
     triggerRef.current = null
-  }, [accessProp, releaseAllBlobUrls])
+  }, [accessProp, releaseAllBlobUrls, endBusinessSession])
 
   // ── Client actions ─────────────────────────────────────────────────────────
 

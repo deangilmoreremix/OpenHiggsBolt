@@ -1068,4 +1068,57 @@ describe('Discovered Assets Integration', () => {
     expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
     expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
   })
+  it('drops a discovery that finishes after the modal is closed', async () => {
+    await renderProvider()
+    await openSource()
+
+    let finish: (value: unknown) => void = () => {}
+    const pending = new Promise((resolve) => { finish = resolve })
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/discover-assets')) {
+        await pending
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            discoveredAssets: [{
+              id: 'late-1',
+              sourceUrl: 'https://old-business.com/logo.png',
+              previewUrl: 'https://old-business.com/logo.png',
+              sourceType: 'WEBSITE',
+              category: 'logo',
+              selected: true,
+              recommended: true,
+              rejected: false,
+            }],
+          }),
+        } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    let c = (window as any).__personalizationCtx
+    let run: Promise<void> = Promise.resolve()
+    await act(async () => {
+      run = c.discoverAssets('https://old-business.com')
+    })
+    expect((window as any).__personalizationCtx.discoveryStatus).toBe('discovering')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.closePersonalize()
+    })
+    await openSource()
+
+    await act(async () => {
+      finish(undefined)
+      await run
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets).toHaveLength(0)
+    expect(c.discoveryStatus).toBe('idle')
+    expect(c.assets.logos).toHaveLength(0)
+  })
 })
