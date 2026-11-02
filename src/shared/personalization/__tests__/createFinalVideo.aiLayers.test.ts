@@ -126,6 +126,20 @@ describe('createFinalVideo with an AI mode', () => {
     expect(getCtx(ref).generation.errorMessage).toMatch(/permission/i)
   })
 
+  it('a full presenter fallback without its original sound says so and is not offered for publishing', async () => {
+    renderMediaOnWeb.mockRejectedValue(new Error('no encoder'))
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated('full_body', { sourceMedia: 'https://cdn.example/demo.mp4' })
+
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+
+    const result = getCtx(ref).result
+    expect(result.metadata.soundMissing).toBe(true)
+    expect(result.metadata.publishUrl).toBe('')
+    expect(String(result.metadata.layersNote)).toMatch(/sound couldn't be added/)
+  })
+
   it("Full presenter keeps the original video's sound under the silent recast", async () => {
     const ref: HarnessRef = { current: null }
     await renderProvider(ref)

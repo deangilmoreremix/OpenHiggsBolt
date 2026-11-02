@@ -267,6 +267,7 @@ describe('useRecastJob', () => {
     const { result } = renderHook(() => useRecastJob({ apiKey: '', sourceId: 'demo-1', ownerKey: OWNER, onDone: vi.fn() }))
     expect(result.current.job?.status).toBe('error')
     const error = result.current.job?.error
+    expect(error).toContain('Connect your SmartVideo')
     let retried = true
     act(() => { retried = result.current.retry() })
     expect(retried).toBe(false)

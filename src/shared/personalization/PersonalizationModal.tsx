@@ -932,7 +932,8 @@ export default function PersonalizationModal() {
     // section cards show imported assets, so the drop looked like it failed.
     if (source === 'discovered') {
       moveDiscoveredAssetToSection(assetId, section as AssignedSection)
-      void importDiscoveredAssets({ ids: [assetId], section: section as AssignedSection })
+      // Importing needs an account; visitors only rearrange the grid.
+      if (!isAnonymous) void importDiscoveredAssets({ ids: [assetId], section: section as AssignedSection })
       return
     }
 
@@ -953,7 +954,7 @@ export default function PersonalizationModal() {
 
     // Handle current job assets: move between sections
     moveLibraryAssetToSection(assetId, section as AssignedSection)
-  }, [importDiscoveredAssets, moveDiscoveredAssetToSection, moveLibraryAssetToSection, selectSavedAsset])
+  }, [importDiscoveredAssets, isAnonymous, moveDiscoveredAssetToSection, moveLibraryAssetToSection, selectSavedAsset])
 
   // ── Focus trap & Escape ──────────────────────────────────────────────────
 

@@ -180,6 +180,33 @@ interface GenerateOverrides {
  * The video URL another studio can load: the stored copy when the result
  * itself is browser-only (layers burned in locally), else a non-blob result URL.
  */
+/**
+ * The library without the assets placed automatically from the given
+ * discovered-asset ids, wherever the user moved them. Edited copies stay. If
+ * the primary logo goes, the first remaining logo becomes primary (flag and
+ * pointer together) so the preview keeps a logo; the person slot likewise.
+ */
+export function withoutAutoImported(prev: AssetLibrary, ids: ReadonlySet<string>): AssetLibrary {
+  const isAuto = (asset: PersonalizationAsset | null | undefined) =>
+    Boolean(asset?.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
+  const logos = prev.logos.filter((asset) => !isAuto(asset))
+  const primaryWasAuto = isAuto(prev.primaryLogo)
+  const promoted = primaryWasAuto && logos[0] ? { ...logos[0], isPrimary: true } : null
+  const identities = prev.identities.filter((asset) => !isAuto(asset))
+  return {
+    ...prev,
+    logos: promoted ? logos.map((asset) => (asset.id === promoted.id ? promoted : asset)) : logos,
+    primaryLogo: primaryWasAuto ? promoted : prev.primaryLogo,
+    products: prev.products.filter((asset) => !isAuto(asset)),
+    brandReferences: prev.brandReferences.filter((asset) => !isAuto(asset)),
+    identities,
+    primaryIdentity: isAuto(prev.primaryIdentity) ? identities[0] ?? null : prev.primaryIdentity,
+    firstFrame: isAuto(prev.firstFrame) ? null : prev.firstFrame,
+    lastFrame: isAuto(prev.lastFrame) ? null : prev.lastFrame,
+    ctaGraphic: isAuto(prev.ctaGraphic) ? null : prev.ctaGraphic,
+  }
+}
+
 /** Shown when a final video is missing the on-video layers the user approved. */
 export const LAYERS_MISSING_NOTE =
   "This video doesn't include your on-video layers: they couldn't be added or saved. Create the final video again to add them."
@@ -1563,12 +1590,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * clip's real length when it can be read, else `fallbackSeconds`. Skipped if
    * another video has been chosen in the meantime.
    */
+  const sourceMediaRef = useRef<string | null>(null)
+  sourceMediaRef.current = source?.sourceMedia || null
   const fitPreviewLengthToVideo = useCallback(async (url: string | null | undefined, fallbackSeconds?: number) => {
     if (!url) return
     const clip = await readClipMetadata(url).catch(() => null)
     const seconds = clip && clip.durationSeconds > 0 ? clip.durationSeconds : fallbackSeconds
     if (!seconds || !(seconds > 0)) return
-    if ((previewVideoRef.current?.url || null) !== url) return
+    // With no video chosen, the preview shows the demo's own video.
+    if ((previewVideoRef.current?.url || sourceMediaRef.current || null) !== url) return
     setPreviewSettings((prev) => {
       const durationInFrames = Math.max(1, Math.round(seconds * (prev.fps || 30)))
       return prev.durationInFrames === durationInFrames ? prev : { ...prev, durationInFrames }
@@ -1644,8 +1674,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo(preRecastVideo)
     // The preview runs as long as the original video again.
     previewVideoRef.current = preRecastVideo
-    void fitPreviewLengthToVideo(preRecastVideo?.url)
-  }, [preRecastVideo, fitPreviewLengthToVideo])
+    void fitPreviewLengthToVideo(preRecastVideo?.url || source?.sourceMedia)
+  }, [preRecastVideo, source?.sourceMedia, fitPreviewLengthToVideo])
 
   /** Re-apply a saved recast video from the client's assets. */
   const applyPresenterVideo = useCallback((assetId: string) => {
@@ -1672,9 +1702,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (removed && previewVideoRef.current?.kind === 'recast' && previewVideoRef.current.url === removed.url) {
       setPreviewVideo(preRecastVideo)
       previewVideoRef.current = preRecastVideo
-      void fitPreviewLengthToVideo(preRecastVideo?.url)
+      void fitPreviewLengthToVideo(preRecastVideo?.url || source?.sourceMedia)
     }
-  }, [assets.presenterVideos, preRecastVideo, fitPreviewLengthToVideo])
+  }, [assets.presenterVideos, preRecastVideo, source?.sourceMedia, fitPreviewLengthToVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
   /** True when an approval was cleared because something changed after it. */
   const [approvalStale, setApprovalStale] = useState(false)
@@ -1812,6 +1842,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setVisionStatus('idle')
     setVisionError(null)
     setBusinessResearch({ status: 'idle' })
+    // A search dropped by the guard above must not leave the form busy.
+    setBusinessSearchMode((mode) => (mode === 'searching' ? 'idle' : mode))
   }, [])
 
   // ── Reset on source change ─────────────────────────────────────────────────
@@ -2558,7 +2590,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // The previous business's summary and selection describe it, not this client.
     setBusinessLoadSummary(null)
     setSelectedBusiness(null)
-    setBusinessSearchMode((mode) => (mode === 'selected' ? 'idle' : mode))
+    setBusinessSearchMode((mode) => (mode === 'selected' || mode === 'searching' ? 'idle' : mode))
     setBusinessResearch({ status: 'idle' })
     setSelectedClientId(id)
     if (!id) {
@@ -3975,17 +4007,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const ids = autoImportedDiscoveredIdsRef.current
     if (ids.size === 0) return
     autoImportedDiscoveredIdsRef.current = new Set()
-    const isAuto = (asset: PersonalizationAsset | null | undefined) =>
-      Boolean(asset?.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
     // Filtered inside the updater, so an auto-import queued but not yet
     // rendered is removed too.
-    setAssets((prev) => ({
-      ...prev,
-      logos: prev.logos.filter((asset) => !isAuto(asset)),
-      products: prev.products.filter((asset) => !isAuto(asset)),
-      brandReferences: prev.brandReferences.filter((asset) => !isAuto(asset)),
-      primaryLogo: isAuto(prev.primaryLogo) ? null : prev.primaryLogo,
-    }))
+    setAssets((prev) => withoutAutoImported(prev, ids))
   }, [])
   removeAutoImportedAssetsRef.current = removeAutoImportedAssets
 
@@ -4201,6 +4225,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // ── Business search actions ────────────────────────────────────────────────
 
   const findBusinesses = useCallback(async (niche: string, location: string, radiusMiles: number) => {
+    // Results for a project that has since been closed or changed are dropped.
+    const searchSession = businessSessionRef.current
     setBusinessSearchError(null)
     setBusinessSearchMode('searching')
     setBusinessSearchQuery({ niche, location, radiusMiles })
@@ -4225,6 +4251,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
 
       const data = await res.json()
+      if (searchSession !== businessSessionRef.current) return
       const businesses = Array.isArray(data?.businesses) ? data.businesses : []
       const query = data?.query || { niche, location, radiusMiles }
 
@@ -4235,6 +4262,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
       }
     } catch (err) {
+      if (searchSession !== businessSessionRef.current) return
       const message = err instanceof Error ? err.message : 'Business search failed'
       setBusinessSearchError(message)
       setBusinessSearchMode('error')
@@ -5053,6 +5081,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
 
       const finalUrl = burned?.url || postResult.finalUrl || genResult.url || ''
+      const soundMissing = Boolean(
+        burnInLayers && !burned && mode === 'full_body' && options.preserveAudio && genResult.type === 'video' && genResult.url,
+      )
       // Shared media and history keep a stored (non-blob) URL: the layered
       // video itself, saved to storage; if that fails, the generated clip.
       let storedUrl = finalUrl
@@ -5083,8 +5114,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           ...(burned ? { layersBurnedIn: true, generatedUrl: genResult.url, storedUrl, container: burned.mimeType, extension: burned.extension } : {}),
           // What Publish sends: the stored layered video. If storing it failed,
           // nothing (the generated clip lacks the layers the user approved).
-          publishUrl: burned ? (layeredStored ? storedUrl : '') : finalUrl,
-          ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}).` } : {}),
+          // A full presenter clip made silent for "Keep the original video's
+          // sound" only gets that sound back in the layered render; without it
+          // the clip is silent, so it isn't offered as the finished video.
+          publishUrl: burned ? (layeredStored ? storedUrl : '') : (soundMissing ? '' : finalUrl),
+          ...(soundMissing ? { soundMissing: true } : {}),
+          ...(layersNote || soundMissing
+            ? {
+                layersNote: [
+                  layersNote ? `Your on-video layers couldn't be added in this browser (${layersNote}).` : '',
+                  soundMissing ? "The original video's sound couldn't be added either, so this clip is silent. Create the final video again in Chrome or Edge to add it." : '',
+                ].filter(Boolean).join(' '),
+              }
+            : {}),
           // Saved with the project so a restore shows the same notice.
           ...(burnInLayers && genResult.type === 'video' && genResult.url && !layeredStored ? { layersMissing: true } : {}),
         },
@@ -5200,8 +5242,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         postProcessingFailed: postResult.failed,
         originalUrl: postResult.originalUrl,
         postProcessingInput,
-        // Publish sends the newly branded video, not the earlier output.
-        publishUrl: finalUrl,
+        // Publish sends the newly branded video, not the earlier output
+        // (unless that video is missing its sound; see runGenerate).
+        publishUrl: lastResult.metadata?.soundMissing === true ? '' : finalUrl,
       }
       const updatedResult: GenerationResult = {
         ...lastResult,

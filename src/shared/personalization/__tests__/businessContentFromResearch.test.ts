@@ -114,6 +114,8 @@ describe('businessContentFromResearch', () => {
       }],
     }))
     expect(content.businessName).toBe('Acme Plumbing')
+    // The publisher's own phone wins over the page's contact fallback.
+    expect(content.phone).toBe('555-0101')
   })
 
   it('falls back to Open Graph, the page title and contact info', () => {

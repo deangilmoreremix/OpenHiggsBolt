@@ -128,4 +128,21 @@ describe('applying a recast sets the preview length', () => {
     expect(ctx().previewVideo.url).toBe(ORIGINAL)
     expect(ctx().previewSettings.durationInFrames).toBe(5 * fps)
   })
+
+  it('undo with no chosen video goes back to the demo video and its length', async () => {
+    const fps = ctx().previewSettings.fps
+    await act(async () => {
+      ctx().setPreviewVideo(null)
+    })
+    await act(async () => {
+      ctx().applyPresenterVideo('pv-1')
+    })
+    expect(ctx().previewSettings.durationInFrames).toBe(20 * fps)
+
+    await act(async () => {
+      ctx().restoreOriginalVideo()
+    })
+    expect(ctx().previewVideo).toBeNull()
+    expect(ctx().previewSettings.durationInFrames).toBe(5 * fps)
+  })
 })
