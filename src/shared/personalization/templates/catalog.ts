@@ -64,6 +64,16 @@ import {
   RVE_CATALOG_ENTRIES,
   RVE_LICENSE_NOTICE,
 } from './designs/rveCatalogEntries'
+// Phase 4: the remaining upstream templates, one module per porting batch.
+import { BATCH_3A_FIXED_SVG_IDS, BATCH_3A_TEMPLATES } from './designs/batch3a/entries'
+import { BATCH_3B_FIXED_SVG_IDS, BATCH_3B_TEMPLATES } from './designs/batch3b/entries'
+import { BATCH_3C_FIXED_SVG_IDS, BATCH_3C_TEMPLATES } from './designs/batch3c/entries'
+import { BATCH_3D_FIXED_SVG_IDS, BATCH_3D_TEMPLATES } from './designs/batch3d/entries'
+import { BATCH_3E_FIXED_SVG_IDS, BATCH_3E_TEMPLATES } from './designs/batch3e/entries'
+import { BATCH_3F_FIXED_SVG_IDS, BATCH_3F_TEMPLATES } from './designs/batch3f/entries'
+import { BATCH_3G_FIXED_SVG_IDS, BATCH_3G_TEMPLATES } from './designs/batch3g/entries'
+import { BATCH_3H_FIXED_SVG_IDS, BATCH_3H_TEMPLATES } from './designs/batch3h/entries'
+import { BRITO_ATTRIBUTION, BRITO_LICENSE_NOTICE } from './designs/batch3d/britoShared'
 import { DESIGN_FONT_ALIAS_NOTE, DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE } from './typography'
 
 // The typeface constants are re-exported from the catalog lane (like the
@@ -75,6 +85,9 @@ export { DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE }
 // product's credits surface can reach every upstream's notice from ONE
 // module.
 export { RVE_ATTRIBUTION, RVE_LICENSE_NOTICE }
+
+// The repo-3 (remotion-video-templates, Alejandro Brito) credit constants.
+export { BRITO_ATTRIBUTION, BRITO_LICENSE_NOTICE }
 
 /* -------------------------------------------------------------------------- */
 /* Attribution                                                                 */
@@ -167,7 +180,7 @@ export function getRemotionDesignLicenseNotice(): string {
   // The typeface notice (Phase 3 decision D2): OFL 1.1 clause 2 requires the
   // licence to accompany every copy of the font, so the credits surface
   // points at the shipped licence file.
-  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}\n\nTypeface licence: the bundled Inter subset is distributed under the SIL Open Font License 1.1 (Copyright 2016 The Inter Project Authors). The full licence text ships at ${DESIGN_FONT_LICENSE_FILE}. ${DESIGN_FONT_ALIAS_NOTE}`
+  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}\n\n${BRITO_LICENSE_NOTICE}\n\nTypeface licence: the bundled Inter subset is distributed under the SIL Open Font License 1.1 (Copyright 2016 The Inter Project Authors). The full licence text ships at ${DESIGN_FONT_LICENSE_FILE}. ${DESIGN_FONT_ALIAS_NOTE}`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -196,6 +209,14 @@ export const REMOTION_DESIGN_FIXED_SVG_IDS: Record<string, string[]> = {
   'logo-mask-wipe': ['lmw-wipe'],
   'logo-reveal': ['lsd-shine-clip'],
   'rve-circular-progress': ['progressGradient'],
+  ...BATCH_3A_FIXED_SVG_IDS,
+  ...BATCH_3B_FIXED_SVG_IDS,
+  ...BATCH_3C_FIXED_SVG_IDS,
+  ...BATCH_3D_FIXED_SVG_IDS,
+  ...BATCH_3E_FIXED_SVG_IDS,
+  ...BATCH_3F_FIXED_SVG_IDS,
+  ...BATCH_3G_FIXED_SVG_IDS,
+  ...BATCH_3H_FIXED_SVG_IDS,
 }
 
 /**
@@ -974,11 +995,24 @@ export const REMOTION_DESIGN_BATCH2_TEMPLATES: RemotionDesignTemplate[] = [
   ...RVE_CATALOG_ENTRIES,
 ]
 
+/** Phase 4: every remaining upstream template, across the porting batches. */
+export const REMOTION_DESIGN_PHASE4_TEMPLATES: RemotionDesignTemplate[] = [
+  ...BATCH_3A_TEMPLATES,
+  ...BATCH_3B_TEMPLATES,
+  ...BATCH_3C_TEMPLATES,
+  ...BATCH_3D_TEMPLATES,
+  ...BATCH_3E_TEMPLATES,
+  ...BATCH_3F_TEMPLATES,
+  ...BATCH_3G_TEMPLATES,
+  ...BATCH_3H_TEMPLATES,
+]
+
 /** Every design, in registration order. */
 export const REMOTION_DESIGN_TEMPLATES: RemotionDesignTemplate[] = [
   ...REMOTION_DESIGN_PHASE1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH1_TEMPLATES,
   ...REMOTION_DESIGN_BATCH2_TEMPLATES,
+  ...REMOTION_DESIGN_PHASE4_TEMPLATES,
 ]
 
 // The catalog registers itself on import, so the designs exist before the

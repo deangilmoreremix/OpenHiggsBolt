@@ -17,7 +17,8 @@
  *
  * Copy: no upstream demo copy is reachable. The like counter label becomes
  * "Like" so the design never shows a made-up like count. The comment counter
- * ("318") and the "Follow" / "Share" labels are hard-coded upstream and are
+ * ("318") is hard-coded upstream and is hidden by a scoped style rule; the
+ * "Follow" / "Share" labels are hard-coded upstream and are
  * not switchable through props.
  */
 
@@ -26,7 +27,7 @@ import { AbsoluteFill } from 'remotion'
 import { SocialReel } from '../../_upstream/social-reel/SocialReel'
 import { useDesignFonts } from '../fonts'
 import { DesignStage, slotText, slotValue, truncateText, type DesignAdapterProps } from '../shared'
-import { brandPalette, deepShade, mixHex } from './batch3aShared'
+import { brandPalette, deepShade, mixHex, ScopedUpstream, scopeSelector, useScopeId } from './batch3aShared'
 
 const STAGE_W = 1920
 const STAGE_H = 1080
@@ -64,6 +65,12 @@ export const SocialReelDesign: React.FC<DesignAdapterProps> = (props) => {
   const top = (props.height - STAGE_H * s) / 2
   const backdrop = deepShade(palette.primary, 0.88)
 
+  // The upstream hard-codes a "318" comment count on the action rail. A made-up
+  // engagement number must never appear on a customer's video, so the label of
+  // the rail's second item (the comment counter) is hidden for this instance.
+  const scopeId = useScopeId('social-reel')
+  const hideFakeCount = `${scopeSelector(scopeId)} [style*="right: 28px"][style*="bottom: 130px"] > div:nth-child(2) > span { visibility: hidden !important; }`
+
   return (
     <DesignStage designId="social-reel" props={props}>
       <AbsoluteFill
@@ -83,6 +90,7 @@ export const SocialReelDesign: React.FC<DesignAdapterProps> = (props) => {
           transform: Math.abs(s - 1) < 0.0001 ? undefined : `scale(${s})`,
         }}
       >
+        <ScopedUpstream scopeId={scopeId} css={hideFakeCount}>
         <SocialReel
           brandName={businessName || ' '}
           handle={toHandle(businessName)}
@@ -98,6 +106,7 @@ export const SocialReelDesign: React.FC<DesignAdapterProps> = (props) => {
           caption={website || offer}
           likeCount="Like"
         />
+        </ScopedUpstream>
       </div>
     </DesignStage>
   )

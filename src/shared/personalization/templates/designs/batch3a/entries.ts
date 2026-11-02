@@ -352,8 +352,8 @@ export const socialReelTemplate: RemotionDesignTemplate = {
     notes:
       'Renders in the browser export path: gradients, transforms and inline SVG glyphs. The upstream ' +
       'is a fixed 1920x1080 stage; the adapter scales it so the player fills the frame height (it ' +
-      'fills the whole frame on 9:16). The comment count "318" and the "Follow"/"Share" labels are ' +
-      'hard-coded upstream; the like counter is replaced by "Like". Plays as a 5-second intro card.',
+      'fills the whole frame on 9:16). The upstream\'s hard-coded comment count "318" is hidden by a ' +
+      'scoped style rule and the like counter is replaced by "Like"; the "Follow"/"Share" labels stay. Plays as a 5-second intro card.',
   },
   previewCompatible: true,
 }
