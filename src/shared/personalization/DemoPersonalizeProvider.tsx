@@ -907,6 +907,27 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
 }
 
 
+/**
+ * Points every preview layer that shows one of `oldUrls` at `newUrl`, so an
+ * edited image replaces the original in the video preview and the export.
+ * Returns the same object when nothing changes.
+ */
+export function retargetLayerImages(
+  settings: PersonalizationPreviewSettings,
+  oldUrls: string[],
+  newUrl: string,
+): PersonalizationPreviewSettings {
+  const old = new Set(oldUrls.filter(Boolean))
+  if (old.size === 0 || !newUrl) return settings
+  let changed = false
+  const layers = settings.layers.map((layer) => {
+    if (!layer.imageUrl || !old.has(layer.imageUrl)) return layer
+    changed = true
+    return { ...layer, imageUrl: newUrl }
+  })
+  return changed ? { ...settings, layers } : settings
+}
+
 function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset): AssetLibrary {
   switch (asset.role) {
     case 'presenter_identity':
@@ -2490,7 +2511,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       ...target,
       name: file.name,
       url: localUrl,
-      uploadedUrl: target.uploadedUrl,
+      // The old upload is the UNEDITED image. Keeping it would make the video
+      // preview (which prefers uploadedUrl) keep showing the original; the
+      // edited upload replaces it once it is saved below.
+      uploadedUrl: undefined,
       file,
       mimeType: file.type,
       uploadStatus: 'local',
@@ -2517,6 +2541,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    // Video layers copied the image address when the layout was applied:
+    // point every layer that showed the original at the edited image.
+    const previousUrls = [target.url, target.uploadedUrl, target.editedDataUrl].filter(Boolean) as string[]
+    setPreviewSettings((prev) => retargetLayerImages(prev, previousUrls, localUrl))
 
     let supabaseUrl: string | undefined
     try {
@@ -2567,11 +2595,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
             logos: updater(prev.logos),
             products: updater(prev.products),
             brandReferences: updater(prev.brandReferences),
+            primaryLogo: prev.primaryLogo?.id === editedAsset.id ? { ...prev.primaryLogo, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.primaryLogo,
+            primaryIdentity: prev.primaryIdentity?.id === editedAsset.id ? { ...prev.primaryIdentity, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.primaryIdentity,
             firstFrame: prev.firstFrame?.id === editedAsset.id ? { ...prev.firstFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.firstFrame,
             lastFrame: prev.lastFrame?.id === editedAsset.id ? { ...prev.lastFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.lastFrame,
             ctaGraphic: prev.ctaGraphic?.id === editedAsset.id ? { ...prev.ctaGraphic, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.ctaGraphic,
           }
         })
+        // The saved copy replaces the temporary browser copy in the video too.
+        setPreviewSettings((prev) => retargetLayerImages(prev, [localUrl], supabaseUrl!))
       }
     } catch {
       // Supabase persistence failed — fall back to MuAPI upload below

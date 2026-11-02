@@ -1097,6 +1097,37 @@ export default function PersonalizationModal() {
             }
           : item
       )))
+      // An image already imported from this discovered one is what the video
+      // preview and the final render use: give it the edit too, or the AI
+      // edit would only ever show on the discovered card.
+      const allAssets = [
+        ...(assets?.identities ?? []),
+        ...(assets?.logos ?? []),
+        ...(assets?.products ?? []),
+        ...(assets?.brandReferences ?? []),
+        assets?.firstFrame,
+        assets?.lastFrame,
+        assets?.ctaGraphic,
+      ].filter(Boolean) as Array<{ id: string; sourceDiscoveredAssetId?: string }>
+      const imported = allAssets.filter((asset) => asset.sourceDiscoveredAssetId === imageEditorAsset.id)
+      for (const asset of imported) {
+        await applyEditedPersonalizationAsset(asset.id, result.dataUrl, {
+          operation: result.operation,
+          prompt: result.prompt,
+          model: result.model,
+          quality: result.quality,
+          transparent: result.transparent,
+          videoReady: result.videoReady,
+          responseId: result.responseId,
+          imageGenerationCallId: result.imageGenerationCallId,
+          revisedPrompt: result.revisedPrompt,
+          outputFormat: result.outputFormat,
+          outputCompression: result.outputCompression,
+          inputFidelity: result.inputFidelity,
+          visionAnalysis: result.visionAnalysis,
+          visionValidation: result.visionValidation,
+        })
+      }
       return
     }
 
@@ -1136,7 +1167,7 @@ export default function PersonalizationModal() {
       visionAnalysis: result.visionAnalysis,
       visionValidation: result.visionValidation,
     })
-  }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
+  }, [applyEditedPersonalizationAsset, assets, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
   // NOTE: these memo hooks live ABOVE the early return below on purpose, so the
   // hook order is identical whether or not the modal is open. The provider
