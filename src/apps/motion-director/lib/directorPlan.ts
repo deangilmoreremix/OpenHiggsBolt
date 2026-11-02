@@ -26,8 +26,9 @@ export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id 
 
 export type SceneKind = 'shot' | 'title';
 /** How a scene hands over to the next: a plain cut, or one of the cards' seam transitions. */
-export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip' | 'whip' | 'ink' | 'leak' | 'portal' | 'iris' | 'line' | 'glitch';
-export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch'];
+/** `window`: shot-transitions style C (the next scene grows out of a card of this one); `push`: bottom-push (the next scene pushes this one up). */
+export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip' | 'whip' | 'ink' | 'leak' | 'portal' | 'iris' | 'line' | 'glitch' | 'window' | 'push';
+export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch', 'window', 'push'];
 
 export interface DirectorScene {
   kind: SceneKind;
@@ -122,7 +123,7 @@ const sceneSchema = {
     durationSec: { type: 'number' },
     headline: { type: 'string' },
     caption: { type: 'string' },
-    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch'] },
+    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch', 'window', 'push'] },
   },
 } as const;
 

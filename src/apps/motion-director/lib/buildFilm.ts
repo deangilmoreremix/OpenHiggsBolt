@@ -18,6 +18,7 @@ import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
+import { seamFrames, type SeamKind } from './seams';
 
 export interface FilmCapture {
   /** Captured page URLs (1920 CSS px wide, 2x). */
@@ -61,10 +62,7 @@ export interface FilmMusic {
 }
 
 const FPS = 30;
-const FLASH_FRAMES = 10;
-/** Length of each seam card in frames; the cut sits in its middle. */
-const SEAM_FRAMES: Partial<Record<SceneTransition, number>> = { wipe: 16, barn: 16, dip: 14, whip: 12, ink: 18, leak: 20, portal: 20, iris: 18, line: 14, glitch: 10 };
-const WIPE_DIRS = ['right', 'left', 'up', 'down'] as const;
+const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 const SFX_CUT = 'transition/swoosh-quick';
 const SFX_FLASH = 'impact/impact-transition';
@@ -267,16 +265,14 @@ const INSET_PAGE_H = 1200;
   let featureZooms = 0;
   const videos = opts.videos ?? [];
   const lastIndex = scenes.length - 1;
-  /** A scene change: whoosh on every cut, impact + white flash on flash cuts, a panel on wipe / barn-door, a dip to the page colour. */
+  /**
+   * A scene change: whoosh on every cut, an impact on flash cuts. The seam itself is built after every shot
+   * is placed (`connectSeams`): both real shots play through it, so here only where and how is recorded.
+   */
+  const seams: Array<{ at: number; kind: SceneTransition; n: number }> = [];
   const cut = (kind: SceneTransition, wipeIndex: number) => {
     const flash = kind === 'flash';
-    const seam = SEAM_FRAMES[kind];
-    if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
-    else if (seam) {
-      const color = kind === 'dip' ? palette.background : kind === 'wipe' || kind === 'ink' || kind === 'portal' || kind === 'line' ? palette.accent : kind === 'leak' ? '#ffb45a' : kind === 'iris' ? palette.background : palette.text;
-      const props = kind === 'wipe' ? { color, dir: WIPE_DIRS[wipeIndex % WIPE_DIRS.length] } : { color };
-      flashes.push(clip(`inkpress-seam-${kind}`, Math.max(0, at - Math.round(seam / 2)), seam, props));
-    }
+    if (kind !== 'cut') seams.push({ at, kind, n: wipeIndex });
     sfx.push(pinSfx(flash ? SFX_FLASH : SFX_CUT, at, { tailMs: flash ? 900 : 500, volume: 0.6, label: flash ? 'Impact' : 'Whoosh' }));
   };
   let wipes = 0;
@@ -394,6 +390,21 @@ const INSET_PAGE_H = 1200;
       shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
       at += frames;
     }
+  }
+
+  // Every dressed seam is built from its two neighbours (upstream shot-transitions card): half of the seam's
+  // frames come from the end of the outgoing shot's hold, half from the start of the incoming shot, which
+  // therefore starts that far into its own motion on the timeline. The film keeps its length.
+  let side = 0;
+  for (const s of seams) {
+    const out = shots.find((c) => c.start + c.duration === s.at);
+    const inc = shots.find((c) => c.start === s.at);
+    if (!out || !inc || out.cardId === 'video-clip' || inc.cardId === 'video-clip') continue;
+    const kind = s.kind as SeamKind;
+    const half = seamFrames(kind, out.duration, inc.duration) / 2;
+    if (half < 2) continue;
+    inc.inOffset += half * inc.speed;
+    flashes.push(clip('connected-seam', s.at - half, half * 2, { kind, outId: out.id, inId: inc.id, half, dir: side++ % 2 === 0 ? 1 : -1, accent: palette.accent, page: palette.background }, { label: SEAM_LABEL[kind] }));
   }
 
   const total = Math.max(at, FPS);

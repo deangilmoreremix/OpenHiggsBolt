@@ -109,7 +109,7 @@ describe('film assembly', () => {
     // Captures go only to the shots that render product pages.
     expect(shots[1].props).toMatchObject({ screens: ['https://cdn.example/page.jpg'], crops: ['https://cdn.example/crop-1.jpg'] });
     expect(shots[2].props.screens).toBeUndefined();
-    expect(byName.Transitions.map((c) => c.cardId)).toEqual(['inkpress-flash-cut']);
+    expect(byName.Transitions.map((c) => [c.cardId, c.props.kind])).toEqual([['connected-seam', 'flash']]);
     // One sound effect per scene change: a whoosh on the plain cut, an impact on the flash cut.
     expect(byName.SFX.filter((c) => c.label !== 'Stamp').map((c) => c.props.file)).toEqual([
       'motion-studio/sfxlib/transition/swoosh-quick.mp3',
