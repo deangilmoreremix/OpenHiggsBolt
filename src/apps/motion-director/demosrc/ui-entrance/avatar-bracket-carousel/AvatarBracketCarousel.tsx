@@ -5,9 +5,10 @@
 // 质感层（改版）：深色柔光底 + 颗粒在全分辨率层绘制；头像换成受光的渐变圆盘 + 线性图标；
 // 对焦框开场"锁定"收拢；句子开场错峰浮起；角色标签做成带底的 chip，随 pos 同向滚动。
 import React from 'react';
-import { AbsoluteFill } from 'remotion';
+import { AbsoluteFill, Img } from 'remotion';
 import { DesignStage, E, seg, useT } from '../../_fixtures/Motion';
 import { Backdrop, EASE, FONT, Grain } from '../../_fixtures/Polish';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const AVATAR_BRACKET_CAROUSEL_DURATION = 156; // 5200ms @30fps
 
@@ -140,6 +141,7 @@ export const AvatarBracketCarousel: React.FC = () => {
                 const enter = seg(t, 0.02 + k * 0.03, 0.12 + k * 0.03, EASE.out);
                 // 拉伸：速度 0.25 格/帧时纵向 +6%，横向等体积收一点
                 const smear = Math.min(0.08, Math.abs(vel) * 0.24);
+                const url = realCard(k);
                 return (
                   <div
                     key={k}
@@ -163,8 +165,12 @@ export const AvatarBracketCarousel: React.FC = () => {
                       transform: `translateY(${(k - pos) * STEP + (1 - enter) * 12}px) scale(${sc * (1 - smear * 0.5)}, ${sc * (1 + smear)})`,
                       opacity: op * enter,
                       filter: `blur(${Math.min(3, d * 2.4)}px)`,
+                      ...(url ? { overflow: 'hidden' } : {}),
                     }}
                   >
+                    {url ? (
+                      <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                    ) : (
                     <svg
                       width={26}
                       height={26}
@@ -177,6 +183,7 @@ export const AvatarBracketCarousel: React.FC = () => {
                     >
                       {ICON[a.icon]}
                     </svg>
+                    )}
                   </div>
                 );
               })}

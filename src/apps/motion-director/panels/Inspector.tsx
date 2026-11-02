@@ -3,7 +3,7 @@ import type { PropField } from "../cards/types";
 import { cardFps, inOffsetFps, sourceLength } from "../cards/types";
 import { CARDS } from "../cards/registry";
 import { findClip, useStore } from "../store";
-import { MANIFEST } from '../cards/projectCards';
+import { THEME_MANIFEST } from '../cards/projectCards';
 import { themedProps } from '../theme';
 import { cardName, tx, useT, useTx } from "../i18n";
 import { ThemePanel } from "./ThemePanel";
@@ -236,7 +236,7 @@ export const Inspector: React.FC = () => {
                       <Row key={field.key} label={tx(field.label)}>
                         <PropControl
                           field={field}
-                          value={themedProps(MANIFEST, card, project.themeId, clip.props, project.themeColors)[field.key] ?? field.default}
+                          value={themedProps(THEME_MANIFEST, card, project.themeId, clip.props, project.themeColors)[field.key] ?? field.default}
                           onChange={(v) => updateClipProps(clip.id, { [field.key]: v })}
                           onBegin={begin}
                         />

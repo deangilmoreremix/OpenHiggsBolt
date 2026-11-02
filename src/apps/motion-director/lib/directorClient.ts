@@ -31,11 +31,15 @@ export interface SiteCapture {
   partial?: boolean;
   page: { url: string; width: number; height: number };
   crops: string[];
+  /** What each crop shows, same order as `crops` (src/server/browserDiscovery CropInfo). */
+  cropInfo?: Array<{ route: string; cut: 'card' | 'band'; width: number; height: number; text: string; imageShare: number; portraits: number; map: boolean }>;
   /** The site's own images (product shots, hero art), largest first. */
   images?: string[];
   /** The site's logo (transparent PNG), when one was found. */
   logo?: string | null;
-  brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
+  brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null; surface?: string | null; field?: string | null; muted?: string | null; border?: string | null; bodyFont?: string | null; radius?: number | null };
+  /** The site's pages found in its links (captured or not), for a targeted capture after the storyboard. */
+  links?: Array<{ name: string; path: string; url: string }>;
   /** Every route captured, the page asked for first (upstream captures several routes of the site). */
   pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
   /** Pictures of the site found by the asset finder (people, team, products…), with what each one shows. */
@@ -106,12 +110,12 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  */
 export async function captureSite(
   url: string,
-  opts: { onProgress?: (elapsedSec: number) => void; cancelled?: () => boolean; pollMs?: number; maxWaitMs?: number } = {},
+  opts: { onProgress?: (elapsedSec: number) => void; cancelled?: () => boolean; pollMs?: number; maxWaitMs?: number; targeted?: boolean } = {},
 ): Promise<SiteCapture> {
-  const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url }, 32_000);
+  const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url, ...(opts.targeted ? { targeted: true } : {}) }, 32_000);
   if (!first.jobId) return first;
   const started = Date.now();
-  const maxWait = opts.maxWaitMs ?? 540_000;
+  const maxWait = opts.maxWaitMs ?? 840_000;
   let failures = 0;
   while (Date.now() - started < maxWait) {
     await sleep(opts.pollMs ?? 2_000);
@@ -147,6 +151,10 @@ export async function requestPlan(body: {
   requiredRecipes?: string[];
   /** 'inkpress': follow the Ink Press template structure. */
   template?: 'inkpress' | null;
+  /** The feature → shot map (stage 2) the storyboard is written from. */
+  mapping?: MappingRow[];
+  /** The chosen shots' cards, in full (stage 2: "read the chosen cards in full"). */
+  cards?: Array<{ id: string; text: string }>;
 }): Promise<DirectorPlan> {
   const { plan } = await post<{ plan: unknown }>('/api/motion-studio/director', {
     mode: 'plan',
@@ -166,7 +174,9 @@ export async function requestPlan(body: {
     brandKit: body.brandKit ?? null,
     requiredRecipes: body.requiredRecipes ?? [],
     template: body.template ?? null,
-  }, 45_000);
+    mapping: body.mapping ?? [],
+    cards: body.cards ?? [],
+  }, 60_000);
   return validatePlan(plan, { targetSec: body.durationSec });
 }
 
@@ -248,6 +258,13 @@ export async function requestFrameReview(body: { frames: Array<{ second: number;
   return { findings: Array.isArray(res.findings) ? res.findings : [], summary: typeof res.summary === 'string' ? res.summary : '' };
 }
 
+/** One part of the stage 7 review (a group of shots, or the whole film): checklist answers ✓ / ✗ with seconds. */
+export async function requestFinalReview(body: Record<string, unknown>): Promise<{ items: import('./finalReview').FinalReviewItem[]; summary: string }> {
+  const res = await post<{ items?: unknown[]; summary?: string }>('/api/motion-studio/director', { mode: 'final-review', ...body }, 70_000);
+  const items = (Array.isArray(res.items) ? res.items : []).filter((i): i is import('./finalReview').FinalReviewItem => Boolean(i && typeof i === 'object' && typeof (i as { id?: unknown }).id === 'string'));
+  return { items, summary: typeof res.summary === 'string' ? res.summary : '' };
+}
+
 export interface AdaptRequest {
   recipe: string;
   source: string;
@@ -258,6 +275,12 @@ export interface AdaptRequest {
   content?: unknown;
   /** What was wrong with the previous try (render errors, reviewer findings). */
   problems?: string[];
+  /** The recipe's shot card in full (upstream's agent reads it before editing). */
+  card?: string;
+  /** The recipe as designed: entering / peak / settled frames (data URLs). */
+  reference?: string[];
+  /** The previous try as rendered, same three moments (data URLs), to compare with the reference. */
+  stills?: string[];
 }
 
 /** The agent's rewrite of one recipe for the person's site (needs their key). The caller must still check the code. */
@@ -265,6 +288,37 @@ export async function requestAdapt(body: AdaptRequest): Promise<{ code: string; 
   const res = await post<{ code?: string; notes?: string }>('/api/motion-studio/director', { mode: 'adapt', ...body }, 55_000);
   if (typeof res.code !== 'string' || !res.code) throw new DirectorError('The agent returned no code', 'BAD_OUTPUT', 502);
   return { code: res.code, notes: typeof res.notes === 'string' ? res.notes : '' };
+}
+
+/** A recipe's shot card (markdown), as published by scripts/gen-demo-sources.mjs. */
+export async function fetchRecipeCard(stem: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.card.md`);
+    return res.ok ? (await res.text()).slice(0, 30_000) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The recipe's reference frames as designed (public/motion-studio/previews, entering / peak / settled), as data URLs. */
+export async function fetchReferenceFrames(stem: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const k of ['a', 'b', 'c']) {
+    try {
+      const res = await fetch(`/motion-studio/previews/${encodeURIComponent(stem)}-${k}.jpg`);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      out.push(await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+      }));
+    } catch {
+      /* a missing frame is fine */
+    }
+  }
+  return out;
 }
 
 /** A recipe's source text, as published by scripts/gen-demo-sources.mjs. */

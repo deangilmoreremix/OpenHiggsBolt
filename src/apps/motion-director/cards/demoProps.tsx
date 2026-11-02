@@ -1,9 +1,14 @@
 import React from "react";
-import { AbsoluteFill, cancelRender, continueRender, delayRender } from "remotion";
+import { AbsoluteFill, cancelRender, continueRender, delayRender, useCurrentFrame } from "remotion";
 import { applyTextOverrides, parseTextMap } from "../lib/textOverrides";
 import { LiveTextureContext, textureOverrides } from "../demosrc/_fixtures/liveTexture";
 import { adaptedNow, prepareAdapted } from "../lib/adaptedRuntime";
 import { AdaptedBoundary, type AdaptedComponent } from "../lib/shotAdapter";
+import { resolvePalette } from "../lib/palette";
+import { activePalette, setClipPalette } from "../demosrc/_fixtures/skin";
+import { applyPaint, makePainter } from "../lib/themePaint";
+import { SHOT_FACTS } from "../demosrc/_generated/shotFacts";
+import { TextMapContext } from "../demosrc/_fixtures/textMap";
 
 /**
  * 动效库（demo 卡）的 props 包装层。
@@ -33,6 +38,10 @@ interface DemoOverlayProps {
   adaptedCode?: string;
   /** Which recipe the adapted source replaces (its exported name). */
   adaptedStem?: string;
+  /** The film's theme and colours (injected by theme.ts themedProps) and this clip's own colours. */
+  __theme?: unknown;
+  __palette?: unknown;
+  palette?: unknown;
 }
 
 /** The adapted component of a clip, compiled on demand; frames wait for it (delayRender) so stills and exports never show the plain recipe by mistake. */
@@ -65,7 +74,11 @@ const num = (v: unknown, fallback: number) => {
 
 export const withDemoProps = (
   Inner: React.ComponentType<Record<string, unknown>>,
+  stem?: string,
 ): React.ComponentType<Record<string, unknown>> => {
+  // Recipes that draw in colours of their own (not the Look roles) are repainted by role (lib/themePaint).
+  const facts = stem ? SHOT_FACTS[stem] : undefined;
+  const ownColours = Boolean(facts && !facts.readsLook);
   const Wrapped: React.FC<Record<string, unknown>> = (props) => {
     const {
       title = "",
@@ -78,13 +91,24 @@ export const withDemoProps = (
       crops,
       texts,
     } = props as DemoOverlayProps;
+    const { __theme, __palette, palette } = props as DemoOverlayProps;
+    // Re-render with the frame, so this always runs before the recipe re-renders (palette set first).
+    useCurrentFrame();
+    // The recipe below reads LOOKS / FONT while it renders: a clip with colours of its own draws in
+    // them (over the film's theme); every other clip draws in the film palette (preview/Composition).
+    setClipPalette(palette && typeof palette === "object" && Object.keys(palette).length ? resolvePalette(__theme, __palette, palette) : undefined);
     const Adapted = useAdapted((props as DemoOverlayProps).adaptedCode, (props as DemoOverlayProps).adaptedStem);
     const textMap = React.useMemo(() => parseTextMap(texts), [texts]);
-    const hasTexts = Object.keys(textMap).length > 0;
     const innerRef = React.useRef<HTMLDivElement>(null);
-    // After every commit (animated text changes per frame) swap the recipe's words for the clip's.
+    const live = activePalette();
+    const painter = React.useMemo(() => (ownColours && live && facts ? makePainter(live, facts.ground) : null), [live]);
+    const hasTexts = Object.keys(textMap).length > 0 || Boolean(painter);
+    // After every commit (animated text and colours change per frame) swap the recipe's words for the clip's,
+    // and repaint a recipe of its own colours in the film's.
     React.useLayoutEffect(() => {
-      if (hasTexts && innerRef.current) applyTextOverrides(innerRef.current, textMap);
+      if (!innerRef.current) return;
+      if (Object.keys(textMap).length) applyTextOverrides(innerRef.current, textMap);
+      if (painter) applyPaint(innerRef.current, painter);
     });
     const textures = React.useMemo(
       () => textureOverrides(Array.isArray(screens) ? screens : [], Array.isArray(crops) ? crops : []),
@@ -96,6 +120,7 @@ export const withDemoProps = (
 
     return (
       <AbsoluteFill>
+        <TextMapContext.Provider value={textMap}>
         <LiveTextureContext.Provider value={textures}>
           {hasTexts ? (
             <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
@@ -107,6 +132,7 @@ export const withDemoProps = (
             <Inner />
           )}
         </LiveTextureContext.Provider>
+        </TextMapContext.Provider>
         {wash > 0 ? (
           <AbsoluteFill style={{ background: tint, opacity: wash, mixBlendMode: "overlay" }} />
         ) : null}

@@ -142,10 +142,12 @@ const FlipCard: React.FC<{ i: number; frame: number }> = ({ i, frame }) => {
     <div style={{ position: 'absolute', inset: 0, perspective: 1600 }}>
       <div style={{
         position: 'absolute', inset: 0, transformStyle: 'preserve-3d',
-        transform: `translateZ(${(lift * 60).toFixed(2)}px) rotateY(${angle.toFixed(3)}deg)`,
+        // Past 90° the card turns as its back face alone (angle − 180°) instead of a 180°-turned face inside a
+        // turning card: the browser draws both the same, the web renderer (stills, MP4) drew that face mirrored.
+        transform: `translateZ(${(lift * 60).toFixed(2)}px) rotateY(${(angle > 90 ? angle - 180 : angle).toFixed(3)}deg)`,
       }}>
         {/* 正面：暗色功能卡 */}
-        <div style={{
+        {angle <= 90 && (<div style={{
           position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: 34, overflow: 'hidden',
           background: `linear-gradient(180deg, #1d1e22 0%, ${L.surface} 48%, #111214 100%)`,
           boxShadow: `inset 0 0 0 1.5px ${alpha('#ffffff', 0.09)}, inset 0 2px 0 ${alpha('#ffffff', 0.08)}`,
@@ -163,10 +165,10 @@ const FlipCard: React.FC<{ i: number; frame: number }> = ({ i, frame }) => {
             <div style={{ ...type(28, 450), color: L.ink2, marginTop: 10 }}>{f.desc}</div>
           </div>
           <FaceLight angle={angle} dark />
-        </div>
+        </div>)}
         {/* 背面：瓷白结论卡 */}
-        <div style={{
-          position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', borderRadius: 34, overflow: 'hidden',
+        {angle > 90 && (<div style={{
+          position: 'absolute', inset: 0, backfaceVisibility: 'hidden', borderRadius: 34, overflow: 'hidden',
           background: 'linear-gradient(180deg, #fbfaf7 0%, #f1f0ec 100%)',
           boxShadow: `inset 0 0 0 1.5px rgba(0,0,0,0.06), inset 0 2px 0 rgba(255,255,255,0.9)`,
           fontFamily: FONT.sans, color: '#0d0d0f',
@@ -204,7 +206,7 @@ const FlipCard: React.FC<{ i: number; frame: number }> = ({ i, frame }) => {
             opacity: lab, transform: `translateY(${((1 - lab) * 14).toFixed(2)}px)`,
           }}>{f.label}</div>
           <FaceLight angle={180 - angle} dark={false} />
-        </div>
+        </div>)}
       </div>
     </div>
   );

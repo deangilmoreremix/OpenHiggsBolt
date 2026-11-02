@@ -13,5 +13,15 @@ export const setExportMode = (on: boolean): void => {
 
 export const isExporting = (): boolean => exporting;
 
+/**
+ * True while the web renderer draws a frame (export or still), false in the live preview (the browser's
+ * own CSS). For the few places where the renderer draws something differently from the browser.
+ */
+let webRendering = false;
+export const setWebRendering = (on: boolean): void => {
+  webRendering = on;
+};
+export const isWebRendering = (): boolean => webRendering;
+
 /** Motion-blur samples to draw: all of them in the preview, about a third (at least 3) while exporting. */
 export const blurSamples = (n: number): number => (exporting && n > 3 ? Math.max(3, Math.ceil(n / 3)) : n);

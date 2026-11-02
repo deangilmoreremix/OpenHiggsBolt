@@ -7,10 +7,11 @@
 // 曲线用灰→墨渐变描边；数据包是带彗尾的实心强调色点；汇聚点是 SmartVideo GO 标志（亮底版）+ 接收涟漪；
 // 擦除阶段相机平移把徽标收到画面正中，结尾构图居中落定。
 import React from 'react';
-import { AbsoluteFill } from 'remotion';
+import { AbsoluteFill, Img } from 'remotion';
 import { DesignStage, E, lerp, seg, useT } from '../../_fixtures/Motion';
 import { Backdrop, EASE, FONT, softShadow } from '../../_fixtures/Polish';
 import { MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const BEZIER_SOURCE_CONVERGE_MERGE_DURATION = 168; // 5600ms @30fps
 
@@ -220,6 +221,7 @@ export const BezierSourceConvergeMerge: React.FC = () => {
                 const pkOn = seg(t, 0.1, 0.16) * (1 - seg(t, 0.7, 0.76));
                 const pkOp = pkOn * (1 - Math.abs(ph - 0.5) * 0.6);
                 const k = size / 44; // 节点内部元素按尺寸等比
+                const url = realCard(i);
                 return (
                   <React.Fragment key={i}>
                     {/* 彗尾：从尾到头画，头部最亮 */}
@@ -285,8 +287,12 @@ export const BezierSourceConvergeMerge: React.FC = () => {
                         height: Math.max(0.1, size),
                         transform: `translate(${(pt.x - size / 2).toFixed(2)}px,${(pt.y - size / 2).toFixed(2)}px) scale(${appear.toFixed(3)})`,
                         opacity: (appearOp * (tt > 0.92 ? clamp01((1 - tt) / 0.08) : 1)).toFixed(3),
+                        ...(url ? { overflow: 'hidden' } : {}),
                       }}
                     >
+                      {url ? (
+                        <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      ) : (
                       <svg
                         width={Math.max(0.1, size * 0.46)}
                         height={Math.max(0.1, size * 0.46)}
@@ -299,6 +305,7 @@ export const BezierSourceConvergeMerge: React.FC = () => {
                       >
                         {ICON[s.icon]}
                       </svg>
+                      )}
                     </div>
                   </React.Fragment>
                 );

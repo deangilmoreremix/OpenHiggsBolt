@@ -24,12 +24,12 @@ export interface MotionPreset {
 }
 
 export const MOTION_PRESETS: Record<MotionPresetId, MotionPreset> = {
-  trust: { id: 'trust', label: 'Steady and trustworthy', mainFrames: 21, easing: 'bezier(0,0,0.2,1)', overshoot: 1, squash: 0, seams: ['dip', 'wipe', 'iris', 'line'], holdGrowth: 1.2 },
-  premium: { id: 'premium', label: 'Refined and unhurried', mainFrames: 48, easing: 'bezier(0.4,0,0.6,1)', overshoot: 1.02, squash: 0, seams: ['dip', 'iris', 'leak', 'ink'], holdGrowth: 1.3 },
-  bold: { id: 'bold', label: 'Bold and fast', mainFrames: 18, easing: 'bezier(0.16,1,0.3,1)', overshoot: 1.12, squash: 0.25, seams: ['wipe', 'whip', 'flash', 'glitch', 'barn', 'line'], holdGrowth: 1.1 },
-  playful: { id: 'playful', label: 'Playful and bouncy', mainFrames: 27, easing: 'bezier(0.34,1.56,0.64,1)', overshoot: 1.08, squash: 0.18, seams: ['whip', 'ink', 'portal', 'wipe', 'barn'], holdGrowth: 1.15 },
-  calm: { id: 'calm', label: 'Calm and caring', mainFrames: 42, easing: 'ease-in-out', overshoot: 1, squash: 0.04, seams: ['dip', 'ink', 'iris', 'portal'], holdGrowth: 1.3 },
-  friendly: { id: 'friendly', label: 'Warm and friendly', mainFrames: 26, easing: 'bezier(0.25,0.46,0.45,0.94)', overshoot: 1.04, squash: 0.08, seams: ['wipe', 'dip', 'ink', 'barn', 'portal'], holdGrowth: 1.2 },
+  trust: { id: 'trust', label: 'Steady and trustworthy', mainFrames: 21, easing: 'bezier(0,0,0.2,1)', overshoot: 1, squash: 0, seams: ['dip', 'wipe', 'iris', 'line', 'push', 'window'], holdGrowth: 1.2 },
+  premium: { id: 'premium', label: 'Refined and unhurried', mainFrames: 48, easing: 'bezier(0.4,0,0.6,1)', overshoot: 1.02, squash: 0, seams: ['dip', 'iris', 'leak', 'ink', 'window'], holdGrowth: 1.3 },
+  bold: { id: 'bold', label: 'Bold and fast', mainFrames: 18, easing: 'bezier(0.16,1,0.3,1)', overshoot: 1.12, squash: 0.25, seams: ['wipe', 'whip', 'flash', 'glitch', 'barn', 'line', 'push', 'window'], holdGrowth: 1.1 },
+  playful: { id: 'playful', label: 'Playful and bouncy', mainFrames: 27, easing: 'bezier(0.34,1.56,0.64,1)', overshoot: 1.08, squash: 0.18, seams: ['whip', 'ink', 'portal', 'wipe', 'barn', 'window', 'push'], holdGrowth: 1.15 },
+  calm: { id: 'calm', label: 'Calm and caring', mainFrames: 42, easing: 'ease-in-out', overshoot: 1, squash: 0.04, seams: ['dip', 'ink', 'iris', 'portal', 'window', 'push'], holdGrowth: 1.3 },
+  friendly: { id: 'friendly', label: 'Warm and friendly', mainFrames: 26, easing: 'bezier(0.25,0.46,0.45,0.94)', overshoot: 1.04, squash: 0.08, seams: ['wipe', 'dip', 'ink', 'barn', 'portal', 'window', 'push'], holdGrowth: 1.2 },
 };
 
 const HIGH = /\b(startup|fast|instant|ship|launch|growth|viral|ai|automat\w*|game|gaming|sport\w*|esports?|creator|stream\w*|crypto|play)\b/i;

@@ -37,6 +37,8 @@ export interface ProjectData {
   /** Visual preset; absent means the manifest's default, preserving older JSON. */
   themeId?: string;
   themeColors?: Record<string, string>;
+  /** The colours captured from the film's site: the base of the "Your site" theme (lib/palette). */
+  sitePalette?: Record<string, string>;
   name: string;
   fps: number;
   width: number;
@@ -126,4 +128,10 @@ export interface DesignSpec {
   };
   scenes: Array<{ n: number; start: number; durationSec: number; kind: 'shot' | 'title'; recipeId: string; line: string }>;
   dataRules: string[];
+  /** Stage 2: feature → first-choice card, fallback card, what it expresses, the page state it needs. */
+  mapping?: Array<{ feature: string; firstShot: string; altShot: string; expresses: string; pageState: string }>;
+  /** Stage 3: the release check run before the storyboard was shown. */
+  release?: Array<{ code: string; ok: boolean; text: string }>;
+  /** Stage 1: the chosen visual direction, why, and its trade-off. */
+  direction?: string;
 }

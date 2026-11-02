@@ -18,6 +18,9 @@ import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
+import { seamFrames, type SeamKind } from './seams';
+import { SHOT_FACTS } from '../demosrc/_generated/shotFacts';
+import { luma } from './palette';
 
 export interface FilmCapture {
   /** Captured page URLs (1920 CSS px wide, 2x). */
@@ -38,6 +41,8 @@ export interface FilmCapture {
   ctas?: string[];
   /** The site's address as typed (host and path). */
   address?: string;
+  /** The pictures chosen for each scene (lib/assignPictures), by scene index; when present they replace the rotation. */
+  scenes?: Array<{ screens: string[]; crops: string[] } | undefined>;
 }
 
 /** A video the user attached; it plays as its own scene before the closing card. */
@@ -59,13 +64,29 @@ export interface FilmMusic {
 }
 
 const FPS = 30;
-const FLASH_FRAMES = 10;
-/** Length of each seam card in frames; the cut sits in its middle. */
-const SEAM_FRAMES: Partial<Record<SceneTransition, number>> = { wipe: 16, barn: 16, dip: 14, whip: 12, ink: 18, leak: 20, portal: 20, iris: 18, line: 14, glitch: 10 };
-const WIPE_DIRS = ['right', 'left', 'up', 'down'] as const;
+const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
-const SFX_CUT = 'transition/swoosh-quick';
-const SFX_FLASH = 'impact/impact-transition';
+/**
+ * The sound of a scene change, by the seam's style (sound-design 4.2, anti-machine-gun): each style has two
+ * similar but different samples that alternate, so the film never repeats one whoosh at every cut. None is
+ * one of the library's byte-identical pairs (sound-design 3: swoosh-quick = sweep-fast-small, …).
+ */
+const SEAM_SOUNDS: Record<string, readonly [string, string]> = {
+  cut: ['transition/swoosh-quick', 'transition/air-woosh-quick'],
+  whip: ['transition/whoosh-fast', 'transition/sweep-fast'],
+  window: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  portal: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  iris: ['camera/zoom-air-fast', 'transition/air-woosh-deep'],
+  wipe: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  barn: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  line: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  ink: ['transition/sweep-short', 'transition/wind-swoosh-short'],
+  push: ['transition/transition-tech-slide', 'transition/warp-slide'],
+  dip: ['transition/swoosh-slow', 'light/light-transition-magic'],
+  leak: ['light/light-transition-magic', 'transition/swoosh-slow'],
+  flash: ['impact/impact-transition', 'impact/impact-zoom-quick'],
+  glitch: ['impact/impact-zoom-quick', 'impact/impact-transition'],
+};
 const sfxFile = (name: string) => `motion-studio/sfxlib/${name}.mp3`;
 /**
  * The output's audio runs late by a fixed amount (the encoder's priming), so a sound pinned at its
@@ -146,15 +167,13 @@ const clip = (cardId: string, start: number, duration: number, props: Record<str
 });
 
 /**
- * Play a recipe at its tuned speed (the cards: easing, hold budgets and sound pins are the
- * quality). A scene longer than the recipe lets it hold; a slightly shorter one plays it up to
- * 25 % faster; anything shorter is cut.
+ * A recipe plays at its own speed: its tuned timings are the quality (upstream SKILL / every card), so a
+ * scene shorter than the recipe cuts its tail rather than speeding it up. Only the card's own frame rate
+ * is converted.
  */
-const fitSpeed = (card: CardDef, durationFrames: number): number => {
+const fitSpeed = (card: CardDef, _durationFrames: number): number => {
   if (card.timing === 'realtime') return 1;
-  const scale = FPS / (card.sourceFps ?? CARD_FPS);
-  const need = card.durationInFrames / (durationFrames * scale);
-  return Math.round((clamp(need, 1, 1.25) / scale) * 100) / 100;
+  return Math.round(((card.sourceFps ?? CARD_FPS) / FPS) * 100) / 100;
 };
 
 /**
@@ -241,6 +260,8 @@ export function planToProject(
     brand?: BrandInput | null;
     /** Scene index -> (template words -> the words to draw), from the director or the site's own words. */
     texts?: Record<number, Record<string, string>>;
+    /** The film's theme (lib/palette): a preset, or the site's own colours ("Your site"). */
+    theme?: { id: string; colors?: Record<string, string> | null } | null;
   },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
@@ -265,17 +286,18 @@ const INSET_PAGE_H = 1200;
   let featureZooms = 0;
   const videos = opts.videos ?? [];
   const lastIndex = scenes.length - 1;
-  /** A scene change: whoosh on every cut, impact + white flash on flash cuts, a panel on wipe / barn-door, a dip to the page colour. */
+  /**
+   * A scene change: whoosh on every cut, an impact on flash cuts. The seam itself is built after every shot
+   * is placed (`connectSeams`): both real shots play through it, so here only where and how is recorded.
+   */
+  const seams: Array<{ at: number; kind: SceneTransition; n: number }> = [];
+  const soundTurn: Record<string, number> = {};
   const cut = (kind: SceneTransition, wipeIndex: number) => {
-    const flash = kind === 'flash';
-    const seam = SEAM_FRAMES[kind];
-    if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
-    else if (seam) {
-      const color = kind === 'dip' ? palette.background : kind === 'wipe' || kind === 'ink' || kind === 'portal' || kind === 'line' ? palette.accent : kind === 'leak' ? '#ffb45a' : kind === 'iris' ? palette.background : palette.text;
-      const props = kind === 'wipe' ? { color, dir: WIPE_DIRS[wipeIndex % WIPE_DIRS.length] } : { color };
-      flashes.push(clip(`inkpress-seam-${kind}`, Math.max(0, at - Math.round(seam / 2)), seam, props));
-    }
-    sfx.push(pinSfx(flash ? SFX_FLASH : SFX_CUT, at, { tailMs: flash ? 900 : 500, volume: 0.6, label: flash ? 'Impact' : 'Whoosh' }));
+    const hit = kind === 'flash' || kind === 'glitch';
+    if (kind !== 'cut') seams.push({ at, kind, n: wipeIndex });
+    const pair = SEAM_SOUNDS[kind] ?? SEAM_SOUNDS.cut;
+    const turn = (soundTurn[kind] = (soundTurn[kind] ?? -1) + 1);
+    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh' }));
   };
   let wipes = 0;
 
@@ -300,13 +322,14 @@ const INSET_PAGE_H = 1200;
           ink: palette.text,
           accent: palette.accent,
           ...(opts.logo ? { logo: opts.logo } : {}),
-        }, { label: scene.headline.slice(0, 24) }),
+        }, { label: scene.headline.replace(/\*/g, '').slice(0, 24) }),
       );
     } else if (isBrandScene(scene.recipeId)) {
       const page = screens[0] ?? crops[0] ?? '';
       const look = { bg: palette.background, ink: palette.text, accent: palette.accent, ...(opts.brand?.font ? { font: opts.brand.font } : {}) };
       const title = scene.headline.replace(/\*/g, '');
-      const names = [...(opts.capture?.nav ?? []), ...(opts.capture?.sectionNames ?? [])].filter((v, n, all) => v && all.indexOf(v) === n);
+      // Accessibility links ("Skip to content") are not features of the product.
+      const names = [...(opts.capture?.nav ?? []), ...(opts.capture?.sectionNames ?? [])].filter((v, n, all) => v && all.indexOf(v) === n && !/^\s*skip (?:to|navigation)\b/i.test(v));
       let props: Record<string, unknown> = look;
       if (scene.recipeId === 'brand/url-scan') {
         props = { ...look, file: page, url: opts.capture?.address ?? opts.brand?.repo ?? '', labels: (opts.capture?.sectionNames ?? []).slice(0, 5).join('\n') || 'BRANDING\nPEOPLE\nPRODUCTS\nOFFERS\nSERVICES' };
@@ -318,10 +341,14 @@ const INSET_PAGE_H = 1200;
         const pageH = opts.capture?.pageH ?? 0;
         const bySection = Boolean(screens[0] && pageH > INSET_PAGE_H && ys.length >= 2);
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
-        props = { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
+        const own = opts.capture?.scenes?.[i];
+        // The page of this scene's feature when one was matched; else a section of the home page.
+        props = own?.screens[0] && own.screens[0] !== screens[0] ? { ...look, file: own.screens[0], focusY: 0, label: '', text: title } : { ...look, file: bySection ? screens[0] : (insetPool[k % Math.max(1, insetPool.length)] ?? page), focusY, label: (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || '', text: title };
       } else if (scene.recipeId === 'brand/people-gallery') {
         const assets = opts.capture?.assets ?? [];
-        const pics = [...assets.map((a) => a.url), ...crops, ...screens.slice(1)].filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6); // the scene shows six; the rest feed the recipes' picture slots and insets
+        const chosen = opts.capture?.scenes?.[i]?.crops ?? [];
+        // The people and photos chosen for this scene; without a catalogue, the finder's pictures then the crops.
+        const pics = (chosen.length ? chosen : [...assets.map((a) => a.url), ...crops, ...screens.slice(1)]).filter((v, n, all) => v && all.indexOf(v) === n).slice(0, 6);
         // Each picture the asset finder labelled keeps its own caption (what it shows); the rest take the site's section names in order.
         const label = (a: { category: string; alt: string }) => (a.alt || a.category.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
         const notes = [...assets.map(label), ...(opts.capture?.sectionNames ?? [])];
@@ -348,7 +375,13 @@ const INSET_PAGE_H = 1200;
         clip(cardId, at, frames, {
           accent: palette.accent,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
-          ...(usesCapture ? { screens: rotated(screens, i), crops: rotated(crops, i * 3) } : {}),
+          // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
+          ...(!usesCapture && opts.capture?.scenes?.[i]?.crops.length ? { scenePictures: { screens: opts.capture.scenes[i]!.screens.slice(0, 3), crops: opts.capture.scenes[i]!.crops } } : {}),
+          ...(usesCapture
+            ? opts.capture?.scenes?.[i]?.crops.length
+              ? { screens: opts.capture.scenes[i]!.screens, crops: opts.capture.scenes[i]!.crops }
+              : { screens: rotated(screens, i), crops: rotated(crops, i * 3) }
+            : {}),
           ...(opts.texts?.[i] && Object.keys(opts.texts[i]).length ? { texts: opts.texts[i] } : {}),
         }, { speed: fitSpeed(card, frames) }),
       );
@@ -362,13 +395,18 @@ const INSET_PAGE_H = 1200;
         const focusY = bySection ? Math.round(Math.min(1, Math.max(0, (ys[k % ys.length] - 60) / (pageH - INSET_PAGE_H))) * 100) : 0;
         const label = (bySection ? opts.capture?.sectionNames?.[k % ys.length] : '') || opts.capture?.title || '';
         insets.push(
-          clip('site-inset', at, frames, { file: bySection ? screens[0] : insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
+          clip('site-inset', at, frames, { file: opts.capture?.scenes?.[i]?.crops[0] ?? (bySection ? screens[0] : insetPool[k % insetPool.length]), side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: label.slice(0, 40), focusY }, { label: 'Site' }),
         );
       }
       // `*word*` marks emphasis on the title card only; everywhere else the markers are dropped.
       const line = (scene.caption || scene.headline).replace(/\*/g, '');
       if (line) {
-        captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
+        // The caption sits on the shot: a recipe drawn on a dark ground keeps it in a light film (it only takes
+        // the accent), so its caption is drawn light there, and dark on a light recipe in a dark film.
+        const ground = SHOT_FACTS[template.componentName]?.ground;
+        const filmDark = luma(palette.background) < 0.5;
+        const captionColor = ground === 'dark' && !filmDark ? '#f5f5f2' : ground === 'light' && filmDark ? '#16171c' : palette.text;
+        captions.push(clip('inkpress-caption', at, frames, { text: line, color: captionColor, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
       }
     }
     at += frames;
@@ -381,6 +419,21 @@ const INSET_PAGE_H = 1200;
       shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
       at += frames;
     }
+  }
+
+  // Every dressed seam is built from its two neighbours (upstream shot-transitions card): half of the seam's
+  // frames come from the end of the outgoing shot's hold, half from the start of the incoming shot, which
+  // therefore starts that far into its own motion on the timeline. The film keeps its length.
+  let side = 0;
+  for (const s of seams) {
+    const out = shots.find((c) => c.start + c.duration === s.at);
+    const inc = shots.find((c) => c.start === s.at);
+    if (!out || !inc || out.cardId === 'video-clip' || inc.cardId === 'video-clip') continue;
+    const kind = s.kind as SeamKind;
+    const half = seamFrames(kind, out.duration, inc.duration) / 2;
+    if (half < 2) continue;
+    inc.inOffset += half * inc.speed;
+    flashes.push(clip('connected-seam', s.at - half, half * 2, { kind, outId: out.id, inId: inc.id, half, dir: side++ % 2 === 0 ? 1 : -1, accent: palette.accent, page: palette.background }, { label: SEAM_LABEL[kind] }));
   }
 
   const total = Math.max(at, FPS);
@@ -406,8 +459,10 @@ const INSET_PAGE_H = 1200;
     fps: FPS,
     width,
     height,
-    background: palette.background,
+    background: opts.theme?.colors?.page ?? palette.background,
     ...(opts.brand ? { brand: opts.brand } : {}),
+    // Every recipe draws in the film's theme (re-skinned to the product, SKILL principle 2); the Themes tab changes it.
+    ...(opts.theme ? { themeId: opts.theme.id, ...(opts.theme.colors ? { sitePalette: { ...opts.theme.colors } } : {}) } : {}),
     tracks: tracks.filter((track) => track.clips.length > 0 || track.name === t('track.shots')),
   };
 }

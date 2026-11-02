@@ -1,6 +1,9 @@
 import React from "react";
-import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
 import type { CardDef, PropField } from "./types";
+
+/** Brand scenes lay out on the 1920×1080 design stage; the composition fits that stage into any film size. */
+const STAGE = { width: 1920, height: 1080 } as const;
 
 /**
  * Brand scenes — prop-driven scene cards that tell a product's story from its REAL
@@ -46,7 +49,7 @@ const Backdrop: React.FC<{ bg: string; accent: string }> = ({ bg, accent }) => (
 // ——— Hub: the product page in the middle, its features as nodes on glowing lines ———
 const BrandHub: React.FC<{ title?: string; file?: string; labels?: string } & Look> = ({ title = "", file = "", labels = "", ...look }) => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width, height } = STAGE;
   const { bg, ink, accent, font } = lookOf(look);
   const names = list(labels, 12);
   const cx = width / 2;
@@ -96,7 +99,7 @@ const BrandHub: React.FC<{ title?: string; file?: string; labels?: string } & Lo
 // ——— URL scan: the address typed into a bar, then the page scanned and its parts tagged ———
 const BrandUrlScan: React.FC<{ url?: string; file?: string; labels?: string } & Look> = ({ url = "yourbrand.com", file = "", labels = "BRANDING, PEOPLE, PRODUCTS, OFFERS, SERVICES", ...look }) => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width, height } = STAGE;
   const { bg, ink, accent, font } = lookOf(look);
   const tags = list(labels, 6);
   const typed = Math.min(url.length, Math.floor(Math.max(0, frame - 4) / 2));
@@ -139,7 +142,7 @@ const BrandUrlScan: React.FC<{ url?: string; file?: string; labels?: string } & 
 // ——— Feature zoom: a slow push-in on a real section of the page, with a label ———
 const BrandFeatureZoom: React.FC<{ file?: string; label?: string; text?: string; focusY?: number; duration?: number } & Look> = ({ file = "", label = "", text = "", focusY = 0, duration = 90, ...look }) => {
   const frame = useCurrentFrame();
-  const { height } = useVideoConfig();
+  const { height } = STAGE;
   const { bg, ink, accent, font } = lookOf(look);
   const push = interpolate(frame, [0, Math.max(30, duration)], [1, 1.14], { ...clamp, easing: Easing.out(Easing.cubic) });
   const chip = rise(frame, 10, 24);
@@ -165,7 +168,7 @@ const BrandFeatureZoom: React.FC<{ file?: string; label?: string; text?: string;
 // ——— Gallery: the site's own pictures (people, products, cards), one after another with a fan behind ———
 const BrandGallery: React.FC<{ images?: string; captions?: string; text?: string; duration?: number } & Look> = ({ images = "", captions = "", text = "", duration = 120, ...look }) => {
   const frame = useCurrentFrame();
-  const { height } = useVideoConfig();
+  const { height } = STAGE;
   const { bg, ink, accent, font } = lookOf(look);
   const files = String(images).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).slice(0, 6);
   const notes = String(captions).split(/\r?\n/).map((x) => x.replace(/\*/g, "").trim());
@@ -206,7 +209,7 @@ const BrandGallery: React.FC<{ images?: string; captions?: string; text?: string
 // ——— Logo reveal: logo + name with sparks, then the call to action and the address ———
 const BrandLogoReveal: React.FC<{ logo?: string; name?: string; cta?: string; url?: string; duration?: number } & Look> = ({ logo = "", name = "", cta = "", url = "", duration = 90, ...look }) => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width, height } = STAGE;
   const { bg, ink, accent, font } = lookOf(look);
   const logoT = rise(frame, 2, 22);
   const nameT = rise(frame, 14, 30);

@@ -211,8 +211,11 @@ export function setBrand(input: BrandInput | null | undefined): void {
   if (b.name) {
     // A company: its own lines, never the studio's.
     en.motto = b.motto ?? b.taglines?.[0] ?? b.name;
-    en.taglines = b.taglines?.length ? [...b.taglines] : [b.motto ?? b.name];
-    en.features = b.features?.length ? [...b.features] : [b.name];
+    // As many lines as the recipes were designed with (they read taglines[0..7], features[0..]): the
+    // company's own lines repeat rather than leave an index empty.
+    const fill = (own: string[], n: number) => Array.from({ length: Math.max(n, own.length) }, (_, i) => own[i % own.length]);
+    en.taglines = fill(b.taglines?.length ? [...b.taglines] : [b.motto ?? b.name], DEFAULT_PITCH.en.taglines.length);
+    en.features = fill(b.features?.length ? [...b.features] : [b.name], DEFAULT_PITCH.en.features.length);
     en.praise = [];
     en.works = b.repo ?? b.name;
   }
