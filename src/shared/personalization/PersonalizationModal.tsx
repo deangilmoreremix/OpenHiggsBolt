@@ -1547,6 +1547,13 @@ export default function PersonalizationModal() {
           data-pz-scroll-root
           style={{ padding: '0 26px' }}
         >
+          {/* A reopened project whose saved video is missing the approved
+              layers says so, even before a new result is shown. */}
+          {generation.status !== 'complete' && result?.metadata?.layersMissing === true && typeof result.metadata.layersNote === 'string' && (
+            <div data-testid="pz-layers-note-restored" role="status" className="rounded-xl p-3 text-xs" style={{ margin: '12px 0', border: '1px solid rgba(251,191,36,.35)', background: 'rgba(251,191,36,.06)', color: '#fcd34d' }}>
+              {result.metadata.layersNote}
+            </div>
+          )}
           {brandedRenderInWizard ? (
             // A branded render started from Simple Mode stays in Step 4, which
             // shows its progress, Cancel, any error and Download / Upload.

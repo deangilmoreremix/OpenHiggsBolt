@@ -374,3 +374,21 @@ describe('DemoPersonalizeProvider restore of rows saved without asset URLs', () 
     expect(ctx.assets.products[0].url).toBe('https://cdn.example.com/legacy-product.png')
   })
 })
+
+describe('DemoPersonalizeProvider restore of a video missing its layers', () => {
+  it('a saved video missing its approved layers comes back with the notice and nothing to publish', async () => {
+    await mountAndOpen(makeSavedEntry({ layersMissing: true }))
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.result.urls).toEqual(['https://cdn.example.com/result.mp4'])
+    expect(ctx.result.metadata.layersMissing).toBe(true)
+    expect(ctx.result.metadata.publishUrl).toBe('')
+    expect(String(ctx.result.metadata.layersNote)).toMatch(/on-video layers/)
+  })
+
+  it('a saved video with its layers restores without the notice', async () => {
+    await mountAndOpen(makeSavedEntry())
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.result.urls).toEqual(['https://cdn.example.com/result.mp4'])
+    expect(ctx.result.metadata?.layersMissing).toBeUndefined()
+  })
+})
