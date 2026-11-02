@@ -1957,7 +1957,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         next = updateAssetInLibrary(next, createAssetFromUrl(video.url, 'presenter_video', {
           name: video.name,
           mimeType: 'video/mp4',
-          editMetadata: { operation: 'full_body_recast', model: RECAST_MODEL },
+          editMetadata: { operation: 'full_body_recast', model: RECAST_MODEL, ...(video.sourceUrl ? { sourceUrl: video.sourceUrl } : {}) },
         }))
       }
       return next
@@ -1967,7 +1967,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (!source?.id || recastVideosLoadedForRef.current !== `${recastOwner}:${source.id}`) return
     const videos = (assets.presenterVideos || [])
       .filter((asset) => asset.editMetadata?.operation === 'full_body_recast' && /^https?:\/\//.test(asset.url))
-      .map((asset) => ({ id: asset.id, url: asset.url, name: asset.name || 'Full Body Recast' }))
+      .map((asset) => ({
+        id: asset.id,
+        url: asset.url,
+        name: asset.name || 'Full Body Recast',
+        // Kept so a saved recast still gets its performance clip's sound.
+        ...(asset.editMetadata?.sourceUrl && /^https?:\/\//.test(asset.editMetadata.sourceUrl) ? { sourceUrl: asset.editMetadata.sourceUrl } : {}),
+      }))
     const serialized = JSON.stringify(videos)
     if (serialized === recastVideosSavedRef.current) return
     recastVideosSavedRef.current = serialized

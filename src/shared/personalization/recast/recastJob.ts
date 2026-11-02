@@ -186,6 +186,8 @@ export interface SavedRecastVideo {
   id: string
   url: string
   name: string
+  /** The performance clip it was made from, so its sound can be kept. */
+  sourceUrl?: string
 }
 
 export function loadRecastVideos(sourceId: string, ownerKey: string): SavedRecastVideo[] {
@@ -193,7 +195,10 @@ export function loadRecastVideos(sourceId: string, ownerKey: string): SavedRecas
   try {
     const parsed = JSON.parse(localStorage.getItem(`${VIDEOS_PREFIX}${ownerKey}:${sourceId}`) || '[]')
     return Array.isArray(parsed)
-      ? parsed.filter((v): v is SavedRecastVideo => v && typeof v.id === 'string' && typeof v.url === 'string' && /^https?:\/\//.test(v.url))
+      ? parsed
+          .filter((v): v is SavedRecastVideo => v && typeof v.id === 'string' && typeof v.url === 'string' && /^https?:\/\//.test(v.url))
+          // Only a stored (http) clip can be played again after a reload.
+          .map((v) => (typeof v.sourceUrl === 'string' && /^https?:\/\//.test(v.sourceUrl) ? v : { id: v.id, url: v.url, name: v.name }))
       : []
   } catch {
     return []
