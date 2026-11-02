@@ -45,6 +45,8 @@ describe('GET /api/media/remote', () => {
     expect((await callRoute(null)).status).toBe(400)
     expect((await callRoute('https://evil.example.com/a.mp4')).status).toBe(400)
     expect((await callRoute('http://169.254.169.254/latest')).status).toBe(400)
+    // Allow-listed host over plaintext http is refused too.
+    expect((await callRoute(CDN_URL.replace('https://', 'http://'))).status).toBe(400)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

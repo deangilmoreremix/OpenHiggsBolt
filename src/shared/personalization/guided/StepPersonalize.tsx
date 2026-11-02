@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
+import { designPrimarySlotUpdates } from '../preview/designSlots'
 import { C, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
 import { PersonalizationTemplateBrowser } from './PersonalizationTemplateBrowser'
 import type { ClientProfile } from '../types'
@@ -129,6 +130,11 @@ export function StepPersonalize({
     updateClientForm({ ...clientForm, [field]: value })
     const layer = layers.find((item) => item.kind === layerKind)
     if (layer) updatePreviewLayer(layer.id, { text: value })
+    // An applied design keeps its primary text on its own layer; keep it in
+    // sync with the form too, or the preview and export show the old value.
+    for (const update of designPrimarySlotUpdates(layers, remotionDesignTemplates, layerKind, value)) {
+      updatePreviewLayer(update.layerId, { text: update.text })
+    }
   }
 
   return (

@@ -21,7 +21,7 @@ export function isProxiableRemoteMediaHost(hostname: string): boolean {
   return REMOTE_MEDIA_ALLOWED_HOSTS.includes(hostname.toLowerCase())
 }
 
-/** Parse an absolute http(s) URL on an allow-listed host, or return null. */
+/** Parse an absolute https URL on an allow-listed host, or return null. */
 export function parseProxiableRemoteMediaUrl(raw: string | null | undefined): URL | null {
   if (typeof raw !== 'string' || raw.trim() === '') return null
   let url: URL
@@ -30,7 +30,8 @@ export function parseProxiableRemoteMediaUrl(raw: string | null | undefined): UR
   } catch {
     return null
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  // HTTPS only: the proxy never fetches plaintext media.
+  if (url.protocol !== 'https:') return null
   if (url.username || url.password) return null
   if (!isProxiableRemoteMediaHost(url.hostname)) return null
   return url
