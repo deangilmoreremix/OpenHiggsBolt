@@ -1553,6 +1553,24 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   previewVideoRef.current = previewVideo
   const recastMarkAppliedRef = useRef<() => void>(() => {})
 
+  /**
+   * The preview (and the branded render built from it) runs as long as the
+   * video now shown, so a longer recast is not cut to the old length. Uses the
+   * clip's real length when it can be read, else `fallbackSeconds`. Skipped if
+   * another video has been chosen in the meantime.
+   */
+  const fitPreviewLengthToVideo = useCallback(async (url: string | null | undefined, fallbackSeconds?: number) => {
+    if (!url) return
+    const clip = await readClipMetadata(url).catch(() => null)
+    const seconds = clip && clip.durationSeconds > 0 ? clip.durationSeconds : fallbackSeconds
+    if (!seconds || !(seconds > 0)) return
+    if ((previewVideoRef.current?.url || null) !== url) return
+    setPreviewSettings((prev) => {
+      const durationInFrames = Math.max(1, Math.round(seconds * (prev.fps || 30)))
+      return prev.durationInFrames === durationInFrames ? prev : { ...prev, durationInFrames }
+    })
+  }, [])
+
   /** A finished recast becomes the video and is saved with the client's assets. */
   const handleRecastDone = useCallback((job: RecastJob) => {
     setPreviewVideo({
@@ -1562,6 +1580,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       kind: 'recast',
       beforeRecast: videoBeforeRecast(previewVideoRef.current),
     })
+    previewVideoRef.current = { url: job.resultUrl, poster: null, title: '', kind: 'recast' }
+    void fitPreviewLengthToVideo(job.resultUrl, job.duration)
     setAssets((prev) => {
       if ((prev.presenterVideos || []).some((asset) => asset.url === job.resultUrl)) return prev
       return updateAssetInLibrary(prev, createAssetFromUrl(job.resultUrl, 'presenter_video', {
@@ -1603,7 +1623,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       })
     }
     recastMarkAppliedRef.current()
-  }, [source, access])
+  }, [source, access, fitPreviewLengthToVideo])
 
   // Recast jobs and saved recast videos belong to the signed-in user (same
   // scope as the preview store), never to whoever used this browser before.
@@ -1618,7 +1638,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   /** Undo: go back to the video shown before the recast was applied. */
   const restoreOriginalVideo = useCallback(() => {
     setPreviewVideo(preRecastVideo)
-  }, [preRecastVideo])
+    // The preview runs as long as the original video again.
+    previewVideoRef.current = preRecastVideo
+    void fitPreviewLengthToVideo(preRecastVideo?.url)
+  }, [preRecastVideo, fitPreviewLengthToVideo])
 
   /** Re-apply a saved recast video from the client's assets. */
   const applyPresenterVideo = useCallback((assetId: string) => {
@@ -1631,7 +1654,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       kind: 'recast',
       beforeRecast: videoBeforeRecast(previewVideoRef.current),
     })
-  }, [assets.presenterVideos])
+    previewVideoRef.current = { url: asset.url, poster: null, title: asset.name, kind: 'recast' }
+    void fitPreviewLengthToVideo(asset.url)
+  }, [assets.presenterVideos, fitPreviewLengthToVideo])
 
   const removePresenterVideo = useCallback((assetId: string) => {
     const removed = (assets.presenterVideos || []).find((asset) => asset.id === assetId)
@@ -1642,8 +1667,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Removing the video in use goes back to the video from before the recast.
     if (removed && previewVideoRef.current?.kind === 'recast' && previewVideoRef.current.url === removed.url) {
       setPreviewVideo(preRecastVideo)
+      previewVideoRef.current = preRecastVideo
+      void fitPreviewLengthToVideo(preRecastVideo?.url)
     }
-  }, [assets.presenterVideos, preRecastVideo])
+  }, [assets.presenterVideos, preRecastVideo, fitPreviewLengthToVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
   /** True when an approval was cleared because something changed after it. */
   const [approvalStale, setApprovalStale] = useState(false)
@@ -4914,6 +4941,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         mode,
         options,
         apiKey,
+        // Only the final-video render puts the source audio back on.
+        restoresSourceAudio: burnInLayers,
         onProgress: (percent, message) => {
           setGeneration((prev) => ({ ...prev, progress: percent, progressMessage: message }))
         },

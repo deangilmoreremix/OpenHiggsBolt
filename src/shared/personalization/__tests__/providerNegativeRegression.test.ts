@@ -436,8 +436,10 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
         resolved,
         prompt: 'Replace the full presenter',
         mode: 'full_body',
-        options: { ...baseOptions, model: 'ai-video-recast' },
+        options: { ...baseOptions, model: 'ai-video-recast', preserveAudio: true },
         apiKey: 'sk-test',
+        // The final-video render puts the source audio back on.
+        restoresSourceAudio: true,
       })
 
       expect(result.type).toBe('video')
@@ -454,6 +456,28 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
 
       const generationCalls = openaiCalls.filter((c) => c.endpoint === '/images/generations')
       expect(generationCalls.length).toBe(0)
+    })
+
+    it('full_body without a source-audio restore asks the model for sound, even with "Keep the original sound" on', async () => {
+      const result = await runGeneration({
+        source: makeVideoSource({ sourceMedia: 'https://example.com/source.mp4' }),
+        client: {},
+        assets: makeAssets(),
+        resolved: makeResolved({
+          directInputs: {
+            video_url: 'https://example.com/source.mp4',
+            image_url: 'https://example.com/identity.jpg',
+          },
+        }),
+        prompt: 'Replace the full presenter',
+        mode: 'full_body',
+        options: { ...baseOptions, model: 'ai-video-recast', preserveAudio: true },
+        apiKey: 'sk-test',
+      })
+
+      expect(result.type).toBe('video')
+      expect(muapiCalls.processMotionControl).toHaveLength(1)
+      expect(muapiCalls.processMotionControl[0]).toMatchObject({ generate_audio: true })
     })
   })
 })

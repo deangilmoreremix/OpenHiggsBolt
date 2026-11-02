@@ -53,6 +53,13 @@ export interface GenerationInput {
   options: GenerationOptions
   apiKey: string
   onProgress?: (percent: number, message: string) => void
+  /**
+   * True when the caller puts the source video's audio back on afterwards
+   * (the final-video render). Only then may a full presenter clip be made
+   * silent for "Keep the original video's sound"; otherwise the model makes
+   * the sound, so the result is never silent.
+   */
+  restoresSourceAudio?: boolean
 }
 
 // ── Logging ──────────────────────────────────────────────────────────────────
@@ -131,7 +138,7 @@ function getFallbackModel(source: PersonalizationSource, mode: VideoPersonalizat
 // ── Main Entry ───────────────────────────────────────────────────────────────
 
 export async function runGeneration(input: GenerationInput): Promise<GenerationResult> {
-  const { source, resolved, prompt, mode, options, apiKey, onProgress } = input
+  const { source, resolved, prompt, mode, options, apiKey, onProgress, restoresSourceAudio } = input
 
   onProgress?.(5, 'Preparing assets...')
 
@@ -159,6 +166,7 @@ export async function runGeneration(input: GenerationInput): Promise<GenerationR
     options,
     apiKey,
     onProgress,
+    restoresSourceAudio: Boolean(restoresSourceAudio),
   })
 }
 
@@ -291,6 +299,7 @@ async function handleVideoGeneration({
   options,
   apiKey,
   onProgress,
+  restoresSourceAudio,
 }: {
   source: PersonalizationSource
   resolved: ResolvedAssets
@@ -299,6 +308,7 @@ async function handleVideoGeneration({
   options: GenerationOptions
   apiKey: string
   onProgress?: (percent: number, message: string) => void
+  restoresSourceAudio?: boolean
 }): Promise<GenerationResult> {
   const videoModel = pickVideoModel(source, options, mode || 'recreate')
 
@@ -345,8 +355,9 @@ async function handleVideoGeneration({
         aspect_ratio: 'adaptive',
         duration: clampRecastDuration(options.duration || source.duration || 5),
         // "Keep the original video's sound" puts the source audio back on in
-        // the final render; otherwise the model makes the sound.
-        generate_audio: !options.preserveAudio,
+        // the final render. Any other run (plain Generate, the assistant)
+        // has nothing to restore it, so the model makes the sound.
+        generate_audio: !(options.preserveAudio && restoresSourceAudio),
         prompt,
       })
 
