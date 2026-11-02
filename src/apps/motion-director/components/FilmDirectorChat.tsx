@@ -6,7 +6,7 @@ import { Player } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { sceneDetail } from '../lib/coCreate';
-import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, projectEndFrame, type ProjectData } from '../types';
@@ -16,6 +16,9 @@ import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
+import type { SiteCapture } from '../lib/directorClient';
+import { buildCatalogue } from '../lib/pictureCatalogue';
+import { assignPictures } from '../lib/assignPictures';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
 
@@ -257,6 +260,8 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
   const { messages, stage, activity, steps, storyboard, film } = director;
   const shown = hideOwnMessages ? history : [...history, ...messages];
   const plan = storyboard?.plan;
+  // The pictures each scene will show (the same assignment the build uses), for the storyboard thumbnails.
+  const scenePictures = useMemo(() => (plan && storyboard?.capture ? assignPictures(plan, buildCatalogue(storyboard.capture)) : []), [plan, storyboard?.capture]);
   const videos = storyboard?.videos ?? [];
   /** Attached videos sit just before the closing scene, where the build places them. */
   const withVideos = <T,>(steps: T[]): Array<T | { key: string; label: string; detail: string }> => {
@@ -311,13 +316,15 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           </button>
         </div>
       )}
-      {stage === 'direction' && director.styleframes.length > 0 && (
+      {(stage === 'direction' || stage === 'plan') && director.styleframes.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="film-styleframes">
-          <span className="text-[11px]" style={{ color: semantic.textMuted }}>The options as frames (a real page and the closing logo in each direction's colours):</span>
+          <span className="text-[11px]" style={{ color: semantic.textMuted }}>
+            {stage === 'plan' ? 'Styleframes of the chosen direction (the opening, your site, the close), before any video is made:' : "The options as frames (a real page and the closing logo in each direction's colours):"}
+          </span>
           <div className="flex flex-wrap gap-3">
             {director.styleframes.map((sf, i) => (
               <div key={sf.direction + i} className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold" style={{ color: semantic.textSecondary }}>{String.fromCharCode(65 + i)} · {sf.direction}</span>
+                <span className="text-[11px] font-semibold" style={{ color: semantic.textSecondary }}>{stage === 'plan' ? sf.direction : `${String.fromCharCode(65 + i)} · ${sf.direction}`}</span>
                 <div className="flex gap-1">
                   {sf.frames.map((src, k) => (
                     <img key={src} src={src} alt={`${sf.direction}, frame ${k + 1}`} className="h-20 rounded object-cover" style={{ border: '1px solid var(--border-color)' }} />
@@ -356,7 +363,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
               label: template ? motionTemplateTitle(template) : brandScene ? brandScene.title : 'Title card',
               detail: [sceneDetail(scene, startSec), !scene.asset && onSite && 'shows your site', template && storyboard?.capture && drawsSampleScreen(template) && 'sample screen + your page beside it'].filter(Boolean).join(' · '),
               media: template ? (
-                <RecipePreview recipe={template} playing={false} />
+                <StoryboardShot recipe={template} site={scenePictures[i]?.crops[0] ?? scenePictures[i]?.screens[0] ?? sitePicture(storyboard?.capture, i)} />
               ) : (
                 // A title card shows its words on the film's colours, so it is not an empty tile beside a shot preview.
                 <div
@@ -375,6 +382,23 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         />
       )}
       {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} />}
+    </div>
+  );
+};
+
+/** The site picture a storyboard row will show (the same rotation the build uses). */
+const sitePicture = (capture: SiteCapture | null | undefined, i: number): string | null => {
+  if (!capture) return null;
+  const pool = [...(capture.assets ?? []).map((a) => a.url), ...(capture.crops ?? []), ...(capture.page?.url ? [capture.page.url] : [])].filter(Boolean);
+  return pool.length ? pool[i % pool.length] : null;
+};
+
+/** A storyboard row: the recipe's motion preview (plays on hover) with the site picture it will carry. */
+const StoryboardShot: React.FC<{ recipe: MotionTemplate; site: string | null }> = ({ recipe, site }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <RecipePreview recipe={recipe} playing={hover} site={site} />
     </div>
   );
 };

@@ -52,6 +52,7 @@ export function specMarkdown(spec: DesignSpec): string {
     spec.brief ? `**Brief:** ${spec.brief}` : undefined,
     spec.url ? `**Site:** ${spec.url}` : '**Site:** none (sample pages)',
     `**Tokens:** background ${spec.tokens.background}, text ${spec.tokens.text}, accent ${spec.tokens.accent}${spec.tokens.font ? `, font ${spec.tokens.font}` : ''}`,
+    spec.direction ? `**Visual direction:** ${spec.direction}` : undefined,
     spec.tokens.motion ? `**Motion voice:** ${spec.tokens.motion.label} (main move ${spec.tokens.motion.mainFrames} f, ${spec.tokens.motion.easing}, overshoot ${spec.tokens.motion.overshoot}, squash ${spec.tokens.motion.squash})` : undefined,
     '',
     '## Storyboard',
@@ -60,6 +61,10 @@ export function specMarkdown(spec: DesignSpec): string {
     '|---|---|',
     ...rows,
     '',
+    ...(spec.mapping?.length
+      ? ['## Feature → shot map', '', '| Feature | First choice | Fallback | Expresses | Page state |', '|---|---|---|---|---|', ...spec.mapping.map((m) => `| ${[m.feature, m.firstShot, m.altShot || '—', m.expresses, m.pageState].map((c) => c.replace(/\|/g, '/')).join(' | ')} |`), '']
+      : []),
+    ...(spec.release?.length ? ['## Release check', '', ...spec.release.map((r) => `- ${r.ok ? '✓' : '✗'} ${r.code}: ${r.text}`), ''] : []),
     '## Data rules',
     '',
     ...spec.dataRules.map((r) => `- ${r}`),

@@ -20,13 +20,18 @@ import {
 } from './motionCapture'
 
 /** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
-export const WORKER_CAPTURE_OPTIONS = { hardMs: 360_000, budgetMs: 300_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
+export const WORKER_CAPTURE_OPTIONS = { hardMs: 720_000, budgetMs: 600_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
 
 export interface MotionCaptureJobRequest {
   jobId: string
   userId: string
   url: string
+  /** Pipeline stage 4, after the storyboard: just this page (no crawl of more routes, no asset finder). */
+  targeted?: boolean
 }
+
+/** A targeted capture: one page, its 2x screenshot, layout and card crops, in a couple of minutes. */
+export const TARGETED_CAPTURE_OPTIONS = { hardMs: 180_000, budgetMs: 140_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true, maxRoutes: 0 } as const
 
 /** A capture that fails this fast (browser start, first navigation) is tried once more within the same budget. */
 const RETRY_WITHIN_MS = 15_000
@@ -40,6 +45,7 @@ const reasonOf = (err: unknown): string =>
 /** Runs one capture job and always leaves a `done` or `error` record behind. */
 export async function runMotionCapture(job: MotionCaptureJobRequest, storage: CaptureStorage, opts: { watchdogMs?: number } = {}): Promise<void> {
   const { jobId, userId, url } = job
+  const captureOptions = job.targeted ? TARGETED_CAPTURE_OPTIONS : WORKER_CAPTURE_OPTIONS
   const started = Date.now()
   let saved = false
   let saving: Promise<void> | null = null
@@ -72,20 +78,22 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
 
   const run = async () => {
     // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
-    const assetsRun = findMotionAssets(url, { budgetMs: 240_000 }).catch(() => [])
+    const assetsRun = job.targeted ? Promise.resolve({ assets: [], logo: null }) : findMotionAssets(url, { budgetMs: 600_000 }).catch(() => ({ assets: [], logo: null }))
     let capture: PageCapture
     try {
-      capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS })
+      capture = await capturePageScreenshots(url, { ...captureOptions })
     } catch (err) {
       if (err instanceof BrowserSsrfError || Date.now() - started > RETRY_WITHIN_MS) throw err
       console.warn('[motion-studio/capture-worker] retrying after', reasonOf(err))
-      const hardMs = WORKER_CAPTURE_OPTIONS.hardMs - (Date.now() - started)
-      capture = await capturePageScreenshots(url, { ...WORKER_CAPTURE_OPTIONS, hardMs, budgetMs: Math.min(WORKER_CAPTURE_OPTIONS.budgetMs, hardMs - 20_000) })
+      const hardMs = captureOptions.hardMs - (Date.now() - started)
+      capture = await capturePageScreenshots(url, { ...captureOptions, hardMs, budgetMs: Math.min(captureOptions.budgetMs, hardMs - 20_000) })
     }
     if (captureIsEmpty(capture)) return fail('CAPTURE_FAILED', 'The page could not be captured: it showed no picture and no text')
-    const found = await assetsRun
+    const { assets: found, logo: crawledLogo } = await assetsRun
+    // The browser could not cut the logo out of the page: use the one the crawl found.
+    const extraImages = !capture.logo && crawledLogo ? [{ name: 'logo.png', body: crawledLogo.body, contentType: crawledLogo.contentType }] : []
     const assetImages = found.map((a, i) => ({ name: assetFileName(i, a.contentType), body: a.body, contentType: a.contentType }))
-    const urls = await storeCaptureImages(storage, userId, [...captureImages(capture), ...assetImages])
+    const urls = await storeCaptureImages(storage, userId, [...captureImages(capture), ...extraImages, ...assetImages])
     const info = found.map((a, i) => ({ name: assetFileName(i, a.contentType), category: a.category, alt: a.alt }))
     await write({ state: 'done', finishedAt: new Date().toISOString(), capture: buildCaptureResponse(capture, urls, false, info) })
   }
@@ -121,5 +129,5 @@ export function parseJobRequest(body: unknown): MotionCaptureJobRequest | null {
   if (typeof b.jobId !== 'string' || !CAPTURE_JOB_ID.test(b.jobId)) return null
   if (typeof b.userId !== 'string' || !b.userId || b.userId.length > 128) return null
   if (typeof b.url !== 'string' || !/^https?:\/\//i.test(b.url) || b.url.length > 2048) return null
-  return { jobId: b.jobId, userId: b.userId, url: b.url }
+  return { jobId: b.jobId, userId: b.userId, url: b.url, ...(b.targeted === true ? { targeted: true } : {}) }
 }

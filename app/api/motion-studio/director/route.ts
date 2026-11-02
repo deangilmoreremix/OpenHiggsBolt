@@ -23,6 +23,7 @@ import { rulesOf } from '@/apps/motion-director/lib/shotRules'
 import { ADAPT_INSTRUCTIONS, ADAPT_JSON_SCHEMA, ADAPT_MAX_SOURCE, cleanAdaptedCode } from '@/apps/motion-director/lib/adaptPrompt'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
+import { AESTHETIC_RULES, FINAL_REVIEW } from '@/apps/motion-director/lib/_generated/reviewChecklists'
 import { requireMotionStudioUser } from '../lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -69,6 +70,8 @@ Return a storyboard as JSON. Rules:
 - Scene durations in seconds should sum to the requested length. Keep scenes short: 2–6 s each (a title card ≤ 3 s), and use one shot for each part of the page the person asked to show.
 - Each scene also fills the storyboard row: feature (the one message this scene carries), action (its main motion in a few words), asset (which part of the site's captured page or images it shows, e.g. "hero section of your page"; "sample page" when nothing was captured), sfx (the sound cue, e.g. "whoosh on the cut", "impact on the flash"; "" for none).
 - When the request carries a Brief, a chosen visual Direction, a shot Mapping or the person's notes, follow them: they are decisions the person already confirmed.
+- featureMap (stage 2 of the method): one row per feature with its first-choice shot and a fallback shot. Give every feature a scene, in that order, using its first-choice shot; use the fallback only when the first choice breaks a rule above. Put the row's feature in the scene's "feature" and its page state in "asset".
+- cardsInFull: the chosen shots' cards, in full (intent, motion core, parameters, holds, known pitfalls). Read each before placing it: plan the scene at the card's length with its holds, write a "action" that is the card's own main motion, and keep any word counts or text lengths the card says are part of the technique.
 - Craft rules: one main motion idea per shot and never the same technique twice as the lead; the brand name holds on screen ≥ 1 s; no repeated taglines; real captured pages beat mock UI.
 - targetScenes: plan about this many scenes (title cards included), 2–6 s each, one scene per feature or part of the page the person asked to show. Fewer scenes stretch each one too long.
 - requiredRecipes: when this list is NOT empty the person picked these shots by name. Use ONLY these shots — never another recipe. Use each at least once, in that order first, and REPEAT them for as many scenes as targetScenes needs, each repeat with different copy and a different part of the site. You may add one opening title card and one closing call-to-action title card. When the list is empty, choose the shots yourself from the catalog.
@@ -89,7 +92,7 @@ const DIRECTION_INSTRUCTIONS = `You propose the visual direction of a short prod
 Return JSON {directions, recommended}: at most 3 directions grown from the product's own design (productCapture.brand colours and font, the site's tone). Each has name, claim (one sentence), keywords (3–5), look (fonts, colours, material), motion (camera and motion character), why (why it fits this product), tradeoff, palette ({background, text, accent}: three #rrggbb colours of that direction, taken from productCapture.brand when the direction stays on-brand; they colour the preview frames shown with the options). Offer the paper-and-ink Ink Press look only when the product suits an editorial feel. recommended = the index (0-based) of your pick.`
 
 const MAPPING_INSTRUCTIONS = `You map the features a film must show to shot recipes. ${COCREATE_RULES}
-Return JSON {rows}: one row per feature, in film order, 3–8 rows. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
+Return JSON {rows}: one row per feature, in film order, 3–8 rows. First list the product's features (its feature inventory) from the site's words and the request; then, for each, read the catalog lines (what the shot looks like and USE WHEN) and pick a first-choice shot and a different fallback shot that would also express it. firstShot and altShot are recipe ids from the catalog (first column) — never invent ids. expresses = what the picture should make the viewer understand. pageState = the part of the site's page or the state it needs (hero, features, pricing…), or "sample page" when nothing was captured. Rules: one main motion idea per shot; never use the same technique as the lead twice; prefer PRODUCT-PAGE shots when a site was captured. When requiredRecipes is not empty, the first choices are exactly those shots, in that order.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -106,6 +109,36 @@ Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's st
 const REVIEW_INSTRUCTIONS = `You are an independent reviewer of a finished product film. You see a few frames of it (each labelled with its second) and the design spec it was built from. You did not make it and you do not defend it.
 Check, for each frame: is anything cut off, overlapping, blank or unreadable (text smaller than a phone can read, low contrast); does the look match the spec's colours; is the product's name or logo wrong or missing where it should be; is there visible template text that belongs to another product; are people's faces or names from a third party shown.
 Report only what you can see in the frames, each with the second it is in. Never say the film is fine overall; if a frame has no problem, say nothing about it. At most 6 findings, the worst first. summary: one sentence on what you could not judge from stills (motion, sound, timing).`
+
+const FINAL_REVIEW_INSTRUCTIONS = `You are the independent reviewer of a finished product film (stage 7 of the method). You did not make it and you do not defend it; you start from a clean context and judge only what the inputs show.
+Inputs: the design spec (brief, chosen visual direction, colour / font / motion tokens, the feature → shot map with first-choice and fallback cards, the release check, the storyboard rows); for each shot of this part, the shot card's name, its known pitfalls, the card's REFERENCE frames (the motion as designed: entering / peak / settled) and the RENDERED frames of the film at the same moments, each labelled with its second; in the film part, the middle frame of each seam between shots.
+Check every item of the two checklists below that these inputs let you judge. Compare each rendered frame with its reference: the composition and stage of the motion must be the card's, the content must be the product's (its pages, pictures, words, colours), and no known pitfall may be broken. In the film part also judge the arc, the seams (both shots visible and joined, nothing blank), repeated taglines, the look staying one language, and legibility.
+Answer per check: id (the checklist's ID, e.g. S2, Q11, R1, F1, V3, D2), ok (true only with evidence in the frames), seconds (the frame seconds it is about), text (what you saw; for a failure, what must change), stage (where a failure is fixed: "3" storyboard / seams / order, "5" the shot itself, "6" sound, "none"). Never report the film as fine overall; report every failure you can see, worst first, and the passes you have evidence for. summary: one or two sentences on what stills cannot show (motion, sound, timing), which stays to be checked by playing the film.
+
+FINAL REVIEW CHECKLIST (final-review.md)
+${FINAL_REVIEW}
+
+AESTHETIC RULES (aesthetic-rules.md)
+${AESTHETIC_RULES}`
+
+const FINAL_REVIEW_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items', 'summary'],
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: 24,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'ok', 'seconds', 'text', 'stage'],
+        properties: { id: { type: 'string' }, ok: { type: 'boolean' }, seconds: { type: 'array', items: { type: 'number' } }, text: { type: 'string' }, stage: { type: 'string', enum: ['3', '5', '6', 'none'] } },
+      },
+    },
+    summary: { type: 'string' },
+  },
+} as const
 
 const REVIEW_JSON_SCHEMA = {
   type: 'object',
@@ -285,6 +318,11 @@ export async function POST(req: NextRequest) {
       const source = typeof body.source === 'string' ? body.source : ''
       if (!/^\w+$/.test(recipe) || !source || source.length > ADAPT_MAX_SOURCE) return NextResponse.json({ error: 'A recipe and its source are required', code: 'BAD_REQUEST' }, { status: 400 })
       const rules = rulesOf(recipe)
+      // Pictures the agent compares: the recipe as designed and its own last try (small JPEG/PNG data URLs).
+      const pictures = (v: unknown) =>
+        (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string' && /^data:image\/(jpeg|png);base64,/.test(x) && x.length < 400_000).slice(0, 3)
+      const reference = pictures(body.reference)
+      const stills = pictures(body.stills)
       const layout = body.layout && typeof body.layout === 'object' ? (body.layout as Record<string, any>) : {}
       const brand = body.brand && typeof body.brand === 'object' ? (body.brand as Record<string, any>) : {}
       const raw = await callDirector(
@@ -304,13 +342,68 @@ export async function POST(req: NextRequest) {
           brand: { name: str(brand.name, 80), accent: str(brand.accent, 20), background: str(brand.background, 20), text: str(brand.text, 20), font: str(brand.font, 80) },
           site: siteContent(body.content),
           problems: (Array.isArray(body.problems) ? body.problems : []).slice(0, 6).map((p: unknown) => str(p, 240)).filter(Boolean),
+          card: typeof body.card === 'string' ? body.card.slice(0, 30_000) : '',
+          images: [
+            ...reference.map((_, i) => `image ${i + 1}: the recipe as designed, ${['entering', 'peak', 'settled'][i] ?? 'frame'}`),
+            ...stills.map((_, i) => `image ${reference.length + i + 1}: your previous try as rendered, ${['entering', 'peak', 'settled'][i] ?? 'frame'}`),
+          ],
         }),
         'motion_studio_adapt',
         ADAPT_JSON_SCHEMA,
+        [...reference, ...stills],
       )
       const code = cleanAdaptedCode(raw?.code)
       if (!code) return NextResponse.json({ error: 'The agent returned no usable code', code: 'BAD_OUTPUT' }, { status: 502 })
       return NextResponse.json({ code, notes: str(raw?.notes, 400) })
+    }
+
+    if (body.mode === 'final-review') {
+      const img = (v: unknown) => (typeof v === 'string' && /^data:image\/(jpeg|png);base64,/.test(v) && v.length < 160_000 ? v : '')
+      const sec = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 10) / 10 : 0)
+      const images: string[] = []
+      const label = (image: string, what: string) => {
+        if (!image || images.length >= 40) return null
+        images.push(image)
+        return `image ${images.length}: ${what}`
+      }
+      const spec = body.spec && typeof body.spec === 'object' ? (body.spec as Record<string, any>) : {}
+      const shots = (Array.isArray(body.shots) ? body.shots : []).slice(0, 4).map((s: any) => ({
+        shot: str(s?.name, 120),
+        seconds: `${sec(s?.from)}–${sec(s?.to)}`,
+        pitfalls: (Array.isArray(s?.pitfalls) ? s.pitfalls : []).slice(0, 6).map((p: unknown) => str(p, 240)),
+        reference: (Array.isArray(s?.reference) ? s.reference : []).slice(0, 3).map((r: unknown, k: number) => label(img(r), `${str(s?.name, 80)} REFERENCE ${['entering', 'peak', 'settled'][k] ?? k}`)).filter(Boolean),
+        rendered: (Array.isArray(s?.rendered) ? s.rendered : []).slice(0, 3).map((r: any) => label(img(r?.image), `${str(s?.name, 80)} RENDERED at ${sec(r?.second)}s`)).filter(Boolean),
+      }))
+      const seams = (Array.isArray(body.seams) ? body.seams : []).slice(0, 10).map((s: any) => label(img(s?.image), `seam (${str(s?.kind, 12)}) at ${sec(s?.second)}s`)).filter(Boolean)
+      const frames = (Array.isArray(body.frames) ? body.frames : []).slice(0, 10).map((f: any) => label(img(f?.image), `film at ${sec(f?.second)}s`)).filter(Boolean)
+      if (!images.length) return NextResponse.json({ error: 'Frames are required', code: 'BAD_REQUEST' }, { status: 400 })
+      const raw = await callDirector(
+        key,
+        FINAL_REVIEW_INSTRUCTIONS,
+        JSON.stringify({
+          part: body.part === 'film' ? 'film' : 'shots',
+          spec: {
+            brief: str(spec.brief, 400),
+            product: str(spec.product, 120),
+            direction: str(spec.direction, 400),
+            tokens: spec.tokens && typeof spec.tokens === 'object' ? { background: str(spec.tokens.background, 20), text: str(spec.tokens.text, 20), accent: str(spec.tokens.accent, 20), font: str(spec.tokens.font, 80), motion: spec.tokens.motion && typeof spec.tokens.motion === 'object' ? `${str(spec.tokens.motion.label, 60)} · ${Number(spec.tokens.motion.mainFrames) || 0} f · ${str(spec.tokens.motion.easing, 40)} · overshoot ${Number(spec.tokens.motion.overshoot) || 1} · squash ${Number(spec.tokens.motion.squash) || 0}` : '' } : null,
+            mapping: (Array.isArray(spec.mapping) ? spec.mapping : []).slice(0, 10).map((m: any) => `${str(m?.feature, 100)} → ${str(m?.firstShot, 100)} (fallback ${str(m?.altShot, 100) || 'none'}), needs ${str(m?.pageState, 80)}`),
+            release: (Array.isArray(spec.release) ? spec.release : []).slice(0, 8).map((r: any) => `${str(r?.code, 6)} ${r?.ok ? '✓' : '✗'} ${str(r?.text, 200)}`),
+            storyboard: (Array.isArray(spec.scenes) ? spec.scenes : []).slice(0, 20).map((sc: any) => str(sc?.line, 260)),
+          },
+          shots,
+          seams,
+          frames,
+        }),
+        'motion_studio_final_review',
+        FINAL_REVIEW_JSON_SCHEMA,
+        images,
+      )
+      const items = (Array.isArray(raw?.items) ? raw.items : [])
+        .slice(0, 24)
+        .map((i: any) => ({ id: str(i?.id, 8), ok: i?.ok === true, seconds: (Array.isArray(i?.seconds) ? i.seconds : []).filter((n: unknown) => typeof n === 'number').slice(0, 6), text: str(i?.text, 320), stage: ['3', '5', '6'].includes(i?.stage) ? i.stage : 'none' }))
+        .filter((i: any) => i.id && i.text)
+      return NextResponse.json({ items, summary: str(raw?.summary, 400) })
     }
 
     if (body.mode === 'review') {
@@ -422,6 +515,19 @@ export async function POST(req: NextRequest) {
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
       template: body.template === 'inkpress' ? 'inkpress' : null,
+      featureMap: (Array.isArray(body.mapping) ? body.mapping : []).slice(0, 10).map((r: unknown) => {
+        const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>
+        return { feature: str(o.feature, 120), firstShot: str(o.firstShot, 120), altShot: str(o.altShot, 120), expresses: str(o.expresses, 200), pageState: str(o.pageState, 120) }
+      }).filter((r: { feature: string; firstShot: string }) => r.feature && r.firstShot),
+      cardsInFull: (() => {
+        let room = 36_000
+        return (Array.isArray(body.cards) ? body.cards : []).slice(0, 8).map((c: unknown) => {
+          const o = (c && typeof c === 'object' ? c : {}) as Record<string, unknown>
+          const text = str(o.text, Math.min(6_000, Math.max(0, room)))
+          room -= text.length
+          return { id: str(o.id, 120), text }
+        }).filter((c: { id: string; text: string }) => c.id && c.text)
+      })(),
     }
     const targetScenes = targetSceneCount(durationSec)
     const started = Date.now()

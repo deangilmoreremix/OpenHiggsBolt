@@ -1707,11 +1707,11 @@ const CAPTURE_FIRST_SHOT_MS = 7_000
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** A deep capture (the background worker has minutes, not seconds) takes more routes, more cards and the whole length of the page. */
 /** Deep captures stop on time, not on a count: these are only guards against runaway pages. */
-export const DEEP_MAX_ROUTES = 25
-export const DEEP_MAX_CROPS = 40
+export const DEEP_MAX_ROUTES = 40
+export const DEEP_MAX_CROPS = 80
 export const DEEP_MAX_Y = 40_000
-export const DEEP_MAX_BANDS = 60
-export const DEEP_MAX_IMAGES = 120
+export const DEEP_MAX_BANDS = 120
+export const DEEP_MAX_IMAGES = 200
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
 /** A film wants this many distinct pictures of the site; page slices make up the difference. */
@@ -1730,11 +1730,53 @@ export interface CaptureRect {
   height: number
 }
 
+/** What one card shot / page slice shows, read off the page when it was cut (for the film's picture catalogue). */
+export interface CropInfo {
+  /** The route it was cut from ('home' for the page asked for). */
+  route: string
+  /** 'card' = an element of the page, 'band' = a full-width slice. */
+  cut: 'card' | 'band'
+  width: number
+  height: number
+  /** The words inside it (first 200 characters). */
+  text: string
+  /** Share of its area covered by pictures (img / picture / video / background images), 0–1. */
+  imageShare: number
+  /** Portrait-like photos inside (people). */
+  portraits: number
+  /** A map is in it (map iframe / map tiles). */
+  map: boolean
+}
+
 export interface PageCaptureBrand {
   background: string | null
   text: string | null
   accent: string | null
   fontFamily: string | null
+  /** The rest of the product's tokens (upstream THEMES.md's seven colours, body font, corner radius). */
+  surface?: string | null
+  field?: string | null
+  muted?: string | null
+  border?: string | null
+  bodyFont?: string | null
+  radius?: number | null
+}
+
+const brandFrom = (styles: Record<string, string | null> | undefined): PageCaptureBrand => {
+  const font = (v: unknown) => (typeof v === 'string' && v ? v.slice(0, 120) : null)
+  const r = Number.parseFloat(String(styles?.radius ?? ''))
+  return {
+    background: cssColorToHex(styles?.background),
+    text: cssColorToHex(styles?.text),
+    accent: cssColorToHex(styles?.accent),
+    fontFamily: font(styles?.fontFamily),
+    surface: cssColorToHex(styles?.surface),
+    field: cssColorToHex(styles?.field),
+    muted: cssColorToHex(styles?.muted),
+    border: cssColorToHex(styles?.border),
+    bodyFont: font(styles?.bodyFont),
+    radius: Number.isFinite(r) && r >= 0 && r <= 64 ? Math.round(r) : null,
+  }
 }
 
 export interface PageCapture {
@@ -1745,6 +1787,8 @@ export interface PageCapture {
   pageHeight: number
   /** JPEG element crops (card-sized blocks), largest first. */
   crops: Buffer[]
+  /** What each crop shows, same order as `crops` (missing for captures made before it existed). */
+  cropInfo?: CropInfo[]
   brand: PageCaptureBrand
   /** The site's logo as a transparent PNG (header / nav logo), when one was found. */
   logo: Buffer | null
@@ -1760,6 +1804,8 @@ export interface PageCapture {
   emptyPlate: Buffer | null
   /** More routes of the same site (features, pricing…), each captured the same way. */
   routes: CapturedRoute[]
+  /** The site's pages found in its links (captured or not), for a later targeted capture. */
+  links?: Array<{ name: string; path: string; url: string }>
 }
 
 /** True when a capture read anything the page says (title, headline, sections, calls to action). */
@@ -1893,17 +1939,22 @@ function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: Ca
 
   const images: CaptureRect[] = []
   const candidates: CaptureRect[] = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
-    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img))
+    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img) && !notAPicture(img, img.currentSrc || img.src))
     .map((img) => toRect(img))
     .filter((r) => r.width >= 240 && r.height >= 160 && r.y >= 0 && r.y + r.height <= limits.maxY)
     .sort((a, b) => b.width * b.height - a.width * a.height)
+  // Maps, video posters and players are not pictures of the business.
+  function notAPicture(el: Element, src: string): boolean {
+    if (/maps\.(?:googleapis|gstatic)\.com|google\.[a-z.]+\/maps|staticmap|api\.mapbox|openstreetmap|ytimg\.com|vimeocdn\.com|\/vi\/[^/]+\/(?:max|hq|sd|mq)?default/i.test(src)) return true
+    return Boolean(el.closest('[class*="map" i], [id*="map" i], [class*="video" i], [class*="player" i], [class*="lightbox" i], iframe'))
+  }
   // Pictures set as CSS backgrounds (hero art, people, product shots on many sites) are not <img> elements.
   const backgrounds: CaptureRect[] = []
   for (const el of Array.from(document.querySelectorAll('div, section, header, figure, a, span')).slice(0, 4000)) {
     const bg = getComputedStyle(el).backgroundImage
     if (!bg || bg === 'none' || !/url\(/.test(bg) || /gradient/.test(bg) && !/url\(/.test(bg)) continue
     const r = toRect(el)
-    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el)) backgrounds.push(r)
+    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el) && !notAPicture(el, bg)) backgrounds.push(r)
   }
   backgrounds.sort((a, b) => b.width * b.height - a.width * a.height)
   candidates.push(...backgrounds)
@@ -2038,7 +2089,7 @@ async function waitForFonts(maxMs: number): Promise<boolean> {
   return Promise.race([document.fonts.ready.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxMs))])
 }
 
-const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?/i
+const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?|team|people|leadership|staff|case-stud|stories|testimonial|reviews?|work|portfolio|projects?|industr|locations?|contact|company/i
 const ROUTE_SKIP_RE =
   /log-?in|sign-?in|sign-?up|register|account|auth|cart|checkout|privacy|terms|legal|cookie|gdpr|careers|jobs|status|wp-|cdn-cgi|\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|txt|json)$/i
 
@@ -2088,6 +2139,18 @@ export function pickCaptureRoutes(
     })
 }
 
+/**
+ * The page the browser landed on belongs to the same site as the one asked for: the same host, `www.` added or
+ * dropped, or a sub-domain of it. (shopify.com -> www.shopify.com is the usual case.) The SSRF gate has already
+ * validated the landing address; this only decides it is still "the site" and not somewhere else.
+ */
+export function sameSiteHost(asked: string, landed: string): boolean {
+  const bare = (h: string) => h.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  const a = bare(asked)
+  const b = bare(landed)
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)
+}
+
 /** Clip rects for 16:9 slices of the page from `fromY` down to `toY` (a short last slice is kept when it is at least half a slice). */
 export function bandRects(fromY: number, toY: number, width: number, bandH: number, max: number): Array<{ x: number; y: number; width: number; height: number }> {
   const out: Array<{ x: number; y: number; width: number; height: number }> = []
@@ -2098,18 +2161,93 @@ export function bandRects(fromY: number, toY: number, width: number, bandH: numb
 }
 
 /** Computed brand colours/fonts from the rendered page. Runs in the page. */
+function describeRect(rect: { x: number; y: number; width: number; height: number }): { text: string; imageShare: number; portraits: number; map: boolean } {
+  const sx = window.scrollX
+  const sy = window.scrollY
+  const area = Math.max(1, rect.width * rect.height)
+  const inside = (r: DOMRect, need: number) => {
+    const x0 = Math.max(rect.x, r.left + sx)
+    const y0 = Math.max(rect.y, r.top + sy)
+    const x1 = Math.min(rect.x + rect.width, r.right + sx)
+    const y1 = Math.min(rect.y + rect.height, r.bottom + sy)
+    const overlap = Math.max(0, x1 - x0) * Math.max(0, y1 - y0)
+    return r.width * r.height > 0 && overlap / (r.width * r.height) >= need ? overlap : 0
+  }
+  const words: string[] = []
+  for (const el of Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, p, li, blockquote, figcaption, button, a, label, td'))) {
+    if (words.join(' ').length > 200) break
+    if (el.querySelector('h1, h2, h3, h4, h5, p, li, blockquote')) continue
+    const r = el.getBoundingClientRect()
+    if (!inside(r, 0.6)) continue
+    const t = ((el as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim()
+    if (t && !words.includes(t)) words.push(t)
+  }
+  let pictures = 0
+  let portraits = 0
+  for (const el of Array.from(document.querySelectorAll('img, picture, video, svg image, [style*="background-image"]'))) {
+    const r = el.getBoundingClientRect()
+    const overlap = inside(r, 0.5)
+    if (!overlap) continue
+    pictures += overlap
+    const ratio = r.width / Math.max(1, r.height)
+    if (r.width >= 70 && r.height >= 70 && ratio > 0.6 && ratio < 1.25 && el.tagName === 'IMG') portraits++
+  }
+  const map = Array.from(document.querySelectorAll('iframe[src*="map"], img[src*="maps"], img[src*="staticmap"], [class*="map" i] canvas, .gm-style')).some((el) => inside(el.getBoundingClientRect(), 0.3) > 0)
+  return { text: words.join(' · ').slice(0, 200), imageShare: Math.min(1, pictures / area), portraits, map }
+}
+
 function readBrandStyles(): Record<string, string | null> {
   const body = getComputedStyle(document.body)
   const heading = document.querySelector('h1, h2')
-  const action = Array.from(document.querySelectorAll('button, a[class*="btn"], a[class*="button"], [role="button"]'))
-    .map((el) => getComputedStyle(el).backgroundColor)
-    .find((c) => c && !/rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c))
+  // Saturation of a computed rgb() colour (0 grey … 1 pure): an accent is a colour, not white/black/grey.
+  const sat = (c: string | null | undefined) => {
+    const m = /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(c ?? '')
+    if (!m || (m[4] !== undefined && Number(m[4]) < 0.5)) return 0
+    const v = [m[1], m[2], m[3]].map(Number)
+    const hi = Math.max(...v)
+    const lo = Math.min(...v)
+    return hi === 0 ? 0 : (hi - lo) / hi
+  }
+  const colourful = (sel: string, prop: 'backgroundColor' | 'color') =>
+    Array.from(document.querySelectorAll(sel)).slice(0, 60).map((el) => getComputedStyle(el)[prop]).find((c) => sat(c) > 0.25) ?? null
+  const action =
+    colourful('button, a[class*="btn"], a[class*="button"], [role="button"], [class*="cta"]', 'backgroundColor') ??
+    colourful('a', 'color') ??
+    (heading && sat(getComputedStyle(heading).color) > 0.25 ? getComputedStyle(heading).color : null)
   const html = getComputedStyle(document.documentElement)
+  const clear = (c: string | null | undefined) => !c || /rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c)
+  const first = <T,>(sel: string, pick: (st: CSSStyleDeclaration, el: Element) => T | null): T | null => {
+    for (const el of Array.from(document.querySelectorAll(sel)).slice(0, 40)) {
+      const r = el.getBoundingClientRect()
+      if (r.width < 40 || r.height < 16) continue
+      const v = pick(getComputedStyle(el), el)
+      if (v !== null && v !== undefined) return v
+    }
+    return null
+  }
+  // Card-like blocks: their fill is the surface, their edge the border, their corners the radius.
+  const cardSel = '[class*="card"], [class*="Card"], article, [class*="tile"], [class*="panel"]'
+  const surface = first(cardSel, (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  const border = first(cardSel + ', hr, input', (st) => (parseFloat(st.borderTopWidth) > 0 && !clear(st.borderTopColor) ? st.borderTopColor : null))
+  const radius = first(cardSel + ', button, a[class*="btn"]', (st) => (parseFloat(st.borderTopLeftRadius) > 0 ? st.borderTopLeftRadius : null))
+  const field = first('input:not([type=hidden]), textarea, select', (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  // Muted text: a paragraph whose colour differs from the main text.
+  const mainText = body.color
+  const muted = first('p, small, figcaption, [class*="subtitle"], [class*="description"]', (st) => (st.color && st.color !== mainText ? st.color : null))
+  const para = document.querySelector('p')
   return {
-    background: body.backgroundColor && !/rgba\(0, 0, 0, 0\)/.test(body.backgroundColor) ? body.backgroundColor : html.backgroundColor,
-    text: heading ? getComputedStyle(heading).color : body.color,
+    // A transparent page is the browser's white.
+    background: !clear(body.backgroundColor) ? body.backgroundColor : !clear(html.backgroundColor) ? html.backgroundColor : 'rgb(255, 255, 255)',
+    // The text colour is the body's; a heading is often decorated (gradient, brand colour).
+    text: !clear(body.color) ? body.color : heading ? getComputedStyle(heading).color : null,
     accent: action ?? null,
     fontFamily: (heading ? getComputedStyle(heading).fontFamily : body.fontFamily) || null,
+    surface,
+    field,
+    muted,
+    border,
+    radius,
+    bodyFont: (para ? getComputedStyle(para).fontFamily : body.fontFamily) || null,
   }
 }
 
@@ -2189,7 +2327,7 @@ export async function capturePageScreenshots(
           .catch(() => null)
 
       /** Load lazy content, settle, shoot the page band and cut out its cards. */
-      const shootRoute = async (maxCards: number, onShot?: (shot: Buffer, pageHeight: number) => void, acc?: { crops: Buffer[]; cards: CaptureRect[] }) => {
+      const shootRoute = async (maxCards: number, onShot?: (shot: Buffer, pageHeight: number) => void, acc?: { crops: Buffer[]; cards: CaptureRect[]; info?: Omit<CropInfo, 'route'>[] }) => {
         await page.waitForLoadState('networkidle', { timeout: 1_500 }).catch(() => undefined)
         // Nudge lazy-loaded content inside the captured band, then return to the top.
         await page.evaluate(async (maxY: number) => {
@@ -2207,7 +2345,10 @@ export async function capturePageScreenshots(
         const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)
         const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
         const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
-        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip })
+        // A heavy page may not give a tall picture in time: fall back to what is on screen rather than lose the page.
+        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip, timeout: 25_000 }).catch(() =>
+          page.screenshot({ type: 'jpeg', quality: 80, animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: Math.min(pageHeight, CAPTURE_VIEWPORT.height) }, timeout: 15_000 }),
+        )
         // The page is usable from here: a stalled crop below must not lose it.
         onShot?.(shot, pageHeight)
 
@@ -2223,12 +2364,20 @@ export async function capturePageScreenshots(
             : []
         const crops: Buffer[] = acc?.crops ?? []
         const cards: CaptureRect[] = acc?.cards ?? []
+        const info: Omit<CropInfo, 'route'>[] = acc?.info ?? []
+        const blank = { text: '', imageShare: 0, portraits: 0, map: false }
+        /** What a cut shows (read off the page; a failed read is a blank, never a lost crop). */
+        const describe = async (rect: CaptureRect, cut: 'card' | 'band') => {
+          const seen = (await page.evaluate(describeRect, rect).catch(() => null)) ?? blank
+          info.push({ cut, width: Math.round(rect.width), height: Math.round(rect.height), ...seen })
+        }
         for (const rect of rects) {
           if (left() < 5_000 && crops.length >= 2) break
-          const crop = await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }).catch(() => null)
+          const crop = await page.screenshot({ type: 'jpeg', quality: deep ? 76 : 85, fullPage: true, clip: rect }).catch(() => null)
           if (!crop) continue
           crops.push(crop)
           cards.push(rect)
+          await describe(rect, 'card')
         }
         // Few card-like blocks (many sites have 1-2): fill up to CAPTURE_MIN_PICTURES with
         // full-width slices of the page, so a film shows distinct parts of it instead of the
@@ -2237,8 +2386,12 @@ export async function capturePageScreenshots(
           const bandH = Math.round(CAPTURE_VIEWPORT.width * (9 / 16))
           for (let y = 0; y + bandH <= pageHeight + 1 && crops.length < CAPTURE_MIN_PICTURES; y += bandH) {
             if (left() < 4_000) break
-            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: { x: 0, y, width: CAPTURE_VIEWPORT.width, height: bandH } }).catch(() => null)
-            if (band) crops.push(band)
+            const clip = { x: 0, y, width: CAPTURE_VIEWPORT.width, height: bandH }
+            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip }).catch(() => null)
+            if (band) {
+              crops.push(band)
+              await describe(clip, 'band')
+            }
           }
         }
         // Deep: the rest of the page, below the photographed band, as 16:9 slices — the film's pictures of the parts nobody saw.
@@ -2246,12 +2399,15 @@ export async function capturePageScreenshots(
           const bottom = Math.min(DEEP_MAX_Y, docHeight || 0)
           for (const clip of bandRects(pageHeight, bottom, CAPTURE_VIEWPORT.width, Math.round(CAPTURE_VIEWPORT.width * (9 / 16)), DEEP_MAX_BANDS)) {
             if (left() < 6_000) break
-            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip }).catch(() => null)
-            if (band) crops.push(band)
+            const band = await page.screenshot({ type: 'jpeg', quality: 72, fullPage: true, clip }).catch(() => null)
+            if (band) {
+              crops.push(band)
+              await describe(clip, 'band')
+            }
           }
         }
         const layout: RouteLayout = { pageH: pageHeight, sections: found?.sections ?? [], cards }
-        return { shot, pageHeight, pageClip, found, semantic, crops, layout }
+        return { shot, pageHeight, pageClip, found, semantic, crops, layout, info }
       }
 
       /** What has been captured so far: the capture can end at any step and still return this. */
@@ -2260,12 +2416,12 @@ export async function capturePageScreenshots(
       const work = async (): Promise<PageCapture> => {
         await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: options.navigationMs ?? CAPTURE_NAVIGATION_TIMEOUT })
         const finalTarget = await guard.validateNavigationTarget(page.url())
-        if (finalTarget.hostname !== baseTarget.hostname) {
+        if (!sameSiteHost(baseTarget.hostname, finalTarget.hostname)) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
         }
         mark('loaded')
 
-        const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[] }
+        const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[], info: [] as Omit<CropInfo, 'route'>[] }
         // The words and colours first: reading the page text needs no rendering, so even a page too heavy to
         // photograph in time still gives the film the site's own headline, sections and calls to action.
         await page.waitForLoadState('load', { timeout: 1_500 }).catch(() => undefined)
@@ -2286,12 +2442,7 @@ export async function capturePageScreenshots(
           cutouts: { nav: null, search: null, button: null },
           emptyPlate: null,
           routes: [],
-          brand: {
-            background: cssColorToHex(styles0?.background),
-            text: cssColorToHex(styles0?.text),
-            accent: cssColorToHex(styles0?.accent),
-            fontFamily: typeof styles0?.fontFamily === 'string' ? styles0.fontFamily.slice(0, 120) : null,
-          },
+          brand: brandFrom(styles0 ?? undefined),
         }
         out = snapshot
         mark('content')
@@ -2308,7 +2459,9 @@ export async function capturePageScreenshots(
         }
         snapshot.page = first
         mark('first')
-        const home = await shootRoute(
+        let home: Awaited<ReturnType<typeof shootRoute>>
+        try {
+          home = await shootRoute(
           maxCrops,
           (shot, pageHeight) => {
             // The full-height shot replaces the first one.
@@ -2319,7 +2472,13 @@ export async function capturePageScreenshots(
             }
           },
           homeAcc,
-        )
+          )
+        } catch (error) {
+          // The first picture and the page's words are already in the snapshot: hand those back instead of failing.
+          warnStep('home', error)
+          mark('home-failed')
+          return snapshot
+        }
         mark('home')
         const read = await page.evaluate(readPageContent).catch(() => null)
         const content: PageContent = read
@@ -2336,6 +2495,7 @@ export async function capturePageScreenshots(
           page: home.shot,
           pageHeight: home.pageHeight,
           crops: [...home.crops],
+          cropInfo: home.info.map((i) => ({ ...i, route: 'home' })),
           logo: null,
           images: [],
           content,
@@ -2343,12 +2503,7 @@ export async function capturePageScreenshots(
           cutouts: { nav: null, search: null, button: null },
           emptyPlate: null,
           routes: [],
-          brand: {
-            background: cssColorToHex(styles.background),
-            text: cssColorToHex(styles.text),
-            accent: cssColorToHex(styles.accent),
-            fontFamily: typeof styles.fontFamily === 'string' ? styles.fontFamily.slice(0, 120) : null,
-          },
+          brand: brandFrom(styles),
         }
         out = result
 
@@ -2379,6 +2534,9 @@ export async function capturePageScreenshots(
 
         // More routes of the same site, captured the same way, while time allows.
         let cropBudget = (deep ? 400 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
+        // The site's other pages (name, path, address), captured or not: a storyboard row that needs a page
+        // the capture did not reach can have it captured on its own afterwards (pipeline stage 4).
+        result.links = pickCaptureRoutes(read?.links ?? [], url, 80)
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
           if (deep ? left() < 12_000 : elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
           try {
@@ -2389,6 +2547,7 @@ export async function capturePageScreenshots(
             cropBudget -= shot.crops.length
             result.routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
             result.crops.push(...shot.crops)
+            result.cropInfo?.push(...shot.info.map((i) => ({ ...i, route: route.name })))
             mark(`route:${route.name}`)
           } catch {
             // A route that will not load (or leaves the site) is skipped; the capture stands without it.

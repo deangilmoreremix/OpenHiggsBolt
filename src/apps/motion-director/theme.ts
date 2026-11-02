@@ -79,7 +79,7 @@ export const switchTheme = (project: ProjectData, m: WorkbenchManifest | null, i
   return {...project, themeId: id, themeColors: undefined};
 };
 export const themedBackground = (project: ProjectData, m: WorkbenchManifest | null) =>
-  validThemeColors(m, project.themeId, project.themeColors).page ?? (project.themeId ? selectedTheme(m, project.themeId)?.background ?? project.background : project.background);
+  validThemeColors(m, project.themeId, project.themeColors).page ?? (project.themeId === 'site' ? project.sitePalette?.page : undefined) ?? (project.themeId ? selectedTheme(m, project.themeId)?.background ?? project.background : project.background);
 
 export const validThemeColors = (m: WorkbenchManifest | null, id?: string, colors?: Record<string,string>) => {
  const palette = selectedTheme(m,id)?.palette;

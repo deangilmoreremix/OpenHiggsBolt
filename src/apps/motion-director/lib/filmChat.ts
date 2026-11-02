@@ -19,8 +19,9 @@ import {
   type MotionTemplate,
 } from '@/data/motionRecipeCatalog';
 import type { MotionPreset } from './motionPreset';
-import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type SceneTransition } from './directorPlan';
+import { PLAN_LIMITS, isBrandScene, validatePlan, type DirectorPalette, type DirectorPlan, type DirectorScene, type MappingRow, type SceneTransition } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
+import { SHOT_FACTS } from '../demosrc/_generated/shotFacts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -70,6 +71,18 @@ export interface FilmRequest {
   durationSec: number | null;
   /** Product URL in the message, if any. */
   siteUrl: string | null;
+  /** Frame size stated in the message ("vertical", "9:16", "square", "for TikTok"…); null = the size picker's. */
+  aspectRatio?: '16:9' | '9:16' | '1:1' | null;
+  /** The feature → shot map already confirmed (co-creation); autonomous films have the director write one. */
+  mapping?: MappingRow[];
+}
+
+/** The frame size a message asks for, if it names one. */
+export function aspectFromText(text: string): '16:9' | '9:16' | '1:1' | null {
+  if (/\b9\s*[:x×/]\s*16\b|\bvertical\b|\bportrait\b|\b(?:tik\s?tok|reels?|shorts|stor(?:y|ies))\b/i.test(text)) return '9:16';
+  if (/\b1\s*[:x×/]\s*1\b|\bsquare\b/i.test(text)) return '1:1';
+  if (/\b16\s*[:x×/]\s*9\b|\blandscape\b|\bhorizontal\b|\bwidescreen\b|\byoutube\b/i.test(text)) return '16:9';
+  return null;
 }
 
 const INK_PRESS_RE = /\bink[\s-]?press\b/i;
@@ -148,7 +161,7 @@ export function parseFilmRequest(text: string): FilmRequest {
       : null;
   let template: FilmTemplateChoice | undefined;
   if (INK_PRESS_RE.test(prompt)) template = /\b(?:no|not|without|skip|don'?t)\b[^.]{0,20}ink[\s-]?press/i.test(prompt) ? 'director' : 'inkpress';
-  return { prompt, recipes, single, template, durationSec, siteUrl: findSiteUrl(prompt) };
+  return { prompt, recipes, single, template, durationSec, siteUrl: findSiteUrl(prompt), aspectRatio: aspectFromText(prompt.replace(/https?:\/\/\S+/g, '')) };
 }
 
 /** A question about the storyboard ("why this shot?", "what will the opening say?") rather than a change to it. */
@@ -473,8 +486,8 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
  * way to one of the site's own scenes with the same copy (a captured site) or is dropped; recipes
  * the person named stay. Says what it changed.
  */
-export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<string>; siteScenes?: boolean } = {}): { plan: DirectorPlan; notes: string[] } {
-  const found = filmRuleViolations(plan.scenes, opts.keep);
+export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<string>; siteScenes?: boolean; ground?: 'dark' | 'light' | null } = {}): { plan: DirectorPlan; notes: string[] } {
+  const found = filmRuleViolations(plan.scenes, opts.keep, opts.ground);
   if (!found.length) return { plan, notes: [] };
   const bad = new Map(found.map((f) => [f.index, f]));
   let zooms = 0;
@@ -495,68 +508,126 @@ export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<st
   return { plan: kept, notes: found.map((f) => `${title(f.recipeId)}: ${f.reason}`) };
 }
 
-/** Caps from the transition cards: wipes / barn-doors ≤ 2, dips ≤ 2, flash cuts ≤ 3 (R4) in one film. */
-const SEAM_CAPS = { panel: 2, dip: 2, flash: 3, light: 1, whip: 2, ring: 2 } as const;
-const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | null =>
-  t === 'wipe' || t === 'barn' || t === 'ink' ? 'panel' : t === 'dip' || t === 'iris' ? 'dip' : t === 'flash' || t === 'glitch' ? 'flash' : t === 'portal' || t === 'line' ? 'ring' : t === 'leak' ? 'light' : t === 'whip' ? 'whip' : null;
+/** Document / report shots: the most information on screen (promo-energy-arc: placed just before the finale). */
+const DOCUMENT_SLUGS = new Set(['document-typewriter-reveal', 'research-card-stack-scroll', 'doc-park-left-pill-deal']);
+const DOCUMENT_STEMS = new Set(['ChangelogScrollBrake']);
+const isDocumentShot = (s: DirectorScene): boolean => {
+  const t = s.kind === 'shot' && !isBrandScene(s.recipeId) ? resolveMotionTemplate(s.recipeId) : undefined;
+  return Boolean(t && (DOCUMENT_STEMS.has(t.componentName) || DOCUMENT_SLUGS.has(SHOT_FACTS[t.componentName]?.slug ?? '')));
+};
 
 /**
- * Pick the seam transition for each scene change (the cards choose one per seam, frames taken
- * from the neighbours). The director's own picks stay unless they break a cap; plain cuts between
- * two shots are then dressed in turn (wipe, barn-door, dip) on every other seam, never next to a
- * title card (a breathing card is cut to plainly) and always a dip into the closing scene.
+ * Order the feature climb the way promo-energy-arc step 3 does it: high-energy shots and steady ones
+ * (reading, interaction) alternate — consecutive high energy reads as noise — and the shot with the most
+ * information (document / report type) sits just before the finale, 2nd–3rd from last. Only the feature
+ * shots move, among their own places: the opening, the protagonist, title cards, site scenes and the
+ * finale keep theirs. A film of shots the person named keeps the order they asked for.
+ */
+export function arrangeArc(plan: DirectorPlan, keep: ReadonlySet<string> = new Set()): DirectorPlan {
+  if (keep.size) return plan;
+  const scenes = plan.scenes;
+  const recipeAt = scenes.map((s, i) => (s.kind === 'shot' && !isBrandScene(s.recipeId) ? i : -1)).filter((i) => i >= 0);
+  if (recipeAt.length < 3) return plan;
+  // The protagonist (first recipe shot) and an outro recipe at the end keep their places.
+  const outro = (i: number) => {
+    const t = resolveMotionTemplate(scenes[i].recipeId);
+    return i >= scenes.length - 2 && Boolean(t && ['outro-group-photo-launch', 'ui-strip-away-outro', 'ui-to-brand-morph', 'pull-back-isolation'].includes(SHOT_FACTS[t.componentName]?.slug ?? ''));
+  };
+  const slots = recipeAt.slice(1).filter((i) => !outro(i));
+  if (slots.length < 2) return plan;
+  const pool = slots.map((i) => scenes[i]);
+  const docs = pool.filter(isDocumentShot);
+  const rest = pool.filter((s) => !isDocumentShot(s));
+  const high = rest.filter((s) => sceneEnergy(s) >= 3);
+  const steady = rest.filter((s) => sceneEnergy(s) < 3);
+  // Alternate, starting with whichever kind there is more of, so the leftovers do not bunch at the end.
+  const order: DirectorScene[] = [];
+  let takeHigh = high.length >= steady.length;
+  while (high.length || steady.length) {
+    const from = (takeHigh && high.length) || !steady.length ? high : steady;
+    order.push(from.shift()!);
+    takeHigh = !takeHigh;
+  }
+  // The document shot takes the last feature place (just before the finale).
+  order.push(...docs);
+  const out = scenes.slice();
+  slots.forEach((i, k) => {
+    out[i] = { ...order[k], transition: scenes[i].transition };
+  });
+  return { ...plan, scenes: out };
+}
+
+/** Caps from the transition cards: wipes / barn-doors ≤ 2, dips ≤ 2, flash cuts ≤ 3 (R4) in one film. */
+const SEAM_CAPS = { panel: 2, dip: 2, flash: 3, light: 1, whip: 2, ring: 2, window: 2, push: 2 } as const;
+const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | null =>
+  t === 'wipe' || t === 'barn' || t === 'ink' ? 'panel' : t === 'dip' || t === 'iris' ? 'dip' : t === 'flash' || t === 'glitch' ? 'flash' : t === 'portal' || t === 'line' ? 'ring' : t === 'leak' ? 'light' : t === 'whip' ? 'whip' : t === 'window' ? 'window' : t === 'push' ? 'push' : null;
+
+/** A scene's energy on the cards' scale (0 low … 4 high); site scenes by what they do. */
+const ENERGY_RANK = { low: 0, 'low-mid': 1, mid: 2, 'mid-high': 3, high: 4, 'n/a': 2 } as const;
+const BRAND_ENERGY: Record<string, number> = { 'brand/url-scan': 2, 'brand/hub': 2, 'brand/feature-zoom': 2, 'brand/people-gallery': 1, 'brand/logo-reveal': 1 };
+export function sceneEnergy(scene: DirectorScene): number {
+  if (scene.kind === 'title') return 1;
+  if (isBrandScene(scene.recipeId)) return BRAND_ENERGY[scene.recipeId] ?? 2;
+  const t = resolveMotionTemplate(scene.recipeId);
+  const e = t ? SHOT_FACTS[t.componentName]?.energy : undefined;
+  return e ? ENERGY_RANK[e] : 2;
+}
+
+const featureWords = (s: DirectorScene) => new Set(`${s.feature ?? ''} ${s.headline ?? ''}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3));
+/** Overview → that feature's detail: the seam the window (style C) is for. */
+function opensDetail(a: DirectorScene, b: DirectorScene): boolean {
+  if (b.kind !== 'shot' || b.recipeId === 'brand/logo-reveal') return false;
+  if (a.recipeId === 'brand/hub' || a.recipeId === 'brand/url-scan' || b.recipeId === 'brand/feature-zoom') return true;
+  const wa = featureWords(a);
+  return [...featureWords(b)].some((w) => wa.has(w));
+}
+
+/**
+ * Pick the seam for each scene change, the way the shot-transitions card does it: a seam is never a bare
+ * cut between two shots ("launch films never once use a bare cut"); the style follows the energy drop and
+ * what the seam means — overview into a feature's detail goes through the window (C), high energy into
+ * high energy whips (B), shots of similar energy push in through a white flash (A), a big drop dips or
+ * closes, a rise pushes or wipes. Title cards cut in and out plainly; the closing logo is dipped into.
+ * Each style keeps its cap, the film's motion voice decides which are in character, and the director's
+ * own pick stays when it fits. A seam with every fitting style used up stays a cut.
  */
 export function chooseSeams(plan: DirectorPlan, preset?: MotionPreset): DirectorPlan {
-  // A seam out of character for the film's motion voice is not used (a plain cut is always in character).
   const fits = (t: SceneTransition) => !preset || t === 'cut' || preset.seams.includes(t);
-  const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0, ring: 0 };
+  const used = { panel: 0, dip: 0, flash: 0, light: 0, whip: 0, ring: 0, window: 0, push: 0 };
   const last = plan.scenes.length - 1;
-  const seams: SceneTransition[] = plan.scenes.map((scene, i) => {
-    if (i === last) return 'cut';
-    const group = seamGroup(scene.transition);
-    if (group && fits(scene.transition!) && used[group] < SEAM_CAPS[group]) {
-      used[group]++;
-      return scene.transition!;
-    }
-    return 'cut';
-  });
-  const order: SceneTransition[] = ['wipe', 'dip', 'whip', 'barn', 'ink', 'leak', 'portal', 'line', 'iris', 'glitch'];
-  let turn = 0;
-  let sinceDressed = 1;
+  const take = (t: SceneTransition): boolean => {
+    const g = seamGroup(t);
+    if (!g || !fits(t) || used[g] >= SEAM_CAPS[g]) return false;
+    used[g]++;
+    return true;
+  };
+  const seams: SceneTransition[] = plan.scenes.map(() => 'cut');
+  // The director's own picks first, then the rule for the rest.
   plan.scenes.forEach((scene, i) => {
-    if (i === last) return;
+    if (i === last || !scene.transition || scene.transition === 'cut') return;
+    if (scene.kind === 'title' || plan.scenes[i + 1].kind === 'title') return;
+    if (take(scene.transition)) seams[i] = scene.transition;
+  });
+  plan.scenes.forEach((scene, i) => {
+    if (i === last || seams[i] !== 'cut') return;
     const next = plan.scenes[i + 1];
-    if (seams[i] !== 'cut') {
-      sinceDressed = 0;
-      return;
-    }
-    if (scene.kind === 'title' || next.kind === 'title') {
-      sinceDressed++;
-      return;
-    }
-    // Into the closing logo: a dip, so the name arrives on a calm frame.
-    if (i + 1 === last && next.recipeId === 'brand/logo-reveal' && used.dip < SEAM_CAPS.dip && fits('dip')) {
-      seams[i] = 'dip';
-      used.dip++;
-      sinceDressed = 0;
-      return;
-    }
-    if (sinceDressed < 1) {
-      sinceDressed++;
-      return;
-    }
-    for (let k = 0; k < order.length; k++) {
-      const pick = order[(turn + k) % order.length];
-      const group = seamGroup(pick)!;
-      if (fits(pick) && used[group] < SEAM_CAPS[group]) {
-        seams[i] = pick;
-        used[group]++;
-        turn += k + 1;
-        sinceDressed = 0;
+    if (scene.kind === 'title' || next.kind === 'title') return;
+    const e1 = sceneEnergy(scene);
+    const e2 = sceneEnergy(next);
+    const wants: SceneTransition[] = [];
+    if (i + 1 === last && next.recipeId === 'brand/logo-reveal') wants.push('dip', 'iris');
+    if (opensDetail(scene, next)) wants.push('window', 'portal');
+    if (e1 >= 3 && e2 >= 3) wants.push('whip', 'flash');
+    if (e1 - e2 >= 2) wants.push('dip', 'iris', 'ink');
+    if (e2 - e1 >= 2) wants.push('push', 'wipe', 'whip');
+    if (Math.abs(e1 - e2) <= 1) wants.push('flash', 'push', 'wipe');
+    wants.push('wipe', 'push', 'barn', 'line', 'ink', 'iris', 'portal', 'window', 'whip', 'flash', 'dip', 'leak', 'glitch');
+    for (const t of wants) {
+      if (take(t)) {
+        seams[i] = t;
         return;
       }
     }
-    sinceDressed++;
   });
   return { ...plan, scenes: plan.scenes.map((scene, i) => ({ ...scene, transition: seams[i] })) };
 }
@@ -582,7 +653,8 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
   const scenes = plan.scenes.map((s) => ({ ...s, durationSec: nativeOf(s) }));
   const sum = () => scenes.reduce((n, s) => n + s.durationSec, 0);
   // Make way, least important first, never the first / last scene and never a named recipe.
-  const rank = (s: DirectorScene) => (isBrandScene(s.recipeId) ? 0 : s.kind === 'title' ? 1 : keep.has(s.recipeId) ? 9 : 2);
+  // Extra title cards go first, then site scenes, then recipes nobody named; the site's pictures (the gallery) stay longest.
+  const rank = (s: DirectorScene) => (keep.has(s.recipeId) ? 9 : s.recipeId === 'brand/people-gallery' ? 3 : s.kind === 'title' ? 0 : isBrandScene(s.recipeId) ? 1 : 2);
   while (sum() > target + 1 && scenes.length > PLAN_LIMITS.minScenes) {
     let drop = -1;
     for (let i = scenes.length - 2; i >= 1; i--) if (rank(scenes[i]) < 9 && (drop < 0 || rank(scenes[i]) < rank(scenes[drop]))) drop = i;

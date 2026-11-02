@@ -21,10 +21,11 @@
 //   98–126   其余四人 smooth 聚拢到卡片四周（漂移保留 25%，不归零），不压标题
 //   126–156  hold：漂移继续、推镜继续（画面活着，但不抢）
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, ramp, mix } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, springAt, type, TYPE } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const CURSOR_CAST_ENSEMBLE_DURATION = 156;
 
@@ -147,6 +148,9 @@ export const CursorCastEnsemble: React.FC = () => {
   ];
   const caretOn = typed < TITLE.length || Math.floor(f / 9) % 2 === 0;
 
+  // 客户网站图片（无则为 null，便签原样）：每张便签一张，0–5
+  const notePics = NOTES.map((_, i) => realCard(i));
+
   const avatarPop = (i: number) => springAt(f, ACTORS[i].delay + 8, { damping: 15, stiffness: 190 });
 
   return (
@@ -176,6 +180,12 @@ export const CursorCastEnsemble: React.FC = () => {
               padding: '26px 26px 22px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column',
             }}>
               <div style={{ ...type(36, 700), color: alpha(L.ink, 0.86), lineHeight: 1.12 }}>{n.title}</div>
+              {notePics[i] && (
+                // 便签正文空位里贴一张网站图（标题与署名行位置不动）
+                <div style={{ position: 'relative', flex: 1, minHeight: 0, margin: '12px 0 10px', borderRadius: 6, overflow: 'hidden', boxShadow: `0 0 0 1px ${alpha(L.shadow, 0.08)}` }}>
+                  <Img src={notePics[i]!} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                </div>
+              )}
               <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ width: 14, height: 14, borderRadius: 7, background: o.color }} />
                 <span style={{ ...type(24, 560), color: alpha(L.ink, 0.5) }}>{o.name} · {n.meta}</span>

@@ -19,10 +19,11 @@
 //   ~104–112 三卡依次落地（压扁回弹、倾角 −2.5/1.8/−1.2°），行槽塌成虚线
 //   112–150 hold：板头「3 shots pinned」计数升起，相机极缓推进
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, FONT, SpeedBlur, mix, ramp, softShadow } from '../../_fixtures/Polish';
 import { LOOKS, SERIF, Stage, TextReveal, alpha, springAt, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const PANEL_TO_CANVAS_MATERIALIZE_DURATION = 150;
 
@@ -138,14 +139,21 @@ const RowContent: React.FC<{ item: Item; hue: string; check: React.ReactNode }> 
 );
 
 // 卡形态内容（按卡终态尺寸布局，飞行中由外框裁切）
-const CardContent: React.FC<{ item: Item; hue: string }> = ({ item, hue }) => (
+// url：场景里的站点图——有则卡片正文区（原备注行位置）显示站点图，无则按原样画备注
+const CardContent: React.FC<{ item: Item; hue: string; url?: string | null }> = ({ item, hue, url }) => (
   <div style={{ position: 'absolute', left: 0, top: 0, width: CARD_W, height: CARD_H, padding: '26px 30px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <Tag s={item.tag} />
       <span style={{ marginLeft: 'auto', ...type(20, 500), color: L.ink3 }}>{item.meta}</span>
     </div>
     <div style={{ marginTop: 18, fontFamily: SERIF, fontSize: 38, fontWeight: 600, lineHeight: 1.04, letterSpacing: '-0.02em', color: L.ink }}>{item.title}</div>
-    <div style={{ marginTop: 12, ...type(24, 450), lineHeight: 1.3, color: L.ink2 }}>{item.quote}</div>
+    {url ? (
+      <div style={{ position: 'relative', marginTop: 12, marginBottom: 12, flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden', background: L.surface2, border: `1px solid ${L.line}` }}>
+        <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+      </div>
+    ) : (
+      <div style={{ marginTop: 12, ...type(24, 450), lineHeight: 1.3, color: L.ink2 }}>{item.quote}</div>
+    )}
     <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
       <Avatar s={item.who} c={hue} size={36} />
       <span style={{ ...type(22, 560), color: L.ink2 }}>{item.name}</span>
@@ -305,6 +313,7 @@ export const PanelToCanvasMaterialize: React.FC = () => {
           const liftStart = LIFT_AT[k];
           if (frame < liftStart) return null;
           const item = ITEMS[slot];
+          const url = realCard(k);
           const pre = ramp(frame, liftStart, LIFT, EASE.out); // 拔起预备
           const g = flyGeom(frame, k);
           const flying = frame >= liftStart + LIFT;
@@ -338,7 +347,7 @@ export const PanelToCanvasMaterialize: React.FC = () => {
                   <RowContent item={item} hue={AV[slot % 4]} check={<CheckBox frame={frame} at={CHECK_AT[k]} />} />
                 </div>
                 <div style={{ position: 'absolute', inset: 0, opacity: cardOp }}>
-                  <CardContent item={item} hue={AV[slot % 4]} />
+                  <CardContent item={item} hue={AV[slot % 4]} url={url} />
                 </div>
               </div>
             </SpeedBlur>

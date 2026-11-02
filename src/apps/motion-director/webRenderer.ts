@@ -13,7 +13,7 @@ import type {
 import type { ProjectData } from './types';
 import { MainComposition } from './preview/Composition';
 import { projectEndFrame } from './types';
-import { setExportMode } from './demosrc/_fixtures/ExportMode';
+import { setExportMode, setWebRendering } from './demosrc/_fixtures/ExportMode';
 
 type RenderOptions = {
   project: ProjectData;
@@ -202,11 +202,13 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
 
   // Motion-blur recipes draw their world many times a frame; while exporting they draw far fewer.
   setExportMode(true);
+  setWebRendering(true);
   let result;
   try {
     result = await renderMediaOnWeb(renderOpts);
   } finally {
     setExportMode(false);
+    setWebRendering(false);
   }
 
   console.log('[motion-studio:export] encoding finished, awaiting blob');
@@ -318,7 +320,13 @@ export const renderStillOnWebExport = async (
     scale,
   };
 
-  const result = await renderStillOnWeb(renderOpts);
+  setWebRendering(true);
+  let result;
+  try {
+    result = await renderStillOnWeb(renderOpts);
+  } finally {
+    setWebRendering(false);
+  }
 
   const blob = await result.blob();
 

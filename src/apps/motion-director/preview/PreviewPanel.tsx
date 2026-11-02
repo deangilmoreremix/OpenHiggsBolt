@@ -7,7 +7,7 @@ import type { PreviewItem } from "../store";
 import { fmtFrames } from "../time";
 import { CARDS } from "../cards/registry";
 import { cardFps, cardSize } from "../cards/types";
-import { MANIFEST } from '../cards/projectCards';
+import { THEME_MANIFEST } from '../cards/projectCards';
 import { themedProps } from '../theme';
 import { cardName, t, useLocale, useT, useTx } from "../i18n";
 import MotionFullscreenPlayer from "../components/MotionFullscreenPlayer";
@@ -36,7 +36,7 @@ const ItemPreview: React.FC<{ item: NonNullable<PreviewItem>; onClose: () => voi
       body = (
         <Player
           component={card.component}
-          inputProps={themedProps(MANIFEST, card, themeId, {}, themeColors)}
+          inputProps={themedProps(THEME_MANIFEST, card, themeId, {}, themeColors)}
           durationInFrames={Math.max(2, card.durationInFrames)}
           compositionWidth={width}
           compositionHeight={height}
@@ -186,7 +186,7 @@ export const PreviewPanel: React.FC = () => {
                 return (
                   <Player
                     component={card.component}
-                    inputProps={themedProps(MANIFEST, card, themeId, {}, themeColors)}
+                    inputProps={themedProps(THEME_MANIFEST, card, themeId, {}, themeColors)}
                     durationInFrames={Math.max(2, card.durationInFrames)}
                     compositionWidth={width}
                     compositionHeight={height}
