@@ -19,6 +19,8 @@ import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { isProductTextureShot } from './productShots';
 import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
 import { seamFrames, type SeamKind } from './seams';
+import { SHOT_FACTS } from '../demosrc/_generated/shotFacts';
+import { luma } from './palette';
 
 export interface FilmCapture {
   /** Captured page URLs (1920 CSS px wide, 2x). */
@@ -399,7 +401,12 @@ const INSET_PAGE_H = 1200;
       // `*word*` marks emphasis on the title card only; everywhere else the markers are dropped.
       const line = (scene.caption || scene.headline).replace(/\*/g, '');
       if (line) {
-        captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
+        // The caption sits on the shot: a recipe drawn on a dark ground keeps it in a light film (it only takes
+        // the accent), so its caption is drawn light there, and dark on a light recipe in a dark film.
+        const ground = SHOT_FACTS[template.componentName]?.ground;
+        const filmDark = luma(palette.background) < 0.5;
+        const captionColor = ground === 'dark' && !filmDark ? '#f5f5f2' : ground === 'light' && filmDark ? '#16171c' : palette.text;
+        captions.push(clip('inkpress-caption', at, frames, { text: line, color: captionColor, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
       }
     }
     at += frames;

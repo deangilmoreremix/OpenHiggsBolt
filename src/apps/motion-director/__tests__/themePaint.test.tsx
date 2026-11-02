@@ -47,3 +47,15 @@ describe('themePaint (upstream THEMES.md: repaint a scene\'s own colours by role
     for (const f of all) expect(['dark', 'light']).toContain(f.ground);
   });
 });
+
+describe('captions on the shot they sit on', () => {
+  it('are light under a dark-ground recipe in a light film, and the film text colour under a light one', async () => {
+    const { planToProject } = await import('../lib/buildFilm');
+    const { MOTION_TEMPLATES } = await import('@/data/motionRecipeCatalog');
+    const dark = MOTION_TEMPLATES.find((t) => SHOT_FACTS[t.componentName]?.ground === 'dark')!;
+    const light = MOTION_TEMPLATES.find((t) => SHOT_FACTS[t.componentName]?.ground === 'light')!;
+    const p = planToProject({ title: 't', summary: '', palette: { background: '#ffffff', text: '#1c1d29', accent: '#a6c937' }, scenes: [dark, light].map((t) => ({ kind: 'shot' as const, recipeId: t.id, durationSec: 4, headline: 'Line', caption: `Caption ${t.componentName}`, transition: 'cut' as const })) }, { aspectRatio: '16:9' });
+    const caps = p.tracks.flatMap((tr) => tr.clips).filter((c) => c.cardId === 'inkpress-caption');
+    expect(caps.map((c) => c.props.color)).toEqual(['#f5f5f2', '#1c1d29']);
+  });
+});
