@@ -16,6 +16,12 @@ interface SmartVideoAccessContextValue {
   isSignedIn: boolean | undefined;
   hasSmartVideoViral: boolean;
   isSuperUser: boolean;
+  /**
+   * True when the user may USE features behind this entitlement. Base
+   * SmartVideo GO studios follow isPaid; GO-Viral (smartvideo_viral) is a
+   * separate paid upgrade that must be bought on its own.
+   */
+  hasEntitlement: (entitlement: string) => boolean;
   requireEntitlement: <T>(
     entitlement: string,
     onAllowed: () => T | Promise<T>,
@@ -99,13 +105,24 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
   const hasSmartVideoViral = Boolean(accessState?.hasSmartVideoViral);
   const isSuperUser = Boolean(accessState?.isSuperUser);
 
+  const hasEntitlement = useCallback(
+    (entitlement: string) => {
+      if (isSuperUser) return true;
+      if (entitlement === ENTITLEMENTS.SMARTVIDEO_VIRAL || entitlement === 'go-ai-viral') {
+        return hasSmartVideoViral;
+      }
+      return isPaid;
+    },
+    [isPaid, isSuperUser, hasSmartVideoViral]
+  );
+
   const requireEntitlement = useCallback(
     async function requireEntitlement<T>(
       entitlement: string,
       onAllowed: () => T | Promise<T>,
       onDenied?: () => void
     ): Promise<T | undefined> {
-      if (isPaid) {
+      if (hasEntitlement(entitlement)) {
         return await onAllowed();
       } else {
         onDenied?.();
@@ -113,7 +130,7 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         return undefined;
       }
     },
-    [isPaid, setUpgradeModal]
+    [hasEntitlement, setUpgradeModal]
   );
 
   const openUpgradeModal = useCallback((source?: string) => {
@@ -153,6 +170,7 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         isSignedIn: isSignedInBoolean,
         hasSmartVideoViral,
         isSuperUser,
+        hasEntitlement,
         requireEntitlement,
         openUpgradeModal,
         restoreAccess,
@@ -176,6 +194,7 @@ export function NoClerkSmartVideoAccessProvider({ children }: { children: React.
     isSignedIn: false,
     hasSmartVideoViral: false,
     isSuperUser: false,
+    hasEntitlement: () => true,
     requireEntitlement: async (_entitlement, onAllowed) => {
       return await onAllowed();
     },
@@ -209,6 +228,7 @@ export function useSmartVideoAccess(): SmartVideoAccessContextValue {
     isSignedIn: false,
     hasSmartVideoViral: false,
     isSuperUser: false,
+    hasEntitlement: () => true,
     requireEntitlement: async (_entitlement, onAllowed) => onAllowed(),
     openUpgradeModal: () => {},
     restoreAccess: async () => ({ status: 'error', message: 'Access provider unavailable.' }),

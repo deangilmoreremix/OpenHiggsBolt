@@ -226,7 +226,7 @@ function hasSmartVideoViral(entitlements, status) {
     return false;
   }
   const ents = entitlements || {};
-  return ents.smartvideo_viral === true || ents.founders === true;
+  return ents.smartvideo_viral === true || ents.founders === true || ents.go_viral_ai === true;
 }
 
 /**

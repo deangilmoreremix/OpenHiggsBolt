@@ -5,6 +5,9 @@ import { X } from 'lucide-react';
 import { useSmartVideoAccess } from './SmartVideoAccessProvider';
 import { ENTITLEMENTS } from './entitlements';
 
+/** Live Stripe payment link for the GO-Viral lifetime upgrade. */
+const GO_VIRAL_CHECKOUT_FALLBACK = 'https://buy.stripe.com/00w3cu1KkfeEgSF3s45Rm09';
+
 const STUDIO_NAMES: Record<string, string> = {
   [ENTITLEMENTS.SMARTVIDEO_GO]: 'SmartVideo GO',
   [ENTITLEMENTS.SMARTVIDEO_AI]: 'SmartVideo AI',
@@ -18,6 +21,7 @@ const STUDIO_NAMES: Record<string, string> = {
   'motion-director': 'Motion Director',
   'storyboard': 'Storyboard',
   'go-ai-viral': 'GO-Viral',
+  [ENTITLEMENTS.SMARTVIDEO_VIRAL]: 'GO-Viral',
   'cinema-studio': 'Cinema Studio',
   'thumbnail-studio': 'Thumbnail Studio',
   'social-publishing': 'Social Publishing',
@@ -34,6 +38,23 @@ export default function UpgradeModal() {
   if (!upgradeModal.isOpen) return null;
 
   const studioName = STUDIO_NAMES[upgradeModal.source] || STUDIO_NAMES[ENTITLEMENTS.SMARTVIDEO_GO];
+  // GO-Viral is a separate upgrade with its own checkout, not part of GO.
+  const isViral =
+    upgradeModal.source === 'go-ai-viral' || upgradeModal.source === ENTITLEMENTS.SMARTVIDEO_VIRAL;
+  const checkoutUrl = isViral
+    ? process.env.NEXT_PUBLIC_GO_VIRAL_CHECKOUT_URL || GO_VIRAL_CHECKOUT_FALLBACK
+    : process.env.NEXT_PUBLIC_SMARTVIDEO_GO_CHECKOUT_URL || '/#pricing';
+  const features = isViral
+    ? ['Viral prompt feed', 'Seedance video prompts', 'Niche filters', 'Copy & remix prompts']
+    : [
+        'AI Video Generation',
+        'AI Image Generation',
+        'Avatar Tools',
+        'Templates',
+        'Video Agents',
+        'Publishing',
+        'All SmartVideo GO Studios',
+      ];
 
   const handleClose = () => {
     setUpgradeModal({ isOpen: false, source: upgradeModal.source });
@@ -101,20 +122,14 @@ export default function UpgradeModal() {
           <p className="text-sm text-white/60">
             You&apos;re exploring {studioName}.
             <br />
-            Upgrade to create with this Studio and unlock SmartVideo GO creation tools.
+            {isViral
+              ? 'GO-Viral is an upgrade. Purchase it to use this Studio.'
+              : 'Upgrade to create with this Studio and unlock SmartVideo GO creation tools.'}
           </p>
         </div>
 
         <div className="space-y-2 mb-6">
-          {[
-            'AI Video Generation',
-            'AI Image Generation',
-            'Avatar Tools',
-            'Templates',
-            'Video Agents',
-            'Publishing',
-            'All SmartVideo GO Studios',
-          ].map((feature) => (
+          {features.map((feature) => (
             <div key={feature} className="flex items-center gap-2 text-sm text-white/80">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
@@ -125,10 +140,10 @@ export default function UpgradeModal() {
         </div>
 
         <a
-          href={process.env.NEXT_PUBLIC_SMARTVIDEO_GO_CHECKOUT_URL || '/#pricing'}
+          href={checkoutUrl}
           className="block w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold text-center hover:opacity-90 transition-opacity mb-3"
         >
-          Unlock SmartVideo GO
+          {isViral ? 'Unlock GO-Viral' : 'Unlock SmartVideo GO'}
         </a>
 
         {isSignedIn && (

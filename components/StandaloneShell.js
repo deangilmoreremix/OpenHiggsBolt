@@ -18,6 +18,7 @@ import { DemoPersonalizeProvider } from '@/shared/personalization';
 import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
 import PreviewModeBadge from '@/access/PreviewModeBadge';
+import LockedStudio from '@/access/LockedStudio';
 import { getCommonCopy } from '../lib/locales';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
@@ -946,7 +947,16 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'go-ai-viral' && (
+            <LockedStudio
+              entitlement="smartvideo_viral"
+              source="go-ai-viral"
+              title="GO-Viral"
+              description="GO-Viral is an upgrade to SmartVideo GO AI. Explore what's inside, then purchase it to start using it."
+            >
+              <GoAiViralStudio apiKey={apiKey} />
+            </LockedStudio>
+          )}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>
       </DemoPersonalizeProvider>

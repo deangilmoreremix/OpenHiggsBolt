@@ -97,7 +97,10 @@ export function hasSmartVideoGo(
  */
 export function hasSmartVideoViral(entitlements: UserEntitlements, status?: string): boolean {
   if (!isQualifyingStatus(status)) return false;
-  return entitlements.smartvideo_viral === true || entitlements.founders === true;
+  // `go_viral_ai` is a legacy key set by hand on some rows; treat it as the
+  // same grant.
+  const legacy = (entitlements as unknown as Record<string, unknown>)?.go_viral_ai === true;
+  return entitlements.smartvideo_viral === true || entitlements.founders === true || legacy;
 }
 
 export interface AccessState {

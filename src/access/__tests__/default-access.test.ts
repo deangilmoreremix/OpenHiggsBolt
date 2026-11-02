@@ -34,6 +34,13 @@ describe('hasSmartVideoGo default access', () => {
 
   it('does not grant go-ai-viral by default', () => {
     expect(hasSmartVideoViral({ smartvideo_go: false }, undefined)).toBe(false);
+    expect(hasSmartVideoViral({ smartvideo_go: true, smartvideo_ai: true }, 'active')).toBe(false);
+  });
+
+  it('grants go-ai-viral to buyers (smartvideo_viral or legacy go_viral_ai)', () => {
+    expect(hasSmartVideoViral({ smartvideo_go: true, smartvideo_viral: true }, 'active')).toBe(true);
+    expect(hasSmartVideoViral({ go_viral_ai: true } as never, 'active')).toBe(true);
+    expect(hasSmartVideoViral({ smartvideo_viral: true } as never, 'revoked')).toBe(false);
   });
 });
 
