@@ -141,9 +141,11 @@ function offerNodes(node: JsonObject | null): JsonObject[] {
   }
   add(node.makesOffer)
   add(node.offers)
-  const catalog = node.hasOfferCatalog
-  if (isObject(catalog)) {
-    // A catalog lists ListItems whose offer sits under `item`.
+  // A page may publish one catalog or several. A catalog lists ListItems
+  // whose offer sits under `item`.
+  const catalogs = Array.isArray(node.hasOfferCatalog) ? node.hasOfferCatalog : [node.hasOfferCatalog]
+  for (const catalog of catalogs) {
+    if (!isObject(catalog)) continue
     const entries = Array.isArray(catalog.itemListElement) ? catalog.itemListElement : [catalog.itemListElement]
     add(entries.map((entry) => (isObject(entry) && isObject(entry.item) ? entry.item : entry)))
   }

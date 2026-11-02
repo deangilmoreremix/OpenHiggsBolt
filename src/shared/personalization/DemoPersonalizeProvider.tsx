@@ -180,6 +180,10 @@ interface GenerateOverrides {
  * The video URL another studio can load: the stored copy when the result
  * itself is browser-only (layers burned in locally), else a non-blob result URL.
  */
+/** Shown when a final video is missing the on-video layers the user approved. */
+export const LAYERS_MISSING_NOTE =
+  "This video doesn't include your on-video layers: they couldn't be added or saved. Create the final video again to add them."
+
 /** The URL a saved project keeps for a result: the result itself unless it
  *  is browser-only, else its stored copy ('' if there is none). */
 export function projectOutputUrl(result: GenerationResult | null | undefined): string {
@@ -1805,6 +1809,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
+    setVisionStatus('idle')
+    setVisionError(null)
     setBusinessResearch({ status: 'idle' })
   }, [])
 
@@ -2015,6 +2021,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
     guidedStep,
     viewMode,
+    ...((result?.metadata as Record<string, unknown> | undefined)?.layersMissing === true ? { layersMissing: true } : {}),
   }), [
     source,
     mode,
@@ -2027,6 +2034,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     generation.status,
     result?.url,
     result?.urls,
+    result?.metadata,
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
@@ -2362,6 +2370,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           type: entry.outputType as GenerationResult['type'],
           urls: durableUrls,
           prompt: entry.personalizedPrompt || undefined,
+          // A saved clip without the approved layers says so again, and is
+          // not offered for publishing as if it were the final video.
+          ...(entry.layersMissing
+            ? { metadata: { layersMissing: true, publishUrl: '', layersNote: LAYERS_MISSING_NOTE } }
+            : {}),
         })
       }
     }
@@ -2540,6 +2553,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
+    setVisionStatus('idle')
+    setVisionError(null)
+    // The previous business's summary and selection describe it, not this client.
+    setBusinessLoadSummary(null)
+    setSelectedBusiness(null)
+    setBusinessSearchMode((mode) => (mode === 'selected' ? 'idle' : mode))
+    setBusinessResearch({ status: 'idle' })
     setSelectedClientId(id)
     if (!id) {
       setCurrentClientId(null)
@@ -4030,6 +4050,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
     setVisionStatus('analyzing')
     setVisionError(null)
+    // Results for a business or project that is no longer open are dropped.
+    const visionSession = businessSessionRef.current
 
     const sectionForCategory = (category: DiscoveredAssetCategory): AssignedSection => {
       if (category === 'person') return 'person'
@@ -4093,6 +4115,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           if (analysis?.id) analysesById.set(analysis.id, analysis as PersonalizationVisionAnalysis)
         }
       }
+      if (visionSession !== businessSessionRef.current) return
 
       setDiscoveredAssetsState((previous) => previous.map((asset) => {
         const analysis = analysesById.get(asset.id)
@@ -4160,6 +4183,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
       setVisionStatus('complete')
     } catch (error) {
+      if (visionSession !== businessSessionRef.current) return
       setVisionStatus('error')
       setVisionError(error instanceof Error ? error.message : 'Vision analysis failed')
     }
@@ -4232,6 +4256,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
+    setVisionStatus('idle')
+    setVisionError(null)
 
     // Content found for the previous business must not mix into this one:
     // drop its auto-filled fields (anything the user typed stays) and the
@@ -5003,10 +5029,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       let postResult: Awaited<ReturnType<typeof applyPostProcessing>> = { finalUrl: genResult.url || '', originalUrl: genResult.url || '', applied: [] }
       if (!burned) {
         setGeneration((prev) => ({ ...prev, progress: 90, progressMessage: 'Applying branding...' }))
+        let postProcessing = resolved.postProcessing
+        // A layered run makes no end card up front (the layers carry the CTA);
+        // when the layers could not be added, branding needs one like any run.
+        if (burnInLayers && options.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only' && !postProcessing.endCard) {
+          try {
+            const endCardUrl = await generateEndCardImage(
+              clientForm as Record<string, unknown> | undefined,
+              assets.primaryLogo?.file || assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || null,
+              apiKey,
+            )
+            if (endCardUrl) postProcessing = { ...postProcessing, endCard: endCardUrl }
+          } catch {
+            // Branding still runs without the end card.
+          }
+        }
         postResult = await applyPostProcessing({
           generatedUrl: genResult.url || '',
           type: genResult.type as 'image' | 'video',
-          postProcessing: resolved.postProcessing,
+          postProcessing,
           apiKey,
         })
       }
@@ -5044,6 +5085,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // nothing (the generated clip lacks the layers the user approved).
           publishUrl: burned ? (layeredStored ? storedUrl : '') : finalUrl,
           ...(layersNote ? { layersNote: `Your on-video layers couldn't be added in this browser (${layersNote}).` } : {}),
+          // Saved with the project so a restore shows the same notice.
+          ...(burnInLayers && genResult.type === 'video' && genResult.url && !layeredStored ? { layersMissing: true } : {}),
         },
       }
 

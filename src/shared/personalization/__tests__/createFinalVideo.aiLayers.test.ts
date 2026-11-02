@@ -25,7 +25,7 @@ vi.mock('../preview/fitSettingsToClip', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../preview/fitSettingsToClip')>()),
   readClipMetadata: vi.fn(async () => ({ durationSeconds: 8, width: 720, height: 1280 })),
 }))
-import { applyPostProcessing } from '../postProcessor'
+import { applyPostProcessing, generateEndCardImage } from '../postProcessor'
 
 const GENERATED = 'https://cdn.example/generated.mp4'
 
@@ -97,6 +97,24 @@ describe('createFinalVideo with an AI mode', () => {
     const result = getCtx(ref).result
     expect(result.url).toBe('https://cdn.example/watermarked.mp4')
     expect(String(result.metadata.layersNote)).toMatch(/couldn't be added/)
+  })
+
+  it('the watermark fallback still gets the CTA end card', async () => {
+    renderMediaOnWeb.mockRejectedValue(new Error('no encoder'))
+    ;(generateEndCardImage as any).mockResolvedValue('https://cdn.example/end-card.png')
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated()
+    await act(async () => {
+      getCtx(ref).updateGenOptions({ ...getCtx(ref).genOptions, exactCtaHandling: 'final-end-card' })
+    })
+
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+
+    expect(applyPostProcessing).toHaveBeenCalledTimes(1)
+    expect((applyPostProcessing as any).mock.calls[0][0].postProcessing.endCard).toBe('https://cdn.example/end-card.png')
+    // The layered video wasn't made, so the project remembers it.
+    expect(getCtx(ref).result.metadata.layersMissing).toBe(true)
   })
 
   it('refuses a face/person mode without consent, even if the button was bypassed', async () => {

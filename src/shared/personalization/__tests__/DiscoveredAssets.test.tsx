@@ -1121,4 +1121,21 @@ describe('Discovered Assets Integration', () => {
     expect(c.discoveryStatus).toBe('idle')
     expect(c.assets.logos).toHaveLength(0)
   })
+  it('picking a saved client clears the previous business selection', async () => {
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness({ id: 'url:https://acme.example', name: 'Acme Plumbing', website: 'https://acme.example' })
+    })
+    expect((window as any).__personalizationCtx.selectedBusiness?.name).toBe('Acme Plumbing')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectClient('')
+    })
+    const c = (window as any).__personalizationCtx
+    expect(c.selectedBusiness).toBeNull()
+    expect(c.businessLoadSummary).toBeNull()
+    expect(c.businessSearchMode).not.toBe('selected')
+  })
 })

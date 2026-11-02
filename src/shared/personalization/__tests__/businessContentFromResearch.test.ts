@@ -88,6 +88,21 @@ describe('businessContentFromResearch', () => {
     expect(content.offer).toContain('Gutter Cleaning')
   })
 
+  it('reads offers from every catalog when hasOfferCatalog is an array', () => {
+    const content = businessContentFromResearch(baseResearch({
+      jsonLd: [{
+        '@type': 'LocalBusiness',
+        name: "Joe's Roofing",
+        hasOfferCatalog: [
+          { '@type': 'OfferCatalog', itemListElement: [{ '@type': 'ListItem', item: { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Roof Repair' } } }] },
+          { '@type': 'OfferCatalog', itemListElement: [{ '@type': 'ListItem', item: { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Gutter Cleaning' } } }] },
+        ],
+      }],
+    }))
+    expect(content.productService).toContain('Roof Repair')
+    expect(content.productService).toContain('Gutter Cleaning')
+  })
+
   it('finds the business when it is only the page publisher', () => {
     const content = businessContentFromResearch(baseResearch({
       title: 'Home',
