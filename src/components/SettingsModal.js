@@ -12,6 +12,23 @@ import { t } from '../lib/i18n.js';
 // Canonical OpenAI key API endpoint for the Vite SPA.
 const OPENAI_KEY_API = '/api/auth/openai-key';
 
+// Never surface a raw JSON parse error when the host answers with an HTML
+// error page (e.g. a 504 timeout); return a readable message instead.
+async function readJsonResponse(res) {
+    const text = await res.text();
+    try {
+        return text ? JSON.parse(text) : {};
+    } catch {
+        const busy = res.status === 502 || res.status === 503 || res.status === 504;
+        return {
+            ok: false,
+            error: busy
+                ? 'The server took too long to respond. Please wait a moment and try again.'
+                : `Unexpected server response (${res.status}). Please try again.`,
+        };
+    }
+}
+
 export function SettingsModal(onClose) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:100;';
@@ -172,7 +189,7 @@ export function SettingsModal(onClose) {
                   body: JSON.stringify({ key: cleanMuapi }),
                   credentials: 'same-origin',
               });
-              const muData = await muRes.json();
+              const muData = await readJsonResponse(muRes);
               if (!muRes.ok || !muData.ok) {
                   throw new Error(muData.error || 'Failed to save MuAPI key');
               }
@@ -186,7 +203,7 @@ export function SettingsModal(onClose) {
                   body: JSON.stringify({ openaiKey: cleanOpenai }),
                   credentials: 'same-origin',
               });
-              const oaData = await oaRes.json();
+              const oaData = await readJsonResponse(oaRes);
               if (!oaRes.ok || !oaData.ok) {
                   throw new Error(oaData.error || 'Failed to save OpenAI key');
               }

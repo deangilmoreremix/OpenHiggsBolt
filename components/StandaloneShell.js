@@ -188,6 +188,24 @@ const persistNotifications = (notifications) => {
   }
 };
 
+// Reads a JSON API response without ever surfacing a raw parse error. When the
+// host returns an HTML error page instead (e.g. a 504 timeout), callers get a
+// readable message rather than "Unexpected token '<' ... is not valid JSON".
+async function readJsonResponse(res) {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    const busy = res.status === 502 || res.status === 503 || res.status === 504;
+    return {
+      ok: false,
+      error: busy
+        ? 'The server took too long to respond. Please wait a moment and try again.'
+        : `Unexpected server response (${res.status}). Please try again.`,
+    };
+  }
+}
+
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {
   const params = useParams();
   const router = useRouter();
@@ -586,7 +604,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           credentials: 'same-origin',
           body: JSON.stringify({ key: trimmed }),
         });
-        const muData = await muRes.json();
+        const muData = await readJsonResponse(muRes);
         if (!muRes.ok || !muData.ok) {
           throw new Error(muData.error || 'Failed to save MuAPI key');
         }
@@ -1166,7 +1184,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                           credentials: 'same-origin',
                           body: JSON.stringify({ key: trimmed }),
                         });
-                        const data = await res.json();
+                        const data = await readJsonResponse(res);
                         if (!res.ok || !data.ok) {
                           throw new Error(data.error || 'Failed to save MuAPI key');
                         }
