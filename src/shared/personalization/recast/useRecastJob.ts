@@ -208,10 +208,12 @@ export function useRecastJob({
   const retry = useCallback(() => {
     const current = jobRef.current
     if (!current || current.status !== 'error' || !current.requestId) return false
+    // Without a key the poll can't succeed; keep the "connect your key" message.
+    if (!apiKey) return false
     const running = patch(current.id, { status: 'running', error: '', finishedAt: 0 })
     if (running) void poll(running)
     return true
-  }, [patch, poll])
+  }, [apiKey, patch, poll])
 
   const markApplied = useCallback(() => {
     const current = jobRef.current

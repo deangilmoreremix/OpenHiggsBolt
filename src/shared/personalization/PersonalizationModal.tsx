@@ -4496,7 +4496,8 @@ function ConfigurationView(props: any) {
             pageSize={12}
             onDropToSection={(id, section) => {
               ctxMoveDiscoveredAssetToSection?.(id, section)
-              void importDiscoveredAssets({ ids: [id], section })
+              // Importing needs an account; visitors only rearrange the grid.
+              if (!isAnonymous) void importDiscoveredAssets({ ids: [id], section })
             }}
           />
         </section>

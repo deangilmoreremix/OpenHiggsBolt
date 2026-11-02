@@ -478,7 +478,7 @@ export function FullBodyRecastSection({ source }: { source: PersonalizationSourc
       {(clip.error || blocker || recastJob?.status === 'error') && (
         <div role={clip.error || recastJob?.status === 'error' ? 'alert' : undefined} style={{ marginTop: 8, fontSize: 11, color: clip.error || recastJob?.status === 'error' ? C.danger : C.muted2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span>{recastJob?.status === 'error' ? recastJob.error : clip.error || blocker}</span>
-          {recastJob?.status === 'error' && recastJob.requestId && (
+          {recastJob?.status === 'error' && recastJob.requestId && Boolean(apiKey) && (
             <button type="button" onClick={() => retryRecast()} style={{ minHeight: 26, padding: '0 10px', borderRadius: 8, border: `1px solid ${C.cyanBorder}`, background: 'transparent', color: C.cyan, fontSize: 10, fontWeight: 800 }}>
               ↻ Retry
             </button>

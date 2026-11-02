@@ -64,6 +64,8 @@ function flattenJsonLd(items: unknown[]): JsonObject[] {
     if (!isObject(value)) return
     if (Array.isArray(value['@graph'])) visit(value['@graph'])
     if (value['@type'] || value.name) out.push(value)
+    // A page's publisher is often the business itself.
+    if (isObject(value.publisher)) visit(value.publisher)
   }
   visit(items)
   return out
@@ -140,7 +142,11 @@ function offerNodes(node: JsonObject | null): JsonObject[] {
   add(node.makesOffer)
   add(node.offers)
   const catalog = node.hasOfferCatalog
-  if (isObject(catalog)) add(catalog.itemListElement)
+  if (isObject(catalog)) {
+    // A catalog lists ListItems whose offer sits under `item`.
+    const entries = Array.isArray(catalog.itemListElement) ? catalog.itemListElement : [catalog.itemListElement]
+    add(entries.map((entry) => (isObject(entry) && isObject(entry.item) ? entry.item : entry)))
+  }
   return out
 }
 

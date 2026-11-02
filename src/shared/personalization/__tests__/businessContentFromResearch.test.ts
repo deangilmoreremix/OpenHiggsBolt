@@ -71,6 +71,36 @@ describe('businessContentFromResearch', () => {
     expect(content.phone).toBe('813-555-0199')
   })
 
+  it('reads offers listed as ListItem entries in hasOfferCatalog', () => {
+    const content = businessContentFromResearch(baseResearch({
+      jsonLd: [{
+        '@type': 'LocalBusiness',
+        name: "Joe's Roofing",
+        hasOfferCatalog: {
+          '@type': 'OfferCatalog',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, item: { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Gutter Cleaning' }, price: '79', priceCurrency: 'USD' } },
+          ],
+        },
+      }],
+    }))
+    expect(content.productService).toContain('Gutter Cleaning')
+    expect(content.offer).toContain('Gutter Cleaning')
+  })
+
+  it('finds the business when it is only the page publisher', () => {
+    const content = businessContentFromResearch(baseResearch({
+      title: 'Home',
+      openGraph: {},
+      jsonLd: [{
+        '@type': 'WebPage',
+        name: 'Home',
+        publisher: { '@type': 'Organization', name: 'Acme Plumbing', telephone: '555-0101' },
+      }],
+    }))
+    expect(content.businessName).toBe('Acme Plumbing')
+  })
+
   it('falls back to Open Graph, the page title and contact info', () => {
     const content = businessContentFromResearch(baseResearch({
       openGraph: { site_name: 'Joe’s Roofing Co', description: 'OG description' },

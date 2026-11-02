@@ -257,5 +257,22 @@ describe('useRecastJob', () => {
     expect(signal.aborted).toBe(true)
     expect(loadRecastJob('demo-1', 'owner-b')).toBeNull()
   })
+
+  it('Retry does nothing without an API key and keeps the connect-your-key message', () => {
+    localStorage.setItem(`pz_recast_job:${OWNER}:demo-1`, JSON.stringify({
+      id: 'recast_9', sourceId: 'demo-1', ownerKey: OWNER, status: 'running', requestId: 'req-9',
+      sourceUrl: 'https://x/a.mp4', sourceLabel: 'a', identityId: 'p', identityName: 'P', identityUrl: 'https://x/p.jpg',
+      duration: 5, prompt: '', startedAt: Date.now(), finishedAt: 0, resultUrl: '', error: '', applied: false,
+    }))
+    const { result } = renderHook(() => useRecastJob({ apiKey: '', sourceId: 'demo-1', ownerKey: OWNER, onDone: vi.fn() }))
+    expect(result.current.job?.status).toBe('error')
+    const error = result.current.job?.error
+    let retried = true
+    act(() => { retried = result.current.retry() })
+    expect(retried).toBe(false)
+    expect(result.current.job?.status).toBe('error')
+    expect(result.current.job?.error).toBe(error)
+    expect(muapi.resumeGeneration).not.toHaveBeenCalled()
+  })
 })
 

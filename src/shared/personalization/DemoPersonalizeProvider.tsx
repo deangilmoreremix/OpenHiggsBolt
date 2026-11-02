@@ -1286,6 +1286,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Bumped whenever another business is selected; discovery, research and
   // imports started for an earlier one check it and drop their results.
   const businessSessionRef = useRef(0)
+  // Each discoverAssets call; a superseded call's results are dropped.
+  const discoveryRequestRef = useRef(0)
+  // Set once removeAutoImportedAssets is declared (it is declared later).
+  const removeAutoImportedAssetsRef = useRef<(() => void) | null>(null)
   // Discovered-asset ids that were placed automatically for this business.
   const autoImportedDiscoveredIdsRef = useRef<Set<string>>(new Set())
   const [businessLoadSummary, setBusinessLoadSummary] = useState<BusinessLoadSummary | null>(null)
@@ -2462,6 +2466,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // its results must not be imported into this client's assets.
     businessSessionRef.current += 1
     autoImportPendingRef.current = false
+    // The previous business's auto-placed logo and photos are not this client's.
+    removeAutoImportedAssetsRef.current?.()
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
@@ -3879,15 +3885,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const removeAutoImportedAssets = useCallback(() => {
     const ids = autoImportedDiscoveredIdsRef.current
     if (ids.size === 0) return
-    const placed = [...assets.logos, ...assets.products, ...assets.brandReferences]
-      .filter((asset) => asset.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
-    for (const asset of placed) {
-      if (asset.role === 'logo') removeLogo(asset.id)
-      else if (asset.role === 'product_reference') removeProduct(asset.id)
-      else if (asset.role === 'brand_reference') removeBrandReference(asset.id)
-    }
     autoImportedDiscoveredIdsRef.current = new Set()
-  }, [assets, removeLogo, removeProduct, removeBrandReference])
+    const isAuto = (asset: PersonalizationAsset | null | undefined) =>
+      Boolean(asset?.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
+    // Filtered inside the updater, so an auto-import queued but not yet
+    // rendered is removed too.
+    setAssets((prev) => ({
+      ...prev,
+      logos: prev.logos.filter((asset) => !isAuto(asset)),
+      products: prev.products.filter((asset) => !isAuto(asset)),
+      brandReferences: prev.brandReferences.filter((asset) => !isAuto(asset)),
+      primaryLogo: isAuto(prev.primaryLogo) ? null : prev.primaryLogo,
+    }))
+  }, [])
+  removeAutoImportedAssetsRef.current = removeAutoImportedAssets
 
   // When a found business's discovery finishes, place the best logo and
   // photos into empty asset cards so the preview and overlays use them right
@@ -4175,7 +4186,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       for (const [key, value] of Object.entries(fromRecord) as Array<[AutoFillKey, unknown]>) {
         if (typeof value !== 'string' || !value.trim()) continue
         const typed = next[key]
-        if (fromTypedWebsite && typeof typed === 'string' && typed.trim()) {
+        // The submitted URL is the site being researched, so it always wins.
+        if (fromTypedWebsite && key !== 'website' && typeof typed === 'string' && typed.trim()) {
           if (key === 'businessName') placeholderNameRef.current = ''
           continue
         }
@@ -4291,10 +4303,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const discoverAssets = useCallback(async (websiteUrl: string) => {
 
-    // Results for a business that is no longer selected are dropped.
+    // Results for a business that is no longer selected, or from a superseded
+    // request for the same business, are dropped.
     const discoverySession = businessSessionRef.current
+    const requestId = ++discoveryRequestRef.current
     const live = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
-      if (discoverySession === businessSessionRef.current) fn(...args)
+      if (discoverySession === businessSessionRef.current && requestId === discoveryRequestRef.current) fn(...args)
     }
     const setFoundAssets = live(setDiscoveredAssetsState)
     const setStatus = live(setDiscoveryStatus)
@@ -4874,6 +4888,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
           // Draw the layers at the generated clip's own length and shape.
           const clip = await readClipMetadata(genResult.url)
+          // Without the clip's real size and length, layers would be drawn at a
+          // guessed shape; fall back to branding without them instead.
+          if (!clip) throw new Error('The clip length and shape could not be read.')
           const built = buildPreviewInput({
             source,
             previewSettings: fitSettingsToClip(previewSettings, clip),
@@ -4983,7 +5000,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         outputUrls: resultWithPostProcessing.urls || (storedUrl ? [storedUrl] : []),
         outputType: resultWithPostProcessing.type,
         clientId: selectedClientId || undefined,
-        ...(burned && !layeredStored ? { layersMissing: true } : {}),
+        ...(burnInLayers && genResult.type === 'video' && genResult.url && !layeredStored ? { layersMissing: true } : {}),
       })
       setSharedMediaEntries(getSharedMedia())
 
