@@ -2458,6 +2458,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     autoFilledRef.current = {}
     placeholderNameRef.current = ''
     setAutoFilledContent({})
+    // A Find My Brand run still in flight belongs to the previous business:
+    // its results must not be imported into this client's assets.
+    businessSessionRef.current += 1
+    autoImportPendingRef.current = false
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+    setDiscoveryError(null)
     setSelectedClientId(id)
     if (!id) {
       setCurrentClientId(null)
