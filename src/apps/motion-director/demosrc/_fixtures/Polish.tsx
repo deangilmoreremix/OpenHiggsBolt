@@ -2,6 +2,7 @@
 // 胶片颗粒、暗角、两层软阴影 / 发丝线 / 内高光、按速度计算的方向性运动模糊、
 // 柔光渐变背景。全部是 props / frame 的纯函数，确定性渲染（无 Math.random / Date）。
 // 依赖仅 remotion + react；可选共享件——copy demo 时一并带上并改 import 路径。
+import { activePalette } from './skin';
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 
@@ -64,8 +65,13 @@ export const velocity = (f: (frame: number) => number, frame: number) => f(frame
 
 // ───────────────────────── 字体 ─────────────────────────
 
+const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, Arial, sans-serif';
+// `sans` follows the product's font when the film or clip palette carries one (SKILL principle 2).
 export const FONT = {
-  sans: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, Arial, sans-serif',
+  get sans(): string {
+    const f = activePalette()?.font;
+    return f ? `${f}, ${SANS}` : SANS;
+  },
   mono: '"SF Mono", "JetBrains Mono", Menlo, monospace',
 };
 

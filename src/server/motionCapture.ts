@@ -43,7 +43,7 @@ export async function storeCaptureImages(storage: CaptureStorage, userId: string
   // Many pictures: upload eight at a time rather than all at once.
   const stored: Array<readonly [string, string]> = []
   let next = 0
-  const lanes = Array.from({ length: Math.min(8, images.length) }, async () => {
+  const lanes = Array.from({ length: Math.min(12, images.length) }, async () => {
     while (next < images.length) {
       const image = images[next++]
       const path = `${folder}/${image.name}`
@@ -94,6 +94,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     partial: !capture.page,
     pages,
     crops: capture.crops.map((_, i) => at(`crop-${i + 1}.jpg`)!),
+    // What each crop shows (route, words, picture share, people, map), same order as `crops`.
+    cropInfo: capture.cropInfo?.length === capture.crops.length ? capture.cropInfo : undefined,
     images: (capture.images ?? []).map((_, i) => at(`image-${i + 1}.jpg`)!),
     // The asset finder's pictures of the site (people, team, products…), with what each one shows.
     assets: assets.map((a) => ({ url: at(a.name), category: a.category, alt: a.alt })).filter((a): a is { url: string; category: string; alt: string } => Boolean(a.url)),
@@ -102,6 +104,8 @@ export function buildCaptureResponse(capture: PageCapture, urls: Map<string, str
     emptyPlate: at('page-empty.jpg'),
     content: capture.content ?? null,
     brand: capture.brand,
+    // The site's pages from its links (captured or not), for a targeted capture after the storyboard.
+    links: (capture.links ?? []).slice(0, 80),
     transient,
   }
 }
@@ -114,7 +118,7 @@ export type CaptureJob =
   | { state: 'error'; finishedAt: string; code: string; error: string; timing?: Record<string, number> }
 
 /** The whole background job (capture + upload) gets this long, then the worker writes a `timed out` record. */
-export const WORKER_WATCHDOG_MS = 480_000
+export const WORKER_WATCHDOG_MS = 780_000
 /** A record still `running` this long after it started belongs to a worker that died (memory, host limit). */
 export const CAPTURE_JOB_STALE_MS = WORKER_WATCHDOG_MS + 15_000
 

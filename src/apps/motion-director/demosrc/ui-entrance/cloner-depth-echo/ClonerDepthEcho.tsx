@@ -21,10 +21,11 @@
 //   92–118  标题逐词从线下升起（左上），副行淡入
 //   118–138 hold 20f：光的呼吸 + 0.6% 极缓推近，干净落定
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, FONT, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, Dust, TextReveal, alpha, glow, springAt, type } from '../../_fixtures/Look';
 import { MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const CLONER_DEPTH_ECHO_DURATION = 138;
 
@@ -70,6 +71,8 @@ const InstanceCard: React.FC<{ region: string; clone: number; lit: number; frame
     return { opacity: p * inP + (1 - inP) * 0, transform: `translateY(${((1 - p) * 16).toFixed(2)}px)` };
   };
   const pts = SPARK.map((v, i) => `${(i / (SPARK.length - 1)) * 576},${(v * 120).toFixed(1)}`).join(' ');
+  // 有站点图时：读数 + 折线区换成该镜头的站点图（本体 0，克隆 1..7 各一张）
+  const url = realCard(clone);
   return (
     <div
       style={{
@@ -101,8 +104,19 @@ const InstanceCard: React.FC<{ region: string; clone: number; lit: number; frame
           {region}
         </div>
       </div>
+      {url && (
+        <div
+          style={{
+            position: 'absolute', left: 42, right: 42, top: 100, bottom: 80, borderRadius: 14, overflow: 'hidden',
+            border: `1px solid ${clone === 0 ? alpha('#ffffff', 0.1) : alpha(L.accent, 0.5)}`,
+            ...rise(1), opacity: (clone === 0 ? 1 : mix(0.85, 0.3, c)) * rise(1).opacity,
+          }}
+        >
+          <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+        </div>
+      )}
       {/* 读数：30fps 出片 —— 克隆体上降成轮廓字（纹理），只有本体是实心 */}
-      <div style={{ position: 'absolute', left: 40, top: 104, display: clone === 0 ? 'flex' : 'none', alignItems: 'baseline', gap: 16, ...rise(1) }}>
+      {!url && <div style={{ position: 'absolute', left: 40, top: 104, display: clone === 0 ? 'flex' : 'none', alignItems: 'baseline', gap: 16, ...rise(1) }}>
         <div
           style={{
             ...type(132, 750), letterSpacing: '-0.05em',
@@ -113,9 +127,9 @@ const InstanceCard: React.FC<{ region: string; clone: number; lit: number; frame
           30<span style={{ fontSize: 72, letterSpacing: '-0.02em', color: clone === 0 ? L.ink2 : 'transparent' }}>fps</span>
         </div>
         <div style={{ ...type(26, 500, { caps: true }), color: L.ink3, letterSpacing: '0.12em', opacity: clone === 0 ? 1 : 0 }}>1080p</div>
-      </div>
+      </div>}
       {/* 折线 */}
-      <svg width={576} height={130} style={{ position: 'absolute', left: 42, top: 246, overflow: 'visible', ...rise(2) }}>
+      {!url && <svg width={576} height={130} style={{ position: 'absolute', left: 42, top: 246, overflow: 'visible', ...rise(2) }}>
         {clone === 0 && (
           <polygon points={`0,130 ${pts} 576,130`} fill={`url(#cdeFill)`} opacity={0.9} />
         )}
@@ -126,7 +140,7 @@ const InstanceCard: React.FC<{ region: string; clone: number; lit: number; frame
           </linearGradient>
         </defs>
         <polyline points={pts} fill="none" stroke={L.accent} strokeWidth={clone === 0 ? 4 : 2.5} strokeLinejoin="round" strokeLinecap="round" opacity={clone === 0 ? 1 : 0.8} />
-      </svg>
+      </svg>}
       {/* 镜头位：本体底部 8 格，合体时全部点亮 */}
       {clone === 0 && (
         <div style={{ position: 'absolute', left: 42, right: 42, bottom: 30, display: 'flex', gap: 8, ...rise(3) }}>

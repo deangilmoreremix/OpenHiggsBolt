@@ -11,13 +11,20 @@ vi.mock('../lib/directorClient', () => {
   return {
     DirectorError,
     captureSite: vi.fn(),
+    requestMapping: vi.fn(async () => {
+      throw new DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401);
+    }),
+    fetchRecipeCard: vi.fn(async () => null),
+    requestDirections: vi.fn(async () => {
+      throw new DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401);
+    }),
     requestPlan: vi.fn(async () => {
       throw new DirectorError('No key.', 'OPENAI_KEY_REQUIRED', 401);
     }),
   };
 });
 
-import { buildFilmProject, storyboardFilm } from '../lib/filmPipeline';
+import { buildFilmProject, looksLikePersonLine, storyboardFilm } from '../lib/filmPipeline';
 import { captureSite, type SiteCapture } from '../lib/directorClient';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { parseFilmRequest } from '../lib/filmChat';
@@ -100,5 +107,34 @@ describe('storyboardFilm', () => {
     const titles = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'inkpress-title-card');
     expect(titles.length).toBeGreaterThan(0);
     for (const t of titles) expect(t.props.logo).toBeUndefined();
+  });
+});
+
+describe('music of a finished film', () => {
+  const musicClips = (p: { tracks: Array<{ name: string; clips: Array<{ props: Record<string, unknown> }> }> }) =>
+    p.tracks.filter((t) => /music/i.test(t.name)).flatMap((t) => t.clips);
+  const storyboard = async () => (await storyboardFilm(parseFilmRequest('a promo for Acme with the Ink Press template'), { template: 'inkpress', durationSec: 20, aspectRatio: '16:9' }, () => {})).plan;
+
+  it('puts a licensed library track under a film that has none attached, at the usual mix', async () => {
+    const project = await buildFilmProject(await storyboard(), { aspectRatio: '16:9', capture: null, media: [] }, () => {});
+    const clips = musicClips(project);
+    expect(clips).toHaveLength(1);
+    expect(String(clips[0].props.file)).toMatch(/^motion-studio\/bgmlib\/(cat-walk|house-vibez|tonight-hiphop)\.mp3$/);
+    expect(clips[0].props.volume).toBe(0.34);
+  });
+
+  it('keeps the person\'s own track, and adds none when they ask for no music', async () => {
+    const mine: MediaAttachment = { id: 'a', kind: 'audio', name: 'mine.mp3', url: 'blob:mine', size: 1, durationSec: 30 };
+    const own = musicClips(await buildFilmProject(await storyboard(), { aspectRatio: '16:9', capture: null, media: [mine] }, () => {}));
+    expect(own.map((c) => c.props.file)).toEqual(['blob:mine']);
+    const none = await buildFilmProject(await storyboard(), { aspectRatio: '16:9', capture: null, media: [], prompt: 'a promo for Acme, no music please' }, () => {});
+    expect(musicClips(none)).toHaveLength(0);
+  });
+});
+
+describe('captions never use a testimonial name line', () => {
+  it('spots name + job title lines and leaves real headings', () => {
+    for (const l of ['Andrew Garnett President & CEO Special Needs Group', 'Debi Davis Business Strategist The Case Team', 'Michael Vernoff Director Of Operations B’nai Torah Congregation']) expect(looksLikePersonLine(l), l).toBe(true);
+    for (const l of ['Finally, a Cure for Your IT Headaches', 'Identify & Secure', 'Managed IT Services', 'What Other Business Owners are Saying']) expect(looksLikePersonLine(l), l).toBe(false);
   });
 });

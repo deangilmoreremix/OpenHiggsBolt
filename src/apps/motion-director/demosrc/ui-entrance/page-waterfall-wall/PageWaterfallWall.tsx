@@ -13,7 +13,7 @@ import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Backdrop, Grain } from '../../_fixtures/Polish';
 import { VerticalTicker, TickerColumn } from './VerticalTicker';
-import { liveTexture } from '../../_fixtures/liveTexture';
+import { liveCard, liveCardCount } from '../../_fixtures/liveTexture';
 
 export const PAGE_WATERFALL_WALL_DURATION = 150; // 5s（无限循环体，按段落需要裁）
 
@@ -21,7 +21,7 @@ const BG = '#0d0e13';
 const ZOOM = 1.2; // 补透视收缩的底值（配方 scale 1.2）
 const PUSH = 0.06; // 镜头缓推 1→1.06
 
-const shot = (file: string) => (
+const shot = (file: string, index: number) => (
   <div
     style={{
       position: 'relative',
@@ -31,7 +31,7 @@ const shot = (file: string) => (
       boxShadow: '0 2px 4px rgba(0,0,0,0.35), 0 22px 48px -12px rgba(0,0,0,0.6)',
     }}
   >
-    <Img src={liveTexture(file)} style={{ width: '100%', display: 'block' }} />
+    <Img src={liveCard(index, file)} style={{ width: '100%', display: 'block' }} />
     {/* 发丝线 + 顶部受光沿（裁在圆角内） */}
     <div
       style={{
@@ -43,23 +43,16 @@ const shot = (file: string) => (
 );
 
 // 3 列差速反向（配方卡参数：loop 12/9/14s，中列反向）；10 张卡片切片 4/3/3 分配，列间不复用
-export const buildColumns = (loops: [number, number, number]): TickerColumn[] => [
-  {
-    items: ['card1.png', 'card2.png', 'card3.png', 'card10.png'].map(shot),
-    durationInSeconds: loops[0],
-    direction: -1,
-  },
-  {
-    items: ['card4.png', 'card5.png', 'card6.png'].map(shot),
-    durationInSeconds: loops[1],
-    direction: 1,
-  },
-  {
-    items: ['card7.png', 'card8.png', 'card9.png'].map(shot),
-    durationInSeconds: loops[2],
-    direction: -1,
-  },
-];
+export const buildColumns = (loops: [number, number, number], own = 0): TickerColumn[] => {
+  // The site's own pictures: eight distinct ones per column (24 on the wall); else the 10 sample cards, 4/3/3.
+  const sample = [['card1.png', 'card2.png', 'card3.png', 'card10.png'], ['card4.png', 'card5.png', 'card6.png'], ['card7.png', 'card8.png', 'card9.png']];
+  const column = (c: number) => (own ? Array.from({ length: 8 }, (_, k) => shot(sample[c][k % sample[c].length], c * 8 + k)) : sample[c].map((f, k) => shot(f, c * 4 + k)));
+  return [
+    { items: column(0), durationInSeconds: loops[0], direction: -1 },
+    { items: column(1), durationInSeconds: loops[1], direction: 1 },
+    { items: column(2), durationInSeconds: loops[2], direction: -1 },
+  ];
+};
 
 // 上下羽化：渐变色取暗场底在上 / 下缘的实际色（远端顶部羽化更长），行软进软出
 const FADE_TOP = 'linear-gradient(to bottom, #111319 0%, rgba(17,19,25,0.85) 10%, rgba(17,19,25,0) 30%)';
@@ -69,7 +62,7 @@ const Wall: React.FC<{ loops: [number, number, number]; zoom: number }> = ({ loo
   <AbsoluteFill>
     {/* zoom 让墙按显示尺寸布局与栅格化；内部 1920/zoom 宽的 css 画布居中排 3 列 */}
     <div style={{ position: 'absolute', left: 0, top: 0, width: 1920 / zoom, height: 1080 / zoom, zoom }}>
-      <VerticalTicker columns={buildColumns(loops)} backgroundColor="transparent" maskHeight={0} scale={1} columnWidth={420} gap={26} />
+      <VerticalTicker columns={buildColumns(loops, liveCardCount())} backgroundColor="transparent" maskHeight={0} scale={1} columnWidth={420} gap={26} />
     </div>
     {/* 空气透视：墙的远端（画面上部）轻微压暗 */}
     <AbsoluteFill style={{ background: 'linear-gradient(to bottom, rgba(13,14,19,0.5) 0%, rgba(13,14,19,0) 50%)', pointerEvents: 'none' }} />

@@ -20,9 +20,19 @@
 // · 光管：彩虹管体收细 + 白热芯 + 生长头火花，输送脉冲改成"亮头+拖尾"彗星形；管口接入瞬间一圈小涟漪
 // · 背景霓虹框去掉闪烁、减细减淡并随相机做弱视差，颗粒 + 暗角压住大面积暗场
 import React, { useId } from 'react';
-import { AbsoluteFill, useCurrentFrame, interpolate, Easing } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame, interpolate, Easing } from 'remotion';
 import { Grain, Vignette, bezier } from '../../_fixtures/Polish';
 import { MotionStudioWordmark, BRAND } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
+
+const IMG_FILL: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' };
+
+// 有站点图时：面板只保留外壳（尺寸 / 圆角 / 阴影 / 泛光），内容换成站点图
+const PhotoPanel: React.FC<{ glow: number; url: string }> = ({ glow, url }) => (
+  <div style={{ ...panelShell(glow), position: 'relative' }}>
+    <Img src={url} style={IMG_FILL} />
+  </div>
+);
 
 export const INTEGRATION_HUB_MAP_DURATION = 150; // 前摇 0.5s + 快翻 1.2s + 两拍接入 0.7s + 输送呼吸 ~2.6s
 
@@ -172,7 +182,7 @@ const FrontPanel: React.FC<{ glow: number }> = ({ glow }) => (
 
 // ---------- 输入源图标瓷贴（SmartVideo GO 自己的五种素材输入，无第三方标志） ----------
 // 线性图标：墨色描边 + 青色点睛（品牌强调色）；48 视框、显示 54px
-const Tile: React.FC<{ kind: string; on: number; tint: string }> = ({ kind, on, tint }) => {
+const Tile: React.FC<{ kind: string; on: number; tint: string; url?: string | null }> = ({ kind, on, tint, url }) => {
   const ACCENT = '#22d3ee';
   const ln = { fill: 'none', stroke: INK, strokeWidth: 3, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   const am = { ...ln, stroke: ACCENT };
@@ -245,9 +255,10 @@ const Tile: React.FC<{ kind: string; on: number; tint: string }> = ({ kind, on, 
           // 连通后染上本管末端色的霓虹余光
           `0 0 ${18 + on * 40}px ${tint}${Math.round(Math.min(1, on) * 0x70).toString(16).padStart(2, '0')}`,
         ].join(', '),
+        ...(url ? { position: 'relative', overflow: 'hidden' } : {}),
       }}
     >
-      {glyph}
+      {url ? <Img src={url} style={IMG_FILL} /> : glyph}
     </div>
   );
 };
@@ -321,11 +332,18 @@ export const IntegrationHubMap: React.FC = () => {
   // v6（批次 15）：用户意见"翻转再快1倍"——翻面窗口 f14–84（70 帧）
   // 压半到 f14–49（35 帧），快翻+尾段减速曲线形状保持；
   // 90° 侧棱相应提前到 ~f21.2（easeOut=0.5 → t≈0.206）。
+  const frontUrl = realCard(0); // 正面旧页
+  const hubUrl = realCard(1); // 背面新中枢页
   const rotY = interpolate(frame, [14, 49], [0, 180], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
     easing: Easing.out(Easing.cubic),
   });
+  // Past 90° the panel turns as its back face alone (one rotation, -90° → 0°) instead of a 180°-turned face
+  // inside a turning panel: the browser draws both the same, but the web renderer (stills, MP4 export) drew
+  // the nested back face mirrored. Only the face toward the camera is drawn.
+  const photoFlip = true;
+  const turn = photoFlip && rotY > 90 ? rotY - 180 : rotY;
   const panX = 130 + (0 - 130) * cam;
   const panY = 120 + (25 - 120) * cam;
 
@@ -521,7 +539,7 @@ export const IntegrationHubMap: React.FC = () => {
               transform: `translateY(${((1 - pop) * 22).toFixed(2)}px) scale(${(0.72 + 0.28 * pop).toFixed(4)})`,
             }}
           >
-            <Tile kind={p.kind} tint={p.tint} on={on * (frame > allOn ? 0.82 + 0.18 * breathe : 1)} />
+            <Tile kind={p.kind} tint={p.tint} url={realCard(2 + i)} on={on * (frame > allOn ? 0.82 + 0.18 * breathe : 1)} />
           </div>
         );
       })}
@@ -530,7 +548,7 @@ export const IntegrationHubMap: React.FC = () => {
       <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', perspective: 1500 }}>
         <div
           style={{
-            transform: `translate(${panX.toFixed(2)}px, ${panY.toFixed(2)}px) rotateY(${rotY.toFixed(3)}deg)`,
+            transform: `translate(${panX.toFixed(2)}px, ${panY.toFixed(2)}px) rotateY(${turn.toFixed(3)}deg)`,
             position: 'relative',
             transformStyle: 'preserve-3d',
             width: PW * zoom,
@@ -539,17 +557,19 @@ export const IntegrationHubMap: React.FC = () => {
           }}
         >
           {/* 正面：翻转前的旧页面 */}
-          <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}>
+          {/* Only the face turned to the camera is drawn: the web renderer does not honour backface-visibility,
+              so a site picture on the front would show through, mirrored, once the panel has turned. */}
+          {rotY <= 90 && (<div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}>
             <div style={{ zoom }}>
-              <FrontPanel glow={panelGlow} />
+              {frontUrl ? <PhotoPanel glow={panelGlow} url={frontUrl} /> : <FrontPanel glow={panelGlow} />}
             </div>
-          </div>
+          </div>)}
           {/* 背面：翻正后得到的新中枢页（预转 180° 使翻完时朝向镜头且不镜像） */}
-          <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+          {rotY > 90 && (<div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: photoFlip ? 'none' : 'rotateY(180deg)' }}>
             <div style={{ zoom }}>
-              <HubPanel glow={panelGlow} />
+              {hubUrl ? <PhotoPanel glow={panelGlow} url={hubUrl} /> : <HubPanel glow={panelGlow} />}
             </div>
-          </div>
+          </div>)}
           {/* 面板过曝罩：爆发期盖白 */}
           <div
             style={{
@@ -560,7 +580,7 @@ export const IntegrationHubMap: React.FC = () => {
               opacity: Math.min(0.96, bloom * 1.05),
               filter: `blur(${5 * zoom}px)`,
               pointerEvents: 'none',
-              transform: rotY > 90 ? 'rotateY(180deg) translateZ(1px)' : 'translateZ(1px)',
+              transform: rotY > 90 && !photoFlip ? 'rotateY(180deg) translateZ(1px)' : 'translateZ(1px)',
               backfaceVisibility: 'hidden',
             }}
           />

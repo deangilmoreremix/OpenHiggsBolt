@@ -145,18 +145,20 @@ export const BlindsSlice: React.FC = () => {
             return (
               <div key={i} style={{
                 position: 'absolute', left: x, top: 0, width: W, height: 1080, transformStyle: 'preserve-3d',
-                transform: `rotateY(${(-th).toFixed(3)}deg)`, transformOrigin: '50% 50%',
+                // Past 90° the slat turns as its back face alone (one rotation, not a 180°-turned face inside a turning
+                // slat): the web renderer (stills, MP4) drew that nested face mirrored.
+                transform: `rotateY(${(front ? -th : 180 - th).toFixed(3)}deg)`, transformOrigin: '50% 50%',
               }}>
                 {/* 正面：A 切片 */}
-                <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', overflow: 'hidden' }}>
+                {front && (<div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', overflow: 'hidden' }}>
                   <Slice x={x}><PageA /></Slice>
                   {front && th > 0.05 && <FaceLight th={th} lead="left" />}
-                </div>
+                </div>)}
                 {/* 背面：B 切片（预转 180°，叶片转满后正好朝前、不镜像） */}
-                <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', overflow: 'hidden', transform: 'rotateY(180deg)' }}>
+                {!front && (<div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', overflow: 'hidden' }}>
                   <Slice x={x}><PageB /></Slice>
                   {!front && Math.abs(180 - th) > 0.05 && <FaceLight th={Math.min(90, Math.abs(180 - th))} lead="right" />}
-                </div>
+                </div>)}
               </div>
             );
           })}

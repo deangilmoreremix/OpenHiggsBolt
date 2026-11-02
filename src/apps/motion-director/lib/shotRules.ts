@@ -181,7 +181,7 @@ export interface FilmRuleNote {
  * place, a recipe of the other look family than the film's. `keep` are recipes the person
  * named: they are never reported (they take the place first and the others make way).
  */
-export function filmRuleViolations(scenes: readonly Pick<DirectorScene, 'kind' | 'recipeId'>[], keep: ReadonlySet<string> = new Set()): FilmRuleNote[] {
+export function filmRuleViolations(scenes: readonly Pick<DirectorScene, 'kind' | 'recipeId'>[], keep: ReadonlySet<string> = new Set(), ground?: Polarity | null): FilmRuleNote[] {
   const notes: FilmRuleNote[] = [];
   const shots = scenes.map((s, index) => ({ s, index, rules: rulesOfScene(s) })).filter((x) => x.rules);
   // The film's look family: the person's picks decide, else the majority of the recipes.
@@ -190,7 +190,8 @@ export function filmRuleViolations(scenes: readonly Pick<DirectorScene, 'kind' |
     for (const x of list) if (x.rules!.polarity) count[x.rules!.polarity]++;
     return count.dark === count.light ? null : count.dark > count.light ? 'dark' : 'light';
   };
-  const film = family(shots.filter((x) => keep.has(x.s.recipeId))) ?? family(shots);
+  // The product's own ground decides when it is known (SKILL principle 2), then the picks, then the majority.
+  const film = ground ?? family(shots.filter((x) => keep.has(x.s.recipeId))) ?? family(shots);
   const seen = new Set<string>();
   const used: Record<string, number> = {};
   // Named recipes first, so they take their group slots before the others.

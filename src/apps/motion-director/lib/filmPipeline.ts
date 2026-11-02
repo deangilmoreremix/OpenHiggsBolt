@@ -7,6 +7,9 @@
  * key, director down) the Ink Press template storyboard is built locally, so a
  * film request always ends in a film.
  */
+import { buildCatalogue, catalogueSummary } from './pictureCatalogue';
+import { assignPictures, picturesShown } from './assignPictures';
+import { AS_DESIGNED, SITE_THEME, luma, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
 import { projectEndFrame, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
@@ -14,19 +17,22 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, type FilmCapture } from './buildFilm';
-import { captureSite, requestFrameReview, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
-import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
+import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
+import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
+import { mergeCaptures, neededPages } from './targetedCapture';
+import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
-import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { addGalleryScene, applyFilmRules, arrangeArc, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
-import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { fallbackTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
+import { defaultTrackFor } from './defaultMusic';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -50,7 +56,53 @@ export interface StoryboardResult {
   videos?: Array<{ name: string; sec: number }>;
   /** The attachments this storyboard was planned with; the build uses exactly these. */
   media?: MediaAttachment[];
+  /** Stage 2: the feature → shot map (first-choice + fallback card per feature). */
+  mapping?: MappingRow[];
+  /** Stage 3: the release check run before the storyboard was shown. */
+  release?: ReleaseItem[];
+  /** Stage 1: the visual direction the director chose for an autonomous film, and the ones it weighed. */
+  direction?: { chosen: VisualDirection; others: string[] };
 }
+
+/**
+ * A card in the order the storyboard needs it, so the parts that decide a scene come first when a long
+ * card is cut to fit the request: front matter, intent, motion core, known pitfalls, sound, then the
+ * parameters and the rest (the reference implementation is for the shot's code step, not the storyboard).
+ */
+export function cardForStoryboard(md: string, max = 6_000): string {
+  const m = md.match(/^---\n[\s\S]*?\n---\n?/);
+  const head = m ? m[0] : '';
+  const sections = (m ? md.slice(head.length) : md).split(/\n(?=## )/).map((s) => s.trim()).filter(Boolean);
+  const rank = (s: string) => {
+    const h = s.split('\n', 1)[0].toLowerCase();
+    if (h.startsWith('## intent')) return 0;
+    if (h.startsWith('## motion core') || h.startsWith('## approach') || h.startsWith('## action phases')) return 1;
+    if (h.startsWith('## known pitfalls')) return 2;
+    if (h.startsWith('## sound')) return 3;
+    if (h.startsWith('## variant') || h.startsWith('## choosing')) return 4;
+    if (h.startsWith('## parameters')) return 5;
+    if (h.startsWith('## reference implementation')) return 9;
+    return 6;
+  };
+  const body = sections.map((s, i) => ({ s, i, r: rank(s) })).filter((x) => x.r < 9).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.s);
+  const out = [head.trim(), ...body].filter(Boolean).join('\n\n');
+  return out.length > max ? `${out.slice(0, max - 1)}…` : out;
+}
+
+/** Stage 2, "read the chosen cards in full": the English cards of the film's chosen shots (at most 8). */
+async function chosenCards(ids: readonly string[]): Promise<Array<{ id: string; text: string }>> {
+  const stems = [...new Set(ids.filter((id) => id && !isBrandScene(id)))]
+    .map((id) => ({ id, stem: resolveMotionTemplate(id)?.componentName }))
+    .filter((x): x is { id: string; stem: string } => Boolean(x.stem))
+    .slice(0, 8);
+  const texts = await Promise.all(stems.map(async ({ id, stem }) => ({ id, text: cardForStoryboard((await fetchRecipeCard(stem)) ?? '') })));
+  return texts.filter((c) => c.text);
+}
+
+const shotName = (id: string) => {
+  const t = id ? resolveMotionTemplate(id) : undefined;
+  return t ? motionTemplateTitle(t) : id;
+};
 
 const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | undefined): Partial<DirectorPalette> => ({
   background: capture?.brand.background ?? kit?.colors?.background ?? undefined,
@@ -58,9 +110,37 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
   accent: capture?.brand.accent ?? kit?.colors?.accent ?? kit?.colors?.primary ?? undefined,
 });
 
+/** A film of a captured site draws every recipe in the site's own palette ("Your site"); without one, each recipe keeps its designed look. */
+const filmTheme = (capture: SiteCapture | null | undefined): { id: string; colors?: Record<string, string> } => {
+  const colors = capture ? paletteFromBrand(capture.brand) : null;
+  return colors ? { id: SITE_THEME, colors } : { id: AS_DESIGNED };
+};
+
 /** Capture (when the request has a URL) and storyboard the film. */
 /** The site's own pictures the film can show: the images found on the page plus its card crops. */
 export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
+
+/** The capture without testimonial "Name Title Company" lines in its headings (they feed captions, titles and recipe words; D2). */
+/** Accessibility links ("Skip to content", "Skip navigation") are part of a site's menu, not its words. */
+export const isSkipLink = (line: string): boolean => /^\s*skip (?:to|navigation)\b/i.test(line);
+
+export const withoutPeopleLines = <T extends SiteCapture | null>(capture: T): T =>
+  capture?.content
+    ? {
+        ...capture,
+        content: {
+          ...capture.content,
+          ...(capture.content.headings ? { headings: capture.content.headings.filter((h) => !looksLikePersonLine(h) && !isSkipLink(h)) } : {}),
+          ...(capture.content.nav ? { nav: capture.content.nav.filter((n) => !isSkipLink(n)) } : {}),
+          ...(capture.content.ctas ? { ctas: capture.content.ctas.filter((n) => !isSkipLink(n)) } : {}),
+        },
+      }
+    : capture;
+
+/** "Andrew Garnett President & CEO Special Needs Group": a name followed by a job title. */
+export const looksLikePersonLine = (line: string): boolean =>
+  /^\s*[A-Z][a-z'’-]{1,15}\s+(?:[A-Z]\.\s+)?[A-Z][a-z'’-]{1,20}\b/.test(line) &&
+  /\b(?:President|CEO|CFO|CTO|COO|CMO|Founder|Co-?founder|Owner|Director|Manager|Partner|Principal|VP|Vice President|Strategist|Engineer|Specialist|Consultant|Coordinator|Head of|Lead|Officer|Administrator|Analyst|Executive)\b/.test(line);
 
 export async function storyboardFilm(
   req: FilmRequest,
@@ -101,6 +181,8 @@ export async function storyboardFilm(
     }
   }
   // Attached videos play as their own scenes; the storyboard gets what is left of the requested length.
+  // Section headings become captions and titles: a testimonial's "Name Title Company" line is not a heading.
+  capture = withoutPeopleLines(capture);
   const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
   // The site the user gave wins over a Brand Kit company: the Brand Kit names the film only when there is no site.
   const hasSite = Boolean(capture || req.siteUrl);
@@ -118,10 +200,45 @@ export async function storyboardFilm(
       : opts.template === 'inkpress'
         ? INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)
         : [];
+  const autonomous = !req.mapping?.length && opts.template !== 'inkpress' && !req.recipes.length;
+  const guidedAsk = {
+    prompt: req.prompt,
+    durationSec: planSec,
+    aspectRatio: opts.aspectRatio,
+    capture,
+    brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
+  };
+  // Stage 1: up to three visual directions grown from the product; an autonomous film takes the director's
+  // recommendation and records why and what it gives up (it does not stop to ask).
+  let direction: StoryboardResult['direction'];
+  if (autonomous) {
+    log('Weighing visual directions for the product', 'running');
+    const options = await requestDirections(guidedAsk).catch(() => null);
+    const chosen = options?.directions[options.recommended] ?? options?.directions[0];
+    if (options && chosen) {
+      direction = { chosen, others: options.directions.filter((d) => d !== chosen).map((d) => d.name) };
+      log(`Visual direction: ${chosen.name} — ${chosen.claim}${chosen.why ? ` · why: ${chosen.why}` : ''}${chosen.tradeoff ? ` · trade-off: ${chosen.tradeoff}` : ''}${direction.others.length ? ` (weighed against ${direction.others.join(', ')})` : ''}`, 'done');
+    }
+  }
+  const directionNote = direction ? `Direction: ${direction.chosen.name}: ${direction.chosen.claim} Look: ${direction.chosen.look}. Motion: ${direction.chosen.motion}.` : '';
+  // Stage 2: the feature → shot map. Co-creation brings the confirmed map; an autonomous film has the director write one too.
+  let mapping: MappingRow[] | null = req.mapping?.length ? req.mapping : null;
+  if (autonomous) {
+    log('Mapping each feature to a first-choice and a fallback shot card', 'running');
+    mapping = await requestMapping({ ...guidedAsk, direction: directionNote }).catch(() => null);
+    if (mapping?.length) {
+      log(`Feature → shot map · ${mapping.length} features`, 'done');
+      for (const r of mapping) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
+    }
+  }
+  const cards = await chosenCards(required.length ? required.map((r) => r.id) : (mapping ?? []).flatMap((r) => [r.firstShot]));
+  if (cards.length) log(`Read ${cards.length} shot card${cards.length === 1 ? '' : 's'} in full: ${cards.map((c) => shotName(c.id)).join(', ')}`, 'done');
   log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
   try {
     const ask = () => requestPlan({
-      prompt: req.prompt,
+      mapping: mapping ?? undefined,
+      cards,
+      prompt: directionNote ? `${req.prompt}\n\n${directionNote}`.slice(0, 3900) : req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
       capture,
@@ -140,23 +257,42 @@ export async function storyboardFilm(
     const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
     const shaped = restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec, { siteScenes });
     // The shot cards' own rules: a recipe once, caps per kind, one look, openers first and outros last.
-    const ruled = applyFilmRules(shaped, { keep: new Set(req.recipes.map((r) => r.id)), siteScenes });
+    const site = capture ? paletteFromBrand(capture.brand) : null;
+    const ground = site ? (luma(site.page) < 0.5 ? 'dark' : 'light') : null;
+    const keep = new Set(req.recipes.map((r) => r.id));
+    const ruled = applyFilmRules(shaped, { keep, siteScenes, ground });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    // A feature whose first-choice card a rule ruled out gets its fallback card.
+    const covered = releaseCheck(ruled.plan, mapping, { keep, ground });
+    for (const s of covered.swapped) log(`Feature map: ${s}`, 'done');
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
     log(`Motion voice: ${voice.label}`, 'done');
-    const withPictures = addGalleryScene(ruled.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
+    // Stage 3 arc order: high and steady shots alternate, the document shot just before the finale.
+    const arced = arrangeArc(covered.plan, keep);
+    const withPictures = addGalleryScene(arced, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
     const fitted = fitNativeLengths(withPictures, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
+    const final = chooseSeams(applySiteContent(fitted, capture?.content), voice);
+    // Stage 3: the consistency check before the storyboard is released.
+    const release = releaseCheck(final, mapping, { keep, ground }).items;
+    log(releaseLine(release), 'done');
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(applySiteContent(fitted, capture?.content), voice), capture, source: 'director' };
+    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release, direction };
   } catch (error) {
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) });
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: palette.accent });
+    // Same rule as the director's plan: every recipe plays its whole tuned motion (native length), never sped up.
+    const plan = fitNativeLengths(
+      inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content, siteScenes: Boolean(capture && !capture.partial && capture.page?.url), pictures: pictureCount(capture) }),
+      planSec,
+      new Set(req.recipes.map((r) => r.id)),
+      voice.holdGrowth,
+    );
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(plan, pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: plan.palette?.accent ?? palette.accent })), capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan, voice), capture, source: 'inkpress', note };
   }
 }
 
@@ -223,9 +359,23 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean },
   log: ActivityLog,
 ): Promise<ProjectData> {
+  // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
+  const needed = opts.targetedCapture === false ? [] : neededPages(plan, opts.capture);
+  if (opts.capture && needed.length) {
+    log(`Capturing ${needed.length} page${needed.length === 1 ? '' : 's'} the storyboard needs: ${needed.map((n) => n.link.path).join(', ')}`, 'running');
+    const got = await Promise.all(
+      needed.map((n) => captureSite(n.link.url, { targeted: true, maxWaitMs: 240_000 }).then((c) => ({ n, c })).catch(() => null)),
+    );
+    let merged = opts.capture;
+    for (const g of got) if (g) merged = mergeCaptures(merged, g.c, { name: g.n.link.name, path: g.n.link.path });
+    const ok = got.filter(Boolean).length;
+    log(ok ? `Captured ${ok} more page${ok === 1 ? '' : 's'} for scene${ok === 1 ? '' : 's'} ${got.filter(Boolean).map((g) => g!.n.scene + 1).join(', ')}` : 'The extra pages could not be captured; those scenes use the nearest captured page', 'done');
+    opts = { ...opts, capture: merged };
+  }
+  opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
   const film: FilmCapture | null = opts.capture
@@ -247,12 +397,27 @@ export async function buildFilmProject(
     : images.length
       ? { screens: images, crops: images }
       : null;
-  const track = opts.media.find((m) => m.kind === 'audio');
+  // Every picture the capture brought back, labelled, and the pictures each scene shows (upstream's feature -> shot map).
+  if (film && opts.capture) {
+    const catalogue = buildCatalogue(opts.capture);
+    const perScene = assignPictures(plan, catalogue);
+    film.scenes = perScene.map((p) => (p.ids.length ? { screens: p.screens, crops: p.crops } : undefined));
+    const summary = catalogueSummary(catalogue);
+    if (summary) log(`Sorted the site's pictures: ${summary}`, 'done');
+    log(`Each scene gets its own pictures: ${picturesShown(perScene)} different pictures across ${perScene.filter((p) => p.ids.length).length} scenes`, 'done');
+  }
+  const attached = opts.media.find((m) => m.kind === 'audio');
+  // No track attached: the film still gets music, as upstream's finished films do, unless the person asked for none.
+  const noMusic = /\b(?:no|without|skip)\s+(?:the\s+)?(?:music|bgm|soundtrack|background music)\b/i.test(opts.prompt ?? '') || opts.music === false;
+  const voice = pickMotionPreset({ text: presetText(opts.capture ?? { title: plan.title }), accent: plan.palette?.accent });
+  const auto = !attached && !noMusic ? defaultTrackFor(voice.id) : null;
+  const track = attached ?? (auto ? { id: 'bgm', kind: 'audio' as const, name: auto.name, url: auto.file, size: 0 } : undefined);
   let beats: number[] = [];
   let drums: Pick<DrumMap, 'downbeats' | 'kicks' | 'snares' | 'hats'> = { downbeats: [], kicks: [], snares: [], hats: [] };
   if (track) {
-    log(`Finding the beat in ${track.name}`, 'running');
-    const map = await analyzeBeats(track.url).catch(() => null);
+    log(auto ? `Music: ${auto.name} (${auto.why}, chosen for the ${voice.label.toLowerCase()} feel) · finding its beat` : `Finding the beat in ${track.name}`, 'running');
+    // A library track is a file under public/; an attached one is a blob URL.
+    const map = await analyzeBeats(auto ? `/${auto.file}` : track.url).catch(() => null);
     beats = map?.beats ?? [];
     if (map) drums = map;
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
@@ -272,6 +437,7 @@ export async function buildFilmProject(
     videos,
     brand,
     texts,
+    theme: filmTheme(opts.capture),
   });
   if (beats.length) {
     const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);
@@ -279,7 +445,7 @@ export async function buildFilmProject(
     const onKick = syncReport(cuts, [...drums.kicks, ...drums.downbeats], project.fps).within;
     log(`Beat sync measured: ${sync.within} of ${sync.cuts} cuts within 3 frames of a beat (worst ${sync.worstFrames} frames)${drums.kicks.length ? `, ${onKick} on a kick or a downbeat` : ''}`, 'done');
   }
-  const spec = buildDesignSpec(plan, opts.capture, opts.prompt);
+  const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}), ...(opts.direction ? { direction: opts.direction } : {}) };
   let built: ProjectData = { ...project, spec };
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
   if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {
@@ -289,6 +455,7 @@ export async function buildFilmProject(
       { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
       {
         render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+        snapshot: async (r) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
         review: async (p, frames, signal) => {
           const render = (await import('../webRenderer')).renderStillOnWebExport;
           const images: Array<{ second: number; image: string }> = [];
@@ -395,7 +562,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
 }
 
 /** A frame as a small JPEG data URL (the reviewer sees 640 px wide, enough for layout and legibility). */
-async function stillToJpeg(blob: Blob, maxW = 800): Promise<string> {
+export async function stillToJpeg(blob: Blob, maxW = 800): Promise<string> {
   const bitmap = await createImageBitmap(blob);
   const scale = Math.min(1, maxW / bitmap.width);
   const canvas = document.createElement('canvas');

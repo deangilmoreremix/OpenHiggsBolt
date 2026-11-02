@@ -22,10 +22,11 @@
 //   61–95   深色涟漪荡开（34f，强 ease-out：起步猛、边缘越走越缓）+ 回声环；相机 1.03→1
 //   95–156  hold：深色定格，封面辉光亮起（95–112），进度条继续走，相机 1→1.012
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, FONT, Grain, Vignette, bezier, mix, ramp } from '../../_fixtures/Polish';
 import { alpha, springAt } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const PALETTE_THEME_RIPPLE_DURATION = 156;
 
@@ -153,6 +154,10 @@ const I = {
 // ───────────── 整个 App（两版主题共用这一份布局）─────────────
 const App: React.FC<{ th: Theme; frame: number; artGlow: number }> = ({ th, frame, artGlow }) => {
   const prog = 0.34 + frame * 0.0009; // 播放进度一直在走
+  // 客户网站图片（无则为 null，原样绘制程序化缩略图）：第一排 0–4、第二排 5–9、播放条 10；深浅两版同一批
+  const row1Pics = ALBUMS.map((_, i) => realCard(i));
+  const row2Pics = ROW2.map((_, i) => realCard(5 + i));
+  const nowPic = realCard(10);
   return (
     <div style={{ position: 'absolute', inset: 0, background: th.bg, fontFamily: FONT.sans, color: th.ink, overflow: 'hidden' }}>
       {/* 侧栏 */}
@@ -207,7 +212,7 @@ const App: React.FC<{ th: Theme; frame: number; artGlow: number }> = ({ th, fram
               position: 'absolute', left: x, top: ROW1_Y, width: TILE, height: TILE, borderRadius: 18, overflow: 'hidden',
               boxShadow: th.dark ? 'inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 40px -18px rgba(0,0,0,0.9)' : '0 1px 2px rgba(15,20,30,0.08), 0 18px 36px -18px rgba(15,20,30,0.35)',
             }}>
-              <al.Art />
+              {row1Pics[i] ? <Img src={row1Pics[i]!} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <al.Art />}
             </div>
             <div style={{ position: 'absolute', left: x, top: ROW1_Y + TILE + 22, fontSize: 30, fontWeight: 650, letterSpacing: '-0.02em' }}>{al.t}</div>
             <div style={{ position: 'absolute', left: x, top: ROW1_Y + TILE + 62, fontSize: 25, color: th.ink2 }}>{al.a}</div>
@@ -218,9 +223,9 @@ const App: React.FC<{ th: Theme; frame: number; artGlow: number }> = ({ th, fram
       {ROW2.map((r, i) => (
         <div key={i} style={{
           position: 'absolute', left: MAIN_X + i * (TILE + TILE_GAP), top: ROW2_Y, width: TILE, height: TILE, borderRadius: 18, overflow: 'hidden',
-          filter: `hue-rotate(${r.hue}deg) saturate(0.85)`,
+          filter: row2Pics[i] ? undefined : `hue-rotate(${r.hue}deg) saturate(0.85)`,
         }}>
-          <r.Art />
+          {row2Pics[i] ? <Img src={row2Pics[i]!} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <r.Art />}
         </div>
       ))}
 
@@ -230,7 +235,7 @@ const App: React.FC<{ th: Theme; frame: number; artGlow: number }> = ({ th, fram
         display: 'flex', alignItems: 'center', padding: '0 104px 0 104px', boxSizing: 'border-box',
         boxShadow: th.dark ? '0 -20px 40px rgba(0,0,0,0.5)' : '0 -16px 40px rgba(15,20,30,0.06)',
       }}>
-        <div style={{ position: 'relative', width: 76, height: 76, borderRadius: 12, overflow: 'hidden', flex: 'none' }}><ArtGlassHarbor /></div>
+        <div style={{ position: 'relative', width: 76, height: 76, borderRadius: 12, overflow: 'hidden', flex: 'none' }}>{nowPic ? <Img src={nowPic} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /> : <ArtGlassHarbor />}</div>
         <div style={{ marginLeft: 22, width: 330 }}>
           <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: '-0.02em' }}>Launch Film</div>
           <div style={{ fontSize: 23, color: th.ink2, marginTop: 4 }}>Preview · Shot 04</div>

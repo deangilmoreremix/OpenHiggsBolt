@@ -12,6 +12,7 @@ import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotion
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
 import { isSlowToExport } from './exportCost';
 import { ruleTags } from './shotRules';
+import { SHOT_FACTS } from '../demosrc/_generated/shotFacts';
 
 /** Scene cards that tell a product's story from its captured site (no catalog recipe behind them). */
 export const BRAND_SCENES = {
@@ -25,8 +26,9 @@ export const isBrandScene = (id: string): id is keyof typeof BRAND_SCENES => id 
 
 export type SceneKind = 'shot' | 'title';
 /** How a scene hands over to the next: a plain cut, or one of the cards' seam transitions. */
-export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip' | 'whip' | 'ink' | 'leak' | 'portal' | 'iris' | 'line' | 'glitch';
-export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch'];
+/** `window`: shot-transitions style C (the next scene grows out of a card of this one); `push`: bottom-push (the next scene pushes this one up). */
+export type SceneTransition = 'cut' | 'flash' | 'wipe' | 'barn' | 'dip' | 'whip' | 'ink' | 'leak' | 'portal' | 'iris' | 'line' | 'glitch' | 'window' | 'push';
+export const SCENE_TRANSITIONS: readonly SceneTransition[] = ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch', 'window', 'push'];
 
 export interface DirectorScene {
   kind: SceneKind;
@@ -89,6 +91,13 @@ const BRAND_SCENE_NOTES: Record<string, string> = {
   'brand/logo-reveal': 'the site\'s logo and name with sparks, then its call to action and address (use it to close a film of a captured site)',
 };
 
+/** The English card's own words for a recipe: what it looks like, then when to use it (stage 2 picks from these). */
+export function cardLine(componentName: string): string {
+  const f = SHOT_FACTS[componentName];
+  if (!f?.oneLiner) return '';
+  return `${f.oneLiner}${f.useWhen ? ` USE WHEN: ${f.useWhen}` : ''}`;
+}
+
 export function buildCatalogBrief(): string {
   const label = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
   const brand = Object.entries(BRAND_SCENES).map(([id, b]) => `${id} | ${b.title} | Brand scenes | 3-5s | BRAND-SCENE | ${BRAND_SCENE_NOTES[id]}`);
@@ -96,7 +105,7 @@ export function buildCatalogBrief(): string {
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
         (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '') + (ruleTags(t.componentName) ? ` | ${ruleTags(t.componentName)}` : '')
-      } | ${t.summaryEn}`,
+      } | ${cardLine(t.componentName) || t.summaryEn}`,
   ), ...brand].join('\n');
 }
 
@@ -114,7 +123,7 @@ const sceneSchema = {
     durationSec: { type: 'number' },
     headline: { type: 'string' },
     caption: { type: 'string' },
-    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch'] },
+    transition: { type: 'string', enum: ['cut', 'flash', 'wipe', 'barn', 'dip', 'whip', 'ink', 'leak', 'portal', 'iris', 'line', 'glitch', 'window', 'push'] },
   },
 } as const;
 

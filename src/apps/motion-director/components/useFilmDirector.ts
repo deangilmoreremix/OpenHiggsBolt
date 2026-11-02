@@ -19,15 +19,16 @@ import {
   type FilmTemplateChoice,
 } from '../lib/filmChat';
 import { videoSceneSec } from '../lib/buildFilm';
-import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, type GuidedContext, type SiteCapture } from '../lib/directorClient';
+import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, requestFinalReview, fetchReferenceFrames, type GuidedContext, type SiteCapture } from '../lib/directorClient';
 import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
 import { renderStyleframes, type Styleframe } from '../lib/styleframes';
+import { applyReviewFixes, finalReviewLines, runFinalReview } from '../lib/finalReview';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
   checkFilmFrames,
-  reviewFramesWithModel,
+  stillToJpeg,
   checkFilmStructure,
   storyboardFilm,
   type ActivityStatus,
@@ -208,7 +209,7 @@ export function useFilmDirector(opts: {
           {
             template,
             durationSec: req.durationSec ?? s.durationSec,
-            aspectRatio: s.aspectRatio,
+            aspectRatio: req.aspectRatio ?? s.aspectRatio,
             brandKit: s.brandKit,
             capture: known ?? (reuseCapture ? storyboard?.capture ?? null : null),
             reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
@@ -221,6 +222,14 @@ export function useFilmDirector(opts: {
         result.media = media;
         setStoryboard(result);
         setStage('plan');
+        // Stage 1: the chosen direction as still key frames (opening, the site, the close), while the person reads the storyboard.
+        setFrames([]);
+        if (result.direction) {
+          const chosen = result.direction.chosen;
+          void renderStyleframes({ options: { directions: [chosen], recommended: 0 }, capture: result.capture, product: result.plan.title, opening: true }).then((frames) => {
+            if (live() && frames.length) setFrames(frames);
+          });
+        }
         const videoSec = videos.reduce((sum, v) => sum + v.sec, 0);
         mark(
           'storyboard',
@@ -277,7 +286,7 @@ export function useFilmDirector(opts: {
     return {
       prompt: g.req.prompt,
       durationSec: g.req.durationSec ?? set.durationSec,
-      aspectRatio: set.aspectRatio,
+      aspectRatio: g.req.aspectRatio ?? set.aspectRatio,
       capture: g.capture,
       brandKit: (set.brandKit as Record<string, unknown> | null | undefined) ?? null,
       notes: g.notes,
@@ -351,7 +360,7 @@ export function useFilmDirector(opts: {
     const recipes = g.req.recipes.length ? g.req.recipes : lead;
     void runStoryboard(
       // Without a captured site the pages are sample pages; the site address is not captured a second time.
-      { ...g.req, prompt: `${g.req.prompt}\n\n${decisions.join('\n\n')}`.slice(0, 3900), recipes, siteUrl: g.capture ? g.req.siteUrl : null },
+      { ...g.req, prompt: `${g.req.prompt}\n\n${decisions.join('\n\n')}`.slice(0, 3900), recipes, siteUrl: g.capture ? g.req.siteUrl : null, mapping: g.mapping ?? undefined },
       'director',
       false,
       g.capture,
@@ -584,12 +593,13 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
-      const music = media.find((m) => m.kind === 'audio');
+      const musicClip = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'audio-clip' && /bgmlib|^blob:/.test(String(c.props?.file ?? '')));
+      const music = media.find((m) => m.kind === 'audio') ?? (musicClip ? { name: String(musicClip.label ?? 'music') } : undefined);
       mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
       const frames = await checkFilmFrames(project, glog);
@@ -615,10 +625,27 @@ export function useFilmDirector(opts: {
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );
-      // A second reviewer (a model that did not make the film) looks at a few frames; it arrives as a follow-up.
-      void reviewFramesWithModel(project).then((lines) => {
-        if (live() && lines.length) say('assistant', lines.join('\n'));
-      });
+      // Stage 7: the independent reviewer (a model that did not make the film) gets the spec, every shot's card,
+      // its reference frames next to the film's, the seams and the two checklists; it arrives as a follow-up,
+      // and a seam it fails goes back to a plain cut (stage 3).
+      void runFinalReview(project, {
+        frame: async (p, f, signal) => stillToJpeg((await (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.25)).blob, 480),
+        reference: fetchReferenceFrames,
+        request: (body) => requestFinalReview(body),
+      })
+        .then((report) => {
+          if (!live() || !report.items.length) return;
+          const { project: repaired, fixed } = applyReviewFixes(project, report.items);
+          if (fixed.length) {
+            const next = { ...built, project: repaired };
+            setFilm(next);
+            optsRef.current.onBuilt?.(next);
+          }
+          say('assistant', [...finalReviewLines(report), ...(fixed.length ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : [])].join('\n'));
+        })
+        .catch(() => {
+          /* no key or no answer: the program's checks above stand */
+        });
     } catch (error) {
       if (!live()) return;
       setStage('plan');

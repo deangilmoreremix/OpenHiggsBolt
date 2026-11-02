@@ -19,10 +19,11 @@
 //   96–118  余波：钴蓝描边、对勾弹出（对勾描线）、节拍格同步染成钴蓝
 //   118–150 hold：选定卡停在空中，极缓推镜
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, springAt, type } from '../../_fixtures/Look';
 import { MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const CONTACT_SHADOW_LIFT_DURATION = 150;
 
@@ -90,6 +91,21 @@ const Glyph: React.FC<{ kind: Focus['glyph']; color: string }> = ({ kind, color 
   );
 
 const DAYS = ['1', '2', '3', '4', '5', '6', '7']; // 节拍号（沿用原变量名）
+
+// 有站点图时的卡面：站点图铺满卡身，只保留选定对勾（同位、同动画）
+const PhotoFace: React.FC<{ url: string; check: number }> = ({ url, check }) => (
+  <>
+    <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+    <div style={{
+      position: 'absolute', top: 44 + 11, right: 46, width: 58, height: 58, borderRadius: 29, background: L.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      transform: `scale(${check.toFixed(4)})`, opacity: Math.min(1, check * 2), boxShadow: `0 8px 20px -6px ${alpha(L.accent, 0.7)}`,
+    }}>
+      <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 12.5l4.5 4.5L19 7.5" strokeDasharray={22} strokeDashoffset={22 * (1 - Math.min(1, Math.max(0, check * 1.2 - 0.2)))} />
+      </svg>
+    </div>
+  </>
+);
 
 const CardFace: React.FC<{ d: Focus; sel: number; check: number }> = ({ d, sel, check }) => {
   const tint = (a: number) => alpha(sel > 0.5 ? L.accent : L.ink, a);
@@ -178,6 +194,7 @@ export const ContactShadowLift: React.FC = () => {
             const l = Math.max(0, lift);
             const x = i * (CARD_W + GAP);
             const others = Math.max(0, ...lifts.filter((_, k) => k !== i));
+            const url = realCard(i);
             return (
               <React.Fragment key={i}>
                 {/* 环境影：桌面上的大而软的影，随抬升扩散、偏向背光侧（右下） */}
@@ -202,7 +219,15 @@ export const ContactShadowLift: React.FC = () => {
                   border: `1px solid ${alpha(L.ink, 0.07)}`, boxSizing: 'border-box',
                   boxShadow: `inset 0 1px 0 #ffffff${i === 2 ? `, inset 0 0 0 ${(3 * sel).toFixed(2)}px ${L.accent}` : ''}`,
                 }}>
-                  <CardFace d={d} sel={i === 2 ? sel : 0} check={i === 2 ? check : 0} />
+                  {url ? (
+                    <>
+                      <PhotoFace url={url} check={i === 2 ? check : 0} />
+                      {/* 内描边需压在图片之上（inset box-shadow 画在子元素下面） */}
+                      {i === 2 && <div style={{ position: 'absolute', inset: 0, boxShadow: `inset 0 0 0 ${(3 * sel).toFixed(2)}px ${L.accent}` }} />}
+                    </>
+                  ) : (
+                    <CardFace d={d} sel={i === 2 ? sel : 0} check={i === 2 ? check : 0} />
+                  )}
                   {/* 让位压暗：别的卡离桌时本卡轻微沉下去 */}
                   <div style={{ position: 'absolute', inset: 0, background: alpha('#dfe5ef', 1), opacity: others * 0.22, mixBlendMode: 'multiply' }} />
                 </div>

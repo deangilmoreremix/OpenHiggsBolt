@@ -16,6 +16,7 @@ export interface Styleframe {
 
 const HUB_SEC = 3;
 const LOGO_SEC = 3;
+const OPEN_SEC = 3;
 
 const captureFor = (c: SiteCapture): FilmCapture => ({
   screens: [c.page.url, ...(c.pages ?? []).slice(1).map((p) => p.url)].filter(Boolean),
@@ -29,26 +30,34 @@ const captureFor = (c: SiteCapture): FilmCapture => ({
   address: c.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''),
 });
 
-/** The two-scene film one styleframe pair is taken from. */
-export function styleframeProject(palette: DirectorPalette, title: string, capture: SiteCapture | null) {
+/**
+ * The short film the stills are taken from: the site in the hub, then the closing logo. With `opening`
+ * (pipeline stage 1: "2–3 static key frames" of the chosen direction) the URL scan that opens a film comes first.
+ */
+export function styleframeProject(palette: DirectorPalette, title: string, capture: SiteCapture | null, opts: { opening?: boolean } = {}) {
+  const lead = opts.opening ? [{ kind: 'shot', recipeId: 'brand/url-scan', durationSec: OPEN_SEC, headline: capture?.title ?? title, caption: '', transition: 'cut' }] : [];
   const plan = {
     title,
     summary: '',
     palette,
     scenes: [
+      ...lead,
       { kind: 'shot', recipeId: 'brand/hub', durationSec: HUB_SEC, headline: capture?.content?.headline ?? '', caption: '', transition: 'cut' },
       { kind: 'shot', recipeId: 'brand/logo-reveal', durationSec: LOGO_SEC, headline: capture?.content?.ctas?.[0] ?? '', caption: '', transition: 'cut' },
     ],
   } as DirectorPlan;
   const project = planToProject(plan, { aspectRatio: '16:9', capture: capture ? captureFor(capture) : null, brand: brandFor(plan, capture) });
-  return { project, frames: [Math.round(HUB_SEC * project.fps * 0.8), Math.round(HUB_SEC * project.fps) + Math.round(LOGO_SEC * project.fps * 0.6)] };
+  const fps = project.fps;
+  const at = opts.opening ? Math.round(OPEN_SEC * fps) : 0;
+  const frames = [at + Math.round(HUB_SEC * fps * 0.8), at + Math.round(HUB_SEC * fps) + Math.round(LOGO_SEC * fps * 0.6)];
+  return { project, frames: opts.opening ? [Math.round(OPEN_SEC * fps * 0.75), ...frames] : frames };
 }
 
 /**
  * Render the two stills of each direction (object URLs; the caller revokes them). Best effort: a browser that
  * cannot render stills, a timeout or a cancel gives back what was done so far, never an error.
  */
-export async function renderStyleframes(opts: { options: DirectionOptions; capture: SiteCapture | null; product: string; signal?: AbortSignal; budgetMs?: number }): Promise<Styleframe[]> {
+export async function renderStyleframes(opts: { options: DirectionOptions; capture: SiteCapture | null; product: string; signal?: AbortSignal; budgetMs?: number; opening?: boolean }): Promise<Styleframe[]> {
   let render: typeof import('../webRenderer').renderStillOnWebExport;
   try {
     render = (await import('../webRenderer')).renderStillOnWebExport;
@@ -64,7 +73,7 @@ export async function renderStyleframes(opts: { options: DirectionOptions; captu
   try {
     for (const d of opts.options.directions) {
       if (timeout.signal.aborted) break;
-      const { project, frames } = styleframeProject(d.palette ?? fallback, opts.product, opts.capture);
+      const { project, frames } = styleframeProject(d.palette ?? fallback, opts.product, opts.capture, { opening: opts.opening });
       const urls: string[] = [];
       for (const f of frames) {
         try {

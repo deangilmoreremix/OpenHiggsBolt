@@ -12,7 +12,7 @@ export interface FixResult {
 }
 
 const sec = (frame: number, fps: number) => `${(frame / fps).toFixed(1)}s`;
-const isVisual = (c: ClipData) => !c.cardId.startsWith('audio') && c.cardId !== 'inkpress-caption' && c.cardId !== 'site-inset' && !c.cardId.startsWith('inkpress-flash-cut') && !c.cardId.startsWith('inkpress-seam-') && !c.cardId.startsWith('bg-');
+const isVisual = (c: ClipData) => !c.cardId.startsWith('audio') && c.cardId !== 'inkpress-caption' && c.cardId !== 'site-inset' && !c.cardId.startsWith('inkpress-flash-cut') && !c.cardId.startsWith('inkpress-seam-') && c.cardId !== 'connected-seam' && !c.cardId.startsWith('bg-');
 
 export function fixFilm(project: ProjectData): FixResult {
   const fps = project.fps;
