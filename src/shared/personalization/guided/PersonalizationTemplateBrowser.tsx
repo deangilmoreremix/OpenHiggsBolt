@@ -163,7 +163,10 @@ function restFrameFor(item: GalleryItem, durationInFrames: number, fps: number):
       frame = Math.round((anim.delayInFrames + anim.durationInFrames) * 0.7)
     }
   }
-  return Math.max(0, Math.min(durationInFrames - 1, frame))
+  // Never rest on the closing frames: the composition's end card plays there,
+  // so a long design would otherwise show the end card instead of itself.
+  const latest = Math.max(0, Math.round(durationInFrames * 0.6))
+  return Math.max(0, Math.min(latest, frame))
 }
 
 /** Placeholder tile showing the layer arrangement as colored dots. */
