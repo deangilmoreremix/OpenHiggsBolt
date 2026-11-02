@@ -65,6 +65,14 @@ export function whipTravel(t: number): number {
 /** Where the window opens (style C): a card-sized box near the middle of the outgoing frame, in %. */
 export interface Rect { x: number; y: number; w: number; h: number }
 export const WINDOW_FROM: Rect = { x: 38, y: 31, w: 24, h: 34 };
+/**
+ * Shots whose page card has a known place on their stage (in %): the window opens from that real card —
+ * the site's page in the hub, the page under the URL scan (card C: "a real element on the page enlarges").
+ */
+export const WINDOW_SOURCES: Readonly<Record<string, Rect>> = {
+  'brand-hub': { x: 35, y: 37.3, w: 30, h: 33.3 },
+  'brand-url-scan': { x: 19, y: 27, w: 62, h: 62 },
+};
 
 export interface SeamLook {
   /** Style of the outgoing shot's layer; `display: none` once it is gone. */
@@ -90,7 +98,7 @@ export function stageRect(width: number, height: number): Rect {
   return { x: (100 - w) / 2, y: (100 - h) / 2, w, h };
 }
 
-export function seamLook(kind: SeamKind, t: number, opts: { dir?: 1 | -1; accent?: string; page?: string; stage?: Rect } = {}): SeamLook {
+export function seamLook(kind: SeamKind, t: number, opts: { dir?: 1 | -1; accent?: string; page?: string; stage?: Rect; from?: Rect } = {}): SeamLook {
   const dir = opts.dir ?? 1;
   const accent = opts.accent ?? '#ffffff';
   const page = opts.page ?? '#000000';
@@ -125,7 +133,8 @@ export function seamLook(kind: SeamKind, t: number, opts: { dir?: 1 | -1; accent
       const g = bezier(0.7, 0, 0.3, 1, clamp01((x - 0.18) / 0.82));
       // The card the window opens from sits inside the shot's own stage (a 16:9 band in a vertical film).
       const st = opts.stage ?? { x: 0, y: 0, w: 100, h: 100 };
-      const r = { x: st.x + (WINDOW_FROM.x / 100) * st.w, y: st.y + (WINDOW_FROM.y / 100) * st.h, w: (WINDOW_FROM.w / 100) * st.w, h: (WINDOW_FROM.h / 100) * st.h };
+      const src = opts.from ?? WINDOW_FROM;
+      const r = { x: st.x + (src.x / 100) * st.w, y: st.y + (src.y / 100) * st.h, w: (src.w / 100) * st.w, h: (src.h / 100) * st.h };
       // It grows to the shot's own stage (the whole frame in 16:9; the picture band in a vertical film).
       const box = { x: r.x + (st.x - r.x) * g, y: r.y + (st.y - r.y) * g, w: r.w + (st.w - r.w) * g, h: r.h + (st.h - r.h) * g };
       const lifted = 1 + 0.03 * lift * (1 - g);
