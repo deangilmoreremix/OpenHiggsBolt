@@ -406,7 +406,7 @@ const INSET_PAGE_H = 1200;
         const ground = SHOT_FACTS[template.componentName]?.ground;
         const filmDark = luma(palette.background) < 0.5;
         const captionColor = ground === 'dark' && !filmDark ? '#f5f5f2' : ground === 'light' && filmDark ? '#16171c' : palette.text;
-        captions.push(clip('inkpress-caption', at, frames, { text: line, color: captionColor, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
+        captions.push(clip('inkpress-caption', at, frames, { text: line, color: captionColor, backdrop: true, accent: palette.accent, fontSize: captionPx, uppercase: line.length <= 40, bottom: Math.round(height * 0.07) }));
       }
     }
     at += frames;

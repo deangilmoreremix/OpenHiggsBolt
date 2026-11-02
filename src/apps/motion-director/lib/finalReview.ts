@@ -139,6 +139,16 @@ export function applyReviewFixes(project: ProjectData, items: readonly FinalRevi
   return { project: { ...project, tracks }, fixed: seams.map((s) => `The ${String(s.props.kind)} seam at ${((s.start + s.duration / 2) / fps).toFixed(1)}s is a plain cut now (the reviewer failed it).`) };
 }
 
+/**
+ * A review arrives after the film is shown. Its fix may replace the film only while the film on screen is
+ * still the one reviewed: the same film installed here (`installed` is `reviewed`) and, where the caller
+ * keeps its own copy (the workbench), that copy is still the reviewed project. Otherwise edits made in the
+ * meantime would be thrown away.
+ */
+export function reviewStillApplies(opts: { installed: unknown; reviewed: unknown; current?: () => unknown; project: unknown }): boolean {
+  return opts.installed === opts.reviewed && (!opts.current || opts.current() === opts.project);
+}
+
 /** The report in the chat: failures first with their seconds and the stage that fixes them, then the passes. */
 export function finalReviewLines(r: { items: FinalReviewItem[]; summary: string; shots: number; seams: number }): string[] {
   const fails = r.items.filter((i) => !i.ok);

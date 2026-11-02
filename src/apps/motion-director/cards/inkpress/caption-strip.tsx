@@ -16,6 +16,8 @@ interface Props {
   accent?: string;
   uppercase?: boolean;
   duration?: number;
+  /** A soft pill in the opposite tone behind the words, for captions over shots whose frame is mixed (light cards on a dark ground). */
+  backdrop?: boolean;
 }
 
 const CaptionStrip: React.FC<Props> = ({
@@ -26,7 +28,9 @@ const CaptionStrip: React.FC<Props> = ({
   accent = "#b5651d",
   uppercase = true,
   duration = 60,
+  backdrop = false,
 }) => {
+  const lightText = parseInt(color.replace('#', '').slice(0, 2) || '80', 16) > 140;
   const frame = useCurrentFrame();
   const inT = interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const outT = interpolate(frame, [duration - 8, duration], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -50,13 +54,24 @@ const CaptionStrip: React.FC<Props> = ({
           textTransform: uppercase ? "uppercase" : "none",
           color,
           // Over a busy picture the words need their own ground: a soft halo in the opposite tone.
-          textShadow: parseInt(color.replace('#', '').slice(0, 2) || '80', 16) > 140 ? '0 2px 16px rgba(0,0,0,0.55)' : '0 0 18px rgba(255,255,255,0.7)',
+          textShadow: lightText ? '0 2px 16px rgba(0,0,0,0.55)' : '0 0 18px rgba(255,255,255,0.7)',
           opacity: inT * outT,
           transform: `translateY(${(1 - inT) * 8}px)`,
         }}
       >
-        <span style={{ width: Math.round(fontSize * 0.26), height: Math.round(fontSize * 0.26), background: accent, display: "inline-block", flex: "none" }} />
-        <span>{text}</span>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "baseline",
+            gap: 14,
+            ...(backdrop
+              ? { padding: `${Math.round(fontSize * 0.4)}px ${Math.round(fontSize * 0.9)}px`, borderRadius: 999, background: lightText ? "rgba(8,9,12,0.42)" : "rgba(255,255,255,0.62)", backdropFilter: "blur(6px)" }
+              : {}),
+          }}
+        >
+          <span style={{ width: Math.round(fontSize * 0.26), height: Math.round(fontSize * 0.26), background: accent, display: "inline-block", flex: "none" }} />
+          <span>{text}</span>
+        </span>
       </div>
     </AbsoluteFill>
   );

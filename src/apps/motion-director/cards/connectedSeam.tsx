@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import type { CardDef } from "./types";
 import { ClipBody, FilmContext } from "../preview/clipBody";
-import { seamLook, stageRect, type SeamKind } from "../lib/seams";
+import { WINDOW_SOURCES, seamLook, stageRect, type SeamKind } from "../lib/seams";
 
 interface Props {
   kind?: SeamKind;
@@ -33,7 +33,7 @@ const ConnectedSeam: React.FC<Props> = ({ kind = "flash", outId, inId, half = 8,
   const inCard = inc && film.cards[inc.cardId];
   if (!out || !inc || !outCard || !inCard) return null;
   const length = Math.max(2, half * 2);
-  const look = seamLook(kind, (frame + 0.5) / length, { dir, accent, page, stage: stageRect(film.project.width, film.project.height) });
+  const look = seamLook(kind, (frame + 0.5) / length, { dir, accent, page, stage: stageRect(film.project.width, film.project.height), from: WINDOW_SOURCES[out.cardId] });
   const seamStart = inc.start - half;
   return (
     <AbsoluteFill style={{ background: page ?? "#000", overflow: "hidden" }}>

@@ -164,3 +164,12 @@ describe('seam sounds (sound-design 4.2, anti-machine-gun)', () => {
     cuts.slice(1).forEach((f, i) => expect(f).not.toBe(cuts[i]));
   });
 });
+
+describe('the window opens from a real card', () => {
+  it('from the hub, the window starts on the hub\'s page card', async () => {
+    const { WINDOW_SOURCES } = await import('../lib/seams');
+    const m = String(seamLook('window', 0.05, { from: WINDOW_SOURCES['brand-hub'] }).in.clipPath).match(/inset\(([\d.]+)% ([\d.]+)% ([\d.]+)% ([\d.]+)%/)!.slice(1).map(Number);
+    expect(m[0]).toBeCloseTo(37.3, 0);
+    expect(m[3]).toBeCloseTo(35, 0);
+  });
+});

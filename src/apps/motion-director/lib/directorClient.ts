@@ -155,6 +155,8 @@ export async function requestPlan(body: {
   mapping?: MappingRow[];
   /** The chosen shots' cards, in full (stage 2: "read the chosen cards in full"). */
   cards?: Array<{ id: string; text: string }>;
+  /** The product's ground: cards of the other look family are ruled out. */
+  siteGround?: 'dark' | 'light' | null;
 }): Promise<DirectorPlan> {
   const { plan } = await post<{ plan: unknown }>('/api/motion-studio/director', {
     mode: 'plan',
@@ -176,6 +178,7 @@ export async function requestPlan(body: {
     template: body.template ?? null,
     mapping: body.mapping ?? [],
     cards: body.cards ?? [],
+    siteGround: body.siteGround ?? null,
   }, 60_000);
   return validatePlan(plan, { targetSec: body.durationSec });
 }
@@ -194,6 +197,8 @@ export interface GuidedContext {
   direction?: string;
   /** Shots that must lead the mapping (named in chat or picked in Templates). */
   requiredRecipes?: string[];
+  /** The product's ground ('dark' / 'light'): cards of the other look family are ruled out of the film. */
+  siteGround?: 'dark' | 'light' | null;
 }
 
 const guidedBody = (mode: 'brief' | 'direction' | 'mapping', c: GuidedContext) => ({
@@ -206,6 +211,7 @@ const guidedBody = (mode: 'brief' | 'direction' | 'mapping', c: GuidedContext) =
     : null,
   brandKit: c.brandKit ?? null,
   notes: c.notes ?? [],
+  siteGround: c.siteGround ?? null,
   brief: c.brief ?? '',
   direction: c.direction ?? '',
   requiredRecipes: c.requiredRecipes ?? [],

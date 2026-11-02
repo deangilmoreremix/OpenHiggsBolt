@@ -201,12 +201,16 @@ export async function storyboardFilm(
         ? INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)
         : [];
   const autonomous = !req.mapping?.length && opts.template !== 'inkpress' && !req.recipes.length;
+  // The product's ground decides the film's look family (SKILL principle 2): the director picks cards of that family.
+  const sitePalette = capture ? paletteFromBrand(capture.brand) : null;
+  const siteGround: 'dark' | 'light' | null = sitePalette ? (luma(sitePalette.page) < 0.5 ? 'dark' : 'light') : null;
   const guidedAsk = {
     prompt: req.prompt,
     durationSec: planSec,
     aspectRatio: opts.aspectRatio,
     capture,
     brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
+    siteGround,
   };
   // Stage 1: up to three visual directions grown from the product; an autonomous film takes the director's
   // recommendation and records why and what it gives up (it does not stop to ask).
@@ -238,6 +242,7 @@ export async function storyboardFilm(
     const ask = () => requestPlan({
       mapping: mapping ?? undefined,
       cards,
+      siteGround,
       prompt: directionNote ? `${req.prompt}\n\n${directionNote}`.slice(0, 3900) : req.prompt,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,

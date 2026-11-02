@@ -65,6 +65,22 @@ beforeEach(() => {
 })
 
 describe('capturePageScreenshots', () => {
+  it('reports the height actually photographed when the tall shot fails and only the viewport is captured', async () => {
+    const { mod, guard } = await load()
+    const page = (await import('playwright')).chromium as unknown as { launch: () => Promise<any> }
+    const browser = await page.launch()
+    const ctx = await browser.newContext({})
+    const p = await ctx.newPage()
+    p.screenshot.mockImplementation(async (opts: Record<string, unknown>) => {
+      h.screenshots.push(opts)
+      if (opts.fullPage) throw new Error('tall shot timed out')
+      return Buffer.from('jpg')
+    })
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard })
+    expect(result.pageHeight).toBe(1080)
+    expect(result.layout?.pageH).toBe(1080)
+  })
+
   it('captures a 1920-wide page at 2x, card crops and brand colours', async () => {
     const { mod, guard } = await load()
     const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard })
