@@ -79,6 +79,27 @@ export function reviewFilm(project: ProjectData): ReviewItem[] {
   const synthetic = clips.filter((c) => c.cardId === 'audio-clip' && /sfxlib\/ui\/ui-/.test(String(c.props.file)));
   items.push({ code: 'A7', ok: synthetic.length === 0, text: synthetic.length ? `${synthetic.length} interface-alert sounds (they sound like a game).` : 'Sound effects are real objects and film vocabulary.' });
 
+  // F2 (content self-check): no tagline, caption or title line said twice.
+  const norm = (t: unknown) => String(t ?? '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const lines = clips
+    .filter((c) => c.cardId === 'inkpress-caption' || c.cardId === 'inkpress-title-card')
+    .map((c) => ({ c, t: norm(c.props.text) }))
+    .filter((x) => x.t.length >= 6);
+  const twice = lines.filter((x, i) => lines.findIndex((y) => y.t === x.t) !== i);
+  items.push({ code: 'F2', ok: twice.length === 0, text: twice.length ? `The same line is said again: "${String(twice[0].c.props.text).replace(/\*/g, '')}" at ${twice.map((x) => sec(x.c.start, fps)).join(', ')}.` : 'No tagline or caption is said twice.' });
+
+  // Sound coverage: a stretch of more than 3 s with no sound at all reads as a mute segment.
+  const sounds = clips.filter((c) => c.cardId === 'audio-clip' || c.cardId === 'video-clip').map((c) => [c.start, c.start + c.duration] as const).sort((a, b) => a[0] - b[0]);
+  const end = Math.max(0, ...clips.map((c) => c.start + c.duration));
+  let covered = 0;
+  let gap: [number, number] | null = null;
+  for (const [a0, a1] of sounds) {
+    if (a0 - covered > fps * 3 && !gap) gap = [covered, a0];
+    covered = Math.max(covered, a1);
+  }
+  if (!gap && end - covered > fps * 3) gap = [covered, end];
+  items.push({ code: 'A2', ok: !gap, text: gap ? `No sound from ${sec(gap[0], fps)} to ${sec(gap[1], fps)}: a mute stretch.` : 'Sound runs through the whole film.' });
+
   // A5: a sample longer than 5 s must be cut to its action, not left to ring on.
   const ringing = clips.filter((c) => {
     if (c.cardId !== 'audio-clip') return false;

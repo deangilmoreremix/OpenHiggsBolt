@@ -19,15 +19,16 @@ import {
   type FilmTemplateChoice,
 } from '../lib/filmChat';
 import { videoSceneSec } from '../lib/buildFilm';
-import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, type GuidedContext, type SiteCapture } from '../lib/directorClient';
+import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, requestFinalReview, fetchReferenceFrames, type GuidedContext, type SiteCapture } from '../lib/directorClient';
 import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
 import { renderStyleframes, type Styleframe } from '../lib/styleframes';
+import { applyReviewFixes, finalReviewLines, runFinalReview } from '../lib/finalReview';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
   checkFilmFrames,
-  reviewFramesWithModel,
+  stillToJpeg,
   checkFilmStructure,
   storyboardFilm,
   type ActivityStatus,
@@ -624,10 +625,27 @@ export function useFilmDirector(opts: {
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].join('\n'),
       );
-      // A second reviewer (a model that did not make the film) looks at a few frames; it arrives as a follow-up.
-      void reviewFramesWithModel(project).then((lines) => {
-        if (live() && lines.length) say('assistant', lines.join('\n'));
-      });
+      // Stage 7: the independent reviewer (a model that did not make the film) gets the spec, every shot's card,
+      // its reference frames next to the film's, the seams and the two checklists; it arrives as a follow-up,
+      // and a seam it fails goes back to a plain cut (stage 3).
+      void runFinalReview(project, {
+        frame: async (p, f, signal) => stillToJpeg((await (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.25)).blob, 480),
+        reference: fetchReferenceFrames,
+        request: (body) => requestFinalReview(body),
+      })
+        .then((report) => {
+          if (!live() || !report.items.length) return;
+          const { project: repaired, fixed } = applyReviewFixes(project, report.items);
+          if (fixed.length) {
+            const next = { ...built, project: repaired };
+            setFilm(next);
+            optsRef.current.onBuilt?.(next);
+          }
+          say('assistant', [...finalReviewLines(report), ...(fixed.length ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : [])].join('\n'));
+        })
+        .catch(() => {
+          /* no key or no answer: the program's checks above stand */
+        });
     } catch (error) {
       if (!live()) return;
       setStage('plan');

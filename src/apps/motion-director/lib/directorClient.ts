@@ -256,6 +256,13 @@ export async function requestFrameReview(body: { frames: Array<{ second: number;
   return { findings: Array.isArray(res.findings) ? res.findings : [], summary: typeof res.summary === 'string' ? res.summary : '' };
 }
 
+/** One part of the stage 7 review (a group of shots, or the whole film): checklist answers ✓ / ✗ with seconds. */
+export async function requestFinalReview(body: Record<string, unknown>): Promise<{ items: import('./finalReview').FinalReviewItem[]; summary: string }> {
+  const res = await post<{ items?: unknown[]; summary?: string }>('/api/motion-studio/director', { mode: 'final-review', ...body }, 70_000);
+  const items = (Array.isArray(res.items) ? res.items : []).filter((i): i is import('./finalReview').FinalReviewItem => Boolean(i && typeof i === 'object' && typeof (i as { id?: unknown }).id === 'string'));
+  return { items, summary: typeof res.summary === 'string' ? res.summary : '' };
+}
+
 export interface AdaptRequest {
   recipe: string;
   source: string;

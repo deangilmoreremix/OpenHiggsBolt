@@ -548,7 +548,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
 }
 
 /** A frame as a small JPEG data URL (the reviewer sees 640 px wide, enough for layout and legibility). */
-async function stillToJpeg(blob: Blob, maxW = 800): Promise<string> {
+export async function stillToJpeg(blob: Blob, maxW = 800): Promise<string> {
   const bitmap = await createImageBitmap(blob);
   const scale = Math.min(1, maxW / bitmap.width);
   const canvas = document.createElement('canvas');

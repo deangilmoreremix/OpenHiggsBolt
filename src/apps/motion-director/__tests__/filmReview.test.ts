@@ -8,12 +8,14 @@ import type { ProjectData } from '../types';
 
 const palette = { background: '#101018', text: '#ffffff', accent: '#8b6bff' };
 const id = (c: string) => MOTION_TEMPLATES.find((t) => t.componentName === c)!.id;
-const scene = (recipeId: string, kind: 'shot' | 'title' = 'shot', durationSec = 6) => ({ kind, recipeId, durationSec, headline: 'Line', caption: 'Caption words', transition: 'cut' as const });
+let n = 0;
+const scene = (recipeId: string, kind: 'shot' | 'title' = 'shot', durationSec = 6) => ({ kind, recipeId, durationSec, headline: `Line ${++n}`, caption: `Caption words ${n}`, transition: 'cut' as const });
+const music = { url: 'https://cdn.test/music.mp3', name: 'music' };
 
 describe('final review', () => {
   it('passes a clean film and says what it checked', () => {
     const plan: DirectorPlan = { title: 't', summary: '', palette, scenes: [scene(id('SpotlightHeroCard')), scene(id('RowEmbed')), scene(id('ListStackPress')), scene('', 'title', 3)] };
-    const items = reviewFilm(planToProject(plan, { aspectRatio: '16:9' }));
+    const items = reviewFilm(planToProject(plan, { aspectRatio: '16:9', music } as never));
     expect(items.filter((i) => !i.ok), JSON.stringify(items.filter((i) => !i.ok))).toEqual([]);
     expect(reviewSummary(items)[0]).toMatch(/passed\./);
   });
@@ -28,7 +30,7 @@ describe('final review', () => {
     lastShot.speed = 1;
     clips.filter((c) => c.cardId === 'inkpress-caption').forEach((c) => (c.props.fontSize = 22));
     const items = reviewFilm(project);
-    const bad = Object.fromEntries(items.filter((i) => !i.ok).map((i) => [i.code, i.text]));
+    const bad = Object.fromEntries(items.filter((i) => !i.ok && !(i.code === 'F2' && /said again/.test(i.text))).map((i) => [i.code, i.text]));
     expect(bad.F2).toMatch(/plays again at/);
     expect(bad.S3).toMatch(/Cut short/);
     expect(bad.B3).toMatch(/holds only/);
@@ -38,6 +40,16 @@ describe('final review', () => {
 });
 
 const samplePlan = (): DirectorPlan => ({ title: 't', summary: '', palette, scenes: [scene(id('SpotlightHeroCard')), scene('', 'title', 3)] });
+
+describe('content self-check', () => {
+  it('flags a line said twice and a mute stretch', () => {
+    const same = (recipeId: string) => ({ kind: 'shot' as const, recipeId, durationSec: 6, headline: 'Same', caption: 'The same caption', transition: 'cut' as const });
+    const items = reviewFilm(planToProject({ title: 't', summary: '', palette, scenes: [same(id('SpotlightHeroCard')), same(id('RowEmbed'))] }, { aspectRatio: '16:9' }));
+    const f2 = items.find((i) => i.code === 'F2' && !i.ok && /said again/.test(i.text));
+    expect(f2?.text).toContain('The same caption');
+    expect(items.find((i) => i.code === 'A2')!.ok).toBe(false);
+  });
+});
 
 describe('A5 long sound samples', () => {
   it('flags a >5 s sample left running for over 3 s and accepts a trimmed one', async () => {
