@@ -2111,7 +2111,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // A fresh session saves nothing until the user starts on something, so
     // opening the modal never replaces the project they may want to resume.
     if (freshStartRef.current) {
-      const hasAssets = Object.values(assets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
+      // Saved recasts are a reusable library loaded automatically on open,
+      // not something the user started here (applying one sets previewVideo).
+      const { presenterVideos: _savedRecasts, ...ownAssets } = assets
+      const hasAssets = Object.values(ownAssets).some((v) => (Array.isArray(v) ? v.length > 0 : v != null))
       const started =
         Boolean(clientForm.businessName || clientForm.website || clientForm.ctaHeadline || clientForm.callToAction || promptState.personalized || promptState.edited) ||
         hasAssets ||
@@ -2311,7 +2314,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return updateAssetInLibrary(lib, asset)
     }, { ...EMPTY_ASSET_LIBRARY })
 
-    setAssets(restoredLibrary)
+    // The saved-recast library isn't part of the project; keep it, or the
+    // recast save effect would erase the saved recasts.
+    setAssets((prev) => ({ ...restoredLibrary, presenterVideos: prev.presenterVideos }))
 
     // ── Restore prompt ───────────────────────────────────────────────────────
     setPromptState({
