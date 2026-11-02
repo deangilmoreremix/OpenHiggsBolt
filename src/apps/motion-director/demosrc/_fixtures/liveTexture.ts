@@ -103,3 +103,14 @@ export function liveCard(index: number, sampleFile: string): string {
   const n = Number(overrides['card:count'] ?? 0);
   return n > 0 ? overrides[`card:${((index % n) + n) % n}`] : liveTexture(sampleFile);
 }
+
+/**
+ * Picture `index` of the scene's own site pictures (cards, photos, page slices, each distinct while
+ * there are enough), or null when the clip carries none — then the recipe draws its sample UI as designed.
+ * For recipes that draw a made-up interface: a panel, window, card or thumbnail shows the site instead.
+ */
+export function realCard(index: number): string | null {
+  const overrides = use(LiveTextureContext);
+  const n = Number(overrides['card:count'] ?? 0);
+  return n > 0 ? overrides[`card:${((index % n) + n) % n}`] : null;
+}

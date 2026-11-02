@@ -508,6 +508,55 @@ export function applyFilmRules(plan: DirectorPlan, opts: { keep?: ReadonlySet<st
   return { plan: kept, notes: found.map((f) => `${title(f.recipeId)}: ${f.reason}`) };
 }
 
+/** Document / report shots: the most information on screen (promo-energy-arc: placed just before the finale). */
+const DOCUMENT_SLUGS = new Set(['document-typewriter-reveal', 'research-card-stack-scroll', 'doc-park-left-pill-deal']);
+const DOCUMENT_STEMS = new Set(['ChangelogScrollBrake']);
+const isDocumentShot = (s: DirectorScene): boolean => {
+  const t = s.kind === 'shot' && !isBrandScene(s.recipeId) ? resolveMotionTemplate(s.recipeId) : undefined;
+  return Boolean(t && (DOCUMENT_STEMS.has(t.componentName) || DOCUMENT_SLUGS.has(SHOT_FACTS[t.componentName]?.slug ?? '')));
+};
+
+/**
+ * Order the feature climb the way promo-energy-arc step 3 does it: high-energy shots and steady ones
+ * (reading, interaction) alternate — consecutive high energy reads as noise — and the shot with the most
+ * information (document / report type) sits just before the finale, 2nd–3rd from last. Only the feature
+ * shots move, among their own places: the opening, the protagonist, title cards, site scenes and the
+ * finale keep theirs. A film of shots the person named keeps the order they asked for.
+ */
+export function arrangeArc(plan: DirectorPlan, keep: ReadonlySet<string> = new Set()): DirectorPlan {
+  if (keep.size) return plan;
+  const scenes = plan.scenes;
+  const recipeAt = scenes.map((s, i) => (s.kind === 'shot' && !isBrandScene(s.recipeId) ? i : -1)).filter((i) => i >= 0);
+  if (recipeAt.length < 3) return plan;
+  // The protagonist (first recipe shot) and an outro recipe at the end keep their places.
+  const outro = (i: number) => {
+    const t = resolveMotionTemplate(scenes[i].recipeId);
+    return i >= scenes.length - 2 && Boolean(t && ['outro-group-photo-launch', 'ui-strip-away-outro', 'ui-to-brand-morph', 'pull-back-isolation'].includes(SHOT_FACTS[t.componentName]?.slug ?? ''));
+  };
+  const slots = recipeAt.slice(1).filter((i) => !outro(i));
+  if (slots.length < 2) return plan;
+  const pool = slots.map((i) => scenes[i]);
+  const docs = pool.filter(isDocumentShot);
+  const rest = pool.filter((s) => !isDocumentShot(s));
+  const high = rest.filter((s) => sceneEnergy(s) >= 3);
+  const steady = rest.filter((s) => sceneEnergy(s) < 3);
+  // Alternate, starting with whichever kind there is more of, so the leftovers do not bunch at the end.
+  const order: DirectorScene[] = [];
+  let takeHigh = high.length >= steady.length;
+  while (high.length || steady.length) {
+    const from = (takeHigh && high.length) || !steady.length ? high : steady;
+    order.push(from.shift()!);
+    takeHigh = !takeHigh;
+  }
+  // The document shot takes the last feature place (just before the finale).
+  order.push(...docs);
+  const out = scenes.slice();
+  slots.forEach((i, k) => {
+    out[i] = { ...order[k], transition: scenes[i].transition };
+  });
+  return { ...plan, scenes: out };
+}
+
 /** Caps from the transition cards: wipes / barn-doors ≤ 2, dips ≤ 2, flash cuts ≤ 3 (R4) in one film. */
 const SEAM_CAPS = { panel: 2, dip: 2, flash: 3, light: 1, whip: 2, ring: 2, window: 2, push: 2 } as const;
 const seamGroup = (t: SceneTransition | undefined): keyof typeof SEAM_CAPS | null =>

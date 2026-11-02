@@ -22,7 +22,7 @@ import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
 import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
 import { pickMotionPreset, presetText } from './motionPreset';
-import { addGalleryScene, applyFilmRules, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { addGalleryScene, applyFilmRules, arrangeArc, applySiteContent, chooseSeams, fitNativeLengths, siteNameOf, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -120,8 +120,21 @@ const filmTheme = (capture: SiteCapture | null | undefined): { id: string; color
 export const pictureCount = (capture: SiteCapture | null | undefined): number => (capture && !capture.partial ? (capture.assets?.length ?? 0) + (capture.images?.length ?? 0) + (capture.crops?.length ?? 0) : 0);
 
 /** The capture without testimonial "Name Title Company" lines in its headings (they feed captions, titles and recipe words; D2). */
+/** Accessibility links ("Skip to content", "Skip navigation") are part of a site's menu, not its words. */
+export const isSkipLink = (line: string): boolean => /^\s*skip (?:to|navigation)\b/i.test(line);
+
 export const withoutPeopleLines = <T extends SiteCapture | null>(capture: T): T =>
-  capture?.content?.headings?.length ? { ...capture, content: { ...capture.content, headings: capture.content.headings.filter((h) => !looksLikePersonLine(h)) } } : capture;
+  capture?.content
+    ? {
+        ...capture,
+        content: {
+          ...capture.content,
+          ...(capture.content.headings ? { headings: capture.content.headings.filter((h) => !looksLikePersonLine(h) && !isSkipLink(h)) } : {}),
+          ...(capture.content.nav ? { nav: capture.content.nav.filter((n) => !isSkipLink(n)) } : {}),
+          ...(capture.content.ctas ? { ctas: capture.content.ctas.filter((n) => !isSkipLink(n)) } : {}),
+        },
+      }
+    : capture;
 
 /** "Andrew Garnett President & CEO Special Needs Group": a name followed by a job title. */
 export const looksLikePersonLine = (line: string): boolean =>
@@ -254,7 +267,9 @@ export async function storyboardFilm(
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
     log(`Motion voice: ${voice.label}`, 'done');
-    const withPictures = addGalleryScene(covered.plan, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
+    // Stage 3 arc order: high and steady shots alternate, the document shot just before the finale.
+    const arced = arrangeArc(covered.plan, keep);
+    const withPictures = addGalleryScene(arced, { pictures: siteScenes ? pictureCount(capture) : 0, prompt: req.prompt, headline: capture?.content?.headings?.[0] });
     const fitted = fitNativeLengths(withPictures, planSec, new Set(req.recipes.map((r) => r.id)), voice.holdGrowth);
     const final = chooseSeams(applySiteContent(fitted, capture?.content), voice);
     // Stage 3: the consistency check before the storyboard is released.

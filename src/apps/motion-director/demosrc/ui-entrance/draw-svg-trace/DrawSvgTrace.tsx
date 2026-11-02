@@ -22,10 +22,11 @@
 //   74–92   100% 下划线 18f
 //   92–132  hold 40f：0.9% 极缓推近
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame, interpolate, Easing } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame, interpolate, Easing } from 'remotion';
 import { EASE, FONT, ramp, softShadow } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const DRAW_SVG_TRACE_DURATION = 132;
 
@@ -99,6 +100,8 @@ export const DrawSvgTrace: React.FC = () => {
   const upenOp = interpolate(up, [0, 0.04, 0.92, 0.99], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   const push = 1 + 0.009 * ramp(frame, 60, 72, EASE.smooth);
+  // 有站点图时：右栏（能量柱 + 标签）换成一张站点图，与右栏同位、同一上墨节奏（闭合后才出现）
+  const url = realCard(0);
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT.sans, overflow: 'hidden' }}>
@@ -158,7 +161,13 @@ export const DrawSvgTrace: React.FC = () => {
             </div>
           </div>
 
+          {url && (
+            <div style={{ position: 'absolute', left: 680, top: 128, width: 376, height: 360, borderRadius: 16, overflow: 'hidden', border: `1.5px solid ${alpha(L.ink, 0.1)}`, boxSizing: 'border-box', ...rise(3) }}>
+              <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            </div>
+          )}
           {/* 右栏：逐镜头能量柱（从基线长出，末三根朱红） */}
+          {!url && <>
           <div style={{ position: 'absolute', left: 680, top: 150, width: 376, height: 300, display: 'flex', alignItems: 'flex-end', gap: 10, opacity: inkIn(3) > 0 ? 1 : 0 }}>
             {BARS.map((v, i) => {
               const g = ramp(frame, 56 + i * 1.5, 14, EASE.snappy);
@@ -182,6 +191,7 @@ export const DrawSvgTrace: React.FC = () => {
             ))}
           </div>
           <div style={{ position: 'absolute', left: 680, top: 128, ...type(22, 600, { mono: true }), letterSpacing: '0.1em', color: L.ink3, ...rise(4) }}>ENERGY · PER SHOT</div>
+          </>}
 
           {/* 署名行：SmartVideo GO 标志 + 字标（亮底用 light 版） */}
           <div style={{ position: 'absolute', left: 64, right: 64, bottom: 44, display: 'flex', alignItems: 'center', gap: 16, ...rise(5) }}>

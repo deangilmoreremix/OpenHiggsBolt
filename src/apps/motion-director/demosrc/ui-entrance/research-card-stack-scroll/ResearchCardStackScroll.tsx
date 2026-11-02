@@ -4,7 +4,9 @@
 // 下方卡按 depth 递增 blur/变暗只露顶部标题条，背景浅灰横向 grid 同步移动做速度参照。
 // 设计坐标 480×270（DesignStage 等比放大），参数表数值以此坐标系标定。
 import React from 'react';
+import { Img } from 'remotion';
 import { DesignStage, E, lerp, rand, seg, useT } from '../../_fixtures/Motion';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const RESEARCH_CARD_STACK_SCROLL_DURATION = 144; // 4800ms @30fps
 
@@ -73,6 +75,7 @@ export const ResearchCardStackScroll: React.FC = () => {
         }}
       >
         {TITLES.map((tt, i) => {
+          const url = realCard(i); // 场景里的站点图（无则按原样画摘要骨架线）
           const e = f - i * PER; // 该卡的本地帧
           const p = seg(Math.max(0, Math.min(1, (e + 6) / 6)), 0, 1, E.outCubic); // 6 帧入场
           const drift = (Math.max(0, e) / PER) * GAP; // 叠压后随流下移
@@ -133,18 +136,34 @@ export const ResearchCardStackScroll: React.FC = () => {
                 <div style={{ font: `500 8px/1 ${FONT}`, color: ORANGE_SOFT, letterSpacing: '.3px' }}>
                   {`A. Author, B. Writer, C. Reader · preprint:24${10 + i}.0${i % 9}${i % 7}`}
                 </div>
-                {[0, 1, 2, 3].map((k) => (
+                {url ? (
                   <div
-                    key={k}
                     style={{
-                      marginTop: k ? 5 : 9,
-                      width: `${100 - k * 11 - rand(i * 5 + k) * 12}%`,
-                      height: 4,
-                      borderRadius: 2,
+                      position: 'relative',
+                      marginTop: 9,
+                      width: '100%',
+                      height: 31,
+                      borderRadius: 4,
+                      overflow: 'hidden',
                       background: '#3A3A3A',
                     }}
-                  />
-                ))}
+                  >
+                    <Img src={url} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                  </div>
+                ) : (
+                  [0, 1, 2, 3].map((k) => (
+                    <div
+                      key={k}
+                      style={{
+                        marginTop: k ? 5 : 9,
+                        width: `${100 - k * 11 - rand(i * 5 + k) * 12}%`,
+                        height: 4,
+                        borderRadius: 2,
+                        background: '#3A3A3A',
+                      }}
+                    />
+                  ))
+                )}
               </div>
             </div>
           );

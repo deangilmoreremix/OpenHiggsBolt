@@ -42,6 +42,19 @@ export const PRODUCT_TEXTURE_SHOTS: readonly string[] = [
   'ProductCardProgressiveAssemble',
   'NeonFrameForerun',
   'NeonFrameForerunOrbit',
+  // Sample-interface recipes whose cards, panels, windows, thumbnails and avatars show the scene's own
+  // site pictures (demosrc/_fixtures/liveTexture realCard); with no capture they draw their sample UI.
+  'AvatarBracketCarousel',
+  'BezierSourceConvergeMerge',
+  'ClonerDepthEcho',
+  'DrawSvgTrace',
+  'ContactShadowLift',
+  'IntegrationHubMap',
+  'ResearchCardStackScroll',
+  'PanelToCanvasMaterialize',
+  'CursorCastEnsemble',
+  'PaletteThemeRipple',
+  'ThemeSweepToggle',
 ];
 
 export const isProductTextureShot = (componentName: string): boolean =>

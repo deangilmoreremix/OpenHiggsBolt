@@ -23,6 +23,7 @@ import { rulesOf } from '@/apps/motion-director/lib/shotRules'
 import { ADAPT_INSTRUCTIONS, ADAPT_JSON_SCHEMA, ADAPT_MAX_SOURCE, cleanAdaptedCode } from '@/apps/motion-director/lib/adaptPrompt'
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
+import { AESTHETIC_RULES, FINAL_REVIEW } from '@/apps/motion-director/lib/_generated/reviewChecklists'
 import { requireMotionStudioUser } from '../lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -108,6 +109,36 @@ Return JSON {scenes:[{index, pairs:[{from, to}]}]}. from = one of the scene's st
 const REVIEW_INSTRUCTIONS = `You are an independent reviewer of a finished product film. You see a few frames of it (each labelled with its second) and the design spec it was built from. You did not make it and you do not defend it.
 Check, for each frame: is anything cut off, overlapping, blank or unreadable (text smaller than a phone can read, low contrast); does the look match the spec's colours; is the product's name or logo wrong or missing where it should be; is there visible template text that belongs to another product; are people's faces or names from a third party shown.
 Report only what you can see in the frames, each with the second it is in. Never say the film is fine overall; if a frame has no problem, say nothing about it. At most 6 findings, the worst first. summary: one sentence on what you could not judge from stills (motion, sound, timing).`
+
+const FINAL_REVIEW_INSTRUCTIONS = `You are the independent reviewer of a finished product film (stage 7 of the method). You did not make it and you do not defend it; you start from a clean context and judge only what the inputs show.
+Inputs: the design spec (brief, chosen visual direction, colour / font / motion tokens, the feature → shot map with first-choice and fallback cards, the release check, the storyboard rows); for each shot of this part, the shot card's name, its known pitfalls, the card's REFERENCE frames (the motion as designed: entering / peak / settled) and the RENDERED frames of the film at the same moments, each labelled with its second; in the film part, the middle frame of each seam between shots.
+Check every item of the two checklists below that these inputs let you judge. Compare each rendered frame with its reference: the composition and stage of the motion must be the card's, the content must be the product's (its pages, pictures, words, colours), and no known pitfall may be broken. In the film part also judge the arc, the seams (both shots visible and joined, nothing blank), repeated taglines, the look staying one language, and legibility.
+Answer per check: id (the checklist's ID, e.g. S2, Q11, R1, F1, V3, D2), ok (true only with evidence in the frames), seconds (the frame seconds it is about), text (what you saw; for a failure, what must change), stage (where a failure is fixed: "3" storyboard / seams / order, "5" the shot itself, "6" sound, "none"). Never report the film as fine overall; report every failure you can see, worst first, and the passes you have evidence for. summary: one or two sentences on what stills cannot show (motion, sound, timing), which stays to be checked by playing the film.
+
+FINAL REVIEW CHECKLIST (final-review.md)
+${FINAL_REVIEW}
+
+AESTHETIC RULES (aesthetic-rules.md)
+${AESTHETIC_RULES}`
+
+const FINAL_REVIEW_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items', 'summary'],
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: 24,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'ok', 'seconds', 'text', 'stage'],
+        properties: { id: { type: 'string' }, ok: { type: 'boolean' }, seconds: { type: 'array', items: { type: 'number' } }, text: { type: 'string' }, stage: { type: 'string', enum: ['3', '5', '6', 'none'] } },
+      },
+    },
+    summary: { type: 'string' },
+  },
+} as const
 
 const REVIEW_JSON_SCHEMA = {
   type: 'object',
@@ -324,6 +355,55 @@ export async function POST(req: NextRequest) {
       const code = cleanAdaptedCode(raw?.code)
       if (!code) return NextResponse.json({ error: 'The agent returned no usable code', code: 'BAD_OUTPUT' }, { status: 502 })
       return NextResponse.json({ code, notes: str(raw?.notes, 400) })
+    }
+
+    if (body.mode === 'final-review') {
+      const img = (v: unknown) => (typeof v === 'string' && /^data:image\/(jpeg|png);base64,/.test(v) && v.length < 160_000 ? v : '')
+      const sec = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 10) / 10 : 0)
+      const images: string[] = []
+      const label = (image: string, what: string) => {
+        if (!image || images.length >= 40) return null
+        images.push(image)
+        return `image ${images.length}: ${what}`
+      }
+      const spec = body.spec && typeof body.spec === 'object' ? (body.spec as Record<string, any>) : {}
+      const shots = (Array.isArray(body.shots) ? body.shots : []).slice(0, 4).map((s: any) => ({
+        shot: str(s?.name, 120),
+        seconds: `${sec(s?.from)}–${sec(s?.to)}`,
+        pitfalls: (Array.isArray(s?.pitfalls) ? s.pitfalls : []).slice(0, 6).map((p: unknown) => str(p, 240)),
+        reference: (Array.isArray(s?.reference) ? s.reference : []).slice(0, 3).map((r: unknown, k: number) => label(img(r), `${str(s?.name, 80)} REFERENCE ${['entering', 'peak', 'settled'][k] ?? k}`)).filter(Boolean),
+        rendered: (Array.isArray(s?.rendered) ? s.rendered : []).slice(0, 3).map((r: any) => label(img(r?.image), `${str(s?.name, 80)} RENDERED at ${sec(r?.second)}s`)).filter(Boolean),
+      }))
+      const seams = (Array.isArray(body.seams) ? body.seams : []).slice(0, 10).map((s: any) => label(img(s?.image), `seam (${str(s?.kind, 12)}) at ${sec(s?.second)}s`)).filter(Boolean)
+      const frames = (Array.isArray(body.frames) ? body.frames : []).slice(0, 10).map((f: any) => label(img(f?.image), `film at ${sec(f?.second)}s`)).filter(Boolean)
+      if (!images.length) return NextResponse.json({ error: 'Frames are required', code: 'BAD_REQUEST' }, { status: 400 })
+      const raw = await callDirector(
+        key,
+        FINAL_REVIEW_INSTRUCTIONS,
+        JSON.stringify({
+          part: body.part === 'film' ? 'film' : 'shots',
+          spec: {
+            brief: str(spec.brief, 400),
+            product: str(spec.product, 120),
+            direction: str(spec.direction, 400),
+            tokens: spec.tokens && typeof spec.tokens === 'object' ? { background: str(spec.tokens.background, 20), text: str(spec.tokens.text, 20), accent: str(spec.tokens.accent, 20), font: str(spec.tokens.font, 80), motion: spec.tokens.motion && typeof spec.tokens.motion === 'object' ? `${str(spec.tokens.motion.label, 60)} · ${Number(spec.tokens.motion.mainFrames) || 0} f · ${str(spec.tokens.motion.easing, 40)} · overshoot ${Number(spec.tokens.motion.overshoot) || 1} · squash ${Number(spec.tokens.motion.squash) || 0}` : '' } : null,
+            mapping: (Array.isArray(spec.mapping) ? spec.mapping : []).slice(0, 10).map((m: any) => `${str(m?.feature, 100)} → ${str(m?.firstShot, 100)} (fallback ${str(m?.altShot, 100) || 'none'}), needs ${str(m?.pageState, 80)}`),
+            release: (Array.isArray(spec.release) ? spec.release : []).slice(0, 8).map((r: any) => `${str(r?.code, 6)} ${r?.ok ? '✓' : '✗'} ${str(r?.text, 200)}`),
+            storyboard: (Array.isArray(spec.scenes) ? spec.scenes : []).slice(0, 20).map((sc: any) => str(sc?.line, 260)),
+          },
+          shots,
+          seams,
+          frames,
+        }),
+        'motion_studio_final_review',
+        FINAL_REVIEW_JSON_SCHEMA,
+        images,
+      )
+      const items = (Array.isArray(raw?.items) ? raw.items : [])
+        .slice(0, 24)
+        .map((i: any) => ({ id: str(i?.id, 8), ok: i?.ok === true, seconds: (Array.isArray(i?.seconds) ? i.seconds : []).filter((n: unknown) => typeof n === 'number').slice(0, 6), text: str(i?.text, 320), stage: ['3', '5', '6'].includes(i?.stage) ? i.stage : 'none' }))
+        .filter((i: any) => i.id && i.text)
+      return NextResponse.json({ items, summary: str(raw?.summary, 400) })
     }
 
     if (body.mode === 'review') {

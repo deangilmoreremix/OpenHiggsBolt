@@ -30,6 +30,16 @@ export const CARD_SLOTS: Record<string, number> = {
   OutroGroupPhotoLaunch: 10,
   ProductCardProgressiveAssemble: 4,
   SpotlightHeroCard: 4,
+  AvatarBracketCarousel: 4,
+  BezierSourceConvergeMerge: 4,
+  ClonerDepthEcho: 8,
+  DrawSvgTrace: 1,
+  ContactShadowLift: 3,
+  IntegrationHubMap: 7,
+  PanelToCanvasMaterialize: 3,
+  CursorCastEnsemble: 6,
+  PaletteThemeRipple: 11,
+  ThemeSweepToggle: 1,
 };
 
 const words = (s: string) => new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3 && !STOP.has(w)));

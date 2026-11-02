@@ -21,10 +21,11 @@
 //   76–96   余波：开灯——今日胶囊 / 此刻线 / 窗口冷色轮廓光错峰亮起（EASE.out）
 //   96–140  hold：夜景定格，相机 1.0→1.02 极缓推、星点微闪
 import React from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Img, useCurrentFrame } from 'remotion';
 import { EASE, FONT, Grain, bezier, mix, ramp, velocity } from '../../_fixtures/Polish';
 import { alpha, springAt } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { realCard } from '../../_fixtures/liveTexture';
 
 export const THEME_SWEEP_TOGGLE_DURATION = 140;
 
@@ -166,6 +167,8 @@ const World: React.FC<{ th: Theme; knob: number; icon: number; lights: number; f
   const todayLit = n ? EASE.out(Math.min(1, Math.max(0, lights * 2.2))) : 0;
   const nowLit = n ? EASE.out(Math.min(1, Math.max(0, lights * 2.2 - 0.5))) : 0;
   const rimLit = n ? EASE.out(Math.min(1, Math.max(0, lights * 2.2 - 1))) : 0;
+  // 客户网站图片（无则为 null，原样绘制排期网格）：铺满窗口正文区，昼夜两版同一张、同一位置
+  const pic = realCard(0);
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       {/* 舞台：外扩 260px，相机特写时右上角也有底 */}
@@ -284,8 +287,11 @@ const World: React.FC<{ th: Theme; knob: number; icon: number; lights: number; f
         })}
 
         {/* 时间网格 */}
-        <div style={{ position: 'absolute', left: 0, top: GRID_Y, width: WIN.w, height: WIN.h - GRID_Y, borderTop: `1px solid ${th.line}` }}>
-          {Array.from({ length: H1 - H0 + 1 }, (_, k) => (
+        <div style={{ position: 'absolute', left: 0, top: GRID_Y, width: WIN.w, height: WIN.h - GRID_Y, borderTop: `1px solid ${th.line}`, overflow: pic ? 'hidden' : undefined }}>
+          {pic && <Img src={pic} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />}
+          {/* 夜版：图片上压一层窗口夜色，扫场边界经过时读得出昼夜 */}
+          {pic && n && <div style={{ position: 'absolute', inset: 0, background: alpha(th.win, 0.42) }} />}
+          {!pic && Array.from({ length: H1 - H0 + 1 }, (_, k) => (
             <React.Fragment key={k}>
               <div style={{ position: 'absolute', left: GUT, right: 36, top: k * HOUR, height: 1, background: th.line }} />
               <span style={{ position: 'absolute', left: 30, top: k * HOUR - 13, fontSize: 21, color: th.ink3, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
@@ -293,13 +299,13 @@ const World: React.FC<{ th: Theme; knob: number; icon: number; lights: number; f
               </span>
             </React.Fragment>
           ))}
-          {DAYS.map((_, i) => (
+          {!pic && DAYS.map((_, i) => (
             <div key={i} style={{ position: 'absolute', left: GUT + i * COL_W, top: 0, bottom: 0, width: 1, background: th.line }} />
           ))}
           {/* 今天整列的极淡底色 */}
-          <div style={{ position: 'absolute', left: GUT + TODAY * COL_W, top: 0, bottom: 0, width: COL_W, background: alpha(th.accent, n ? 0.04 : 0.035) }} />
+          {!pic && <div style={{ position: 'absolute', left: GUT + TODAY * COL_W, top: 0, bottom: 0, width: COL_W, background: alpha(th.accent, n ? 0.04 : 0.035) }} />}
           {/* 事件 */}
-          {EVENTS.map((ev, i) => {
+          {!pic && EVENTS.map((ev, i) => {
             const c = th.ev[ev.hue];
             const top = (ev.s - H0) * HOUR + 4;
             const h = (ev.e - ev.s) * HOUR - 8;
