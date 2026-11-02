@@ -1600,6 +1600,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    */
   const sourceMediaRef = useRef<string | null>(null)
   sourceMediaRef.current = source?.sourceMedia || null
+  // The demo's own video as an explicit undo target. Creating a final video
+  // later rewrites `source.sourceMedia`, so undo must not rely on it.
+  const sourceVideoRef = useRef<PreviewVideoRef | null>(null)
+  sourceVideoRef.current = source?.sourceMedia
+    ? { url: source.sourceMedia, poster: source.poster ?? null, title: source.title || 'Original video', kind: 'source' }
+    : null
   const fitPreviewLengthToVideo = useCallback(async (url: string | null | undefined, fallbackSeconds?: number) => {
     if (!url) return
     const clip = await readClipMetadata(url).catch(() => null)
@@ -1620,7 +1626,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       poster: null,
       title: `Full Body Recast — ${job.identityName || 'Presenter'}`,
       kind: 'recast',
-      beforeRecast: videoBeforeRecast(previewVideoRef.current),
+      beforeRecast: videoBeforeRecast(previewVideoRef.current) ?? sourceVideoRef.current,
       // The recast is silent; keep the performance clip's sound under it.
       audioUrl: preserveAudioRef.current && job.sourceUrl ? job.sourceUrl : null,
     })
@@ -1696,7 +1702,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       poster: null,
       title: asset.name,
       kind: 'recast',
-      beforeRecast: videoBeforeRecast(previewVideoRef.current),
+      beforeRecast: videoBeforeRecast(previewVideoRef.current) ?? sourceVideoRef.current,
       audioUrl: preserveAudioRef.current && asset.editMetadata?.sourceUrl ? asset.editMetadata.sourceUrl : null,
     })
     previewVideoRef.current = { url: asset.url, poster: null, title: asset.name, kind: 'recast' }

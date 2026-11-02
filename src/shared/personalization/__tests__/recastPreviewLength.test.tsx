@@ -142,7 +142,9 @@ describe('applying a recast sets the preview length', () => {
     await act(async () => {
       ctx().restoreOriginalVideo()
     })
-    expect(ctx().previewVideo).toBeNull()
+    // Undo goes to the demo's own video, kept as an explicit target (a final
+    // video run later rewrites the source's media, so it can't be relied on).
+    expect(ctx().previewVideo).toMatchObject({ url: ORIGINAL, kind: 'source' })
     expect(ctx().previewSettings.durationInFrames).toBe(5 * fps)
   })
 
