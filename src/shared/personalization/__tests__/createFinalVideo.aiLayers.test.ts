@@ -10,6 +10,7 @@ import { act } from 'react'
 import {
   cancelActiveExport,
   configureCapableBrowser,
+  getEncodableAudioCodecs,
   getCtx,
   renderMediaOnWeb,
   renderProvider,
@@ -138,6 +139,39 @@ describe('createFinalVideo with an AI mode', () => {
     expect(result.metadata.soundMissing).toBe(true)
     expect(result.metadata.publishUrl).toBe('')
     expect(String(result.metadata.layersNote)).toMatch(/sound couldn't be added/)
+  })
+
+  it("a selected Full Body Recast's performance clip is the sound of the final video", async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated('full_body', { sourceMedia: 'https://cdn.example/demo.mp4' })
+    await act(async () => {
+      getCtx(ref).setPreviewVideo({
+        url: 'https://cdn.example/recast.mp4', poster: null, title: 'Recast', kind: 'recast',
+        audioUrl: 'https://cdn.example/performance.mp4',
+      })
+    })
+
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+
+    expect(renderMediaOnWeb).toHaveBeenCalledTimes(1)
+    expect(renderMediaOnWeb.mock.calls[0][0].inputProps.audioUrl).toBe('https://cdn.example/performance.mp4')
+  })
+
+  it('a layered video exported without sound (no audio codec) says so and is not offered for publishing', async () => {
+    getEncodableAudioCodecs.mockResolvedValue([])
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openAuthenticated('full_body', { sourceMedia: 'https://cdn.example/demo.mp4' })
+
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+
+    const result = getCtx(ref).result
+    expect(result.metadata.layersBurnedIn).toBe(true)
+    expect(result.metadata.soundMissing).toBe(true)
+    expect(result.metadata.publishUrl).toBe('')
+    expect(String(result.metadata.layersNote)).toMatch(/couldn't add sound/)
   })
 
   it("Full presenter keeps the original video's sound under the silent recast", async () => {

@@ -5030,6 +5030,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // generated video in this browser, exactly as previewed.
       let burned: { url: string; extension: string; mimeType: string; blob: Blob; fileName: string } | null = null
       let layersNote: string | null = null
+      let exportWarning: string | null = null
+      let soundExpected = false
       if (burnInLayers && genResult.type === 'video' && genResult.url) {
         setGeneration((prev) => ({ ...prev, progress: 88, progressMessage: 'Adding your layers to the video…' }))
         try {
@@ -5047,11 +5049,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
             assets,
           })
           // Full presenter comes back silent: "Keep the original video's
-          // sound" puts the source video's audio under it.
+          // sound" puts the source video's audio under it. A selected Full
+          // Body Recast is itself silent; its sound is its performance clip.
           const inputVideoUrl = (resolved.directInputs.video_url as string | undefined) || source.sourceMedia || null
-          const inputProps = mode === 'full_body' && options.preserveAudio && !built.audioUrl && inputVideoUrl
-            ? { ...built, audioUrl: inputVideoUrl }
-            : built
+          const selectedVideoSound = previewVideo?.audioUrl || null
+          const keptSound = options.preserveAudio && !built.audioUrl
+            ? (mode === 'full_body' ? selectedVideoSound || inputVideoUrl : selectedVideoSound)
+            : null
+          const inputProps = keptSound ? { ...built, audioUrl: keptSound } : built
+          soundExpected = Boolean(inputProps.audioUrl) || (mode === 'full_body' && Boolean(options.preserveAudio))
           const exported = await exportPersonalizedVideo({
             inputProps,
             onProgress: (progress) => {
@@ -5060,6 +5066,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
             },
           })
           if (exported.ok) {
+            // e.g. no audio codec this browser can encode: the video is silent.
+            exportWarning = exported.warning || null
             const fileName = `personalized-${Date.now().toString(36)}.${exported.extension}`
             downloadWebExportBlob(exported.blob, fileName)
             // The previous layered video (if any) is no longer shown.
@@ -5104,8 +5112,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
 
       const finalUrl = burned?.url || postResult.finalUrl || genResult.url || ''
+      // The clip has none of the sound the run was meant to keep: either the
+      // layered render (which adds it) didn't happen, or it succeeded without
+      // audio because this browser can't encode any.
+      const soundDroppedByExport = Boolean(burned && exportWarning && soundExpected)
       const soundMissing = Boolean(
-        burnInLayers && !burned && mode === 'full_body' && options.preserveAudio && genResult.type === 'video' && genResult.url,
+        (burnInLayers && !burned && mode === 'full_body' && options.preserveAudio && genResult.type === 'video' && genResult.url)
+        || soundDroppedByExport,
       )
       // Shared media and history keep a stored (non-blob) URL: the layered
       // video itself, saved to storage; if that fails, the generated clip.
@@ -5140,13 +5153,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // A full presenter clip made silent for "Keep the original video's
           // sound" only gets that sound back in the layered render; without it
           // the clip is silent, so it isn't offered as the finished video.
-          publishUrl: burned ? (layeredStored ? storedUrl : '') : (soundMissing ? '' : finalUrl),
+          publishUrl: soundMissing ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
           ...(soundMissing ? { soundMissing: true } : {}),
-          ...(layersNote || soundMissing
+          ...(layersNote || soundMissing || exportWarning
             ? {
                 layersNote: [
                   layersNote ? `Your on-video layers couldn't be added in this browser (${layersNote}).` : '',
-                  soundMissing ? "The original video's sound couldn't be added either, so this clip is silent. Create the final video again in Chrome or Edge to add it." : '',
+                  soundDroppedByExport
+                    ? "This browser couldn't add sound to the video, so it is silent. Create the final video again in Chrome or Edge to keep the sound."
+                    : soundMissing
+                      ? "The original video's sound couldn't be added either, so this clip is silent. Create the final video again in Chrome or Edge to add it."
+                      : exportWarning || '',
                 ].filter(Boolean).join(' '),
               }
             : {}),
