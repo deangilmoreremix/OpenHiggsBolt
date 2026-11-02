@@ -100,6 +100,10 @@ export interface PreviewVideoRef {
    *  `"motion-studio"` for catalog-derived templates; the studio handoff uses
    *  this to locate the matching recipe. */
   sourceRepo?: string
+  /** For `kind: 'recast'`: the video shown before the recast, so "Use
+   *  original video" goes back to this project's own footage. Saved and
+   *  restored with the preview, so it never comes from another project. */
+  beforeRecast?: PreviewVideoRef | null
 }
 
 /** Optional customer audio track applied to the personalized preview. */

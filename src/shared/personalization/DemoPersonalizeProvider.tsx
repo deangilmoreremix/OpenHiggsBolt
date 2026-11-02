@@ -202,6 +202,34 @@ export function publishableUrl(result: GenerationResult | null | undefined): str
   return isRemote(result.url) ? result.url : ''
 }
 
+/**
+ * The video a new recast replaces. Recasting a recast keeps the original
+ * footage from before the first recast, so "Use original video" still goes
+ * back to it.
+ */
+export function videoBeforeRecast(current: PreviewVideoRef | null | undefined): PreviewVideoRef | null {
+  if (!current) return null
+  if (current.kind === 'recast') return current.beforeRecast ?? null
+  return current
+}
+
+/**
+ * A saved preview video that can be shown again. In-browser (blob:) URLs do
+ * not survive a reload, so they are dropped, including on the video a recast
+ * replaced.
+ */
+export function restorablePreviewVideo(stored: unknown): PreviewVideoRef | null {
+  if (!stored || typeof stored !== 'object') return null
+  const video = stored as PreviewVideoRef
+  if (typeof video.url !== 'string' || video.url.startsWith('blob:')) return null
+  if (video.kind !== 'recast') {
+    const rest = { ...video }
+    delete rest.beforeRecast
+    return rest
+  }
+  return { ...video, beforeRecast: restorablePreviewVideo(video.beforeRecast) }
+}
+
 function clampPreviewNumber(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback
   return Math.min(max, Math.max(min, n))
@@ -1518,21 +1546,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // ── Full Body Recast (Advanced Editing tab) ────────────────────────────────
   // The video shown before a recast was applied, so "Use original video" can
-  // undo it.
-  const [preRecastVideo, setPreRecastVideo] = useState<PreviewVideoRef | null>(null)
+  // undo it. It travels on the recast preview itself, so it is saved and
+  // restored with the project it belongs to.
+  const preRecastVideo = previewVideo?.kind === 'recast' ? previewVideo.beforeRecast ?? null : null
   const previewVideoRef = useRef<PreviewVideoRef | null>(null)
   previewVideoRef.current = previewVideo
   const recastMarkAppliedRef = useRef<() => void>(() => {})
 
   /** A finished recast becomes the video and is saved with the client's assets. */
   const handleRecastDone = useCallback((job: RecastJob) => {
-    const current = previewVideoRef.current
-    if (current?.kind !== 'recast') setPreRecastVideo(current)
     setPreviewVideo({
       url: job.resultUrl,
       poster: null,
       title: `Full Body Recast — ${job.identityName || 'Presenter'}`,
       kind: 'recast',
+      beforeRecast: videoBeforeRecast(previewVideoRef.current),
     })
     setAssets((prev) => {
       if ((prev.presenterVideos || []).some((asset) => asset.url === job.resultUrl)) return prev
@@ -1590,16 +1618,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   /** Undo: go back to the video shown before the recast was applied. */
   const restoreOriginalVideo = useCallback(() => {
     setPreviewVideo(preRecastVideo)
-    setPreRecastVideo(null)
   }, [preRecastVideo])
 
   /** Re-apply a saved recast video from the client's assets. */
   const applyPresenterVideo = useCallback((assetId: string) => {
     const asset = (assets.presenterVideos || []).find((candidate) => candidate.id === assetId)
     if (!asset) return
-    const current = previewVideoRef.current
-    if (current?.kind !== 'recast') setPreRecastVideo(current)
-    setPreviewVideo({ url: asset.url, poster: null, title: asset.name, kind: 'recast' })
+    setPreviewVideo({
+      url: asset.url,
+      poster: null,
+      title: asset.name,
+      kind: 'recast',
+      beforeRecast: videoBeforeRecast(previewVideoRef.current),
+    })
   }, [assets.presenterVideos])
 
   const removePresenterVideo = useCallback((assetId: string) => {
@@ -1611,7 +1642,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Removing the video in use goes back to the video from before the recast.
     if (removed && previewVideoRef.current?.kind === 'recast' && previewVideoRef.current.url === removed.url) {
       setPreviewVideo(preRecastVideo)
-      setPreRecastVideo(null)
     }
   }, [assets.presenterVideos, preRecastVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
@@ -2087,14 +2117,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         : normalizePreviewSettings(stored.previewSettings),
     )
     const storedVideo = stored.previewVideo
-    setPreviewVideo(
-      storedVideo &&
-      typeof storedVideo === 'object' &&
-      typeof (storedVideo as PreviewVideoRef).url === 'string' &&
-      !(storedVideo as PreviewVideoRef).url.startsWith('blob:')
-        ? (storedVideo as PreviewVideoRef)
-        : null,
-    )
+    setPreviewVideo(restorablePreviewVideo(storedVideo))
     const storedStep = stored.guidedStep
     setGuidedStepState(
       typeof storedStep === 'number' && storedStep >= 1 && storedStep <= 4
@@ -2253,14 +2276,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       entry.previewVideo !== undefined && entry.previewVideo !== null
         ? entry.previewVideo
         : stored?.previewVideo
-    setPreviewVideo(
-      storedVideo &&
-      typeof storedVideo === 'object' &&
-      typeof (storedVideo as PreviewVideoRef).url === 'string' &&
-      !(storedVideo as PreviewVideoRef).url.startsWith('blob:')
-        ? (storedVideo as PreviewVideoRef)
-        : null,
-    )
+    setPreviewVideo(restorablePreviewVideo(storedVideo))
     const storedStep =
       typeof entry.guidedStep === 'number' ? entry.guidedStep : stored?.guidedStep
     setGuidedStepState(
