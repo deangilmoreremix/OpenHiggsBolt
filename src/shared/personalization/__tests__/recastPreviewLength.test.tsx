@@ -95,7 +95,10 @@ describe('applying a recast sets the preview length', () => {
       ctx().openPersonalize({
         source: { id: 'demo-len', title: 'Demo', mediaType: 'video', originalPrompt: 'p', sourceMedia: ORIGINAL, poster: null, fullPrompt: 'p', shortPrompt: 'p', sourceType: 'landing-demo', sourceMetadata: {} },
         initialAssets: {
-          presenterVideos: [{ id: 'pv-1', url: RECAST, name: 'Recast', type: 'presenter_video', source: 'url', mimeType: 'video/mp4', editMetadata: { operation: 'full_body_recast', sourceUrl: 'https://cdn.example.com/performance.mp4' } }],
+          presenterVideos: [
+            { id: 'pv-1', url: RECAST, name: 'Recast', type: 'presenter_video', source: 'url', mimeType: 'video/mp4', editMetadata: { operation: 'full_body_recast', sourceUrl: 'https://cdn.example.com/performance.mp4' } },
+            { id: 'pv-2', url: 'https://cdn.example.com/recast-two.mp4', name: 'Recast two', type: 'presenter_video', source: 'url', mimeType: 'video/mp4', editMetadata: { operation: 'full_body_recast' } },
+          ],
         },
       })
     })
@@ -164,5 +167,24 @@ describe('applying a recast sets the preview length', () => {
       ctx().applyPresenterVideo('pv-1')
     })
     expect(ctx().previewVideo.audioUrl).toBeNull()
+  })
+
+  it('undo after applying two recasts goes back to the chosen demo video, not the source', async () => {
+    await act(async () => { ctx().applyPresenterVideo('pv-1') })
+    await act(async () => { ctx().applyPresenterVideo('pv-2') })
+    expect(ctx().previewVideo.url).toBe('https://cdn.example.com/recast-two.mp4')
+
+    await act(async () => { ctx().restoreOriginalVideo() })
+    expect(ctx().previewVideo).toMatchObject({ url: ORIGINAL, kind: 'demo' })
+  })
+
+  it("another account signing in removes the previous account's recast from the preview", async () => {
+    await act(async () => { ctx().applyPresenterVideo('pv-1') })
+    expect(ctx().previewVideo.kind).toBe('recast')
+
+    await act(async () => {
+      root.render(<DemoPersonalizeProvider userScope="another-account"><Capture /></DemoPersonalizeProvider>)
+    })
+    expect(ctx().previewVideo).toBeNull()
   })
 })

@@ -84,6 +84,10 @@ describe('createFinalVideo with an AI mode', () => {
     const result = getCtx(ref).result
     expect(result.url).toBe('blob:http://localhost/final')
     expect(result.metadata).toMatchObject({ layersBurnedIn: true, generatedUrl: GENERATED })
+    // Storing the layered copy failed in this harness (no upload): the live
+    // result says the saved copy lacks the layers.
+    expect(result.metadata.layersMissing).toBe(true)
+    expect(String(result.metadata.layersNote)).toMatch(/saved copy/)
   })
 
   it('falls back to the watermark and says why when the browser cannot render', async () => {

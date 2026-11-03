@@ -4942,7 +4942,7 @@ function ConfigurationView(props: any) {
             {/* Only Full presenter changes the sound (its model returns a
                 silent video); the other modes keep the clip's own audio. */}
             {mode === 'full_body' && (
-            <div className="flex items-end">
+            <div className="flex flex-col justify-end gap-1">
               <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: C.muted }}>
                 <input
                   type="checkbox"
@@ -4952,6 +4952,13 @@ function ConfigurationView(props: any) {
                 />
                 Keep the original video&apos;s sound
               </label>
+              {/* Full presenter clips come back silent; only the final-video
+                  render can put the original sound back under them. */}
+              {mode === 'full_body' && (
+                <span data-testid="pz-preserve-audio-note" className="text-[10px]" style={{ color: C.muted }}>
+                  Applies to Create final video. A quick Generate uses the AI&apos;s own sound.
+                </span>
+              )}
             </div>
             )}
           </div>

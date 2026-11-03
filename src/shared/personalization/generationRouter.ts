@@ -137,6 +137,14 @@ function getFallbackModel(source: PersonalizationSource, mode: VideoPersonalizat
 
 // ── Main Entry ───────────────────────────────────────────────────────────────
 
+/** Frame shapes Seedance motion control accepts besides 'adaptive' (packages/studio/src/models.js). */
+const MOTION_CONTROL_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21']
+
+/** The approved aspect ratio for a Full Presenter run, or 'adaptive' when the model doesn't offer it. */
+export function motionControlAspectRatio(aspectRatio: string | null | undefined): string {
+  return aspectRatio && MOTION_CONTROL_ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : 'adaptive'
+}
+
 export async function runGeneration(input: GenerationInput): Promise<GenerationResult> {
   const { source, resolved, prompt, mode, options, apiKey, onProgress, restoresSourceAudio } = input
 
@@ -352,7 +360,9 @@ async function handleVideoGeneration({
         model: videoModel,
         video_url: videoUrl,
         images_list: [identityUrl],
-        aspect_ratio: 'adaptive',
+        // The approved frame shape when the model offers it; otherwise the
+        // clip keeps its own shape (the layers are fitted to it afterwards).
+        aspect_ratio: motionControlAspectRatio(options.aspectRatio),
         duration: clampRecastDuration(options.duration || source.duration || 5),
         // "Keep the original video's sound" puts the source audio back on in
         // the final render. Any other run (plain Generate, the assistant)

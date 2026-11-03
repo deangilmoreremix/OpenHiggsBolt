@@ -141,14 +141,20 @@ function offerNodes(node: JsonObject | null): JsonObject[] {
   }
   add(node.makesOffer)
   add(node.offers)
-  // A page may publish one catalog or several. A catalog lists ListItems
-  // whose offer sits under `item`.
-  const catalogs = Array.isArray(node.hasOfferCatalog) ? node.hasOfferCatalog : [node.hasOfferCatalog]
-  for (const catalog of catalogs) {
-    if (!isObject(catalog)) continue
+  // A page may publish one catalog or several, and a catalog may list
+  // sub-catalogs (a few levels at most). A catalog lists ListItems whose
+  // offer sits under `item`.
+  const visitCatalog = (catalog: unknown, depth: number): void => {
+    if (!isObject(catalog) || depth > 3) return
     const entries = Array.isArray(catalog.itemListElement) ? catalog.itemListElement : [catalog.itemListElement]
-    add(entries.map((entry) => (isObject(entry) && isObject(entry.item) ? entry.item : entry)))
+    for (const entry of entries) {
+      const item = isObject(entry) && isObject(entry.item) ? entry.item : entry
+      if (isObject(item) && typesOf(item).some((type) => type.toLowerCase() === 'offercatalog')) visitCatalog(item, depth + 1)
+      else add(item)
+    }
   }
+  const catalogs = Array.isArray(node.hasOfferCatalog) ? node.hasOfferCatalog : [node.hasOfferCatalog]
+  for (const catalog of catalogs) visitCatalog(catalog, 0)
   return out
 }
 

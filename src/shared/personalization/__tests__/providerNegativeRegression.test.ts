@@ -480,4 +480,14 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
       expect(muapiCalls.processMotionControl[0]).toMatchObject({ generate_audio: true })
     })
   })
+
+describe('Full Presenter frame shape', () => {
+  it('sends the approved aspect ratio when the model offers it, else adaptive', async () => {
+    const { motionControlAspectRatio } = await vi.importActual<typeof import('../generationRouter')>('../generationRouter')
+    expect(motionControlAspectRatio('9:16')).toBe('9:16')
+    expect(motionControlAspectRatio('16:9')).toBe('16:9')
+    expect(motionControlAspectRatio('4:5')).toBe('adaptive')
+    expect(motionControlAspectRatio(undefined)).toBe('adaptive')
+  })
+})
 })

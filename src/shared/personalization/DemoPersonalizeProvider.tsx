@@ -192,7 +192,12 @@ export function withoutAutoImported(prev: AssetLibrary, ids: ReadonlySet<string>
   const logos = prev.logos.filter((asset) => !isAuto(asset))
   const primaryWasAuto = isAuto(prev.primaryLogo)
   const promoted = primaryWasAuto && logos[0] ? { ...logos[0], isPrimary: true } : null
-  const identities = prev.identities.filter((asset) => !isAuto(asset))
+  const keptIdentities = prev.identities.filter((asset) => !isAuto(asset))
+  const identityWasAuto = isAuto(prev.primaryIdentity)
+  const promotedIdentity = identityWasAuto && keptIdentities[0] ? { ...keptIdentities[0], isPrimary: true } : null
+  const identities = promotedIdentity
+    ? keptIdentities.map((asset) => (asset.id === promotedIdentity.id ? promotedIdentity : asset))
+    : keptIdentities
   return {
     ...prev,
     logos: promoted ? logos.map((asset) => (asset.id === promoted.id ? promoted : asset)) : logos,
@@ -200,7 +205,7 @@ export function withoutAutoImported(prev: AssetLibrary, ids: ReadonlySet<string>
     products: prev.products.filter((asset) => !isAuto(asset)),
     brandReferences: prev.brandReferences.filter((asset) => !isAuto(asset)),
     identities,
-    primaryIdentity: isAuto(prev.primaryIdentity) ? identities[0] ?? null : prev.primaryIdentity,
+    primaryIdentity: identityWasAuto ? promotedIdentity : prev.primaryIdentity,
     firstFrame: isAuto(prev.firstFrame) ? null : prev.firstFrame,
     lastFrame: isAuto(prev.lastFrame) ? null : prev.lastFrame,
     ctaGraphic: isAuto(prev.ctaGraphic) ? null : prev.ctaGraphic,
@@ -1361,6 +1366,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const businessSessionRef = useRef(0)
   // Each discoverAssets call; a superseded call's results are dropped.
   const discoveryRequestRef = useRef(0)
+  // Each findBusinesses call; a cleared or superseded search's results are dropped.
+  const businessSearchRequestRef = useRef(0)
   // Set once removeAutoImportedAssets is declared (it is declared later).
   const removeAutoImportedAssetsRef = useRef<(() => void) | null>(null)
   // Discovered-asset ids that were placed automatically for this business.
@@ -1859,8 +1866,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setVisionStatus('idle')
     setVisionError(null)
     setBusinessResearch({ status: 'idle' })
-    // A search dropped by the guard above must not leave the form busy.
-    setBusinessSearchMode((mode) => (mode === 'searching' ? 'idle' : mode))
+    // The next project starts with an empty business search; a search dropped
+    // by the guard above must not leave the form busy either.
+    businessSearchRequestRef.current += 1
+    setSelectedBusiness(null)
+    setBusinessSearchResults([])
+    setBusinessSearchQuery(null)
+    setBusinessSearchError(null)
+    setBusinessLoadSummary(null)
+    setBusinessSearchMode('idle')
   }, [])
 
   // ── Reset on source change ─────────────────────────────────────────────────
@@ -1941,6 +1955,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const ownerChanged = recastVideosOwnerRef.current !== null && recastVideosOwnerRef.current !== recastOwner
     recastVideosOwnerRef.current = recastOwner
     if (ownerChanged) {
+      // The previous account's recast must not stay on screen (or be used to
+      // generate, or be saved) for the new account.
+      setPreviewVideo((prev) => (prev?.kind === 'recast' ? null : prev))
       setAssets((prev) => ({
         ...prev,
         presenterVideos: (prev.presenterVideos || []).filter((asset) => asset.editMetadata?.operation !== 'full_body_recast'),
@@ -4104,6 +4121,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setVisionError(null)
     // Results for a business or project that is no longer open are dropped.
     const visionSession = businessSessionRef.current
+    // A new discovery (same business) replaces the assets being analysed.
+    const visionDiscovery = discoveryRequestRef.current
+    const visionStale = () => visionSession !== businessSessionRef.current || visionDiscovery !== discoveryRequestRef.current
 
     const sectionForCategory = (category: DiscoveredAssetCategory): AssignedSection => {
       if (category === 'person') return 'person'
@@ -4167,7 +4187,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           if (analysis?.id) analysesById.set(analysis.id, analysis as PersonalizationVisionAnalysis)
         }
       }
-      if (visionSession !== businessSessionRef.current) return
+      if (visionStale()) return
 
       setDiscoveredAssetsState((previous) => previous.map((asset) => {
         const analysis = analysesById.get(asset.id)
@@ -4235,7 +4255,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
       setVisionStatus('complete')
     } catch (error) {
-      if (visionSession !== businessSessionRef.current) return
+      if (visionStale()) return
       setVisionStatus('error')
       setVisionError(error instanceof Error ? error.message : 'Vision analysis failed')
     }
@@ -4255,6 +4275,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const findBusinesses = useCallback(async (niche: string, location: string, radiusMiles: number) => {
     // Results for a project that has since been closed or changed are dropped.
     const searchSession = businessSessionRef.current
+    const searchRequest = ++businessSearchRequestRef.current
+    const stale = () => searchSession !== businessSessionRef.current || searchRequest !== businessSearchRequestRef.current
     setBusinessSearchError(null)
     setBusinessSearchMode('searching')
     setBusinessSearchQuery({ niche, location, radiusMiles })
@@ -4279,7 +4301,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
 
       const data = await res.json()
-      if (searchSession !== businessSessionRef.current) return
+      if (stale()) return
       const businesses = Array.isArray(data?.businesses) ? data.businesses : []
       const query = data?.query || { niche, location, radiusMiles }
 
@@ -4290,7 +4312,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
       }
     } catch (err) {
-      if (searchSession !== businessSessionRef.current) return
+      if (stale()) return
       const message = err instanceof Error ? err.message : 'Business search failed'
       setBusinessSearchError(message)
       setBusinessSearchMode('error')
@@ -4765,6 +4787,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [access, source, discoverAssets, discoverDemoAssets, fetchBusinessResearch, mergeResearchIntoClientForm, selectBusiness, setDiscoveryError, setDiscoveryStatus, setVisionError, setVisionStatus])
 
   const clearBusinessSearch = useCallback(() => {
+    // A search still in flight must not refill the cleared form.
+    businessSearchRequestRef.current += 1
     setBusinessSearchMode('idle')
     setBusinessSearchResults([])
     setBusinessSearchError(null)
@@ -5143,6 +5167,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // History keeps the generated clip (without the layers).
         }
       }
+      // The layered video was made and downloaded, but storing it failed.
+      const savedCopyMissingLayers = Boolean(burned && !layeredStored)
       const resultWithPostProcessing: GenerationResult = {
         ...genResult,
         url: finalUrl,
@@ -5160,10 +5186,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // the clip is silent, so it isn't offered as the finished video.
           publishUrl: soundMissing ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
           ...(soundMissing ? { soundMissing: true } : {}),
-          ...(layersNote || soundMissing || exportWarning
+          ...(layersNote || soundMissing || exportWarning || savedCopyMissingLayers
             ? {
                 layersNote: [
                   layersNote ? `Your on-video layers couldn't be added in this browser (${layersNote}).` : '',
+                  savedCopyMissingLayers
+                    ? "Your video with the layers was downloaded, but its saved copy couldn't be stored, so the saved copy doesn't include them. Create the final video again to save it."
+                    : '',
                   soundDroppedByExport
                     ? "This browser couldn't add sound to the video, so it is silent. Create the final video again in Chrome or Edge to keep the sound."
                     : soundMissing

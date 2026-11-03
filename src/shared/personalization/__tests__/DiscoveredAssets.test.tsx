@@ -1201,4 +1201,44 @@ describe('Discovered Assets Integration', () => {
     expect(ctx().businessSearchMode).not.toBe('results')
     expect(ctx().businessSearchResults).toHaveLength(0)
   })
+  it('a cleared business search ignores a response that arrives afterwards', async () => {
+    await renderProvider()
+    await openSource()
+
+    let finish: () => void = () => {}
+    const pending = new Promise<void>((resolve) => { finish = resolve })
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/find-businesses')) {
+        await pending
+        return { ok: true, status: 200, json: async () => ({ businesses: [{ id: 'b1', name: 'Stale Plumbing' }] }) } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    const ctx = () => (window as any).__personalizationCtx
+    let run: Promise<void> = Promise.resolve()
+    await act(async () => { run = ctx().findBusinesses('plumber', 'Tampa', 10) })
+    await act(async () => { ctx().clearBusinessSearch() })
+    await act(async () => { finish(); await run })
+
+    expect(ctx().businessSearchMode).toBe('idle')
+    expect(ctx().businessSearchResults).toHaveLength(0)
+  })
+
+  it('closing the project clears the business selection and search for the next one', async () => {
+    await renderProvider()
+    await openSource()
+    const ctx = () => (window as any).__personalizationCtx
+    await act(async () => {
+      ctx().selectBusiness({ id: 'url:https://acme.example', name: 'Acme Plumbing', website: 'https://acme.example' })
+    })
+    expect(ctx().selectedBusiness?.name).toBe('Acme Plumbing')
+
+    await act(async () => { ctx().closePersonalize() })
+    await openSource()
+    expect(ctx().selectedBusiness).toBeNull()
+    expect(ctx().businessSearchMode).toBe('idle')
+    expect(ctx().businessLoadSummary).toBeNull()
+  })
 })

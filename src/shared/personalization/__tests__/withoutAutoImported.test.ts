@@ -21,8 +21,9 @@ describe('withoutAutoImported', () => {
       ctaGraphic: auto1,
       products: [auto2],
     }, AUTO)
-    expect(next.identities).toEqual([manual])
-    expect(next.primaryIdentity).toEqual(manual)
+    // Flag and pointer together, as for logos.
+    expect(next.identities).toEqual([{ ...manual, isPrimary: true }])
+    expect(next.primaryIdentity).toMatchObject({ id: 'm1', isPrimary: true })
     expect(next.firstFrame).toBeNull()
     expect(next.lastFrame).toBeNull()
     expect(next.ctaGraphic).toBeNull()
