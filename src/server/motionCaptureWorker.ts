@@ -14,13 +14,21 @@ import {
   captureIsEmpty,
   storeCaptureImages,
   WORKER_WATCHDOG_MS,
+  readCaptureJob,
   writeCaptureJob,
   type CaptureJob,
   type CaptureStorage,
 } from './motionCapture'
 
-/** How long the background capture may take: the host allows minutes, the client stops waiting after ~2. */
-export const WORKER_CAPTURE_OPTIONS = { hardMs: 720_000, budgetMs: 600_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true } as const
+/**
+ * The quick capture before the storyboard (pipeline stage 0, the product check): the home page at 2x with
+ * its cards, bands, words, colours and logo, a few more routes, and the list of the site's pages. The pages
+ * the storyboard needs are captured after it is approved (stage 4, targeted jobs). A run of the deep
+ * whole-site capture on production went past the host's 15-minute limit and was retried by it.
+ */
+export const WORKER_CAPTURE_OPTIONS = { hardMs: 100_000, budgetMs: 75_000, firstShotMs: 25_000, navigationMs: 30_000, deep: true, maxRoutes: 6 } as const
+/** The asset finder (people, products, logo found across the site) gets this long next to the quick capture. */
+export const QUICK_ASSETS_MS = 60_000
 
 export interface MotionCaptureJobRequest {
   jobId: string
@@ -77,8 +85,22 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
     write({ state: 'error', finishedAt: new Date().toISOString(), code, error: message, ...(timing && typeof timing === 'object' ? { timing: timing as Record<string, number> } : {}) })
 
   const run = async () => {
+    // The host retries a background function that died: a job that is no longer running (finished, failed,
+    // given up on, or stale) is never captured a second time.
+    const current = await readCaptureJob(storage, userId, jobId).catch(() => null)
+    if (current && current.state !== 'running') {
+      saved = true
+      return
+    }
     // The asset finder crawls the site's pages for its own pictures while the browser photographs it.
-    const assetsRun = job.targeted ? Promise.resolve({ assets: [], logo: null }) : findMotionAssets(url, { budgetMs: 600_000 }).catch(() => ({ assets: [], logo: null }))
+    const none = { assets: [], logo: null }
+    // Whatever the finder has not found in its time is left out (a late answer never holds up the capture).
+    const assetsRun = job.targeted
+      ? Promise.resolve(none)
+      : Promise.race([
+          findMotionAssets(url, { budgetMs: QUICK_ASSETS_MS }).catch(() => none),
+          new Promise<typeof none>((resolve) => setTimeout(() => resolve(none), QUICK_ASSETS_MS + 15_000)),
+        ])
     let capture: PageCapture
     try {
       capture = await capturePageScreenshots(url, { ...captureOptions })
@@ -107,7 +129,7 @@ export async function runMotionCapture(job: MotionCaptureJobRequest, storage: Ca
       running,
       new Promise<void>((resolve) => {
         watchdog = setTimeout(() => {
-          resolve(fail('TIMEOUT', 'The capture took longer than 8 minutes'))
+          resolve(fail('TIMEOUT', `The capture took longer than ${Math.round((opts.watchdogMs ?? WORKER_WATCHDOG_MS) / 60_000)} minutes`))
         }, opts.watchdogMs ?? WORKER_WATCHDOG_MS)
       }),
     ])

@@ -117,8 +117,11 @@ export type CaptureJob =
   | { state: 'done'; finishedAt: string; capture: ReturnType<typeof buildCaptureResponse> }
   | { state: 'error'; finishedAt: string; code: string; error: string; timing?: Record<string, number> }
 
-/** The whole background job (capture + upload) gets this long, then the worker writes a `timed out` record. */
-export const WORKER_WATCHDOG_MS = 780_000
+/**
+ * The whole background job (quick capture + upload) gets this long, then the worker writes a `timed out`
+ * record — far inside the host's 15-minute limit for background functions (a run past it is killed and retried).
+ */
+export const WORKER_WATCHDOG_MS = 240_000
 /** A record still `running` this long after it started belongs to a worker that died (memory, host limit). */
 export const CAPTURE_JOB_STALE_MS = WORKER_WATCHDOG_MS + 15_000
 

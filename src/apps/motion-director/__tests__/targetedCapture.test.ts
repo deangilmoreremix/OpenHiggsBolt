@@ -20,9 +20,14 @@ const plan = (assets: string[]): DirectorPlan => ({ title: 't', summary: '', pal
 
 describe('pipeline stage 4: capture the page states the storyboard needs', () => {
   it('finds rows whose page was not captured among the site\'s links; captured pages and unknown states ask for nothing', () => {
-    const need = neededPages(plan(['services page', 'pricing table', 'client testimonials', 'hero', 'a page nobody links']), base);
+    const need = neededPages(plan(['services page', 'pricing table', 'client testimonials', 'hero', 'a page nobody links']), base, 4, 0);
     expect(need.map((n) => [n.scene, n.link.path])).toEqual([[1, '/pricing'], [2, '/testimonials']]);
     expect(neededPages(plan(['pricing']), { ...base, partial: true })).toEqual([]);
+  });
+
+  it('after the quick capture, a couple more of the site\'s own pages are captured too (best first, never twice)', () => {
+    const need = neededPages(plan(['pricing table']), base);
+    expect(need.map((n) => [n.scene, n.link.path])).toEqual([[0, '/pricing'], [-1, '/testimonials']]);
   });
 
   it('merges the targeted page and its crops into the capture, keeping crop info in step', () => {
