@@ -45,3 +45,18 @@ describe('EditStudio', () => {
     expect(screen.queryByRole('button', { name: 'Open Face Swap' })).toBeNull();
   });
 });
+
+describe('EditStudio thumbnails', () => {
+  afterEach(() => cleanup());
+
+  it('shows the AI thumbnail once loaded and keeps the gradient if it fails', () => {
+    window.history.replaceState(null, '', '/studio/edit');
+    const { container } = render(<EditStudio apiKey="" />);
+    const images = container.querySelectorAll('img[src^="/thumbnails/edit-tools/"]');
+    expect(images.length).toBe(EDIT_TOOLS.length);
+    fireEvent.load(images[0]);
+    expect(images[0].className).toContain('opacity-100');
+    fireEvent.error(images[1]);
+    expect(container.querySelectorAll('img[src^="/thumbnails/edit-tools/"]').length).toBe(EDIT_TOOLS.length - 1);
+  });
+});

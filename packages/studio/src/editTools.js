@@ -48,6 +48,10 @@ const all = (catalog) => where(catalog, () => true);
 
 export const EDIT_TOOL_CATEGORIES = Object.freeze(['All', 'Image', 'Video', 'Audio']);
 
+// AI thumbnails made by scripts/generate-edit-tool-thumbnails.mjs. A card
+// falls back to its gradient + icon if the file is missing.
+export const EDIT_TOOL_THUMBNAIL_DIR = '/thumbnails/edit-tools';
+
 export const EDIT_TOOLS = Object.freeze([
   {
     slug: 'ai-image-generator',
@@ -197,7 +201,7 @@ export const EDIT_TOOLS = Object.freeze([
     gradient: 'from-rose-300/40 via-pink-500/30 to-violet-800/40',
     models: () => [...byIds('t2i', ['ai-anime-generator']), ...byIds('i2i', ['ai-ghibli-style'])],
   },
-]);
+].map((tool) => ({ thumbnail: `${EDIT_TOOL_THUMBNAIL_DIR}/${tool.slug}.webp`, ...tool })));
 
 export function getEditToolBySlug(slug) {
   return EDIT_TOOLS.find((tool) => tool.slug === slug) || null;

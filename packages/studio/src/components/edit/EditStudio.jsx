@@ -24,6 +24,8 @@ function readSlugFromLocation() {
 
 export function EditToolCard({ tool, onOpen }) {
   const modelCount = useMemo(() => getEditToolModels(tool).length, [tool]);
+  // Gradient + icon show until the AI thumbnail loads, and stay if it fails.
+  const [thumbnailState, setThumbnailState] = useState("loading");
   return (
     <article>
       <button
@@ -33,24 +35,33 @@ export function EditToolCard({ tool, onOpen }) {
         className="group flex w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0a] text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#22d3ee]/40 hover:shadow-xl hover:shadow-[#22d3ee]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22d3ee]"
       >
         <div className={`relative aspect-video w-full overflow-hidden bg-gradient-to-br ${tool.gradient}`}>
-          {tool.thumbnail ? (
-            <img src={tool.thumbnail} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <>
-              <div
-                className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)",
-                  backgroundSize: "22px 22px",
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="rounded-2xl border border-white/20 bg-black/30 p-4 text-white shadow-2xl backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
-                  <EditToolIcon name={tool.icon} className="h-10 w-10" />
-                </div>
-              </div>
-            </>
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)",
+              backgroundSize: "22px 22px",
+            }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="rounded-2xl border border-white/20 bg-black/30 p-4 text-white shadow-2xl backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+              <EditToolIcon name={tool.icon} className="h-10 w-10" />
+            </div>
+          </div>
+          {tool.thumbnail && thumbnailState !== "failed" && (
+            <img
+              src={tool.thumbnail}
+              alt=""
+              loading="lazy"
+              onLoad={() => setThumbnailState("loaded")}
+              onError={() => setThumbnailState("failed")}
+              className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                thumbnailState === "loaded" ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          )}
+          {thumbnailState === "loaded" && (
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
           )}
           <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/80">
             {tool.media}

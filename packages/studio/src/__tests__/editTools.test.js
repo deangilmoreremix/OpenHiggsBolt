@@ -140,3 +140,13 @@ describe('Edit Studio runner', () => {
     expect(params).toMatchObject({ _modelId: 'suno-create-music', model: 'V5', style: 'Jazz', prompt: 'song' });
   });
 });
+
+describe('Edit Studio AI thumbnails', () => {
+  it('every tool points at its generated thumbnail and has a generation prompt', async () => {
+    const { THUMBNAIL_PROMPTS } = await import('../../../../scripts/generate-edit-tool-thumbnails.mjs');
+    expect(Object.keys(THUMBNAIL_PROMPTS).sort()).toEqual(EDIT_TOOLS.map((tool) => tool.slug).sort());
+    for (const tool of EDIT_TOOLS) {
+      expect(tool.thumbnail).toBe(`/thumbnails/edit-tools/${tool.slug}.webp`);
+    }
+  });
+});
