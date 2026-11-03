@@ -206,15 +206,13 @@ function isSuperUserEmail(email) {
 }
 
 /**
- * Base SmartVideo GO access. Every signed-in Clerk user gets this by default
- * — no purchase required. A non-qualifying entitlement status (expired /
- * revoked) removes it unless the user is a super user.
+ * Base SmartVideo GO access: requires an owner-granted entitlement row.
  */
 function hasSmartVideoGo(entitlements, status) {
-  const ents = entitlements || {};
-  if (ents.smartvideo_go === true || ents.founders === true) return true;
+  // Same rule as src/access/entitlements.ts: an owner-granted row is required.
   if (status === 'revoked') return false;
-  return true;
+  const ents = entitlements || {};
+  return ents.smartvideo_go === true || ents.smartvideo_ai === true || ents.founders === true;
 }
 
 /**
@@ -275,7 +273,7 @@ async function resolveHasSmartVideoGo(supabase, userId, email) {
   // Real row status (undefined when there is no row) — see hasSmartVideoGo.
   const status = row?.status || undefined;
 
-  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  // Base access requires an owner-granted row (see hasSmartVideoGo).
   const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
   const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
 

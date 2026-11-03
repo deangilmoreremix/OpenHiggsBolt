@@ -44,27 +44,44 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
   const [isLoading, setIsLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, source: 'default' });
 
-  // When the access check itself fails (e.g. the server times out), a
-  // signed-in user keeps base SmartVideo GO access — every signed-in user has
-  // it by default — instead of being dropped into Preview Mode. Paid upgrades
-  // (GO-Viral) stay locked unless the user is the super user.
-  const signedInFallback = useCallback((): AccessResult => {
+  // Last access the server confirmed for this user, kept in this browser.
+  // When the check itself fails (e.g. the database times out) we reuse it,
+  // so a granted user is not dropped into Preview Mode and an ungranted one
+  // is never let in. Server routes still enforce access on their own.
+  const cacheKey = user?.id ? `smartvideo_access_v1:${user.id}` : '';
+  const readCachedAccess = useCallback((): AccessResult | null => {
+    if (!cacheKey) return null;
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      const parsed = raw ? (JSON.parse(raw) as AccessResult) : null;
+      if (parsed && parsed.state !== 'signed_out' && parsed.access?.clerkUserId === user?.id) {
+        return parsed;
+      }
+    } catch {
+      // storage unavailable
+    }
+    return null;
+  }, [cacheKey, user?.id]);
+
+  const fallbackAccess = useCallback((): AccessResult => {
+    const cached = readCachedAccess();
+    if (cached) return cached;
     const emails = (user?.emailAddresses || []).map((e) => e?.emailAddress || '');
     const superUser = emails.some((e) => isSuperUserEmail(e));
     return {
-      state: 'paid',
+      state: superUser ? 'paid' : 'authenticated_unpaid',
       access: {
         clerkUserId: user?.id || '',
         email: emails[0] || '',
-        entitlements: { smartvideo_go: true },
-        status: 'active',
+        entitlements: { smartvideo_go: superUser },
+        status: superUser ? 'active' : 'inactive',
         source: 'fallback',
-        hasSmartVideoGo: true,
+        hasSmartVideoGo: superUser,
         hasSmartVideoViral: superUser,
         isSuperUser: superUser,
       },
     };
-  }, [user?.id, user?.emailAddresses]);
+  }, [readCachedAccess, user?.id, user?.emailAddresses]);
 
   const refreshAccess = useCallback(async () => {
     if (!isSignedIn) {
@@ -74,20 +91,31 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
     }
 
     try {
-      const res = await fetch('/api/access/resolve', { credentials: 'same-origin' });
+      let res = await fetch('/api/access/resolve', { credentials: 'same-origin' });
+      if (!res.ok) {
+        // One retry: the database is sometimes briefly slow.
+        res = await fetch('/api/access/resolve', { credentials: 'same-origin' });
+      }
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as AccessResult;
         setAccessResult(data);
+        if (cacheKey && data.state !== 'signed_out') {
+          try {
+            window.localStorage.setItem(cacheKey, JSON.stringify(data));
+          } catch {
+            // storage unavailable
+          }
+        }
       } else {
-        setAccessResult(signedInFallback());
+        setAccessResult(fallbackAccess());
       }
     } catch (err) {
       console.error('[SmartVideoAccess] Failed to resolve access:', err);
-      setAccessResult(signedInFallback());
+      setAccessResult(fallbackAccess());
     } finally {
       setIsLoading(false);
     }
-  }, [isSignedIn, signedInFallback]);
+  }, [isSignedIn, cacheKey, fallbackAccess]);
 
   useEffect(() => {
     if (isLoaded) {

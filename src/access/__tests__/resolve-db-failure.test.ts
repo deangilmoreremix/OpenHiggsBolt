@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Regression: when the entitlement lookup fails (database timeout), signed-in
-// users must not drop into Preview Mode, and the super user keeps everything.
+// the super user keeps everything and everyone else gets an error (the
+// browser then keeps their last confirmed access) - never a guess.
 
 let email = 'deanvideoremix.io@gmail.com';
 vi.mock('@clerk/nextjs/server', () => ({
@@ -35,12 +36,8 @@ describe('resolveSmartVideoAccess when the database fails', () => {
     expect(calls).toEqual(['clerk_user_id']);
   });
 
-  it('keeps an ordinary signed-in user on base access', async () => {
+  it('reports "unknown" for anyone else instead of guessing paid or unpaid', async () => {
     email = 'buyer@example.com';
-    const result = await resolveSmartVideoAccess();
-    expect(result.state).toBe('paid');
-    if (result.state === 'signed_out') throw new Error('unexpected');
-    expect(result.access.hasSmartVideoGo).toBe(true);
-    expect(result.access.hasSmartVideoViral).toBe(false);
+    await expect(resolveSmartVideoAccess()).rejects.toThrow(/lookup failed/i);
   });
 });

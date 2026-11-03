@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 import {
   emailOnlyClerkId,
+  isEmailOnlyClerkId,
   grantEntitlement,
   recordEmailOnlyPurchase,
   revokeEntitlement,
@@ -11,6 +12,8 @@ import {
 import { ENTITLEMENTS, type EntitlementStatus } from '@/access/entitlements';
 import { getResellerPackageIdForPriceId } from '@/lib/reseller/packages';
 import { applyResellerPurchase } from '@/lib/reseller/entitlements';
+import { findClerkUserIdByEmail, inviteBuyer } from '@/lib/buyerOnboarding';
+import { entitlementsForProduct } from '@/lib/stripeProductEntitlements';
 
 export const dynamic = "force-dynamic";
 
@@ -272,16 +275,13 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
   }
   // ── End reseller commerce (ADDITIVE) ──────────────────────────────────────
 
-  let entitlementKey = resolveEntitlementFromSession(session);
-  if (!entitlementKey) {
-    entitlementKey = resolveEntitlementFromMetadata(session);
-  }
-  if (!entitlementKey) {
-    entitlementKey = await resolveEntitlementFromSessionId(session.id);
-  }
+  // Every access key this checkout grants: price map (env), product map
+  // (src/lib/stripeProductEntitlements), and checkout metadata, across ALL
+  // line items - a checkout with a base product plus an upgrade grants both.
+  const entitlementKeys = await resolveEntitlementKeysForSession(session);
 
-  if (!entitlementKey) {
-    console.warn('[stripe webhook] unmapped price for session:', session.id);
+  if (entitlementKeys.length === 0) {
+    console.warn('[stripe webhook] no SmartVideo product in session:', session.id);
     return;
   }
 
@@ -293,7 +293,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
     customerId,
     paymentIntentId,
     priceId: session.line_items?.data?.[0]?.price?.id || '',
-    entitlementKey,
+    entitlementKey: entitlementKeys.join(','),
     amountTotal: session.amount_total ?? null,
     currency: session.currency ?? null,
     livemode: Boolean(session.livemode),
@@ -301,6 +301,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
       checkout_mode: session.mode || null,
       payment_status: session.payment_status || null,
       stripe_subscription_id: subscriptionId || null,
+      entitlements: entitlementKeys,
     },
   });
 
@@ -308,14 +309,31 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
     stripe_customer_id: customerId || undefined,
     stripe_subscription_id: subscriptionId || undefined,
   };
+  const grantAll = async (targetClerkId: string) => {
+    for (const key of entitlementKeys) {
+      await grantEntitlement(targetClerkId, normalizedEmail, key, 'stripe', grantOpts);
+    }
+  };
 
   // (b) Grant by the Clerk id captured at checkout when there is one.
   if (clerkUserId) {
-    await grantEntitlement(clerkUserId, normalizedEmail, entitlementKey, 'stripe', grantOpts);
+    await grantAll(clerkUserId);
     return;
   }
 
-  // (c) Otherwise match an existing row for the buyer's email.
+  // (c) The buyer already has a Clerk account with this email.
+  let existingClerkId: string | null = null;
+  try {
+    existingClerkId = await findClerkUserIdByEmail(normalizedEmail);
+  } catch (err: any) {
+    console.warn('[stripe webhook] Clerk user lookup failed:', err?.message || err);
+  }
+  if (existingClerkId) {
+    await grantAll(existingClerkId);
+    return;
+  }
+
+  // (d) A row already exists for this email (e.g. added by the owner).
   const supabase = getSupabaseAdmin();
   const { data: existingUser } = await supabase
     .from('user_entitlements')
@@ -324,19 +342,60 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
     .maybeSingle();
 
   if (existingUser?.clerk_user_id) {
-    await grantEntitlement(existingUser.clerk_user_id, normalizedEmail, entitlementKey, 'stripe', grantOpts);
+    await grantAll(existingUser.clerk_user_id);
+    if (isEmailOnlyClerkId(existingUser.clerk_user_id)) {
+      await inviteBuyer(normalizedEmail, entitlementKeys);
+    }
     return;
   }
 
-  // (d) No Clerk account and no existing row: record an email-keyed row so the
-  // purchase is never dropped. `restoreAccessByEmail` adopts it later once the
-  // buyer signs in with the verified email. The placeholder key can never
-  // satisfy hasSmartVideoGo for a real Clerk user.
-  await recordEmailOnlyPurchase(normalizedEmail, entitlementKey, {
-    stripe_customer_id: customerId || undefined,
-    stripe_subscription_id: subscriptionId || undefined,
-    source: 'stripe',
-  });
+  // (e) No account yet: record the purchase on an email placeholder row
+  // (adopted automatically when they sign in with this email) and have Clerk
+  // email them an invitation to create their account.
+  for (const key of entitlementKeys) {
+    await recordEmailOnlyPurchase(normalizedEmail, key, {
+      stripe_customer_id: customerId || undefined,
+      stripe_subscription_id: subscriptionId || undefined,
+      source: 'stripe',
+    });
+  }
+  await inviteBuyer(normalizedEmail, entitlementKeys);
+}
+
+/**
+ * All access keys a checkout grants. Reads the line items (retrieving the
+ * session when the event omits them) and maps each by price (env
+ * STRIPE_PRODUCT_MAP) or product (stripeProductEntitlements), plus a
+ * metadata.entitlement override.
+ */
+export async function resolveEntitlementKeysForSession(
+  session: Stripe.Checkout.Session
+): Promise<string[]> {
+  let lineItems = session.line_items?.data || [];
+  if (lineItems.length === 0 && stripe) {
+    try {
+      const retrieved = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items'],
+      });
+      lineItems = (retrieved as Stripe.Checkout.Session).line_items?.data || [];
+    } catch (err: any) {
+      console.error('[stripe webhook] failed to retrieve session line items:', err?.message || err);
+    }
+  }
+
+  const priceMap = getStripeProductMap();
+  const keys = new Set<string>();
+  for (const item of lineItems) {
+    const priceId = item.price?.id || '';
+    const productId = idOf(item.price?.product);
+    if (priceId && priceMap[priceId]) {
+      for (const k of String(priceMap[priceId]).split(',')) if (k.trim()) keys.add(k.trim());
+    }
+    for (const k of entitlementsForProduct(productId)) keys.add(k);
+  }
+  const fromMetadata = resolveEntitlementFromMetadata(session);
+  if (fromMetadata) keys.add(fromMetadata);
+  return Array.from(keys);
 }
 
 function chargeRevocationTarget(charge: Stripe.Charge): RevokeTarget {
@@ -496,7 +555,11 @@ function mapSubscriptionStatus(status?: string | null): EntitlementStatus {
 
 async function handleSubscriptionEvent(subscription: any): Promise<void> {
   const priceId = subscription?.items?.data?.[0]?.price?.id || '';
-  const entitlementKey = priceId ? getStripeProductMap()[priceId] || '' : '';
+  const productId = idOf(subscription?.items?.data?.[0]?.price?.product);
+  const entitlementKey =
+    (priceId ? String(getStripeProductMap()[priceId] || '').split(',')[0].trim() : '') ||
+    entitlementsForProduct(productId)[0] ||
+    '';
 
   if (!entitlementKey) {
     console.warn('[stripe webhook] unmapped subscription price:', priceId || '(none)');
@@ -606,7 +669,11 @@ async function revokeForSubscription(event: Stripe.Event): Promise<void> {
   // A present-but-unmapped price identifies a subscription that is not a
   // SmartVideo product. A payload with no price at all is ambiguous, so it
   // keeps the fail-closed customer revocation below.
-  if (priceId && !getStripeProductMap()[priceId]) {
+  const subProductId = idOf(
+    (subscription as { items?: { data?: Array<{ price?: { product?: unknown } }> } })
+      ?.items?.data?.[0]?.price?.product
+  );
+  if (priceId && !getStripeProductMap()[priceId] && entitlementsForProduct(subProductId).length === 0) {
     console.warn(
       `[stripe webhook] ${event.type} for an unmapped subscription with no entitlement of its own; nothing revoked:`,
       subscription.id

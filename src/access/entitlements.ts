@@ -62,33 +62,30 @@ export function isQualifyingStatus(status?: string | null): boolean {
 }
 
 /**
- * Statuses that explicitly take base access away from a row that holds no
- * permanent grant. Only an explicit 'revoked' does: production holds paying
- * buyers whose rows read `entitlements: {}, status: 'inactive'`, so
- * 'inactive' / 'expired' must not lock anyone out of base access.
+ * Statuses that take access away from a row. Only an explicit 'revoked'
+ * does: production holds paying buyers whose rows read 'inactive', and
+ * Stripe/refund paths write 'inactive'/'expired' without meaning removal.
  */
 export const ACCESS_REMOVED_STATUSES: readonly string[] = ['revoked'];
 
 /**
- * Base SmartVideo GO access. Every signed-in Clerk user gets this by default
- * — no purchase required, and no user_entitlements row required. Callers must
- * pass the row's real status (undefined when there is no row), never a
- * placeholder such as 'inactive', or users without a row land in Preview Mode.
- *
- * - A permanent grant (smartvideo_go or founders) always qualifies.
- * - Otherwise only an explicit 'revoked' status takes access away.
+ * Base SmartVideo GO access. Access is granted by the owner only: a user
+ * needs a user_entitlements row holding smartvideo_go, smartvideo_ai or
+ * founders. Signing in alone grants nothing — the sign-up page is public.
+ * A row marked 'revoked' never qualifies.
  */
 export function hasSmartVideoGo(
   entitlements: Partial<UserEntitlements> | null | undefined,
   status?: string | null
 ): boolean {
-  if (entitlements?.smartvideo_go === true || entitlements?.founders === true) {
-    return true;
-  }
   if (typeof status === 'string' && ACCESS_REMOVED_STATUSES.includes(status)) {
     return false;
   }
-  return true;
+  return (
+    entitlements?.smartvideo_go === true ||
+    entitlements?.smartvideo_ai === true ||
+    entitlements?.founders === true
+  );
 }
 
 /**

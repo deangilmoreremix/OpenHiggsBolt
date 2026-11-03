@@ -9,9 +9,8 @@ export async function GET() {
     return NextResponse.json(result);
   } catch (err) {
     console.error('[access/resolve] error:', err);
-    return NextResponse.json(
-      { state: 'authenticated_unpaid', access: null },
-      { status: 500 }
-    );
+    // Access is unknown (e.g. the database timed out). The browser keeps the
+    // user's last confirmed access instead of treating this as "unpaid".
+    return NextResponse.json({ error: 'ACCESS_UNKNOWN' }, { status: 503 });
   }
 }

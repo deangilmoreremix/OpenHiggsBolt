@@ -20,8 +20,8 @@ function checkEntitlementKey(entitlementKey: EntitlementKey | string, access: Ac
 
   switch (entitlementKey) {
     case ENTITLEMENTS.SMARTVIDEO_GO:
-      // Base SmartVideo GO access is granted to every signed-in Clerk user
-      // by default; hasSmartVideoGo already reflects this.
+      // Base SmartVideo GO access requires an owner-granted entitlement row;
+      // hasSmartVideoGo already reflects this.
       return access.hasSmartVideoGo;
     case ENTITLEMENTS.SMARTVIDEO_VIRAL:
       return access.hasSmartVideoViral;

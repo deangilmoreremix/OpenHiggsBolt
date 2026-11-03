@@ -91,6 +91,14 @@ async function adoptEmailOnlyPlaceholder(userId: string): Promise<{ clerk_user_i
   return null;
 }
 
+/** The entitlement store could not be read, so access is unknown. */
+export class AccessLookupError extends Error {
+  constructor(message: string) {
+    super(`Entitlement lookup failed: ${message}`);
+    this.name = 'AccessLookupError';
+  }
+}
+
 export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   const { userId } = await auth();
 
@@ -105,9 +113,6 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
     .eq('clerk_user_id', userId)
     .maybeSingle();
   if (lookupError) {
-    // Database slow or down: do not pile more queries on (placeholder
-    // adoption below). The user is resolved as having no row, which still
-    // grants base access to every signed-in user.
     console.error('[resolveSmartVideoAccess] lookup failed:', lookupError.message);
     data = null;
   }
@@ -116,6 +121,14 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   // everything (SmartVideo GO + go-ai-viral + reseller).
   const verifiedEmails = await getVerifiedEmailsForUser(userId);
   const isSuperUser = verifiedEmails.some((email) => isSuperUserEmail(email));
+
+  // Database slow or down: we cannot tell whether this user was granted
+  // access. Fail the request (the browser keeps the user's last confirmed
+  // access) rather than guessing either way. The super user is known from
+  // Clerk alone and still resolves.
+  if (lookupError && !isSuperUser) {
+    throw new AccessLookupError(lookupError.message);
+  }
 
   // Auto-adopt an email-only placeholder row if one exists for this user's
   // verified email. Paid buyers who purchased before signing into Clerk are
@@ -128,15 +141,14 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   }
 
   const entitlements = (data?.entitlements || {}) as UserEntitlements;
-  // The row's real status: undefined when the user has no row. Access checks
-  // must see that, not the 'inactive' display placeholder, or every user
-  // without a row (e.g. invited by the owner) is shown Preview Mode.
+  // The row's real status (undefined when there is no row), not the
+  // 'inactive' display placeholder.
   const rowStatus: string | undefined = data?.status || undefined;
   const status = rowStatus || 'inactive';
   const email = data?.email || '';
 
-  // Every signed-in Clerk user gets base SmartVideo GO access by default.
-  // A purchased row only needs to confirm it; it is never required.
+  // Base access needs an owner-granted row (see hasSmartVideoGo); signing in
+  // alone grants nothing because the sign-up page is public.
   const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, rowStatus);
 
   // go-ai-viral requires a paid smartvideo_viral entitlement (or super user).
@@ -185,14 +197,13 @@ export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promi
   }
 
   const entitlements = (data?.entitlements || {}) as UserEntitlements;
-  // The row's real status: undefined when the user has no row. Access checks
-  // must see that, not the 'inactive' display placeholder, or every user
-  // without a row (e.g. invited by the owner) is shown Preview Mode.
+  // The row's real status (undefined when there is no row), not the
+  // 'inactive' display placeholder.
   const rowStatus: string | undefined = data?.status || undefined;
   const status = rowStatus || 'inactive';
   const email = data?.email || '';
 
-  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  // Base access needs an owner-granted row (see hasSmartVideoGo).
   const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, rowStatus);
   const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, rowStatus);
 
