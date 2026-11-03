@@ -163,11 +163,14 @@ describe('GET /api/motion-studio/capture/status', () => {
 describe('the background worker', () => {
   const job = { jobId: '11111111-2222-4333-8444-555555555555', userId: 'user_1', url: 'https://acme.test' }
   const recordOf = () => JSON.parse(String(files.get(`user_1/motion-capture-jobs/${job.jobId}.json`)))
+  // The route writes the job's `running` record before it starts the worker.
+  const begin = () => files.set(`user_1/motion-capture-jobs/${job.jobId}.json`, JSON.stringify({ state: 'running', startedAt: new Date().toISOString() }))
+  beforeEach(begin)
 
-  it('captures with the long budget, stores the images and writes a done record', async () => {
+  it('captures quickly (the product check before the storyboard), stores the images and writes a done record', async () => {
     const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
     await runMotionCapture(job, storage)
-    expect(capture).toHaveBeenCalledWith('https://acme.test', expect.objectContaining({ hardMs: 720_000, budgetMs: 600_000, deep: true }))
+    expect(capture).toHaveBeenCalledWith('https://acme.test', expect.objectContaining({ hardMs: 100_000, budgetMs: 75_000, deep: true, maxRoutes: 6 }))
     const done = recordOf()
     expect(done.state).toBe('done')
     expect(done.capture.page.url).toMatch(/^https:\/\/storage\.test\/user_1\/motion-capture\/.+\/page\.jpg$/)
@@ -180,10 +183,13 @@ describe('the background worker', () => {
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED' })
     // Fails twice (the fast failure is retried once): the record says why, without the address, and how far it got.
+    begin()
     capture.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(Object.assign(new Error('navigation to https://acme.test/x failed\nstack'), { timing: { loaded: 9606 } }))
+    begin()
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED', error: 'The page could not be captured: navigation to the address failed', timing: { loaded: 9606 } })
     capture.mockRejectedValueOnce(new FakeSsrfError('private'))
+    begin()
     await runMotionCapture(job, storage)
     expect(recordOf()).toMatchObject({ state: 'error', code: 'URL_REJECTED' })
   })
@@ -193,8 +199,20 @@ describe('the background worker', () => {
     capture.mockRejectedValueOnce(new Error('browser failed to launch'))
     await runMotionCapture(job, storage)
     expect(capture).toHaveBeenCalledTimes(2)
-    expect(capture.mock.calls[1][1].hardMs).toBeLessThanOrEqual(720_000)
+    expect(capture.mock.calls[1][1].hardMs).toBeLessThanOrEqual(100_000)
     expect(recordOf().state).toBe('done')
+  })
+
+  it('a job that is no longer running (finished, failed, or a host retry of a dead worker) is never captured again', async () => {
+    const { runMotionCapture } = await import('@/src/server/motionCaptureWorker')
+    files.set(`user_1/motion-capture-jobs/${job.jobId}.json`, JSON.stringify({ state: 'error', finishedAt: new Date().toISOString(), code: 'TIMEOUT', error: 'x' }))
+    await runMotionCapture(job, storage)
+    expect(capture).not.toHaveBeenCalled()
+    expect(recordOf()).toMatchObject({ state: 'error', code: 'TIMEOUT' })
+    // A record still 'running' long after its start belongs to a worker the host killed: its retry stops too.
+    files.set(`user_1/motion-capture-jobs/${job.jobId}.json`, JSON.stringify({ state: 'running', startedAt: new Date(Date.now() - 20 * 60_000).toISOString() }))
+    await runMotionCapture(job, storage)
+    expect(capture).not.toHaveBeenCalled()
   })
 
   it('writes one timed-out record when the capture hangs, and a late result does not overwrite it', async () => {

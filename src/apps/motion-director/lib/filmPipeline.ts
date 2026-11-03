@@ -370,14 +370,15 @@ export async function buildFilmProject(
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
   const needed = opts.targetedCapture === false ? [] : neededPages(plan, opts.capture);
   if (opts.capture && needed.length) {
-    log(`Capturing ${needed.length} page${needed.length === 1 ? '' : 's'} the storyboard needs: ${needed.map((n) => n.link.path).join(', ')}`, 'running');
+    log(`Capturing the pages the storyboard needs (pipeline stage 4): ${needed.map((n) => n.link.path).join(', ')}`, 'running');
     const got = await Promise.all(
       needed.map((n) => captureSite(n.link.url, { targeted: true, maxWaitMs: 240_000 }).then((c) => ({ n, c })).catch(() => null)),
     );
     let merged = opts.capture;
     for (const g of got) if (g) merged = mergeCaptures(merged, g.c, { name: g.n.link.name, path: g.n.link.path });
     const ok = got.filter(Boolean).length;
-    log(ok ? `Captured ${ok} more page${ok === 1 ? '' : 's'} for scene${ok === 1 ? '' : 's'} ${got.filter(Boolean).map((g) => g!.n.scene + 1).join(', ')}` : 'The extra pages could not be captured; those scenes use the nearest captured page', 'done');
+    const forScenes = got.filter((g) => g && g.n.scene >= 0).map((g) => g!.n.scene + 1);
+    log(ok ? `Captured ${ok} more page${ok === 1 ? '' : 's'} of the site${forScenes.length ? ` (for scene${forScenes.length === 1 ? '' : 's'} ${forScenes.join(', ')})` : ''}` : 'The extra pages could not be captured; those scenes use the nearest captured page', 'done');
     opts = { ...opts, capture: merged };
   }
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };

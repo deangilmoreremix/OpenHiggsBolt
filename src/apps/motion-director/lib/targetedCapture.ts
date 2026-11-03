@@ -18,7 +18,7 @@ export interface NeededPage {
 }
 
 /** Rows whose page state matches no captured page but does match one of the site's other pages (at most `max`). */
-export function neededPages(plan: DirectorPlan, capture: SiteCapture | null | undefined, max = 3): NeededPage[] {
+export function neededPages(plan: DirectorPlan, capture: SiteCapture | null | undefined, max = 4, more = 2): NeededPage[] {
   if (!capture?.links?.length || capture.partial) return [];
   const captured = (capture.pages ?? []).map((p) => words(`${p.name} ${p.path}`));
   const have = new Set((capture.pages ?? []).map((p) => p.path.replace(/\/+$/, '').toLowerCase() || '/'));
@@ -37,6 +37,15 @@ export function neededPages(plan: DirectorPlan, capture: SiteCapture | null | un
     asked.add(best.l.url);
     out.push({ scene, state, link: best.l });
   });
+  // The quick capture before the storyboard took only a few routes: a couple more of the site's own pages
+  // (its links come best first: services, about, team…) give the film more of the company to show.
+  for (const l of capture.links) {
+    if (more <= 0) break;
+    if (asked.has(l.url) || have.has(l.path.replace(/\/+$/, '').toLowerCase() || '/')) continue;
+    asked.add(l.url);
+    out.push({ scene: -1, state: 'more of the site', link: l });
+    more--;
+  }
   return out;
 }
 
