@@ -99,11 +99,18 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   }
 
   const supabase = getSupabaseAdmin();
-  let { data } = await supabase
+  let { data, error: lookupError } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', userId)
     .maybeSingle();
+  if (lookupError) {
+    // Database slow or down: do not pile more queries on (placeholder
+    // adoption below). The user is resolved as having no row, which still
+    // grants base access to every signed-in user.
+    console.error('[resolveSmartVideoAccess] lookup failed:', lookupError.message);
+    data = null;
+  }
 
   // Super user bypass: deanvideoremix.io@gmail.com gets full access to
   // everything (SmartVideo GO + go-ai-viral + reseller).
@@ -113,7 +120,7 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   // Auto-adopt an email-only placeholder row if one exists for this user's
   // verified email. Paid buyers who purchased before signing into Clerk are
   // otherwise misclassified as unpaid/demo users.
-  if (!data) {
+  if (!data && !lookupError) {
     const adopted = await adoptEmailOnlyPlaceholder(userId);
     if (adopted) {
       data = adopted as any;
@@ -154,11 +161,15 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
 
 export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promise<AccessState | null> {
   const supabase = getSupabaseAdmin();
-  let { data } = await supabase
+  let { data, error: lookupError } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', clerkUserId)
     .maybeSingle();
+  if (lookupError) {
+    console.error('[resolveSmartVideoAccessForUser] lookup failed:', lookupError.message);
+    data = null;
+  }
 
   // Super user bypass via Clerk-verified email.
   const verifiedEmails = await getVerifiedEmailsForUser(clerkUserId);
@@ -166,7 +177,7 @@ export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promi
 
   // Auto-adopt an email-only placeholder row if one exists for this user's
   // verified email.
-  if (!data) {
+  if (!data && !lookupError) {
     const adopted = await adoptEmailOnlyPlaceholder(clerkUserId);
     if (adopted) {
       data = adopted as any;

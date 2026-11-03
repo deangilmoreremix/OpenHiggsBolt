@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { ENTITLEMENTS, type AccessState, type AccessResult } from '@/access/entitlements';
+import { ENTITLEMENTS, isSuperUserEmail, type AccessState, type AccessResult } from '@/access/entitlements';
 
 export { ENTITLEMENTS };
 
@@ -44,6 +44,28 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
   const [isLoading, setIsLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, source: 'default' });
 
+  // When the access check itself fails (e.g. the server times out), a
+  // signed-in user keeps base SmartVideo GO access — every signed-in user has
+  // it by default — instead of being dropped into Preview Mode. Paid upgrades
+  // (GO-Viral) stay locked unless the user is the super user.
+  const signedInFallback = useCallback((): AccessResult => {
+    const emails = (user?.emailAddresses || []).map((e) => e?.emailAddress || '');
+    const superUser = emails.some((e) => isSuperUserEmail(e));
+    return {
+      state: 'paid',
+      access: {
+        clerkUserId: user?.id || '',
+        email: emails[0] || '',
+        entitlements: { smartvideo_go: true },
+        status: 'active',
+        source: 'fallback',
+        hasSmartVideoGo: true,
+        hasSmartVideoViral: superUser,
+        isSuperUser: superUser,
+      },
+    };
+  }, [user?.id, user?.emailAddresses]);
+
   const refreshAccess = useCallback(async () => {
     if (!isSignedIn) {
       setAccessResult({ state: 'signed_out' });
@@ -57,39 +79,15 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         const data = await res.json();
         setAccessResult(data);
       } else {
-        setAccessResult({
-          state: 'authenticated_unpaid',
-          access: {
-            clerkUserId: user?.id || '',
-            email: user?.emailAddresses?.[0]?.emailAddress || '',
-            entitlements: { smartvideo_go: false },
-            status: 'inactive',
-            source: 'manual',
-            hasSmartVideoGo: false,
-            hasSmartVideoViral: false,
-            isSuperUser: false,
-          },
-        });
+        setAccessResult(signedInFallback());
       }
     } catch (err) {
       console.error('[SmartVideoAccess] Failed to resolve access:', err);
-      setAccessResult({
-        state: 'authenticated_unpaid',
-        access: {
-          clerkUserId: user?.id || '',
-          email: user?.emailAddresses?.[0]?.emailAddress || '',
-          entitlements: { smartvideo_go: false },
-          status: 'inactive',
-          source: 'manual',
-          hasSmartVideoGo: false,
-          hasSmartVideoViral: false,
-          isSuperUser: false,
-        },
-      });
+      setAccessResult(signedInFallback());
     } finally {
       setIsLoading(false);
     }
-  }, [isSignedIn, user?.id, user?.emailAddresses]);
+  }, [isSignedIn, signedInFallback]);
 
   useEffect(() => {
     if (isLoaded) {
