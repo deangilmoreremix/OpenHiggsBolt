@@ -222,8 +222,12 @@ export async function processV2V(apiKey, params) {
     if (modelInfo?.hasPrompt && params.prompt) {
         payload.prompt = params.prompt;
     }
-    if (getGroupedVideoConfiguration(modelInfo?.id)) {
-        for (const field of ['duration', 'aspect_ratio', 'resolution', 'quality']) {
+    // Grouped models, and callers that render every declared input (Edit
+    // Studio playgrounds), send the common fields the model declares.
+    if (getGroupedVideoConfiguration(modelInfo?.id) || params.includeDeclaredInputs) {
+        const fields = ['duration', 'aspect_ratio', 'resolution', 'quality'];
+        if (params.includeDeclaredInputs) fields.push('mode');
+        for (const field of fields) {
             if (modelInfo.inputs?.[field] && params[field] !== undefined) {
                 payload[field] = params[field];
             }
@@ -351,7 +355,8 @@ export async function processMotionControl(apiKey, params) {
 export async function processLipSync(apiKey, params) {
     const modelInfo = getLipSyncModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
-    const payload = {};
+    const payload = { ...buildSupplementalInputPayload(modelInfo, params) };
+    if (params.mode && modelInfo?.inputs?.mode) payload.mode = params.mode;
     if (params.audio_url) payload.audio_url = params.audio_url;
     if (params.image_url) payload.image_url = params.image_url;
     if (params.video_url) payload.video_url = params.video_url;
