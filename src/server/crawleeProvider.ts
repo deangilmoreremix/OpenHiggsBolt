@@ -124,7 +124,7 @@ class NoRedirectHttpClient extends GotScrapingHttpClient {
   }
 }
 
-function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): ImageCandidate[] {
+export function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): ImageCandidate[] {
   const $ = cheerio.load(html)
   const candidates: ImageCandidate[] = []
   const seen = new Set<string>()
@@ -196,6 +196,13 @@ function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): 
   // Crawlee visits, images that exist only in that data are candidates too.
   for (const embedded of extractEmbeddedImageUrls(html, pageUrl)) {
     add(embedded.url, undefined, 'embedded')
+    if (!embedded.context) continue
+    // Keep the data-key context (`teamMembers.photo`): for an image that only
+    // exists in framework data it is the one classification signal. Merge it
+    // into the candidate whether it was just added or already found in the DOM.
+    const key = normalizeAssetUrl(new URL(embedded.url, pageUrl).toString())
+    const match = key ? candidates.find((candidate) => normalizeAssetUrl(candidate.url) === key) : undefined
+    if (match) match.contextText = [match.contextText, embedded.context].filter(Boolean).join(' ')
   }
 
   return candidates

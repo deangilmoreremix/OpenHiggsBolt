@@ -243,6 +243,22 @@ const MAX_CONTEXT_CHARS = 240
  * ancestors (`team-grid`, `our-work`, `product-card`).
  */
 /**
+ * The <figcaption> text of a <figure>, memoised per figure (including "no
+ * caption"): a gallery inside one shared <figure> would otherwise search the
+ * whole figure once per image.
+ */
+const CAPTION_CACHE = new WeakMap<object, string>()
+function captionOf($: CheerioAPI, figure: ReturnType<CheerioAPI>): string {
+  const node = figure.get(0) as object | undefined
+  if (!node) return ''
+  const cached = CAPTION_CACHE.get(node)
+  if (cached !== undefined) return cached
+  const caption = figure.find('figcaption').first().text()
+  CAPTION_CACHE.set(node, caption)
+  return caption
+}
+
+/**
  * First heading text inside an ancestor, memoised per node (including "no
  * heading"). Every image of a large gallery shares the same ancestors, and
  * searching the shared container once per image was quadratic: 2,000 images
@@ -269,7 +285,7 @@ export function extractImageContext($: CheerioAPI, element: any): string {
     if (value) words.push(value)
   }
 
-  const caption = $el.closest('figure').find('figcaption').first().text()
+  const caption = captionOf($, $el.closest('figure'))
   if (caption) words.push(caption)
 
   const link = $el.closest('a')

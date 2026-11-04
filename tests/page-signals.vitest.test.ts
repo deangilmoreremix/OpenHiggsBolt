@@ -381,6 +381,14 @@ describe('review follow-ups (CodeRabbit)', async () => {
     expect(SITE_IMAGE_HEADERS.Accept).toMatch(/image\/webp/)
   })
 
+  it('extracts context for many images inside ONE <figure> in linear time', () => {
+    const $ = cheerio.load(`<figure>${'<div><img src="/a.jpg"></div>'.repeat(4000)}<figcaption>Our work</figcaption></figure>`)
+    const started = Date.now()
+    const contexts = $('img').toArray().map((el) => extractImageContext($, el))
+    expect(Date.now() - started).toBeLessThan(2000)
+    expect(contexts.every((c) => c.includes('Our work'))).toBe(true)
+  })
+
   it('computes structure keys for a huge flat grid in linear time', () => {
     const $ = cheerio.load(`<div class="grid">${'<div class="card"><img></div>'.repeat(5000)}</div>`)
     const started = Date.now()
@@ -420,5 +428,21 @@ describe('review follow-ups (CodeRabbit)', async () => {
 
   it('reads camelCase class names in the image context', () => {
     expect(classifyAssetCandidate({ url: 'https://cdn.example/f/8a7b6c.jpg', contextText: 'teamGrid' }).category).toBe('team')
+  })
+})
+
+describe('Crawlee embedded image context', async () => {
+  const { extractImagesFromHtml } = await import('../src/server/crawleeProvider')
+
+  it('carries framework data-key context onto embedded-only and DOM candidates', () => {
+    const html = `<html><body><img src="https://cdn.example.com/dom123.jpg">
+      <script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+        props: { pageProps: { teamMembers: [{ name: 'Jane', photo: 'https://cdn.example.com/a9b8c7.jpg' }], gallery: { photo: 'https://cdn.example.com/dom123.jpg' } } },
+      })}</script></body></html>`
+    const candidates = extractImagesFromHtml('https://acme.example/', html, 'https://acme.example/about')
+    const embedded = candidates.find((c) => c.url === 'https://cdn.example.com/a9b8c7.jpg')
+    expect(embedded?.contextText).toMatch(/teamMembers/)
+    const dom = candidates.find((c) => c.url === 'https://cdn.example.com/dom123.jpg')
+    expect(dom?.contextText).toMatch(/gallery/)
   })
 })
