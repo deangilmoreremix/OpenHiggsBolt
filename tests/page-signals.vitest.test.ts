@@ -234,9 +234,24 @@ describe('researched brand colours in the modal', async () => {
 
   it('themes the default preview colours but never overwrites the visitor\'s choice', () => {
     const themed = applyResearchedBrandColors({ ...DEFAULT_PREVIEW_BRAND_COLORS }, { primary: '#e63946', accent: '#1d3557' })
-    expect(themed).toMatchObject({ primary: '#e63946', accent: '#1d3557', text: DEFAULT_PREVIEW_BRAND_COLORS.text })
+    expect(themed.colors).toMatchObject({ primary: '#e63946', accent: '#1d3557', text: DEFAULT_PREVIEW_BRAND_COLORS.text })
+    expect(themed.autoApplied).toEqual({ primary: '#e63946', accent: '#1d3557' })
     const picked = { ...DEFAULT_PREVIEW_BRAND_COLORS, primary: '#123456' }
-    expect(applyResearchedBrandColors(picked, { primary: '#e63946' })).toBe(picked)
+    expect(applyResearchedBrandColors(picked, { primary: '#e63946' }).colors).toBe(picked)
+  })
+
+  it('replaces business A\'s auto-applied palette with business B\'s, but keeps a visitor edit', () => {
+    const a = applyResearchedBrandColors({ ...DEFAULT_PREVIEW_BRAND_COLORS }, { primary: '#e63946', accent: '#1d3557' })
+    const b = applyResearchedBrandColors(a.colors, { primary: '#2a9d8f' }, a.autoApplied)
+    expect(b.colors).toMatchObject({ primary: '#2a9d8f', accent: DEFAULT_PREVIEW_BRAND_COLORS.accent })
+    // B has no palette: A's auto-applied colours go back to the defaults.
+    const none = applyResearchedBrandColors(a.colors, null, a.autoApplied)
+    expect(none.colors).toMatchObject({ primary: DEFAULT_PREVIEW_BRAND_COLORS.primary, accent: DEFAULT_PREVIEW_BRAND_COLORS.accent })
+    expect(none.autoApplied).toBeNull()
+    // The visitor edited A's palette: B's research never overwrites it.
+    const edited = { ...a.colors, accent: '#000080' }
+    expect(applyResearchedBrandColors(edited, { primary: '#2a9d8f' }, a.autoApplied).colors).toBe(edited)
+    expect(applyResearchedBrandColors(edited, null, a.autoApplied).colors).toBe(edited)
   })
 
   it('the demo cache keeps valid brand colours and drops malformed ones', () => {
@@ -304,6 +319,22 @@ describe('page Markdown in the modal', async () => {
 })
 
 describe('regressions found on real sites', () => {
+  it('detects a JS shell in linear time on a page of unclosed <div tags', () => {
+    const started = Date.now()
+    looksJsRendered('<div '.repeat(100_000))
+    expect(Date.now() - started).toBeLessThan(1500)
+    expect(looksJsRendered('<div id="app"></div>').frameworks).toContain('spa-root')
+    expect(looksJsRendered('<div id="root"><p>Rendered on the server</p></div>').frameworks).not.toContain('spa-root')
+  })
+
+  it('scans hostile CSS (long hyphen runs) in linear time', () => {
+    const hostile = `/*${'-'.repeat(500_000)}*/ :root{--brand:#8a3b12} .a{color:#8a3b12}`
+    const started = Date.now()
+    const colors = extractBrandColors('', [hostile, `${' color:'.repeat(50_000)}`])
+    expect(Date.now() - started).toBeLessThan(500)
+    expect(colors.primary).toBe('#8a3b12')
+  })
+
   it('Markdown survives <html class="supports-no-cookies"> (Shopify themes)', () => {
     const html = '<html class="no-js supports-no-cookies"><body class="template-index"><main><h1>Sightglass</h1><p>Coffee roasted in San Francisco.</p></main><div class="cookie-banner">Accept cookies</div></body></html>'
     const md = htmlToMarkdown(html)

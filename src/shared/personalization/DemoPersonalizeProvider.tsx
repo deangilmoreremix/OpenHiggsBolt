@@ -110,6 +110,7 @@ import {
   applyResearchedBrandColors,
   firstParagraphOf,
   researchBrandColors,
+  type BrandColorPair,
 } from './researchHelpers'
 import {
   getRemotionDesignTemplate,
@@ -2174,7 +2175,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * an existing one. The canonical URL therefore no longer replaces a
    * hand-corrected website — the visitor's value always wins.
    */
-  const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
+  // The brand-colour pair last applied from research (see applyResearchedBrandColors).
+  const autoAppliedBrandColorsRef = useRef<BrandColorPair | null>(null)
+    const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
     setClientForm((prev) => {
       const next: Partial<ClientProfile> = { ...prev }
       const fill = (key: keyof ClientProfile, value: unknown) => {
@@ -2193,14 +2196,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return next
     })
     // The site's own brand colours theme the preview, unless the visitor has
-    // already picked colours (then theirs win).
+    // picked colours (then theirs win). Colours auto-applied for an earlier
+    // business are replaced, never mistaken for the visitor's choice.
     const researchedColors = researchBrandColors(research.brandColors)
-    if (researchedColors) {
-      setPreviewSettings((prev) => {
-        const brandColors = applyResearchedBrandColors(prev.brandColors, researchedColors)
-        return brandColors === prev.brandColors ? prev : { ...prev, brandColors }
-      })
-    }
+    // Read once, outside the updater, so a re-run updater (StrictMode) sees
+    // the same input and produces the same result.
+    const previouslyAutoApplied = autoAppliedBrandColorsRef.current
+    setPreviewSettings((prev) => {
+      const { colors, autoApplied } = applyResearchedBrandColors(
+        prev.brandColors,
+        researchedColors,
+        previouslyAutoApplied,
+      )
+      autoAppliedBrandColorsRef.current = autoApplied
+      return colors === prev.brandColors ? prev : { ...prev, brandColors: colors }
+    })
   }, [])
 
   // ── Saved client assets actions ─────────────────────────────────────────────

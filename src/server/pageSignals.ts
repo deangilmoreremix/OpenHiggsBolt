@@ -483,10 +483,18 @@ function hueDistance(a: string, b: string): number {
 }
 
 const COLOR_VALUE = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]{5,40}\)/g
-const BRAND_VAR_PATTERN =
-  /--([a-z0-9-]*(?:primary|brand|accent|secondary|theme|main|highlight|cta)[a-z0-9-]*)\s*:\s*([^;}{]+)/gi
+/**
+ * A CSS custom property declaration. Every quantifier is bounded and the
+ * lookbehind lets a run of hyphens start at most one attempt, so a hostile
+ * stylesheet (e.g. a comment of 500k hyphens) is scanned in linear time.
+ * Whether the name is a brand colour is tested AFTER matching
+ * (BRAND_VAR_NAME), not inside this pattern: the previous form, with a
+ * keyword between two unbounded `[a-z0-9-]*`, backtracked quadratically.
+ */
+const CUSTOM_PROPERTY_PATTERN = /(?<![a-z0-9-])--([a-z0-9-]{1,80})\s{0,20}:\s{0,20}([^;}{]{1,200})/gi
+const BRAND_VAR_NAME = /primary|brand|accent|secondary|theme|main|highlight|cta/
 const COLOR_DECLARATION_PATTERN =
-  /(?:^|[;{\s])(background(?:-color)?|color|border(?:-[a-z]+)?-color|fill|stroke)\s*:\s*([^;}{]+)/gi
+  /(?:^|[;{\s])(background(?:-color)?|color|border(?:-[a-z]+)?-color|fill|stroke)\s{0,20}:\s{0,20}([^;}{]{1,200})/gi
 
 /**
  * The brand palette of a page.
@@ -526,9 +534,9 @@ export function extractBrandColors(html: string, extraCss: string[] = []): Brand
   cssChunks.push(...extraCss)
   const css = cssChunks.join('\n').slice(0, MAX_CSS_CHARS)
 
-  for (const match of css.matchAll(BRAND_VAR_PATTERN)) {
+  for (const match of css.matchAll(CUSTOM_PROPERTY_PATTERN)) {
     const name = match[1].toLowerCase()
-    if (LIBRARY_VAR_PATTERN.test(name)) continue
+    if (!BRAND_VAR_NAME.test(name) || LIBRARY_VAR_PATTERN.test(name)) continue
     const values = match[2].match(COLOR_VALUE) || []
     const weight = /primary|brand|main|theme/.test(name) ? 6 : 4
     for (const value of values.slice(0, 1)) add(value, weight, `css-var:--${name}`)
@@ -608,7 +616,6 @@ const JS_FRAMEWORK_SIGNATURES: Array<{ name: string; pattern: RegExp }> = [
   { name: 'nextjs', pattern: /id=["']__NEXT_DATA__["']|\/_next\/static\//i },
   { name: 'nuxt', pattern: /window\.__NUXT__|id=["']__nuxt["']/i },
   { name: 'gatsby', pattern: /id=["']___gatsby["']/i },
-  { name: 'spa-root', pattern: /<div[^>]+id=["'](?:root|app)["'][^>]*>\s*<\/div>/i },
   { name: 'weebly', pattern: /editmysite\.com|weebly/i },
   { name: 'godaddy', pattern: /img1\.wsimg\.com|godaddy-website-builder/i },
 ]
@@ -633,9 +640,16 @@ export function looksJsRendered(html: string): JsRenderSignal {
   if (!html) return { jsRendered: false, textLength: 0, imageCount: 0, frameworks: [] }
   const $ = cheerio.load(html)
   const imageCount = $('img').length
+  // An empty `<div id="root">` / `#app` mount point (React, Vue, Svelte).
+  // Read from the DOM, not with a regex: `<div[^>]+id=…` backtracked
+  // quadratically on a page of unclosed `<div ` tags.
+  const emptyMountPoint = $('div#root, div#app')
+    .toArray()
+    .some((element) => $(element).children().length === 0 && !$(element).text().trim())
   $('script, style, noscript, template, svg').remove()
   const textLength = $('body').text().replace(/\s+/g, ' ').trim().length
   const frameworks = JS_FRAMEWORK_SIGNATURES.filter(({ pattern }) => pattern.test(html)).map(({ name }) => name)
+  if (emptyMountPoint) frameworks.push('spa-root')
   const nearlyEmpty = textLength < 400 && imageCount < 3
   const thinBuilderPage = frameworks.length > 0 && imageCount < 4
   return { jsRendered: nearlyEmpty || thinBuilderPage, textLength, imageCount, frameworks }
