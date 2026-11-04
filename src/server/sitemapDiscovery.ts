@@ -38,7 +38,7 @@ import {
 } from './discoveryPolicy'
 
 const REQUEST_TIMEOUT = DISCOVERY_REQUEST_TIMEOUT_MS
-// Sitemaps get browser-like headers (see src/lib/siteRequestHeaders.ts).
+// Sitemaps get the shared crawler headers (see src/lib/siteRequestHeaders.ts).
 const REDIRECT_LIMIT = 5
 
 const PERSONALIZATION_SLUG_PATTERNS = [

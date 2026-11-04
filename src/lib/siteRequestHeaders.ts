@@ -1,70 +1,49 @@
 /**
- * Browser-like request headers for fetching business WEBSITES.
+ * Request headers for fetching business WEBSITES.
  *
- * Many small-business sites sit behind a CDN or host (Cloudflare, Wix,
- * Squarespace, Shopify) that answers an unusual bot User-Agent such as
- * `SmartVideoGO-AI/1.0` with a 403 or an empty shell. A request that carries
- * the same headers a current desktop Chrome sends gets the normal public page.
+ * The agent identifies the crawler honestly in the standard
+ * `Mozilla/5.0 (compatible; Name/version; +url)` form that search-engine
+ * crawlers use. An earlier version imitated desktop Chrome; a before/after
+ * check against real sites showed it changed nothing on ordinary sites and
+ * got the crawl BLOCKED (403) by a bot-managed site that served the honest
+ * agent, because a "Chrome" that does not behave like Chrome is exactly what
+ * bot management looks for. A site that refuses the crawler is respected:
+ * nothing here tries to get past a refusal.
  *
- * This only changes how the request LOOKS; it does not solve challenges,
- * rotate identities or bypass any access control. A site that actively
- * challenges the request still fails, and the caller degrades as before.
+ * What is kept from the browser-like set are the content-negotiation headers
+ * (Accept, Accept-Language), which some hosts need to serve the normal HTML.
  *
- * Do NOT use these for OpenStreetMap services (Nominatim / Overpass): their
- * usage policies require an identifying User-Agent, so those providers keep
- * their own `SmartVideoGO-AI/1.0` agent.
+ * OpenStreetMap services (Nominatim / Overpass) keep their own
+ * `SmartVideoGO-AI/1.0` agent, per their usage policies.
  */
 
-/** A current, common desktop Chrome on Windows. */
-export const DESKTOP_USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+/** The crawler's identifying agent. */
+export const SITE_USER_AGENT = 'Mozilla/5.0 (compatible; SmartVideoGO/1.0; +https://go.smartvid.app)'
 
-const CLIENT_HINTS = {
-  'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"',
-} as const
-
-/** Headers for a top-level HTML page navigation. */
+/** Headers for an HTML page. */
 export const SITE_PAGE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  'User-Agent': DESKTOP_USER_AGENT,
-  Accept:
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'User-Agent': SITE_USER_AGENT,
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Upgrade-Insecure-Requests': '1',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1',
-  ...CLIENT_HINTS,
 })
 
-/** Headers for an image sub-resource request. */
+/** Headers for an image. */
 export const SITE_IMAGE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  'User-Agent': DESKTOP_USER_AGENT,
+  'User-Agent': SITE_USER_AGENT,
   Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Sec-Fetch-Dest': 'image',
-  'Sec-Fetch-Mode': 'no-cors',
-  'Sec-Fetch-Site': 'same-site',
-  ...CLIENT_HINTS,
 })
 
-/** Headers for a stylesheet sub-resource request. */
+/** Headers for a stylesheet. */
 export const SITE_STYLESHEET_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  'User-Agent': DESKTOP_USER_AGENT,
+  'User-Agent': SITE_USER_AGENT,
   Accept: 'text/css,*/*;q=0.1',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Sec-Fetch-Dest': 'style',
-  'Sec-Fetch-Mode': 'no-cors',
-  'Sec-Fetch-Site': 'same-origin',
-  ...CLIENT_HINTS,
 })
 
-/** Headers for an XML document (sitemap) request. */
+/** Headers for an XML document (sitemap). */
 export const SITE_XML_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  'User-Agent': DESKTOP_USER_AGENT,
+  'User-Agent': SITE_USER_AGENT,
   Accept: 'application/xml,text/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
-  ...CLIENT_HINTS,
 })

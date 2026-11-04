@@ -302,3 +302,28 @@ describe('page Markdown in the modal', async () => {
     expect(firstParagraphOf(`${'word '.repeat(100)}`)!.length).toBeLessThanOrEqual(300)
   })
 })
+
+describe('regressions found on real sites', () => {
+  it('Markdown survives <html class="supports-no-cookies"> (Shopify themes)', () => {
+    const html = '<html class="no-js supports-no-cookies"><body class="template-index"><main><h1>Sightglass</h1><p>Coffee roasted in San Francisco.</p></main><div class="cookie-banner">Accept cookies</div></body></html>'
+    const md = htmlToMarkdown(html)
+    expect(md).toContain('# Sightglass')
+    expect(md).toContain('Coffee roasted in San Francisco.')
+    expect(md).not.toContain('Accept cookies')
+  })
+
+  it('ignores WordPress admin and UI-library colour variables', () => {
+    const html = '<style>:root{--wp-admin-theme-color:#007cba;--swiper-theme-color:#007aff;--brand:#8a3b12}.a{color:#8a3b12}</style>'
+    const colors = extractBrandColors(html)
+    expect(colors.primary).toBe('#8a3b12')
+    expect(colors.palette).not.toContain('#007cba')
+    expect(colors.palette).not.toContain('#007aff')
+  })
+
+  it('reads the Squarespace theme stylesheet from its CDN', () => {
+    const html = '<link rel="stylesheet" href="https://static1.squarespace.com/static/versioned-site-css/abc/site.css"><link rel="stylesheet" href="https://evil.example/x.css">'
+    expect(extractStylesheetUrls(html, 'https://bedford-demo.squarespace.com/')).toEqual([
+      'https://static1.squarespace.com/static/versioned-site-css/abc/site.css',
+    ])
+  })
+})

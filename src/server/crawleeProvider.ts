@@ -42,7 +42,7 @@ import {
 import type { ImageCandidate, DiscoveryResult } from './discoveryProvider'
 
 const REQUEST_TIMEOUT = DISCOVERY_REQUEST_TIMEOUT_MS
-// Website pages get browser-like headers (see src/lib/siteRequestHeaders.ts).
+// Website pages get the shared crawler headers (see src/lib/siteRequestHeaders.ts).
 
 const PERSONALIZATION_SLUG_PATTERNS = [
   'about',

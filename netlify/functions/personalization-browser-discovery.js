@@ -42,12 +42,10 @@ function getSupabase() {
 // ---------------------------------------------------------------------------
 
 /**
- * Same desktop Chrome agent as src/lib/siteRequestHeaders.ts (this plain-JS
- * worker cannot import TypeScript). Hosts that refuse an unusual bot agent
- * serve the normal public page to it.
+ * Same honest crawler agent as src/lib/siteRequestHeaders.ts (this plain-JS
+ * worker cannot import TypeScript).
  */
-const DESKTOP_USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+const SITE_USER_AGENT = 'Mozilla/5.0 (compatible; SmartVideoGO/1.0; +https://go.smartvid.app)'
 
 const BROWSER_FALLBACK_MAX_PAGES = 4
 // Time budget for the static / sitemap / Crawlee layers inside the worker.
@@ -1116,7 +1114,7 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingB
 
   try {
     context = await browser.newContext({
-      userAgent: DESKTOP_USER_AGENT,
+      userAgent: SITE_USER_AGENT,
       locale: 'en-US',
       viewport: { width: 1280, height: 900 },
       // A registered service worker issues its own `fetch`es in a worker scope

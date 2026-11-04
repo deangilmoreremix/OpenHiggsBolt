@@ -404,7 +404,15 @@ const DEFAULT_THEME_COLORS = new Set([
   '#007bff', '#0d6efd', '#0073aa', '#2271b1', '#21759b', '#337ab7', '#428bca',
   '#6c757d', '#17a2b8', '#28a745', '#dc3545', '#ffc107', '#343a40', '#f8f9fa',
   '#1877f2', '#1da1f2', '#e4405f', '#ff0000', '#0a66c2',
+  '#007aff', '#007cba', '#3858e9', '#0d99ff',
 ])
+
+/**
+ * CSS custom properties that belong to a CMS admin bar or a UI library
+ * (WordPress admin, Swiper, Bootstrap, sliders, lightboxes), not the brand.
+ */
+const LIBRARY_VAR_PATTERN =
+  /^(?:wp-admin|wp--preset|swiper|bs-|bootstrap|plyr|toastify|slick|glide|flickity|splide|fancybox|lightbox|tw-|chakra|mdc-|mui)/
 
 interface Rgb { r: number; g: number; b: number }
 
@@ -520,6 +528,7 @@ export function extractBrandColors(html: string, extraCss: string[] = []): Brand
 
   for (const match of css.matchAll(BRAND_VAR_PATTERN)) {
     const name = match[1].toLowerCase()
+    if (LIBRARY_VAR_PATTERN.test(name)) continue
     const values = match[2].match(COLOR_VALUE) || []
     const weight = /primary|brand|main|theme/.test(name) ? 6 : 4
     for (const value of values.slice(0, 1)) add(value, weight, `css-var:--${name}`)
@@ -556,7 +565,13 @@ export function extractBrandColors(html: string, extraCss: string[] = []): Brand
   }
 }
 
-/** Same-origin stylesheet URLs a page links, in document order. */
+/**
+ * Site-builder CDNs that serve a site's OWN theme stylesheet from another
+ * origin (Squarespace puts every site's colours in static1.squarespace.com).
+ */
+const BUILDER_STYLESHEET_HOSTS = new Set(['static1.squarespace.com', 'assets.squarespace.com'])
+
+/** Same-origin (or site-builder theme) stylesheet URLs a page links, in document order. */
 export function extractStylesheetUrls(html: string, baseUrl: string, limit = 2): string[] {
   if (!html) return []
   const $ = cheerio.load(html)
@@ -572,7 +587,7 @@ export function extractStylesheetUrls(html: string, baseUrl: string, limit = 2):
     const href = $(element).attr('href') || ''
     try {
       const url = new URL(href, baseUrl)
-      if (url.origin !== origin) return
+      if (url.origin !== origin && !BUILDER_STYLESHEET_HOSTS.has(url.hostname)) return
       // Skip obvious vendor bundles: they hold framework colours, not the brand's.
       if (/bootstrap|font-?awesome|wp-includes|jquery|animate|swiper|slick/i.test(url.pathname)) return
       urls.push(url.toString())
@@ -663,7 +678,16 @@ function inlineText($: CheerioAPI, node: any): string {
 export function htmlToMarkdown(html: string, maxChars = MAX_MARKDOWN_CHARS): string {
   if (!html) return ''
   const $ = cheerio.load(html)
-  $(REMOVED_FOR_MARKDOWN).remove()
+  $(REMOVED_FOR_MARKDOWN)
+    // `[class*="cookie"]` also matches `<html class="supports-no-cookies">`
+    // (Shopify themes): never remove the document, the body, the main
+    // content or anything that wraps it.
+    .filter((_i, element) => {
+      const tag = (element as any).tagName
+      if (tag === 'html' || tag === 'body' || tag === 'main' || tag === 'article') return false
+      return $(element).find('main, article').length === 0
+    })
+    .remove()
   const root = $('main').first().length
     ? $('main').first()
     : $('article').first().length

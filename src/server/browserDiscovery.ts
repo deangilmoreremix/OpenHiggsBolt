@@ -16,7 +16,7 @@
  * that cannot start its proxy fails closed instead of running with one layer.
  */
 
-import { DESKTOP_USER_AGENT } from '../lib/siteRequestHeaders'
+import { SITE_USER_AGENT } from '../lib/siteRequestHeaders'
 import { isIPv6 } from 'node:net'
 
 import {
@@ -1553,7 +1553,7 @@ async function collectBrowserCandidates(
       guard,
       baseTarget,
       contextOptions: {
-        userAgent: DESKTOP_USER_AGENT,
+        userAgent: SITE_USER_AGENT,
         viewport: { width: 1280, height: 900 },
       },
       blockedResourceTypes: BLOCKED_RESOURCE_TYPES,

@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  DESKTOP_USER_AGENT,
+  SITE_USER_AGENT,
   SITE_IMAGE_HEADERS,
   SITE_PAGE_HEADERS,
   SITE_XML_HEADERS,
 } from '../src/lib/siteRequestHeaders'
 
 describe('site request headers', () => {
-  it('send a desktop Chrome agent, not a bot agent, to business websites', () => {
+  it('identify the crawler honestly and never impersonate a browser', () => {
     for (const headers of [SITE_PAGE_HEADERS, SITE_IMAGE_HEADERS, SITE_XML_HEADERS]) {
-      expect(headers['User-Agent']).toBe(DESKTOP_USER_AGENT)
-      expect(headers['User-Agent']).toMatch(/Chrome\/\d+/)
-      expect(headers['User-Agent']).not.toMatch(/bot|SmartVideoGO|AssetDiscovery/i)
+      expect(headers['User-Agent']).toBe(SITE_USER_AGENT)
+      expect(headers['User-Agent']).toMatch(/^Mozilla\/5\.0 \(compatible; SmartVideoGO\/[\d.]+; \+https:\/\//)
+      expect(headers['User-Agent']).not.toMatch(/Chrome|Safari|AppleWebKit/)
+      expect(Object.keys(headers).some((h) => /^sec-/i.test(h))).toBe(false)
       expect(headers['Accept-Language']).toBeTruthy()
     }
     expect(SITE_PAGE_HEADERS.Accept).toContain('text/html')
@@ -44,9 +45,9 @@ describe('site request headers', () => {
     }
   })
 
-  it('the browser worker uses the same desktop agent', () => {
+  it('the browser worker uses the same crawler agent', () => {
     const worker = readFileSync('netlify/functions/personalization-browser-discovery.js', 'utf8')
-    expect(worker).toContain(DESKTOP_USER_AGENT)
+    expect(worker).toContain(SITE_USER_AGENT)
     expect(worker).not.toContain('AssetDiscovery/1.0')
   })
 })
