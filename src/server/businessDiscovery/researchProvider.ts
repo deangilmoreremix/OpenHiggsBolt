@@ -636,9 +636,19 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
         logoUrl: brandingAssets.logoUrl,
         imageUrls: brandingAssets.imageUrls,
       }
-      result.brandColors = await detectBrandColors(html, finalUrl)
-      const pageMarkdown = htmlToMarkdown(html)
-      if (pageMarkdown) result.pageMarkdown = pageMarkdown
+      // Enrichment is best effort: a failure here must not turn a page that
+      // was fetched into `reachable: false` via the outer catch.
+      try {
+        result.brandColors = await detectBrandColors(html, finalUrl)
+      } catch {
+        // no palette
+      }
+      try {
+        const pageMarkdown = htmlToMarkdown(html)
+        if (pageMarkdown) result.pageMarkdown = pageMarkdown
+      } catch {
+        // no page text
+      }
     } else if (html) {
       // Reachable, but the body was not HTML, so no page could be scanned.
       result.videoMarketing = {

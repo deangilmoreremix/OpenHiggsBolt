@@ -358,3 +358,37 @@ describe('regressions found on real sites', () => {
     ])
   })
 })
+
+describe('review follow-ups (CodeRabbit)', async () => {
+  const { classifyAssetCandidate } = await import('../src/server/discoveryAssetFilter')
+  const { SITE_IMAGE_HEADERS } = await import('../src/lib/siteRequestHeaders')
+
+  it('image requests never ask for AVIF, which the download step drops', () => {
+    expect(SITE_IMAGE_HEADERS.Accept).not.toMatch(/avif/i)
+    expect(SITE_IMAGE_HEADERS.Accept).toMatch(/image\/webp/)
+  })
+
+  it('keeps two separate lists with identical markup in different groups', () => {
+    const card = '<div class="card"><img class="x"></div>'
+    const $ = cheerio.load(`<section class="s"><div class="grid">${card}${card}</div></section><section class="s"><div class="grid">${card}</div></section>`)
+    const keys = $('img').toArray().map((el) => elementStructureKey($, el))
+    expect(keys[0]).toBe(keys[1])
+    expect(keys[0]).not.toBe(keys[2])
+  })
+
+  it('rejects mostly transparent #rgba / #rrggbbaa colours', () => {
+    expect(extractBrandColors('<meta name="theme-color" content="#e6394610">').palette).toEqual([])
+    expect(extractBrandColors('<meta name="theme-color" content="#e63946ff">').primary).toBe('#e63946')
+    expect(extractBrandColors('<meta name="theme-color" content="#e631">').palette).toEqual([])
+  })
+
+  it('keeps the start of a single oversized paragraph', () => {
+    const md = htmlToMarkdown(`<main><p>${'Family plumbing since 1987. '.repeat(100)}</p></main>`, 300)
+    expect(md.length).toBeGreaterThan(200)
+    expect(md.length).toBeLessThanOrEqual(300)
+  })
+
+  it('reads camelCase class names in the image context', () => {
+    expect(classifyAssetCandidate({ url: 'https://cdn.example/f/8a7b6c.jpg', contextText: 'teamGrid' }).category).toBe('team')
+  })
+})

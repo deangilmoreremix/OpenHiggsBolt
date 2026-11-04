@@ -27,10 +27,15 @@ export const SITE_PAGE_HEADERS: Readonly<Record<string, string>> = Object.freeze
   'Accept-Language': 'en-US,en;q=0.9',
 })
 
-/** Headers for an image. */
+/**
+ * Headers for an image. Lists ONLY the formats the asset pipeline keeps
+ * (downloadImage accepts jpeg / png / webp / gif; SVG logos are served as-is).
+ * Image CDNs (Shopify, Cloudinary, Wix) negotiate the format from Accept, so
+ * advertising AVIF here would make them send files the download step drops.
+ */
 export const SITE_IMAGE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
   'User-Agent': SITE_USER_AGENT,
-  Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+  Accept: 'image/webp,image/png,image/jpeg,image/gif,image/svg+xml;q=0.9,*/*;q=0.5',
   'Accept-Language': 'en-US,en;q=0.9',
 })
 

@@ -416,7 +416,10 @@ export function classifyAssetCandidate(
 
   // The image's surroundings ("Meet the team", `class="product-card"`,
   // `teamMembers.photo`) classify a CDN-hashed file the name cannot.
-  const fromContext = context.contextText ? matchCategory(tokenize(context.contextText)) : null
+  // Class and data-key names are often camelCase (`teamGrid`, `ourWork`).
+  const fromContext = context.contextText
+    ? matchCategory(tokenize(context.contextText.replace(/([a-z0-9])([A-Z])/g, '$1 $2')))
+    : null
   if (fromContext) {
     return {
       category: fromContext.category,

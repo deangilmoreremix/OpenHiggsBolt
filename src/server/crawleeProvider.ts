@@ -23,7 +23,7 @@
  */
 
 import { SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
-import { elementStructureKey, extractImageContext } from './pageSignals'
+import { elementStructureKey, extractEmbeddedImageUrls, extractImageContext } from './pageSignals'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CheerioCrawler } from '@crawlee/cheerio'
@@ -190,6 +190,12 @@ function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): 
         add(content, undefined, val)
       })
     }
+  }
+
+  // Framework / site-builder page data, as in the static path: on a page only
+  // Crawlee visits, images that exist only in that data are candidates too.
+  for (const embedded of extractEmbeddedImageUrls(html, pageUrl)) {
+    add(embedded.url, undefined, 'embedded')
   }
 
   return candidates

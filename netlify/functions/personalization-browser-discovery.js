@@ -1211,7 +1211,7 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingB
             if (currentHeight === lastHeight) break
             lastHeight = currentHeight
             await page.evaluate('window.scrollBy(0, window.innerHeight * 0.8)')
-            await page.waitForTimeout(100)
+            await page.waitForTimeout(BROWSER_FALLBACK_SCROLL_DELAY)
             attempts++
           }
           await page.evaluate('window.scrollTo(0, 0)')

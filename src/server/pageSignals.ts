@@ -314,14 +314,30 @@ function stableClassNames(className: string | undefined): string {
 export function elementStructureKey($: CheerioAPI, element: any): string {
   const parts: string[] = []
   let current = $(element)
+  let top: object | null = null
   for (let depth = 0; depth <= STRUCTURE_DEPTH && current.length; depth++) {
     const node = current.get(0) as any
     const tag = node?.tagName || ''
     if (!tag || tag === 'body' || tag === 'html') break
     parts.push(`${tag}${depth === 0 ? '' : `.${stableClassNames(current.attr('class'))}`}`)
+    top = node
     current = current.parent()
   }
-  return parts.reverse().join('>')
+  // The identity of the outermost ancestor keeps two separate lists with the
+  // same markup (a product grid and a team grid built from the same card
+  // component) in different groups; items of ONE list share it.
+  return `${parts.reverse().join('>')}#${top ? nodeId(top) : 0}`
+}
+
+const NODE_IDS = new WeakMap<object, number>()
+let nextNodeId = 1
+function nodeId(node: object): number {
+  let id = NODE_IDS.get(node)
+  if (!id) {
+    id = nextNodeId++
+    NODE_IDS.set(node, id)
+  }
+  return id
 }
 
 export interface SimilarityItem {
@@ -421,6 +437,10 @@ function parseColor(raw: string): string | null {
   let match = /^#([0-9a-f]{3,8})$/.exec(value)
   if (match) {
     let hex = match[1]
+    // #rgba / #rrggbbaa: a mostly transparent colour is not a brand colour,
+    // the same rule as rgba() below.
+    const alpha = hex.length === 4 ? parseInt(hex[3] + hex[3], 16) : hex.length === 8 ? parseInt(hex.slice(6), 16) : 255
+    if (alpha < 128) return null
     if (hex.length === 3 || hex.length === 4) hex = hex.slice(0, 3).split('').map((c) => c + c).join('')
     else if (hex.length === 8) hex = hex.slice(0, 6)
     else if (hex.length !== 6) return null
@@ -736,7 +756,13 @@ export function htmlToMarkdown(html: string, maxChars = MAX_MARKDOWN_CHARS): str
   let markdown = ''
   for (const line of lines) {
     const block = line.startsWith('- ') ? `${line}\n` : `\n${line}\n`
-    if (markdown.length + block.length > maxChars) break
+    if (markdown.length + block.length > maxChars) {
+      // Keep the part of an oversized block that fits (a page whose main text
+      // is one long paragraph used to produce nothing), cut at a word.
+      const room = maxChars - markdown.length
+      if (room > 40) markdown += block.slice(0, room).replace(/\s+\S*$/, '')
+      break
+    }
     markdown += block
   }
   return markdown.replace(/\n{3,}/g, '\n\n').trim()

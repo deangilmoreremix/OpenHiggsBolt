@@ -499,8 +499,12 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
   // as <img> tags, so this recovers them without a browser.
   for (const embedded of extractEmbeddedImageUrls(html, pageUrl)) {
     add(embedded.url, undefined, 'embedded')
-    const last = candidates[candidates.length - 1]
-    if (last && last.url === embedded.url && embedded.context) last.contextText = embedded.context
+    if (!embedded.context) continue
+    // The image may already be a candidate from an <img> tag: merge the data
+    // context into it (by normalized url) rather than only into a new entry.
+    const key = normalizeAssetUrl(embedded.url)
+    const match = key ? candidates.find((candidate) => normalizeAssetUrl(candidate.url) === key) : undefined
+    if (match) match.contextText = [match.contextText, embedded.context].filter(Boolean).join(' ')
   }
 
   return candidates
