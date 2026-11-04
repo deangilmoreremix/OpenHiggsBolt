@@ -35,10 +35,10 @@ import {
 
 export const BROWSER_FALLBACK_MAX_PAGES = 4
 export const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5_000
+export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9_000
 export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2_000
-export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-export const BROWSER_FALLBACK_SCROLL_DELAY = 100
+export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+export const BROWSER_FALLBACK_SCROLL_DELAY = 300
 export const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 // ---------------------------------------------------------------------------

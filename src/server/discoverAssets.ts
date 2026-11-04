@@ -103,6 +103,8 @@ interface DiscoveryOptions {
    * a slow site can never hold the caller open past its budget.
    */
   deadlineAt?: number
+  /** Receives the fetched homepage HTML (used for JS-shell detection). */
+  onHomeHtml?: (html: string) => void
 }
 
 interface ImageCandidate {
@@ -779,6 +781,11 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
   const homeHtml = await fetchPage(baseUrl, deadlineAt)
   if (!homeHtml) {
     return []
+  }
+  try {
+    options.onHomeHtml?.(homeHtml)
+  } catch {
+    // An observer must never break the crawl.
   }
 
   const allCandidates: ImageCandidate[] = []

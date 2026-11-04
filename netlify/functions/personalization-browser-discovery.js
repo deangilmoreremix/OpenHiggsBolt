@@ -53,10 +53,14 @@ const BROWSER_FALLBACK_MAX_PAGES = 4
 // Time budget for the static / sitemap / Crawlee layers inside the worker.
 const FAST_DISCOVERY_BUDGET_MS = 20_000
 const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5000
+// JS-built pages (Wix, Squarespace, React) often need more than 5s to reach
+// DOMContentLoaded on a cold serverless Chromium, and their images load only
+// as the page is scrolled. 9s + three short scroll steps stays inside the
+// 60s run budget at 4 pages / 2 concurrent.
+const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9000
 const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2000
-const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-const BROWSER_FALLBACK_SCROLL_DELAY = 100
+const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+const BROWSER_FALLBACK_SCROLL_DELAY = 300
 const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 /** Hard cap on the redirect hops a single navigation may take. */

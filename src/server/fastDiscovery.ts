@@ -12,7 +12,7 @@ import { getBusinessAssetClassificationModel } from './discoveryClassificationCo
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemap } from './sitemapDiscovery'
 import { discoverWithCrawlee } from './crawleeProvider'
-import { propagateSimilarCategories } from './pageSignals'
+import { looksJsRendered, propagateSimilarCategories, type JsRenderSignal } from './pageSignals'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -61,6 +61,8 @@ export interface OrchestratedDiscoveryResult {
   firecrawlUsefulAssetCount?: number
   sitemapFound?: boolean
   crawleePagesCrawled?: number
+  /** JS-shell detection on the homepage HTML (telemetry). */
+  jsRender?: JsRenderSignal
 }
 
 export interface FastDiscoveryResult {
@@ -69,6 +71,8 @@ export interface FastDiscoveryResult {
   usefulAssetCount: number
   providerAttempts: string[]
   needsBrowser: boolean
+  /** JS-shell detection on the homepage HTML, when the homepage was fetched. */
+  jsRender?: JsRenderSignal
 }
 
 function hasEnoughUsefulAssets(assets: DiscoveredAsset[]): boolean {
@@ -109,6 +113,7 @@ export async function runFastDiscovery(options: {
   let sitemapFound = false
   let sitemapPageUrls: string[] = []
   let sitemapImageUrls: string[] = []
+  let jsRender: JsRenderSignal | undefined
 
   // 1. Static discovery — always attempt first
   providerAttempts.push('SMARTVIDEO_STATIC')
@@ -121,6 +126,9 @@ export async function runFastDiscovery(options: {
       openAiKey,
       openAiModel,
       deadlineAt,
+      onHomeHtml: (html) => {
+        jsRender = looksJsRendered(html)
+      },
     })
     providerAttempts.push('SMARTVIDEO_STATIC_COMPLETED')
     if (result?.candidates?.length) {
@@ -207,7 +215,13 @@ export async function runFastDiscovery(options: {
   }
 
   const usefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
-  const needsBrowser = !hasEnoughUsefulAssets(discoveredAssets)
+  // A JS-rendered shell (Wix, Squarespace, a React app) is worth the browser
+  // escalation even when the free layers found the bare minimum: what they
+  // found is only the shell. A shell whose embedded data already produced a
+  // healthy set of assets does not need it.
+  const jsShellNeedsBrowser = Boolean(jsRender?.jsRendered) && usefulAssetCount < FREE_DISCOVERY_MIN_USEFUL * 2
+  const needsBrowser = !hasEnoughUsefulAssets(discoveredAssets) || jsShellNeedsBrowser
+  if (jsShellNeedsBrowser) providerAttempts.push('JS_SHELL_DETECTED')
 
   const finalResult: OrchestratedDiscoveryResult = {
     providerUsed: result?.provider || providerAttempts[providerAttempts.length - 1] || 'NONE',
@@ -226,6 +240,7 @@ export async function runFastDiscovery(options: {
     firecrawlUsefulAssetCount: 0,
     sitemapFound,
     crawleePagesCrawled,
+    jsRender,
   }
 
   return {
@@ -234,6 +249,7 @@ export async function runFastDiscovery(options: {
     usefulAssetCount,
     providerAttempts,
     needsBrowser,
+    jsRender,
   }
 }
 
