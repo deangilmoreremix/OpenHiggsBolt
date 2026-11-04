@@ -41,6 +41,14 @@ function getSupabase() {
 // Resource limits / timeouts
 // ---------------------------------------------------------------------------
 
+/**
+ * Same desktop Chrome agent as src/lib/siteRequestHeaders.ts (this plain-JS
+ * worker cannot import TypeScript). Hosts that refuse an unusual bot agent
+ * serve the normal public page to it.
+ */
+const DESKTOP_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+
 const BROWSER_FALLBACK_MAX_PAGES = 4
 // Time budget for the static / sitemap / Crawlee layers inside the worker.
 const FAST_DISCOVERY_BUDGET_MS = 20_000
@@ -1104,7 +1112,8 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingB
 
   try {
     context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+      userAgent: DESKTOP_USER_AGENT,
+      locale: 'en-US',
       viewport: { width: 1280, height: 900 },
       // A registered service worker issues its own `fetch`es in a worker scope
       // that `context.route()` never sees. Blocking them closes the bypass: the

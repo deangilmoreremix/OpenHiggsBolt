@@ -20,6 +20,7 @@
  * `Error` so the caller's per-image mapping reports it as `ok: false`.
  */
 
+import { SITE_IMAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios, { type AxiosResponse } from 'axios'
 import {
   checkDestination,
@@ -122,9 +123,7 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
     const response = await axios.get(currentUrl, {
       responseType: 'arraybuffer',
       timeout: REQUEST_TIMEOUT,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-      },
+      headers: { ...SITE_IMAGE_HEADERS },
       // 3xx must come back as a response so the manual loop can re-validate
       // the next hop instead of letting axios follow it unchecked.
       validateStatus: (status: number) => status >= 200 && status < 400,

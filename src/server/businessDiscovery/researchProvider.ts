@@ -34,6 +34,7 @@
  * (`maxRedirects: 0`).
  */
 
+import { SITE_PAGE_HEADERS } from '../../lib/siteRequestHeaders'
 import axios, { type AxiosResponse } from 'axios'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
@@ -183,10 +184,7 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
     const response = await axios.get(currentUrl, {
       timeout: REQUEST_TIMEOUT,
       maxContentLength: MAX_HTML_BYTES,
-      headers: {
-        'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
+      headers: { ...SITE_PAGE_HEADERS },
       validateStatus: (s) => s >= 200 && s < 400,
       ...pin,
     })

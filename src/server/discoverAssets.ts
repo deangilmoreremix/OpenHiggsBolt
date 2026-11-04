@@ -12,6 +12,7 @@
  * 7. Return a structured list of DiscoveredAsset candidates for the client to review.
  */
 
+import { SITE_IMAGE_HEADERS, SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import OpenAI from 'openai'
@@ -255,12 +256,11 @@ async function requestWithValidatedRedirects(
   throw new NetworkSafetyError('too_many_redirects')
 }
 
-const PAGE_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-}
+// Browser-like headers: hosts that 403 an unusual bot agent serve these the
+// normal public page (see src/lib/siteRequestHeaders.ts).
+const PAGE_HEADERS = SITE_PAGE_HEADERS
 
-const IMAGE_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' }
+const IMAGE_HEADERS = SITE_IMAGE_HEADERS
 
 /**
  * Fetches a page, following only redirects whose destination passes the full
@@ -280,7 +280,7 @@ export async function fetchPage(url: string, deadlineAt?: number): Promise<strin
         axios.get(target, {
           ...config,
           responseType: 'arraybuffer',
-          headers: PAGE_HEADERS,
+          headers: { ...PAGE_HEADERS },
           validateStatus: (s: number) => s >= 200 && s < 400,
         }),
       REDIRECT_LIMIT,
@@ -496,7 +496,7 @@ export async function validateImage(url: string, deadlineAt?: number): Promise<{
       (target, config) =>
         axios.head(target, {
           ...config,
-          headers: IMAGE_HEADERS,
+          headers: { ...IMAGE_HEADERS },
           validateStatus: (s: number) => s >= 200 && s < 500,
         }),
       REDIRECT_LIMIT,
@@ -542,7 +542,7 @@ async function fallbackBoundedGetValidation(
       (target, config) =>
         axios.get(target, {
           ...config,
-          headers: IMAGE_HEADERS,
+          headers: { ...IMAGE_HEADERS },
           responseType: 'arraybuffer',
           maxContentLength: MAX_IMAGE_BYTES,
           validateStatus: (s: number) => s >= 200 && s < 300,
@@ -863,7 +863,7 @@ export async function downloadImage(url: string, deadlineAt?: number): Promise<{
       (target, config) =>
         axios.get(target, {
           ...config,
-          headers: IMAGE_HEADERS,
+          headers: { ...IMAGE_HEADERS },
           responseType: 'arraybuffer',
           maxContentLength: MAX_IMAGE_BYTES,
           validateStatus: (s: number) => s >= 200 && s < 300,

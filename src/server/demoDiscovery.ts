@@ -23,6 +23,7 @@
  *    list of a public website — never a caller IP, user id or token.
  */
 
+import { SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import {
@@ -287,10 +288,7 @@ async function fetchPinnedText(
     response = await axios.get(url, {
       timeout: DEMO_REQUEST_TIMEOUT_MS,
       maxContentLength: DEMO_MAX_BODY_BYTES,
-      headers: {
-        'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
+      headers: { ...SITE_PAGE_HEADERS },
       validateStatus: (status: number) => status === 200,
       // The pin carries the validated-address lookup and the agents; it also
       // disables axios' redirect following, restated below so a future change

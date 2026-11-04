@@ -22,6 +22,7 @@
  *    gate.
  */
 
+import { SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CheerioCrawler } from '@crawlee/cheerio'
@@ -40,7 +41,7 @@ import {
 import type { ImageCandidate, DiscoveryResult } from './discoveryProvider'
 
 const REQUEST_TIMEOUT = DISCOVERY_REQUEST_TIMEOUT_MS
-const USER_AGENT = 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)'
+// Website pages get browser-like headers (see src/lib/siteRequestHeaders.ts).
 
 const PERSONALIZATION_SLUG_PATTERNS = [
   'about',
@@ -289,7 +290,7 @@ export async function discoverWithCrawlee(
         gotOptions.timeout = { request: budgetMs }
         gotOptions.headers = {
           ...(gotOptions.headers || {}),
-          'User-Agent': USER_AGENT,
+          ...SITE_PAGE_HEADERS,
         }
       },
     ],
