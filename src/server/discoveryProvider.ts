@@ -44,6 +44,8 @@ export interface ImageCandidate {
    * page with — i.e. the site's own logo, whatever the file is called.
    */
   isSiteLogo?: boolean
+  /** Words around the image (caption, heading, section names, data keys). */
+  contextText?: string
   /**
    * A classification the provider has already made (the static path runs
    * OpenAI Vision). It is carried here so the shared asset builder does not

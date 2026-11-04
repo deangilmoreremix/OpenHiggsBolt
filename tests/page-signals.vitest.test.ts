@@ -238,3 +238,24 @@ describe('researched brand colours in the modal', async () => {
     expect(sanitizeDemoDiscoveryPayload({ ...base, brandColors: { primary: 'x' } })).not.toHaveProperty('brandColors')
   })
 })
+
+describe('context-based classification', async () => {
+  const { classifyAssetCandidate } = await import('../src/server/discoveryAssetFilter')
+
+  it('classifies a CDN-hashed image from its surroundings', () => {
+    const url = 'https://cdn.example.com/f/8a7b6c5d4e3f.jpg'
+    expect(classifyAssetCandidate({ url }).category).toBe('brand')
+    const team = classifyAssetCandidate({ url, contextText: 'our-team team-grid Meet the crew' })
+    expect(team.category).toBe('team')
+    expect(team.confidence).toBeGreaterThanOrEqual(50)
+    expect(classifyAssetCandidate({ url, contextText: 'product-card Shop' }).category).toBe('product')
+  })
+
+  it('never lets context override the file name, alt text, junk rules or site logo', () => {
+    expect(classifyAssetCandidate({ url: 'https://x.example/img/logo.png', contextText: 'our-team' }).category).toBe('logo')
+    expect(classifyAssetCandidate({ url: 'https://x.example/a1.png', altText: 'spacer', contextText: 'our-team' }).category)
+      .toBe('irrelevant')
+    expect(classifyAssetCandidate({ url: 'https://x.example/a1.png', isSiteLogo: true, contextText: 'our-team' }).category)
+      .toBe('logo')
+  })
+})

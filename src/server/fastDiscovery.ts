@@ -324,6 +324,7 @@ export async function buildDiscoveredAssetsFromCandidates(
           ogContext: candidate.ogContext,
           sourcePage: candidate.sourcePage,
           isSiteLogo: candidate.isSiteLogo,
+          contextText: candidate.contextText,
         })
       } catch {
         classification = null

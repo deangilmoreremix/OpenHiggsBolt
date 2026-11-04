@@ -48,6 +48,7 @@ export class StaticDiscoveryProvider {
       altText: asset.altText,
       ogContext: asset.ogContext,
       isSiteLogo: asset.isSiteLogo,
+      contextText: asset.contextText,
       category: asset.category,
       confidence: asset.confidence,
       recommended: asset.recommended,

@@ -15,7 +15,7 @@
 import { SITE_IMAGE_HEADERS, SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-import { extractEmbeddedImageUrls } from './pageSignals'
+import { extractEmbeddedImageUrls, extractImageContext } from './pageSignals'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import {
@@ -81,6 +81,8 @@ export interface DiscoveredAsset {
    * its home page with.
    */
   isSiteLogo?: boolean
+  /** Words around the image (caption, heading, section names, data keys). */
+  contextText?: string
 }
 
 interface DiscoveryOptions {
@@ -427,6 +429,7 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     altText?: string,
     ogContext?: string,
     element?: any,
+    contextElement?: any,
   ) => {
     if (!rawUrl || rawUrl.startsWith('data:')) return
     let absolute: string
@@ -442,7 +445,9 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     if (!key || seen.has(key)) return
     if (isLikelyJunk(absolute, altText, isSiteLogo)) return
     seen.add(key)
-    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo })
+    const around = element || contextElement
+    const contextText = around ? extractImageContext($, around) || undefined : undefined
+    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo, contextText })
   }
 
   // img[src]
@@ -455,7 +460,7 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     const srcset = $(elem).attr('srcset') || ''
     const entry = largestSrcsetEntry(srcset)
     if (entry) {
-      add(entry, $(elem).attr('alt') || undefined)
+      add(entry, $(elem).attr('alt') || undefined, undefined, undefined, elem)
     }
   })
 
@@ -464,7 +469,7 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     const srcset = $(elem).attr('srcset') || ''
     const entry = largestSrcsetEntry(srcset)
     if (entry) {
-      add(entry)
+      add(entry, undefined, undefined, undefined, elem)
     }
   })
 
@@ -588,7 +593,7 @@ async function fallbackBoundedGetValidation(
  */
 export function heuristicFallback(
   url: string,
-  context: { altText?: string; ogContext?: string; sourcePage?: string; isSiteLogo?: boolean } = {},
+  context: { altText?: string; ogContext?: string; sourcePage?: string; isSiteLogo?: boolean; contextText?: string } = {},
 ): { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } {
   return classifyAssetCandidate({
     url,
@@ -596,6 +601,7 @@ export function heuristicFallback(
     ogContext: context.ogContext,
     sourcePage: context.sourcePage,
     isSiteLogo: context.isSiteLogo,
+    contextText: context.contextText,
   })
 }
 
@@ -607,7 +613,7 @@ export async function classifyImage(
   url: string,
   openAiKey?: string,
   model = getBusinessAssetClassificationModel(),
-  context: { altText?: string; ogContext?: string; sourcePage?: string; isSiteLogo?: boolean } = {},
+  context: { altText?: string; ogContext?: string; sourcePage?: string; isSiteLogo?: boolean; contextText?: string } = {},
 ): Promise<{ category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null> {
   // A proven site logo is not a judgement call: the site itself says which
   // image is its brand mark, so the name-based rules (and the vision call)
@@ -828,6 +834,7 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
           ogContext: candidate.ogContext,
           sourcePage: candidate.sourcePage,
           isSiteLogo: candidate.isSiteLogo,
+          contextText: candidate.contextText,
         })
           .then((classification) => ({ candidate, classification }))
           .catch(() => ({ candidate, classification: null as any })),
@@ -855,6 +862,7 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
         altText: candidate.altText,
         ogContext: candidate.ogContext,
         isSiteLogo: candidate.isSiteLogo,
+        contextText: candidate.contextText,
       })
     }
   }
