@@ -340,10 +340,51 @@ export function elementStructureKey($: CheerioAPI, element: any): string {
     top = node
     current = current.parent()
   }
-  // The identity of the outermost ancestor keeps two separate lists with the
-  // same markup (a product grid and a team grid built from the same card
-  // component) in different groups; items of ONE list share it.
-  return `${parts.reverse().join('>')}#${top ? nodeId(top) : 0}`
+  // The identity of the repeated-list container keeps two separate lists with
+  // the same markup (a product grid and a team grid built from the same card
+  // component, even inside one section) in different groups; items of ONE
+  // list share it. Falls back to the outermost ancestor walked.
+  const container = repeatedListContainer($, element) || top
+  return `${parts.reverse().join('>')}#${container ? nodeId(container) : 0}`
+}
+
+/**
+ * The parent of the nearest ancestor (or the element itself) that has at
+ * least one sibling with the same tag and stable classes: the grid / list that
+ * holds the repeated items. Null when nothing within STRUCTURE_DEPTH repeats.
+ */
+function repeatedListContainer($: CheerioAPI, element: any): object | null {
+  let current = $(element)
+  for (let depth = 0; depth <= STRUCTURE_DEPTH && current.length; depth++) {
+    const node = current.get(0) as any
+    const tag = node?.tagName
+    if (!tag || tag === 'body' || tag === 'html') return null
+    const parent = current.parent()
+    const parentNode = parent.get(0) as any
+    if (!parentNode) return null
+    const signature = `${tag}.${stableClassNames(current.attr('class'))}`
+    if ((childSignatureCounts($, parentNode).get(signature) || 0) > 1) return parentNode
+    current = parent
+  }
+  return null
+}
+
+/**
+ * How many children of a node share each tag + stable-class signature,
+ * computed once per node: every image of a large grid asks the same parent,
+ * and recounting its children per image would be quadratic.
+ */
+const CHILD_SIGNATURES = new WeakMap<object, Map<string, number>>()
+function childSignatureCounts($: CheerioAPI, parentNode: any): Map<string, number> {
+  let counts = CHILD_SIGNATURES.get(parentNode)
+  if (counts) return counts
+  counts = new Map()
+  for (const child of $(parentNode).children().toArray() as any[]) {
+    const signature = `${child.tagName}.${stableClassNames($(child).attr('class'))}`
+    counts.set(signature, (counts.get(signature) || 0) + 1)
+  }
+  CHILD_SIGNATURES.set(parentNode, counts)
+  return counts
 }
 
 const NODE_IDS = new WeakMap<object, number>()

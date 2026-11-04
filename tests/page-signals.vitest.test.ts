@@ -381,6 +381,23 @@ describe('review follow-ups (CodeRabbit)', async () => {
     expect(SITE_IMAGE_HEADERS.Accept).toMatch(/image\/webp/)
   })
 
+  it('computes structure keys for a huge flat grid in linear time', () => {
+    const $ = cheerio.load(`<div class="grid">${'<div class="card"><img></div>'.repeat(5000)}</div>`)
+    const started = Date.now()
+    const keys = new Set($('img').toArray().map((el) => elementStructureKey($, el)))
+    expect(Date.now() - started).toBeLessThan(2000)
+    expect(keys.size).toBe(1)
+  })
+
+  it('keeps two grids inside ONE section in different groups', () => {
+    const card = '<div class="card"><img></div>'
+    const $ = cheerio.load(`<section class="s"><div class="grid" id="products">${card}${card}</div><div class="grid" id="team">${card}${card}</div></section>`)
+    const keys = $('img').toArray().map((el) => elementStructureKey($, el))
+    expect(keys[0]).toBe(keys[1])
+    expect(keys[2]).toBe(keys[3])
+    expect(keys[0]).not.toBe(keys[2])
+  })
+
   it('keeps two separate lists with identical markup in different groups', () => {
     const card = '<div class="card"><img class="x"></div>'
     const $ = cheerio.load(`<section class="s"><div class="grid">${card}${card}</div></section><section class="s"><div class="grid">${card}</div></section>`)
