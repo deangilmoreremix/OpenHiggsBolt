@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// demoDiscovery imports the Supabase client, which throws at load without
+// env vars; these tests never touch the cache.
+vi.mock('@/lib/supabase', () => ({
+  createServerClient: () => {
+    throw new Error('not used in these tests')
+  },
+}))
 import * as cheerio from 'cheerio'
 import {
   elementStructureKey,
@@ -213,7 +221,7 @@ describe('htmlToMarkdown', () => {
 
 describe('researched brand colours in the modal', async () => {
   const { researchBrandColors, applyResearchedBrandColors } = await import(
-    '../src/shared/personalization/DemoPersonalizeProvider'
+    '../src/shared/personalization/researchHelpers'
   )
   const { DEFAULT_PREVIEW_BRAND_COLORS } = await import('../src/shared/personalization/preview/types')
   const { sanitizeDemoDiscoveryPayload } = await import('../src/server/demoDiscovery')
@@ -284,7 +292,7 @@ describe('find-similar in the shared asset builder', async () => {
 })
 
 describe('page Markdown in the modal', async () => {
-  const { firstParagraphOf } = await import('../src/shared/personalization/DemoPersonalizeProvider')
+  const { firstParagraphOf } = await import('../src/shared/personalization/researchHelpers')
 
   it('picks the first real prose paragraph as a brand description', () => {
     const md = '# Acme Plumbing\n\n- Drain cleaning\n\nCall now\n\nFamily-owned since **1987**, serving the [whole valley](https://x.example) with honest pricing.\n\nMore text here that is long enough to count as a paragraph.'
