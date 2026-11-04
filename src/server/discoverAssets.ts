@@ -15,7 +15,7 @@
 import { SITE_IMAGE_HEADERS, SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-import { extractEmbeddedImageUrls, extractImageContext } from './pageSignals'
+import { elementStructureKey, extractEmbeddedImageUrls, extractImageContext, propagateSimilarCategories } from './pageSignals'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import {
@@ -83,6 +83,8 @@ export interface DiscoveredAsset {
   isSiteLogo?: boolean
   /** Words around the image (caption, heading, section names, data keys). */
   contextText?: string
+  /** Shared by the images of one repeated list on one page (find-similar). */
+  similarGroup?: string
 }
 
 interface DiscoveryOptions {
@@ -111,6 +113,8 @@ interface ImageCandidate {
   isSiteLogo?: boolean
   /** Words around the image (caption, heading, section names, data keys). */
   contextText?: string
+  /** Shared by the images of one repeated list on one page (find-similar). */
+  similarGroup?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +451,8 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     seen.add(key)
     const around = element || contextElement
     const contextText = around ? extractImageContext($, around) || undefined : undefined
-    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo, contextText })
+    const similarGroup = around ? `${pageUrl}|${elementStructureKey($, around)}` : undefined
+    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo, contextText, similarGroup })
   }
 
   // img[src]
@@ -737,6 +742,27 @@ export async function runWithConcurrency<T, R>(
   return results
 }
 
+/** Runs find-similar propagation over discovered assets, in place. */
+function applySimilarCategories(assets: DiscoveredAsset[]): void {
+  const items = assets.map((asset) => ({
+    asset,
+    similarGroup: asset.similarGroup,
+    category: asset.category,
+    confidence: asset.confidence ?? 0,
+    recommended: asset.recommended,
+  }))
+  propagateSimilarCategories(items)
+  for (const item of items) {
+    if (item.category === item.asset.category) continue
+    item.asset.category = item.category
+    item.asset.confidence = item.confidence
+    item.asset.qualityScore = item.confidence
+    item.asset.relevanceScore = item.confidence
+    item.asset.recommended = item.recommended
+    item.asset.selected = item.recommended
+  }
+}
+
 export async function discoverBusinessAssets(options: DiscoveryOptions): Promise<DiscoveredAsset[]> {
   const {
     websiteUrl,
@@ -863,9 +889,14 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
         ogContext: candidate.ogContext,
         isSiteLogo: candidate.isSiteLogo,
         contextText: candidate.contextText,
+        similarGroup: candidate.similarGroup,
       })
     }
   }
+
+  // Find-similar: unsure members of a repeated list (a product grid, a team
+  // list) take the category their confidently classified siblings share.
+  applySimilarCategories(results)
 
   const discoveryMode = 'STATIC_ONLY'
   console.log(`[discovery] mode=${discoveryMode} staticCandidates=${uniqueCandidates.length} validated=${validCandidates.length} classified=${results.length} final=${results.length}`)

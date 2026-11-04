@@ -47,6 +47,11 @@ export interface ImageCandidate {
   /** Words around the image (caption, heading, section names, data keys). */
   contextText?: string
   /**
+   * Page + structure signature shared by the images of one repeated list
+   * (a product grid, a team list, a gallery). See pageSignals.ts.
+   */
+  similarGroup?: string
+  /**
    * A classification the provider has already made (the static path runs
    * OpenAI Vision). It is carried here so the shared asset builder does not
    * throw it away and re-classify the image with the URL heuristic.

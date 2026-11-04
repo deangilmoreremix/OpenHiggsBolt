@@ -12,6 +12,7 @@ import { getBusinessAssetClassificationModel } from './discoveryClassificationCo
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemap } from './sitemapDiscovery'
 import { discoverWithCrawlee } from './crawleeProvider'
+import { propagateSimilarCategories } from './pageSignals'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -297,9 +298,16 @@ export async function buildDiscoveredAssetsFromCandidates(
     usableCandidates = results.filter((result) => result.valid).map((result) => result.candidate)
   }
 
-  for (const candidate of usableCandidates) {
-    if (discoveredAssets.length >= maxImages) break
+  const classified: Array<{
+    candidate: ImageCandidate
+    normalizedUrl: string
+    similarGroup?: string
+    category: DiscoveredAssetCategory
+    confidence: number
+    recommended: boolean
+  }> = []
 
+  for (const candidate of usableCandidates) {
     const normalizedUrl = candidate.url.trim()
 
     // 3. A provider that already classified the image (the static path runs
@@ -334,6 +342,16 @@ export async function buildDiscoveredAssetsFromCandidates(
     if (!classification) {
       classification = heuristicFallback(normalizedUrl, { isSiteLogo: candidate.isSiteLogo })
     }
+
+    classified.push({ candidate, normalizedUrl, similarGroup: candidate.similarGroup, ...classification })
+  }
+
+  // Find-similar: unsure members of a repeated list (a product grid, a team
+  // list, a gallery) take the category their confident siblings share.
+  propagateSimilarCategories(classified)
+
+  for (const { candidate, normalizedUrl, ...classification } of classified) {
+    if (discoveredAssets.length >= maxImages) break
 
     if (!classification.recommended && !isUsefulCategory(classification.category)) {
       continue

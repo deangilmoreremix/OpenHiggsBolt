@@ -23,7 +23,7 @@
  */
 
 import { SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
-import { extractImageContext } from './pageSignals'
+import { elementStructureKey, extractImageContext } from './pageSignals'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CheerioCrawler } from '@crawlee/cheerio'
@@ -155,7 +155,8 @@ function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): 
     if (!key || seen.has(key)) return
     seen.add(key)
     const contextText = element ? extractImageContext($, element) || undefined : undefined
-    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo, contextText })
+    const similarGroup = element ? `${pageUrl}|${elementStructureKey($, element)}` : undefined
+    candidates.push({ url: absolute, sourcePage: pageUrl, altText, ogContext, isSiteLogo, contextText, similarGroup })
   }
 
   $('img[src]').each((_i, elem) => {

@@ -259,3 +259,26 @@ describe('context-based classification', async () => {
       .toBe('logo')
   })
 })
+
+describe('find-similar in the shared asset builder', async () => {
+  const { buildDiscoveredAssetsFromCandidates } = await import('../src/server/fastDiscovery')
+
+  it('gives hashed grid images the category of their named sibling', async () => {
+    const page = 'https://shop.example/'
+    const group = `${page}|ul.grid>li.card>img`
+    const assets = await buildDiscoveredAssetsFromCandidates(
+      [
+        { url: 'https://cdn.example/products/blue-mug.jpg', sourcePage: page, similarGroup: group },
+        { url: 'https://cdn.example/f/9a8b7c6d.jpg', sourcePage: page, similarGroup: group },
+        { url: 'https://cdn.example/f/1e2f3a4b.jpg', sourcePage: page, similarGroup: group },
+        { url: 'https://cdn.example/f/5c6d7e8f.jpg', sourcePage: page },
+      ],
+      10,
+    )
+    const byUrl = Object.fromEntries(assets.map((a) => [a.sourceUrl, a.category]))
+    expect(byUrl['https://cdn.example/products/blue-mug.jpg']).toBe('product')
+    expect(byUrl['https://cdn.example/f/9a8b7c6d.jpg']).toBe('product')
+    expect(byUrl['https://cdn.example/f/1e2f3a4b.jpg']).toBe('product')
+    expect(byUrl['https://cdn.example/f/5c6d7e8f.jpg']).toBe('brand')
+  })
+})

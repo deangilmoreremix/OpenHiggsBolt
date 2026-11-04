@@ -49,6 +49,7 @@ export class StaticDiscoveryProvider {
       ogContext: asset.ogContext,
       isSiteLogo: asset.isSiteLogo,
       contextText: asset.contextText,
+      similarGroup: asset.similarGroup,
       category: asset.category,
       confidence: asset.confidence,
       recommended: asset.recommended,
