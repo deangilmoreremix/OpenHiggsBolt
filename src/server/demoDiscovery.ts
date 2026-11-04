@@ -89,12 +89,20 @@ export interface DemoAsset {
   source: DemoAssetSource
 }
 
+/** Brand colours as `#rrggbb`; either may be absent. */
+export interface DemoBrandColors {
+  primary?: string
+  accent?: string
+}
+
 export interface DemoDiscoveryPayload {
   url: string
   title: string | null
   description: string | null
   logo: string | null
   assets: DemoAsset[]
+  /** The site's brand colours, when the landing page declared any. */
+  brandColors?: DemoBrandColors
 }
 
 export interface DemoDiscoveryResult extends DemoDiscoveryPayload {
@@ -132,6 +140,7 @@ interface DemoResearchInput {
   logoUrl?: string
   jsonLd: Record<string, unknown>[]
   openGraph: Record<string, string>
+  brandColors?: { primary?: string; accent?: string }
 }
 
 interface RawCandidate {
@@ -642,7 +651,22 @@ export async function runDemoDiscovery(websiteUrl: string): Promise<DemoDiscover
         : null,
     logo: logoFromAssets ?? safeAssetUrl(research.logoUrl, baseUrl),
     assets,
+    ...brandColorsField(research.brandColors),
   }
+}
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/
+
+/** `{ brandColors }` with only well-formed `#rrggbb` values, or nothing. */
+function brandColorsField(value: unknown): { brandColors?: DemoBrandColors } {
+  if (!value || typeof value !== 'object') return {}
+  const record = value as Record<string, unknown>
+  const colors: DemoBrandColors = {}
+  for (const key of ['primary', 'accent'] as const) {
+    const color = record[key]
+    if (typeof color === 'string' && HEX_COLOR.test(color.toLowerCase())) colors[key] = color.toLowerCase()
+  }
+  return colors.primary || colors.accent ? { brandColors: colors } : {}
 }
 
 // ---------------------------------------------------------------------------
@@ -691,7 +715,7 @@ export function sanitizeDemoDiscoveryPayload(value: unknown): DemoDiscoveryPaylo
   const url = typeof record.url === 'string' ? safeAssetUrl(record.url, 'https://demo.invalid/') : null
   if (!url) return null
 
-  return { url, title, description, logo, assets }
+  return { url, title, description, logo, assets, ...brandColorsField(record.brandColors) }
 }
 
 /** Reads a fresh cached entry for `cacheKey`, or null. */

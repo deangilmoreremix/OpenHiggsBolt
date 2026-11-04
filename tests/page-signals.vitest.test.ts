@@ -210,3 +210,31 @@ describe('htmlToMarkdown', () => {
     expect(htmlToMarkdown(html, 500).length).toBeLessThanOrEqual(500)
   })
 })
+
+describe('researched brand colours in the modal', async () => {
+  const { researchBrandColors, applyResearchedBrandColors } = await import(
+    '../src/shared/personalization/DemoPersonalizeProvider'
+  )
+  const { DEFAULT_PREVIEW_BRAND_COLORS } = await import('../src/shared/personalization/preview/types')
+  const { sanitizeDemoDiscoveryPayload } = await import('../src/server/demoDiscovery')
+
+  it('accepts only #rrggbb colours', () => {
+    expect(researchBrandColors({ primary: '#E63946', accent: 'red' })).toEqual({ primary: '#e63946' })
+    expect(researchBrandColors({ primary: 'url(javascript:1)' })).toBeNull()
+    expect(researchBrandColors(null)).toBeNull()
+  })
+
+  it('themes the default preview colours but never overwrites the visitor\'s choice', () => {
+    const themed = applyResearchedBrandColors({ ...DEFAULT_PREVIEW_BRAND_COLORS }, { primary: '#e63946', accent: '#1d3557' })
+    expect(themed).toMatchObject({ primary: '#e63946', accent: '#1d3557', text: DEFAULT_PREVIEW_BRAND_COLORS.text })
+    const picked = { ...DEFAULT_PREVIEW_BRAND_COLORS, primary: '#123456' }
+    expect(applyResearchedBrandColors(picked, { primary: '#e63946' })).toBe(picked)
+  })
+
+  it('the demo cache keeps valid brand colours and drops malformed ones', () => {
+    const base = { url: 'https://example.com/', title: null, description: null, logo: null, assets: [] }
+    expect(sanitizeDemoDiscoveryPayload({ ...base, brandColors: { primary: '#E63946', accent: 'nope' } })?.brandColors)
+      .toEqual({ primary: '#e63946' })
+    expect(sanitizeDemoDiscoveryPayload({ ...base, brandColors: { primary: 'x' } })).not.toHaveProperty('brandColors')
+  })
+})

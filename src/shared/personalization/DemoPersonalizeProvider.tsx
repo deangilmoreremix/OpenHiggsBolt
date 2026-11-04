@@ -106,6 +106,7 @@ import {
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
+import { DEFAULT_PREVIEW_BRAND_COLORS } from './preview/types'
 import {
   getRemotionDesignTemplate,
   listRemotionDesignTemplates,
@@ -970,6 +971,7 @@ interface DemoDiscoveryResponse {
   description?: unknown
   logo?: unknown
   assets?: unknown
+  brandColors?: unknown
 }
 
 /**
@@ -1075,6 +1077,47 @@ function businessResearchFromDemoPayload(payload: DemoDiscoveryResponse): Busine
     openGraph: {},
     twitterCard: {},
     contactInfo: { phones: [], emails: [], addresses: [] },
+    ...brandColorsOf(payload.brandColors),
+  }
+}
+
+function brandColorsOf(value: unknown): { brandColors?: { primary?: string; accent?: string } } {
+  const brandColors = researchBrandColors(value)
+  return brandColors ? { brandColors } : {}
+}
+
+const HEX_BRAND_COLOR = /^#[0-9a-f]{6}$/i
+
+/** Only well-formed `#rrggbb` primary / accent colours, or null. */
+export function researchBrandColors(value: unknown): { primary?: string; accent?: string } | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const colors: { primary?: string; accent?: string } = {}
+  for (const key of ['primary', 'accent'] as const) {
+    const color = record[key]
+    if (typeof color === 'string' && HEX_BRAND_COLOR.test(color)) colors[key] = color.toLowerCase()
+  }
+  return colors.primary || colors.accent ? colors : null
+}
+
+/**
+ * The preview brand colours with the researched ones applied — only while the
+ * visitor has not changed them from the defaults. A colour the visitor picked
+ * is never overwritten.
+ */
+export function applyResearchedBrandColors<T extends { primary: string; accent: string }>(
+  current: T,
+  researched: { primary?: string; accent?: string } | null,
+): T {
+  if (!researched) return current
+  const untouched =
+    current.primary.toLowerCase() === DEFAULT_PREVIEW_BRAND_COLORS.primary.toLowerCase() &&
+    current.accent.toLowerCase() === DEFAULT_PREVIEW_BRAND_COLORS.accent.toLowerCase()
+  if (!untouched) return current
+  return {
+    ...current,
+    ...(researched.primary ? { primary: researched.primary } : {}),
+    ...(researched.accent ? { accent: researched.accent } : {}),
   }
 }
 
@@ -2177,6 +2220,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       fill('phone', research.contactInfo?.phones?.[0])
       return next
     })
+    // The site's own brand colours theme the preview, unless the visitor has
+    // already picked colours (then theirs win).
+    const researchedColors = researchBrandColors(research.brandColors)
+    if (researchedColors) {
+      setPreviewSettings((prev) => {
+        const brandColors = applyResearchedBrandColors(prev.brandColors, researchedColors)
+        return brandColors === prev.brandColors ? prev : { ...prev, brandColors }
+      })
+    }
   }, [])
 
   // ── Saved client assets actions ─────────────────────────────────────────────

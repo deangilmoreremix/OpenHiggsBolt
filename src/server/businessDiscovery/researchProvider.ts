@@ -34,7 +34,8 @@
  * (`maxRedirects: 0`).
  */
 
-import { SITE_PAGE_HEADERS } from '../../lib/siteRequestHeaders'
+import { SITE_PAGE_HEADERS, SITE_STYLESHEET_HEADERS } from '../../lib/siteRequestHeaders'
+import { extractBrandColors, extractStylesheetUrls, type BrandColors } from '../pageSignals'
 import axios, { type AxiosResponse } from 'axios'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
@@ -52,6 +53,10 @@ import { computeVideoOpportunityScore } from './businessScoring'
 
 const REQUEST_TIMEOUT = 15_000
 const MAX_HTML_BYTES = 2_000_000
+/** Brand-colour stylesheet fetches: at most two, small and quick. */
+const MAX_STYLESHEETS = 2
+const STYLESHEET_TIMEOUT = 4_000
+const MAX_STYLESHEET_BYTES = 400_000
 
 /**
  * `/api/personalization/research-business` maps a thrown error message to an
@@ -158,7 +163,10 @@ function redirectLocationOf(response: AxiosResponse): string {
  * answer that changes between the check and the connect (the rebinding
  * window) cannot move the socket to a private peer.
  */
-async function fetchWithValidatedRedirects(startUrl: string): Promise<{
+async function fetchWithValidatedRedirects(
+  startUrl: string,
+  options: { timeout?: number; maxBytes?: number; headers?: Record<string, string> } = {},
+): Promise<{
   response: AxiosResponse
   finalUrl: string
 }> {
@@ -182,9 +190,9 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
     const pin = safeRequestConfig(destination)
 
     const response = await axios.get(currentUrl, {
-      timeout: REQUEST_TIMEOUT,
-      maxContentLength: MAX_HTML_BYTES,
-      headers: { ...SITE_PAGE_HEADERS },
+      timeout: options.timeout ?? REQUEST_TIMEOUT,
+      maxContentLength: options.maxBytes ?? MAX_HTML_BYTES,
+      headers: { ...(options.headers ?? SITE_PAGE_HEADERS) },
       validateStatus: (s) => s >= 200 && s < 400,
       ...pin,
     })
@@ -253,6 +261,11 @@ export interface BusinessResearchResult {
     logoUrl?: string
     imageUrls: string[]
   }
+  /**
+   * The site's brand palette (theme-color, CSS brand variables, most-used
+   * colours). Absent when the page could not be scanned.
+   */
+  brandColors?: BrandColors
 }
 
 const SOCIAL_PATTERNS: Record<string, RegExp> = {
@@ -497,6 +510,36 @@ function detectVideoMarketing(html: string): BusinessResearchResult['videoMarket
   return { hasPromoVideo: 'unknown', signals }
 }
 
+/**
+ * The brand palette of the fetched homepage. The page's own signals
+ * (theme-color, inline CSS) are read first; only when they name no brand
+ * colour are up to two of the site's own stylesheets fetched, each through
+ * the same SSRF-validated, pinned, redirect-checked path as the page itself.
+ * A stylesheet that fails is skipped: colours are a nicety, never an error.
+ */
+async function detectBrandColors(html: string, pageUrl: string): Promise<BrandColors> {
+  const inline = extractBrandColors(html)
+  if (inline.primary && inline.accent) return inline
+
+  const stylesheets: string[] = []
+  for (const cssUrl of extractStylesheetUrls(html, pageUrl, MAX_STYLESHEETS)) {
+    try {
+      const safeUrl = await guardUrl(cssUrl)
+      const { response } = await fetchWithValidatedRedirects(safeUrl, {
+        timeout: STYLESHEET_TIMEOUT,
+        maxBytes: MAX_STYLESHEET_BYTES,
+        headers: SITE_STYLESHEET_HEADERS,
+      })
+      const contentType = String(response.headers['content-type'] || '')
+      if (!/text\/css|text\/plain/i.test(contentType)) continue
+      stylesheets.push(Buffer.isBuffer(response.data) ? response.data.toString('utf-8') : String(response.data))
+    } catch {
+      // Unreachable or refused stylesheet: keep what the page itself said.
+    }
+  }
+  return stylesheets.length ? extractBrandColors(html, stylesheets) : inline
+}
+
 export async function researchBusiness(websiteUrl: string): Promise<BusinessResearchResult> {
   // Normalise up front so an unreachable or blocked caller still gets a
   // well-formed `canonicalUrl` back (the public route's contract is to
@@ -587,6 +630,7 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
         logoUrl: brandingAssets.logoUrl,
         imageUrls: brandingAssets.imageUrls,
       }
+      result.brandColors = await detectBrandColors(html, finalUrl)
     } else if (html) {
       // Reachable, but the body was not HTML, so no page could be scanned.
       result.videoMarketing = {
