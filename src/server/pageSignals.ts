@@ -242,6 +242,23 @@ const MAX_CONTEXT_CHARS = 240
  * the nearest heading in its section, and the id / class names of its
  * ancestors (`team-grid`, `our-work`, `product-card`).
  */
+/**
+ * First heading text inside an ancestor, memoised per node (including "no
+ * heading"). Every image of a large gallery shares the same ancestors, and
+ * searching the shared container once per image was quadratic: 2,000 images
+ * in one heading-less container took ~30 s.
+ */
+const HEADING_CACHE = new WeakMap<object, string>()
+function headingWithin($: CheerioAPI, ancestor: ReturnType<CheerioAPI>): string {
+  const node = ancestor.get(0) as object | undefined
+  if (!node) return ''
+  const cached = HEADING_CACHE.get(node)
+  if (cached !== undefined) return cached
+  const heading = ancestor.find('h1, h2, h3, h4').first().text()
+  HEADING_CACHE.set(node, heading)
+  return heading
+}
+
 export function extractImageContext($: CheerioAPI, element: any): string {
   const words: string[] = []
   const $el = $(element)
@@ -271,7 +288,7 @@ export function extractImageContext($: CheerioAPI, element: any): string {
     if (id) words.push(id)
     if (className) words.push(className)
     if (!headingFound) {
-      const heading = current.find('h1, h2, h3, h4').first().text()
+      const heading = headingWithin($, current)
       if (heading && heading.length <= 120) {
         words.push(heading)
         headingFound = true

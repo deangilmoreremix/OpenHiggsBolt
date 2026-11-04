@@ -319,6 +319,19 @@ describe('page Markdown in the modal', async () => {
 })
 
 describe('regressions found on real sites', () => {
+  it('extracts image context for a large heading-less gallery without quadratic work', () => {
+    const $ = cheerio.load(`<main><div class="g">${'<div class="c"><p>x</p><img src="/a.jpg"></div>'.repeat(3000)}</div></main>`)
+    const started = Date.now()
+    $('img').each((_i, el) => {
+      extractImageContext($, el)
+    })
+    expect(Date.now() - started).toBeLessThan(2000)
+    // The memoised lookup still finds a heading when there is one.
+    const $h = cheerio.load('<section><h2>Our Team</h2><div><img id="a"></div><div><img id="b"></div></section>')
+    expect(extractImageContext($h, $h('#a').get(0))).toContain('Our Team')
+    expect(extractImageContext($h, $h('#b').get(0))).toContain('Our Team')
+  })
+
   it('detects a JS shell in linear time on a page of unclosed <div tags', () => {
     const started = Date.now()
     looksJsRendered('<div '.repeat(100_000))
