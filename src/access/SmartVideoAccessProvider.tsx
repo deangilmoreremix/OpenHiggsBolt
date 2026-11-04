@@ -6,6 +6,15 @@ import { ENTITLEMENTS, type AccessState, type AccessResult } from '@/access/enti
 
 export { ENTITLEMENTS };
 
+/** GO-Viral is one of the two paid apps; everything else is base access. */
+export function isGoViralEntitlement(entitlement: string): boolean {
+  return (
+    entitlement === 'go-ai-viral' ||
+    entitlement === ENTITLEMENTS.SMARTVIDEO_VIRAL ||
+    entitlement === ENTITLEMENTS.GO_VIRAL_AI
+  );
+}
+
 interface SmartVideoAccessContextValue {
   accessResult: AccessResult;
   accessState: AccessState | null;
@@ -45,41 +54,38 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
       return;
     }
 
-    try {
-      const res = await fetch('/api/access/resolve', { credentials: 'same-origin' });
-      if (res.ok) {
-        const data = await res.json();
-        setAccessResult(data);
-      } else {
-        setAccessResult({
-          state: 'authenticated_unpaid',
-          access: {
-            clerkUserId: user?.id || '',
-            email: user?.emailAddresses?.[0]?.emailAddress || '',
-            entitlements: { smartvideo_go: false },
-            status: 'inactive',
-            source: 'manual',
-            hasSmartVideoGo: false,
-            hasSmartVideoViral: false,
-            isSuperUser: false,
-          },
-        });
+    // Every signed-in user has base access to all apps except the two paid
+    // ones, so a failed or slow check must never drop them into preview mode.
+    // Try twice, then fall back to base access with the paid apps locked; the
+    // API routes still check every request on the server.
+    const baseAccessFallback: AccessResult = {
+      state: 'paid',
+      access: {
+        clerkUserId: user?.id || '',
+        email: user?.emailAddresses?.[0]?.emailAddress || '',
+        entitlements: { smartvideo_go: true },
+        status: 'inactive',
+        source: 'fallback',
+        hasSmartVideoGo: true,
+        hasSmartVideoViral: false,
+        isSuperUser: false,
+      },
+    };
+
+    let resolved: AccessResult | null = null;
+    for (let attempt = 0; attempt < 2 && !resolved; attempt += 1) {
+      try {
+        const res = await fetch('/api/access/resolve', { credentials: 'same-origin' });
+        if (res.ok) {
+          resolved = (await res.json()) as AccessResult;
+        }
+      } catch (err) {
+        console.error('[SmartVideoAccess] Failed to resolve access:', err);
       }
-    } catch (err) {
-      console.error('[SmartVideoAccess] Failed to resolve access:', err);
-      setAccessResult({
-        state: 'authenticated_unpaid',
-        access: {
-          clerkUserId: user?.id || '',
-          email: user?.emailAddresses?.[0]?.emailAddress || '',
-          entitlements: { smartvideo_go: false },
-          status: 'inactive',
-          source: 'manual',
-          hasSmartVideoGo: false,
-          hasSmartVideoViral: false,
-          isSuperUser: false,
-        },
-      });
+    }
+
+    try {
+      setAccessResult(resolved ?? baseAccessFallback);
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +111,10 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
       onAllowed: () => T | Promise<T>,
       onDenied?: () => void
     ): Promise<T | undefined> {
-      if (isPaid) {
+      const allowed = isGoViralEntitlement(entitlement)
+        ? hasSmartVideoViral || isSuperUser
+        : isPaid;
+      if (allowed) {
         return await onAllowed();
       } else {
         onDenied?.();
@@ -113,7 +122,7 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         return undefined;
       }
     },
-    [isPaid, setUpgradeModal]
+    [isPaid, hasSmartVideoViral, isSuperUser, setUpgradeModal]
   );
 
   const openUpgradeModal = useCallback((source?: string) => {

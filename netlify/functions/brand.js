@@ -36,11 +36,6 @@ const ASSET_TABLE = 'brand_assets';
 const CAMPAIGN_TABLE = 'brand_campaigns';
 const BRAND_TABLE = 'brand_dna';
 const ALLOWED_METHODS = ['GET', 'PATCH', 'DELETE'];
-const ENTITLEMENT_TABLE = 'user_entitlements';
-// Only a paid, in-good-standing entitlement unlocks this surface. Rows
-// predating the status column carry no status at all and are treated as
-// 'active' (mirrors src/access/entitlements.ts).
-const QUALIFYING_STATUSES = ['active', 'lifetime'];
 // Dev-only e2e escape hatch — see the SECURITY CONTRACT above.
 const E2E_BYPASS_USER_ID = 'user_e2e_auth_bypass';
 
@@ -380,22 +375,13 @@ async function claimUnownedRowForUser(table, id, userId) {
 // handler's 500 path.
 // ---------------------------------------------------------------------------
 
-function isQualifyingEntitlementStatus(status) {
-  if (status === undefined || status === null || status === '') return true;
-  return QUALIFYING_STATUSES.includes(status);
-}
-
+/**
+ * Base access (every app except GO-Viral and the reseller apps) is open to
+ * every signed-in user, so a caller whose Clerk session was verified is
+ * entitled. Mirrors hasSmartVideoGo in src/access/entitlements.ts.
+ */
 async function callerIsEntitled(userId) {
-  const { data, error } = await supabase
-    .from(ENTITLEMENT_TABLE)
-    .select('status, entitlements')
-    .eq('clerk_user_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return false;
-  if (!isQualifyingEntitlementStatus(data.status)) return false;
-  const entitlements = data.entitlements || {};
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
+  return typeof userId === 'string' && userId.length > 0;
 }
 
 /**
