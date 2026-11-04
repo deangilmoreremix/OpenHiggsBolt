@@ -524,6 +524,14 @@ export interface BusinessResearchResult {
     logoUrl?: string
     imageUrls: string[]
   }
+  /** The site's brand palette (`#rrggbb`), mirrors researchProvider.ts. */
+  brandColors?: {
+    primary?: string
+    accent?: string
+    palette?: string[]
+  }
+  /** The homepage's readable content as Markdown (≤ 8,000 chars). */
+  pageMarkdown?: string
 }
 
 export interface DiscoveredAsset {

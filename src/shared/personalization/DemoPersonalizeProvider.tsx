@@ -107,6 +107,12 @@ import {
   getCompositionDimensions,
 } from './preview/presets'
 import {
+  applyResearchedBrandColors,
+  firstParagraphOf,
+  researchBrandColors,
+  type BrandColorPair,
+} from './researchHelpers'
+import {
   getRemotionDesignTemplate,
   listRemotionDesignTemplates,
   subscribeRemotionDesignRegistry,
@@ -970,6 +976,7 @@ interface DemoDiscoveryResponse {
   description?: unknown
   logo?: unknown
   assets?: unknown
+  brandColors?: unknown
 }
 
 /**
@@ -1075,8 +1082,15 @@ function businessResearchFromDemoPayload(payload: DemoDiscoveryResponse): Busine
     openGraph: {},
     twitterCard: {},
     contactInfo: { phones: [], emails: [], addresses: [] },
+    ...brandColorsOf(payload.brandColors),
   }
 }
+
+function brandColorsOf(value: unknown): { brandColors?: { primary?: string; accent?: string } } {
+  const brandColors = researchBrandColors(value)
+  return brandColors ? { brandColors } : {}
+}
+
 
 /** Turns a shared research result into the business-record shape the mapping consumes. */
 // ── Provider ─────────────────────────────────────────────────────────────────
@@ -2161,7 +2175,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * an existing one. The canonical URL therefore no longer replaces a
    * hand-corrected website — the visitor's value always wins.
    */
-  const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
+  // The brand-colour pair last applied from research (see applyResearchedBrandColors).
+  const autoAppliedBrandColorsRef = useRef<BrandColorPair | null>(null)
+    const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
     setClientForm((prev) => {
       const next: Partial<ClientProfile> = { ...prev }
       const fill = (key: keyof ClientProfile, value: unknown) => {
@@ -2173,9 +2189,27 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         ;(next as Record<string, unknown>)[key] = trimmed
       }
       fill('website', research.canonicalUrl || research.finalUrl)
-      fill('brandDescription', research.description)
+      // No meta description: the first real paragraph of the site's own
+      // text is a better start than an empty field.
+      fill('brandDescription', research.description || firstParagraphOf(research.pageMarkdown))
       fill('phone', research.contactInfo?.phones?.[0])
       return next
+    })
+    // The site's own brand colours theme the preview, unless the visitor has
+    // picked colours (then theirs win). Colours auto-applied for an earlier
+    // business are replaced, never mistaken for the visitor's choice.
+    const researchedColors = researchBrandColors(research.brandColors)
+    // Read once, outside the updater, so a re-run updater (StrictMode) sees
+    // the same input and produces the same result.
+    const previouslyAutoApplied = autoAppliedBrandColorsRef.current
+    setPreviewSettings((prev) => {
+      const { colors, autoApplied } = applyResearchedBrandColors(
+        prev.brandColors,
+        researchedColors,
+        previouslyAutoApplied,
+      )
+      autoAppliedBrandColorsRef.current = autoApplied
+      return colors === prev.brandColors ? prev : { ...prev, brandColors: colors }
     })
   }, [])
 

@@ -16,6 +16,7 @@
  * that cannot start its proxy fails closed instead of running with one layer.
  */
 
+import { SITE_USER_AGENT } from '../lib/siteRequestHeaders'
 import { isIPv6 } from 'node:net'
 
 import {
@@ -34,10 +35,10 @@ import {
 
 export const BROWSER_FALLBACK_MAX_PAGES = 4
 export const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5_000
+export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9_000
 export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2_000
-export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-export const BROWSER_FALLBACK_SCROLL_DELAY = 100
+export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+export const BROWSER_FALLBACK_SCROLL_DELAY = 300
 export const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 // ---------------------------------------------------------------------------
@@ -1552,7 +1553,7 @@ async function collectBrowserCandidates(
       guard,
       baseTarget,
       contextOptions: {
-        userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+        userAgent: SITE_USER_AGENT,
         viewport: { width: 1280, height: 900 },
       },
       blockedResourceTypes: BLOCKED_RESOURCE_TYPES,
