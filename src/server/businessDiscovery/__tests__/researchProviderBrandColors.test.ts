@@ -75,3 +75,23 @@ describe('researchProvider brand colours', () => {
     expect(result.brandColors).toEqual({ palette: [], sources: [] })
   })
 })
+
+describe('researchProvider page Markdown', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    mockResolve4.mockReset().mockResolvedValue(['8.8.8.8'])
+    mockResolve6.mockReset().mockResolvedValue([])
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns the homepage content as Markdown', async () => {
+    serve({
+      'https://example.com/': {
+        type: 'text/html',
+        body: '<html><body><nav><a href="/">Home</a></nav><main><h1>Acme</h1><p>We fix pipes fast.</p></main></body></html>',
+      },
+    })
+    const result = await researchBusiness('https://example.com')
+    expect(result.pageMarkdown).toBe('# Acme\n\nWe fix pipes fast.')
+  })
+})

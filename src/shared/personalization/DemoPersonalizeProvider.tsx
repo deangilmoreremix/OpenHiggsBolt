@@ -1086,6 +1086,27 @@ function brandColorsOf(value: unknown): { brandColors?: { primary?: string; acce
   return brandColors ? { brandColors } : {}
 }
 
+/**
+ * The first prose paragraph of page Markdown (not a heading, list item or
+ * quote), with Markdown emphasis and links reduced to plain text, at most
+ * 300 characters. Undefined when there is none.
+ */
+export function firstParagraphOf(markdown: string | undefined): string | undefined {
+  if (!markdown) return undefined
+  for (const block of markdown.split(/\n+/)) {
+    const line = block.trim()
+    if (!line || /^(#|-|>|\*\s)/.test(line)) continue
+    const plain = line
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\*\*|\*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (plain.length < 40) continue
+    return plain.length > 300 ? `${plain.slice(0, 297).replace(/\s+\S*$/, '')}…` : plain
+  }
+  return undefined
+}
+
 const HEX_BRAND_COLOR = /^#[0-9a-f]{6}$/i
 
 /** Only well-formed `#rrggbb` primary / accent colours, or null. */
@@ -2216,7 +2237,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         ;(next as Record<string, unknown>)[key] = trimmed
       }
       fill('website', research.canonicalUrl || research.finalUrl)
-      fill('brandDescription', research.description)
+      // No meta description: the first real paragraph of the site's own
+      // text is a better start than an empty field.
+      fill('brandDescription', research.description || firstParagraphOf(research.pageMarkdown))
       fill('phone', research.contactInfo?.phones?.[0])
       return next
     })

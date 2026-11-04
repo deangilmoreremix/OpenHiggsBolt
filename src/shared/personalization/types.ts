@@ -530,6 +530,8 @@ export interface BusinessResearchResult {
     accent?: string
     palette?: string[]
   }
+  /** The homepage's readable content as Markdown (≤ 8,000 chars). */
+  pageMarkdown?: string
 }
 
 export interface DiscoveredAsset {

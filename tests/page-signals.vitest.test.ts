@@ -282,3 +282,15 @@ describe('find-similar in the shared asset builder', async () => {
     expect(byUrl['https://cdn.example/f/5c6d7e8f.jpg']).toBe('brand')
   })
 })
+
+describe('page Markdown in the modal', async () => {
+  const { firstParagraphOf } = await import('../src/shared/personalization/DemoPersonalizeProvider')
+
+  it('picks the first real prose paragraph as a brand description', () => {
+    const md = '# Acme Plumbing\n\n- Drain cleaning\n\nCall now\n\nFamily-owned since **1987**, serving the [whole valley](https://x.example) with honest pricing.\n\nMore text here that is long enough to count as a paragraph.'
+    expect(firstParagraphOf(md)).toBe('Family-owned since 1987, serving the whole valley with honest pricing.')
+    expect(firstParagraphOf('# Only a heading')).toBeUndefined()
+    expect(firstParagraphOf(undefined)).toBeUndefined()
+    expect(firstParagraphOf(`${'word '.repeat(100)}`)!.length).toBeLessThanOrEqual(300)
+  })
+})

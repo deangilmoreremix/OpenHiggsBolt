@@ -35,7 +35,7 @@
  */
 
 import { SITE_PAGE_HEADERS, SITE_STYLESHEET_HEADERS } from '../../lib/siteRequestHeaders'
-import { extractBrandColors, extractStylesheetUrls, type BrandColors } from '../pageSignals'
+import { extractBrandColors, extractStylesheetUrls, htmlToMarkdown, type BrandColors } from '../pageSignals'
 import axios, { type AxiosResponse } from 'axios'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
@@ -266,6 +266,12 @@ export interface BusinessResearchResult {
    * colours). Absent when the page could not be scanned.
    */
   brandColors?: BrandColors
+  /**
+   * The homepage's readable content as Markdown (headings, paragraphs,
+   * lists; navigation, footers, scripts and cookie banners removed), capped
+   * at 8,000 characters. Clean input for AI copy generation.
+   */
+  pageMarkdown?: string
 }
 
 const SOCIAL_PATTERNS: Record<string, RegExp> = {
@@ -631,6 +637,8 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
         imageUrls: brandingAssets.imageUrls,
       }
       result.brandColors = await detectBrandColors(html, finalUrl)
+      const pageMarkdown = htmlToMarkdown(html)
+      if (pageMarkdown) result.pageMarkdown = pageMarkdown
     } else if (html) {
       // Reachable, but the body was not HTML, so no page could be scanned.
       result.videoMarketing = {
