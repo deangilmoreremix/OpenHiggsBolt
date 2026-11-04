@@ -24,6 +24,7 @@
  */
 
 import { SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
+import { extractEmbeddedImageUrls } from './pageSignals'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import {
@@ -537,6 +538,14 @@ function collectRawCandidates(input: {
   //    are the page's photos.
   if (landingHtml) {
     for (const url of imgCandidates(landingHtml)) candidates.push({ kind: 'photo', source: 'img', url })
+  }
+  // 5b. Images a site builder embeds as page data (Next.js, Wix, Squarespace,
+  //     Shopify…). A JS-rendered landing page has few or no <img> tags; its
+  //     photos live in this data instead. No extra request is made.
+  if (landingHtml) {
+    for (const embedded of extractEmbeddedImageUrls(landingHtml, research.finalUrl || research.canonicalUrl || '')) {
+      candidates.push({ kind: 'photo', source: 'img', url: embedded.url })
+    }
   }
   // 6. Other head-declared images (Twitter cards, microdata).
   if (landingHtml) {

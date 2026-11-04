@@ -15,6 +15,7 @@
 import { SITE_IMAGE_HEADERS, SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
+import { extractEmbeddedImageUrls } from './pageSignals'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import {
@@ -106,6 +107,8 @@ interface ImageCandidate {
   altText?: string
   ogContext?: string
   isSiteLogo?: boolean
+  /** Words around the image (caption, heading, section names, data keys). */
+  contextText?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -477,6 +480,15 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
         add(content, undefined, val)
       })
     }
+  }
+
+  // Framework / site-builder page data (Next.js, Nuxt, Wix, Squarespace,
+  // Shopify, Gatsby). A JS-rendered site ships its images here rather than
+  // as <img> tags, so this recovers them without a browser.
+  for (const embedded of extractEmbeddedImageUrls(html, pageUrl)) {
+    add(embedded.url, undefined, 'embedded')
+    const last = candidates[candidates.length - 1]
+    if (last && last.url === embedded.url && embedded.context) last.contextText = embedded.context
   }
 
   return candidates
