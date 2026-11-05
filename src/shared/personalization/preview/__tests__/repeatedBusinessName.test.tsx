@@ -80,7 +80,17 @@ vi.mock('remotion', async () => {
       outputRange: number[],
     ) => outputRange[outputRange.length - 1] ?? 1,
     spring: () => 1,
-    Easing: { out: () => (t: number) => t, cubic: 0 },
+    Easing: {
+      out: () => (t: number) => t,
+      in: () => (t: number) => t,
+      inOut: () => (t: number) => t,
+      bezier: () => (t: number) => t,
+      back: () => (t: number) => t,
+      cubic: (t: number) => t,
+      quad: (t: number) => t,
+      ease: (t: number) => t,
+      linear: (t: number) => t,
+    },
   }
 })
 

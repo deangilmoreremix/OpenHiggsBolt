@@ -38,6 +38,8 @@ import type {
   RemotionDesignTextField,
 } from '../types'
 
+const HAS_BRITO_CLONE = fs.existsSync('/home/user/deangilmoreremix/remotion-video-templates/LICENSE')
+
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const EXPECTED_IDS = [
@@ -272,7 +274,9 @@ describe('batch 3d — registry entries', () => {
     expect(BATCH_3D_FIXED_SVG_IDS).toEqual({})
   })
 
-  it('carries the verbatim repo-3 MIT licence with its copyright line', () => {
+  // The upstream clone lives outside this repo; these comparisons run only
+  // where it has been checked out (like batch 3a's clone check).
+  it.skipIf(!HAS_BRITO_CLONE)('carries the verbatim repo-3 MIT licence with its copyright line', () => {
     const upstream = fs.readFileSync(
       '/home/user/deangilmoreremix/remotion-video-templates/LICENSE',
       'utf-8',
@@ -599,7 +603,7 @@ describe('batch 3d — the upstream copies', () => {
     }
   })
 
-  it('keeps the brito copies byte-identical to upstream apart from the recorded edits', () => {
+  it.skipIf(!HAS_BRITO_CLONE)('keeps the brito copies byte-identical to upstream apart from the recorded edits', () => {
     const upstreamRoot = '/home/user/deangilmoreremix/remotion-video-templates/'
     const verbatim: Record<string, string> = {
       'brito-lib/colors.ts': 'src/lib/colors.ts',
