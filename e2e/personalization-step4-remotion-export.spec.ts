@@ -22,10 +22,9 @@ import path from 'node:path';
  *      track, non-zero size, a positive duration, and videoWidth/videoHeight
  *      equal to the composition dimensions;
  *   2. the composition the web renderer rasterized contained the design
- *      (`[data-remotion-design-id="animated-headline"]`) AND the MIT credit
- *      line (`[data-remotion-design-credit]`) — the credit line is read out
- *      of the DOM the renderer built for the export, not out of the on-screen
- *      preview player;
+ *      (`[data-remotion-design-id="animated-headline"]`) and NO credit line
+ *      (`[data-remotion-design-credit]`) — read out of the DOM the renderer
+ *      built for the export, not out of the on-screen preview player;
  *   3. the design's brand-primary pixels are present inside the design's box
  *      in the personalized render, and absent from the SAME region of the
  *      un-personalized render (the control: the identical composition with
@@ -33,7 +32,7 @@ import path from 'node:path';
  *   4. the ONLY difference between the two encoded frames is inside the
  *      design box (the renders are frame-aligned and the design is the sole
  *      difference);
- *   5. the MIT credit line is inside the encoded frame, not only in the DOM.
+ *   5. no copyright or licence credit line is drawn.
  *
  * REQUIREMENTS
  * ------------
@@ -101,9 +100,6 @@ const ARTIFACT_DIR = path.join(process.cwd(), 'test-results', 'remotion-export')
 
 /** Where the per-design visual evidence is written. */
 const SCREENSHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-3');
-
-/** The OFL typeface notice the Wave 1 credit line must carry. */
-const OFL_TYPEFACE_NOTICE = 'Typeface: Inter (SIL OFL 1.1)';
 
 /** The minimum number of designs the registry must expose (5 + 10 + 4). */
 const MIN_REGISTRY_DESIGNS = 19;
@@ -634,23 +630,15 @@ test.describe('Phase 2 — Remotion designs survive the real browser export', ()
     expect(container.hasMp4a, 'no mp4a (AAC) sample entry in the MP4').toBe(true);
     expect(container.byteLength).toBe(exported.size);
 
-    /* ── The DOM the web renderer built contained the design + credit ───── */
+    /* ── The DOM the web renderer built contained the design, no credit ── */
     expect(exported.probe.exportRootCount).toBeGreaterThan(0);
     expect(exported.probe.designId).toBe(DESIGN_ID);
-    expect(exported.probe.creditPresent).toBe(true);
-    expect(String(exported.probe.creditText)).toContain('Trimora');
-    expect(String(exported.probe.creditText)).toContain('MIT');
+    // Designs draw no copyright or licence credit.
+    expect(exported.probe.creditPresent).toBe(false);
 
     const designBox = exported.probe.designBox as Box;
-    const creditBox = exported.probe.creditBox as Box;
     expect(designBox.width).toBeGreaterThan(0);
     expect(designBox.height).toBeGreaterThan(0);
-    // The credit line is drawn inside the design's own box.
-    expect(creditBox.left).toBeGreaterThanOrEqual(designBox.left);
-    expect(creditBox.top).toBeGreaterThanOrEqual(designBox.top);
-    expect(creditBox.left + creditBox.width).toBeLessThanOrEqual(
-      designBox.left + designBox.width + 1,
-    );
 
     /* ── The file decodes as a video of the composition's size ──────────── */
     const decoded = await decodeVideoFacts(page);
@@ -693,7 +681,8 @@ test.describe('Phase 2 — Remotion designs survive the real browser export', ()
     });
 
     const designBox = personalized.probe.designBox as Box;
-    const creditBox = personalized.probe.creditBox as Box;
+    // Designs draw no credit, so the credit region is empty.
+    const creditBox: Box = (personalized.probe.creditBox as Box | null) ?? { left: 0, top: 0, width: 0, height: 0 };
 
     /* ── 3. Decode both files and compare the pixels ────────────────────── */
     // eslint-disable-next-line no-console
@@ -897,9 +886,8 @@ test.describe('Phase 2 — Remotion designs survive the real browser export', ()
       Math.max(50, Math.round(result.changedTotal * 0.05)),
     );
 
-    // The MIT credit line is inside the encoded frame, not only in the DOM.
-    expect(result.creditChanged).toBeGreaterThan(0);
-    expect(result.creditBrighter).toBeGreaterThan(0);
+    // Designs draw no credit line, so nothing is measured in a credit region.
+    expect(result.creditChanged).toBe(0);
 
     // eslint-disable-next-line no-console
     console.log(
@@ -946,14 +934,13 @@ test.describe('Phase 2 — Remotion designs survive the real browser export', ()
       expect(container.magic, `${design.id} is not an MP4`).toBe('ftyp');
       expect(container.hasAvc1, `${design.id} has no H.264 video track`).toBe(true);
 
-      // The composition the web renderer rasterized was this design and
-      // carried the MIT credit line.
+      // The composition the web renderer rasterized was this design, with no
+      // copyright or licence credit drawn.
       expect(exported.probe.exportRootCount, `${design.id} never reached the renderer`).toBeGreaterThan(
         0,
       );
       expect(exported.probe.designId).toBe(design.id);
-      expect(exported.probe.creditPresent, `${design.id} lost the credit line`).toBe(true);
-      expect(String(exported.probe.creditText)).toContain('MIT');
+      expect(exported.probe.creditPresent, `${design.id} drew a credit line`).toBe(false);
 
       // The file decodes as a video of the composition's size.
       const decoded = await decodeVideoFacts(designPage);
@@ -1215,7 +1202,7 @@ function isBrowserCrash(message: string): boolean {
 }
 
 test.describe('Phase 3 — the export matrix: every registered design, in the encoded pixels', () => {
-  test('every registered design is encoded, pixel-compared against its control, and carries the credit line', async ({
+  test('every registered design is encoded, pixel-compared against its control, and draws no credit line', async ({
     page,
   }) => {
     test.setTimeout(7_200_000);
@@ -1295,10 +1282,10 @@ test.describe('Phase 3 — the export matrix: every registered design, in the en
         expect(exported.type).toBe('video/mp4');
         const container = inspectMp4(exported.base64);
 
-        /* ── The export DOM carried THIS design and the full credit line ─ */
+        /* ── The export DOM carried THIS design (and no credit line) ──── */
         const designId = exported.probe.designId as string;
         const designBox = exported.probe.designBox as Box;
-        const creditBox = exported.probe.creditBox as Box;
+        const creditBox: Box = (exported.probe.creditBox as Box | null) ?? { left: 0, top: 0, width: 0, height: 0 };
 
         /* ── The files decode as videos of the composition's size ─────── */
         const decoded = await decodeVideoFacts(designPage);
@@ -1353,12 +1340,7 @@ test.describe('Phase 3 — the export matrix: every registered design, in the en
         expect(designId, `${label} rendered no design element`).toBeTruthy();
         expect(seenIds.has(designId), `${designId} was exported twice`).toBe(false);
         seenIds.add(designId);
-        expect(exported.probe.creditPresent, `${label} lost the credit line`).toBe(true);
-        expect(String(exported.probe.creditText), `${label} lost the MIT credit`).toContain('MIT');
-        expect(
-          String(exported.probe.creditText),
-          `${label} lost the OFL typeface attribution`,
-        ).toContain(OFL_TYPEFACE_NOTICE);
+        expect(exported.probe.creditPresent, `${label} drew a credit line`).toBe(false);
 
         expect(decoded.duration, `${label} has no duration`).toBeGreaterThan(0);
         expect(decoded.videoWidth).toBe(1920);
@@ -1424,9 +1406,8 @@ test.describe('Phase 3 — the export matrix: every registered design, in the en
           `${label}: ${result!.changedOutsideBox} pixels changed OUTSIDE the design box (of ${result!.changedTotal} changed)`,
         ).toBeLessThanOrEqual(Math.max(50, Math.round(result!.changedTotal * 0.05)));
 
-        // The credit line is inside the encoded frame, not only in the DOM.
-        expect(result!.creditChanged, `${label}: the credit line is not in the encoded frame`).toBeGreaterThan(0);
-        expect(result!.creditBrighter, `${label}: the credit line does not brighten the encoded frame`).toBeGreaterThan(0);
+        // Designs draw no credit line.
+        expect(result!.creditChanged, `${label}: pixels changed in an (empty) credit region`).toBe(0);
         break; // measured successfully — no retry
       } catch (error) {
         failure = error instanceof Error ? error.message : String(error);

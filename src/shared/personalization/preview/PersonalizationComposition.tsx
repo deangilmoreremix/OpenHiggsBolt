@@ -13,6 +13,7 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { resolveDesignSlotValues } from './designSlots'
+import { toPlayablePreviewMediaUrl } from './remoteMedia'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -358,7 +359,9 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       // playback muting stays a Player-level concern.
       return (
         <Video
-          src={videoUrl}
+          // Remote CDNs without CORS (e.g. the AI-viral demo library) are
+          // streamed through the same-origin /api/media/remote proxy.
+          src={toPlayablePreviewMediaUrl(videoUrl)}
           muted={false}
           onError={handleMediaError}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -427,7 +430,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
     <AbsoluteFill style={{ background: '#05070a' }}>
       {renderBackground()}
-      {audioUrl ? <Audio src={audioUrl} /> : null}
+      {audioUrl ? <Audio src={toPlayablePreviewMediaUrl(audioUrl)} /> : null}
       <AbsoluteFill
           style={{
             background: '#000',
