@@ -13,6 +13,7 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { resolveDesignSlotValues } from './designSlots'
+import { toPlayablePreviewMediaUrl } from './remoteMedia'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -104,20 +105,37 @@ function entranceFor(layer: PreviewLayer, frame: number, fps: number): EntranceS
   }
 }
 
+/** Dark text on light colors, white on dark ones (hex colors; else the default). */
+export function readableTextOn(background: string, dark: string): string {
+  const match = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(background.trim())
+  if (!match) return dark
+  const hex = match[1].length === 3 ? match[1].split('').map((c) => c + c).join('') : match[1]
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+  return luminance > 0.18 ? dark : '#ffffff'
+}
+
+/** The layer's own text, or null when it has none (unset or cleared). */
+function ownText(layer: PreviewLayer): string | null {
+  return typeof layer.text === 'string' && layer.text.trim() ? layer.text : null
+}
+
 function resolveLayerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
   switch (layer.kind) {
+    // Cleared text falls back like unset text, matching the editor.
     case 'businessName':
-      return layer.text ?? brand.businessName
+      return ownText(layer) ?? brand.businessName
     case 'headline':
-      return layer.text ?? brand.headline
+      return ownText(layer) ?? brand.headline
     case 'tagline':
-      return layer.text ?? brand.headline
+      return ownText(layer) ?? brand.headline
     case 'offer':
-      return layer.text ?? brand.offer
+      return ownText(layer) ?? brand.offer
     case 'cta':
-      return layer.text ?? brand.cta
+      return ownText(layer) ?? brand.cta
     default:
-      return layer.text ?? ''
+      return ownText(layer) ?? ''
   }
 }
 
@@ -358,7 +376,9 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       // playback muting stays a Player-level concern.
       return (
         <Video
-          src={videoUrl}
+          // Remote CDNs without CORS (e.g. the AI-viral demo library) are
+          // streamed through the same-origin /api/media/remote proxy.
+          src={toPlayablePreviewMediaUrl(videoUrl)}
           muted={false}
           onError={handleMediaError}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -419,6 +439,15 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       frame >= layer.startFrame &&
       (layer.endFrame === undefined || frame <= layer.endFrame),
   )
+  // The business name is on screen right now: its layer shows the brand
+  // name itself (not custom text) and has faded in.
+  const brandName = brand.businessName.trim().toLowerCase()
+  const businessNameShown = Boolean(brandName) && visibleLayers.some(
+    (layer) =>
+      layer.kind === 'businessName' &&
+      resolveLayerText(layer, brand).trim().toLowerCase() === brandName &&
+      layer.opacity * entranceFor(layer, frame, settings.fps).opacity > 0,
+  )
 
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
   const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
@@ -427,7 +456,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
     <AbsoluteFill style={{ background: '#05070a' }}>
       {renderBackground()}
-      {audioUrl ? <Audio src={audioUrl} /> : null}
+      {audioUrl ? <Audio src={toPlayablePreviewMediaUrl(audioUrl)} /> : null}
       <AbsoluteFill
           style={{
             background: '#000',
@@ -443,6 +472,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           const text = isText ? resolveLayerText(layer, brand) : ''
           const imageUrl = isImage ? resolveLayerImageUrl(layer, brand) : ''
           if (isText && !text.trim()) return null
+          // A headline/tagline with no text of its own that would only repeat
+          // the business name already on screen isn't drawn twice.
+          if (
+            (layer.kind === 'headline' || layer.kind === 'tagline') &&
+            ownText(layer) == null &&
+            businessNameShown &&
+            text.trim().toLowerCase() === brand.businessName.trim().toLowerCase()
+          ) return null
           if (isImage && !imageUrl) return null
 
           const box = toBox(layer, compW, compH)
@@ -544,8 +581,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   <span
                     style={{
-                      background: settings.brandColors.accent,
-                      color: PILL_TEXT_COLOR,
+                      // The layer's color is the button color (default: accent);
+                      // the label is dark or white, whichever reads on it.
+                      background: textColor,
+                      color: readableTextOn(textColor, PILL_TEXT_COLOR),
                       padding: '0.4em 1.1em',
                       borderRadius: 999,
                       display: 'inline-block',

@@ -513,11 +513,14 @@ describe('free discovery in the shared modal — anonymous mode', () => {
     expect(screen.queryAllByTestId('find-my-brand-progress').length).toBe(0)
 
     // The form was populated through the existing selectBusiness mapping:
-    // website is the normalised input, businessName the hostname.
+    // website is the normalised input. The hostname placeholder name is then
+    // replaced by the name the site publishes (its page title).
     expect(ctx().clientForm.website).toBe('https://sunsetrealty.example.com')
-    expect(ctx().clientForm.businessName).toBe('sunsetrealty.example.com')
+    expect(ctx().clientForm.businessName).toBe('Sunset Realty')
     // Research + discovery both happened (one server round trip).
     expect(ctx().businessResearch.status).toBe('done')
+    // (Auto-placing the logo/photos into empty cards is covered by
+    // businessAutoLoad.test.tsx, which stubs the browser image-load check.)
     expect(ctx().discoveredAssets.length).toBe(4)
     expect(requestedUrls('/api/demo/discover').length).toBe(1)
   })
@@ -564,6 +567,74 @@ describe('free discovery in the shared modal — anonymous mode', () => {
     expect(requestedUrls('/api/demo/discover').length).toBe(1)
     expect(requestedUrls('/api/personalization/research-business').length).toBe(0)
     expect(requestedUrls('/api/personalization/discover-assets').length).toBe(0)
+  })
+
+  it('a social-only lead resolves its own website before discovery (never discovers on facebook.com)', async () => {
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, init?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/find-businesses')) {
+        fetchCalls.push({ url, init })
+        return jsonResponse({
+          ...BUSINESS_SEARCH_RESPONSE,
+          businesses: [{
+            ...BUSINESS_SEARCH_RESPONSE.businesses[0],
+            website: undefined,
+            facebook: 'https://www.facebook.com/sunsetrealty',
+          }],
+        })
+      }
+      if (typeof url === 'string' && url.includes('/api/personalization/resolve-website')) {
+        fetchCalls.push({ url, init })
+        return jsonResponse({ ok: true, website: 'https://sunsetrealty.example.com', confidence: 'high' })
+      }
+      return baseFetch(url, init)
+    })
+
+    const container = await mountModal({ access: 'anonymous' })
+    await act(async () => {
+      fireEvent.click(screen.getByText(/find a local business/i))
+    })
+    await flush(30)
+    const niche = container.querySelector('#business-niche') as HTMLSelectElement
+    const location = container.querySelector('#business-location') as HTMLInputElement
+    await act(async () => {
+      fireEvent.change(niche, { target: { value: 'real-estate' } })
+      fireEvent.change(location, { target: { value: 'Hollywood, FL' } })
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByText('Find Businesses'))
+    })
+    await flush(30)
+
+    expect(container.textContent).toContain('Social page only')
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Sunset Realty'))
+    })
+    await flush()
+
+    const resolveCalls = requestedUrls('/api/personalization/resolve-website')
+    expect(resolveCalls.length).toBe(1)
+    expect(JSON.parse(resolveCalls[0].init.body)).toMatchObject({ name: 'Sunset Realty', city: 'Hollywood', phone: '555-0100' })
+    expect(ctx().clientForm.website).toBe('https://sunsetrealty.example.com')
+    const discoverCalls = requestedUrls('/api/demo/discover')
+    expect(discoverCalls.length).toBe(1)
+    expect(discoverCalls[0].init.body).toContain('sunsetrealty.example.com')
+    expect(discoverCalls[0].init.body).not.toContain('facebook.com')
+  })
+
+  it('refuses to run discovery on a pasted Facebook URL', async () => {
+    const container = await mountModal({ access: 'anonymous' })
+    const urlInput = container.querySelector('#find-my-brand-url') as HTMLInputElement
+    await act(async () => {
+      fireEvent.change(urlInput, { target: { value: 'https://www.facebook.com/sunsetrealty' } })
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('find-my-brand-submit'))
+    })
+    await flush()
+    expect(requestedUrls('/api/demo/discover').length).toBe(0)
+    expect(ctx().discoveryError).toMatch(/Facebook page, not the business's own website/)
   })
 
   it('discovered assets land in Logo/Person/Products/Brand and drag between sections', async () => {
@@ -870,10 +941,10 @@ describe('shared modal stays contained across viewports', () => {
     await flush()
 
     expectNoFixedOverflow(container, 390)
-    // The narrow-viewport layout uses single-column responsive wrappers.
-    const overview = container.querySelector('#pz-overview') as HTMLElement | null
-    expect(overview?.className).toContain('grid-cols-1')
-    expect(overview?.className).toContain('lg:grid-cols-2')
+    // The narrow-viewport layout is a single column (two panes only from xl).
+    const layout = container.querySelector('.pz-adv-layout') as HTMLElement | null
+    expect(layout?.className).toContain('grid-cols-1')
+    expect(layout?.className).toContain('xl:grid-cols-')
     restoreViewport()
   })
 
@@ -895,10 +966,22 @@ describe('pre-existing modal features survive the integration', () => {
     expect(screen.getByRole('heading', { name: 'What SmartVideo Will Use' })).toBeTruthy()
     expect(screen.getByText('No assets assigned yet.')).toBeTruthy()
 
-    // First/Last Frame + CTA sections
+    // First/Last Frame + CTA sections (on the Assets tab of Advanced Editing)
     expect(screen.getByText('5. First Frame')).toBeTruthy()
     expect(screen.getByText('6. Last Frame / CTA')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-content'))
+    })
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-create'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-create-output'))
+    })
 
     // Engine + audio control
     expect(container.querySelector('#pz-engine')).toBeTruthy()
@@ -906,9 +989,22 @@ describe('pre-existing modal features survive the integration', () => {
       fireEvent.click(screen.getByText('Advanced Settings ›'))
     })
     await flush(20)
-    expect(screen.getByText('Preserve Audio')).toBeTruthy()
+    // The sound control only exists where it changes the video (Full presenter).
+    expect(screen.queryByText("Keep the original video's sound")).toBeNull()
+    await act(async () => {
+      ;(window as unknown as { __personalizationCtx: { setMode: (mode: string) => void } }).__personalizationCtx.setMode('full_body')
+    })
+    await flush(20)
+    expect(screen.getByText("Keep the original video's sound")).toBeTruthy()
 
-    // onRevert: edit a product asset, then revert it through the thumb control.
+    // onRevert: edit a product asset, then revert it through the thumb control
+    // (product thumbnails live on Assets → Your assets).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-yours'))
+    })
     await act(async () => {
       ctx().addProductUrl('https://example.com/product.png')
     })

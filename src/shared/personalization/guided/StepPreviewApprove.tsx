@@ -38,7 +38,11 @@ export function StepPreviewApprove(): React.JSX.Element {
     setRemotionDesign = () => {},
     remotionDesignError = null,
     previewApproved,
+    approvalStale,
     approvePersonalization,
+    setViewMode,
+    setAdvancedTab,
+    setAdvancedSection,
     createFinalVideo,
     cancelExport,
     apiKey,
@@ -240,11 +244,16 @@ export function StepPreviewApprove(): React.JSX.Element {
           <button
             type="button"
             onClick={() => approvePersonalization()}
-            disabled={generating}
+            disabled={generating || previewApproved}
             style={{ ...secondaryButtonStyle, opacity: previewApproved ? 0.6 : 1 }}
           >
-            {previewApproved ? 'Approved' : 'Approve this personalization'}
+            {previewApproved ? 'Approved ✓' : 'Approve this personalization'}
           </button>
+          {approvalStale && !previewApproved && (
+            <span data-testid="guided-approval-stale" style={{ color: '#fcd34d', fontSize: 12 }}>
+              Changed since you approved — approve again.
+            </span>
+          )}
           {isAnonymous ? (
             <span style={{ color: C.muted, fontSize: 12 }}>
               Sign in to create your final video — the preview is always free.
@@ -255,14 +264,16 @@ export function StepPreviewApprove(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={generating || !isBrandedPath}
+                  // The render uses exactly what was approved.
+                  disabled={generating || !isBrandedPath || !previewApproved}
+                  title={isBrandedPath && !previewApproved ? 'Approve the preview first' : undefined}
                   aria-pressed={isBrandedPath}
                   style={{
                     ...(isBrandedPath ? primaryButtonStyle : secondaryButtonStyle),
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath ? 1 : 0.5,
+                    opacity: generating ? 0.6 : isBrandedPath && previewApproved ? 1 : 0.5,
                   }}
                 >
                   {generating && isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
@@ -289,6 +300,28 @@ export function StepPreviewApprove(): React.JSX.Element {
                     : 'Generate with AI'}
                 </button>
               </div>
+              {isBrandedPath && !previewApproved && !generating && (
+                <p data-testid="guided-render-needs-approval" style={{ ...hintStyle, color: '#fcd34d' }}>
+                  Approve the preview first — the render uses exactly what you approve.
+                </p>
+              )}
+              {isBrandedPath && (
+                <p data-testid="guided-ai-needs-mode" style={{ ...hintStyle }}>
+                  To use <strong style={{ fontWeight: 800 }}>Generate with AI</strong>, choose an AI mode (Face only,
+                  Full presenter, Recreate or Complete){' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode('advanced')
+                      setAdvancedSection?.('create', 'output')
+                      setAdvancedTab?.('create')
+                    }}
+                    style={{ background: 'none', border: 0, padding: 0, color: C.cyan, fontWeight: 800, cursor: 'pointer', font: 'inherit' }}
+                  >
+                    in Advanced Editing →
+                  </button>
+                </p>
+              )}
               <p style={{ ...hintStyle, color: isBrandedPath ? C.cyan : C.muted }}>
                 <strong style={{ fontWeight: 800 }}>Render branded video</strong> bakes your approved
                 overlays (logo, text, CTA, end card) onto the selected video — no AI credits used.

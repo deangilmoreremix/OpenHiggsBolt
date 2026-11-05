@@ -52,13 +52,14 @@ export function buildPreviewInput(
     videoUrl: previewVideo?.url || source?.sourceMedia || null,
     posterUrl: previewVideo?.poster || source?.poster || null,
     isImageSource: source?.mediaType === 'image',
-    audioUrl: previewSettings.audio?.url ?? null,
+    audioUrl: previewSettings.audio?.url ?? previewVideo?.audioUrl ?? null,
     settings: previewSettings,
     brand: {
       // The headline text itself lives on the layers; this is only the fallback
       // the composition uses when a text layer has no explicit text.
       businessName,
-      headline: businessName,
+      // Prefer real copy over repeating the business name.
+      headline: clientForm.ctaHeadline?.trim() || clientForm.productService?.trim() || businessName,
       offer: clientForm.offer || '',
       cta: callToAction,
       phone: clientForm.phone || '',

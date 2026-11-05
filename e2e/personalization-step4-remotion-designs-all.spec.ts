@@ -20,7 +20,7 @@ import path from 'node:path';
  *      produces a `[data-remotion-design-id="<id>"]` element inside the
  *      "After: personalized preview" region (the very composition the
  *      browser export bakes);
- *   4. every design draws its own credit line
+ *   4. no design draws a copyright or licence credit
  *      (`[data-remotion-design-credit]`) inside that layer;
  *   5. clicking the active design again CLEARS it.
  *
@@ -233,7 +233,7 @@ test.describe('Phase 2 — every registered Remotion design works in Step 4', ()
     );
   });
 
-  test('every one of the 19 designs is selectable and renders its layer and credit line', async ({
+  test('every one of the 19 designs is selectable and renders its layer with no credit line', async ({
     page,
   }) => {
     test.setTimeout(300_000);
@@ -243,7 +243,7 @@ test.describe('Phase 2 — every registered Remotion design works in Step 4', ()
     expect(registry.length).toBe(EXPECTED_DESIGN_COUNT);
 
     const after = page.getByRole('region', { name: 'After: personalized preview' });
-    const evidence: { id: string; name: string; credit: string | null }[] = [];
+    const evidence: { id: string; name: string }[] = [];
 
     for (const design of registry) {
       const pill = dialog.getByRole('button', { name: design.name, exact: true });
@@ -260,12 +260,10 @@ test.describe('Phase 2 — every registered Remotion design works in Step 4', ()
       await expect(layer, `${design.name} rendered no design layer`).toHaveCount(1);
       await expect(layer, `${design.name} rendered an invisible design layer`).toBeVisible();
 
-      // Every design draws its own credit line inside the layer.
-      const credit = layer.locator('[data-remotion-design-credit]');
-      await expect(credit, `${design.name} drew no credit line`).toHaveCount(1);
-      const creditText = await credit.first().innerText();
+      // No design draws a copyright or licence credit.
+      await expect(layer.locator('[data-remotion-design-credit]'), `${design.name} drew a credit line`).toHaveCount(0);
 
-      evidence.push({ id: design.id, name: design.name, credit: creditText });
+      evidence.push({ id: design.id, name: design.name });
 
       // Clicking the active design again clears it.
       await pill.click();
@@ -283,7 +281,6 @@ test.describe('Phase 2 — every registered Remotion design works in Step 4', ()
         {
           count: evidence.length,
           ids: evidence.map((entry) => entry.id),
-          credits: evidence.map((entry) => `${entry.id}: ${entry.credit?.replace(/\s+/g, ' ').trim()}`),
         },
         null,
         2,

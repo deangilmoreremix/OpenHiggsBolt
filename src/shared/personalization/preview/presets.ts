@@ -616,6 +616,7 @@ export function applyDesignTemplate(
   if (typeof placement?.y === 'number') overrides.y = placement.y
   if (typeof placement?.scale === 'number') overrides.scale = placement.scale
   if (typeof placement?.opacity === 'number') overrides.opacity = placement.opacity
+  if (typeof placement?.endFrame === 'number') overrides.endFrame = placement.endFrame
   if (text !== undefined) overrides.text = text
   if (imageUrl !== undefined) overrides.imageUrl = imageUrl
   if (textSlotOverrides) overrides.textSlotOverrides = textSlotOverrides

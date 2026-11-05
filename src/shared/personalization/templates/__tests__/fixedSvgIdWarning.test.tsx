@@ -2,7 +2,7 @@
 /**
  * Phase 3 item 13 — the fixed-SVG-id constraint warning.
  *
- * Three designs (`logo-mask-wipe`, `logo-reveal`, `rve-circular-progress`)
+ * Several designs (e.g. `logo-mask-wipe`, `logo-reveal`, `rve-circular-progress`)
  * hardcode SVG `id` attributes inside frozen upstream files, so mounting a
  * SECOND instance of the same design clips it against the first (SVG ids are
  * document-global: both instances resolve to the first instance's geometry).
@@ -91,17 +91,30 @@ afterEach(() => {
   cleanup()
 })
 
+/** Every design that hardcodes SVG ids (one instance per composition). */
+const CONSTRAINED_DESIGN_IDS = [
+  'eye-reveal',
+  'ink-spread-transition',
+  'logo-mask-wipe',
+  'logo-reveal',
+  'particle-snow',
+  'pixel-candlestick-ohlc',
+  'pixel-mosaic-transition',
+  'pixel-typewriter-quote',
+  'pixel-waterfall-cycle',
+  'pourover-drip-fill-gauge',
+  'rve-area-chart',
+  'rve-chart-animation',
+  'rve-circular-progress',
+]
+
 describe('getRemotionDesignFixedSvgIdWarning (catalog helper)', () => {
-  it('declares exactly the three constrained designs', () => {
-    expect(Object.keys(REMOTION_DESIGN_FIXED_SVG_IDS).sort()).toEqual([
-      'logo-mask-wipe',
-      'logo-reveal',
-      'rve-circular-progress',
-    ])
+  it('declares exactly the constrained designs', () => {
+    expect(Object.keys(REMOTION_DESIGN_FIXED_SVG_IDS).sort()).toEqual(CONSTRAINED_DESIGN_IDS)
   })
 
   it('returns the warning, naming the fixed SVG ids, for a constrained design', () => {
-    for (const templateId of ['logo-mask-wipe', 'logo-reveal', 'rve-circular-progress']) {
+    for (const templateId of CONSTRAINED_DESIGN_IDS) {
       const warning = getRemotionDesignFixedSvgIdWarning(templateId)
       expect(warning).not.toBeNull()
       for (const fixedId of REMOTION_DESIGN_FIXED_SVG_IDS[templateId]) {
