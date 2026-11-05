@@ -224,6 +224,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   };
   
   const { apiKey, openaiKey, setApiKey, setOpenAiKey, clearApiKey, clearOpenAiKey, hasApiKey, hasOpenAiKey } = auth;
+  // Latest OpenAI key for the account-restore effect (apiKeyRef is below).
+  const openaiKeyRef = useRef(openaiKey);
+  openaiKeyRef.current = openaiKey;
+  const accountKeysChecked = useRef(false);
   const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
   const apiKeyRef = useRef(apiKey);
   useEffect(() => { apiKeyRef.current = apiKey; }, [apiKey]);
@@ -502,11 +506,12 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       return;
     }
     // The centralized auth config already restored keys from localStorage/cookies
-    // on module load. If both are present, we're done.
-    if (hasApiKey && hasOpenAiKey) return;
-
-    // Missing at least one key — try to restore from the signed-in user's
-    // account so the keys follow them across browsers, devices and sign-ins.
+    // on module load. The account's saved keys still win: a browser can hold an
+    // old MuAPI key (e.g. one later regenerated at muapi.ai and re-saved from
+    // another device), which MuAPI then rejects on every call. So we always ask
+    // the account once, and only fall back to the local keys if it has none.
+    if (hasApiKey && hasOpenAiKey && accountKeysChecked.current) return;
+    accountKeysChecked.current = true;
     let cancelled = false;
     (async () => {
       let restored = '';
@@ -522,16 +527,18 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
         // Offline or not signed in — the user can still enter keys manually.
       }
       if (cancelled) return;
-      if (restored) {
+      const localKey = (apiKeyRef.current || '').trim();
+      const localOpenai = (openaiKeyRef.current || '').trim();
+      if (restored && restored !== localKey) {
         setApiKey(restored);
         fetchBalance(restored);
       }
-      if (restoredOpenai) {
+      if (restoredOpenai && restoredOpenai !== localOpenai) {
         setOpenAiKey(restoredOpenai);
       }
       // Still missing at least one key after restore → prompt via the
       // dedicated first-login popup (both keys required to proceed).
-      if (restored && restoredOpenai) return;
+      if ((restored || localKey) && (restoredOpenai || localOpenai)) return;
       if (!embedded) {
         setShowApiKeyPopup(true);
       }
