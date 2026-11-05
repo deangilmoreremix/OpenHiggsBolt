@@ -1,0 +1,75 @@
+// @vitest-environment jsdom
+import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+
+const calls = [];
+vi.mock('studio/src/muapi.js', () => ({
+  generateImage: vi.fn(async (_k, p) => { calls.push(['image', p]); return { url: `https://cdn.example.com/img-${calls.length}.png` }; }),
+  generateI2V: vi.fn(async (_k, p) => { calls.push(['clip', p]); return { url: `https://cdn.example.com/clip-${calls.length}.mp4` }; }),
+  generateAudio: vi.fn(async (_k, p) => { calls.push(['audio', p]); return { url: `https://cdn.example.com/aud-${calls.length}.mp3` }; }),
+}));
+const renderFinalCut = vi.fn(async () => ({ ok: true, blob: new Blob(['x'], { type: 'video/mp4' }), extension: 'mp4', warning: null }));
+vi.mock('../finalCut.js', () => ({ renderFinalCut: (...a) => renderFinalCut(...a) }));
+
+const ZackD = (await import('../ZackD.jsx')).default;
+
+const click = (name) => fireEvent.click(screen.getByRole('button', { name }));
+
+describe('ZackD studio', () => {
+  beforeEach(() => { cleanup(); localStorage.clear(); calls.length = 0; renderFinalCut.mockClear(); vi.spyOn(window, 'confirm').mockReturnValue(true); URL.createObjectURL = vi.fn(() => 'blob:x'); URL.revokeObjectURL = vi.fn(); });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('walks topic -> script -> visuals -> clips -> audio -> final cut', async () => {
+    render(<ZackD apiKey="mu_test_key_0123456789" />);
+    expect(screen.getByRole('button', { name: /Write starter script/ }).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('TOPIC'), { target: { value: 'Why do ears pop?' } });
+    click(/Write starter script/);
+    // Gate 1: the narration is editable and used downstream
+    fireEvent.change(screen.getByLabelText('Narration, beat 1'), { target: { value: 'Edited hook?' } });
+    click('Approve script');
+    click(/Generate 2 character sheet/);
+    await waitFor(() => expect(calls.filter(([k, p]) => k === 'image' && p.aspect_ratio === '16:9')).toHaveLength(2));
+    expect(screen.getByRole('button', { name: 'Approve keyframes' }).disabled).toBe(true);
+    click(/Generate 5 keyframe/);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve keyframes' }).disabled).toBe(false));
+    const kf = calls.filter(([k, p]) => k === 'image' && p.aspect_ratio === '9:16');
+    expect(kf).toHaveLength(5);
+    expect(kf[0][1].prompt).toContain('Friendly stylized 3D character'); // character anchor reaches the keyframe prompt
+    click('Approve keyframes');
+    click(/Generate 5 clip/);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue to audio' }).disabled).toBe(false));
+    const clips = calls.filter(([k]) => k === 'clip');
+    expect(clips).toHaveLength(5);
+    expect(clips.every(([, p]) => p.image_url.startsWith('https://cdn.example.com/img-') && p.model === 'veo3.1-fast-image-to-video')).toBe(true);
+    click('Continue to audio');
+    click('Generate narration');
+    await waitFor(() => expect(calls.some(([k, p]) => k === 'audio' && p._modelId === 'minimax-speech-2.6-turbo')).toBe(true));
+    expect(calls.find(([k]) => k === 'audio')[1].text).toMatch(/^Edited hook\?/);
+    click('Continue to final cut');
+    click('Render video');
+    await waitFor(() => expect(renderFinalCut).toHaveBeenCalled());
+    const arg = renderFinalCut.mock.calls[0][0];
+    expect(arg.shots).toHaveLength(5);
+    expect(arg.shots[1]).toMatchObject({ duration: 3, zoom: true });
+    expect(arg.narrationUrl).toMatch(/aud-/);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Download video/ })).toBeTruthy());
+  });
+
+  it('shows placeholder/sandbox output as an error instead of media', async () => {
+    const muapi = await import('studio/src/muapi.js');
+    muapi.generateImage.mockResolvedValue({ url: 'https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/nano-banana-2.0.avif' });
+    render(<ZackD apiKey="mu_test_key_0123456789" />);
+    fireEvent.change(screen.getByLabelText('TOPIC'), { target: { value: 'Gum' } });
+    click(/Write starter script/); click('Approve script');
+    click(/Generate 2 character sheet/);
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/placeholder/));
+    expect(document.querySelector('img')).toBeNull();
+  });
+
+  it('asks for a key when none is set and seeds the topic from a template hand-off', () => {
+    render(<ZackD apiKey="" templateData={{ prompt: 'Brain freeze' }} />);
+    expect(screen.getByLabelText('TOPIC').value).toBe('Brain freeze');
+    expect(screen.getByText(/Add your MuAPI key in Settings/)).toBeTruthy();
+  });
+});

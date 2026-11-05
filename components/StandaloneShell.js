@@ -48,6 +48,7 @@ const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralS
 const MotionStudioEntry = dynamic(() => import('../src/apps/motion-studio/MotionStudio'), { ssr: false });
 const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/MotionStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
+const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 
@@ -105,6 +106,7 @@ const TABS = [
   { id: 'lipsync', label: 'Lip Sync' },
   { id: 'cinema',  label: 'Cinema Studio' },
   { id: 'storyboard', label: 'Storyboard' },
+  { id: 'zackd', label: 'Zack D Studio' },
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'motion-studio', label: 'Motion Studio' },
   { id: 'motion-director', label: 'Motion Director' },
@@ -141,7 +143,7 @@ function SignOutButton() {
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', 'motion-control': 'motion-control', lipsync: 'lipsync', cinema: 'cinema',
-  storyboard: 'storyboard', marketing: 'marketing', 'motion-studio': 'motion-studio', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
+  storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-studio', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
@@ -157,7 +159,7 @@ const SLUG_TO_TAB = {
 // keep their mount-on-active behaviour.
 const PERSISTENT_STUDIO_TABS = [
   'image', 'video', 'clipping', 'vibe-motion', 'motion-control', 'lipsync', 'cinema',
-  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer',
+  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer', 'zackd',
 ];
 
 const NOTIFICATIONS_STORAGE_KEY = 'open_gen_notifications_v1';
@@ -945,6 +947,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
+         {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} templateData={active ? templateData : null} />)}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
