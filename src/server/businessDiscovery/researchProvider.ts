@@ -163,9 +163,16 @@ function redirectLocationOf(response: AxiosResponse): string {
  * answer that changes between the check and the connect (the rebinding
  * window) cannot move the socket to a private peer.
  */
-async function fetchWithValidatedRedirects(
+export async function fetchWithValidatedRedirects(
   startUrl: string,
-  options: { timeout?: number; maxBytes?: number; headers?: Record<string, string> } = {},
+  options: {
+    timeout?: number
+    /** Same as `timeout` (the website resolver's name for it). */
+    timeoutMs?: number
+    maxBytes?: number
+    headers?: Record<string, string>
+    signal?: AbortSignal
+  } = {},
 ): Promise<{
   response: AxiosResponse
   finalUrl: string
@@ -190,7 +197,8 @@ async function fetchWithValidatedRedirects(
     const pin = safeRequestConfig(destination)
 
     const response = await axios.get(currentUrl, {
-      timeout: options.timeout ?? REQUEST_TIMEOUT,
+      timeout: options.timeoutMs ?? options.timeout ?? REQUEST_TIMEOUT,
+      ...(options.signal ? { signal: options.signal } : {}),
       maxContentLength: options.maxBytes ?? MAX_HTML_BYTES,
       headers: { ...(options.headers ?? SITE_PAGE_HEADERS) },
       validateStatus: (s) => s >= 200 && s < 400,
