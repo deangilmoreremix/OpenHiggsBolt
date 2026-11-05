@@ -170,8 +170,8 @@ importers:
         specifier: 0.186.1
         version: 0.186.1
       workflow-builder:
-        specifier: file:./packages/Vibe-Workflow/packages/workflow-builder
-        version: link:packages/Vibe-Workflow/packages/workflow-builder
+        specifier: file:./packages/workflow-builder
+        version: link:packages/workflow-builder
       zod:
         specifier: 4.3.6
         version: 4.3.6
@@ -368,7 +368,7 @@ importers:
         specifier: ^3.3.3
         version: 3.4.19(tsx@4.23.15)(yaml@2.9.1)
 
-  packages/Vibe-Workflow/packages/workflow-builder:
+  packages/workflow-builder:
     dependencies:
       axios:
         specifier: ^1.7.0
@@ -456,8 +456,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       workflow-builder:
-        specifier: file:../Vibe-Workflow/packages/workflow-builder
-        version: link:../Vibe-Workflow/packages/workflow-builder
+        specifier: file:../workflow-builder
+        version: link:../workflow-builder
     devDependencies:
       '@babel/cli':
         specifier: ^7.28.3

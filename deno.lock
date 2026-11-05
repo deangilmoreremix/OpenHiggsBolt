@@ -93,7 +93,7 @@
           ]
         }
       },
-      "packages/Vibe-Workflow/packages/workflow-builder": {
+      "packages/workflow-builder": {
         "packageJson": {
           "dependencies": [
             "npm:@babel/cli@^7.28.3",
