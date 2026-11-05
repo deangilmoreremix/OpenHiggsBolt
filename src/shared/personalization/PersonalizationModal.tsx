@@ -2177,6 +2177,7 @@ function ConfigurationView(props: any) {
     selectBusiness,
     resolveBusinessWebsite,
     websiteLookup,
+    setDiscoveryError,
     researchBusiness,
     runDiscoveryWorkflow,
     access,
