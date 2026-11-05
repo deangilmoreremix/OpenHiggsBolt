@@ -19,6 +19,7 @@ import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
 import PreviewModeBadge from '@/access/PreviewModeBadge';
 import { getCommonCopy } from '../lib/locales';
+import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -437,6 +438,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       const { getUserBalance } = await import('studio');
       const data = await getUserBalance(key);
       setBalance(data.balance);
+      // MuAPI accepted the key: drop any earlier "key rejected" banner so a
+      // one-off failure doesn't keep showing after the key works again.
+      setAuthError((prev) => (isMuapiKeyAuthMessage(prev) ? null : prev));
     } catch (err) {
       const status = err?.status || err?.response?.status;
       const isAuthError = status === 401 || status === 403 || /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
@@ -692,6 +696,12 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     };
   }, [apiKey, openaiKey, openUpgradeModal]);
 
+  // Opening Settings re-checks the active MuAPI key, so the banner reflects the
+  // key's state now (cleared on success, "rejected" on a 401/403).
+  useEffect(() => {
+    if (showSettings && apiKey) fetchBalance(apiKey);
+  }, [showSettings, apiKey, fetchBalance]);
+
   // Poll for balance every 30 seconds if key is present
   useEffect(() => {
     if (!apiKey) return;
@@ -715,19 +725,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       if (now - lastOpenAt < DEDUPE_WINDOW) return;
       lastOpenAt = now;
 
-      let message = 'Your API key is missing or invalid. Please enter a valid key.';
-      const raw = e?.detail?.message;
-      if (raw) {
-        try {
-          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          const detail = parsed?.detail || parsed?.message;
-          if (detail) message = detail;
-        } catch {
-          if (typeof raw === 'string') message = raw;
-        }
-      }
-
-      setAuthError(message);
+      // MuAPI's own wording ("Not authorized: missing or invalid credentials")
+      // reads like the app lost the key; say plainly that MuAPI refused it.
+      setAuthError(muapiAuthMessage(e?.detail?.message));
       setShowSettings(true);
     };
     window.addEventListener('muapi:auth-required', onAuthRequired);
