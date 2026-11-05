@@ -457,6 +457,11 @@ export function uploadFile(apiKey, file, onProgress) {
 }
 
 export async function getUserBalance(apiKey) {
+    // No key yet (e.g. still being restored after sign-in): don't call MuAPI,
+    // which would answer 401/403 and pop the Settings modal for no reason.
+    if (!String(apiKey || '').trim()) {
+        throw new Error('No MuAPI key');
+    }
     const response = await fetch(`${BASE_URL}/api/v1/account/balance`, {
         headers: {
             'Content-Type': 'application/json',
