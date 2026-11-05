@@ -42,7 +42,7 @@ function includeRequiredArrayDefaults(model, payload) {
     return Object.keys(defaults).length > 0 ? { ...defaults, ...payload } : payload;
 }
 
-async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
+async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000, signal) {
     return pollForGenerationResult({
         baseUrl: BASE_URL,
         requestId,
@@ -50,7 +50,24 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000)
         maxAttempts,
         interval,
         onAuthRequired: notifyAuthRequired,
+        signal,
     });
+}
+
+/**
+ * Resume polling a generation that was submitted earlier (e.g. before a page
+ * reload), by its request id. Optional `signal` stops waiting.
+ */
+/**
+ * @param {string} apiKey
+ * @param {string} requestId
+ * @param {{ maxAttempts?: number, signal?: AbortSignal }} [options]
+ */
+export async function resumeGeneration(apiKey, requestId, options = {}) {
+    const { maxAttempts = 900, signal } = options;
+    const result = await pollForResult(requestId, apiKey, maxAttempts, 2000, signal);
+    const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    return normalizePredictionResult({ request_id: requestId }, result, outputUrl);
 }
 
 function normalizePredictionResult(submitData, result, outputUrl) {
@@ -62,7 +79,7 @@ function normalizePredictionResult(submitData, result, outputUrl) {
     };
 }
 
-async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60) {
+async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60, signal) {
     const url = `${BASE_URL}/api/v1/${endpoint}`;
     const response = await fetch(url, {
         method: 'POST',
@@ -78,7 +95,7 @@ async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 
     const requestId = submitData.request_id || submitData.id;
     if (!requestId) return submitData;
     if (onRequestId) onRequestId(requestId);
-    const result = await pollForResult(requestId, key, maxAttempts);
+    const result = await pollForResult(requestId, key, maxAttempts, 2000, signal);
     const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
     return normalizePredictionResult(submitData, result, outputUrl);
 }
@@ -345,7 +362,7 @@ export async function processMotionControl(apiKey, params) {
         if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
     }
 
-    return submitAndPoll(model, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(model, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function processLipSync(apiKey, params) {

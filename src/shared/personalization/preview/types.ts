@@ -87,7 +87,7 @@ export interface PreviewVideoRef {
   url: string
   poster: string | null
   title: string
-  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template'
+  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template' | 'recast'
   demoId?: string
   /** For `kind: 'motion-template'`: the canonical component name of the selected
    *  Motion Studio shot, used to resolve the recipe in `/studio/motion-studio`
@@ -100,6 +100,14 @@ export interface PreviewVideoRef {
    *  `"motion-studio"` for catalog-derived templates; the studio handoff uses
    *  this to locate the matching recipe. */
   sourceRepo?: string
+  /** For `kind: 'recast'`: the video shown before the recast, so "Use
+   *  original video" goes back to this project's own footage. Saved and
+   *  restored with the preview, so it never comes from another project. */
+  beforeRecast?: PreviewVideoRef | null
+  /** Sound played under this video when it has none of its own: a Full Body
+   *  Recast comes back silent, so "Keep the original video's sound" plays
+   *  the performance clip's sound with it. A chosen audio track wins. */
+  audioUrl?: string | null
 }
 
 /** Optional customer audio track applied to the personalized preview. */

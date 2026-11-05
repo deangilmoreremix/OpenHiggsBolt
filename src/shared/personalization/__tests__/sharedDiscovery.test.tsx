@@ -513,11 +513,14 @@ describe('free discovery in the shared modal — anonymous mode', () => {
     expect(screen.queryAllByTestId('find-my-brand-progress').length).toBe(0)
 
     // The form was populated through the existing selectBusiness mapping:
-    // website is the normalised input, businessName the hostname.
+    // website is the normalised input. The hostname placeholder name is then
+    // replaced by the name the site publishes (its page title).
     expect(ctx().clientForm.website).toBe('https://sunsetrealty.example.com')
-    expect(ctx().clientForm.businessName).toBe('sunsetrealty.example.com')
+    expect(ctx().clientForm.businessName).toBe('Sunset Realty')
     // Research + discovery both happened (one server round trip).
     expect(ctx().businessResearch.status).toBe('done')
+    // (Auto-placing the logo/photos into empty cards is covered by
+    // businessAutoLoad.test.tsx, which stubs the browser image-load check.)
     expect(ctx().discoveredAssets.length).toBe(4)
     expect(requestedUrls('/api/demo/discover').length).toBe(1)
   })
@@ -870,10 +873,10 @@ describe('shared modal stays contained across viewports', () => {
     await flush()
 
     expectNoFixedOverflow(container, 390)
-    // The narrow-viewport layout uses single-column responsive wrappers.
-    const overview = container.querySelector('#pz-overview') as HTMLElement | null
-    expect(overview?.className).toContain('grid-cols-1')
-    expect(overview?.className).toContain('lg:grid-cols-2')
+    // The narrow-viewport layout is a single column (two panes only from xl).
+    const layout = container.querySelector('.pz-adv-layout') as HTMLElement | null
+    expect(layout?.className).toContain('grid-cols-1')
+    expect(layout?.className).toContain('xl:grid-cols-')
     restoreViewport()
   })
 
@@ -895,10 +898,22 @@ describe('pre-existing modal features survive the integration', () => {
     expect(screen.getByRole('heading', { name: 'What SmartVideo Will Use' })).toBeTruthy()
     expect(screen.getByText('No assets assigned yet.')).toBeTruthy()
 
-    // First/Last Frame + CTA sections
+    // First/Last Frame + CTA sections (on the Assets tab of Advanced Editing)
     expect(screen.getByText('5. First Frame')).toBeTruthy()
     expect(screen.getByText('6. Last Frame / CTA')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-content'))
+    })
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-create'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-create-output'))
+    })
 
     // Engine + audio control
     expect(container.querySelector('#pz-engine')).toBeTruthy()
@@ -906,9 +921,22 @@ describe('pre-existing modal features survive the integration', () => {
       fireEvent.click(screen.getByText('Advanced Settings ›'))
     })
     await flush(20)
-    expect(screen.getByText('Preserve Audio')).toBeTruthy()
+    // The sound control only exists where it changes the video (Full presenter).
+    expect(screen.queryByText("Keep the original video's sound")).toBeNull()
+    await act(async () => {
+      ;(window as unknown as { __personalizationCtx: { setMode: (mode: string) => void } }).__personalizationCtx.setMode('full_body')
+    })
+    await flush(20)
+    expect(screen.getByText("Keep the original video's sound")).toBeTruthy()
 
-    // onRevert: edit a product asset, then revert it through the thumb control.
+    // onRevert: edit a product asset, then revert it through the thumb control
+    // (product thumbnails live on Assets → Your assets).
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-tab-assets'))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pz-pill-assets-yours'))
+    })
     await act(async () => {
       ctx().addProductUrl('https://example.com/product.png')
     })

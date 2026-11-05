@@ -49,6 +49,9 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   design: 'Design',
 }
 
+/** Fonts the video renderer can actually draw. */
+const SELECTABLE_FONT_COUNT = PREVIEW_FONTS.filter((font) => font.available).length
+
 const TEXT_KINDS: PreviewLayerKind[] = [
   'businessName',
   'headline',
@@ -73,6 +76,30 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
   // typed something on the layer.
   if (layer.kind === 'design') return brand.headline
   return ''
+}
+
+/**
+ * True for a headline/tagline without its own text whose fallback is just
+ * the business name while a business-name layer is showing it (the video
+ * doesn't draw it twice; see PersonalizationComposition).
+ */
+function isRepeatedBusinessName(layer: PreviewLayer, brand: PreviewInputProps['brand'], layers: PreviewLayer[]): boolean {
+  if (layer.kind !== 'headline' && layer.kind !== 'tagline') return false
+  if (typeof layer.text === 'string' && layer.text.trim()) return false
+  const name = brand.businessName.trim().toLowerCase()
+  if (!name || layerText(layer, brand).trim().toLowerCase() !== name) return false
+  // Same rule as the video: a visible name layer showing the brand name itself,
+  // on screen during (some of) the same frames.
+  return layers.some((other) =>
+    other.kind === 'businessName' &&
+    other.visible &&
+    layerText(other, brand).trim().toLowerCase() === name &&
+    framesOverlap(layer, other),
+  )
+}
+
+function framesOverlap(a: PreviewLayer, b: PreviewLayer): boolean {
+  return Math.max(a.startFrame, b.startFrame) <= Math.min(a.endFrame ?? Infinity, b.endFrame ?? Infinity)
 }
 
 /* ── Design text slots ─────────────────────────────────────────────────────── */
@@ -420,7 +447,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
             editableLayers.filter((layer) => layer.visible).map((layer) => {
               const box = toStageBox(layer, compW, compH, stageWidth)
               const isDesign = layer.kind === 'design'
-              const text = layerText(layer, brand)
+              // A headline/tagline that would only repeat the business name on
+              // screen isn't drawn in the video, so here it's a faded "add
+              // your text" placeholder you can still grab and move.
+              const repeatsName = isRepeatedBusinessName(layer, brand, editableLayers)
+              const text = repeatsName ? `${LAYER_LABELS[layer.kind]} — add your text` : layerText(layer, brand)
               const imageUrl = layerImageUrl(layer, brand)
               if (!isDesign && !isImageLayerKind(layer.kind) && !text.trim()) return null
               if (isImageLayerKind(layer.kind) && !imageUrl) return null
@@ -475,7 +506,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     <div style={{ width: '100%', textAlign: 'center' }}>
                       <span
                         style={{
-                          background: settings.brandColors.accent,
+                          background: layer.color ?? settings.brandColors.accent,
                           color: '#041014',
                           padding: '0.4em 1.1em',
                           borderRadius: 999,
@@ -501,7 +532,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         width: '100%',
                         wordBreak: 'break-word',
                         pointerEvents: 'none',
+                        ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),
                       }}
+                      data-testid={repeatsName ? 'overlay-repeat-placeholder' : undefined}
                     >
                       {text}
                     </div>
@@ -547,6 +580,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
                 aria-pressed={selected?.id === layer.id}
                 onKeyDown={(event) => {
+                  // Keys aimed at the row's own buttons (show/hide) are theirs.
+                  if (event.target !== event.currentTarget) return
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
                     setSelectedId(layer.id)
@@ -641,16 +676,19 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   )}
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
                     <div>
-                      <label style={labelStyle} htmlFor={controlId('color')}>Color</label>
+                      <label style={labelStyle} htmlFor={controlId('color')}>{selected.kind === 'cta' ? 'Button color' : 'Color'}</label>
                       <input
                         id={controlId('color')}
                         type="color"
-                        aria-label="Text color"
-                        value={selected.color || settings.brandColors.text}
+                        aria-label={selected.kind === 'cta' ? 'Button color' : 'Text color'}
+                        value={selected.color || (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)}
                         onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
                         style={{ width: '100%', height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
                       />
                     </div>
+                    {/* Only shown when there's a real choice: with one bundled
+                        font every option renders the same in the video. */}
+                    {SELECTABLE_FONT_COUNT > 1 && (
                     <div>
                       <label style={labelStyle} htmlFor={controlId('font')}>Font</label>
                       <select
@@ -679,6 +717,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         ))}
                       </select>
                     </div>
+                    )}
                   </div>
                 </>
               )}

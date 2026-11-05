@@ -51,7 +51,9 @@ export const SAFE_AREA_MARGIN = 0.02
 
 /** Absolute scale range: a layer never shrinks below 5% or grows past 1.5x. */
 export const MIN_LAYER_SCALE = 0.05
-export const MAX_LAYER_SCALE = 1.5
+// The render caps a layer at its full default size (presets `toBox`), so the
+// size control stops there too.
+export const MAX_LAYER_SCALE = 1
 
 /** Keyboard nudge steps, as fractions of the composition size. */
 export const NUDGE_STEP = 0.01
