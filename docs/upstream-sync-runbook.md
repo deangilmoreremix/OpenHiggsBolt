@@ -103,7 +103,7 @@ flowchart TB
     end
 
     subgraph Fork_Submodules["Fork Submodules"]
-        S3["packages/Vibe-Workflow"]
+        S3["packages/workflow-builder (vendored)"]
         S4["packages/timeline-studio"]
         S5["apps/headshot-generator"]
     end
@@ -649,7 +649,7 @@ These upstream files are deliberately NOT present in the fork:
 | Submodule | Source | Sync From Upstream |
 |-----------|--------|-------------------|
 | `packages/Open-Poe-AI` | `Anil-matcha/Open-Poe-AI` | Yes |
-| `packages/Vibe-Workflow` | `deangilmoreremix/Vibe-Workflow` | No (fork-only) |
+| `packages/workflow-builder` | vendored copy of the editor from `deangilmoreremix/Vibe-Workflow` (a fork of `SamurAIGPT/Vibe-Workflow`), commit `ea65f1f` | No (vendored) |
 | `packages/timeline-studio` | `deangilmoreremix/timeline-studio` | No (fork-only) |
 | `apps/headshot-generator` | `deangilmoreremix/ai-headshot-generator` | No (fork-only) |
 
