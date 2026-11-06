@@ -126,10 +126,10 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
   // A purchased row only needs to confirm it; it is never required.
-  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, data?.status);
 
-  // go-ai-viral requires a paid smartvideo_viral entitlement (or super user).
-  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+  // GO-Viral requires a paid go_viral_ai / smartvideo_viral entitlement (or super user).
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, data?.status);
 
   const hasAccess = baseAccess;
 
@@ -174,8 +174,8 @@ export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promi
   const email = data?.email || '';
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
-  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
-  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, data?.status);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, data?.status);
 
   return {
     clerkUserId,

@@ -13,9 +13,9 @@
  *      using the same service-role pattern the functions already use and the
  *      same logic as `resolveSmartVideoAccessForUser` in
  *      src/access/resolveAccess.ts.
- *   3. Allow only when `hasSmartVideoGo` — i.e. entitlements.smartvideo_go OR
- *      entitlements.founders, with an active (or unset) status. Founders keep
- *      passing, exactly like the Next.js guard.
+ *   3. Allow when `hasSmartVideoGo` — base access, which every signed-in user
+ *      has (only GO-Viral and the reseller apps are paid), exactly like the
+ *      Next.js guard.
  *
  * Failure shapes (mirroring requireApiEntitlement + entitlementForbiddenResponse):
  *   401 -> { error: 'AUTH_REQUIRED' }
@@ -206,28 +206,26 @@ function isSuperUserEmail(email) {
 }
 
 /**
- * Base SmartVideo GO access. Every signed-in Clerk user gets this by default
- * — no purchase required. A non-qualifying entitlement status (expired /
- * revoked) removes it unless the user is a super user.
+ * Base SmartVideo GO access: every app except the two paid ones (GO-Viral
+ * studio and the reseller apps). Every signed-in Clerk user has it — no
+ * purchase and no particular entitlement status is required.
+ * Mirrors src/access/entitlements.ts.
  */
-function hasSmartVideoGo(entitlements, status) {
-  if (status === undefined || status === null || status === '') {
-    return true;
-  }
-  const ents = entitlements || {};
-  return ents.smartvideo_go === true || ents.founders === true;
+function hasSmartVideoGo(_entitlements, _status) {
+  return true;
 }
 
 /**
- * go-ai-viral requires a paid smartvideo_viral entitlement with a qualifying
- * status. Not granted by default.
+ * GO-Viral studio is one of the two paid apps. It needs a paid GO-Viral
+ * entitlement (recorded as `go_viral_ai`; `smartvideo_viral` and `founders`
+ * also grant it) with a qualifying status (active, lifetime, or unset).
  */
 function hasSmartVideoViral(entitlements, status) {
   if (status !== 'active' && status !== 'lifetime' && status !== undefined && status !== null && status !== '') {
     return false;
   }
   const ents = entitlements || {};
-  return ents.smartvideo_viral === true || ents.founders === true;
+  return ents.go_viral_ai === true || ents.smartvideo_viral === true || ents.founders === true;
 }
 
 /**
@@ -272,8 +270,8 @@ async function resolveHasSmartVideoGo(supabase, userId, email) {
     }
   }
 
-  const entitlements = (row?.entitlements || {}) as any;
-  const status = row?.status || 'inactive';
+  const entitlements = row?.entitlements || {};
+  const status = row?.status;
 
   // Every signed-in Clerk user gets base SmartVideo GO access by default.
   const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
@@ -308,8 +306,8 @@ async function requirePaidEntitlement(event, options = {}) {
   });
   if (!verified) return unauthorized();
 
-  const entitled = await resolveHasSmartVideoGo(options.supabase, verified.userId, verified.payload?.email);
-  if (!entitled) {
+  const access = await resolveHasSmartVideoGo(options.supabase, verified.userId, verified.payload?.email);
+  if (!access || !access.hasSmartVideoGo) {
     return { ok: false, status: 403, body: { error: 'PAYMENT_REQUIRED', upgradeRequired: true } };
   }
 

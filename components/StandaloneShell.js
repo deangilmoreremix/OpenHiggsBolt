@@ -18,6 +18,7 @@ import { DemoPersonalizeProvider } from '@/shared/personalization';
 import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
 import PreviewModeBadge from '@/access/PreviewModeBadge';
+import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
 
@@ -959,7 +960,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>
       </DemoPersonalizeProvider>
