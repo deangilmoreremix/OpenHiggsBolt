@@ -9,7 +9,6 @@
 // nano-banana-pro model, resized to 960x540 WebP and written to
 // public/thumbnails/edit-tools/<slug>.webp (the path editTools.js points at).
 
-import sharp from 'sharp';
 import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -133,6 +132,9 @@ async function main() {
     try {
       const url = await generate(`${THUMBNAIL_PROMPTS[slug]} ${STYLE}`, key);
       const image = Buffer.from(await (await fetch(url)).arrayBuffer());
+      // Loaded here, not at the top, so importing THUMBNAIL_PROMPTS (the unit test does) does not need `sharp`.
+      // Running this script needs `sharp` installed (it is not a dependency of the app).
+      const { default: sharp } = await import('sharp');
       await sharp(image).resize(960, 540, { fit: 'cover' }).webp({ quality: 80 }).toFile(file);
       made++;
       console.log('done');
