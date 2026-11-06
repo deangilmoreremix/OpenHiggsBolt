@@ -35,38 +35,39 @@ export const MEDIA_CARD_IDS: Record<MediaKind, string> = {
 /** 探测不到媒体时长时的兜底长度（秒） */
 const FALLBACK_SEC: Record<MediaKind, number> = { image: 3, video: 5, audio: 5 };
 
-/** 扩展名兜底：某些系统不给 MIME type */
-const EXT_KINDS: Record<string, MediaKind> = {
-  png: "image",
-  jpg: "image",
-  jpeg: "image",
-  gif: "image",
-  webp: "image",
-  avif: "image",
-  svg: "image",
-  bmp: "image",
-  mp4: "video",
-  webm: "video",
-  mov: "video",
-  m4v: "video",
-  ogv: "video",
-  mp3: "audio",
-  wav: "audio",
-  m4a: "audio",
-  aac: "audio",
-  ogg: "audio",
-  flac: "audio",
+/** 扩展名兜底：某些系统不给 MIME type（或只给 application/octet-stream） */
+const EXT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  svg: "image/svg+xml",
+  bmp: "image/bmp",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  ogv: "video/ogg",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/x-m4a",
+  aac: "audio/aac",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+};
+
+/** The file's media type: its own when it names one, otherwise from the extension; "" when neither. */
+export const mediaTypeOf = (file: File): string => {
+  const type = (file?.type || "").toLowerCase();
+  if (/^(image|video|audio)\//.test(type)) return type;
+  return EXT_TYPES[(file?.name || "").toLowerCase().split(".").pop() ?? ""] ?? "";
 };
 
 /** 文件 → 素材类型（认不出来就返回 null，调用方跳过） */
-export const mediaKindForFile = (file: File): MediaKind | null => {
-  const type = (file?.type || "").toLowerCase();
-  if (type.startsWith("image/")) return "image";
-  if (type.startsWith("video/")) return "video";
-  if (type.startsWith("audio/")) return "audio";
-  const ext = (file?.name || "").toLowerCase().split(".").pop() ?? "";
-  return EXT_KINDS[ext] ?? null;
-};
+export const mediaKindForFile = (file: File): MediaKind | null =>
+  (mediaTypeOf(file).split("/")[0] as MediaKind) || null;
 
 /** 读媒体自身时长（秒）：视频 / 音频读 metadata，图片没有时长 */
 const probeDuration = (url: string, kind: MediaKind): Promise<number | null> =>
@@ -127,20 +128,38 @@ export const attachAttachment = (
  * is not available (local development without credentials): the file then stays tab-only.
  */
 export const storeFile = async (file: File): Promise<string | null> => {
+  const type = mediaTypeOf(file);
+  holdTabWhileUploading(+1);
   try {
     const res = await fetch("/api/motion-studio/upload", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
+      body: JSON.stringify({ name: file.name, type, size: file.size }),
     });
     if (!res.ok) return null;
     const { uploadUrl, url } = (await res.json()) as { uploadUrl?: string; url?: string };
     if (!uploadUrl || !url) return null;
-    const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": file.type || "application/octet-stream" }, body: file });
+    const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": type }, body: file });
     return put.ok ? url : null;
   } catch {
     return null;
+  } finally {
+    holdTabWhileUploading(-1);
   }
+};
+
+let uploadsRunning = 0;
+const askBeforeUnload = (e: BeforeUnloadEvent) => {
+  e.preventDefault();
+  e.returnValue = "";
+};
+/** Closing or reloading the tab mid-upload would save the film with a tab-only address: the browser asks first. */
+const holdTabWhileUploading = (delta: 1 | -1) => {
+  if (typeof window === "undefined") return;
+  const before = uploadsRunning;
+  uploadsRunning = Math.max(0, uploadsRunning + delta);
+  if (before === 0 && uploadsRunning > 0) window.addEventListener("beforeunload", askBeforeUnload);
+  if (before > 0 && uploadsRunning === 0) window.removeEventListener("beforeunload", askBeforeUnload);
 };
 
 /** `blob:` address → its stored address, for every file stored in this tab. */
