@@ -197,12 +197,14 @@ function extractOutputText(payload: any): string {
   return ''
 }
 
-async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object, images: string[] = []) {
+const FALLBACK_MODEL = 'gpt-4o'
+
+async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object, images: string[] = [], model: string = DIRECTOR_MODEL): Promise<any> {
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: DIRECTOR_MODEL,
+      model,
       instructions,
       input: [{ role: 'user', content: [{ type: 'input_text', text: input }, ...images.map((image_url) => ({ type: 'input_image', image_url }))] }],
       text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
@@ -211,6 +213,10 @@ async function callDirector(key: string, instructions: string, input: string, sc
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
+    // 403/404 on /v1/responses usually means this project can't use the model, not that the key is bad: retry once on a widely available model.
+    if ((response.status === 403 || response.status === 404) && model !== FALLBACK_MODEL) {
+      return callDirector(key, instructions, input, schemaName, schema, images, FALLBACK_MODEL)
+    }
     const error = new Error(String(payload?.error?.message || `OpenAI request failed (HTTP ${response.status})`)) as Error & { status?: number }
     error.status = response.status
     throw error
@@ -551,8 +557,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const status = (err as { status?: number })?.status
     console.warn('[motion-studio/director] failed', err instanceof Error ? err.message : String(err))
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       return NextResponse.json({ error: 'OpenAI rejected the API key', code: 'OPENAI_KEY_REJECTED' }, { status: 401 })
+    }
+    if (status === 403 || status === 404) {
+      const reason = err instanceof Error ? err.message : ''
+      return NextResponse.json({ error: `Your OpenAI key is valid but OpenAI denied access: ${reason}`.trim(), code: 'OPENAI_ACCESS_DENIED' }, { status: 403 })
     }
     return NextResponse.json({ error: err instanceof Error ? err.message : 'The director failed', code: 'DIRECTOR_FAILED' }, { status: 502 })
   }
