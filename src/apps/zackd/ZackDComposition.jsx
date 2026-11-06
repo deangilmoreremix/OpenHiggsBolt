@@ -22,7 +22,7 @@ const PRESENTATIONS = [
   () => iris({ width: 720, height: 1280 }),
 ];
 
-export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = null, transitionFrames = 10 }) {
+export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = null, transitionFrames = 10, keepClipAudio = false, clipVolume = 1 }) {
   const items = [];
   clips.forEach((clip, i) => {
     items.push(
@@ -30,7 +30,9 @@ export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = n
         <AbsoluteFill style={{ background: '#000', overflow: 'hidden' }}>
           <Video
             src={toPlayablePreviewMediaUrl(clip.src)}
-            muted
+            // The clips' own (Veo) sound is kept by default; @remotion/media <Video> audio survives the web export.
+            muted={!keepClipAudio}
+            volume={clipVolume}
             style={{ width: '100%', height: '100%', objectFit: 'cover', transform: clip.zoom ? 'scale(1.05)' : undefined }}
           />
         </AbsoluteFill>

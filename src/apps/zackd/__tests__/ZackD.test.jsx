@@ -123,7 +123,17 @@ describe('ZackD studio', () => {
     const arg = renderFinalCut.mock.calls.at(-1)[0];
     expect(arg.shots).toHaveLength(5);
     expect(arg.shots.every((s) => /\/zackd\/templates\/swallow-gum\/clips\/beat_/.test(s.src))).toBe(true);
+    expect(arg.keepClipAudio).toBe(true); // the Veo sound is kept by default
     expect(calls).toHaveLength(0);
     expect(muapi.generateImage).not.toHaveBeenCalled();
+
+    // turning it off is respected on the next render
+    const box = document.getElementById('zackd-keep-clip-audio');
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    expect(box.checked).toBe(false);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Re-render' })).toBeTruthy());
+    click('Re-render');
+    await waitFor(() => expect(renderFinalCut.mock.calls.at(-1)[0].keepClipAudio).toBe(false));
   });
 });

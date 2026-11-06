@@ -4,9 +4,13 @@ export const WIDTH = 720;
 export const HEIGHT = 1280;
 export const TRANSITION_SEC = 0.35;
 export const MUSIC_VOLUME = 0.126; // about -18 dB under narration
+export const CLIP_VOLUME_UNDER_NARRATION = 0.25; // about -12 dB: the Veo sound sits under the voice
+
+/** Level for the clips' own audio: full when it is the only sound, ducked when narration is present. */
+export const clipVolumeFor = (hasNarration) => (hasNarration ? CLIP_VOLUME_UNDER_NARRATION : 1);
 
 /** @param {{ src: string, duration: number, zoom?: boolean }[]} shots */
-export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC } = {}) {
+export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC, keepClipAudio = true, hasNarration = false } = {}) {
   if (!Array.isArray(shots) || !shots.length) throw new Error('No clips to assemble.');
   const transitionFrames = shots.length > 1 ? Math.max(0, Math.round(transitionSec * fps)) : 0;
   const clips = shots.map((s, i) => {
@@ -15,7 +19,7 @@ export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC 
     return { src: s.src, frames, zoom: !!s.zoom };
   });
   const durationInFrames = clips.reduce((n, c) => n + c.frames, 0) - (clips.length - 1) * transitionFrames;
-  return { clips, transitionFrames, durationInFrames, fps, width: WIDTH, height: HEIGHT };
+  return { clips, transitionFrames, durationInFrames, fps, width: WIDTH, height: HEIGHT, keepClipAudio: !!keepClipAudio, clipVolume: clipVolumeFor(hasNarration) };
 }
 
 /** SRT captions, 6 words per cue, spread across each beat's on-screen window (no overlapping cues). */

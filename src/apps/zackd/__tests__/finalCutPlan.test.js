@@ -19,6 +19,17 @@ describe('planFinalCut', () => {
   });
 });
 
+describe('planFinalCut clip audio', () => {
+  const shots = [{ src: 'a', duration: 3 }, { src: 'b', duration: 3 }];
+  it('keeps the clips\' own sound by default: full level alone, ducked under narration', () => {
+    expect(planFinalCut(shots)).toMatchObject({ keepClipAudio: true, clipVolume: 1 });
+    expect(planFinalCut(shots, { hasNarration: true })).toMatchObject({ keepClipAudio: true, clipVolume: 0.25 });
+  });
+  it('can be turned off', () => {
+    expect(planFinalCut(shots, { keepClipAudio: false }).keepClipAudio).toBe(false);
+  });
+});
+
 describe('buildSrt', () => {
   it('places beat captions on the transition-adjusted timeline without overlap', () => {
     const beats = [

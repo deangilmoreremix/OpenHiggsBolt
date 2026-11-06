@@ -4,10 +4,10 @@
 import { preferredWebRenderProfile, WEB_RENDER_EXTENSION, WEB_RENDER_MIME_TYPE } from '@/shared/personalization/finalOutput';
 import { planFinalCut } from './finalCutPlan.js';
 
-export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = null, onProgress, signal }) {
+export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = null, keepClipAudio = true, onProgress, signal }) {
   if (typeof window === 'undefined') return { ok: false, reason: 'unsupported-browser', error: 'The final cut is rendered in your browser.' };
   let plan;
-  try { plan = planFinalCut(shots); } catch (e) { return { ok: false, reason: 'bad-input', error: e.message }; }
+  try { plan = planFinalCut(shots, { keepClipAudio, hasNarration: !!narrationUrl }); } catch (e) { return { ok: false, reason: 'bad-input', error: e.message }; }
 
   let renderer;
   try { renderer = await import('@remotion/web-renderer'); } catch (e) {
@@ -21,7 +21,7 @@ export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = nu
   const profile = preferredWebRenderProfile({ h264: mp4v.includes('h264'), vp9: webmv.includes('vp9'), vp8: webmv.includes('vp8') });
   const audioCodecs = await renderer.getEncodableAudioCodecs(profile.container).catch(() => empty);
   const audioCodec = (profile.container === 'mp4' ? ['aac'] : ['opus', 'vorbis']).find((c) => audioCodecs.includes(c)) || null;
-  const hasAudio = !!(narrationUrl || musicUrl);
+  const hasAudio = !!(narrationUrl || musicUrl || plan.keepClipAudio); // clip sound counts: the render must not be muted
 
   const capability = await renderer.canRenderMediaOnWeb({
     container: profile.container, videoCodec: profile.videoCodec, audioCodec, width: plan.width, height: plan.height, muted: !hasAudio || !audioCodec,
@@ -31,7 +31,7 @@ export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = nu
   }
 
   const { ZackDComposition } = await import('./ZackDComposition.jsx');
-  const inputProps = { clips: plan.clips, narrationUrl, musicUrl, transitionFrames: plan.transitionFrames };
+  const inputProps = { clips: plan.clips, narrationUrl, musicUrl, transitionFrames: plan.transitionFrames, keepClipAudio: plan.keepClipAudio, clipVolume: plan.clipVolume };
   try {
     const result = await renderer.renderMediaOnWeb({
       composition: { id: 'ZackDComposition', component: ZackDComposition, width: plan.width, height: plan.height, fps: plan.fps, durationInFrames: plan.durationInFrames, defaultProps: inputProps },

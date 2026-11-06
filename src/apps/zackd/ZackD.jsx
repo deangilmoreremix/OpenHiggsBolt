@@ -25,7 +25,7 @@ const STAGES = [
   ['clips', 'Motion clips'], ['audio', 'Voice & music'], ['final', 'Final cut'],
 ];
 
-const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME });
+const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME, keepClipAudio: true });
 
 const labelStyle = { color: semantic.textLabel };
 const inputStyle = { ...panels.card, color: 'white' };
@@ -135,7 +135,7 @@ export default function ZackD({ apiKey, templateData }) {
       const { renderFinalCut } = await import('./finalCut.js'); // loads the renderer only when needed
       const out = await renderFinalCut({
         shots: shots.map((s) => ({ src: project.shots[s.shot_id].clip, duration: s.duration_sec, zoom: s.zoom_impact })),
-        narrationUrl: project.narration, musicUrl: project.music, signal: abort.current.signal,
+        narrationUrl: project.narration, musicUrl: project.music, keepClipAudio: project.keepClipAudio !== false, signal: abort.current.signal,
         onProgress: (p) => setProgress(`Rendering ${Math.round(p * 100)}%`),
       });
       if (out.ok) setCaptioned(null);
@@ -340,7 +340,11 @@ export default function ZackD({ apiKey, templateData }) {
   const viewFinal = (
     <>
       <Section title="Final cut" hint="Rendered in your browser: transitions between shots, impact zooms, narration with music ducked underneath. It can take a minute or two.">
-        {!project.narration && <p className="text-xs" style={{ color: semantic.textMuted }}>No narration yet — the video will have no voiceover.</p>}
+        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: semantic.textSecondary }}>
+          <input type="checkbox" id="zackd-keep-clip-audio" checked={project.keepClipAudio !== false} onChange={(e) => set({ keepClipAudio: e.target.checked })} />
+          <span>Keep the clips' own sound (Veo audio), quieter under narration</span>
+        </label>
+        {!project.narration && <p className="text-xs" style={{ color: semantic.textMuted }}>{project.keepClipAudio === false ? 'No narration and clip sound is off, so the video will be silent.' : "No narration yet. The cut will use the clips' own sound."}</p>}
         <div className="flex gap-2 flex-wrap">
           <button className={BTN_MAIN} style={buttons.primary} disabled={busy} onClick={assemble}>{final ? 'Re-render' : 'Render video'}</button>
           {busy && abort.current && <button className={BTN} style={buttons.ghost} onClick={() => abort.current?.abort()}>Cancel</button>}
