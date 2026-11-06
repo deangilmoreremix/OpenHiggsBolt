@@ -21,9 +21,79 @@ const ASPECT_PRESETS = [
 const MODEL_OPTIONS = [
   { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Best quality, recommended' },
   { value: 'gpt-image-1', label: 'GPT Image 1', description: 'Faster, good quality' },
-  { value: 'dall-e-3', label: 'DALL·E 3', description: 'Classic prompt-following' },
-  { value: 'flux-dev', label: 'Flux Dev', description: 'MuAPI model' },
+  { value: 'dall-e-3', label: 'DALL·E 3', description: 'Text only — no reference images' },
 ] as const;
+
+const FRAME_TIMEOUT_MS = 8000;
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Grabs one frame of a studio video as a JPEG data URL (null if the browser can't read it). */
+function captureVideoFrame(src: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') return resolve(null);
+    const video = document.createElement('video');
+    let settled = false;
+    const done = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      video.removeAttribute('src');
+      video.load();
+      resolve(value);
+    };
+    const timer = setTimeout(() => done(null), FRAME_TIMEOUT_MS);
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      video.currentTime = duration > 0 ? Math.min(1, duration / 3) : 0;
+    };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx || !canvas.width || !canvas.height) return done(null);
+        ctx.drawImage(video, 0, 0);
+        done(canvas.toDataURL('image/jpeg', 0.9));
+      } catch {
+        // Cross-origin video without CORS headers taints the canvas.
+        done(null);
+      }
+    };
+    video.onerror = () => done(null);
+    video.src = src;
+  });
+}
+
+/**
+ * The studio's own output as a reference the server can read: https URLs pass
+ * through, blob:/video sources are turned into data URLs here in the browser.
+ */
+async function resolveAssetReference(asset: ThumbnailStepProps['asset']): Promise<string | null> {
+  const source = asset.type === 'image' ? asset.url : asset.thumbnailUrl;
+  if (source) {
+    if (source.startsWith('data:image/') || source.startsWith('https://')) return source;
+    try {
+      const res = await fetch(source);
+      const blob = await res.blob();
+      if (blob.type.startsWith('image/')) return await blobToDataUrl(blob);
+    } catch { /* fall through */ }
+  }
+  if (asset.type === 'video' && asset.url) return captureVideoFrame(asset.url);
+  return null;
+}
 
 type GenerationCount = 1 | 2 | 3 | 4;
 
@@ -51,6 +121,9 @@ export default function ThumbnailStep({
   const [error, setError] = useState<string | null>(null)
 
   const [references, setReferences] = useState<string[]>(thumbnail.references || [])
+  const [useAssetReference, setUseAssetReference] = useState(true)
+  const [assetReference, setAssetReference] = useState<string | null>(null)
+  const [assetReferenceState, setAssetReferenceState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [headline, setHeadline] = useState(copy.headline || '')
@@ -79,6 +152,25 @@ export default function ThumbnailStep({
     return () => { abortControllerRef.current?.abort() }
   }, [])
 
+  // Every studio opens this modal with its output (image or video). Use that
+  // output as the visual reference so the thumbnail shows what was made.
+  useEffect(() => {
+    let cancelled = false
+    setAssetReference(null)
+    setAssetReferenceState('loading')
+    resolveAssetReference(asset).then((ref) => {
+      if (cancelled) return
+      setAssetReference(ref)
+      setAssetReferenceState(ref ? 'ready' : 'unavailable')
+    }).catch(() => { if (!cancelled) setAssetReferenceState('unavailable') })
+    return () => { cancelled = true }
+  }, [asset.url, asset.type, asset.thumbnailUrl])
+
+  const effectiveReferences = useMemo(() => {
+    const list = useAssetReference && assetReference ? [assetReference, ...references] : references
+    return Array.from(new Set(list))
+  }, [useAssetReference, assetReference, references])
+
   const buildFullPrompt = useCallback(() => {
     let base = enhancedPrompt || prompt
     if (!base && selectedTemplateId) {
@@ -98,6 +190,9 @@ export default function ThumbnailStep({
       }
       base = templatePrompts[selectedTemplateId] || ''
     }
+    if (!base && useAssetReference && assetReference) {
+      base = 'Eye-catching, high-click-through thumbnail built from the reference image: bold focal point, strong contrast, clean composition'
+    }
 
     const textParts: string[] = []
     if (headline) textParts.push(`HEADLINE TEXT: "${headline}"`)
@@ -105,7 +200,9 @@ export default function ThumbnailStep({
     if (textParts.length > 0) {
       base += '. ' + textParts.join('. ') + '. Leave clear space for text overlay at ' + textPosition + '.'
     }
-    if (references.length > 0) {
+    if (useAssetReference && assetReference) {
+      base += ' The first reference image is the actual ' + (asset.type === 'video' ? 'video frame' : 'image') + ' this thumbnail is for — keep its subject, product and look recognisable.'
+    } else if (references.length > 0) {
       base += ' Reference images provided for style/content guidance.'
     }
     const stylePrompts: Record<string, string> = {
@@ -122,7 +219,7 @@ export default function ThumbnailStep({
       base += ' ' + stylePrompts[style]
     }
     return base
-  }, [prompt, enhancedPrompt, selectedTemplateId, headline, subheadline, textPosition, references, style])
+  }, [prompt, enhancedPrompt, selectedTemplateId, headline, subheadline, textPosition, references, style, useAssetReference, assetReference, asset.type])
 
   const handleEnhance = useCallback(async () => {
     if (!prompt.trim() || isEnhancing) return
@@ -136,7 +233,7 @@ export default function ThumbnailStep({
 
   const handleGenerate = useCallback(async () => {
     const fullPrompt = buildFullPrompt()
-    if (!fullPrompt.trim() && !selectedTemplateId) return
+    if (!fullPrompt.trim()) return
 
     setError(null)
     setGenerating(true)
@@ -157,7 +254,7 @@ export default function ThumbnailStep({
         headline,
         subheadline,
         templateId: selectedTemplateId,
-        referenceUrls: references.length > 0 ? references : undefined,
+        referenceUrls: effectiveReferences.length > 0 ? effectiveReferences : undefined,
         style,
         quality: 'medium',
       })
@@ -184,7 +281,7 @@ export default function ThumbnailStep({
         setGeneratingCount(0)
       }
     }
-  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, generationCount, headline, subheadline, references, style, onUpdateThumbnail])
+  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, generationCount, headline, subheadline, references, effectiveReferences, style, onUpdateThumbnail])
 
   const handleSelectResult = useCallback((index: number) => {
     setSelectedIndex(index)
@@ -231,6 +328,8 @@ export default function ThumbnailStep({
     const parts = [sourceHeadline, sourceSubject, sourceVisualIdea].filter(Boolean)
     if (parts.length > 0) setPrompt(parts.join(' — '))
   }, [copy])
+
+  const canGenerate = !!(prompt.trim() || selectedTemplateId || (useAssetReference && assetReference))
 
   const hasWriteContent = useMemo(() => !!(copy.headline || copy.title || copy.subject || copy.visualIdea), [copy])
 
@@ -286,6 +385,26 @@ export default function ThumbnailStep({
         <ReferenceUploadZone templateId={selectedTemplateId} references={references} onUpdate={(updates) => { setReferences(updates.references || references); onUpdateThumbnail({ references: updates.references || references }) }} disabled={generating} />
       )}
 
+      <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+          {assetReferenceState === 'loading' && <Loader2 size={13} className="animate-spin text-white/40" />}
+          {assetReferenceState === 'ready' && assetReference && <img src={assetReference} alt="Studio output used as reference" className="w-full h-full object-cover" />}
+          {assetReferenceState === 'unavailable' && <AlertCircle size={13} className="text-white/30" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-white/80">Build from this {asset.type === 'video' ? 'video' : 'image'}{asset.studio ? ` (${asset.studio})` : ''}</p>
+          <p className="text-[10px] text-white/40">
+            {assetReferenceState === 'loading' && 'Reading your studio output…'}
+            {assetReferenceState === 'ready' && (selectedModel === 'dall-e-3' ? 'Uses GPT Image 2 — DALL·E 3 cannot take reference images.' : 'Your output is sent as the reference so the thumbnail matches it.')}
+            {assetReferenceState === 'unavailable' && (asset.type === 'video' ? "Couldn't read a frame from this video — upload a reference instead." : "Couldn't read this image — upload a reference instead.")}
+          </p>
+        </div>
+        <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+          <input type="checkbox" checked={useAssetReference} onChange={(e) => setUseAssetReference(e.target.checked)} disabled={generating || assetReferenceState !== 'ready'} className="accent-[#22d3ee] disabled:opacity-50" aria-label="Use studio output as thumbnail reference" />
+          <span className="text-[10px] text-white/50">Use</span>
+        </label>
+      </div>
+
       <div className="space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Aspect Ratio</p>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio options">
@@ -326,7 +445,7 @@ export default function ThumbnailStep({
             </button>
           ))}
         </div>
-        <button type="button" onClick={handleGenerate} disabled={generating || (!prompt.trim() && !selectedTemplateId)} className="flex-1 min-w-[120px] h-10 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }} aria-label={`Generate ${generationCount} thumbnail${generationCount > 1 ? 's' : ''}`}>
+        <button type="button" onClick={handleGenerate} disabled={generating || !canGenerate} className="flex-1 min-w-[120px] h-10 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }} aria-label={`Generate ${generationCount} thumbnail${generationCount > 1 ? 's' : ''}`}>
           {generating ? <><Loader2 size={14} className="animate-spin" />Generating…</> : <><Image size={14} />Generate {generationCount > 1 ? `${generationCount}` : ''}</>}
         </button>
       </div>
