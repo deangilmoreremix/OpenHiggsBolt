@@ -227,6 +227,12 @@ export default function ZackD({ apiKey, templateData }) {
           {TEMPLATES.map((t) => (
             <div key={t.id} className="rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-colors p-3 space-y-2 flex flex-col">
               {t.demo && <video src={t.demo} poster={t.poster} controls preload="none" playsInline className="w-full rounded-md bg-black" style={{ aspectRatio: '9 / 16', maxHeight: 320 }} />}
+              {!t.demo && t.beats?.[0]?.narration && (
+                <blockquote className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-xs italic" style={{ color: semantic.textSecondary }}>
+                  “{t.beats[0].narration}”
+                  <span className="block mt-1 not-italic" style={{ color: semantic.textMuted }}>{t.beats.length} beat{t.beats.length === 1 ? '' : 's'} · no media, you generate the keyframes and clips</span>
+                </blockquote>
+              )}
               <div className="text-sm font-medium text-white">{t.title}</div>
               <p className="text-xs flex-1" style={{ color: semantic.textSecondary }}>{t.description}</p>
               <button className={t.kind === 'finished' ? BTN_MAIN : BTN} style={t.kind === 'finished' ? buttons.primary : buttons.ghost} disabled={busy} onClick={() => useTemplate(t)}>

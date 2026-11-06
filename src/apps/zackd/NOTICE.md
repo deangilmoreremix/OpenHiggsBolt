@@ -1,7 +1,7 @@
 # Zack D studio: third-party notice
 
-The Zack D studio (`src/components/studios/ZackDStudio`, `src/lib/zackd`,
-`netlify/functions/zackd.js`, `netlify/functions/_shared/zackdPrompts.js`) is adapted from
+The Zack D studio (`src/apps/zackd/`: `ZackD.jsx`, `jobs.js`, `zackdPrompts.js`, `templates.js`, `finalCut.js`;
+demo media in `public/zackd/templates/swallow-gum/`) is adapted from
 https://github.com/Anil-matcha/zack-d-films-ai-video-generator, used under the MIT License as declared in that repository's README and package.json
 (its referenced LICENSE file is not committed upstream; the text below is the standard MIT text
 with the holder named there).
