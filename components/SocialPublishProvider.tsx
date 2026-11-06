@@ -137,8 +137,10 @@ export function SocialPublishProvider({
     setState((s) => ({ ...s, socialCopy }));
   }, []);
 
+  // The Thumbnail step sends partial updates (just the aspect ratio, just the
+  // references, ...). Merge them so one change never wipes the chosen image.
   const updateThumbnail = useCallback((thumbnail: ThumbnailState) => {
-    setState((s) => ({ ...s, thumbnail }));
+    setState((s) => ({ ...s, thumbnail: { ...s.thumbnail, ...thumbnail } }));
   }, []);
 
   const updateDestinations = useCallback((destinations: Destination[]) => {

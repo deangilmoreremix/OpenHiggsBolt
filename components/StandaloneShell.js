@@ -41,6 +41,7 @@ const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 const AppsStudio = loadStudio('AppsStudio');
+const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
@@ -99,6 +100,7 @@ const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
+  { id: 'edit',    label: 'Edit' },
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
@@ -141,7 +143,7 @@ function SignOutButton() {
 
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
-  image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
+  image: 'image', 'brand-studio': 'brand-studio', video: 'video', edit: 'edit', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', 'motion-control': 'motion-control', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-studio', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
@@ -159,7 +161,7 @@ const SLUG_TO_TAB = {
 // keep their mount-on-active behaviour.
 const PERSISTENT_STUDIO_TABS = [
   'image', 'video', 'clipping', 'vibe-motion', 'motion-control', 'lipsync', 'cinema',
-  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer', 'zackd',
+  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer', 'zackd', 'edit',
 ];
 
 const NOTIFICATIONS_STORAGE_KEY = 'open_gen_notifications_v1';
@@ -941,6 +943,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'motion-studio' && <MotionStudioEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'motion-director' && <MotionDirectorEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {persistentStudio('recast', (active) => <RecastStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['recast']} />)}
+         {persistentStudio('edit', (active) => <EditStudio apiKey={apiKey} active={active} {...generationCallbacks['edit']} />)}
          {persistentStudio('layers', (active) => <LayersStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['layers']} />)}
          {persistentStudio('workflows', (active) => <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} {...generationCallbacks['workflows']} />)}
          {persistentStudio('agents', (active) => <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} locale={locale} />)}
