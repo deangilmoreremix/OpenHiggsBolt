@@ -16,6 +16,7 @@ import {
   starterBeatMap, characterSheetPrompt, keyframePrompt, clipPrompt, narrationText, allShots, totalDuration,
 } from './zackdPrompts.js';
 import { buildSrt } from './finalCutPlan.js';
+import { TEMPLATES, TEMPLATE_ATTRIBUTION, templateToProject } from './templates.js';
 
 const STORE_KEY = 'zackd_project_v1';
 const CONCURRENCY = 3;
@@ -166,6 +167,14 @@ export default function ZackD({ apiKey, templateData }) {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
+  // Load an upstream template. Never calls a paid API; a finished demo also brings its keyframes and clips.
+  const useTemplate = (t) => {
+    if (busy) return;
+    if (project.map && !window.confirm('Replace the current project with this template?')) return;
+    setProject({ ...blank(), ...templateToProject(t, window.location.origin), look: project.look, voice: project.voice });
+    setFinal(null); setCaptioned(null); setError('');
+  };
+
   const writeScript = () => {
     if (!project.topic.trim()) return;
     set({ map: starterBeatMap(project.topic), sheets: {}, shots: {}, narration: null, stage: 'script' });
@@ -189,6 +198,20 @@ export default function ZackD({ apiKey, templateData }) {
         <div className="flex gap-2 flex-wrap">
           <button className={BTN_MAIN} style={buttons.primary} disabled={!project.topic.trim()} onClick={writeScript}>{project.map ? 'Rewrite starter script' : 'Write starter script'}</button>
           {project.map && <button className={BTN} style={buttons.ghost} onClick={() => go('script')}>Continue current project</button>}
+        </div>
+      </Section>
+      <Section title="Templates" hint={TEMPLATE_ATTRIBUTION}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {TEMPLATES.map((t) => (
+            <div key={t.id} className="rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-colors p-3 space-y-2 flex flex-col">
+              {t.demo && <video src={t.demo} poster={t.poster} controls preload="none" playsInline className="w-full rounded-md bg-black" style={{ aspectRatio: '9 / 16', maxHeight: 320 }} />}
+              <div className="text-sm font-medium text-white">{t.title}</div>
+              <p className="text-xs flex-1" style={{ color: semantic.textSecondary }}>{t.description}</p>
+              <button className={t.kind === 'finished' ? BTN_MAIN : BTN} style={t.kind === 'finished' ? buttons.primary : buttons.ghost} disabled={busy} onClick={() => useTemplate(t)}>
+                {t.kind === 'finished' ? 'Use as template' : 'Use script'}
+              </button>
+            </div>
+          ))}
         </div>
       </Section>
       <div className="grid gap-3 sm:grid-cols-2">

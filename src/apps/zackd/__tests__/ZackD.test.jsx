@@ -108,4 +108,22 @@ describe('ZackD studio', () => {
     expect(screen.getByLabelText('TOPIC').value).toBe('Brain freeze');
     expect(screen.getByText(/Add your MuAPI key in Settings/)).toBeTruthy();
   });
+
+  it('a finished template reaches the final cut with no generation calls', async () => {
+    const muapi = await import('studio/src/muapi.js');
+    render(<ZackD apiKey="mu_test_key_0123456789" />);
+    expect(screen.getByText(/Sample from the upstream open-source Zack D project/)).toBeTruthy();
+    click('Use as template');
+    expect(screen.getByLabelText('Narration, beat 1').value).toMatch(/Swallow Gum/);
+    click('Approve script');
+    click('Approve keyframes'); // the template brought its keyframes
+    click('Continue to audio'); click('Continue to final cut');
+    click('Render video');
+    await waitFor(() => expect(renderFinalCut).toHaveBeenCalled());
+    const arg = renderFinalCut.mock.calls.at(-1)[0];
+    expect(arg.shots).toHaveLength(5);
+    expect(arg.shots.every((s) => /\/zackd\/templates\/swallow-gum\/clips\/beat_/.test(s.src))).toBe(true);
+    expect(calls).toHaveLength(0);
+    expect(muapi.generateImage).not.toHaveBeenCalled();
+  });
 });
