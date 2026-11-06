@@ -6,13 +6,14 @@ import { motionTemplateVariants, resolveMotionTemplate } from '@/data/motionReci
 import { ArrowRightLeft, BarChart3, Camera, Check, Hand, Layers, LogIn, Music, Palette, Sparkle, Sparkles, Type as TypeIcon } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { useT } from '../i18n';
+import { confirmLeaveWhileRendering } from '../webRenderer';
 import { useStore } from '../store';
 import { projectToSession } from '../lib/sessionAdapter';
 import { useDemoPersonalize } from '@/shared/personalization/DemoPersonalizeProvider';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 import type { AspectRatio } from '../projectContract';
 import { usePersonalizationPerson } from '../personalizationAdapter';
-import { prepareMedia, type MediaAttachment } from '../lib/mediaUpload';
+import { applyLastingUrls, prepareMedia, type MediaAttachment } from '../lib/mediaUpload';
 import {
   AttachButton,
   HomeHero,
@@ -300,8 +301,10 @@ export default function MotionStudioEntry() {
 
   /** Hand the finished film to the Motion Workbench (tracks, inspector, library, export). */
   const editInWorkbench = () => {
-    if (!director.film) return;
+    if (!director.film || !confirmLeaveWhileRendering(t('export.leaveConfirm'))) return;
     setProject(director.film.project);
+    // Files that finished storing after the film was built: the workbench copy gets their lasting addresses.
+    applyLastingUrls();
     // One session per film, carrying this chat, so the workbench agent continues the same conversation and the film is listed under Recent.
     const session = projectToSession(director.film.project, director.film.project.name || 'Untitled film', description.trim() || undefined);
     session.messages = director.messages.map((m) => ({ role: m.role, content: m.content, ts: m.ts }));
@@ -320,6 +323,7 @@ export default function MotionStudioEntry() {
   };
 
   const openSession = (id: string) => {
+    if (!confirmLeaveWhileRendering(t('export.leaveConfirm'))) return;
     applySession(id);
     try {
       window.localStorage.setItem('motion-director:entry-seen-v1', '1');
