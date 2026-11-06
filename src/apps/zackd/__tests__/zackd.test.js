@@ -59,6 +59,23 @@ describe('createJobs', () => {
   });
 });
 
+describe('captions job', () => {
+  it('forwards language/theme to ai-captions, validates enums and requires a public https video', async () => {
+    const api = { generateCaptions: vi.fn().mockResolvedValue({ url: 'https://cdn.example.com/captioned.mp4' }) };
+    const jobs = createJobs(api, 'KEY');
+    expect(await jobs.captions({ videoUrl: 'https://muapi.example.com/cut.mp4', language: 'Spanish (Mexico)', theme: 'Beast' })).toEqual({ url: 'https://cdn.example.com/captioned.mp4', model: 'ai-captions' });
+    expect(api.generateCaptions).toHaveBeenCalledWith('KEY', { video_url: 'https://muapi.example.com/cut.mp4', language: 'Spanish (Mexico)', theme: 'Beast' });
+    await jobs.captions({ videoUrl: 'https://muapi.example.com/cut.mp4', language: 'Klingon', theme: 'nope' });
+    expect(api.generateCaptions).toHaveBeenLastCalledWith('KEY', expect.objectContaining({ language: 'English', theme: 'Hormozi_1' }));
+    await expect(jobs.captions({ videoUrl: 'blob:http://localhost/abc' })).rejects.toMatchObject({ code: 'bad_input' });
+    expect(api.generateCaptions).toHaveBeenCalledTimes(2);
+  });
+  it('rejects placeholder output instead of showing it as captioned media', async () => {
+    const api = { generateCaptions: vi.fn().mockResolvedValue({ url: PLACEHOLDER }) };
+    await expect(createJobs(api, 'K').captions({ videoUrl: 'https://muapi.example.com/cut.mp4' })).rejects.toMatchObject({ code: 'placeholder' });
+  });
+});
+
 describe('pool', () => {
   it('limits concurrency and returns per-item errors', async () => {
     let live = 0; let peak = 0;

@@ -392,6 +392,22 @@ export async function generateAudio(apiKey, params) {
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
 }
 
+/**
+ * Burn animated captions into a video (MuAPI `ai-captions`, Vadoo engine).
+ * Unlike processV2V this forwards `language` and `theme`, and reads the result's
+ * `video` field (the endpoint answers { video: <url> } rather than outputs[]).
+ * `video_url` must be a public URL (max 600 MB / 10 min): upload local files first.
+ */
+export async function generateCaptions(apiKey, params) {
+    if (!params?.video_url) throw new Error('video_url is required for captions.');
+    const payload = { video_url: params.video_url };
+    if (params.language) payload.language = params.language;
+    if (params.theme) payload.theme = params.theme;
+    const result = await submitAndPoll('ai-captions', payload, apiKey, params.onRequestId, 900, params.signal);
+    const url = result.url || (typeof result.video === 'string' ? result.video : result.video?.url);
+    return { ...result, url };
+}
+
 export function uploadFile(apiKey, file, onProgress) {
     return new Promise((resolve, reject) => {
         if (!file) return reject(new Error('No file provided'));

@@ -12,6 +12,7 @@ import * as muapi from 'studio/src/muapi.js';
 import { createJobs, pool } from './jobs.js';
 import {
   SEED_TOPICS, LOOKS, DEFAULT_LOOK, TTS_VOICES, DEFAULT_VOICE, DEFAULT_TTS_SPEED,
+  CAPTION_LANGUAGES, CAPTION_THEMES, DEFAULT_CAPTION_LANGUAGE, DEFAULT_CAPTION_THEME,
   starterBeatMap, characterSheetPrompt, keyframePrompt, clipPrompt, narrationText, allShots, totalDuration,
 } from './zackdPrompts.js';
 import { buildSrt } from './finalCutPlan.js';
@@ -23,7 +24,7 @@ const STAGES = [
   ['clips', 'Motion clips'], ['audio', 'Voice & music'], ['final', 'Final cut'],
 ];
 
-const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null });
+const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME });
 
 const labelStyle = { color: semantic.textLabel };
 const inputStyle = { ...panels.card, color: 'white' };
@@ -57,6 +58,7 @@ export default function ZackD({ apiKey, templateData }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
+  const [captioned, setCaptioned] = useState(null); // { url } — burned-in captions result (remote URL, not persisted)
   const [final, setFinal] = useState(null); // { url, blob, ext, warning, saved } — not persisted (blob URLs die with the page)
   const proj = useRef(project);
   proj.current = project;
@@ -135,9 +137,26 @@ export default function ZackD({ apiKey, templateData }) {
         narrationUrl: project.narration, musicUrl: project.music, signal: abort.current.signal,
         onProgress: (p) => setProgress(`Rendering ${Math.round(p * 100)}%`),
       });
+      if (out.ok) setCaptioned(null);
       if (out.ok) setFinal({ url: URL.createObjectURL(out.blob), blob: out.blob, ext: out.extension, warning: out.warning });
       else if (out.reason !== 'cancelled') setError(out.error);
     } catch (e) { setError(e?.message || 'The final cut failed.'); }
+    setBusy(false); setProgress('');
+  }
+
+  // Opt-in, paid: upload the rendered cut to MuAPI, then burn animated captions in with ai-captions (Vadoo).
+  async function burnCaptions() {
+    if (busy || !final?.blob) return;
+    if (!project.narration) { setError('Captions are generated from the spoken audio. Add narration first.'); return; }
+    if (!window.confirm('Burn captions into the video with MuAPI AI Captions? About $0.20 minimum ($0.005 per second), and it takes a few minutes.')) return;
+    setBusy(true); setError(''); setProgress('Uploading the video…');
+    try {
+      const file = new File([final.blob], `zackd-cut.${final.ext || 'mp4'}`, { type: final.blob.type || 'video/mp4' });
+      const videoUrl = await muapi.uploadFile(apiKey, file);
+      setProgress('Burning captions (2-3 minutes)…');
+      const { url } = await jobs.captions({ videoUrl, language: project.captionLang, theme: project.captionTheme });
+      setCaptioned({ url });
+    } catch (e) { setError(e?.message || 'Burning captions failed.'); }
     setBusy(false); setProgress('');
   }
 
@@ -150,7 +169,7 @@ export default function ZackD({ apiKey, templateData }) {
   const writeScript = () => {
     if (!project.topic.trim()) return;
     set({ map: starterBeatMap(project.topic), sheets: {}, shots: {}, narration: null, stage: 'script' });
-    setFinal(null); setError('');
+    setFinal(null); setCaptioned(null); setError('');
   };
 
   // ── views ────────────────────────────────────────────────────────────────────
@@ -311,13 +330,35 @@ export default function ZackD({ apiKey, templateData }) {
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(final.blob, `zackd-short.${final.ext}`)}><Download size={14} /> Download video</button>
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' }), 'zackd-short.srt')}><Download size={14} /> Captions (.srt)</button>
             </div>
-            <p className="text-xs" style={{ color: semantic.textMuted }}>Captions are a separate .srt file; they are not burned into the video.</p>
+            <p className="text-xs" style={{ color: semantic.textMuted }}>The .srt is a free, separate caption file. To burn animated captions into the video, use the option below.</p>
+            <div className="rounded-xl p-4 space-y-3" style={panels.card}>
+              <h3 className="text-sm font-semibold text-white">Burn captions into the video</h3>
+              <p className="text-xs" style={{ color: semantic.textSecondary }}>Animated, word-by-word captions in a viral style. Paid: about $0.20 minimum ($0.005 per second), 2-3 minutes. Needs narration.</p>
+              <div className="flex gap-2 items-center flex-wrap">
+                <select aria-label="Caption language" className="rounded-lg px-2 py-1.5 text-sm outline-none" style={inputStyle} value={project.captionLang} onChange={(e) => set({ captionLang: e.target.value })}>
+                  {CAPTION_LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2 flex-wrap" role="group" aria-label="Caption theme">
+                {CAPTION_THEMES.map((t) => (
+                  <button key={t.value} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" style={optionStyle(project.captionTheme === t.value)} aria-pressed={project.captionTheme === t.value} onClick={() => set({ captionTheme: t.value })}>{t.label}</button>
+                ))}
+              </div>
+              <button className={BTN_MAIN} style={buttons.primary} disabled={busy || !hasKey || !project.narration} onClick={burnCaptions}>{captioned ? 'Burn again' : 'Burn captions'}</button>
+              {!project.narration && <p className="text-xs" style={{ color: semantic.textMuted }}>Generate narration first: captions are transcribed from the spoken audio.</p>}
+              {captioned && (
+                <>
+                  <video src={captioned.url} controls className="rounded-lg bg-black" style={{ maxHeight: '70vh', aspectRatio: '9 / 16' }} />
+                  <a className={`${BTN} inline-flex items-center gap-2`} style={buttons.ghost} href={captioned.url} target="_blank" rel="noopener noreferrer"><Download size={14} /> Open / download captioned video</a>
+                </>
+              )}
+            </div>
           </>
         )}
       </Section>
       <div className="flex gap-2">
         <button className={BTN} style={buttons.ghost} onClick={() => go('audio')}>Back</button>
-        <button className={BTN} style={buttons.ghost} onClick={() => { if (window.confirm('Start a new project? The current one will be cleared from this browser.')) { setProject(blank()); setFinal(null); } }}>New project</button>
+        <button className={BTN} style={buttons.ghost} onClick={() => { if (window.confirm('Start a new project? The current one will be cleared from this browser.')) { setProject(blank()); setFinal(null); setCaptioned(null); } }}>New project</button>
       </div>
     </>
   );
