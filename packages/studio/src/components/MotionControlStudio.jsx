@@ -297,6 +297,28 @@ function CharacterImagesMediaButton({
         )}
       </button>
 
+      {/* Always-visible thumbnails, so uploaded images can be seen and removed without opening the popover */}
+      {images.length > 0 &&
+        images.map((img, idx) => (
+          <div
+            key={`${img.url}-${idx}`}
+            className="relative w-10 h-10 shrink-0 rounded-full overflow-hidden border border-white/10 bg-black/50"
+          >
+            <img src={img.url} alt={img.name || ""} className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveImage(idx);
+              }}
+              title={copy.titles.removeImage}
+              className="absolute top-0 right-0 w-4 h-4 bg-black/70 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] leading-none border border-white/20"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+
       {/* Quick Add Button if images already exist */}
       {images.length > 0 && images.length < maxImages && (
         <button

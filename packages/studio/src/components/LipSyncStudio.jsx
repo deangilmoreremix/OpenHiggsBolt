@@ -325,7 +325,7 @@ function MediaPickerButton({
             setIsPlaying(false);
             onClear();
           }}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-black/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] border border-white/20 transition-all z-20 shadow-md group-hover/media:opacity-100 opacity-80 sm:opacity-0 sm:group-hover/media:opacity-100"
+          className="absolute -top-1 -right-1 w-4 h-4 bg-black/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] border border-white/20 transition-all z-20 shadow-md opacity-90 hover:opacity-100"
         >
           ×
         </button>
