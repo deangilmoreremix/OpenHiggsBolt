@@ -1,7 +1,7 @@
 /**
  * 本地素材（图片 / 视频 / 音频）接入工作台。
  *
- * 素材一律走浏览器本地的 object URL（`blob:`）——不上传、不调用任何外部 / 付费 API。
+ * 素材先用浏览器本地的 object URL（`blob:`）即时预览，同时在后台存进存储（`storeFile`），存好后换成长期地址。
  * 落进工程的方式是工程自己的媒体卡（`image-clip` / `video-clip` / `audio-clip`）：
  * `addClip(cardId, track, at, { props: { file: <objectURL> } })`，
  * Remotion 合成读同一个 `file` prop 渲染（见 `cards/media-cards.tsx`）。
@@ -16,7 +16,7 @@ export interface MediaAttachment {
   id: string;
   kind: MediaKind;
   name: string;
-  /** 本地 object URL（`blob:`）——只存在于当前浏览器，不上传 */
+  /** 先是本地 object URL（`blob:`，只在当前标签页有效），存进存储后换成长期地址 */
   url: string;
   size: number;
   /** 媒体自身时长（秒）；图片没有时长 */
@@ -35,38 +35,39 @@ export const MEDIA_CARD_IDS: Record<MediaKind, string> = {
 /** 探测不到媒体时长时的兜底长度（秒） */
 const FALLBACK_SEC: Record<MediaKind, number> = { image: 3, video: 5, audio: 5 };
 
-/** 扩展名兜底：某些系统不给 MIME type */
-const EXT_KINDS: Record<string, MediaKind> = {
-  png: "image",
-  jpg: "image",
-  jpeg: "image",
-  gif: "image",
-  webp: "image",
-  avif: "image",
-  svg: "image",
-  bmp: "image",
-  mp4: "video",
-  webm: "video",
-  mov: "video",
-  m4v: "video",
-  ogv: "video",
-  mp3: "audio",
-  wav: "audio",
-  m4a: "audio",
-  aac: "audio",
-  ogg: "audio",
-  flac: "audio",
+/** 扩展名兜底：某些系统不给 MIME type（或只给 application/octet-stream） */
+const EXT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  svg: "image/svg+xml",
+  bmp: "image/bmp",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  ogv: "video/ogg",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/x-m4a",
+  aac: "audio/aac",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+};
+
+/** The file's media type: its own when it names one, otherwise from the extension; "" when neither. */
+export const mediaTypeOf = (file: File): string => {
+  const type = (file?.type || "").toLowerCase();
+  if (/^(image|video|audio)\//.test(type)) return type;
+  return EXT_TYPES[(file?.name || "").toLowerCase().split(".").pop() ?? ""] ?? "";
 };
 
 /** 文件 → 素材类型（认不出来就返回 null，调用方跳过） */
-export const mediaKindForFile = (file: File): MediaKind | null => {
-  const type = (file?.type || "").toLowerCase();
-  if (type.startsWith("image/")) return "image";
-  if (type.startsWith("video/")) return "video";
-  if (type.startsWith("audio/")) return "audio";
-  const ext = (file?.name || "").toLowerCase().split(".").pop() ?? "";
-  return EXT_KINDS[ext] ?? null;
-};
+export const mediaKindForFile = (file: File): MediaKind | null =>
+  (mediaTypeOf(file).split("/")[0] as MediaKind) || null;
 
 /** 读媒体自身时长（秒）：视频 / 音频读 metadata，图片没有时长 */
 const probeDuration = (url: string, kind: MediaKind): Promise<number | null> =>
@@ -121,7 +122,68 @@ export const attachAttachment = (
   return clipId;
 };
 
-/** 选中文件 → 准备素材（object URL + 异步探测时长），不碰工程 */
+/**
+ * Put a file in storage so a saved film still has it after a reload (a `blob:` address dies with the tab).
+ * The server hands out a one-time signed address and the file goes straight to storage. Null when storage
+ * is not available (local development without credentials): the file then stays tab-only.
+ */
+export const storeFile = async (file: File): Promise<string | null> => {
+  const type = mediaTypeOf(file);
+  holdTabWhileUploading(+1);
+  try {
+    const res = await fetch("/api/motion-studio/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: file.name, type, size: file.size }),
+    });
+    if (!res.ok) return null;
+    const { uploadUrl, url } = (await res.json()) as { uploadUrl?: string; url?: string };
+    if (!uploadUrl || !url) return null;
+    const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": type }, body: file });
+    return put.ok ? url : null;
+  } catch {
+    return null;
+  } finally {
+    holdTabWhileUploading(-1);
+  }
+};
+
+let uploadsRunning = 0;
+const askBeforeUnload = (e: BeforeUnloadEvent) => {
+  e.preventDefault();
+  e.returnValue = "";
+};
+/** Closing or reloading the tab mid-upload would save the film with a tab-only address: the browser asks first. */
+const holdTabWhileUploading = (delta: 1 | -1) => {
+  if (typeof window === "undefined") return;
+  const before = uploadsRunning;
+  uploadsRunning = Math.max(0, uploadsRunning + delta);
+  if (before === 0 && uploadsRunning > 0) window.addEventListener("beforeunload", askBeforeUnload);
+  if (before > 0 && uploadsRunning === 0) window.removeEventListener("beforeunload", askBeforeUnload);
+};
+
+/** `blob:` address → its stored address, for every file stored in this tab. */
+const lastingUrls = new Map<string, string>();
+
+/** Points every clip of the open project that uses a stored file's `blob:` address at the lasting one. */
+export const applyLastingUrls = () => {
+  const { project, updateClipProps } = useStore.getState();
+  for (const track of project.tracks) {
+    for (const clip of track.clips) {
+      const url = lastingUrls.get(String(clip.props?.file ?? ""));
+      if (url) updateClipProps(clip.id, { file: url });
+    }
+  }
+};
+
+/** Once the file is stored, the attachment and the open project point at the lasting address. */
+export const switchToLastingUrl = (attachment: MediaAttachment, url: string) => {
+  lastingUrls.set(attachment.url, url);
+  attachment.url = url;
+  applyLastingUrls();
+};
+
+/** 选中文件 → 准备素材（object URL + 异步探测时长 + 后台存储），不碰工程 */
 export const prepareMedia = (files: File[]): MediaAttachment[] => {
   const out: MediaAttachment[] = [];
   for (const file of files ?? []) {
@@ -137,6 +199,9 @@ export const prepareMedia = (files: File[]): MediaAttachment[] => {
     out.push(attachment);
     void probeDuration(attachment.url, kind).then((sec) => {
       if (sec) attachment.durationSec = sec;
+    });
+    void storeFile(file).then((url) => {
+      if (url) switchToLastingUrl(attachment, url);
     });
   }
   return out;
@@ -173,43 +238,4 @@ export const attachMediaAttachments = (
     const hit = findClip(useStore.getState().project, clipId);
     if (hit) at = hit.clip.start + hit.clip.duration;
   }
-};
-
-/**
- * 上传素材到持久化存储，返回可跨会话使用的稳定 URL。
- *
- * POST 每个文件到 `/api/motion-studio/upload`；端点不可用（本地开发）时
- * 回落到浏览器本地的 `blob:` URL。回落 URL 只存在于当前会话，不应被
- * 持久化进 localStorage（会被逐条清理，见 store 的自动保存），只用于
- * 当前预览与渲染。
- */
-export const uploadMedia = async (files: File[]): Promise<MediaAttachment[]> => {
-  const CONCURRENCY = 3;
-  const out: MediaAttachment[] = [];
-  const fileList = files ?? [];
-  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
-    const chunk = fileList.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(chunk.map(async (file) => {
-      const kind = mediaKindForFile(file);
-      if (!kind) return null;
-      let url = '';
-      try {
-        const form = new FormData();
-        form.append('file', file);
-        const res = await fetch('/api/motion-studio/upload', { method: 'POST', body: form });
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}));
-          url = String(data?.url ?? data?.file ?? '');
-        }
-        if (!url) throw new Error('upload returned no url');
-      } catch {
-        url = URL.createObjectURL(file);
-      }
-      return { id: uid('media'), kind, name: file.name || `media.${kind}`, url, size: file.size ?? 0 };
-    }));
-    for (const result of results) {
-      if (result) out.push(result);
-    }
-  }
-  return out;
 };
