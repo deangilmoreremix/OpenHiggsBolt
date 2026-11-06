@@ -102,6 +102,9 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
   const [uploadHistory, setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Always-current selection, so async upload callbacks never see a stale list.
+  const selectedRef = useRef([]);
+  selectedRef.current = selectedEntries;
 
   // Notify parent whenever uploadHistory changes (for localStorage persistence)
   const onHistoryChangeRef = useRef(onHistoryChange);
@@ -245,15 +248,14 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
               }),
             );
 
-            // Auto-select if there's room
-            if (selectedEntries.length < maxImages) {
-              const newEntry = { url: uploadedUrl };
-              setSelectedEntries((prev) => [...prev, newEntry]);
-
-              if (maxImages === 1) {
-                fireOnSelect([newEntry]);
-                setPanelOpen(false);
-              }
+            // Auto-select if there's room, and tell the parent right away so the
+            // uploaded image shows in the prompt bar without reopening the picker.
+            if (selectedRef.current.length < maxImages) {
+              const next = [...selectedRef.current, { url: uploadedUrl }];
+              selectedRef.current = next;
+              setSelectedEntries(next);
+              fireOnSelect(next);
+              if (maxImages === 1) setPanelOpen(false);
             }
           } catch (err) {
             console.error("[UploadButton] Upload failed for", file.name, err);
@@ -331,6 +333,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
         ];
       }
       setSelectedEntries(next);
+      if (next.length > 0) fireOnSelect(next);
     }
   };
 
