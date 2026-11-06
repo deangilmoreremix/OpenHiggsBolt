@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import {
   decomposeLayers,
   uploadFile,
@@ -1350,6 +1351,20 @@ export default function LayersStudio({
             CHANGE
           </div>
         </button>
+
+        {/* Saved uploads and generations, shared by every studio */}
+        <AssetLibraryButton
+          kinds={["image"]}
+          label="Saved"
+          onSelect={(asset) => {
+            setCurrentImageUrl(asset.url);
+            setDecomposedLayers([]);
+            setMarkedRegions([]);
+            setCarouselIndex(0);
+            setLassoPoints([]);
+            clearDrawingCanvas();
+          }}
+        />
 
         {markedRegions.length > 0 && (
           <button

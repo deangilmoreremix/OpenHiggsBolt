@@ -64,6 +64,7 @@ import { resolveCopy } from "../i18nUtils";
 // ── SmartVideo app integrations (local-only; upstream has no equivalent) ──
 import { setCharacterSheet } from "../lib/characterStore";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { readStoryboardHandoff } from "../storyboardHandoff.js";
 import registry from "../skills/registry.json";
@@ -2184,6 +2185,17 @@ export default function ImageStudio({
                   Recipes
                 </span>
               </button>
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={["image"]}
+                onSelect={(asset) =>
+                  handleUploadSelect({
+                    url: asset.url,
+                    urls: [...new Set([...(uploadedImageUrls || []), asset.url])],
+                  })
+                }
+              />
             </PromptControls>
 
             {/* Generate button */}

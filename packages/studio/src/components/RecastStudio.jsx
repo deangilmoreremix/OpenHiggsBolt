@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processRecast, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -1303,6 +1304,23 @@ export default function RecastStudio({
                   />
                 )}
               </div>
+
+              {/* Everything you've uploaded or generated in any studio (kept on your account) */}
+              <AssetLibraryButton
+                kinds={["video", "image"]}
+                label="Saved"
+                onSelect={(asset) => {
+                  if (asset.kind === "video") {
+                    setVideoUrl(asset.url);
+                    setVideoName(asset.name || copy.defaults.selectedVideo);
+                    setVideoState(UPLOAD_STATE.READY);
+                  } else {
+                    setImageUrl(asset.url);
+                    setImageName(asset.name || copy.defaults.selectedImage);
+                    setImageState(UPLOAD_STATE.READY);
+                  }
+                }}
+              />
             </PromptControls>
 
             {/* Generate button */}

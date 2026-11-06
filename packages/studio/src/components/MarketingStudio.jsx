@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -753,6 +754,16 @@ export default function MarketingStudio({
                       setAdditionalImages([]);
                     }
                   }} 
+                />
+                {/* Saved uploads and generations, shared by every studio: fills the product slot first, then the avatar, then references */}
+                <AssetLibraryButton
+                  kinds={["image"]}
+                  label="Saved"
+                  onSelect={(asset) => {
+                    if (!productImage) setProductImage(asset.url);
+                    else if (!avatarImage) setAvatarImage(asset.url);
+                    else setAdditionalImages((prev) => [...new Set([...prev, asset.url])].slice(0, 6));
+                  }}
                 />
               </div>
 

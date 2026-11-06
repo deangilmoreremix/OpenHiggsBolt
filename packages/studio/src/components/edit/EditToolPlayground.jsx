@@ -20,6 +20,7 @@ import {
 } from "../../editToolRunner.js";
 import { ModelParameterFields } from "../ModelParameterControls.jsx";
 import EditToolIcon from "./EditToolIcon.jsx";
+import AssetLibraryButton from "../AssetLibraryButton.jsx";
 
 const CATALOG_LABELS = {
   t2i: "Text to image",
@@ -164,6 +165,8 @@ function UploadSlot({ slot, urls, progress, onFiles, onRemove, onAddUrl }) {
           <button type="submit" className="rounded-lg border border-white/10 px-3 text-xs font-semibold text-white/70 hover:text-white">
             Add
           </button>
+          {/* Saved uploads and generations, shared by every studio */}
+          <AssetLibraryButton kinds={[slot.kind]} label="Saved" onSelect={(asset) => onAddUrl(asset.url)} />
         </form>
       )}
     </div>

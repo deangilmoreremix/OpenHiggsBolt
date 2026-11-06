@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { processMotionControl, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -1476,6 +1477,21 @@ export default function MotionControlStudio({
                 />
               )}
             </div>
+
+            {/* Everything you've uploaded or generated in any studio (kept on your account) */}
+            <AssetLibraryButton
+              kinds={["image", "video"]}
+              label="Saved"
+              onSelect={(asset) => {
+                if (asset.kind === "video") {
+                  setVideoUrl(asset.url);
+                  setVideoName(asset.name || copy.defaults.selectedVideo);
+                  setVideoState(UPLOAD_STATE.READY);
+                } else if (characterImages.length < maxImagesAllowed) {
+                  setCharacterImages((prev) => [...prev, { url: asset.url, name: asset.name || copy.defaults.selectedImage }]);
+                }
+              }}
+            />
           </PromptControls>
 
           {/* Action Generate Button */}

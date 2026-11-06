@@ -115,6 +115,7 @@ import { setCharacterSheet } from "../lib/characterStore";
 import { fillTemplate } from "../lib/promptRecipes";
 import registry from "../skills/registry.json";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 async function downloadFile(url, filename) {
@@ -3093,6 +3094,24 @@ export default function VideoStudio({
                   type="audio"
                 />
               )}
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={[
+                  "image",
+                  ...(videoUploadLimit > 0 ? ["video"] : []),
+                  ...(audioUploadLimit > 0 ? ["audio"] : []),
+                ]}
+                onSelect={(asset) => {
+                  const add = (prev, limit) => [...new Set([...prev, asset.url])].slice(0, Math.max(limit, 1));
+                  if (asset.kind === "video") setUploadedVideoUrls((prev) => add(prev, videoUploadLimit));
+                  else if (asset.kind === "audio") setUploadedAudioUrls((prev) => add(prev, audioUploadLimit));
+                  else {
+                    setUploadedImageUrls((prev) => add(prev, imageUploadLimit));
+                    setImageMode(true);
+                  }
+                }}
+              />
                 </>
               )}
             </div>

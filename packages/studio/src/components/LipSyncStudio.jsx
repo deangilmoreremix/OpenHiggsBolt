@@ -5,6 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processLipSync, uploadFile } from "../muapi.js";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
@@ -1271,6 +1272,26 @@ export default function LipSyncStudio({
                 isAudio={true}
                 isVideo={false}
                 apiKey={apiKey}
+              />
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={inputMode === "image" ? ["image", "audio"] : ["video", "audio"]}
+                onSelect={(asset) => {
+                  if (asset.kind === "audio") {
+                    setAudioUrl(asset.url);
+                    setAudioName(asset.name || "Library audio");
+                    setAudioState(UPLOAD_STATE.READY);
+                  } else if (asset.kind === "video") {
+                    setVideoUrl(asset.url);
+                    setVideoName(asset.name || "Library video");
+                    setVideoState(UPLOAD_STATE.READY);
+                  } else {
+                    setImageUrl(asset.url);
+                    setImageName(asset.name || "Library image");
+                    setImageState(UPLOAD_STATE.READY);
+                  }
+                }}
               />
             </div>
 
