@@ -7,7 +7,12 @@
   # guard exits 1, which is why every Netlify-side build failed with a bare
   # "Build script returned non-zero exit code". Commit 4d6631bee fixed this and
   # 7e8a436b3 reverted it; this restores the fix.
-  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
+  # The Vibe-Workflow submodule was removed (the workflow editor now lives in
+  # packages/workflow-builder), but Netlify's build area can still hold the old
+  # folder from earlier builds, and its secret scan then finds a real key in
+  # packages/Vibe-Workflow/server/.env.example. Delete it before anything else;
+  # this is a no-op on a clean checkout.
+  command = "rm -rf packages/Vibe-Workflow && pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
