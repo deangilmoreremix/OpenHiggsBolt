@@ -46,7 +46,6 @@ const EditStudio = loadStudio('EditStudio');
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
-const MotionStudioEntry = dynamic(() => import('../src/apps/motion-studio/MotionStudio'), { ssr: false });
 const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/MotionStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
@@ -110,7 +109,6 @@ const TABS = [
   { id: 'storyboard', label: 'Storyboard' },
   { id: 'zackd', label: 'Zack D Studio' },
   { id: 'marketing', label: 'Marketing Studio' },
-  { id: 'motion-studio', label: 'Motion Studio' },
   { id: 'motion-director', label: 'Motion Director' },
   { id: 'recast', label: 'Body Swap' },
   { id: 'layers', label: 'Layers Studio' },
@@ -145,7 +143,7 @@ function SignOutButton() {
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', edit: 'edit', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', 'motion-control': 'motion-control', lipsync: 'lipsync', cinema: 'cinema',
-  storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-studio', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
+  storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
@@ -940,7 +938,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('cinema', (active) => <CinemaStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['cinema']} />)}
          {persistentStudio('audio', (active) => <AudioStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['audio']} />)}
          {persistentStudio('marketing', (active) => <MarketingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['marketing']} />)}
-         {activeTab === 'motion-studio' && <MotionStudioEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'motion-director' && <MotionDirectorEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {persistentStudio('recast', (active) => <RecastStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['recast']} />)}
          {persistentStudio('edit', (active) => <EditStudio apiKey={apiKey} active={active} {...generationCallbacks['edit']} />)}

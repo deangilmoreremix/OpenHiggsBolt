@@ -5986,7 +5986,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const search = new URLSearchParams()
     search.set('template', `${template.sourceRepo}|${template.componentName}`)
     closePersonalize()
-    router.push(`/studio/motion-studio?${search.toString()}`)
+    router.push(`/studio/motion-director?${search.toString()}`)
   }, [closePersonalize, router])
 
   const publish = useCallback(() => {
