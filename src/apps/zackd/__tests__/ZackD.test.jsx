@@ -11,6 +11,11 @@ vi.mock('studio/src/muapi.js', () => ({
   generateCaptions: vi.fn(async (_k, p) => { calls.push(['captions', p]); return { url: 'https://cdn.example.com/captioned.mp4' }; }),
   generateAudio: vi.fn(async (_k, p) => { calls.push(['audio', p]); return { url: `https://cdn.example.com/aud-${calls.length}.mp3` }; }),
 }));
+const openPublish = vi.fn();
+vi.mock('@/components/SocialPublishProvider', () => ({
+  useSocialPublish: () => ({ openPublish: (...a) => openPublish(...a), closePublish: () => {}, openSocialPublisher: () => {} }),
+  PublishStep: ({ mediaUrl }) => (mediaUrl ? <button type="button" onClick={() => openPublish({ mediaUrl })}>Post to social</button> : null),
+}));
 const renderFinalCut = vi.fn(async () => ({ ok: true, blob: new Blob(['x'], { type: 'video/mp4' }), extension: 'mp4', warning: null }));
 vi.mock('../finalCut.js', () => ({ renderFinalCut: (...a) => renderFinalCut(...a) }));
 
@@ -135,5 +140,20 @@ describe('ZackD studio', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Re-render' })).toBeTruthy());
     click('Re-render');
     await waitFor(() => expect(renderFinalCut.mock.calls.at(-1)[0].keepClipAudio).toBe(false));
+  });
+
+  it('uploads the in-browser final cut and opens the publish modal', async () => {
+    const muapi = await import('studio/src/muapi.js');
+    render(<ZackD apiKey="k" templateData={null} />);
+    // Load the finished template and jump to the final cut using the same path as the template test.
+    const tpl = screen.getAllByRole('button', { name: /Use as template/ })[0];
+    fireEvent.click(tpl);
+    await waitFor(() => expect(screen.queryAllByRole('button').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /Final cut/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Render video/ }));
+    const post = await screen.findByRole('button', { name: /Post to social/ });
+    fireEvent.click(post);
+    await waitFor(() => expect(openPublish).toHaveBeenCalledWith(expect.objectContaining({ mediaUrl: 'https://muapi.example.com/uploaded-cut.mp4', mediaType: 'video' })));
+    expect(muapi.uploadFile).toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
 import {
   decomposeLayers,
   uploadFile,
@@ -4052,6 +4053,15 @@ export default function LayersStudio({
                   </svg>
                   <span>Download</span>
                 </button>
+                {/* Publishing needs a hosted image; blob/relative sample URLs are skipped. */}
+                {/^https:\/\//.test(currentImageUrl || "") && (
+                  <PublishStep
+                    mediaUrl={currentImageUrl}
+                    mediaType="image"
+                    title="Layers Studio image"
+                    className="py-3.5 px-4 bg-white/10 hover:bg-white/15 text-white font-extrabold text-sm rounded-2xl border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2 shadow-md"
+                  />
+                )}
               </div>
             ) : activeSideTab === "remove-bg" ? (
               <button

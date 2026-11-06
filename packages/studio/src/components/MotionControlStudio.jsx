@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { processMotionControl, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -989,6 +990,14 @@ export default function MotionControlStudio({
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                     </svg>
                   </button>
+                  <span onClick={(e) => e.stopPropagation()} className="contents">
+                    <PublishStep
+                      mediaUrl={entry.url}
+                      mediaType="video"
+                      title={entry.prompt?.substring(0, 50) || "Motion control video"}
+                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                    />
+                  </span>
                   <button
                     type="button"
                     title={copy.buttons.useAsVideo}

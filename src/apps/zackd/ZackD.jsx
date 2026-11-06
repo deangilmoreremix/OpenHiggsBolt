@@ -5,7 +5,8 @@
 // Adapted from https://github.com/Anil-matcha/zack-d-films-ai-video-generator (MIT, see NOTICE.md).
 // Same shape as the other app-style studios (Storyboard): `{ apiKey, templateData }` from StandaloneShell.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Clapperboard, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Clapperboard, Loader2, AlertCircle, Download, Share2 } from 'lucide-react';
+import { PublishStep, useSocialPublish } from '@/components/SocialPublishProvider';
 import { panels, buttons, semantic, iconBadge, optionStyle, tabStyle } from '@/shared/styles/designTokens';
 import { scopedPersistKey } from 'studio/src/persistKey.js';
 import * as muapi from 'studio/src/muapi.js';
@@ -49,6 +50,27 @@ function MediaCard({ label, children, action }) {
       {children}
       {action}
     </div>
+  );
+}
+
+// Publishing needs a hosted URL, but the final cut only exists as an in-browser blob: upload it first.
+function PostFinalToSocial({ apiKey, final, topic, busy, setError, className, style }) {
+  const { openPublish } = useSocialPublish();
+  const [uploading, setUploading] = React.useState(false);
+  async function go() {
+    if (uploading || !final?.blob) return;
+    setUploading(true); setError('');
+    try {
+      const file = new File([final.blob], `zackd-short.${final.ext || 'mp4'}`, { type: final.blob.type || 'video/mp4' });
+      const url = await muapi.uploadFile(apiKey, file);
+      openPublish({ mediaUrl: url, mediaType: 'video', title: topic ? String(topic).slice(0, 50) : 'Zack D short' });
+    } catch (e) { setError(e?.message || 'Could not upload the video for publishing.'); }
+    setUploading(false);
+  }
+  return (
+    <button className={className} style={style} disabled={busy || uploading || !apiKey} onClick={go}>
+      {uploading ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} {uploading ? 'Uploading…' : 'Post to social'}
+    </button>
   );
 }
 
@@ -355,6 +377,7 @@ export default function ZackD({ apiKey, templateData }) {
             {final.warning && <p className="text-xs" style={{ color: semantic.textSecondary }}>{final.warning}</p>}
             <div className="flex gap-2 flex-wrap">
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(final.blob, `zackd-short.${final.ext}`)}><Download size={14} /> Download video</button>
+              <PostFinalToSocial apiKey={apiKey} final={final} topic={project.topic} busy={busy} setError={setError} className={`${BTN} flex items-center gap-2`} style={buttons.ghost} />
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' }), 'zackd-short.srt')}><Download size={14} /> Captions (.srt)</button>
             </div>
             <p className="text-xs" style={{ color: semantic.textMuted }}>The .srt is a free, separate caption file. To burn animated captions into the video, use the option below.</p>
@@ -377,6 +400,7 @@ export default function ZackD({ apiKey, templateData }) {
                 <>
                   <video src={captioned.url} controls className="rounded-lg bg-black" style={{ maxHeight: '70vh', aspectRatio: '9 / 16' }} />
                   <a className={`${BTN} inline-flex items-center gap-2`} style={buttons.ghost} href={captioned.url} target="_blank" rel="noopener noreferrer"><Download size={14} /> Open / download captioned video</a>
+                  <PublishStep mediaUrl={captioned.url} mediaType="video" title={project.topic ? String(project.topic).slice(0, 50) : 'Zack D short'} />
                 </>
               )}
             </div>
