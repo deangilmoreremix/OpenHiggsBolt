@@ -219,6 +219,12 @@ function MediaPickerButton({
           ) : (
             icon
           )}
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 w-4 h-4 bg-black/80 rounded-full flex items-center justify-center text-white text-[10px] leading-none border border-white/20"
+          >
+            ×
+          </span>
         </div>
       )}
     </button>
