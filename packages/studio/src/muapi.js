@@ -68,6 +68,8 @@ export async function resumeGeneration(apiKey, requestId, options = {}) {
     const { maxAttempts = 900, signal } = options;
     const result = await pollForResult(requestId, apiKey, maxAttempts, 2000, signal);
     const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    // A generation finished after a reload still belongs in the user's asset library.
+    if (outputUrl) void saveResultUrl(outputUrl);
     return normalizePredictionResult({ request_id: requestId }, result, outputUrl);
 }
 

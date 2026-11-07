@@ -71,7 +71,8 @@ export async function POST(req: NextRequest) {
 
   let body: Record<string, unknown> = {}
   try {
-    body = await req.json()
+    const parsed = await req.json()
+    if (parsed && typeof parsed === 'object') body = parsed as Record<string, unknown>
   } catch {
     // fall through to validation
   }

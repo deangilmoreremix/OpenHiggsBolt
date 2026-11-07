@@ -75,6 +75,12 @@ describe('/api/assets/library', () => {
     expect((await POST(req('/api/assets/library', 'POST', { url: 'https://x.test/a.png', kind: 'pdf' }))).status).toBe(400)
   })
 
+  it('answers 400, not 500, for a null or non-object body', async () => {
+    const { POST } = await import('../app/api/assets/library/route')
+    const nullBody = new NextRequest(new URL('http://localhost/api/assets/library'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'null' })
+    expect((await POST(nullBody)).status).toBe(400)
+  })
+
   it('saves an asset under the caller\'s id, ignoring a client-sent owner', async () => {
     const { POST } = await import('../app/api/assets/library/route')
     const res = await POST(req('/api/assets/library', 'POST', { url: 'https://x.test/a.png', kind: 'image', name: 'a.png', clerk_user_id: 'someone_else' }))

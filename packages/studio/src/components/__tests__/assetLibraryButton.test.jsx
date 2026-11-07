@@ -45,4 +45,25 @@ describe("AssetLibraryButton", () => {
     fireEvent.click(await screen.findByRole("tab", { name: "Videos" }));
     await waitFor(() => expect(listAssets).toHaveBeenLastCalledWith({ kind: "video" }));
   });
+
+  it("follows the studio's allowed kinds and never shows another tab's items", async () => {
+    let resolveImages;
+    listAssets.mockImplementation(({ kind }) =>
+      kind === "image"
+        ? new Promise((r) => { resolveImages = () => r([{ id: "i1", kind: "image", url: "https://x.test/i.png", name: "i.png" }]); })
+        : Promise.resolve([{ id: "v1", kind: "video", url: "https://x.test/v.mp4", name: "v.mp4" }]),
+    );
+    const { rerender } = render(<AssetLibraryButton kinds={["image", "video"]} onSelect={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Library" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Videos" }));
+    await screen.findByRole("button", { name: "Use v.mp4" });
+    resolveImages(); // the slower image request from the first tab finishes last
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("button", { name: "Use i.png" })).toBeNull();
+
+    // The studio switches to video-only: the button follows instead of staying on an unavailable kind.
+    rerender(<AssetLibraryButton kinds={["video"]} onSelect={() => {}} />);
+    await waitFor(() => expect(listAssets).toHaveBeenLastCalledWith({ kind: "video" }));
+    listAssets.mockImplementation(async () => assets);
+  });
 });

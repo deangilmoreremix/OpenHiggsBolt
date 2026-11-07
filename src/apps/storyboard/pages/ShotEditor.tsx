@@ -48,6 +48,8 @@ type FrameEngine = { provider: 'muapi' | 'openai'; model: string; quality: 'low'
 const ENGINE_KEY = 'storyboard_frame_engine_v1'
 const DEFAULT_ENGINE: FrameEngine = { provider: 'muapi', model: '', quality: 'medium' }
 const MAX_SKETCH_BYTES = 2.5 * 1024 * 1024
+/** Matches MAX_REFERENCES in app/api/storyboard/openai/route.ts. */
+const MAX_REFERENCE_IMAGES = 4
 
 function loadEngine(): FrameEngine {
   try {
@@ -133,12 +135,22 @@ function SortableShot({
       if (openai) {
         // Characters are reused by name: each tagged character's saved reference image goes along, and the
         // prompt says which image is who, so the same character looks the same across panels.
-        const named = shotChars.filter((c) => c.referenceImageUrl)
-        const refs = [...(sketch ? [sketch] : []), ...named.map((c) => c.referenceImageUrl as string)]
-        const lines = [
-          ...(sketch ? ['The first reference image is a rough sketch: follow its composition.'] : []),
-          ...named.map((c, i) => `Reference image ${i + 1 + (sketch ? 1 : 0)} shows ${c.name}: keep ${c.name} looking exactly like it.`),
-        ]
+        const refs: string[] = []
+        const lines: string[] = []
+        const addRef = (src: string, describe: (n: number) => string) => {
+          // The route sends each distinct image once and at most MAX_REFERENCE_IMAGES: number what is really sent.
+          let n = refs.indexOf(src) + 1
+          if (n === 0) {
+            if (refs.length >= MAX_REFERENCE_IMAGES) return
+            refs.push(src)
+            n = refs.length
+          }
+          lines.push(describe(n))
+        }
+        if (sketch) addRef(sketch, () => 'The first reference image is a rough sketch: follow its composition.')
+        for (const c of shotChars) {
+          if (c.referenceImageUrl) addRef(c.referenceImageUrl, (n) => `Reference image ${n} shows ${c.name}: keep ${c.name} looking exactly like it.`)
+        }
         const raw = await generateOpenAiPanel({
           prompt: [prompt, ...lines].join('\n'),
           aspect_ratio: aspectRatio,
@@ -164,8 +176,10 @@ function SortableShot({
   }
 
   /** Change the current panel in place (OpenAI only): "make it night", "add a lighthouse", ... */
+  const editInFlight = useRef(false)
   const handleEditFrame = async () => {
-    if (!shot.frameUrl || !editText.trim()) return
+    if (!shot.frameUrl || !editText.trim() || editInFlight.current) return
+    editInFlight.current = true
     setEditing(true)
     setFrameError(null)
     try {
@@ -181,6 +195,7 @@ function SortableShot({
     } catch (err: unknown) {
       setFrameError(err instanceof Error ? err.message : 'Frame edit failed')
     } finally {
+      editInFlight.current = false
       setEditing(false)
     }
   }

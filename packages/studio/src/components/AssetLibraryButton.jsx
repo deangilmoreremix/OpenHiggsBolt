@@ -34,9 +34,20 @@ export default function AssetLibraryButton({ kinds = ["image"], onSelect, label 
   const [loading, setLoading] = useState(false);
   const rootRef = useRef(null);
 
+  const latestRequest = useRef(0);
+
+  // The studio can change which media types it takes (Lip Sync image <-> video mode): follow it.
+  const kindsKey = kinds.join(",");
+  useEffect(() => {
+    if (!kinds.includes(kind)) setKind(kinds[0]);
+  }, [kindsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const refresh = useCallback(async () => {
+    const request = ++latestRequest.current;
     setLoading(true);
+    setAssets([]); // never show the previous tab's items under the new tab
     const next = await listAssets({ kind });
+    if (request !== latestRequest.current) return; // a newer tab/request replaced this one
     setAssets(next);
     setLoading(false);
   }, [kind]);
@@ -118,6 +129,7 @@ export default function AssetLibraryButton({ kinds = ["image"], onSelect, label 
                     className="absolute inset-0 w-full h-full"
                     aria-label={`Use ${asset.name || asset.kind}`}
                     onClick={() => {
+                      if (!kinds.includes(asset.kind)) return;
                       onSelect?.(asset);
                       setOpen(false);
                     }}

@@ -54,22 +54,34 @@ function MediaCard({ label, children, action }) {
 }
 
 // Publishing needs a hosted URL, but the final cut only exists as an in-browser blob: upload it first.
-function PostFinalToSocial({ apiKey, final, topic, busy, setError, className, style }) {
+function PostFinalToSocial({ apiKey, final, busy, setError, className, style }) {
   const { openPublish } = useSocialPublish();
   const [uploading, setUploading] = React.useState(false);
+  // The cut this button currently belongs to: an upload that finishes for an older cut (re-render, new project,
+  // template, unmount) must not open the publish modal with a video that is no longer on screen.
+  const current = React.useRef(final);
+  current.current = final;
+  React.useEffect(() => () => { current.current = null; }, []);
+  // Instagram only takes MP4/MOV; the in-browser renderer falls back to WebM on some browsers.
+  const unsupported = final && final.ext && final.ext !== 'mp4';
   async function go() {
-    if (uploading || !final?.blob) return;
+    const started = final;
+    if (uploading || !started?.blob || unsupported) return;
     setUploading(true); setError('');
     try {
-      const file = new File([final.blob], `zackd-short.${final.ext || 'mp4'}`, { type: final.blob.type || 'video/mp4' });
+      const file = new File([started.blob], `zackd-short.${started.ext || 'mp4'}`, { type: started.blob.type || 'video/mp4' });
       const url = await muapi.uploadFile(apiKey, file);
-      openPublish({ mediaUrl: url, mediaType: 'video', title: topic ? String(topic).slice(0, 50) : 'Zack D short' });
-    } catch (e) { setError(e?.message || 'Could not upload the video for publishing.'); }
+      if (current.current !== started) return;
+      openPublish({ mediaUrl: url, mediaType: 'video', title: started.topic ? String(started.topic).slice(0, 50) : 'Zack D short' });
+    } catch (e) { if (current.current === started) setError(e?.message || 'Could not upload the video for publishing.'); }
     setUploading(false);
   }
   return (
-    <button className={className} style={style} disabled={busy || uploading || !apiKey} onClick={go}>
-      {uploading ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} {uploading ? 'Uploading…' : 'Post to social'}
+    <button
+      className={className} style={style} disabled={busy || uploading || !apiKey || unsupported} onClick={go}
+      title={unsupported ? 'This cut was rendered as WebM, which Instagram and TikTok reject. Re-render in a browser that can make MP4 (Chrome or Edge) to post it.' : undefined}
+    >
+      {uploading ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} {uploading ? 'Uploading…' : unsupported ? 'Post (needs MP4)' : 'Post to social'}
     </button>
   );
 }
@@ -151,6 +163,7 @@ export default function ZackD({ apiKey, templateData }) {
     if (busy) return;
     const missing = shots.filter((s) => !project.shots[s.shot_id]?.clip);
     if (missing.length) { setError(`${missing.length} shot(s) have no clip yet.`); return; }
+    setCaptioned(null); // a captioned copy belongs to the previous cut
     setBusy(true); setError(''); setProgress('Rendering 0%');
     abort.current = new AbortController();
     try {
@@ -161,7 +174,7 @@ export default function ZackD({ apiKey, templateData }) {
         onProgress: (p) => setProgress(`Rendering ${Math.round(p * 100)}%`),
       });
       if (out.ok) setCaptioned(null);
-      if (out.ok) setFinal({ url: URL.createObjectURL(out.blob), blob: out.blob, ext: out.extension, warning: out.warning });
+      if (out.ok) setFinal({ url: URL.createObjectURL(out.blob), blob: out.blob, ext: out.extension, warning: out.warning, topic: proj.current.topic });
       else if (out.reason !== 'cancelled') setError(out.error);
     } catch (e) { setError(e?.message || 'The final cut failed.'); }
     setBusy(false); setProgress('');
@@ -178,7 +191,7 @@ export default function ZackD({ apiKey, templateData }) {
       const videoUrl = await muapi.uploadFile(apiKey, file);
       setProgress('Burning captions (2-3 minutes)…');
       const { url } = await jobs.captions({ videoUrl, language: project.captionLang, theme: project.captionTheme });
-      setCaptioned({ url });
+      setCaptioned({ url, topic: final.topic });
     } catch (e) { setError(e?.message || 'Burning captions failed.'); }
     setBusy(false); setProgress('');
   }
@@ -383,7 +396,7 @@ export default function ZackD({ apiKey, templateData }) {
             {final.warning && <p className="text-xs" style={{ color: semantic.textSecondary }}>{final.warning}</p>}
             <div className="flex gap-2 flex-wrap">
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(final.blob, `zackd-short.${final.ext}`)}><Download size={14} /> Download video</button>
-              <PostFinalToSocial apiKey={apiKey} final={final} topic={project.topic} busy={busy} setError={setError} className={`${BTN} flex items-center gap-2`} style={buttons.ghost} />
+              <PostFinalToSocial apiKey={apiKey} final={final} busy={busy} setError={setError} className={`${BTN} flex items-center gap-2`} style={buttons.ghost} />
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' }), 'zackd-short.srt')}><Download size={14} /> Captions (.srt)</button>
             </div>
             <p className="text-xs" style={{ color: semantic.textMuted }}>The .srt is a free, separate caption file. To burn animated captions into the video, use the option below.</p>
@@ -406,7 +419,7 @@ export default function ZackD({ apiKey, templateData }) {
                 <>
                   <video src={captioned.url} controls className="rounded-lg bg-black" style={{ maxHeight: '70vh', aspectRatio: '9 / 16' }} />
                   <a className={`${BTN} inline-flex items-center gap-2`} style={buttons.ghost} href={captioned.url} target="_blank" rel="noopener noreferrer"><Download size={14} /> Open / download captioned video</a>
-                  <PublishStep mediaUrl={captioned.url} mediaType="video" title={project.topic ? String(project.topic).slice(0, 50) : 'Zack D short'} />
+                  <PublishStep mediaUrl={captioned.url} mediaType="video" title={captioned.topic ? String(captioned.topic).slice(0, 50) : 'Zack D short'} />
                 </>
               )}
             </div>

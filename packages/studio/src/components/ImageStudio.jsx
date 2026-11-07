@@ -251,8 +251,9 @@ export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls
 
             // Auto-select if there's room, and tell the parent right away so the
             // uploaded image shows in the prompt bar without reopening the picker.
-            if (selectedRef.current.length < maxImages) {
-              const next = [...selectedRef.current, { url: uploadedUrl }];
+            if (maxImages === 1 || selectedRef.current.length < maxImages) {
+              // Single-image mode: the new upload replaces the current pick instead of being ignored.
+              const next = maxImages === 1 ? [{ url: uploadedUrl }] : [...selectedRef.current, { url: uploadedUrl }];
               selectedRef.current = next;
               setSelectedEntries(next);
               fireOnSelect(next);
@@ -347,6 +348,7 @@ export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls
     if (next.length !== selectedEntries.length) {
       setSelectedEntries(next);
       if (next.length === 0) onClear?.();
+      else fireOnSelect(next); // the prompt bar must not keep using the image that was just removed
     }
   };
 
@@ -2192,7 +2194,11 @@ export default function ImageStudio({
                 onSelect={(asset) =>
                   handleUploadSelect({
                     url: asset.url,
-                    urls: [...new Set([...(uploadedImageUrls || []), asset.url])],
+                    // One-reference models: the chosen image replaces the current one; otherwise it is added.
+                    urls:
+                      referenceImageLimit <= 1
+                        ? [asset.url]
+                        : [...new Set([...(uploadedImageUrls || []), asset.url])],
                   })
                 }
               />

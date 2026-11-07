@@ -172,7 +172,7 @@ export async function exportGif(
     ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h)
     frames.push({
       data: ctx.getImageData(0, 0, width, height).data,
-      delayMs: frameMs ?? Math.min(Math.max((Number(shot.duration) || 2) * 1000, 300), 5000),
+      delayMs: Math.min(frameMs ?? Math.min(Math.max((Number(shot.duration) || 2) * 1000, 300), 5000), 60_000), // a GIF stores the delay in 1/100 s as 16 bits
     })
   }
   const bytes = encodeGif(frames, width, height)

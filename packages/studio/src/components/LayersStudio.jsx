@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { useSocialPublish } from "../../../../components/SocialPublishProvider";
 import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import {
   decomposeLayers,
@@ -41,6 +41,12 @@ const UPSCALE_MODELS = [
 // AccessDenied, so a copy (same image, from the models.js example host) is vendored here.
 const DEFAULT_SAMPLE_IMAGE =
   "/layers-demo/original.webp";
+
+/** The bundled sample images live at app-relative paths; anything sent to the API must be a public absolute URL. */
+const toAbsoluteUrl = (url) =>
+  typeof url === "string" && url.startsWith("/") && typeof window !== "undefined"
+    ? `${window.location.origin}${url}`
+    : url;
 
 const DEFAULT_SAMPLE_LAYERS = [
   "/layers-demo/layer-1.webp",
@@ -754,7 +760,7 @@ export default function LayersStudio({
         : regionalPrompt;
 
       const result = await decomposeLayers(apiKey, {
-        image_url: currentImageUrl,
+        image_url: toAbsoluteUrl(currentImageUrl),
         prompt: formattedPrompt,
         resolution: resolution,
         output_format: outputFormat,
@@ -846,7 +852,7 @@ export default function LayersStudio({
       }, 800);
 
       const result = await decomposeLayers(apiKey, {
-        image_url: currentImageUrl,
+        image_url: toAbsoluteUrl(currentImageUrl),
         prompt: finalSeedreamPrompt,
         resolution: resolution,
         output_format: outputFormat,
@@ -905,7 +911,7 @@ export default function LayersStudio({
 
       const result = await upscaleImage(apiKey, {
         model: upscaleModel,
-        image_url: currentImageUrl,
+        image_url: toAbsoluteUrl(currentImageUrl),
         resolution: seedvrResolution,
         upscale_factor: topazFactor,
       });
@@ -963,7 +969,7 @@ export default function LayersStudio({
       }, 700);
 
       const result = await removeBackground(apiKey, {
-        image_url: currentImageUrl,
+        image_url: toAbsoluteUrl(currentImageUrl),
       });
 
       clearInterval(progressInterval);
@@ -1019,7 +1025,7 @@ export default function LayersStudio({
       }, 700);
 
       const result = await expandImage(apiKey, {
-        image_url: currentImageUrl,
+        image_url: toAbsoluteUrl(currentImageUrl),
       });
 
       clearInterval(progressInterval);
@@ -1073,9 +1079,37 @@ export default function LayersStudio({
   };
 
   // Download Color Graded Image (Includes live filters, vignette, halation, and film grain)
-  const handleDownloadGradedImage = async () => {
-    if (!currentImageUrl) return;
+  const { openPublish } = useSocialPublish();
+  const [postingGraded, setPostingGraded] = useState(false);
+  const handlePostGradedImage = async () => {
+    if (!currentImageUrl || postingGraded) return;
+    if (!apiKey) {
+      toast.error(copy.toasts.enterApiKeyUpload);
+      return;
+    }
+    setPostingGraded(true);
     try {
+      const canvas = await renderGradedCanvas();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Could not render the image");
+      const url = await uploadFile(apiKey, new File([blob], "layers-studio.png", { type: "image/png" }));
+      openPublish({ mediaUrl: url, mediaType: "image", title: "Layers Studio image" });
+    } catch (err) {
+      // The canvas can't be read when the image host has no CORS (the same limit the Download button has):
+      // post the original image instead, and say so.
+      if (/^https:\/\//.test(currentImageUrl)) {
+        toast("Could not apply your grading to the post, so the original image will be used.");
+        openPublish({ mediaUrl: currentImageUrl, mediaType: "image", title: "Layers Studio image" });
+      } else {
+        toast.error(formatErrorMessage(err));
+      }
+    } finally {
+      setPostingGraded(false);
+    }
+  };
+
+  // Draws the image with the live grading (filters, vignette, halation, grain) onto a canvas.
+  const renderGradedCanvas = async () => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = currentImageUrl;
@@ -1141,6 +1175,13 @@ export default function LayersStudio({
         ctx.globalCompositeOperation = "source-over";
       }
 
+      return canvas;
+  };
+
+  const handleDownloadGradedImage = async () => {
+    if (!currentImageUrl) return;
+    try {
+      const canvas = await renderGradedCanvas();
       const dataUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -1200,7 +1241,7 @@ export default function LayersStudio({
           model: "nano-banana-pro-edit",
           prompt:
             "Enhance image contrast, color balance, exposure, and sharpness.",
-          image_url: currentImageUrl,
+          image_url: toAbsoluteUrl(currentImageUrl),
         });
       } else if (toolId === "edit-text") {
         const textPrompt =
@@ -1210,13 +1251,13 @@ export default function LayersStudio({
         result = await generateI2I(apiKey, {
           model: "nano-banana-pro-edit",
           prompt: textPrompt,
-          image_url: currentImageUrl,
+          image_url: toAbsoluteUrl(currentImageUrl),
         });
       } else {
         result = await generateI2I(apiKey, {
           model: "nano-banana-pro-edit",
           prompt: prompt || `Apply ${toolId} image transformation.`,
-          image_url: currentImageUrl,
+          image_url: toAbsoluteUrl(currentImageUrl),
         });
       }
 
@@ -4068,14 +4109,16 @@ export default function LayersStudio({
                   </svg>
                   <span>Download</span>
                 </button>
-                {/* Publishing needs a hosted image; blob/relative sample URLs are skipped. */}
-                {/^https:\/\//.test(currentImageUrl || "") && (
-                  <PublishStep
-                    mediaUrl={currentImageUrl}
-                    mediaType="image"
-                    title="Layers Studio image"
-                    className="py-3.5 px-4 bg-white/10 hover:bg-white/15 text-white font-extrabold text-sm rounded-2xl border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2 shadow-md"
-                  />
+                {/* Renders what is on the canvas (grading included), uploads it, then opens the publish modal. */}
+                {currentImageUrl && (
+                  <button
+                    onClick={handlePostGradedImage}
+                    disabled={postingGraded}
+                    className="py-3.5 px-4 bg-white/10 hover:bg-white/15 text-white font-extrabold text-sm rounded-2xl border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                    title="Post this image, with your color grading, to a social network"
+                  >
+                    {postingGraded ? "Uploading…" : "Post to social"}
+                  </button>
                 )}
               </div>
             ) : activeSideTab === "remove-bg" ? (

@@ -46,4 +46,19 @@ describe("UploadButton", () => {
     // The picker panel was never opened, yet both images reached the parent.
     expect(screen.queryByText(en.uploadButton.headerTitle)).toBeNull();
   });
+
+  it("replaces the current pick when a new image is uploaded in single-image mode", async () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <UploadButton apiKey="k" maxImages={1} onSelect={onSelect} onClear={() => {}} copy={en} />,
+    );
+    const input = container.querySelector('input[type="file"]');
+    fireEvent.change(input, { target: { files: [new File(["a"], "a.png", { type: "image/png" })] } });
+    await waitFor(() => expect(onSelect).toHaveBeenCalledTimes(1));
+    fireEvent.change(input, { target: { files: [new File(["b"], "b.png", { type: "image/png" })] } });
+    await waitFor(() => expect(onSelect).toHaveBeenCalledTimes(2));
+    const urls = onSelect.mock.calls.at(-1)[0].urls;
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).not.toBe(onSelect.mock.calls[0][0].urls[0]);
+  });
 });

@@ -3102,15 +3102,8 @@ export default function VideoStudio({
                   ...(videoUploadLimit > 0 ? ["video"] : []),
                   ...(audioUploadLimit > 0 ? ["audio"] : []),
                 ]}
-                onSelect={(asset) => {
-                  const add = (prev, limit) => [...new Set([...prev, asset.url])].slice(0, Math.max(limit, 1));
-                  if (asset.kind === "video") setUploadedVideoUrls((prev) => add(prev, videoUploadLimit));
-                  else if (asset.kind === "audio") setUploadedAudioUrls((prev) => add(prev, audioUploadLimit));
-                  else {
-                    setUploadedImageUrls((prev) => add(prev, imageUploadLimit));
-                    setImageMode(true);
-                  }
-                }}
+                // Same path as an upload: it picks a model that takes this media type and respects its limit.
+                onSelect={(asset) => applyReferenceUrls(asset.kind, [asset.url])}
               />
                 </>
               )}

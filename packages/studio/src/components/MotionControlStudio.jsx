@@ -300,8 +300,9 @@ function CharacterImagesMediaButton({
       </button>
 
       {/* Always-visible thumbnails, so uploaded images can be seen and removed without opening the popover */}
-      {images.length > 0 &&
-        images.map((img, idx) => (
+      {images.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap max-w-[11rem] max-h-[5.5rem] overflow-y-auto custom-scrollbar">
+          {images.map((img, idx) => (
           <div
             key={`${img.url}-${idx}`}
             className="relative w-10 h-10 shrink-0 rounded-full overflow-hidden border border-white/10 bg-black/50"
@@ -319,7 +320,9 @@ function CharacterImagesMediaButton({
               ×
             </button>
           </div>
-        ))}
+          ))}
+        </div>
+      )}
 
       {/* Quick Add Button if images already exist */}
       {images.length > 0 && images.length < maxImages && (
