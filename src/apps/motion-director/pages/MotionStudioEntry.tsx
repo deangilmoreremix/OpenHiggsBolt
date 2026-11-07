@@ -202,7 +202,9 @@ export default function MotionStudioEntry() {
   const fileRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const placeholder = useTypingPlaceholder(PLACEHOLDERS, Boolean(description));
-  const hasSeenEntry = typeof window !== 'undefined' && !!window.localStorage.getItem('motion-director:entry-seen-v1');
+  // The removed Motion Studio's flag counts too: its saved project opens here (see store.ts).
+  const hasSeenEntry = typeof window !== 'undefined' &&
+    !!(window.localStorage.getItem('motion-director:entry-seen-v1') || window.localStorage.getItem('motion-studio:entry-seen-v1'));
   const hasCurrentProject = hasSeenEntry && project.tracks.some((track) => track.clips.length > 0);
 
   const searchResults = useMemo(() => {
