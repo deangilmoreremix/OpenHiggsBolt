@@ -92,8 +92,8 @@ describe('VFX validation', () => {
 
   it('contains all expected effect categories', () => {
     assert.ok(ALLOWED_EFFECTS.has('Car Explosion'))
-    assert.ok(ALLOWED_EFFECTS.has('Kiss Me AI'))
-    assert.ok(ALLOWED_EFFECTS.has('Ken Burns'))
+    assert.ok(ALLOWED_EFFECTS.has('360 Rotation'))
+    assert.ok(ALLOWED_EFFECTS.has('360 Orbit'))
     assert.ok(ALLOWED_ASPECT_RATIOS.has('16:9'))
     assert.ok(ALLOWED_RESOLUTIONS.has('480p'))
     assert.ok(ALLOWED_QUALITIES.has('high'))

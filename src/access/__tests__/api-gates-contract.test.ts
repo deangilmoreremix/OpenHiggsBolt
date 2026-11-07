@@ -43,6 +43,8 @@ const PAID_PATHS: string[] = [
   'app/api/proxy/openai-image/route.ts',
   'app/api/proxy/openai-enhance/route.ts',
   'app/api/proxy/thumbnail-generate/route.ts',
+  // storyboard panels from the user's own OpenAI key
+  'app/api/storyboard/openai/route.ts',
   // design-agent/*
   'app/api/design-agent/approve/route.ts',
   'app/api/design-agent/assets/route.ts',
@@ -136,6 +138,7 @@ const PREMIUM_OPERATIONS: Array<{ id: string; path: string }> = [
   { id: 'photo studio', path: 'app/api/photo-studio/route.ts' },
   { id: 'openai image proxy', path: 'app/api/proxy/openai-image/route.ts' },
   { id: 'thumbnail generation proxy', path: 'app/api/proxy/thumbnail-generate/route.ts' },
+  { id: 'storyboard openai panels', path: 'app/api/storyboard/openai/route.ts' },
   { id: 'canonical binary upload', path: 'app/api/upload-binary/route.js' },
   { id: 'v1 binary upload', path: 'app/api/v1/upload-binary/route.js' },
   { id: 'v1 upload url', path: 'app/api/v1/get_upload_url/route.js' },

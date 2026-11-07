@@ -7208,9 +7208,9 @@
       "route": "/studio/vfx-studio",
       "description": "Applies AI effects, motion-control camera shots, and VFX (Levitate, Explosions, 360 Orbit, etc.) to video or image.",
       "keyFeatures": [
-        "AI Effects category (10 effects: Kiss Me AI, Venom, Hulk, Muscle Surge, etc.)",
-        "Motion Controls category (10 shots: 360 Orbit, Hero Run, Arc Shot, Matrix Shot, etc.)",
-        "VFX category (14 effects: Levitate, Disintegration, Flying, Car Explosion, Tornado, etc.)",
+        "AI Effects category (64 effects: 360 Rotation, Abandoned Places, Angry, Baby It, etc.)",
+        "Motion Controls category (47 shots: 360 Orbit, Arc Shot, Car Chase, Car Mount Cam, etc.)",
+        "VFX category (9 effects: Levitate, Disintegration, Car Explosion, Tornado, etc.)",
         "Image upload support",
         "Aspect ratio, resolution, duration, and quality controls",
         "Cross-studio handoff from GO-Viral and Storyboard"
@@ -7242,9 +7242,9 @@
         "motion control generation",
         "VFX application"
       ],
-      "modelCapabilities": "Backend video generation hook with 34 total effects across AI Effects, Motion Controls, and VFX categories. Supports 16:9, 9:16, 1:1 aspect ratios and 480p/720p resolutions.",
+      "modelCapabilities": "Backend video generation hook with 120 total effects across AI Effects, Motion Controls, and VFX categories. Supports 16:9, 9:16, 1:1 aspect ratios and 480p/720p resolutions.",
       "advancedFeatures": [
-        "34 effects across 3 categories",
+        "120 effects across 3 categories",
         "Cross-studio handoff (GO-Viral, Storyboard)",
         "LocalStorage UI state persistence",
         "Search/filter effects",
@@ -7275,7 +7275,8 @@
       "sourceFiles": [
         "src/apps/vfx-studio/VFXStudio.tsx",
         "src/apps/vfx-studio/pages/VFXGenerate.tsx",
-        "src/apps/vfx-studio/components/BottomInputBar.tsx"
+        "src/apps/vfx-studio/components/VfxInputBar.tsx",
+        "src/apps/vfx-studio/effectCatalog.ts"
       ],
       "verification": {
         "status": "verified",
@@ -7284,7 +7285,7 @@
         "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
       },
       "shortDescription": "Apply AI effects, motion-control camera shots, and VFX like Levitate and Explosions to video or images.",
-      "fullDescription": "VFX Studio applies AI effects, motion-control camera shots, and visual effects to video or images. Choose from 34 effects across three categories: AI Effects (10 effects including Kiss Me AI, Venom, Hulk, Muscle Surge), Motion Controls (10 shots including 360 Orbit, Hero Run, Arc Shot, Matrix Shot), and VFX (14 effects including Levitate, Disintegration, Flying, Car Explosion, Tornado). Upload a source image, select an effect, configure aspect ratio, resolution, duration, and quality, then generate. Supports cross-studio handoff from GO-Viral and Storyboard.",
+      "fullDescription": "VFX Studio applies AI effects, motion-control camera shots, and visual effects to video or images. Choose from 120 effects across three categories: AI Effects (64 effects including 360 Rotation, Abandoned Places, Angry, Baby It), Motion Controls (47 shots including 360 Orbit, Arc Shot, Car Chase, Car Mount Cam), and VFX (9 effects including Levitate, Disintegration, Car Explosion, Tornado). Upload a source image, select an effect, configure aspect ratio, resolution, duration, and quality, then generate. Supports cross-studio handoff from GO-Viral and Storyboard.",
       "whenToUse": [
         "Applying AI effects to images or video",
         "Creating motion control camera shots",
@@ -7300,24 +7301,24 @@
       "featureExplanations": [
         {
           "feature": "AI Effects",
-          "explanation": "Apply stylized effects like Kiss Me AI, Venom, Hulk, Muscle Surge.",
+          "explanation": "Apply stylized effects like 360 Rotation, Abandoned Places, Angry, Baby It.",
           "whyToUse": "Transform subjects with dramatic visual effects.",
           "inputRequired": "source image and effect selection",
-          "restrictions": "10 effects available"
+          "restrictions": "64 effects available"
         },
         {
           "feature": "Motion Controls",
-          "explanation": "Apply camera movements like 360 Orbit, Hero Run, Arc Shot.",
+          "explanation": "Apply camera movements like 360 Orbit, Arc Shot, Car Chase.",
           "whyToUse": "Add dynamic camera motion to static images.",
           "inputRequired": "source image and motion selection",
-          "restrictions": "10 shots available"
+          "restrictions": "47 shots available"
         },
         {
           "feature": "VFX",
           "explanation": "Apply visual effects like Levitate, Disintegration, Flying, Car Explosion.",
           "whyToUse": "Add spectacular visual phenomena to content.",
           "inputRequired": "source image and effect selection",
-          "restrictions": "14 effects available"
+          "restrictions": "9 effects available"
         }
       ],
       "inputDetails": [
@@ -7340,7 +7341,7 @@
           "description": "Specific effect to apply",
           "required": true,
           "whenToUse": "Always required",
-          "restrictions": "34 effects across 3 categories"
+          "restrictions": "120 effects across 3 categories"
         },
         {
           "name": "category selection",
@@ -7398,7 +7399,7 @@
           "useCase": "Spectacular visual phenomena"
         }
       ],
-      "modelExplanations": "VFX Studio uses a backend video generation hook with 34 total effects across AI Effects, Motion Controls, and VFX categories. Supports 16:9, 9:16, 1:1 aspect ratios and 480p/720p resolutions.",
+      "modelExplanations": "VFX Studio uses a backend video generation hook with 120 total effects across AI Effects, Motion Controls, and VFX categories. Supports 16:9, 9:16, 1:1 aspect ratios and 480p/720p resolutions.",
       "howToSteps": [
         "Select an effect category: AI Effects, Motion Controls, or VFX.",
         "Choose a specific effect from the category.",
@@ -7417,7 +7418,7 @@
         {
           "feature": "Search and filter effects",
           "explanation": "Find effects quickly by name or category.",
-          "useCase": "Navigating 34 effects efficiently",
+          "useCase": "Navigating 120 effects efficiently",
           "restrictions": "UI-dependent"
         },
         {
@@ -7478,7 +7479,7 @@
         {
           "title": "Social media attention-grabber",
           "steps": [
-            "Select AI Effects category and choose Muscle Surge.",
+            "Select AI Effects category and choose Boxing.",
             "Upload product or character image.",
             "Set 9:16 aspect ratio for TikTok.",
             "Generate 5-second effect clip.",
@@ -7591,7 +7592,7 @@
       "faqs": [
         {
           "question": "How many effects are available?",
-          "answer": "34 effects across 3 categories: AI Effects (10), Motion Controls (10), and VFX (14)."
+          "answer": "120 effects across 3 categories: AI Effects (64), Motion Controls (64), and VFX (9)."
         },
         {
           "question": "Can I use VFX Studio with Storyboard?",
@@ -7607,7 +7608,7 @@
         },
         {
           "question": "What's the difference between AI Effects and VFX?",
-          "answer": "AI Effects are stylized character transformations (Venom, Hulk, etc.). VFX are environmental or physical effects (Levitate, Explosion, Tornado)."
+          "answer": "AI Effects are stylized character transformations (Angry, Baby It, Boxing, etc.). VFX are environmental or physical effects (Levitate, Explosion, Tornado)."
         },
         {
           "question": "Can I use VFX Studio with images instead of video?",
