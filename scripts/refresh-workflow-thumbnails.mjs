@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, statSync, unlinkSync, readdirSy
 import { join } from 'path';
 import https from 'https';
 import http from 'http';
+import { TEMPLATE_THUMBNAILS } from './generate-workflow-template-thumbnails.mjs';
 
 const BASE_URL = 'https://api.muapi.ai';
 const DIR = join(process.cwd(), 'public/thumbnails/workflows');
@@ -140,10 +141,22 @@ async function main() {
     }
   }
 
+  // Thumbnails MuAPI no longer serves have generated replacements
+  // (scripts/generate-workflow-template-thumbnails.mjs); keep those files and map entries.
+  const keep = new Set();
+  for (const [url, { file }] of Object.entries(TEMPLATE_THUMBNAILS)) {
+    if (map[url]) continue;
+    try { statSync(join(DIR, file)); } catch { continue; }
+    map[url] = `/thumbnails/workflows/${file}`;
+    keep.add(file);
+    console.log(`  KEEP generated ${file}`);
+  }
+
   // Clean target directory and move validated downloads into place
   console.log('\nRefreshing local thumbnails...');
   const existing = new Set(readdirSync(DIR));
   for (const f of existing) {
+    if (keep.has(f)) continue;
     try { unlinkSync(join(DIR, f)); } catch {}
   }
   for (const item of downloaded) {
