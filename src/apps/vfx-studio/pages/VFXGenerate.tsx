@@ -5,6 +5,12 @@ import { Download, Copy, RotateCcw, Check, Sparkles, Search } from 'lucide-react
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import VfxInputBar from '@/apps/vfx-studio/components/VfxInputBar';
 import {
+  FIELD_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+  promptControlClassName,
+} from '@/apps/vfx-studio/components/promptKit';
+import {
   AI_EFFECTS,
   ALL_EFFECTS,
   MOTION_CONTROLS,
@@ -395,14 +401,14 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                   <button
                     type="button"
                     onClick={handleDownload}
-                    className="rounded-full bg-[#22d3ee] px-5 py-2.5 text-sm font-bold text-black"
+                    className={PRIMARY_BUTTON_CLASS}
                   >
                     Download
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowGenerationModal(false)}
-                    className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/80 hover:text-white"
+                    className={SECONDARY_BUTTON_CLASS}
                   >
                     Close
                   </button>
@@ -419,7 +425,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                       setShowGenerationModal(false);
                       reset();
                     }}
-                    className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/80 hover:text-white"
+                    className={SECONDARY_BUTTON_CLASS}
                   >
                     Close
                   </button>
@@ -496,7 +502,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee] px-4 py-2 text-sm font-bold text-black"
+                className={PRIMARY_BUTTON_CLASS}
               >
                 <Download size={14} />
                 Download
@@ -504,7 +510,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
               <button
                 type="button"
                 onClick={handleCopyUrl}
-                className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08]"
+                className={SECONDARY_BUTTON_CLASS}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
                 {copied ? 'Copied' : 'Copy URL'}
@@ -513,20 +519,20 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                 mediaUrl={videoUrl}
                 mediaType="video"
                 title={selectedEffect?.name ? `${selectedEffect.name} video` : 'My VFX video'}
-                className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08]"
+                className={SECONDARY_BUTTON_CLASS}
               />
               <AssistStep
                 assetUrl={videoUrl}
                 assetType="video"
                 onApply={() => {}}
-                className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08]"
+                className={SECONDARY_BUTTON_CLASS}
               >
                 Enhance
               </AssistStep>
               <button
                 type="button"
                 onClick={handleRegenerate}
-                className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08]"
+                className={SECONDARY_BUTTON_CLASS}
               >
                 <RotateCcw size={14} />
                 Regenerate
@@ -554,11 +560,11 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                 aria-selected={activeCategory === category.id}
                 data-vfx-tab={category.id}
                 onClick={() => setActiveCategory(category.id)}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-                  activeCategory === category.id
-                    ? 'bg-[#22d3ee] text-black'
-                    : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                }`}
+                className={promptControlClassName({
+                  active: activeCategory === category.id,
+                  compact: true,
+                  className: '!rounded-full text-xs font-bold',
+                })}
               >
                 {category.icon} {category.label} · {categoryCounts[category.id]}
               </button>
@@ -571,7 +577,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search effects..."
               aria-label="Search effects"
-              className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[#22d3ee]/50"
+              className={`h-[38px] w-full !rounded-full pl-9 pr-3 text-sm ${FIELD_CLASS}`}
             />
           </div>
         </div>

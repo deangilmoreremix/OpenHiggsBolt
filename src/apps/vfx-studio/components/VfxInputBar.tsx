@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
+import { FIELD_CLASS, PromptAction, PromptComposer, promptControlClassName } from './promptKit';
 import type { AspectRatio, GenerationState, Quality, Resolution } from '@/types/vfx';
 
-const SELECT_CLASS =
-  'rounded-xl border border-white/10 bg-[#0d0d10] px-3 py-2 text-sm font-semibold text-white outline-none transition-colors focus:border-[#22d3ee]/60';
+// Same look as the other studios' prompt-bar controls (Image, Video, Cinema, ...).
+const SELECT_CLASS = `${promptControlClassName({ compact: true })} cursor-pointer text-sm font-semibold`;
 
 const ASPECT_OPTIONS: { value: AspectRatio; label: string }[] = [
   { value: '9:16', label: '9:16 Portrait' },
@@ -128,10 +129,8 @@ export default function VfxInputBar(props: VfxInputBarProps) {
   };
 
   return (
-    <div
-      data-vfx-bar=""
-      className="z-20 flex w-full flex-col md:sticky md:top-2 gap-3 rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-[#18181c]/95 to-[#0c0c0e]/95 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-    >
+    <div data-vfx-bar="" className="z-20 w-full md:sticky md:top-2">
+    <PromptComposer positionClassName="w-full" style={{ animationDelay: '0s' }}>
       <div className="flex flex-col items-stretch gap-3 md:flex-row">
         <div className="relative shrink-0">
           <button
@@ -154,7 +153,7 @@ export default function VfxInputBar(props: VfxInputBarProps) {
             className={`relative flex h-28 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border border-dashed text-[11px] font-semibold text-white/50 transition-colors md:w-28 ${
               dragging
                 ? 'border-[#22d3ee] bg-[#22d3ee]/10'
-                : 'border-white/15 bg-white/[0.03] hover:border-[#22d3ee]/60 hover:bg-white/[0.05]'
+                : 'border-white/[0.12] bg-[#16161a]/60 hover:border-[#22d3ee]/40 hover:bg-[#202026]/80'
             }`}
           >
             {shownImage ? (
@@ -202,7 +201,7 @@ export default function VfxInputBar(props: VfxInputBarProps) {
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder='Optional: describe the subject (e.g. "a red sports car")'
-            className="w-full flex-1 resize-none bg-transparent text-sm text-white outline-none placeholder:text-white/30 md:text-base"
+            className="w-full flex-1 resize-none border-none bg-transparent text-sm leading-relaxed text-white outline-none placeholder:text-white/20"
           />
           <input
             type="url"
@@ -217,7 +216,7 @@ export default function VfxInputBar(props: VfxInputBarProps) {
             }}
             placeholder="…or paste an image URL (https://) and press Enter"
             aria-label="Image URL"
-            className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white outline-none placeholder:text-white/30 focus:border-[#22d3ee]/50"
+            className={`min-w-0 px-3 py-2 text-xs ${FIELD_CLASS}`}
           />
         </div>
       </div>
@@ -235,21 +234,19 @@ export default function VfxInputBar(props: VfxInputBarProps) {
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-white/80 transition-colors hover:border-red-400/60 hover:text-red-300"
+              className={`${promptControlClassName({ className: '!h-auto !rounded-full px-5 py-3 font-bold text-sm' })} hover:!border-red-400/60 hover:!text-red-300`}
             >
               Cancel
             </button>
           )}
-          <button
-            type="button"
+          <PromptAction
             data-vfx-generate=""
             onClick={onGenerate}
             disabled={loading || running || uploading}
-            className="flex items-center gap-2 rounded-full bg-[#22d3ee] px-7 py-3 text-sm font-bold text-black shadow-[0_0_24px_rgba(34,211,238,0.25)] transition-all hover:opacity-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {(loading || running) && <Loader2 size={15} className="animate-spin" />}
             {loading || running ? 'Generating…' : 'Generate ✨'}
-          </button>
+          </PromptAction>
         </div>
       </div>
 
@@ -274,6 +271,7 @@ export default function VfxInputBar(props: VfxInputBarProps) {
           {error}
         </p>
       )}
+    </PromptComposer>
     </div>
   );
 }
