@@ -50,6 +50,15 @@ const thumbnailLocalMap = {
   "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/wan2.6-text-to-image.png": "/thumbnails/workflows/wan2-6-text-to-image.png",
   "https://cdn.muapi.ai/data/68426/545547338092/WhatsApp_Image_2026-06-01_at_00.42.17.jpeg": "/thumbnails/workflows/whatsapp-image-2026-06-01-at-00-42-17.jpg",
   "https://cdn.muapi.ai/data/22562/673683673317/Sukh_Prohor-Tirtho_Mozumder-4696e-550383_upscayl_5x_upscayl-standard-4x.png": "/thumbnails/workflows/sukh-prohor-tirtho-mozumder-4696e-550383-upscayl-5x-upscayl-standard-4x.png",
+  "https://cdn.muapi.ai/outputs/generated/f66e3b6a88a24179a97e557a0ee1e4dd.png": "/thumbnails/workflows/ugc-ads-workflow-seedance-2-omni.jpg",
+  "https://cdn.muapi.ai/outputs/generated/9c5d7533c1f94c2882f08e1a27eac66d.jpg": "/thumbnails/workflows/multi-angle-photo-reshoot-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/outputs/ce671ecafd804eda9610ffabca0ef575.jpg": "/thumbnails/workflows/double-exposure-portrait-maker-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/outputs/db8173687fa04f73a55d0513bc878bb1.jpg": "/thumbnails/workflows/selfie-with-celebrities-kling-o1-pixverse-v5.jpg",
+  "https://cdn.muapi.ai/outputs/3000550ad162428d8b98afeb7065c20c.jpg": "/thumbnails/workflows/soccer-collectable-card-maker-nano-banana.jpg",
+  "https://cdn.muapi.ai/outputs/3939f69e112f47fda84f3da6845c7482.jpg": "/thumbnails/workflows/ai-sculpture-maker-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/outputs/ebc035845ad94da9818b8a9454f484bf.jpg": "/thumbnails/workflows/furniture-campaign-generator-seedream-v5-qwen-nano.jpg",
+  "https://cdn.muapi.ai/outputs/8be1261a6cbb4c47be9e26873059c9b7.jpg": "/thumbnails/workflows/paper-cutting-art-seedream-v5.jpg",
+  "https://cdn.muapi.ai/outputs/87ecbea083264af288a0d832064e312a.jpg": "/thumbnails/workflows/phoenix-multi-model-image-to-video-wan2-seedream.jpg",
 };
 
 export function rewriteThumbnail(url) {

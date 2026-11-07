@@ -54,6 +54,7 @@
     "source:verify": "node scripts/verify-source-of-truth.mjs",
     "build:metadata": "node scripts/generate-build-info.mjs",
     "thumbnails:edit-tools": "node scripts/generate-edit-tool-thumbnails.mjs",
+    "thumbnails:workflow-templates": "node scripts/generate-workflow-template-thumbnails.mjs",
     "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs && node scripts/build-fast-discovery.mjs && node scripts/build-motion-capture.mjs && node scripts/gen-demo-sources.mjs",
     "build:fast-discovery": "node scripts/build-fast-discovery.mjs",
     "build:motion-capture": "node scripts/build-motion-capture.mjs",
