@@ -64,6 +64,7 @@ import { resolveCopy } from "../i18nUtils";
 // ── SmartVideo app integrations (local-only; upstream has no equivalent) ──
 import { setCharacterSheet } from "../lib/characterStore";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { readStoryboardHandoff } from "../storyboardHandoff.js";
 import registry from "../skills/registry.json";
@@ -94,7 +95,7 @@ async function downloadImage(url, filename) {
 
 // ─── UploadButton (inline picker) ───────────────────────────────────────────
 
-function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null, copy }) {
+export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null, copy }) {
   const t = copy.uploadButton;
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -102,6 +103,9 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
   const [uploadHistory, setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Always-current selection, so async upload callbacks never see a stale list.
+  const selectedRef = useRef([]);
+  selectedRef.current = selectedEntries;
 
   // Notify parent whenever uploadHistory changes (for localStorage persistence)
   const onHistoryChangeRef = useRef(onHistoryChange);
@@ -245,15 +249,15 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
               }),
             );
 
-            // Auto-select if there's room
-            if (selectedEntries.length < maxImages) {
-              const newEntry = { url: uploadedUrl };
-              setSelectedEntries((prev) => [...prev, newEntry]);
-
-              if (maxImages === 1) {
-                fireOnSelect([newEntry]);
-                setPanelOpen(false);
-              }
+            // Auto-select if there's room, and tell the parent right away so the
+            // uploaded image shows in the prompt bar without reopening the picker.
+            if (maxImages === 1 || selectedRef.current.length < maxImages) {
+              // Single-image mode: the new upload replaces the current pick instead of being ignored.
+              const next = maxImages === 1 ? [{ url: uploadedUrl }] : [...selectedRef.current, { url: uploadedUrl }];
+              selectedRef.current = next;
+              setSelectedEntries(next);
+              fireOnSelect(next);
+              if (maxImages === 1) setPanelOpen(false);
             }
           } catch (err) {
             console.error("[UploadButton] Upload failed for", file.name, err);
@@ -331,6 +335,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
         ];
       }
       setSelectedEntries(next);
+      if (next.length > 0) fireOnSelect(next);
     }
   };
 
@@ -343,6 +348,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
     if (next.length !== selectedEntries.length) {
       setSelectedEntries(next);
       if (next.length === 0) onClear?.();
+      else fireOnSelect(next); // the prompt bar must not keep using the image that was just removed
     }
   };
 
@@ -2181,6 +2187,21 @@ export default function ImageStudio({
                   Recipes
                 </span>
               </button>
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={["image"]}
+                onSelect={(asset) =>
+                  handleUploadSelect({
+                    url: asset.url,
+                    // One-reference models: the chosen image replaces the current one; otherwise it is added.
+                    urls:
+                      referenceImageLimit <= 1
+                        ? [asset.url]
+                        : [...new Set([...(uploadedImageUrls || []), asset.url])],
+                  })
+                }
+              />
             </PromptControls>
 
             {/* Generate button */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processRecast, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -219,6 +220,12 @@ function MediaPickerButton({
           ) : (
             icon
           )}
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 w-4 h-4 bg-black/80 rounded-full flex items-center justify-center text-white text-[10px] leading-none border border-white/20"
+          >
+            ×
+          </span>
         </div>
       )}
     </button>
@@ -1297,6 +1304,23 @@ export default function RecastStudio({
                   />
                 )}
               </div>
+
+              {/* Everything you've uploaded or generated in any studio (kept on your account) */}
+              <AssetLibraryButton
+                kinds={["video", "image"]}
+                label="Saved"
+                onSelect={(asset) => {
+                  if (asset.kind === "video") {
+                    setVideoUrl(asset.url);
+                    setVideoName(asset.name || copy.defaults.selectedVideo);
+                    setVideoState(UPLOAD_STATE.READY);
+                  } else {
+                    setImageUrl(asset.url);
+                    setImageName(asset.name || copy.defaults.selectedImage);
+                    setImageState(UPLOAD_STATE.READY);
+                  }
+                }}
+              />
             </PromptControls>
 
             {/* Generate button */}

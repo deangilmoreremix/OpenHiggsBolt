@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runClipping, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -1147,6 +1148,9 @@ export default function ClippingStudio({
                 </svg>
               </button>
             )}
+
+            {/* Saved uploads and generations, shared by every studio */}
+            {!videoUrl && <AssetLibraryButton kinds={["video"]} label="Saved" onSelect={(asset) => setVideoUrl(asset.url)} />}
 
             {/* Prompt textarea (supports direct URL pasting too) */}
             <div className="flex-1 flex flex-col gap-1">

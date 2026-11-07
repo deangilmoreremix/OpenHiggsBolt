@@ -52,7 +52,6 @@ const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/Mo
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -121,7 +120,6 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
-  { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
@@ -151,7 +149,8 @@ const SLUG_TO_TAB = {
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
-  'social-publishing': 'social-publishing',
+  // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
+  'social-publishing': 'image',
   'go-ai-viral': 'go-ai-viral',
   apps: 'apps',
 };
@@ -959,7 +958,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
            </div>
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
-          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>

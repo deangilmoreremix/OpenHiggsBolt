@@ -3,7 +3,18 @@ import { auth } from '@clerk/nextjs/server';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
-import { checkDestination, createPinnedFetch } from '@/src/lib/networkSafety';
+import {
+  OPENAI_BASE,
+  UPSTREAM_TIMEOUT_MS,
+  errorJson,
+  gptImageSize,
+  loadImage,
+  readUpstream,
+  toUrls,
+  upstreamError,
+  edits,
+  type ImagePart,
+} from '@/src/lib/openaiImageApi';
 
 /**
  * Thumbnail generation for the Social Publish modal (opened from every studio).
@@ -23,37 +34,12 @@ import { checkDestination, createPinnedFetch } from '@/src/lib/networkSafety';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const OPENAI_BASE = 'https://api.openai.com/v1';
-const UPSTREAM_TIMEOUT_MS = 180_000;
-const REFERENCE_TIMEOUT_MS = 15_000;
-const MAX_REFERENCE_BYTES = 20 * 1024 * 1024;
 const MAX_REFERENCES = 4;
 
 const GPT_IMAGE_MODELS = new Set(['gpt-image-2', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini']);
 const DEFAULT_MODEL = 'gpt-image-2';
 
 type Action = 'generate' | 'refine';
-
-function errorJson(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
-
-/** gpt-image models take three sizes; pick the one closest to the requested ratio. */
-function gptImageSize(aspectRatio: string): string {
-  switch (aspectRatio) {
-    case '16:9':
-    case '3:2':
-    case '4:3':
-      return '1536x1024';
-    case '9:16':
-    case '4:5':
-    case '2:3':
-    case '3:4':
-      return '1024x1536';
-    default:
-      return '1024x1024';
-  }
-}
 
 function dalle3Size(aspectRatio: string): string {
   switch (aspectRatio) {
@@ -97,80 +83,6 @@ function buildPrompt(body: Record<string, any>, aspectRatio: string): string {
   return parts.join(' ').slice(0, 30_000);
 }
 
-type ImagePart = { blob: Blob; filename: string };
-
-function extensionFor(type: string): string {
-  if (type.includes('jpeg') || type.includes('jpg')) return 'jpg';
-  if (type.includes('webp')) return 'webp';
-  return 'png';
-}
-
-/** Decodes a data: URL or downloads a public https image (SSRF-guarded). */
-async function loadImage(source: string, index: number): Promise<ImagePart> {
-  if (source.startsWith('data:image/')) {
-    const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(source);
-    if (!match) throw new Error('Reference image is not a valid data URL');
-    const buffer = Buffer.from(match[2], 'base64');
-    if (buffer.length > MAX_REFERENCE_BYTES) throw new Error('Reference image is too large (20MB max)');
-    const type = match[1].toLowerCase();
-    return { blob: new Blob([buffer], { type }), filename: `reference-${index}.${extensionFor(type)}` };
-  }
-
-  const destination = await checkDestination(source, {});
-  if (!destination.ok || destination.protocol !== 'https:') {
-    throw new Error('Reference image URL is not allowed');
-  }
-  const pinnedFetch = createPinnedFetch(destination);
-  const res = (await pinnedFetch(destination.url, {
-    method: 'GET',
-    headers: { Accept: 'image/*' },
-    signal: AbortSignal.timeout(REFERENCE_TIMEOUT_MS),
-  })) as Response;
-  if (!res.ok) throw new Error(`Could not download reference image (${res.status})`);
-  const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  if (!type.startsWith('image/')) throw new Error('Reference URL did not return an image');
-  const buffer = Buffer.from(await res.arrayBuffer());
-  if (buffer.length > MAX_REFERENCE_BYTES) throw new Error('Reference image is too large (20MB max)');
-  return { blob: new Blob([buffer], { type }), filename: `reference-${index}.${extensionFor(type)}` };
-}
-
-type OpenAiImageResponse = {
-  data?: { url?: string; b64_json?: string; revised_prompt?: string }[];
-  error?: { message?: string; code?: string };
-  output_format?: string;
-};
-
-function toUrls(payload: OpenAiImageResponse): { urls: string[]; revised?: string } {
-  const format = payload.output_format || 'png';
-  const urls: string[] = [];
-  let revised: string | undefined;
-  for (const item of payload.data || []) {
-    if (item.b64_json) urls.push(`data:image/${format};base64,${item.b64_json}`);
-    else if (item.url) urls.push(item.url);
-    if (!revised && item.revised_prompt) revised = item.revised_prompt;
-  }
-  return { urls, revised };
-}
-
-async function readUpstream(res: Response): Promise<OpenAiImageResponse> {
-  const text = await res.text();
-  try {
-    return JSON.parse(text) as OpenAiImageResponse;
-  } catch {
-    return { error: { message: text.slice(0, 300) || `OpenAI error ${res.status}` } };
-  }
-}
-
-function upstreamError(res: Response, payload: OpenAiImageResponse) {
-  if (payload.error?.code === 'moderation_blocked') {
-    return errorJson('Content moderation blocked this request. Please revise the prompt.', 400);
-  }
-  const message = payload.error?.message || `OpenAI image error (${res.status})`;
-  // 401 from OpenAI means the stored key is wrong, not that the user is signed out.
-  const status = res.status === 401 ? 400 : res.status;
-  return errorJson(res.status === 401 ? 'Your OpenAI API key was rejected. Update it in Settings.' : message, status);
-}
-
 async function generations(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string) {
   if (model === 'dall-e-3') {
     // dall-e-3 only returns one image per request.
@@ -206,26 +118,6 @@ async function generations(key: string, model: string, prompt: string, aspectRat
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, n, size: gptImageSize(aspectRatio), quality }),
-    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-  });
-  const payload = await readUpstream(res);
-  if (!res.ok) return { error: upstreamError(res, payload) };
-  return toUrls(payload);
-}
-
-async function edits(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, images: ImagePart[]) {
-  const form = new FormData();
-  form.append('model', model);
-  form.append('prompt', prompt);
-  form.append('n', String(n));
-  form.append('size', gptImageSize(aspectRatio));
-  form.append('quality', quality);
-  for (const image of images) form.append('image[]', image.blob, image.filename);
-
-  const res = await fetch(`${OPENAI_BASE}/images/edits`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}` },
-    body: form,
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
   const payload = await readUpstream(res);
