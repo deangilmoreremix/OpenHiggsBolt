@@ -11,8 +11,8 @@ async function enableDevAuth(page: Page) {
   await installStudioSession(page);
 }
 
-test('opens motion studio', async ({ page }) => {
+test('motion studio route opens Motion Director', async ({ page }) => {
   await enableDevAuth(page);
   await page.goto('/studio/motion-studio', { waitUntil: 'load', timeout: 60_000 });
-  await expect(page).toHaveURL(/\/studio\/motion-studio/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/studio\/motion-director/, { timeout: 60_000 });
 });
