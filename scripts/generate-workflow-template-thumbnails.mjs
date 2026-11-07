@@ -152,7 +152,9 @@ async function main() {
     process.stdout.write(`make  ${file} … `);
     try {
       const url = await generate(`${prompt} ${STYLE}`, key);
-      const image = Buffer.from(await (await fetch(url)).arrayBuffer());
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Image download failed: ${response.status} ${response.statusText}`);
+      const image = Buffer.from(await response.arrayBuffer());
       // Loaded here, not at the top, so importing TEMPLATE_THUMBNAILS does not need `sharp`.
       const { default: sharp } = await import('sharp');
       await sharp(image).resize(600, 800, { fit: 'cover' }).jpeg({ quality: 82 }).toFile(dest);
