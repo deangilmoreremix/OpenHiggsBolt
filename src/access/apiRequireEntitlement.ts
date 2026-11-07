@@ -24,6 +24,7 @@ function checkEntitlementKey(entitlementKey: EntitlementKey | string, access: Ac
       // by default; hasSmartVideoGo already reflects this.
       return access.hasSmartVideoGo;
     case ENTITLEMENTS.SMARTVIDEO_VIRAL:
+    case ENTITLEMENTS.GO_VIRAL_AI:
       return access.hasSmartVideoViral;
     case ENTITLEMENTS.SMARTVIDEO_AI:
       return access.entitlements.smartvideo_ai === true;

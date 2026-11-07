@@ -5,7 +5,8 @@
 // Adapted from https://github.com/Anil-matcha/zack-d-films-ai-video-generator (MIT, see NOTICE.md).
 // Same shape as the other app-style studios (Storyboard): `{ apiKey, templateData }` from StandaloneShell.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Clapperboard, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Clapperboard, Loader2, AlertCircle, Download, Share2 } from 'lucide-react';
+import { PublishStep, useSocialPublish } from '@/components/SocialPublishProvider';
 import { panels, buttons, semantic, iconBadge, optionStyle, tabStyle } from '@/shared/styles/designTokens';
 import { scopedPersistKey } from 'studio/src/persistKey.js';
 import * as muapi from 'studio/src/muapi.js';
@@ -49,6 +50,39 @@ function MediaCard({ label, children, action }) {
       {children}
       {action}
     </div>
+  );
+}
+
+// Publishing needs a hosted URL, but the final cut only exists as an in-browser blob: upload it first.
+function PostFinalToSocial({ apiKey, final, busy, setError, className, style }) {
+  const { openPublish } = useSocialPublish();
+  const [uploading, setUploading] = React.useState(false);
+  // The cut this button currently belongs to: an upload that finishes for an older cut (re-render, new project,
+  // template, unmount) must not open the publish modal with a video that is no longer on screen.
+  const current = React.useRef(final);
+  current.current = final;
+  React.useEffect(() => () => { current.current = null; }, []);
+  // Instagram only takes MP4/MOV; the in-browser renderer falls back to WebM on some browsers.
+  const unsupported = final && final.ext && final.ext !== 'mp4';
+  async function go() {
+    const started = final;
+    if (uploading || !started?.blob || unsupported) return;
+    setUploading(true); setError('');
+    try {
+      const file = new File([started.blob], `zackd-short.${started.ext || 'mp4'}`, { type: started.blob.type || 'video/mp4' });
+      const url = await muapi.uploadFile(apiKey, file);
+      if (current.current !== started) return;
+      openPublish({ mediaUrl: url, mediaType: 'video', title: started.topic ? String(started.topic).slice(0, 50) : 'Zack D short' });
+    } catch (e) { if (current.current === started) setError(e?.message || 'Could not upload the video for publishing.'); }
+    setUploading(false);
+  }
+  return (
+    <button
+      className={className} style={style} disabled={busy || uploading || !apiKey || unsupported} onClick={go}
+      title={unsupported ? 'This cut was rendered as WebM, which Instagram and TikTok reject. Re-render in a browser that can make MP4 (Chrome or Edge) to post it.' : undefined}
+    >
+      {uploading ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} {uploading ? 'Uploading…' : unsupported ? 'Post (needs MP4)' : 'Post to social'}
+    </button>
   );
 }
 
@@ -129,6 +163,7 @@ export default function ZackD({ apiKey, templateData }) {
     if (busy) return;
     const missing = shots.filter((s) => !project.shots[s.shot_id]?.clip);
     if (missing.length) { setError(`${missing.length} shot(s) have no clip yet.`); return; }
+    setCaptioned(null); // a captioned copy belongs to the previous cut
     setBusy(true); setError(''); setProgress('Rendering 0%');
     abort.current = new AbortController();
     try {
@@ -139,7 +174,7 @@ export default function ZackD({ apiKey, templateData }) {
         onProgress: (p) => setProgress(`Rendering ${Math.round(p * 100)}%`),
       });
       if (out.ok) setCaptioned(null);
-      if (out.ok) setFinal({ url: URL.createObjectURL(out.blob), blob: out.blob, ext: out.extension, warning: out.warning });
+      if (out.ok) setFinal({ url: URL.createObjectURL(out.blob), blob: out.blob, ext: out.extension, warning: out.warning, topic: proj.current.topic });
       else if (out.reason !== 'cancelled') setError(out.error);
     } catch (e) { setError(e?.message || 'The final cut failed.'); }
     setBusy(false); setProgress('');
@@ -156,7 +191,7 @@ export default function ZackD({ apiKey, templateData }) {
       const videoUrl = await muapi.uploadFile(apiKey, file);
       setProgress('Burning captions (2-3 minutes)…');
       const { url } = await jobs.captions({ videoUrl, language: project.captionLang, theme: project.captionTheme });
-      setCaptioned({ url });
+      setCaptioned({ url, topic: final.topic });
     } catch (e) { setError(e?.message || 'Burning captions failed.'); }
     setBusy(false); setProgress('');
   }
@@ -205,6 +240,12 @@ export default function ZackD({ apiKey, templateData }) {
           {TEMPLATES.map((t) => (
             <div key={t.id} className="rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-colors p-3 space-y-2 flex flex-col">
               {t.demo && <video src={t.demo} poster={t.poster} controls preload="none" playsInline className="w-full rounded-md bg-black" style={{ aspectRatio: '9 / 16', maxHeight: 320 }} />}
+              {!t.demo && t.beats?.[0]?.narration && (
+                <blockquote className="rounded-md border border-white/10 bg-white/[0.03] p-3 text-xs italic" style={{ color: semantic.textSecondary }}>
+                  “{t.beats[0].narration}”
+                  <span className="block mt-1 not-italic" style={{ color: semantic.textMuted }}>{t.beats.length} beat{t.beats.length === 1 ? '' : 's'} · no media, you generate the keyframes and clips</span>
+                </blockquote>
+              )}
               <div className="text-sm font-medium text-white">{t.title}</div>
               <p className="text-xs flex-1" style={{ color: semantic.textSecondary }}>{t.description}</p>
               <button className={t.kind === 'finished' ? BTN_MAIN : BTN} style={t.kind === 'finished' ? buttons.primary : buttons.ghost} disabled={busy} onClick={() => useTemplate(t)}>
@@ -355,6 +396,7 @@ export default function ZackD({ apiKey, templateData }) {
             {final.warning && <p className="text-xs" style={{ color: semantic.textSecondary }}>{final.warning}</p>}
             <div className="flex gap-2 flex-wrap">
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(final.blob, `zackd-short.${final.ext}`)}><Download size={14} /> Download video</button>
+              <PostFinalToSocial apiKey={apiKey} final={final} busy={busy} setError={setError} className={`${BTN} flex items-center gap-2`} style={buttons.ghost} />
               <button className={`${BTN} flex items-center gap-2`} style={buttons.ghost} onClick={() => download(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' }), 'zackd-short.srt')}><Download size={14} /> Captions (.srt)</button>
             </div>
             <p className="text-xs" style={{ color: semantic.textMuted }}>The .srt is a free, separate caption file. To burn animated captions into the video, use the option below.</p>
@@ -377,6 +419,7 @@ export default function ZackD({ apiKey, templateData }) {
                 <>
                   <video src={captioned.url} controls className="rounded-lg bg-black" style={{ maxHeight: '70vh', aspectRatio: '9 / 16' }} />
                   <a className={`${BTN} inline-flex items-center gap-2`} style={buttons.ghost} href={captioned.url} target="_blank" rel="noopener noreferrer"><Download size={14} /> Open / download captioned video</a>
+                  <PublishStep mediaUrl={captioned.url} mediaType="video" title={captioned.topic ? String(captioned.topic).slice(0, 50) : 'Zack D short'} />
                 </>
               )}
             </div>

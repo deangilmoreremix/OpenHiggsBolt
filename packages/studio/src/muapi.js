@@ -10,6 +10,7 @@ import { getModelMediaCapabilities, mapReferenceParams } from './modelCapabiliti
 import { buildSupplementalInputPayload } from './modelParameters.js';
 import { getGroupedVideoConfiguration } from './groupedVideoModels.js';
 import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from './uploadContract.js';
+import { saveUploadedFile, saveResultUrl } from './lib/assetStore.js';
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
@@ -67,6 +68,8 @@ export async function resumeGeneration(apiKey, requestId, options = {}) {
     const { maxAttempts = 900, signal } = options;
     const result = await pollForResult(requestId, apiKey, maxAttempts, 2000, signal);
     const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    // A generation finished after a reload still belongs in the user's asset library.
+    if (outputUrl) void saveResultUrl(outputUrl);
     return normalizePredictionResult({ request_id: requestId }, result, outputUrl);
 }
 
@@ -97,6 +100,8 @@ async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 
     if (onRequestId) onRequestId(requestId);
     const result = await pollForResult(requestId, key, maxAttempts, 2000, signal);
     const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    // Keep every finished generation in the user's asset library (best effort, never blocks the result).
+    if (outputUrl) void saveResultUrl(outputUrl);
     return normalizePredictionResult(submitData, result, outputUrl);
 }
 
@@ -472,6 +477,8 @@ export function uploadFile(apiKey, file, onProgress) {
                         reject(new Error('No URL returned from file upload'));
                     } else {
                         onProgress?.(100);
+                        // Keep a lasting copy in the user's asset library (best effort, never blocks the upload).
+                        void saveUploadedFile(file);
                         resolve(fileUrl);
                     }
                 } catch (e) {

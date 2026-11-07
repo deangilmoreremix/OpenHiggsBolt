@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -20,6 +20,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { generateShotFrame } from '@/api/storyboard'
+import { generateOpenAiPanel, listOpenAiStoryboardModels, type OpenAiStoryboardModel } from '@/api/storyboardOpenAI'
+import { saveUploadedFile } from 'studio/src/lib/assetStore.js'
+import { exportGif } from '../exportUtils'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { useStoryboard, type StoryboardShot, type StoryboardCharacter } from '../StoryboardContext'
 import CameraControls from '../CameraControls'
@@ -35,7 +38,48 @@ import {
   Trash2,
   ArrowLeft,
   Plus,
+  Wand2,
+  Film,
+  Upload,
 } from 'lucide-react'
+
+/** Which service draws the panels. OpenAI uses the user's own OpenAI key (Settings). */
+type FrameEngine = { provider: 'muapi' | 'openai'; model: string; quality: 'low' | 'medium' | 'high' }
+const ENGINE_KEY = 'storyboard_frame_engine_v1'
+const DEFAULT_ENGINE: FrameEngine = { provider: 'muapi', model: '', quality: 'medium' }
+const MAX_SKETCH_BYTES = 2.5 * 1024 * 1024
+/** Matches MAX_REFERENCES in app/api/storyboard/openai/route.ts. */
+const MAX_REFERENCE_IMAGES = 4
+
+function loadEngine(): FrameEngine {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ENGINE_KEY) || 'null')
+    if (raw && (raw.provider === 'openai' || raw.provider === 'muapi')) {
+      return { provider: raw.provider, model: typeof raw.model === 'string' ? raw.model : '', quality: ['low', 'medium', 'high'].includes(raw.quality) ? raw.quality : 'medium' }
+    }
+  } catch {
+    // no saved choice
+  }
+  return DEFAULT_ENGINE
+}
+
+function dataUrlToFile(dataUrl: string, name: string): File | null {
+  const m = /^data:([^;,]+);base64,(.*)$/.exec(dataUrl)
+  if (!m) return null
+  const bin = atob(m[2])
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new File([bytes], name, { type: m[1] })
+}
+
+/** A panel as OpenAI returns it is a multi-megabyte data URL: keep a hosted copy instead when we can (it is
+ *  what gets saved with the project and sent back for edits), and fall back to the data URL when we can't. */
+async function keepPanel(url: string, name: string): Promise<string> {
+  if (!url.startsWith('data:')) return url
+  const file = dataUrlToFile(url, name)
+  const saved = file ? await saveUploadedFile(file) : null
+  return saved?.url || url
+}
 
 function SortableShot({
   shot,
@@ -43,6 +87,7 @@ function SortableShot({
   aspectRatio,
   characters,
   frameModel,
+  engine,
   onUpdate,
   onRemove,
 }: {
@@ -51,6 +96,7 @@ function SortableShot({
   aspectRatio: '16:9' | '9:16'
   characters: StoryboardCharacter[]
   frameModel: string
+  engine: FrameEngine
   onUpdate: (id: string, patch: Partial<StoryboardShot>) => void
   onRemove: (id: string) => void
 }) {
@@ -58,6 +104,11 @@ function SortableShot({
   const [showCamera, setShowCamera] = useState(false)
   const [genning, setGenning] = useState(false)
   const [frameError, setFrameError] = useState<string | null>(null)
+  const [sketch, setSketch] = useState<string | null>(null) // a rough drawing that guides the panel (not saved)
+  const [editText, setEditText] = useState('')
+  const [editing, setEditing] = useState(false)
+  const sketchInputRef = useRef<HTMLInputElement>(null)
+  const openai = engine.provider === 'openai'
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -80,18 +131,82 @@ function SortableShot({
     try {
       const prompt = withCharacters(buildShotPrompt(shot.scene, shot.camera), shotChars)
       const charImages = shotChars.map((c) => c.referenceImageUrl).filter((url): url is string => typeof url === 'string')
-      const url = await generateShotFrame({
-        prompt,
-        aspect_ratio: aspectRatio,
-        model: frameModel,
-        ...(charImages.length ? { images_list: charImages } : {}),
-      })
+      let url: string
+      if (openai) {
+        // Characters are reused by name: each tagged character's saved reference image goes along, and the
+        // prompt says which image is who, so the same character looks the same across panels.
+        const refs: string[] = []
+        const lines: string[] = []
+        const addRef = (src: string, describe: (n: number) => string) => {
+          // The route sends each distinct image once and at most MAX_REFERENCE_IMAGES: number what is really sent.
+          let n = refs.indexOf(src) + 1
+          if (n === 0) {
+            if (refs.length >= MAX_REFERENCE_IMAGES) return
+            refs.push(src)
+            n = refs.length
+          }
+          lines.push(describe(n))
+        }
+        if (sketch) addRef(sketch, () => 'The first reference image is a rough sketch: follow its composition.')
+        for (const c of shotChars) {
+          if (c.referenceImageUrl) addRef(c.referenceImageUrl, (n) => `Reference image ${n} shows ${c.name}: keep ${c.name} looking exactly like it.`)
+        }
+        const raw = await generateOpenAiPanel({
+          prompt: [prompt, ...lines].join('\n'),
+          aspect_ratio: aspectRatio,
+          model: engine.model || undefined,
+          quality: engine.quality,
+          ...(refs.length ? { reference_urls: refs } : {}),
+        })
+        url = await keepPanel(raw, `storyboard-shot-${index + 1}.png`)
+      } else {
+        url = await generateShotFrame({
+          prompt,
+          aspect_ratio: aspectRatio,
+          model: frameModel,
+          ...(charImages.length ? { images_list: charImages } : {}),
+        })
+      }
       onUpdate(shot.id || `shot-${index}`, { frameUrl: url })
     } catch (err: unknown) {
       setFrameError(err instanceof Error ? err.message : 'Frame generation failed')
     } finally {
       setGenning(false)
     }
+  }
+
+  /** Change the current panel in place (OpenAI only): "make it night", "add a lighthouse", ... */
+  const editInFlight = useRef(false)
+  const handleEditFrame = async () => {
+    if (!shot.frameUrl || !editText.trim() || editInFlight.current) return
+    editInFlight.current = true
+    setEditing(true)
+    setFrameError(null)
+    try {
+      const raw = await generateOpenAiPanel({
+        prompt: editText.trim(),
+        aspect_ratio: aspectRatio,
+        model: engine.model || undefined,
+        quality: engine.quality,
+        image_url: shot.frameUrl,
+      })
+      onUpdate(shot.id || `shot-${index}`, { frameUrl: await keepPanel(raw, `storyboard-shot-${index + 1}-edit.png`) })
+      setEditText('')
+    } catch (err: unknown) {
+      setFrameError(err instanceof Error ? err.message : 'Frame edit failed')
+    } finally {
+      editInFlight.current = false
+      setEditing(false)
+    }
+  }
+
+  const handleSketch = (file: File | undefined) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) return setFrameError('Pick an image file for the sketch.')
+    if (file.size > MAX_SKETCH_BYTES) return setFrameError('That sketch is too large (2.5 MB at most).')
+    const reader = new FileReader()
+    reader.onload = () => setSketch(typeof reader.result === 'string' ? reader.result : null)
+    reader.readAsDataURL(file)
   }
 
   const toggleChar = (id: string) => {
@@ -195,6 +310,21 @@ function SortableShot({
             {shot.frameUrl ? 'Regenerate' : 'Frame'}
           </button>
 
+          {openai && (
+            <>
+              <input ref={sketchInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleSketch(e.target.files?.[0]); e.target.value = '' }} />
+              <button
+                onClick={() => (sketch ? setSketch(null) : sketchInputRef.current?.click())}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
+                style={sketch ? activePillStyle : ghostStyle}
+                title={sketch ? 'Remove the sketch' : 'Upload a rough sketch or reference image to guide the composition'}
+              >
+                <Upload size={13} />
+                {sketch ? 'Sketch added ×' : 'Sketch'}
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setShowCamera((v) => !v)}
             className="ml-auto flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all"
@@ -221,6 +351,29 @@ function SortableShot({
                 </button>
               )
             })}
+          </div>
+        )}
+
+        {openai && shot.frameUrl && (
+          <div className="flex items-center gap-2">
+            <input
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleEditFrame() }}
+              placeholder="Change this frame: make it night, add a lighthouse..."
+              className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs outline-none"
+              style={{ ...cardStyle, color: 'white' }}
+            />
+            <button
+              onClick={handleEditFrame}
+              disabled={editing || !editText.trim()}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all disabled:opacity-50"
+              style={activePillStyle}
+              title="Edit this frame with the OpenAI image model"
+            >
+              {editing ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+              Edit
+            </button>
           </div>
         )}
 
@@ -259,6 +412,39 @@ export default function ShotEditor() {
 
   const [sceneDraft, setSceneDraft] = useState('')
   const [durationDraft, setDurationDraft] = useState(3)
+  const [engine, setEngine] = useState<FrameEngine>(DEFAULT_ENGINE)
+  const [openAiModels, setOpenAiModels] = useState<OpenAiStoryboardModel[]>([])
+  const [gifBusy, setGifBusy] = useState(false)
+  const [gifError, setGifError] = useState<string | null>(null)
+  const [gifSeconds, setGifSeconds] = useState(0) // 0 = each shot's own length
+
+  useEffect(() => setEngine(loadEngine()), [])
+  useEffect(() => {
+    try { localStorage.setItem(ENGINE_KEY, JSON.stringify(engine)) } catch { /* private mode */ }
+  }, [engine])
+  useEffect(() => {
+    if (engine.provider !== 'openai' || openAiModels.length) return
+    let cancelled = false
+    listOpenAiStoryboardModels().then(({ models, default: def }) => {
+      if (cancelled) return
+      setOpenAiModels(models)
+      setEngine((e) => (e.model && models.some((m) => m.id === e.model) ? e : { ...e, model: def }))
+    })
+    return () => { cancelled = true }
+  }, [engine.provider, openAiModels.length])
+
+  const framedShots = shots.filter((s) => s.frameUrl).length
+  const handleExportGif = async () => {
+    setGifBusy(true)
+    setGifError(null)
+    try {
+      await exportGif(shots, aspectRatio, projectName, gifSeconds > 0 ? { frameMs: gifSeconds * 1000 } : {})
+    } catch (err: unknown) {
+      setGifError(err instanceof Error ? err.message : 'Could not build the GIF')
+    } finally {
+      setGifBusy(false)
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -304,6 +490,12 @@ export default function ShotEditor() {
     background: 'linear-gradient(to right, #22d3ee, #a855f7)',
     color: 'black',
     border: 'none',
+  }
+
+  const activePillStyle: React.CSSProperties = {
+    background: 'rgba(34,211,238,0.15)',
+    border: '1px solid rgba(34,211,238,0.3)',
+    color: '#22d3ee',
   }
 
   const textMuted = 'rgba(255,255,255,0.4)'
@@ -362,6 +554,80 @@ export default function ShotEditor() {
             </div>
           </div>
 
+          <div className="rounded-xl p-4 mb-6 space-y-3" style={glassStyle}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold" style={{ color: textLabel }}>FRAME ENGINE</span>
+              {(['muapi', 'openai'] as const).map((provider) => (
+                <button
+                  key={provider}
+                  onClick={() => setEngine((e) => ({ ...e, provider }))}
+                  className="px-3 py-1 rounded-full text-xs transition-all"
+                  style={engine.provider === provider ? activePillStyle : ghostStyle}
+                  aria-pressed={engine.provider === provider}
+                >
+                  {provider === 'muapi' ? 'MuAPI' : 'OpenAI Images'}
+                </button>
+              ))}
+              {engine.provider === 'openai' && (
+                <>
+                  <select
+                    aria-label="OpenAI image model"
+                    value={engine.model}
+                    onChange={(e) => setEngine((en) => ({ ...en, model: e.target.value }))}
+                    className="rounded-lg px-2 py-1 text-xs outline-none"
+                    style={{ ...cardStyle, color: 'white' }}
+                  >
+                    {openAiModels.map((m) => <option key={m.id} value={m.id} style={{ color: 'black' }}>{m.label}</option>)}
+                  </select>
+                  <select
+                    aria-label="Panel detail"
+                    value={engine.quality}
+                    onChange={(e) => setEngine((en) => ({ ...en, quality: e.target.value as FrameEngine['quality'] }))}
+                    className="rounded-lg px-2 py-1 text-xs outline-none"
+                    style={{ ...cardStyle, color: 'white' }}
+                  >
+                    <option value="low" style={{ color: 'black' }}>Low detail (fastest)</option>
+                    <option value="medium" style={{ color: 'black' }}>Medium detail</option>
+                    <option value="high" style={{ color: 'black' }}>High detail</option>
+                  </select>
+                </>
+              )}
+            </div>
+            {engine.provider === 'openai' && (
+              <p className="text-[11px]" style={{ color: textMuted }}>
+                Uses your own OpenAI key from Settings. Flare is quick for trying ideas, Sunburst is better for scenes with many details. Tag characters on a scene to keep them looking the same; add a sketch to steer the layout.
+              </p>
+            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold" style={{ color: textLabel }}>ANIMATED GIF</span>
+              <label className="text-xs flex items-center gap-1" style={{ color: textMuted }}>
+                seconds per frame
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  value={gifSeconds}
+                  onChange={(e) => setGifSeconds(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-16 rounded-lg px-2 py-1 text-xs outline-none"
+                  style={{ ...cardStyle, color: 'white' }}
+                  title="0 uses each shot's own length"
+                />
+              </label>
+              <button
+                onClick={handleExportGif}
+                disabled={gifBusy || framedShots === 0}
+                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs transition-all disabled:opacity-50"
+                style={activePillStyle}
+                title={framedShots === 0 ? 'Generate at least one frame first' : `Download ${framedShots} frame${framedShots === 1 ? '' : 's'} as a looping GIF`}
+              >
+                {gifBusy ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />}
+                Export GIF{framedShots ? ` (${framedShots})` : ''}
+              </button>
+              {gifError && <span className="text-[11px]" style={{ color: '#f87171' }}>{gifError}</span>}
+            </div>
+          </div>
+
           {shots.length === 0 ? (
             <div className="rounded-xl p-6 text-sm" style={{ ...glassStyle, color: textMuted }}>
               No scenes yet. Add scenes here or from the Storyboard page to build your storyboard.
@@ -382,6 +648,7 @@ export default function ShotEditor() {
                         aspectRatio={aspectRatio}
                         characters={characters}
                         frameModel={model}
+                        engine={engine}
                         onUpdate={updateShot}
                         onRemove={removeShot}
                       />
