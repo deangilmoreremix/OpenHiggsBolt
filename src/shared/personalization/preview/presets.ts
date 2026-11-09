@@ -661,6 +661,21 @@ export function isImageLayerKind(kind: PreviewLayerKind): boolean {
   return IMAGE_LAYER_KINDS.includes(kind)
 }
 
+/** Fraction of the frame kept clear on each side (mirrors SAFE_AREA_MARGIN in guided/overlayGeometry). */
+const BOX_SAFE_MARGIN = 0.02
+
+/**
+ * Keeps a box inside the frame's safe area horizontally. Boxes are centered on
+ * `x`, so a layer placed near an edge (the defaults use x = 0.08) used to hang
+ * half outside the frame and get clipped.
+ */
+function clampLeftToSafeArea(leftPx: number, widthPx: number, frameWidth: number): number {
+  const margin = Math.round(frameWidth * BOX_SAFE_MARGIN)
+  const max = frameWidth - margin - widthPx
+  if (max < margin) return Math.round((frameWidth - widthPx) / 2)
+  return Math.min(max, Math.max(margin, leftPx))
+}
+
 /**
  * Converts normalized center coordinates plus scale into pixels.
  * Image layers use scale as a width fraction and are square; text layers use
@@ -672,6 +687,7 @@ export function toBox(
   layer: PreviewLayer,
   compW: number,
   compH: number,
+  resolvedText?: string,
 ): { leftPx: number; topPx: number; widthPx: number; heightPx?: number; fontSizePx: number } {
   const width = Math.max(1, finiteNumber(compW, 1920))
   const height = Math.max(1, finiteNumber(compH, 1080))
@@ -689,15 +705,19 @@ export function toBox(
 
   if (isImageLayerKind(layer.kind)) {
     const widthPx = Math.round(scale * width)
-    const leftPx = Math.round(x * width - widthPx / 2)
+    const leftPx = clampLeftToSafeArea(Math.round(x * width - widthPx / 2), widthPx, width)
     const topPx = Math.max(0, Math.round(y * height - widthPx / 2))
     return { leftPx, topPx, widthPx, heightPx: widthPx, fontSizePx: 0 }
   }
 
   const fontSizePx = Math.round(scale * height)
-  const chars = Math.max(4, (layer.text?.length ?? 8) * 0.55)
+  // Size from the text that is actually DRAWN. A layer with no text of its own
+  // shows the brand's name/headline/etc.; sizing from `layer.text` alone made
+  // those boxes ~4 characters wide and wrapped long names mid-word.
+  const drawn = resolvedText ?? layer.text ?? ''
+  const chars = Math.max(4, (drawn.length || 8) * 0.55)
   const widthPx = Math.round(Math.min(width * 0.9, fontSizePx * chars))
-  const leftPx = Math.round(x * width - widthPx / 2)
+  const leftPx = clampLeftToSafeArea(Math.round(x * width - widthPx / 2), widthPx, width)
   const topPx = Math.max(0, Math.round(y * height - fontSizePx / 2))
   return { leftPx, topPx, widthPx, fontSizePx }
 }

@@ -445,13 +445,13 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
           {factor > 0 &&
             editableLayers.filter((layer) => layer.visible).map((layer) => {
-              const box = toStageBox(layer, compW, compH, stageWidth)
               const isDesign = layer.kind === 'design'
               // A headline/tagline that would only repeat the business name on
               // screen isn't drawn in the video, so here it's a faded "add
               // your text" placeholder you can still grab and move.
               const repeatsName = isRepeatedBusinessName(layer, brand, editableLayers)
               const text = repeatsName ? `${LAYER_LABELS[layer.kind]} — add your text` : layerText(layer, brand)
+              const box = toStageBox(layer, compW, compH, stageWidth, isDesign || isImageLayerKind(layer.kind) ? undefined : text)
               const imageUrl = layerImageUrl(layer, brand)
               if (!isDesign && !isImageLayerKind(layer.kind) && !text.trim()) return null
               if (isImageLayerKind(layer.kind) && !imageUrl) return null

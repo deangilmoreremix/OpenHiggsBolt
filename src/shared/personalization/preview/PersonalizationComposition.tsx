@@ -482,7 +482,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           ) return null
           if (isImage && !imageUrl) return null
 
-          const box = toBox(layer, compW, compH)
+          const box = toBox(layer, compW, compH, isText ? text : undefined)
           const entrance = entranceFor(layer, frame, settings.fps)
           const textColor =
             layer.color ??
@@ -611,7 +611,9 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                   lineHeight: 1.15,
                   textAlign: 'center',
                   width: '100%',
-                  wordBreak: 'break-word',
+                  // Only break a word that cannot fit on a line by itself;
+                  // `wordBreak: 'break-word'` split ordinary words mid-word.
+                  overflowWrap: 'break-word',
                 }}
               >
                 {text}

@@ -474,7 +474,9 @@ describe('toBox', () => {
     const layer = createLayer('logo', { x: 0.08, y: 0.08 })
     const box = toBox(layer, 1920, 1080)
     expect(box.widthPx).toBe(422)
-    expect(box.leftPx).toBe(Math.round(0.08 * 1920 - 422 / 2))
+    // Centered at x = 0.08 the box would hang 3% outside the frame; it is kept
+    // inside the 2% safe area instead of being clipped.
+    expect(box.leftPx).toBe(Math.round(1920 * 0.02))
     expect(box.topPx).toBe(Math.max(0, Math.round(0.08 * 1080 - 422 / 2)))
   })
 
@@ -483,7 +485,31 @@ describe('toBox', () => {
     const box = toBox(layer, 1920, 1080)
     expect(box.topPx).toBe(0)
     expect(box.fontSizePx).toBe(216)
-    expect(box.leftPx).toBe(Math.round(0 - Math.min(1920 * 0.9, 216 * 4) / 2))
+    // x = 0 would centre the box on the frame edge; it stays inside the safe area.
+    expect(box.leftPx).toBe(Math.round(1920 * 0.02))
+  })
+
+  it('sizes a text box from the DRAWN text, not only layer.text (no mid-word wraps)', () => {
+    const layer = createLayer('businessName', { x: 0.5, y: 0.3 })
+    expect(layer.text).toBeUndefined()
+    const name = 'Kreindler & Kreindler LLP'
+    const fallback = toBox(layer, 1920, 1080)
+    const drawn = toBox(layer, 1920, 1080, name)
+    // Unset text falls back to an 8-character estimate (4.4 em) — too narrow
+    // for a 25-character brand name; the drawn text gets its own width.
+    expect(drawn.widthPx).toBeGreaterThan(fallback.widthPx * 3)
+    expect(drawn.widthPx).toBe(Math.round(Math.min(1920 * 0.9, drawn.fontSizePx * name.length * 0.55)))
+  })
+
+  it('keeps every text and image box inside the safe area at the default edge positions', () => {
+    for (const kind of ['logo', 'businessName', 'headline', 'tagline', 'productImage', 'serviceImage'] as const) {
+      for (const [w, h] of [[1920, 1080], [1080, 1920], [1080, 1080], [1080, 1350]]) {
+        const layer = createLayer(kind)
+        const box = toBox(layer, w, h, 'Passenger Injury Lawyers')
+        expect(box.leftPx).toBeGreaterThanOrEqual(Math.round(w * 0.02))
+        expect(box.leftPx + box.widthPx).toBeLessThanOrEqual(w - Math.round(w * 0.02))
+      }
+    }
   })
 })
 
