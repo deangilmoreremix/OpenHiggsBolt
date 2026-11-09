@@ -423,7 +423,99 @@ export interface ApplyLayoutContext {
   serviceUrl?: string
 }
 
-function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext): PreviewLayer {
+type LayerGeometry = Pick<PreviewLayer, 'x' | 'y' | 'scale'>
+
+/**
+ * Per-layout, per-aspect default geometry for layers whose generic default
+ * collides with a neighbour. Only the two image layouts need it: every layout
+ * used to share one set of defaults, so the product/service image (a 30%-wide
+ * square at x = 0.62) landed on top of the offer text (x = 0.5).
+ *
+ * Landscape: text column on the left, the image on the right.
+ * Portrait / square / 4:5: text above, the image centred below it.
+ * Coordinates are normalised centres, exactly like every other layer. Layers
+ * not listed here keep `LAYER_DEFAULTS`.
+ */
+const IMAGE_LAYOUT_GEOMETRY: Record<
+  'product-showcase' | 'service-promotion',
+  Record<PreviewAspectRatio, Partial<Record<PreviewLayerKind, LayerGeometry>>>
+> = (() => {
+  const landscape = (image: PreviewLayerKind) => ({
+    logo: { x: 0.08, y: 0.08, scale: 0.22 },
+    headline: { x: 0.3, y: 0.38, scale: 0.045 },
+    tagline: { x: 0.3, y: 0.47, scale: 0.032 },
+    offer: { x: 0.3, y: 0.56, scale: 0.05 },
+    [image]: { x: 0.74, y: 0.52, scale: 0.3 },
+  })
+  const stacked = (image: PreviewLayerKind, head: number, sub: number, imgY: number, imgScale: number) => ({
+    logo: { x: 0.08, y: 0.08, scale: 0.22 },
+    headline: { x: 0.5, y: head, scale: 0.045 },
+    tagline: { x: 0.5, y: sub, scale: 0.032 },
+    offer: { x: 0.5, y: sub, scale: 0.05 },
+    [image]: { x: 0.5, y: imgY, scale: imgScale },
+  })
+  const build = (image: PreviewLayerKind) => ({
+    '16:9': landscape(image),
+    '9:16': stacked(image, 0.28, 0.4, 0.65, 0.46),
+    '4:5': stacked(image, 0.2, 0.34, 0.64, 0.42),
+    '1:1': stacked(image, 0.18, 0.31, 0.66, 0.4),
+  })
+  return {
+    'product-showcase': build('productImage'),
+    'service-promotion': build('serviceImage'),
+  }
+})()
+
+/** Default geometry for a layer of `kind` in `layoutId` at `aspect`, if the layout defines one. */
+export function layoutLayerGeometry(
+  layoutId: PreviewLayoutId | null | undefined,
+  kind: PreviewLayerKind,
+  aspect: PreviewAspectRatio | undefined,
+): LayerGeometry | undefined {
+  if (layoutId !== 'product-showcase' && layoutId !== 'service-promotion') return undefined
+  return IMAGE_LAYOUT_GEOMETRY[layoutId][aspect ?? '16:9']?.[kind]
+}
+
+/** A layer's untouched geometry: the layout's own default, else the generic one. */
+function baseGeometry(
+  layoutId: PreviewLayoutId | null | undefined,
+  kind: PreviewLayerKind,
+  aspect: PreviewAspectRatio | undefined,
+): LayerGeometry {
+  const specific = layoutLayerGeometry(layoutId, kind, aspect)
+  if (specific) return specific
+  const d = LAYER_DEFAULTS[kind]
+  return { x: d.x, y: d.y, scale: d.scale }
+}
+
+const sameGeometry = (layer: PreviewLayer, g: LayerGeometry) =>
+  Math.abs(layer.x - g.x) < 1e-6 && Math.abs(layer.y - g.y) < 1e-6 && Math.abs(layer.scale - g.scale) < 1e-6
+
+/**
+ * Moves layers that still sit exactly on the previous aspect ratio's default
+ * geometry to the new aspect ratio's default. A layer the customer moved,
+ * scaled or otherwise edited no longer matches that default and is left alone.
+ * Design layers and layouts without per-aspect geometry are never touched.
+ */
+export function reflowLayersForAspect(
+  settings: PersonalizationPreviewSettings,
+  previousAspect: PreviewAspectRatio,
+  nextAspect: PreviewAspectRatio,
+): PersonalizationPreviewSettings {
+  if (previousAspect === nextAspect || settings.remotionDesignId) return settings
+  let changed = false
+  const layers = (Array.isArray(settings.layers) ? settings.layers : []).map((layer) => {
+    if (layer.kind === 'design') return layer
+    const was = baseGeometry(settings.layout, layer.kind, previousAspect)
+    const now = baseGeometry(settings.layout, layer.kind, nextAspect)
+    if (sameGeometry(layer, now) || !sameGeometry(layer, was)) return layer
+    changed = true
+    return { ...layer, ...now }
+  })
+  return changed ? { ...settings, layers } : settings
+}
+
+function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext, layoutId?: PreviewLayoutId, aspect?: PreviewAspectRatio): PreviewLayer {
   const overrides: Partial<PreviewLayer> = {}
   if (kind === 'headline') {
     const text = nonEmptyString(ctx?.headline)
@@ -438,7 +530,14 @@ function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext): Pr
     const text = nonEmptyString(ctx?.cta)
     if (text) overrides.text = text
   } else if (kind === 'tagline') {
-    const text = nonEmptyString(ctx?.tagline) ?? nonEmptyString(ctx?.businessName)
+    // The tagline is the branding line (the business name). When the headline
+    // already IS the business name, repeating it as own text would draw the
+    // name twice, so the tagline is left unseeded and the composition drops
+    // the duplicate fallback.
+    const name = nonEmptyString(ctx?.businessName)
+    const headlineIsName =
+      !!name && nonEmptyString(ctx?.headline)?.toLowerCase() === name.toLowerCase()
+    const text = nonEmptyString(ctx?.tagline) ?? (headlineIsName ? undefined : name)
     if (text) overrides.text = text
   } else if (kind === 'productImage') {
     const imageUrl = nonEmptyString(ctx?.productUrl)
@@ -453,7 +552,7 @@ function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext): Pr
     const imageUrl = nonEmptyString(ctx?.logoUrl)
     if (imageUrl) overrides.imageUrl = imageUrl
   }
-  return createLayer(kind, overrides)
+  return createLayer(kind, { ...layoutLayerGeometry(layoutId, kind, aspect), ...overrides })
 }
 
 /**
@@ -472,8 +571,14 @@ export function applyLayoutPreset(
   }
   const layers = kinds.map((kind) => {
     const kept = existingById.get(kind)
-    if (kept) return clampLayer({ ...kept })
-    return createSeededLayer(kind, ctx)
+    if (kept) {
+      // A kept layer the customer never moved follows the NEW layout's default
+      // geometry; one they moved or resized keeps exactly where they put it.
+      const next = baseGeometry(layoutId, kind, settings.aspectRatio)
+      const untouched = sameGeometry(kept, baseGeometry(settings.layout, kind, settings.aspectRatio))
+      return clampLayer({ ...kept, ...(untouched ? next : {}) })
+    }
+    return createSeededLayer(kind, ctx, layoutId, settings.aspectRatio)
   })
   return {
     ...settings,
@@ -513,7 +618,7 @@ export function resetLayoutToDefaults(
     if (layer && typeof layer.kind === 'string') previousByKind.set(layer.kind, layer)
   }
   const layers = kinds.map((kind) => {
-    const seeded = createSeededLayer(kind, ctx)
+    const seeded = createSeededLayer(kind, ctx, layoutId, settings.aspectRatio)
     const previous = previousByKind.get(kind)
     if (!previous) return seeded
     // Carry over brand content the seed did not provide. The seed wins when

@@ -449,6 +449,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       layer.opacity * entranceFor(layer, frame, settings.fps).opacity > 0,
   )
 
+  const drawnFallbackText = new Set<string>()
+  // Text the customer (or the layout seed) set on a layer explicitly. A layer
+  // that would only fall back to that same text is the duplicate, not it.
+  const ownTextLayers = new Set<string>(
+    visibleLayers
+      .filter((l) => (l.kind === 'headline' || l.kind === 'tagline' || l.kind === 'businessName') && ownText(l) != null)
+      .map((l) => (ownText(l) as string).trim().toLowerCase()),
+  )
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
   const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
 
@@ -481,6 +489,19 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             text.trim().toLowerCase() === brand.businessName.trim().toLowerCase()
           ) return null
           if (isImage && !imageUrl) return null
+          // A headline/tagline that falls back to the SAME text an earlier
+          // visible headline/tagline/name layer already draws (e.g. a layout
+          // whose headline and tagline both default to the business name) is
+          // a duplicate, not a second message. Own text always draws.
+          if (
+            (layer.kind === 'headline' || layer.kind === 'tagline') &&
+            ownText(layer) == null &&
+            (drawnFallbackText.has(text.trim().toLowerCase()) ||
+              ownTextLayers.has(text.trim().toLowerCase()))
+          ) return null
+          if (isText && (layer.kind === 'headline' || layer.kind === 'tagline' || layer.kind === 'businessName')) {
+            drawnFallbackText.add(text.trim().toLowerCase())
+          }
 
           const box = toBox(layer, compW, compH, isText ? text : undefined)
           const entrance = entranceFor(layer, frame, settings.fps)

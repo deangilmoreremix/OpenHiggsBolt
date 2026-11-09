@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page, type BrowserContext } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { artifactDir } from './helpers/artifactDir';
 
 /**
  * Phase 2 — the Remotion designs survive the REAL browser export.
@@ -99,7 +100,7 @@ const MAX_CONTROL_BRAND_PIXELS = 5;
 const ARTIFACT_DIR = path.join(process.cwd(), 'test-results', 'remotion-export');
 
 /** Where the per-design visual evidence is written. */
-const SCREENSHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-3');
+const SCREENSHOT_DIR = artifactDir('docs', 'screenshots', 'phase-3');
 
 /** The minimum number of designs the registry must expose (5 + 10 + 4). */
 const MIN_REGISTRY_DESIGNS = 19;

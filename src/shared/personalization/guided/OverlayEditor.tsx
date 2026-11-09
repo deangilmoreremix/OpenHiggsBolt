@@ -86,15 +86,22 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
 function isRepeatedBusinessName(layer: PreviewLayer, brand: PreviewInputProps['brand'], layers: PreviewLayer[]): boolean {
   if (layer.kind !== 'headline' && layer.kind !== 'tagline') return false
   if (typeof layer.text === 'string' && layer.text.trim()) return false
+  const text = layerText(layer, brand).trim().toLowerCase()
+  if (!text) return false
   const name = brand.businessName.trim().toLowerCase()
-  if (!name || layerText(layer, brand).trim().toLowerCase() !== name) return false
-  // Same rule as the video: a visible name layer showing the brand name itself,
-  // on screen during (some of) the same frames.
-  return layers.some((other) =>
-    other.kind === 'businessName' &&
+  // Same rules as the video: a visible name layer showing the brand name
+  // itself, or an EARLIER visible headline/tagline/name layer drawing the very
+  // same fallback text, on screen during (some of) the same frames.
+  const index = layers.indexOf(layer)
+  return layers.some((other, i) =>
+    other !== layer &&
     other.visible &&
-    layerText(other, brand).trim().toLowerCase() === name &&
-    framesOverlap(layer, other),
+    framesOverlap(layer, other) &&
+    ((other.kind === 'businessName' && !!name && text === name && layerText(other, brand).trim().toLowerCase() === name) ||
+      ((other.kind === 'headline' || other.kind === 'tagline' || other.kind === 'businessName') &&
+        layerText(other, brand).trim().toLowerCase() === text &&
+        // an earlier layer drawing the same text, or any layer with explicit own text
+        (i < index || (typeof other.text === 'string' && other.text.trim() !== '')))),
   )
 }
 

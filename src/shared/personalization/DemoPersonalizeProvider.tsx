@@ -109,6 +109,7 @@ import {
   resetPreviewDesign,
   normalizePreviewSettings,
   getCompositionDimensions,
+  reflowLayersForAspect,
 } from './preview/presets'
 import {
   applyResearchedBrandColors,
@@ -5540,11 +5541,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
       markSessionStarted()
       setPreviewSettings((prev) => {
-        const next = { ...prev, ...patch }
+        let next = { ...prev, ...patch }
         if (patch.aspectRatio) {
           const dimensions = getCompositionDimensions(patch.aspectRatio)
           next.width = dimensions.width
           next.height = dimensions.height
+          // Untouched layout layers follow the new shape's default geometry;
+          // anything the customer moved or resized is left exactly where it is.
+          next = reflowLayersForAspect(next, prev.aspectRatio, patch.aspectRatio)
         }
         return next
       })
