@@ -12,7 +12,7 @@ import path from 'node:path';
  * Browser-only: no AI, no MuAPI, no network. Artifacts go to
  * `test-results/phase5/` (git-ignored), never to tracked docs.
  */
-const OUT = path.join(process.cwd(), 'test-results', 'phase5');
+const OUT = path.join(process.cwd(), 'test-results', 'phase5', process.env.PHASE5_LABEL ?? 'current');
 const LAYOUTS = ['Business Introduction', 'Product Showcase', 'Service Promotion'];
 const RATIOS = ['16:9', '9:16', '1:1', '4:5'];
 const LONG_NAME = 'Kreindler & Kreindler LLP';
@@ -90,7 +90,7 @@ test.describe('Phase 5 — layout templates composition', () => {
           });
           return bad;
         });
-        expect(outside, `${name} @ ${ratio}: hanging outside the frame: ${outside.join(' | ')}`).toEqual([]);
+        expect.soft(outside, `${name} @ ${ratio}: hanging outside the frame: ${outside.join(' | ')}`).toEqual([]);
       }
     });
   }
