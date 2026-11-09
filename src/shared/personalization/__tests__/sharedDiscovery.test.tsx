@@ -690,15 +690,14 @@ describe('authenticated mode keeps the existing pipeline and controls', () => {
   it('uses research-business + discover-assets and renders today’s paid controls', async () => {
     const container = await mountModal({ access: 'authenticated' })
 
-    // The access mode gates the paid surface, so "Find My Brand" is offered on
-    // the free (anonymous) landing surface; the authenticated surface keeps its
-    // existing Lead Finder entry exactly as today — no panel is added or moved
-    // there. Both run through this SAME modal implementation.
-    expect(container.querySelector('#pz-find-my-brand')).toBeNull()
+    // "Find My Brand" is the single primary starting action in EVERY modal
+    // (anonymous and authenticated alike; see PersonalizationModal.tsx). The
+    // authenticated surface additionally keeps its Lead Finder entry below.
+    expect(container.querySelector('#pz-find-my-brand')).toBeTruthy()
 
     // Drive the existing Lead Finder flow: audience → chooser → search → select.
     await act(async () => {
-      fireEvent.click(screen.getByText('Client'))
+      fireEvent.click(screen.getByRole('button', { name: 'Client' }))
     })
     await flush(20)
     await act(async () => {
@@ -757,7 +756,7 @@ describe('research merges additively into the client form', () => {
   /** Authenticated Lead Finder: audience → chooser → search → select. */
   const selectAuthenticatedBusiness = async (container: HTMLElement) => {
     await act(async () => {
-      fireEvent.click(screen.getByText('Client'))
+      fireEvent.click(screen.getByRole('button', { name: 'Client' }))
     })
     await flush(20)
     await act(async () => {
