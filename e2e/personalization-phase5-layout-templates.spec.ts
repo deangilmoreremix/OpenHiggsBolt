@@ -10,9 +10,9 @@ import path from 'node:path';
  * supported aspect ratio.
  *
  * Browser-only: no AI, no MuAPI, no network. Artifacts go to
- * `test-results/phase5/` (git-ignored), never to tracked docs.
+ * `test-results/phase5/` (git-ignored) or `PHASE5_OUT_DIR`, never to tracked docs.
  */
-const OUT = path.join(process.cwd(), 'test-results', 'phase5', process.env.PHASE5_LABEL ?? 'current');
+const OUT = process.env.PHASE5_OUT_DIR ?? path.join(process.cwd(), 'test-results', 'phase5');
 const LAYOUTS = ['Business Introduction', 'Product Showcase', 'Service Promotion'];
 const RATIOS = ['16:9', '9:16', '1:1', '4:5'];
 const LONG_NAME = 'Kreindler & Kreindler LLP';
