@@ -78,6 +78,18 @@ vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn().mockResolvedValue('https://uploaded.example.com/asset.png'),
 }))
 
+// The "asset summaries… still work" test applies an image edit, which uploads
+// through the durable-storage service. With no storage backend that rejects
+// (correct in the app, where the editor modal catches it); here the upload is
+// stubbed because this file tests discovery, not storage. See
+// editedAssetUploadFailure.test.tsx for the failure path.
+vi.mock('../assetUploadService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../assetUploadService')>()),
+  uploadPersonalizationAsset: vi.fn().mockResolvedValue({
+    url: 'https://uploaded.example.com/asset.png',
+  }),
+}))
+
 URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
 URL.revokeObjectURL = vi.fn()
 
@@ -716,27 +728,31 @@ describe('authenticated mode keeps the existing pipeline and controls', () => {
     })
     await flush(30)
 
-    // Authenticated selection is exactly today's behaviour: select only.
     await act(async () => {
       fireEvent.click(screen.getByText('Sunset Realty'))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/research-business').length).toBe(0)
-    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(0)
-    expect(ctx().clientForm.businessName).toBe('Sunset Realty')
 
-    // The manual research + discovery steps use the authenticated endpoints.
+    // Selecting a business runs the automated workflow in EVERY mode (commit
+    // 071b990, PersonalizationModal.handleSelectBusiness): populate the form,
+    // research the business and discover its assets in one run — on the
+    // authenticated endpoints, once each.
+    expect(ctx().clientForm.businessName).toBe('Sunset Realty')
+    expect(requestedUrls('/api/personalization/research-business').length).toBe(1)
+    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(1)
+
+    // The manual controls remain and RE-RUN the same authenticated steps.
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      fireEvent.click(screen.getByText('Research Complete'))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/research-business').length).toBe(1)
+    expect(requestedUrls('/api/personalization/research-business').length).toBe(2)
 
     await act(async () => {
       fireEvent.click(screen.getByText('Find Business Assets'))
     })
     await flush(30)
-    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(1)
+    expect(requestedUrls('/api/personalization/discover-assets').length).toBe(2)
     // The free endpoint is never used on the authenticated surface.
     expect(requestedUrls('/api/demo/discover').length).toBe(0)
 
@@ -782,7 +798,9 @@ describe('research merges additively into the client form', () => {
   it('never overwrites user-edited fields and never clobbers with missing values', async () => {
     const container = await mountModal({ access: 'authenticated' })
     await selectAuthenticatedBusiness(container)
+    // The automated workflow already researched and filled the form.
     expect(ctx().clientForm.businessName).toBe('Sunset Realty')
+    expect(ctx().businessResearch.status).toBe('done')
 
     // The visitor edits the auto-populated form, including the website.
     // (The Phone field exists in both the profile and the CTA section, so the
@@ -798,10 +816,10 @@ describe('research merges additively into the client form', () => {
     })
     await flush(20)
 
-    // Research succeeds: a different canonical URL, a description and a
-    // different phone arrive.
+    // Research runs AGAIN after the edits (the automated run came first): a
+    // different canonical URL, a description and a different phone arrive.
     await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
+      fireEvent.click(screen.getByText('Research Complete'))
     })
     await flush(30)
     expect(ctx().businessResearch.status).toBe('done')
@@ -826,11 +844,9 @@ describe('research merges additively into the client form', () => {
         brandDescription: 'Visitor-written description.',
       })
     })
+    // Selecting the business runs the automated research, which must merge
+    // additively into the pre-filled form.
     await selectAuthenticatedBusiness(container)
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
-    })
     await flush(30)
 
     // Nothing was clobbered: the visitor's website and description remain…
@@ -844,14 +860,8 @@ describe('research merges additively into the client form', () => {
     const container = await mountModal({ access: 'authenticated' })
     await selectAuthenticatedBusiness(container)
 
-    // First discovery run fills the reviewable list with business A's assets.
-    await act(async () => {
-      fireEvent.click(screen.getByText('Research Business'))
-    })
-    await flush(30)
-    await act(async () => {
-      fireEvent.click(screen.getByText('Find Business Assets'))
-    })
+    // Selecting business A already ran research + discovery automatically and
+    // filled the reviewable list with A's assets.
     await flush(30)
     expect(ctx().discoveredAssets.length).toBeGreaterThan(0)
     expect(ctx().discoveryStatus).toBe('reviewing')
