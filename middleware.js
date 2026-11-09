@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { shouldBypassClerkForE2e } from './lib/e2eAuthBypass.js';
 
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
@@ -42,7 +43,7 @@ function applyResponseHeaders(response, locale) {
   return response;
 }
 
-export default clerkMiddleware(async (auth, request) => {
+const clerkHandler = clerkMiddleware(async (auth, request) => {
   // ── Production-env guard ──────────────────────────────────────────────
   // Prevent the app from running in production mode with test/development
   // Clerk keys. This stops the "development mode" banner from appearing
@@ -123,6 +124,18 @@ export default clerkMiddleware(async (auth, request) => {
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return applyResponseHeaders(response, locale);
 });
+
+// Local-only E2E bypass: must run BEFORE clerkMiddleware, because Clerk issues
+// its handshake redirect before any handler code. It only fires when every
+// condition in lib/e2eAuthBypass.js holds (development + E2E_TEST_AUTH_BYPASS
+// + cookie value + loopback host + no forwarding headers + allow-listed page).
+// See docs/e2e-auth-bypass.md. Never active in production.
+export default function middleware(request, event) {
+  if (shouldBypassClerkForE2e(request)) {
+    return applyResponseHeaders(NextResponse.next(), localeFromPathname());
+  }
+  return clerkHandler(request, event);
+}
 
 export const config = {
   matcher: [
