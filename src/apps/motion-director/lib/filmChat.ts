@@ -326,10 +326,21 @@ export function inkPressPlan(opts: {
   if (story && (opts.pictures ?? 0) >= 2 && shots.length + 5 <= PLAN_LIMITS.maxScenes && target >= (shots.length + 5) * PLAN_LIMITS.minSceneSec) {
     scenes.push({ kind: 'shot', recipeId: 'brand/people-gallery', durationSec: 4, headline: fit(site?.headings?.[0], PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'The people and pictures', action: 'the site\'s own pictures, one after another', asset: 'your images' });
   }
+  // The copy is per shot category, so two shots of one category would say the same line twice (upstream: no repeated
+  // tagline). A line already on screen gives way to the site's own heading for that shot, else the category's other line.
+  const onScreen = new Set<string>();
   shots.forEach((shot, i) => {
-    const scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
+    let scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
     const heading = fit(site?.headings?.[i], PLAN_LIMITS.captionChars);
-    scenes.push(heading ? { ...scene, caption: heading } : scene);
+    if (scene.headline && onScreen.has(scene.headline)) {
+      const own = fit(site?.headings?.[i], PLAN_LIMITS.headlineChars);
+      const useOwn = Boolean(own) && !onScreen.has(own);
+      // The category's second line stays as the caption when the headline is now the site's heading (never the same words twice).
+      scene = { ...scene, headline: useOwn ? own : scene.caption && !onScreen.has(scene.caption) ? scene.caption : '', caption: useOwn ? scene.caption : '' };
+    }
+    if (scene.headline) onScreen.add(scene.headline);
+    // The site's heading is the caption, unless it is already this shot's headline.
+    scenes.push(heading && heading !== scene.headline ? { ...scene, caption: heading } : scene);
   });
   if (withTitles) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Try *${name}* today.`, caption: fit(site?.ctas?.[0], PLAN_LIMITS.captionChars), transition: 'cut' });
