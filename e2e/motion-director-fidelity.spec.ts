@@ -19,6 +19,8 @@ const SCALE = 0.5;
 
 interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'CrashImpactReal', frames: { entry: 12, scan: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
+  { stem: 'CrashZoomReal', frames: { entry: 10, lock: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
   { stem: 'RowEmbed', rows: true, frames: { entry: 4, mid: 30, peak: 52, settled: 66 }, sampleMain: 2, customMain: 2, heroFrames: ['peak', 'settled'] },
   { stem: 'DeckDealFlyin', kind: 'grid', frames: { entry: 4, deal: 60, peak: 100, settled: 145 }, sampleMain: 0, customMain: 0, heroFrames: [] },
   { stem: 'SpotlightHeroCard', frames: { entry: 4, rise: 62, peak: 95, settled: 168 }, sampleMain: 3, customMain: 1, heroFrames: ['rise', 'peak', 'settled'] },
