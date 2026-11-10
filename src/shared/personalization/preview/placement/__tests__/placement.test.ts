@@ -224,3 +224,28 @@ describe('frame sampler (pure parts)', () => {
     expect(lumaDifference(a.luma, b.luma)).toBeCloseTo(0.8, 5)
   })
 })
+
+describe('source-aware review items', () => {
+  const okZones = [zone(0.45, 0.05, 0.1, 0.1)]
+  it('unknown baked-in graphics and unverified rights are Review Required, never Ready', () => {
+    const q = evaluateLayoutQuality(build(settingsFor('product-showcase'), {
+      zones: okZones, samples: [flat(0.05)],
+      source: { rights: 'unverified', rightsNote: 'No licence record.', bakedStatus: 'unknown' },
+    }))
+    expect(q.status).toBe('review-required')
+    expect(q.issues.map((i) => i.code).sort()).toEqual(['baked-in-unknown', 'rights-unverified'])
+    expect(q.blocksExport).toBe(false) // review items never block by themselves
+  })
+  it('a third-party reference clip is flagged; a licensed, reviewed clip is Ready', () => {
+    const third = evaluateLayoutQuality(build(settingsFor('product-showcase'), {
+      zones: okZones, samples: [flat(0.05)],
+      source: { rights: 'third-party-reference', rightsNote: 'Third-party brand clip.', bakedStatus: 'known' },
+    }))
+    expect(third.issues.map((i) => i.code)).toEqual(['rights-unverified'])
+    const ok = evaluateLayoutQuality(build(settingsFor('product-showcase'), {
+      zones: okZones, samples: [flat(0.05)],
+      source: { rights: 'licensed', rightsNote: '', bakedStatus: 'known' },
+    }))
+    expect(ok.status).toBe('ready')
+  })
+})

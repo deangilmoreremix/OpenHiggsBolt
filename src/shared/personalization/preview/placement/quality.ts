@@ -150,6 +150,16 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
       message: 'Text readability could not be measured on this footage. Check it in the preview.' })
   }
 
+  if (input.source) {
+    if (input.source.bakedStatus === 'unknown') {
+      issues.push({ code: 'baked-in-unknown', severity: 'review', fixable: false,
+        message: 'Nobody has checked this video for text, logos or watermarks already baked into it. Overlays cannot remove them — check the preview.' })
+    }
+    if (input.source.rights === 'unverified' || input.source.rights === 'third-party-reference') {
+      issues.push({ code: 'rights-unverified', severity: 'review', fixable: false, message: input.source.rightsNote })
+    }
+  }
+
   const hasCritical = issues.some((i) => i.severity === 'critical')
   const hasAdjust = issues.some((i) => i.severity === 'adjust')
   const hasReview = issues.some((i) => i.severity === 'review')

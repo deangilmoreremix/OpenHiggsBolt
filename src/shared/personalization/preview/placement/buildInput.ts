@@ -16,6 +16,7 @@ export function buildPlacementInput(args: {
   samples?: LumaSample[]
   /** Measured natural aspect ratio (w/h) per image URL. */
   imageAspects?: Record<string, number>
+  source?: PlacementInput['source']
   designFacts?: (designId: string) => { id: string; category?: string; supported: boolean } | undefined
 }): PlacementInput {
   const { settings, brand } = args
@@ -27,6 +28,7 @@ export function buildPlacementInput(args: {
     zones: args.zones ?? settings.protectedZones ?? [],
     samples: args.samples ?? [],
     textColor: settings.brandColors.text,
+    source: args.source,
     layers: settings.layers.map((layer) => {
       const facts = layer.kind === 'design' && layer.designId ? args.designFacts?.(layer.designId) : undefined
       const intended = layoutDefaultGeometry(settings.layout, layer.kind, settings.aspectRatio)
