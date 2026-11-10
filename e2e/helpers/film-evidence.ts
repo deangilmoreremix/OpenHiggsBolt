@@ -172,13 +172,13 @@ export async function sampleFrame(page: Page, frame: number): Promise<{ text: st
 export interface ShotEvidence { card: string; frame: number; suppliedShare: Record<string, number>; branding: string[]; sampleUi: string[]; variance: number }
 
 /** For each recipe shot, two settled frames: the supplied-colour share, demo strings seen, and a flatness measure. */
-export async function collectShotEvidence(page: Page, info: FilmInfo, testInfo: TestInfo, tag: string): Promise<ShotEvidence[]> {
+export async function collectShotEvidence(page: Page, info: FilmInfo, testInfo: TestInfo, tag: string, fractions: number[] = [0.45, 0.85]): Promise<ShotEvidence[]> {
   const out: ShotEvidence[] = [];
   const dir = testInfo.outputPath(tag);
   fs.mkdirSync(dir, { recursive: true });
   let i = 0;
   for (const shot of info.shots.filter((s) => s.cardId.startsWith('demo:'))) {
-    for (const frac of [0.45, 0.85]) {
+    for (const frac of fractions) {
       const frame = Math.min(info.endFrame - 1, Math.round(shot.start + shot.duration * frac));
       const s = await sampleFrame(page, frame);
       fs.writeFileSync(path.join(dir, `${String(++i).padStart(2, '0')}-${shot.cardId.replace(/[^\w-]+/g, '_')}-f${frame}.png`), s.png);

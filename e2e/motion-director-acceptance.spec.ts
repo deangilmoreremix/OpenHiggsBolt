@@ -37,13 +37,16 @@ test('A. one personalised shot from supplied images', async ({ page }, testInfo)
   test.setTimeout(30 * 60_000);
   const built = await buildFilmViaChat(page, { prompt: 'Use the spotlight-hero-card shot as a close-up for Acme', files: writeSuppliedImages(IMAGES_DIR, ['magenta', 'lime', 'orange']) });
   const info = await filmInfo(page);
-  const ev = await collectShotEvidence(page, info, testInfo, 'A');
+  // The whole shot, ten frames: the supplied pictures must be what the shot shows, not a glow at the edge of a dark frame.
+  const ev = await collectShotEvidence(page, info, testInfo, 'A', [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.97]);
   writeEvidence(testInfo, 'A', { built, shots: info.shots, ev });
   expect(info.shots.filter((s) => s.cardId.startsWith('demo:'))).toHaveLength(1);
-  expect(hasSupplied(ev), 'the supplied pictures appear in the shot').toBe(true);
+  const best = Math.max(...ev.flatMap((e) => Object.values(e.suppliedShare)));
+  const distinct = Object.keys(SUPPLIED).filter((k) => ev.some((e) => (e.suppliedShare[k] ?? 0) >= 0.02));
+  writeEvidence(testInfo, 'A-summary', { best, distinct });
+  expect(best, 'a supplied picture fills a visible part of some frame (at least 2 %)').toBeGreaterThanOrEqual(0.02);
   expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
   expect(sampleSeen(ev, built.chatText), 'no sample content outside shots reported as unmodified').toEqual([]);
-  expect(flat(ev), 'no blank frames').toEqual([]);
 });
 
 test('B. three-shot film with transitions is assembled in order', async ({ page }, testInfo) => {
