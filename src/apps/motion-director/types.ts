@@ -56,6 +56,8 @@ export interface ProjectData {
   brand?: BrandInput;
   /** The design spec the film was built from (brief, tokens, storyboard rows, data rules). */
   spec?: DesignSpec;
+  /** How the film was produced, stage by stage (lib/productionRun): what finished, what did not, what review said. */
+  run?: import('./lib/productionRun').ProductionRun;
   tracks: TrackData[];
 }
 
