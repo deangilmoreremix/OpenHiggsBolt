@@ -1,0 +1,179 @@
+{
+ "run": {
+  "version": 1,
+  "id": "run_mwb997ko",
+  "mode": "autonomous",
+  "request": "Make a 20-second luxury real estate video with these three photos of a beachfront home for Seaside Homes. Cinematic camera movement, end with a call to book a tour.",
+  "createdAt": 1794349319064,
+  "updatedAt": 1794349324973,
+  "stages": {
+   "brief": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349319064,
+    "endedAt": 1794349319066,
+    "summary": {
+     "kind": "real-estate",
+     "features": 0,
+     "missing": []
+    }
+   },
+   "direction": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349319066,
+    "endedAt": 1794349319141,
+    "summary": {
+     "source": "director"
+    }
+   },
+   "mapping": {
+    "status": "completed",
+    "attempts": 2,
+    "startedAt": 1794349319406,
+    "endedAt": 1794349319406,
+    "summary": {
+     "rows": 1
+    }
+   },
+   "storyboard": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349319406,
+    "endedAt": 1794349319406,
+    "summary": {
+     "release": 0
+    }
+   },
+   "assets": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349319406,
+    "endedAt": 1794349319406
+   },
+   "build": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349319811,
+    "endedAt": 1794349323219,
+    "summary": {
+     "adapted": 0,
+     "parameterized": 2,
+     "unmodified": 0
+    }
+   },
+   "sound": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349323220,
+    "endedAt": 1794349323220,
+    "summary": {
+     "cues": 7,
+     "cuts": 3,
+     "cutsWithSound": 3,
+     "music": "house-vibez",
+     "silentAt": []
+    }
+   },
+   "qa": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794349323220,
+    "endedAt": 1794349324973,
+    "summary": {
+     "warnings": 0
+    }
+   },
+   "review": {
+    "status": "pending",
+    "attempts": 0
+   }
+  },
+  "scenes": [
+   {
+    "n": 1,
+    "recipeId": "",
+    "component": "",
+    "needs": "text",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "title text"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "note": "title or brand scene"
+    }
+   },
+   {
+    "n": 2,
+    "recipeId": "ui-entrance/product-card-progressive-assemble/ProductCardProgressiveAssemble",
+    "component": "ProductCardProgressiveAssemble",
+    "needs": "images",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "3 image(s)"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "frames": [
+      103,
+      204
+     ],
+     "note": "the person's content changes 15.6% of the shot's frame"
+    }
+   },
+   {
+    "n": 3,
+    "recipeId": "camera/depth-layer-moves/MultiplaneReal",
+    "component": "MultiplaneReal",
+    "needs": "images",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "3 image(s)"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "frames": [
+      99,
+      195
+     ],
+     "note": "the person's content changes 31.9% of the shot's frame"
+    }
+   },
+   {
+    "n": 4,
+    "recipeId": "",
+    "component": "",
+    "needs": "text",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "title text"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "note": "title or brand scene"
+    }
+   }
+  ],
+  "review": {
+   "ran": false,
+   "state": "not-run",
+   "findings": []
+  },
+  "qaIssues": []
+ },
+ "frame": 415,
+ "photosSeen": 3
+}

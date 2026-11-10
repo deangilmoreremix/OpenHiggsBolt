@@ -555,8 +555,10 @@ export async function buildFilmProject(
     // reads pictures IS tried on uploaded images, with no website).
     const eligible = (clip: ClipData) => {
       const stem = clip.cardId.startsWith('demo:') ? clip.cardId.slice(5) : '';
-      const { need, part } = needsOf(stem);
-      return need !== 'abstract' && need !== 'none' && satisfies(need, material, part).ok;
+      // Adaptation rewrites a shot's source for the page it was given, so it can handle geometry the stock props cannot: a page-geometry
+      // shot is eligible whenever there is a captured page at all (the geometry part is only required for the unadapted props path).
+      const { need } = needsOf(stem);
+      return need !== 'abstract' && need !== 'none' && satisfies(need, material).ok;
     };
     const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture?.brand?.fontFamily ?? undefined };
     const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content, ...(opts.hints ? { hints: opts.hints } : {}) };
