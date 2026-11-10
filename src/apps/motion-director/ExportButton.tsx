@@ -90,7 +90,9 @@ const ExportButton: React.FC = () => {
     // Generate a fake ID for tracking (not really needed, but we keep the state structure)
     const id = Math.random().toString(36).substring(2, 9);
     setJob({ id, status: 'queued', progress: 0, filename: project.name });
-    abortControllerRef.current = new AbortController();
+    // Captured per run: stopRendering() nulls the shared ref, so the outcome below must read this local one.
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     // The render runs in this tab: closing or reloading it cancels the export.
     const releaseGuard = guardTabWhileRendering();
 
@@ -102,22 +104,22 @@ const ExportButton: React.FC = () => {
         audioCodec: canRenderResult.audioCodec,
         scale: draft ? 2 / 3 : 1,
         onProgress: (progress, info) => {
-          if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          if (!controller.signal.aborted) {
             setJob((prev) => (prev ? { ...prev, progress, etaMs: info?.etaMs ?? null, status: 'running' } : null));
           }
         },
-        signal: abortControllerRef.current.signal,
+        signal: controller.signal,
       });
 
-      // If we get here, the render completed successfully
-      if (!abortControllerRef.current?.signal.aborted) {
+      // A render that resolves after the user cancelled is discarded, not marked done.
+      if (!controller.signal.aborted) {
         setJob((prev) => (prev ? { ...prev, status: 'done', progress: 1, blob: result.blob } : null));
       }
     } catch (e) {
-      // If the render was aborted, we don't show an error
-      if (abortControllerRef.current?.signal.aborted) {
+      // A cancelled render is not a failure: no alert, just the cancelled state.
+      if (controller.signal.aborted) {
         console.log('[motion-studio:export] cancelled by user');
-        setJob((prev) => (prev ? { ...prev, status: 'error', error: 'Render cancelled.' } : null));
+        setJob((prev) => (prev ? { ...prev, status: 'error', error: t('export.cancelled') } : null));
       } else {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('[motion-studio:export] render failed', e);
@@ -126,7 +128,7 @@ const ExportButton: React.FC = () => {
       }
     } finally {
       releaseGuard();
-      abortControllerRef.current = null;
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
   };
 

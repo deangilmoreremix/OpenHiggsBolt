@@ -632,7 +632,8 @@ export function useFilmDirector(opts: {
       setStage('film');
       if (!frames.checked && !frames.failed.length) mark('qa', qa.ok ? 'done' : 'error', qa.ok ? 'Structure checked' : `${qa.issues.length} issue(s)`);
       else if (!qa.ok) mark('qa', 'error', `${qa.issues.length} issue(s)`);
-      mark('deliver', 'done', 'MP4 · Motion Workbench');
+      // Built is not delivered: the step turns done when an MP4 has actually been rendered (markDelivered).
+      mark('deliver', 'todo', 'Render the MP4 to finish');
       optsRef.current.onBuilt?.(built);
       say(
         'assistant',
@@ -668,8 +669,10 @@ export function useFilmDirector(opts: {
           const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
           say('assistant', [...finalReviewLines(report), ...notes].join('\n'));
         })
-        .catch(() => {
-          /* no key or no answer: the program's checks above stand */
+        .catch((error) => {
+          // No key or no answer: the program's checks above stand, but say the review did not happen.
+          if (!live()) return;
+          log(`Final review skipped: ${error instanceof Error ? error.message : 'no answer'}`, 'error');
         });
     } catch (error) {
       if (!live()) return;
@@ -679,6 +682,9 @@ export function useFilmDirector(opts: {
       say('assistant', `Building the film failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
   }, [log, mark, say, storyboard]);
+
+  /** An MP4 was rendered from the film: only now is it delivered. */
+  const markDelivered = useCallback(() => mark('deliver', 'done', 'MP4 rendered'), [mark]);
 
   const revise = useCallback(() => {
     say('assistant', 'What should change? Name shots to swap in (e.g. “use crash-zoom-punch instead”), a new length, or new copy.');
@@ -721,7 +727,7 @@ export function useFilmDirector(opts: {
     setFrames([]);
   }, [setFrames]);
 
-  return { messages, stage, activity, steps, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, stop, reset };
+  return { messages, stage, activity, steps, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

@@ -60,7 +60,7 @@ const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }
 };
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
-export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
+export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string; onRendered?: () => void }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench', onRendered }) => {
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
   const [fasterExportHint] = useState(() => isChromiumBrowser() && !supportsHtmlInCanvas());
   const abort = useRef<AbortController | null>(null);
@@ -89,6 +89,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
       setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
+      onRendered?.();
       // Measure the sound of the file that was just made (the preview cannot show clipping).
       void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
     } catch (error) {
@@ -381,7 +382,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           rejectLabel="Revise"
         />
       )}
-      {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} />}
+      {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} onRendered={director.markDelivered} />}
     </div>
   );
 };
