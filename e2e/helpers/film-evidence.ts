@@ -240,3 +240,34 @@ export async function stubCompleteCapture(page: Page) {
     }),
   );
 }
+
+/** A PNG decoded at its own size (no scaling). */
+export function rawRgbFull(png: Buffer): { w: number; h: number; data: Buffer } {
+  const w = png.readUInt32BE(16);
+  const h = png.readUInt32BE(20);
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', 'pipe:0', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'], { input: png, maxBuffer: 256 * 1024 * 1024 });
+  if (r.status !== 0) throw new Error(`ffmpeg could not decode the frame: ${r.stderr?.toString().slice(0, 200)}`);
+  return { w, h, data: r.stdout };
+}
+
+/** Bounding box, centroid and pixel count of the pixels near a colour, as shares of the frame (the card's footprint in the shot). */
+export function colorFootprint(img: { w: number; h: number; data: Buffer }, rgb: Rgb, tol = 48) {
+  let n = 0, sx = 0, sy = 0, x0 = img.w, y0 = img.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    const i = (y * img.w + x) * 3;
+    if (Math.abs(img.data[i] - rgb[0]) <= tol && Math.abs(img.data[i + 1] - rgb[1]) <= tol && Math.abs(img.data[i + 2] - rgb[2]) <= tol) {
+      n++; sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  if (!n) return { n: 0, share: 0, cx: NaN, cy: NaN, w: 0, h: 0 };
+  return { n, share: n / (img.w * img.h), cx: sx / n / img.w, cy: sy / n / img.h, w: (x1 - x0 + 1) / img.w, h: (y1 - y0 + 1) / img.h };
+}
+
+/** Share of pixels that differ by more than `tol` in any channel between two same-size frames. */
+export function diffShare(a: { w: number; h: number; data: Buffer }, b: { w: number; h: number; data: Buffer }, tol = 6): number {
+  if (a.w !== b.w || a.h !== b.h) return 1;
+  let d = 0;
+  for (let i = 0; i < a.data.length; i += 3) if (Math.max(Math.abs(a.data[i] - b.data[i]), Math.abs(a.data[i + 1] - b.data[i + 1]), Math.abs(a.data[i + 2] - b.data[i + 2])) > tol) d++;
+  return d / (a.data.length / 3);
+}

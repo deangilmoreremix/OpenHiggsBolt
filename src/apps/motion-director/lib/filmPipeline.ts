@@ -18,6 +18,7 @@ import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
 import { personalisesWithSite, captureQuality } from './captureQuality';
+import { layoutFromCapture } from './customerLayout';
 import { checkAssembly } from './filmAssembly';
 import type { AdaptationOutcome } from './personalization';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
@@ -427,6 +428,9 @@ export async function buildFilmProject(
         // Where each section of the home page starts, so the insets can show them one at a time.
         sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),
         pageH: opts.capture.pages?.[0]?.layout?.pageH ?? opts.capture.page.height,
+        cardCrops: opts.capture.crops,
+        emptyPlate: opts.capture.emptyPlate ?? null,
+        ...(captureQuality(opts.capture) === 'complete' && layoutFromCapture(opts.capture).usable ? { liveLayout: layoutFromCapture(opts.capture).layout } : {}),
         sectionNames: opts.capture.content?.headings ?? [],
         nav: opts.capture.content?.nav ?? [],
         ctas: opts.capture.content?.ctas ?? [],

@@ -1,0 +1,54 @@
+import { SAMPLE_LAYOUT, type LiveLayout } from '../demosrc/_textures/LiveLayoutContext';
+import type { SiteCapture } from './directorClient';
+
+/**
+ * The captured page's geometry in the shape the screenshot recipes read (demosrc/_textures/live-layout.json).
+ *
+ * What a capture really contains (src/server/browserDiscovery): per route, `layout = { pageH, sections, cards }` in page CSS px
+ * on a 1920-wide page, with `cards[i]` <-> `crops[i]` for the photographed page. Whatever a recipe needs that the
+ * capture does not contain stays the sample's, and `source` says which is which, so a recipe is never reported as
+ * personalised for geometry it did not get.
+ */
+export interface CustomerLayoutResult {
+  layout: LiveLayout;
+  /** How many of the page's cards were found (the sample has 10). */
+  cards: number;
+  /** Recipes can only land on real cards when there are enough of them. */
+  usable: boolean;
+}
+
+/** A page needs at least this many card-like blocks for the card shots to have something real to land on. */
+export const MIN_CARDS = 3;
+
+const r = (v: number) => Math.round(v * 100) / 100;
+
+export function layoutFromCapture(capture: Pick<SiteCapture, 'pages' | 'page' | 'emptyPlate' | 'brand'> | null | undefined): CustomerLayoutResult {
+  const home = capture?.pages?.[0]?.layout;
+  const cards = (home?.cards ?? []).filter((c) => c.width >= 120 && c.height >= 60).slice(0, 10);
+  const mapped: string[] = [];
+  const sample: string[] = ['detail', 'papers', 'wbr', 'float'];
+  const layout: LiveLayout = JSON.parse(JSON.stringify(SAMPLE_LAYOUT));
+  if (home && home.pageH > 0) {
+    layout.projects.pageH = Math.round(home.pageH);
+    mapped.push('projects.pageH');
+  } else sample.push('projects.pageH');
+  if (cards.length >= MIN_CARDS) {
+    // Reading order (rows then columns); each card keeps the capture index its crop has.
+    const ordered = cards.map((c, i) => ({ c, i })).sort((a, b) => a.c.y - b.c.y || a.c.x - b.c.x);
+    layout.projects.cards = ordered.map(({ c, i }) => ({ file: `crop:${i}`, x: r(c.x), y: r(c.y), w: r(c.width), h: r(c.height), title: '' }));
+    // The hero is the biggest card among the first screens' worth: it is the one a shot makes the star.
+    const early = layout.projects.cards.map((c, k) => ({ k, area: c.w * c.h, near: c.y < Math.max(1200, layout.projects.pageH * 0.6) })).filter((c) => c.near);
+    layout.projects.main = (early.length ? early : layout.projects.cards.map((c, k) => ({ k, area: c.w * c.h }))).sort((a, b) => b.area - a.area)[0].k;
+    mapped.push('projects.cards');
+  } else sample.push('projects.cards');
+  const sections = (home?.sections ?? []).slice(0, 5);
+  if (sections.length) {
+    layout.projects.sections = sections.map((s) => ({ text: '', x: r(s.x), y: r(s.y), w: r(s.width), h: r(s.height) })) as unknown as typeof layout.projects.sections;
+    mapped.push('projects.sections');
+  }
+  // The empty plate is the page with its cards hidden: it is what shows beneath a lifted or flying card.
+  if (capture?.emptyPlate) mapped.push('plate');
+  if (capture?.brand?.background) layout.projects.bg = capture.brand.background;
+  layout.source = { mapped, sample };
+  return { layout, cards: cards.length, usable: cards.length >= MIN_CARDS };
+}

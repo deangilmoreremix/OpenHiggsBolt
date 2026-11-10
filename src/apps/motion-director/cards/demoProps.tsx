@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, cancelRender, continueRender, delayRender, useCurrentFrame } from "remotion";
 import { applyTextOverrides, parseTextMap } from "../lib/textOverrides";
 import { LiveTextureContext, textureOverrides } from "../demosrc/_fixtures/liveTexture";
+import { LiveLayoutContext, type LiveLayout } from "../demosrc/_textures/LiveLayoutContext";
 import { adaptedNow, prepareAdapted } from "../lib/adaptedRuntime";
 import { AdaptedBoundary, type AdaptedComponent } from "../lib/shotAdapter";
 import { resolvePalette } from "../lib/palette";
@@ -32,6 +33,12 @@ interface DemoOverlayProps {
   screens?: string[];
   /** Captured element crops (cards) for the same shots. */
   crops?: string[];
+  /** The exact crop of each card of `liveLayout`, in capture order (crop i is the picture of layout card i). */
+  cardCrops?: string[];
+  /** The page with its cards hidden (fly-in shots show it beneath the flying cards). */
+  emptyPlate?: string;
+  /** The customer's page geometry in the sample layout's shape (lib/customerLayout); absent = the sample's. */
+  liveLayout?: unknown;
   /** Words the recipe draws -> the words to draw instead (see lib/textOverrides). */
   texts?: unknown;
   /** The recipe's source as the shot-adapter agent rewrote it for this site (see lib/adaptLoop). */
@@ -89,6 +96,9 @@ export const withDemoProps = (
       tintOpacity = 0,
       screens,
       crops,
+      cardCrops,
+      emptyPlate,
+      liveLayout,
       texts,
     } = props as DemoOverlayProps;
     const { __theme, __palette, palette } = props as DemoOverlayProps;
@@ -111,9 +121,10 @@ export const withDemoProps = (
       if (painter) applyPaint(innerRef.current, painter);
     });
     const textures = React.useMemo(
-      () => textureOverrides(Array.isArray(screens) ? screens : [], Array.isArray(crops) ? crops : []),
-      [screens, crops],
+      () => textureOverrides(Array.isArray(screens) ? screens : [], Array.isArray(crops) ? crops : [], { emptyPlate, cardCrops: Array.isArray(cardCrops) ? cardCrops : [] }),
+      [screens, crops, emptyPlate, cardCrops],
     );
+    const layoutValue = liveLayout && typeof liveLayout === "object" ? (liveLayout as LiveLayout) : null;
     const size = Math.max(8, num(titleSize, 64));
     const wash = Math.min(1, Math.max(0, num(tintOpacity, 0)));
     const label = String(title ?? "").trim();
@@ -121,6 +132,7 @@ export const withDemoProps = (
     return (
       <AbsoluteFill>
         <TextMapContext.Provider value={textMap}>
+        <LiveLayoutContext.Provider value={layoutValue}>
         <LiveTextureContext.Provider value={textures}>
           {hasTexts ? (
             <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
@@ -132,6 +144,7 @@ export const withDemoProps = (
             <Inner />
           )}
         </LiveTextureContext.Provider>
+        </LiveLayoutContext.Provider>
         </TextMapContext.Provider>
         {wash > 0 ? (
           <AbsoluteFill style={{ background: tint, opacity: wash, mixBlendMode: "overlay" }} />

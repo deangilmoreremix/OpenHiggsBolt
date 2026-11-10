@@ -34,6 +34,12 @@ export interface FilmCapture {
   /** Where the page's sections start (CSS px from the top of `screens[0]`) and its height; the insets show them one by one. */
   sections?: number[];
   pageH?: number;
+  /** The exact crop of each captured card (crop i is the picture of layout card i), kept apart from the film's mixed picture list. */
+  cardCrops?: string[];
+  /** The page with its cards hidden. */
+  emptyPlate?: string | null;
+  /** The customer's page geometry in the sample layout's shape (lib/customerLayout); only set when the page had enough real cards. */
+  liveLayout?: unknown;
   /** Section headings, best effort in page order, used as the inset labels. */
   sectionNames?: string[];
   /** The site's menu entries and calls to action: the nodes of the hub and the closing line. */
@@ -64,6 +70,8 @@ export interface FilmMusic {
 }
 
 const FPS = 30;
+/** Recipes that read the page's geometry (their layout comes from the capture, not the sample site). Grows as each is repaired and proven. */
+export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(['SpotlightHeroCard']);
 const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 /**
@@ -387,7 +395,7 @@ const INSET_PAGE_H = 1200;
       const cardId = template ? motionCardId(template) : '';
       const card = CARDS[cardId];
       if (!template || !card) return; // unreachable: undrawable scenes took the title-card branch above
-      const usesCapture = isProductTextureShot(template.componentName) && (screens.length > 0 || crops.length > 0);
+      const usesCapture = isProductTextureShot(template.componentName) && (screens.length > 0 || crops.length > 0 || Boolean(opts.capture?.liveLayout));
       shots.push(
         // Shots carry their own typography; the headline goes in the caption
         // strip rather than over the shot.
@@ -395,6 +403,8 @@ const INSET_PAGE_H = 1200;
           accent: palette.accent,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
           // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
+          // Shots that read the page's geometry get the customer's own (the sample's boxes would put the pictures in the wrong places).
+          ...(usesCapture && opts.capture?.liveLayout && LAYOUT_RECIPES.has(template.componentName) ? { liveLayout: opts.capture.liveLayout, cardCrops: opts.capture.cardCrops ?? [], ...(opts.capture.emptyPlate ? { emptyPlate: opts.capture.emptyPlate } : {}) } : {}),
           ...(!usesCapture && opts.capture?.scenes?.[i]?.crops.length ? { scenePictures: { screens: opts.capture.scenes[i]!.screens.slice(0, 3), crops: opts.capture.scenes[i]!.crops } } : {}),
           ...(usesCapture
             ? opts.capture?.scenes?.[i]?.crops.length

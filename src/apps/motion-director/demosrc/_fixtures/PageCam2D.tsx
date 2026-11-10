@@ -13,6 +13,29 @@
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { liveTexturePath } from './liveTexture';
+import { isWebRendering } from './ExportMode';
+
+/**
+ * The 3D camera stage's transform. In the browser (the preview) it is the shot as authored: CSS `zoom` (layout-level
+ * magnification, so text stays sharp) with the camera transform in zoomed units. The web renderer used for the MP4 export
+ * draws `zoom` together with 3D transforms wrongly (the page lands off-screen), so while it renders, the SAME mapping is
+ * written without `zoom`: scale3d(zoom) outermost, the camera transform inside it, origin at 0 0. Screen position, tilt
+ * and perspective come out identical in the browser's own geometry; only how it is spelled changes.
+ */
+export const cameraStageStyle = (cam: { cx: number; cy: number; zoom: number; rotX: number; rotY: number; rotZ: number; persp?: number }): React.CSSProperties =>
+  isWebRendering()
+    ? {
+        // The parent's `perspective` (origin at the frame centre) becomes a perspective() at the head of this transform.
+        transform: `translate3d(960px, 540px, 0) perspective(${(cam.persp ?? 1400) * cam.zoom}px) translate3d(-960px, -540px, 0) scale3d(${cam.zoom}, ${cam.zoom}, ${cam.zoom}) translate3d(${960 / cam.zoom}px, ${540 / cam.zoom}px, 0) rotateY(${cam.rotY}deg) rotateX(${cam.rotX}deg) rotateZ(${cam.rotZ}deg) translate3d(${-cam.cx}px, ${-cam.cy}px, 0)`,
+        transformOrigin: '0 0',
+        transformStyle: 'preserve-3d',
+      }
+    : {
+        zoom: cam.zoom,
+        transform: `translate(${960 / cam.zoom - cam.cx}px, ${540 / cam.zoom - cam.cy}px) rotateY(${cam.rotY}deg) rotateX(${cam.rotX}deg) rotateZ(${cam.rotZ}deg)`,
+        transformOrigin: `${cam.cx}px ${cam.cy}px`,
+        transformStyle: 'preserve-3d',
+      };
 
 export type CamKey2D = {
   frame: number;
@@ -91,8 +114,7 @@ export const PageCam2D: React.FC<{
         style={{
           position: 'absolute',
           inset: 0,
-          perspective: `${persp * zoom}px`,
-          perspectiveOrigin: '960px 540px',
+          ...(isWebRendering() ? {} : { perspective: `${persp * zoom}px`, perspectiveOrigin: '960px 540px' }),
         }}
       >
         <div
@@ -100,10 +122,7 @@ export const PageCam2D: React.FC<{
             position: 'absolute',
             width: 1920,
             height: pageH,
-            zoom,
-            transform: `translate(${960 / zoom - cx}px, ${540 / zoom - cy}px) rotateY(${rotY}deg) rotateX(${rotX}deg) rotateZ(${rotZ}deg)`,
-            transformOrigin: `${cx}px ${cy}px`,
-            transformStyle: 'preserve-3d',
+            ...cameraStageStyle({ cx, cy, zoom, rotX, rotY, rotZ, persp }),
             filter: blur > 0 ? `blur(${blur}px)` : undefined,
           }}
         >
