@@ -417,6 +417,8 @@ export const registerParityHook = (project: ProjectData, seek: (frame: number) =
   const hook = {
     project: { width: project.width, height: project.height, fps: project.fps, endFrame: projectEndFrame(project) },
     seek,
+    /** The film being previewed (read-only, for the acceptance specs to find each shot's frames). */
+    getProject: (): ProjectData => project,
     /** The export's frame as a PNG data URL. */
     exportStill: async (frame: number): Promise<string> => {
       const { blob } = await renderStillOnWebExport(project, frame, undefined, 1, true);
