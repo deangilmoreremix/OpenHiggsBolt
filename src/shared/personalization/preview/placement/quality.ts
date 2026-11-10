@@ -22,6 +22,7 @@ import {
   area,
   intersectionArea,
   outsideSafeArea,
+  splitPanelRect,
   zoneToPx,
 } from './geometry'
 import { boxOf, samplesFor, visibleSeconds, worstContrast } from './engine'
@@ -141,10 +142,15 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
 
   // split-screen panels cover half the frame on purpose: say so, and check the side against the subject
   for (const l of visible.filter((x) => x.presetId === 'split-screen')) {
-    const horizontal = l.splitSide === 'left' || l.splitSide === 'right'
-    const panel = {
-      left: l.splitSide === 'right' ? width / 2 : 0, top: l.splitSide === 'bottom' ? height / 2 : 0,
-      width: horizontal ? width / 2 : width, height: horizontal ? height : height / 2,
+    const panel = splitPanelRect(l.splitSide, width, height)
+    // text and logos must not sit on the picture half (the video half is where they belong)
+    for (const t of drawn) {
+      if (t.layer.id === l.layer.id || t.layer.kind === 'design' || t.role === 'product-image' || t.role === 'service-image') continue
+      const tb = boxes.get(t.layer.id)
+      if (tb && intersectionArea(tb, panel) / Math.max(1, area(tb)) > 0.2) {
+        issues.push({ code: 'overlay-collision', severity: 'adjust', layerId: t.layer.id, ...dur(t), fixable: movable(t),
+          message: `${contractFor(t.role).label} sits on the Split Screen picture. Move it to the video side.` })
+      }
     }
     if (input.zones.length === 0) {
       issues.push({ code: 'split-covers-footage', severity: 'review', layerId: l.layer.id, ...dur(l), fixable: false,

@@ -422,6 +422,17 @@ describe('image overlay presets in the quality check', () => {
     const q = evaluateLayoutQuality(build(applied, { zones: [subject], samples: [flat(0.05)] }))
     expect(q.issues.filter((i) => i.code === 'media-over-subject' || i.code === 'overlay-collision')).toEqual([])
   })
+  it('text on a Split Screen picture is flagged and moved to the video side (1:1 and 16:9, both sides)', () => {
+    for (const ratio of ['16:9', '1:1'] as const) for (const side of ['left', 'right'] as const) {
+      let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase', ratio), imageHints: hints as PersonalizationPreviewSettings['imageHints'] }
+      s = withStyle(s, 'productImage', { ...presetStyle('split-screen', ratio, false), splitSide: side })
+      const input = build(s, { zones: [], samples: [flat(0.05)] })
+      const result = recommendPlacement(input)
+      const applied = { ...s, layers: s.layers.map((l) => { const pr = result.proposals.find((x) => x.layerId === l.id); return pr ? { ...l, x: pr.x, y: pr.y, scale: pr.scale } : l }) }
+      const q = evaluateLayoutQuality(build(applied, { zones: [], samples: [flat(0.05)] }))
+      expect(q.issues.filter((i) => i.code === 'overlay-collision' && /Split Screen/.test(i.message)), `${ratio} ${side}`).toEqual([])
+    }
+  })
   it('a Split Screen panel is not reported as a crowded overlay on its own', () => {
     let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings['imageHints'] }
     s = withStyle(s, 'productImage', { ...presetStyle('split-screen', '16:9', false), splitSide: 'left' })

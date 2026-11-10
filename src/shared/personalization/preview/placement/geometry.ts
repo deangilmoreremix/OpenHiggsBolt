@@ -69,6 +69,15 @@ export function contrastRatio(a: number, b: number): number {
 }
 
 /** A rect grown by `px` on every side (a shadow's footprint). */
+/** The half of the frame a Split Screen panel takes (before its diagonal lean). */
+export function splitPanelRect(side: 'left' | 'right' | 'top' | 'bottom' | undefined, width: number, height: number): PxRect {
+  const horizontal = side === 'left' || side === 'right'
+  return {
+    left: side === 'right' ? width / 2 : 0, top: side === 'bottom' ? height / 2 : 0,
+    width: horizontal ? width / 2 : width, height: horizontal ? height : height / 2,
+  }
+}
+
 export function inflate(r: PxRect, px: number): PxRect {
   return px > 0 ? { left: r.left - px, top: r.top - px, width: r.width + 2 * px, height: r.height + 2 * px } : r
 }

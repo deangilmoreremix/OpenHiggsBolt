@@ -10,7 +10,9 @@ Code: 221049f (nine alignment changes), 4th commit (placement/visual fixes). Exp
 | Cinematic Reveal | PASS: diagonal clip-path wipe + light streak render; frames 0.0–0.8 s inspected (`diagonal-reveal-frames.png`) |
 | Collage | PASS: 2 pictures -> two stacked bordered tiles; 4 -> 2x2 |
 | Polaroid | PASS: ~5° tilt, heart, sparkles visible; no longer on the text/bottle after "Apply recommended" |
-| Split Screen | PARTIAL: diagonal divider + white line render. Panel covers the bottle (any half does) and, in 1:1, business-name text overlaps the panel. Quality Check flags the subject; text-over-panel is not yet resolved |
+| Split Screen | PARTIAL: diagonal divider + white line render; slide-in frames (0.05–0.7 s) clean. Panel covers the bottle (any half does) — flagged by the Quality Check. Text-on-panel is now flagged and the engine moves text to the video side (unit-tested 16:9/1:1, both sides) but the exports above pre-date that fix and were NOT re-exported |
 | Soft Masked | PASS (shape/glow); feather is subtle; small in 9:16 |
 
-Open / not done: pixel-analysis script not re-run on the new look; mid-animation frames only inspected for Cinematic Reveal; Polaroid/Split animation frames and 9:16/1:1/4:5 inspected at 2.0 s only; split-panel vs text collision; rights remain `unverified` for every demo clip (Review item stays; owner decision pending). Subject avoidance claimed only for zones the customer marks or the profile declares.
+Added since: Polaroid and Split Screen animation frames (0.05/0.2/0.4/0.7 s, `polaroid-split-animation.png`) inspected: clean fade/slide-in. White border measured on the rounded-card export (two ~2–3 px light edge lines, expected 0.003x1080 = 3 px; H.264 softens them).
+
+Open / not done: fixture-colour pixel script (`phase5-preset-analysis.py`) does not apply to real photos and was not re-run, so corner radius in px is NOT pixel-measured (unit-tested only); 9:16/1:1/4:5 inspected at 2.0 s only; Split Screen text fix not re-exported; Soft Masked is small in 9:16; rights remain `unverified` for every demo clip (Review item stays; owner decision pending). Subject avoidance claimed only for zones the customer marks or the profile declares.

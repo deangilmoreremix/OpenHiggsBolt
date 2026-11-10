@@ -24,6 +24,7 @@ import {
   intersectionArea,
   outsideSafeArea,
   regionLuminance,
+  splitPanelRect,
   zoneToPx,
 } from './geometry'
 import type {
@@ -169,6 +170,7 @@ function scoreCandidate(
   placed: { id: string; role: string; kind: string; box: PxRect }[],
   /** Text that has not been placed yet: a picture should not land on it (softer than a placed overlay). */
   soft: { id: string; box: PxRect }[] = [],
+  panels: PxRect[] = [],
 ): Scored {
   const { width, height } = input
   const contract = contractFor(l.role)
@@ -177,6 +179,11 @@ function scoreCandidate(
   const reasons: string[] = []
   if (contract.clampToSafeArea && outsideSafeArea(box, width, height)) {
     return { valid: false, penalty: Infinity, reasons: ['outside the safe area'] }
+  }
+  if (l.role !== 'product-image' && l.role !== 'service-image') {
+    for (const pn of panels) {
+      if (intersectionArea(box, pn) / Math.max(1, area(box)) > 0.2) return { valid: false, penalty: Infinity, reasons: ['on the Split Screen picture'] }
+    }
   }
   let p = 0
   const a = Math.max(1, area(box))
@@ -249,12 +256,13 @@ export function recommendPlacement(input: PlacementInput): PlacementResult {
   const soft = movable
     .filter((m) => m.role === 'text' && m.text)
     .map((m) => ({ id: m.layer.id, box: boxOf(m.layer, m.text, m.layer.x, m.layer.y, width, height, m.imageAspect) }))
+  const panels = input.layers.filter((x) => x.layer.visible && x.presetId === 'split-screen').map((x) => splitPanelRect(x.splitSide, width, height))
   const proposals: PlacementProposal[] = []
   for (const l of [...movable].sort((a, b) => priority(a) - priority(b))) {
-    const current = scoreCandidate(l, l.layer.x, l.layer.y, 1, input, placed, soft)
+    const current = scoreCandidate(l, l.layer.x, l.layer.y, 1, input, placed, soft, panels)
     let best: { x: number; y: number; f: number; s: Scored } | null = null
     for (const c of candidatesFor(l)) {
-      const s = scoreCandidate(l, c.x, c.y, c.f, input, placed, soft)
+      const s = scoreCandidate(l, c.x, c.y, c.f, input, placed, soft, panels)
       if (s.valid && (!best || s.penalty < best.s.penalty - 1e-9)) best = { ...c, s }
     }
     if (!best) {
