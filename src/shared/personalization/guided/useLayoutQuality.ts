@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getMediaFacts } from '@/data/demoLibraryRegistry'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { getRemotionDesignTemplate, isRemotionDesignTemplateSupported } from '../templates/registry'
@@ -134,6 +134,26 @@ export function useLayoutQuality(inputProps: PreviewInputProps): LayoutQualitySt
   )
 
   const report = useMemo(() => evaluateLayoutQuality(input), [input])
+
+  // With a VERIFIED subject area (a reviewed clip or one the customer marked), the
+  // recommended placement is applied automatically so the default layout does not
+  // sit on the subject. It runs once per (layout, shape, video, zones, assigned images)
+  // and never moves hand-placed or locked layers. Without a verified area nothing is
+  // moved: that stays "Review required" and the customer decides.
+  const autoKeyRef = useRef<string>('')
+  const autoKey = [
+    settings.layout, settings.aspectRatio, videoUrl ?? '', imageUrls, sampling === 'measuring' ? 'm' : 'r',
+    zones.map((z) => `${z.id}:${z.x.toFixed(3)},${z.y.toFixed(3)},${z.w.toFixed(3)},${z.h.toFixed(3)}`).join(';'),
+  ].join('|')
+  useEffect(() => {
+    if (sampling === 'measuring' || zones.length === 0) return
+    if (autoKeyRef.current === autoKey) return
+    autoKeyRef.current = autoKey
+    const result = recommendPlacement(input)
+    const items = result.proposals.filter((p) => p.moved)
+    if (items.length) applyPreviewPlacements(items)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoKey])
 
   const show = useCallback((layerId: string | undefined, t: number | undefined) => {
     if (typeof t === 'number' && Number.isFinite(t)) seekPreviewTo(Math.round(t * settings.fps))
