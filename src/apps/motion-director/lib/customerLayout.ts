@@ -81,6 +81,20 @@ export function layoutFromCapture(capture: Pick<SiteCapture, 'pages' | 'page' | 
     mapped.push('detail.pageH', 'detail.rows');
     sample.splice(sample.indexOf('detail'), 1);
   }
+  // The papers page (the sample's fourth capture) and the weekly-report page (its third): their heights, and the papers' rows.
+  const routeAt = (i: number) => (capture?.pages?.length ? capture.pages[i % capture.pages.length]?.layout ?? null : null);
+  const papersRoute = routeAt(3);
+  const paperRows = papersRoute ? rowsOf(papersRoute.pageH, [...(papersRoute.sections ?? []), ...(papersRoute.cards ?? [])] as R[]) : [];
+  if (papersRoute && paperRows.length >= MIN_ROWS) {
+    layout.papers.pageH = Math.round(papersRoute.pageH);
+    layout.papers.cards = paperRows as unknown as typeof layout.papers.cards;
+    mapped.push('papers.pageH', 'papers.cards');
+  }
+  const wbrRoute = routeAt(2);
+  if (wbrRoute && wbrRoute.pageH > 0) {
+    layout.wbr.pageH = Math.round(wbrRoute.pageH);
+    mapped.push('wbr.pageH');
+  }
   // The empty plate is the page with its cards hidden: it is what shows beneath a lifted or flying card.
   if (capture?.emptyPlate) mapped.push('plate');
   if (capture?.brand?.background) layout.projects.bg = capture.brand.background;

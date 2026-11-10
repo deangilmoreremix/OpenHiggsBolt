@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; /** Measure the hero only inside this part of the frame [x0,y0,x1,y1] (fractions): the shot's composition is fixed, and the page behind it shows the same card blurred. */ roi?: [number, number, number, number]; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'OutroGroupPhotoLaunch', frames: { entry: 14, gather: 40, peak: 80, settled: 125 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.6, roi: [0, 0.08, 0.3, 0.55], idTolerance: { entry: 0.0005, gather: 0.003, peak: 0.003, settled: 0.003 } /* sub-pixel text differences in the paper elements between two renders of the same sample (max 0.2 % of pixels, text edges) */ },
   { stem: 'WhipBrakeReal', frames: { entry: 10, whip: 30, peak: 70, settled: 120 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.6 },
   { stem: 'FreezeAnnotateReal', frames: { entry: 20, freeze: 50, peak: 90, settled: 150 }, sampleMain: 8, customMain: 1, heroFrames: ['freeze', 'peak'], areaOnly: true, maxAreaRatio: 1.6 },
   { stem: 'TypeAndFilter', frames: { entry: 14, full: 52, peak: 62, settled: 72 }, sampleMain: 8, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.5 },
@@ -41,6 +42,7 @@ for (const cfg of RECIPES) {
     // 1. IDENTITY
     const baseline = await shots({ sample: true });
     const identity = await shots({ custom: { screens: [], cardCrops: [], identity: true } });
+    names.forEach((n, i) => save(OUT, `${cfg.stem}-${n}-identity.png`, identity[i]));
     const idDiff = names.map((n, i) => ({ frame: n, diff: diffShare(rawRgbFull(baseline[i]), rawRgbFull(identity[i])) }));
 
     // 2./3. TARGET and NO DUPLICATE against the twin
@@ -70,8 +72,16 @@ for (const cfg of RECIPES) {
     const twinHero = twinL.cards[cfg.sampleMain].color;
     const custHero = custL.cards[cfg.customMain].color;
     const rows = names.map((n, i) => {
-      const t = colorFootprint(rawRgbFull(twin[i]), twinHero);
-      const c = colorFootprint(rawRgbFull(cust[i]), custHero);
+      const crop = (img: { w: number; h: number; data: Buffer }) => {
+        if (!cfg.roi) return img;
+        const [x0, y0, x1, y1] = cfg.roi.map((v, k) => Math.round(v * (k % 2 === 0 ? img.w : img.h)));
+        const w = x1 - x0, h = y1 - y0;
+        const data = Buffer.alloc(w * h * 3);
+        for (let y = 0; y < h; y++) img.data.copy(data, y * w * 3, ((y + y0) * img.w + x0) * 3, ((y + y0) * img.w + x1) * 3);
+        return { w, h, data };
+      };
+      const t = colorFootprint(crop(rawRgbFull(twin[i])), twinHero);
+      const c = colorFootprint(crop(rawRgbFull(cust[i])), custHero);
       return { frame: n, twin: t, customer: c };
     });
     names.forEach((n, i) => {
