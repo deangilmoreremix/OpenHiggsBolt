@@ -288,3 +288,47 @@ describe('layers that draw nothing', () => {
     expect(r.proposals.find((p) => p.layerId === 'logo')).toBeUndefined()
   })
 })
+
+import { MIN_SCALE_FACTOR } from '../engine'
+
+describe('size candidates and the end card', () => {
+  it('shrinks text within the template limit to fit beside the subject instead of covering it', () => {
+    let s = settingsFor('business-introduction')
+    // a wide headline and a subject zone leaving a gap just narrower than the text at full size
+    s = move(s, 'headline', { x: 0.5, y: 0.4 })
+    const subject = zone(0.36, 0.02, 0.3, 0.95)
+    const input = build(s, { zones: [subject], samples: [flat(0.05)] })
+    const p = recommendPlacement(input).proposals.find((x) => x.layerId === 'headline')!
+    expect(p.moved).toBe(true)
+    const head = s.layers.find((l) => l.id === 'headline')!
+    expect(p.scale).toBeGreaterThanOrEqual(head.scale * MIN_SCALE_FACTOR - 1e-9)
+    const applied = move(s, 'headline', { x: p.x, y: p.y, scale: p.scale })
+    const q = evaluateLayoutQuality(build(applied, { zones: [subject], samples: [flat(0.05)] }))
+    expect(q.issues.some((i) => i.layerId === 'headline' && i.code === 'text-over-subject')).toBe(false)
+  })
+
+  it('never shrinks a layer below the template limit, even when nothing fits', () => {
+    let s = settingsFor('business-introduction')
+    s = move(s, 'headline', { x: 0.5, y: 0.4 })
+    const wall = zone(0, 0, 1, 1) // nothing can avoid this
+    const r = recommendPlacement(build(s, { zones: [wall], samples: [flat(0.05)] }))
+    const head = s.layers.find((l) => l.id === 'headline')!
+    for (const p of r.proposals) {
+      const orig = s.layers.find((l) => l.id === p.layerId)!
+      expect(p.scale).toBeGreaterThanOrEqual(orig.scale * 0.65 - 1e-9) // images may go to 65 %, text to 80 %
+    }
+    const hp = r.proposals.find((x) => x.layerId === 'headline')
+    if (hp) expect(hp.scale).toBeGreaterThanOrEqual(head.scale * MIN_SCALE_FACTOR - 1e-9)
+  })
+
+  it('does not judge overlays against footage that the end card covers', () => {
+    const s = { ...settingsFor('business-introduction'), showEndCard: true }
+    const end = s.durationInFrames // end card occupies the last frames
+    const dark = flat(0.05, 1.0)
+    const brightUnderEndCard = flat(0.97, (end - 5) / s.fps) // inside the end card window
+    const withCard = evaluateLayoutQuality(build(s, { zones: [zone(0.8, 0.1, 0.15, 0.2)], samples: [dark, brightUnderEndCard] }))
+    expect(withCard.issues.some((i) => i.code === 'low-contrast')).toBe(false)
+    const noCard = evaluateLayoutQuality(build({ ...s, showEndCard: false }, { zones: [zone(0.8, 0.1, 0.15, 0.2)], samples: [dark, brightUnderEndCard] }))
+    expect(noCard.issues.some((i) => i.code === 'low-contrast')).toBe(true)
+  })
+})

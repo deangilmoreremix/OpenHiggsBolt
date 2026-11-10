@@ -49,7 +49,7 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
   const visible = input.layers.filter((l) => l.layer.visible)
   const drawn = visible.filter((l) => !isImageRole(l) || (l.imageUrl ?? '').trim() !== '')
   const boxes = new Map(drawn.map((l) => [l.layer.id, boxOf(l.layer, l.text, l.layer.x, l.layer.y, width, height, l.imageAspect)]))
-  const window = (l: PlacementLayer) => visibleSeconds(l.layer, input.fps, input.durationInFrames)
+  const window = (l: PlacementLayer) => visibleSeconds(l.layer, input.fps, input.durationInFrames, input.endCardStartFrame)
   const dur = (l: PlacementLayer) => ({ tStart: window(l)[0], tEnd: window(l)[1] })
 
   for (const l of visible) {

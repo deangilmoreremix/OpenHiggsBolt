@@ -66,9 +66,16 @@ export function boxOf(
 }
 
 /** Seconds a layer is on screen, as [start, end]. */
-export function visibleSeconds(layer: PreviewLayer, fps: number, durationInFrames: number): [number, number] {
+export function visibleSeconds(
+  layer: PreviewLayer,
+  fps: number,
+  durationInFrames: number,
+  endCardStartFrame?: number | null,
+): [number, number] {
   const start = Math.max(0, layer.startFrame + (layer.animationDelay || 0)) / fps
-  const end = (layer.endFrame ?? durationInFrames) / fps
+  // The branded end card covers the footage; overlays are judged only before it.
+  const lastFrame = Math.min(layer.endFrame ?? durationInFrames, endCardStartFrame ?? Infinity)
+  const end = lastFrame / fps
   return [start, Math.max(start, end)]
 }
 
@@ -118,20 +125,28 @@ function priority(l: PlacementLayer): number {
   }
 }
 
-function candidatesFor(l: PlacementLayer): { x: number; y: number }[] {
-  const out: { x: number; y: number }[] = [{ x: l.intended.x, y: l.intended.y }, { x: l.layer.x, y: l.layer.y }]
+/** Smallest size a layer may be shrunk to, as a fraction of its current scale (template limits). */
+export const MIN_SCALE_FACTOR = 0.8
+const TEXT_SCALE_FACTORS = [1, 0.9, MIN_SCALE_FACTOR]
+const IMAGE_SCALE_FACTORS = [1, 0.8, 0.65]
+
+type Candidate = { x: number; y: number; f: number }
+
+function candidatesFor(l: PlacementLayer): Candidate[] {
+  const base: { x: number; y: number }[] = [{ x: l.intended.x, y: l.intended.y }, { x: l.layer.x, y: l.layer.y }]
+  const out = base.map((c) => ({ ...c, f: 1 }))
   if (l.role === 'logo') {
-    for (const [x, y] of [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92]]) out.push({ x, y })
+    for (const f of IMAGE_SCALE_FACTORS) for (const [x, y] of [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92]]) out.push({ x, y, f })
   } else if (l.role === 'product-image' || l.role === 'service-image') {
-    for (const x of [0.22, 0.5, 0.78]) for (const y of [0.35, 0.5, 0.62, 0.7]) out.push({ x, y })
+    for (const f of IMAGE_SCALE_FACTORS) for (const x of [0.22, 0.5, 0.78]) for (const y of [0.35, 0.5, 0.62, 0.7]) out.push({ x, y, f })
   } else {
     const xs = Array.from(new Set([l.intended.x, 0.3, 0.5, 0.7]))
-    for (const y of [0.12, 0.18, 0.25, 0.32, 0.4, 0.48, 0.56, 0.64, 0.72, 0.8, 0.88]) for (const x of xs) out.push({ x, y })
+    for (const f of TEXT_SCALE_FACTORS) for (const y of [0.12, 0.18, 0.25, 0.32, 0.4, 0.48, 0.56, 0.64, 0.72, 0.8, 0.88]) for (const x of xs) out.push({ x, y, f })
   }
   // de-duplicate, keep order (deterministic)
   const seen = new Set<string>()
   return out.filter((c) => {
-    const k = `${c.x.toFixed(4)},${c.y.toFixed(4)}`
+    const k = `${c.x.toFixed(4)},${c.y.toFixed(4)},${c.f}`
     if (seen.has(k)) return false
     seen.add(k)
     return true
@@ -148,12 +163,14 @@ function scoreCandidate(
   l: PlacementLayer,
   x: number,
   y: number,
+  f: number,
   input: PlacementInput,
   placed: { id: string; role: string; kind: string; box: PxRect }[],
 ): Scored {
   const { width, height } = input
   const contract = contractFor(l.role)
-  const box = boxOf(l.layer, l.text, x, y, width, height, l.imageAspect)
+  const sized = f === 1 ? l.layer : { ...l.layer, scale: l.layer.scale * f }
+  const box = boxOf(sized, l.text, x, y, width, height, l.imageAspect)
   const reasons: string[] = []
   if (contract.clampToSafeArea && outsideSafeArea(box, width, height)) {
     return { valid: false, penalty: Infinity, reasons: ['outside the safe area'] }
@@ -178,7 +195,7 @@ function scoreCandidate(
     }
   }
   if (l.text && input.samples.length) {
-    const window = visibleSeconds(l.layer, input.fps, input.durationInFrames)
+    const window = visibleSeconds(l.layer, input.fps, input.durationInFrames, input.endCardStartFrame)
     const wc = worstContrast(box, samplesFor(input.samples, window), width, height, l.layer.color ?? input.textColor)
     if (wc) {
       if (wc.ratio < 4.5) {
@@ -189,6 +206,7 @@ function scoreCandidate(
     }
   }
   p += Math.hypot(x - l.intended.x, y - l.intended.y) * 60
+  p += (1 - f) * 40 // prefer the template's own size
   if (l.layer.kind === 'tagline' || l.layer.kind === 'offer') {
     const head = placed.find((o) => o.kind === 'headline')
     if (head && box.top < head.box.top) p += 80
@@ -216,10 +234,10 @@ export function recommendPlacement(input: PlacementInput): PlacementResult {
 
   const proposals: PlacementProposal[] = []
   for (const l of [...movable].sort((a, b) => priority(a) - priority(b))) {
-    const current = scoreCandidate(l, l.layer.x, l.layer.y, input, placed)
-    let best: { x: number; y: number; s: Scored } | null = null
+    const current = scoreCandidate(l, l.layer.x, l.layer.y, 1, input, placed)
+    let best: { x: number; y: number; f: number; s: Scored } | null = null
     for (const c of candidatesFor(l)) {
-      const s = scoreCandidate(l, c.x, c.y, input, placed)
+      const s = scoreCandidate(l, c.x, c.y, c.f, input, placed)
       if (s.valid && (!best || s.penalty < best.s.penalty - 1e-9)) best = { ...c, s }
     }
     if (!best) {
@@ -231,17 +249,19 @@ export function recommendPlacement(input: PlacementInput): PlacementResult {
     const keep = current.valid && current.penalty - best.s.penalty < MOVE_THRESHOLD
     const x = keep ? l.layer.x : best.x
     const y = keep ? l.layer.y : best.y
+    const f = keep ? 1 : best.f
+    const scale = l.layer.scale * f
     const chosen = keep ? current : best.s
     proposals.push({
       layerId: l.layer.id,
       x,
       y,
-      scale: l.layer.scale,
+      scale,
       penalty: chosen.penalty,
-      moved: Math.abs(x - l.layer.x) > 1e-3 || Math.abs(y - l.layer.y) > 1e-3,
+      moved: Math.abs(x - l.layer.x) > 1e-3 || Math.abs(y - l.layer.y) > 1e-3 || Math.abs(scale - l.layer.scale) > 1e-6,
       reasons: chosen.reasons,
     })
-    placed.push({ id: l.layer.id, role: l.role, kind: l.layer.kind, box: boxOf(l.layer, l.text, x, y, width, height, l.imageAspect) })
+    placed.push({ id: l.layer.id, role: l.role, kind: l.layer.kind, box: boxOf({ ...l.layer, scale }, l.text, x, y, width, height, l.imageAspect) })
   }
 
   return {

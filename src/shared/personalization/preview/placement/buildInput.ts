@@ -1,5 +1,6 @@
 import { layoutDefaultGeometry } from '../presets'
 import { roleForLayer } from '../mediaRoles'
+import { endCardFrames } from '../endCard'
 import { resolveLayerImageUrl, resolveLayerText } from '../layerContent'
 import type { PersonalizationPreviewSettings, PreviewInputProps } from '../types'
 import type { LumaSample, PlacementInput, ProtectedZone } from './types'
@@ -29,6 +30,7 @@ export function buildPlacementInput(args: {
     samples: args.samples ?? [],
     textColor: settings.brandColors.text,
     source: args.source,
+    endCardStartFrame: settings.showEndCard ? endCardFrames(settings.durationInFrames).start : null,
     layers: settings.layers.map((layer) => {
       const facts = layer.kind === 'design' && layer.designId ? args.designFacts?.(layer.designId) : undefined
       const intended = layoutDefaultGeometry(settings.layout, layer.kind, settings.aspectRatio)

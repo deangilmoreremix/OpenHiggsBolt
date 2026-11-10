@@ -54,6 +54,8 @@ export interface PlacementInput {
   samples: LumaSample[]
   /** Default text color (hex) used when a layer has none. */
   textColor: string
+  /** First frame of the branded end card, or null when there is none. Overlays are judged only before it. */
+  endCardStartFrame?: number | null
   /** Facts about the selected source video, when known. */
   source?: {
     rights: 'verified-owned' | 'licensed' | 'third-party-reference' | 'unverified'

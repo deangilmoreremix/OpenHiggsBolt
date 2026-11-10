@@ -1,5 +1,6 @@
 import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
 import { ownText, resolveLayerImageUrl, resolveLayerText } from './layerContent'
+import { endCardFrames } from './endCard'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AbsoluteFill,
@@ -425,8 +426,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       .filter((l) => (l.kind === 'headline' || l.kind === 'tagline' || l.kind === 'businessName') && ownText(l) != null)
       .map((l) => (ownText(l) as string).trim().toLowerCase()),
   )
-  const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
-  const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
+  const { start: endCardStart, length: endCardLen } = endCardFrames(settings.durationInFrames)
 
   return (
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
