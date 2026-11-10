@@ -867,6 +867,13 @@ export type DemoPersonalizeContextValue = {
   setOutputType: (type: OutputType) => void
   mode: VideoPersonalizationMode | ImagePersonalizationMode | null
   setMode: (mode: VideoPersonalizationMode | ImagePersonalizationMode | null) => void
+  /**
+   * How the final video is made. `browser` = a local Remotion render of the approved overlays (no AI, no credits,
+   * no prompt personalization, no mode needed); `ai` = the existing generation pipeline, which needs a mode.
+   * Derived from the saved mode for old projects (an AI mode => `ai`, otherwise `browser`).
+   */
+  creationMethod: 'browser' | 'ai'
+  setCreationMethod: (method: 'browser' | 'ai') => void
   genOptions: GenerationOptions
   updateGenOptions: (patch: Partial<GenerationOptions>) => void
   consent: boolean
@@ -1580,6 +1587,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Output / mode / options
   const [outputType, setOutputType] = useState<OutputType>('prompt')
   const [mode, setMode] = useState<VideoPersonalizationMode | ImagePersonalizationMode | null>(null)
+  // The customer opened "Generate with AI" but has not picked a mode yet.
+  const [aiChosen, setAiChosen] = useState(false)
   const [genOptions, setGenOptions] = useState<GenerationOptions>({ ...EMPTY_GENERATION_OPTIONS })
   // Read when a recast is applied ("Keep the original video's sound").
   const preserveAudioRef = useRef(true)
@@ -5667,6 +5676,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setMode(next)
   }, [markSessionStarted])
 
+  const creationMethod: 'browser' | 'ai' = aiChosen || chooseFinalOutputPath({ personalizationMode: mode || null }) === 'ai-generation' ? 'ai' : 'browser'
+  const setCreationMethod = useCallback((method: 'browser' | 'ai') => {
+    markSessionStarted()
+    if (method === 'browser') { setAiChosen(false); setMode(null) } else setAiChosen(true)
+  }, [markSessionStarted])
+
   const updateGenOptions = useCallback((patch: Partial<GenerationOptions>) => {
     markSessionStarted()
     setGenOptions((prev) => ({ ...prev, ...patch }))
@@ -6228,6 +6243,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setOutputType: chooseOutputType,
     mode,
     setMode: chooseMode,
+    creationMethod,
+    setCreationMethod,
     genOptions,
     updateGenOptions,
     consent,

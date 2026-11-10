@@ -742,6 +742,7 @@ export default function PersonalizationModal() {
     setOutputType,
     mode,
     setMode,
+    creationMethod,
     genOptions,
     updateGenOptions,
     generation,
@@ -1675,7 +1676,7 @@ export default function PersonalizationModal() {
               updateGenOptions={updateGenOptions}
                generate={generate}
                closePersonalize={closePersonalize}
-               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) && !blockingRequirement}
+               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode || creationMethod === 'browser')) && !blockingRequirement}
                requirements={projectRequirements}
                effectiveModelId={effectiveModelId}
                recommendedModelId={recommendedModelId}
@@ -1777,7 +1778,7 @@ export default function PersonalizationModal() {
               // Videos go through createFinalVideo, so the on-video layers from
               // Create › Overlays end up in the file (not only in the preview).
               onClick={outputType === 'prompt' ? handlePersonalize : outputType === 'image' || !isVideo ? generate : () => { void ctx.createFinalVideo() }}
-              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || Boolean(blockingRequirement) || personalizationInProgress}
+              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode || creationMethod === 'browser')) || Boolean(blockingRequirement) || personalizationInProgress}
               title={blockingRequirement ? blockingRequirement.message : undefined}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{
@@ -2072,6 +2073,8 @@ function ConfigurationView(props: any) {
     advancedSections: ctxAdvancedSections,
     setAdvancedSection: ctxSetAdvancedSection,
     previewVideo: ctxPreviewVideo,
+    creationMethod: ctxCreationMethod,
+    setCreationMethod: ctxSetCreationMethod,
     moveDiscoveredAssetToSection: ctxMoveDiscoveredAssetToSection,
     previewSettings: ctxPreviewSettings,
     promptNotice,
@@ -4763,7 +4766,34 @@ function ConfigurationView(props: any) {
 
       {/* ── PERSONALIZATION MODE ──────────────────────────────
           Same entitlement gate as the output selector above. */}
-      {showModes && !isAnonymous && (
+      {/* ── HOW TO CREATE ──────────────────────────────────────
+          Without AI: a free, local render of the approved overlays on the chosen video. With AI: the generation modes below. */}
+      {showModes && !isAnonymous && outputType !== 'prompt' && (
+        <section id="pz-creation-method" className="break-inside-avoid" style={{ padding: '20px 0', borderBottom: `1px solid ${C.border}` }}>
+          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>How should the video be made?</h2>
+          <div role="group" aria-label="Creation method" className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 14, gap: 12 }}>
+            {([
+              { id: 'browser', label: 'Create without AI', note: 'Free · no credits. Your overlays, text and assets are rendered on the video you chose, in this browser.' },
+              { id: 'ai', label: 'Generate with AI', note: 'Uses credits. Changes the people or scenes in the video (face, full body, recreate, complete).' },
+            ] as const).map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                data-testid={`pz-method-${o.id}`}
+                aria-pressed={ctxCreationMethod === o.id}
+                onClick={() => ctxSetCreationMethod(o.id)}
+                className="text-left rounded-[12px] border"
+                style={{ padding: 14, borderColor: ctxCreationMethod === o.id ? C.cyan : C.borderStrong, background: ctxCreationMethod === o.id ? 'rgba(41,211,242,.045)' : C.panelSoft }}
+              >
+                <h4 style={{ margin: '0 0 6px', fontSize: 12, textTransform: 'uppercase' }}>{o.label}</h4>
+                <p style={{ margin: 0, color: C.muted, fontSize: 10, lineHeight: 1.45 }}>{o.note}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {showModes && !isAnonymous && ctxCreationMethod === 'ai' && (
         <section id="pz-mode" data-pz-focus="mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
