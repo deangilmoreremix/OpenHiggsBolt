@@ -25,9 +25,9 @@ Source: the in-repo copy of `Vincentwei1021/video-shotcraft` at `.claude/skills/
 | 3 feature → shot map; gallery names | done for the catalog; legacy cards hidden |
 | 4 storyboard: arc, caps/exclusions, native lengths, seams (`shotRules.ts`, `filmChat.ts`, `directorPlan.ts`) | done |
 | 5 capture: 2x page, crops, cutouts, layout, empty plate, background function | done; hi-res 4x crops and extra page states unconfirmed |
-| 6 per-shot build | done in code, **not run live**: text/colour/picture overrides plus per-shot code adaptation (`adapt` route -> `lib/shotAdapter.ts` sandbox -> `lib/adaptLoop.ts` 3 stills + reviewer, 2 fix rounds, 4 shots, 90 s; clip prop `adaptedCode` played by `cards/demoProps.tsx`, plain recipe on any failure). Site pictures: `brand/people-gallery` scene |
+| 6 per-shot build | done in code, **not run live**: text/colour/picture overrides plus per-shot code adaptation (`adapt` route -> `lib/shotAdapter.ts` sandbox -> `lib/adaptLoop.ts` 3 stills + reviewer, up to 3 rounds, 12 shots, 3 lanes, 240 s, waits and retries a rate limit; clip prop `adaptedCode` played by `cards/demoProps.tsx`, plain recipe on any failure). Site pictures: `brand/people-gallery` scene |
 | 7 sound + music (`buildFilm.ts`, `beatSync.ts`, `defaultMusic.ts`) | done, not listened to by ear; a film with no attached track gets a licensed library track chosen by its motion voice, cuts snapped to its beat |
-| 8 review (`filmReview.ts`, `filmFix.ts`, `designSpec.ts`) | programmatic checks + safe auto-fixes (A7, A5, Q11, B3) + optional model frame review + rendered-audio clipping check (`renderedAudio.ts`). D2 (named people) and P3 (unsupported claims) added. Still missing: F1, bulk-finish, recipe-swap fixes, beat back-test of the render; no runnable Remotion-project export, no social publishing |
+| 8 review (`filmReview.ts`, `filmFix.ts`, `designSpec.ts`) | programmatic checks + safe auto-fixes (A7, A5, Q11, B3) + optional model frame review + rendered-audio clipping check (`renderedAudio.ts`). D2 (named people) and P3 (unsupported claims) added. Still missing: F1, bulk-finish, recipe-swap fixes, beat back-test of the render; no runnable Remotion-project export (social publishing is present: ExportButton → Post to social) |
 | 9 deliver | two renders + workbench done; closing notes excluded |
 
 ## Rules that must not be broken
@@ -38,3 +38,16 @@ Source: the in-repo copy of `Vincentwei1021/video-shotcraft` at `.claude/skills/
 
 ## Order of the remaining work (do not split into new threads)
 1. A live run once a key and a session are available (nothing above has run against a real site or model). 2. Missing review checks F1/P3/D2/bulk-finish and recipe-swap fixes. 3. Beat back-test of the render; 4x crops and extra page states in capture.
+
+## Sibling method: video-talkcraft (vendored at `.claude/skills/video-talkcraft`, not integrated)
+
+Narration videos. **Licence: PolyForm Noncommercial 1.0.0**, so commercial use needs the author's permission (see NOTICE.md).
+- Inputs: a finished voiceover (`audio/full.wav`) and a matching script (`script.json`), or Fish Audio TTS from the script (`FISH_AUDIO_API_KEY`), plus optional host footage, B-roll and screenshots. Built for Chinese narration; numbers are written as Chinese characters so word timestamps align.
+- Pipeline: script (one message per sentence, hook first) → word timestamps (`scripts/timestamps_cpu.py`, FireRedASR2-CTC with a faster-whisper fallback, or TTS timestamps) → `timing.json` → semantic annotation → SHOTBOOK layer matrix → `beats.json` derived from timing (never hand-typed seconds; `beat_lint.py` ≤ 0.1 s) → per-shot render → three QA gates (machine checks, a fresh-context reviewer writing `REVIEW.md`, cinematography rules) → delivery with two-pass loudnorm (I = −15, TP = −1.5).
+- Captions: whole sentence at once, no typing effect, ≤ 3 keyword pops per film. SFX capped at 0.35 volume, one per frame.
+- Workbench: port 5199, edits written to `remotion/overrides.json`; changing copy does not move beats.
+- What integrating it into Motion Director would need: a voiceover or TTS source, a word-timestamp aligner (a Python service or a hosted API), a `timing.json` / `beats.json` model, a narration mode in the chat flow, and a decision on the licence. None of that exists yet.
+
+## Upstream audio (shotcraft, 2026-10-29)
+Per-project Freesound sourcing replaced the shared SFX library (see NOTICE.md). Motion Director keeps its bundled library for now. Moving over means: a Freesound client and per-clip licence/credit fields, replacing `SEAM_SOUNDS` / `BRAND_SOUNDS` in `lib/buildFilm.ts`, regenerating `sfxPeaks.ts` from fetched files, and changing the `sfxlib/` path checks in `filmFix.ts`, `filmReview.ts` and `useFilmDirector.ts`.
+
