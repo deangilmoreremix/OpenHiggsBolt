@@ -245,6 +245,20 @@ function withClosingScene(plan: DirectorPlan, opts: { brand?: BrandInput | null;
   return { scenes, seconds };
 }
 
+/**
+ * Scenes of a plan whose recipe cannot be drawn (not in the catalog, or its card is not registered). The build
+ * shows each as a title card instead of dropping it, and callers use this list to say so.
+ */
+export function unresolvedScenes(plan: DirectorPlan): Array<{ index: number; recipeId: string; headline: string }> {
+  const out: Array<{ index: number; recipeId: string; headline: string }> = [];
+  plan.scenes.forEach((scene, index) => {
+    if (scene.kind === 'title' || isBrandScene(scene.recipeId)) return;
+    const template = resolveMotionTemplate(scene.recipeId);
+    if (!template || !CARDS[motionCardId(template)]) out.push({ index, recipeId: scene.recipeId, headline: scene.headline });
+  });
+  return out;
+}
+
 const rotated = <T,>(list: T[], by: number): T[] => (list.length > 1 ? [...list.slice(by % list.length), ...list.slice(0, by % list.length)] : list);
 
 export function planToProject(
@@ -312,7 +326,12 @@ const INSET_PAGE_H = 1200;
       }
     }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
-    if (scene.kind === 'title') {
+    // A recipe that cannot be drawn is shown as a title card, never dropped: the film keeps its length, seams and sound.
+    const undrawable = scene.kind !== 'title' && !isBrandScene(scene.recipeId) && (() => {
+      const found = resolveMotionTemplate(scene.recipeId);
+      return !found || !CARDS[motionCardId(found)];
+    })();
+    if (scene.kind === 'title' || undrawable) {
       sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp' }));
       shots.push(
         clip('inkpress-title-card', at, frames, {
@@ -367,7 +386,7 @@ const INSET_PAGE_H = 1200;
       const template = resolveMotionTemplate(scene.recipeId);
       const cardId = template ? motionCardId(template) : '';
       const card = CARDS[cardId];
-      if (!template || !card) return;
+      if (!template || !card) return; // unreachable: undrawable scenes took the title-card branch above
       const usesCapture = isProductTextureShot(template.componentName) && (screens.length > 0 || crops.length > 0);
       shots.push(
         // Shots carry their own typography; the headline goes in the caption

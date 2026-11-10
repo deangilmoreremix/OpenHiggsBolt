@@ -17,7 +17,7 @@ import { drawsSampleScreen, isProductTextureShot } from './productShots';
  */
 
 /** Every recipe shot of the film is adapted (as upstream builds each shot), three at a time, within the budget. */
-export const ADAPT_LIMITS = { shots: 12, rounds: 3, lanes: 3, budgetMs: 240_000 } as const;
+export const ADAPT_LIMITS = { shots: 12, rounds: 3, lanes: 3, budgetMs: 240_000, /** Waits after a rate limit (429) before the shot is tried again, and how many times in all. */ backoffMs: 8_000, rateRetries: 4 } as const;
 
 export type AdaptLog = (label: string, status: 'running' | 'done' | 'error') => void;
 
@@ -32,7 +32,16 @@ export interface AdaptDeps {
   reference?: (stem: string) => Promise<string[]>;
   /** Turn what `render` returned into an image (data URL) to show the model; omitted = no pictures. */
   snapshot?: (rendered: unknown) => Promise<string | null>;
+  /** Wait between rate-limit retries (tests pass an instant one). */
+  sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
+
+const waitFor = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+  });
 
 export interface AdaptContext {
   layout?: unknown;
@@ -140,6 +149,8 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   let result = project;
   let adapted = 0;
   let stop = false;
+  let stopReason = '';
+  let rateRetries = 0;
   const queue = [...targets];
   const lane = async () => {
     while (queue.length && !controller.signal.aborted && !stop) {
@@ -157,8 +168,18 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
           log(`Kept the original ${name} (the adapted version did not pass its checks)`, 'done');
         }
       } catch (error) {
+        // A rate limit passes: wait and try this shot again (a few times in all) rather than giving up on every shot.
+        if (error instanceof DirectorError && error.status === 429 && rateRetries < ADAPT_LIMITS.rateRetries && !controller.signal.aborted) {
+          rateRetries++;
+          queue.unshift(clip);
+          log(`Rate limited · trying ${name} again shortly`, 'running');
+          await (deps.sleep ?? waitFor)(ADAPT_LIMITS.backoffMs, controller.signal);
+          continue;
+        }
         // No key or refusal: say so once and stop asking.
-        if (!stop) log(error instanceof Error ? error.message : 'Shot adaptation is unavailable', 'error');
+        const reason = error instanceof Error ? error.message : 'Shot adaptation is unavailable';
+        if (!stop) log(reason, 'error');
+        stopReason = reason;
         stop = true;
       }
     }
@@ -168,6 +189,11 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   } finally {
     clearTimeout(timer);
   }
-  if (adapted === 0 && targets.length) log('No shot needed changes beyond words and pictures', 'done');
+  // Every shot that did not come out adapted is counted, with the reason, so the film is not silently plain.
+  const kept = targets.length - adapted;
+  if (kept > 0) {
+    const reason = stopReason ? stopReason : outer?.aborted ? 'stopped' : controller.signal.aborted ? 'time budget reached' : 'the adapted versions did not pass their checks';
+    log(`${kept} of ${targets.length} shot${targets.length === 1 ? '' : 's'} kept as the plain recipe (${reason})`, stopReason || controller.signal.aborted ? 'error' : 'done');
+  }
   return result;
 }

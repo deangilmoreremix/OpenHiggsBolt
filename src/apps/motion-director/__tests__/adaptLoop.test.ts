@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { planToProject } from '../lib/buildFilm';
 import type { DirectorPlan } from '../lib/directorPlan';
-import type { AdaptRequest } from '../lib/directorClient';
+import { DirectorError, type AdaptRequest } from '../lib/directorClient';
 import { adaptFilm, adaptShot, adaptTargets, stillFrames, type AdaptDeps } from '../lib/adaptLoop';
 
 const palette = { background: '#101018', text: '#ffffff', accent: '#8b6bff' };
@@ -100,5 +100,23 @@ describe('adapting shots', () => {
   it('adapts every recipe shot of the film, not just the first few', () => {
     const many: DirectorPlan = { ...plan, scenes: ['RowEmbed', 'SpotlightHeroCard', 'DeckDealFlyin', 'PageWaterfallWall', 'CardStack', 'ListReveal'].map((c) => ({ kind: 'shot' as const, recipeId: id(c), durationSec: 4, headline: 'a', caption: 'b', transition: 'cut' as const })) };
     expect(adaptTargets(planToProject(many, { aspectRatio: '16:9' })).length).toBe(6);
+  });
+
+  it('waits and tries a rate-limited shot again instead of giving up on every shot', async () => {
+    const limited = new DirectorError('Too many requests', 'rate_limited', 429);
+    const request = vi.fn(async (_b: AdaptRequest) => ({ code: GOOD, notes: '' })).mockRejectedValueOnce(limited);
+    const sleep = vi.fn(async () => undefined);
+    const logs: string[] = [];
+    const out = await adaptFilm(project(), ctx, deps({ request, sleep }), (l) => logs.push(l));
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(logs.some((l) => /Rate limited/.test(l))).toBe(true);
+    expect(adaptTargets(out).length).toBeLessThan(adaptTargets(project()).length);
+  });
+
+  it('says how many shots kept the plain recipe when the limit does not pass', async () => {
+    const request = vi.fn(async (_b: AdaptRequest): Promise<{ code: string; notes: string }> => { throw new DirectorError('Too many requests', 'rate_limited', 429); });
+    const logs: string[] = [];
+    await adaptFilm(project(), ctx, deps({ request, sleep: async () => undefined }), (l) => logs.push(l));
+    expect(logs.some((l) => /kept as the plain recipe/.test(l))).toBe(true);
   });
 });

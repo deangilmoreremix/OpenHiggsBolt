@@ -16,7 +16,7 @@ import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
-import { planToProject, type FilmCapture } from './buildFilm';
+import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
 import { mergeCaptures, neededPages } from './targetedCapture';
@@ -364,7 +364,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; signal?: AbortSignal },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -445,6 +445,8 @@ export async function buildFilmProject(
     texts,
     theme: filmTheme(opts.capture),
   });
+  const missing = unresolvedScenes(plan);
+  if (missing.length) log(`${missing.length} scene${missing.length === 1 ? '' : 's'} could not be drawn and ${missing.length === 1 ? 'was' : 'were'} shown as title cards: ${missing.map((m) => `#${m.index + 1} ${m.recipeId}`).join(', ')}`, 'error');
   if (beats.length) {
     const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);
     const sync = syncReport(cuts, beats, project.fps);
@@ -471,7 +473,12 @@ export async function buildFilmProject(
         },
       },
       log,
-    ).catch(() => built);
+      opts.signal,
+    ).catch((error) => {
+      // Say so: a film that kept every plain recipe is not the film the person approved.
+      if (!opts.signal?.aborted) log(`Shot adaptation failed: ${error instanceof Error ? error.message : 'error'}; the film keeps its plain recipes`, 'error');
+      return built;
+    });
   }
   log(`Film built · ${built.tracks.length} tracks`, 'done');
   return built;
@@ -519,12 +526,12 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
  * last frame (in the browser, with the same composition the export uses) and
  * report the ones that fail. Skipped when the browser cannot render stills; bounded by `budgetMs`.
  */
-export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000): Promise<{ checked: number; failed: string[] }> {
+export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000, signal?: AbortSignal): Promise<{ checked: number; failed: string[]; total: number }> {
   let render: typeof import('../webRenderer').renderStillOnWebExport;
   try {
     render = (await import('../webRenderer')).renderStillOnWebExport;
   } catch {
-    return { checked: 0, failed: [] };
+    return { checked: 0, failed: [], total: 0 };
   }
   const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
   const frames = new Set<number>();
@@ -538,7 +545,9 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
   frames.add(Math.max(0, projectEndFrame(project) - 1));
   const list = [...frames].sort((a, b) => a - b);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), budgetMs);
+  let budgetHit = false;
+  const timer = setTimeout(() => { budgetHit = true; controller.abort(); }, budgetMs);
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
   const failed: string[] = [];
   let checked = 0;
   log(`Frame QA · checking ${list.length} frames`, 'running');
@@ -561,10 +570,14 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
       ? `Frame QA · ${failed.length} of ${checked + failed.length} frames failed`
       : checked
         ? `Frame QA · ${checked} frames render cleanly${checked < list.length ? ` (time budget reached at ${checked}/${list.length})` : ''}`
-        : 'Frame QA · skipped (this browser cannot render stills)',
-    failed.length ? 'error' : 'done',
+        : budgetHit
+          ? 'Frame QA · the time budget ran out before any frame rendered'
+          : signal?.aborted
+            ? 'Frame QA · stopped'
+            : 'Frame QA · skipped (this browser cannot render stills)',
+    failed.length || (budgetHit && !checked) ? 'error' : 'done',
   );
-  return { checked, failed };
+  return { checked, failed, total: list.length };
 }
 
 /** A frame as a small JPEG data URL (the reviewer sees 640 px wide, enough for layout and legibility). */

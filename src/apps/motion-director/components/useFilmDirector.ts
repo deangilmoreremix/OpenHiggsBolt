@@ -149,6 +149,8 @@ export function useFilmDirector(opts: {
    * finishes after the switch never lands in the other session.
    */
   const gen = useRef(0);
+  /** The build in progress, so Stop can end shot adaptation and frame QA. */
+  const buildController = useRef<AbortController | null>(null);
   // Unmounting (e.g. the rail switching to History) abandons in-flight work too, so a build
   // that finishes later can't install its film into whatever session is open by then.
   useEffect(
@@ -608,12 +610,15 @@ export function useFilmDirector(opts: {
       else if (/^Frame QA/.test(label)) mark('qa', status === 'running' ? 'active' : status === 'error' ? 'error' : 'done', label.replace(/^Frame QA · /, ''));
     };
     const s = optsRef.current.settings();
+    // Stop aborts this: shot adaptation and frame QA run on it, so they end instead of running on unseen.
+    const buildAbort = new AbortController();
+    buildController.current = buildAbort;
     setStage('building');
     mark('animate', 'active', 'Building the Remotion project');
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
@@ -622,11 +627,15 @@ export function useFilmDirector(opts: {
       const music = media.find((m) => m.kind === 'audio') ?? (musicClip ? { name: String(musicClip.label ?? 'music') } : undefined);
       mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
-      const frames = await checkFilmFrames(project, glog);
+      const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
       qa.framesChecked = frames.checked;
       qa.issues.push(...frames.failed.map((f) => `Frame ${f}`));
       qa.ok = qa.issues.length === 0;
+      // A check that ran out of time is said to be partial, not passed.
+      const planned = frames.total ?? frames.checked;
+      const partial = planned > frames.checked + frames.failed.length;
+      if (partial) qa.warnings.push(`Frame QA is incomplete: ${frames.checked + frames.failed.length} of ${planned} frames were checked.`);
       const built = { project, qa };
       setFilm(built);
       setStage('film');
@@ -639,7 +648,7 @@ export function useFilmDirector(opts: {
         'assistant',
         [
           `Your film is ready: ${Math.round(project.tracks.reduce((m, t) => t.clips.reduce((mm, c) => Math.max(mm, c.start + c.duration), m), 0) / project.fps)}s at ${project.width}×${project.height}, ${project.fps} fps, ${project.tracks.map((t) => t.name).join(' / ')} tracks.`,
-          qa.ok ? `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.` : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
+          qa.ok ? (partial ? `Frame QA found no problems in the ${qa.framesChecked} of ${planned} frames it had time to check.` : `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.`) : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
           ...qa.warnings,
           ...(qa.review ? reviewSummary(qa.review) : []),
           ...(fixed.length ? ['Fixed before showing you:', ...fixed.map((f) => `- ${f}`)] : []),
@@ -698,6 +707,7 @@ export function useFilmDirector(opts: {
   const stop = useCallback(() => {
     if (stage !== 'storyboarding' && stage !== 'building') return;
     gen.current++;
+    buildController.current?.abort();
     setActivity([]);
     setSteps((prev) => prev.map((st) => (st.state === 'active' ? { ...st, state: 'todo', detail: 'Stopped' } : st)));
     if (stage === 'storyboarding') {
