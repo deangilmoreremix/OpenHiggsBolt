@@ -11,7 +11,7 @@ import { buildCatalogue, catalogueSummary } from './pictureCatalogue';
 import { assignPictures, picturesShown } from './assignPictures';
 import { AS_DESIGNED, SITE_THEME, luma, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
-import { projectEndFrame, type ProjectData } from '../types';
+import { projectEndFrame, type ClipData, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
@@ -26,6 +26,7 @@ import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
 import { buildProductBrief, briefLines, decisionTable, type ProductBrief, type DecisionRow } from './productBrief';
 import { materialOf } from './material';
 import { gateStoryboard } from './storyboardGate';
+import { needsOf, satisfies } from './recipeNeeds';
 import { mergeCaptures, neededPages } from './targetedCapture';
 import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
@@ -540,34 +541,51 @@ export async function buildFilmProject(
     log(`Shot adaptation skipped: ${reason}`, 'done');
     opts.onAdaptation?.({ kind: 'skipped', reason });
   };
+  const material = materialOf(opts.capture, opts.media, { brandLogo: Boolean(opts.logo) });
   if (opts.adaptShots === false) skip('turned off');
-  else if (!opts.capture) skip('no site was captured, so there is no page to adapt the shots to');
-  else if (captureQuality(opts.capture) !== 'complete') skip('only the site\'s words were captured (no page screenshots)');
+  else if (!material.pages && !material.images) skip('no site page was captured and no images were supplied, so there is nothing to adapt the shots to');
   else {
-    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture.brand?.fontFamily ?? undefined };
-    built = await adaptFilm(
-      built,
-      { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
-      {
-        render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
-        snapshot: async (r) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
-        review: async (p, frames, signal) => {
-          const render = (await import('../webRenderer')).renderStillOnWebExport;
-          const images: Array<{ second: number; image: string }> = [];
-          for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
-          const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
-          return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
-        },
+    // Only recipes whose own input is in hand are adapted (a shot that needs a live page is not tried on uploads alone; a shot that
+    // reads pictures IS tried on uploaded images, with no website).
+    const eligible = (clip: ClipData) => {
+      const stem = clip.cardId.startsWith('demo:') ? clip.cardId.slice(5) : '';
+      const { need, part } = needsOf(stem);
+      return need !== 'abstract' && need !== 'none' && satisfies(need, material, part).ok;
+    };
+    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture?.brand?.fontFamily ?? undefined };
+    const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content };
+    const deps = {
+      render: async (p: ProjectData, f: number, signal: AbortSignal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+      snapshot: async (r: unknown) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
+      review: async (p: ProjectData, frames: number[], signal: AbortSignal) => {
+        const render = (await import('../webRenderer')).renderStillOnWebExport;
+        const images: Array<{ second: number; image: string }> = [];
+        for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
+        const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
+        return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
       },
-      log,
-      opts.signal,
-      opts.onAdaptation,
-    ).catch((error) => {
+    };
+    let first = null as AdaptationOutcome | null;
+    const failedOut = (error: unknown) => {
       opts.onAdaptation?.({ kind: 'stopped', adapted: 0, attempted: 0, reason: error instanceof Error ? error.message : 'error' });
-      // Say so: a film that kept every plain recipe is not the film the person approved.
       if (!opts.signal?.aborted) log(`Shot adaptation failed: ${error instanceof Error ? error.message : 'error'}; the film keeps its plain recipes`, 'error');
-      return built;
-    });
+    };
+    try {
+      built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { first = o; if (!(('pending' in o) && o.pending?.length)) opts.onAdaptation?.(o); }, { eligible });
+      // Continuation: the shots the first pass did not reach (its time budget, its per-pass limit) get their own pass, once,
+      // instead of being left plain without a word.
+      const pending = first && 'pending' in first ? (first as { pending?: string[] }).pending : undefined;
+      if (pending?.length && !opts.signal?.aborted && first && (first as AdaptationOutcome).kind !== 'stopped') {
+        log(`${pending.length} more shot${pending.length === 1 ? '' : 's'} to adapt: continuing`, 'running');
+        let second = null as AdaptationOutcome | null;
+        built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { second = o; }, { eligible, only: new Set(pending) });
+        const a1 = first as { adapted: number; attempted: number };
+        const a2 = (second ?? { adapted: 0, attempted: 0 }) as { adapted: number; attempted: number; pending?: string[] };
+        opts.onAdaptation?.({ kind: 'ran', adapted: a1.adapted + a2.adapted, attempted: a1.attempted + a2.attempted, ...(a2.pending?.length ? { pending: a2.pending } : {}) });
+      } else if (first && pending?.length) opts.onAdaptation?.(first);
+    } catch (error) {
+      failedOut(error);
+    }
   }
   log(`Film built · ${built.tracks.length} tracks`, 'done');
   return built;

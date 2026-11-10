@@ -55,12 +55,14 @@ export interface AdaptContext {
 const stemOf = (c: ClipData) => (c.cardId.startsWith('demo:') ? c.cardId.slice(5) : '');
 
 /** Shots worth adapting: recipes that draw sample screens first, then the ones that already read pages; never fixed-text, technique or already adapted ones. */
-export function adaptTargets(project: ProjectData): ClipData[] {
+export function adaptTargets(project: ProjectData, opts: { only?: ReadonlySet<string>; eligible?: (clip: ClipData) => boolean; all?: boolean } = {}): ClipData[] {
   const out: Array<{ clip: ClipData; weight: number }> = [];
   for (const track of project.tracks) {
     for (const clip of track.clips) {
       const stem = stemOf(clip);
       if (!stem || clip.props?.adaptedCode) continue;
+      if (opts.only && !opts.only.has(clip.id)) continue;
+      if (opts.eligible && !opts.eligible(clip)) continue;
       const template = MOTION_TEMPLATES.find((t) => t.componentName === stem);
       const rules = rulesOf(stem);
       // Technique cards (seams) have no shot of their own; recipes whose words are the effect are adapted
@@ -69,7 +71,8 @@ export function adaptTargets(project: ProjectData): ClipData[] {
       out.push({ clip, weight: drawsSampleScreen(template) ? 0 : isProductTextureShot(stem) ? 1 : 2 });
     }
   }
-  return out.sort((a, b) => a.weight - b.weight || a.clip.start - b.clip.start).slice(0, ADAPT_LIMITS.shots).map((x) => x.clip);
+  const sorted = out.sort((a, b) => a.weight - b.weight || a.clip.start - b.clip.start).map((x) => x.clip);
+  return opts.all ? sorted : sorted.slice(0, ADAPT_LIMITS.shots);
 }
 
 const withClip = (project: ProjectData, id: string, props: Record<string, unknown>): ProjectData => ({
@@ -141,8 +144,11 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
 }
 
 /** Adapt the film's best shots within the time budget. Never throws except for a missing key / refusal on the first shot. */
-export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal, onOutcome?: (outcome: AdaptationOutcome) => void): Promise<ProjectData> {
-  const targets = adaptTargets(project);
+export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal, onOutcome?: (outcome: AdaptationOutcome) => void, opts: { only?: ReadonlySet<string>; eligible?: (clip: ClipData) => boolean } = {}): Promise<ProjectData> {
+  const every = adaptTargets(project, { ...opts, all: true });
+  const targets = every.slice(0, ADAPT_LIMITS.shots);
+  // Shots beyond the per-pass limit are not dropped: they are reported as pending so a continuation pass picks them up.
+  const beyond = every.slice(ADAPT_LIMITS.shots).map((c) => c.id);
   if (!targets.length) {
     onOutcome?.({ kind: 'skipped', reason: 'no shot of this film is one the adapter rewrites' });
     return project;
@@ -156,9 +162,11 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   let stopReason = '';
   let rateRetries = 0;
   const queue = [...targets];
+  const tried = new Set<string>();
   const lane = async () => {
     while (queue.length && !controller.signal.aborted && !stop) {
       const clip = queue.shift()!;
+      tried.add(clip.id);
       const name = MOTION_TEMPLATES.find((t) => t.componentName === stemOf(clip))?.nameEn ?? stemOf(clip);
       log(`Adapting ${name} to your site`, 'running');
       try {
@@ -196,9 +204,11 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   }
   // Every shot that did not come out adapted is counted, with the reason, so the film is not silently plain.
   const kept = targets.length - adapted;
+  // Shots the pass never reached (time budget, per-pass limit): pending, to be continued, not silently plain.
+  const pending = [...beyond, ...targets.filter((c) => !tried.has(c.id)).map((c) => c.id)];
   onOutcome?.(stopReason
-    ? { kind: 'stopped', adapted, attempted: targets.length, reason: stopReason }
-    : { kind: 'ran', adapted, attempted: targets.length, ...(kept > 0 && outer?.aborted ? { note: 'stopped' } : {}) });
+    ? { kind: 'stopped', adapted, attempted: targets.length, reason: stopReason, ...(pending.length ? { pending } : {}) }
+    : { kind: 'ran', adapted, attempted: targets.length, ...(pending.length ? { pending } : {}), ...(kept > 0 && outer?.aborted ? { note: 'stopped' } : {}) });
   if (kept > 0) {
     const reason = stopReason ? stopReason : outer?.aborted ? 'stopped' : controller.signal.aborted ? 'time budget reached' : 'the adapted versions did not pass their checks';
     log(`${kept} of ${targets.length} shot${targets.length === 1 ? '' : 's'} kept as the plain recipe (${reason})`, stopReason || controller.signal.aborted ? 'error' : 'done');

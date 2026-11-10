@@ -89,6 +89,6 @@ export function summarizePersonalization(shots: readonly ShotPersonalization[]):
 
 /** Why shot adaptation did not run or did not finish; shown with the summary so a deployment problem is not blamed on the model. */
 export type AdaptationOutcome =
-  | { kind: 'ran'; adapted: number; attempted: number; note?: string }
+  | { kind: 'ran'; adapted: number; attempted: number; note?: string; /** Clip ids the pass did not reach (continue with them). */ pending?: string[] }
   | { kind: 'skipped'; reason: string }
-  | { kind: 'stopped'; adapted: number; attempted: number; reason: string };
+  | { kind: 'stopped'; adapted: number; attempted: number; reason: string; pending?: string[] };

@@ -133,3 +133,30 @@ describe('undeployed recipe sources', () => {
     expect(outcome).toMatchObject({ kind: 'stopped', adapted: 0 });
   });
 });
+
+describe('adaptation continues instead of silently leaving shots plain', () => {
+  const many = (): ReturnType<typeof project> => {
+    const stems = ['RowEmbed', 'SpotlightHeroCard', 'DeckDealFlyin', 'CrashZoomReal', 'CrashImpactReal', 'MultiplaneReal', 'TypeAndFilter', 'FreezeAnnotateReal', 'WhipBrakeReal', 'OutroGroupPhotoLaunch', 'ListStackPress', 'JumpCutPunchIn', 'PageWaterfallWall', 'CardStack'];
+    return planToProject({ ...plan, scenes: stems.map((s) => ({ kind: 'shot' as const, recipeId: id(s), durationSec: 5, headline: 'a', caption: 'b', transition: 'cut' as const })) }, { aspectRatio: '16:9' });
+  };
+  it('reports the shots beyond the per-pass limit as pending, and a continuation pass adapts exactly those', async () => {
+    const p = many();
+    const outcomes: unknown[] = [];
+    const total = adaptTargets(p, { all: true }).length;
+    expect(total).toBeGreaterThan(12);
+    const first = await adaptFilm(p, ctx, deps(), () => {}, undefined, (o) => outcomes.push(o));
+    const o1 = outcomes[0] as { kind: string; adapted: number; attempted: number; pending?: string[] };
+    expect(o1.attempted).toBe(12);
+    expect(o1.pending).toHaveLength(total - 12);
+    const second = await adaptFilm(first, ctx, deps(), () => {}, undefined, (o) => outcomes.push(o), { only: new Set(o1.pending) });
+    const o2 = outcomes[1] as { attempted: number; pending?: string[] };
+    expect(o2.attempted).toBe(total - 12);
+    expect(o2.pending).toBeUndefined();
+    expect(second.tracks.flatMap((t) => t.clips).filter((c) => c.props?.adaptedCode).length).toBe(total);
+  });
+  it('an eligibility filter leaves shots whose own input is missing untouched', async () => {
+    const p = many();
+    const out = await adaptFilm(p, ctx, deps(), () => {}, undefined, undefined, { eligible: (c) => c.cardId === `demo:RowEmbed` });
+    expect(out.tracks.flatMap((t) => t.clips).filter((c) => c.props?.adaptedCode).map((c) => c.cardId)).toEqual(['demo:RowEmbed']);
+  });
+});
