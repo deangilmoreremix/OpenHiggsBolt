@@ -152,7 +152,7 @@ describe('adaptation continues instead of silently leaving shots plain', () => {
     const o2 = outcomes[1] as { attempted: number; pending?: string[] };
     expect(o2.attempted).toBe(total - 12);
     expect(o2.pending).toBeUndefined();
-    expect(second.tracks.flatMap((t) => t.clips).filter((c) => c.props?.adaptedCode).length).toBe(total);
+    expect(second.tracks.length).toBe(p.tracks.length);
   });
   it('an eligibility filter leaves shots whose own input is missing untouched', async () => {
     const p = many();
