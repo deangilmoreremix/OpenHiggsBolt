@@ -41,3 +41,18 @@ describe('Add vs Replace a design', () => {
     expect(removeDesignLayer(b, 'missing')).toBe(b)
   })
 })
+
+import { normalizePreviewSettings } from '../presets'
+describe('persistence of an added design', () => {
+  it('a layout plus an added design survives a JSON save/restore with edits, ids and roles intact', () => {
+    const b = base()
+    const added = addDesignTemplate(b, design)
+    const layers = added.layers.map((l, i) => (i === 1 ? { ...l, imageRole: 'food' as const } : l))
+    const restored = normalizePreviewSettings(JSON.parse(JSON.stringify({ ...added, layers })))
+    expect(restored.layers.map((l) => l.id)).toEqual(layers.map((l) => l.id))
+    expect(restored.layers[0]).toMatchObject({ text: 'My own headline', locked: true, x: 0.31, y: 0.22 })
+    expect(restored.layers[restored.layers.length - 1].kind).toBe('design')
+    expect(restored.layers[1].imageRole).toBe('food')
+    expect(restored.remotionDesignId).toBe(design)
+  })
+})
