@@ -20,9 +20,9 @@ import {
 } from '../lib/filmChat';
 import { videoSceneSec } from '../lib/buildFilm';
 import { askDirector, captureSite, DirectorError, requestBrief, requestDirections, requestMapping, requestFinalReview, fetchReferenceFrames, type GuidedContext, type SiteCapture } from '../lib/directorClient';
-import type { DirectionOptions, DirectorBrief, MappingRow } from '../lib/directorPlan';
+import type { DirectionOptions, DirectorBrief, DirectorPlan, MappingRow } from '../lib/directorPlan';
 import { renderStyleframes, type Styleframe } from '../lib/styleframes';
-import { applyReviewFixes, finalReviewLines, reviewStillApplies, runFinalReview } from '../lib/finalReview';
+import { applyReviewFixes, finalReviewLines, reviewShots, reviewStillApplies, runFinalReview } from '../lib/finalReview';
 import { ACCEPT_RE, YOU_DECIDE_RE, briefMessage, briefText, directionMessage, directionText, mappingMessage, mappingText, pickDirection, sceneLine } from '../lib/coCreate';
 import { releaseLine } from '../lib/releaseCheck';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
@@ -44,6 +44,7 @@ import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
 import { completeStage, failStage, finalStatus, finalStatusLine, newRun, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
 import { materialOf } from '../lib/material';
+import { applyFilmEdits, parseFilmEdits } from '../lib/editFilm';
 import { briefLines as briefLinesOf } from '../lib/productBrief';
 import { sceneRecords } from '../lib/recipeNeeds';
 import { browserPixels, recordScenes, validateShotScenes } from '../lib/sceneQa';
@@ -528,11 +529,21 @@ export function useFilmDirector(opts: {
     [guidedFinish, guidedStep, say, stage],
   );
 
+  /** The scene-level edit (defined after the build functions it uses; the chat reaches it through this ref). */
+  const editRef = useRef<((text: string) => Promise<boolean>) | null>(null);
+  const rebuildRef = useRef<((plan: DirectorPlan, touched: number[], notes: string[], hints?: Record<string, string[]>) => Promise<boolean>) | null>(null);
+  /** One automatic correction pass per film: a review that keeps failing is reported, not looped on. */
+  const corrected = useRef(false);
+
   /** Handle a chat message. Returns false when it is not a film request (the caller treats it as an edit). */
   const send = useCallback(
     (raw: string, sendOpts: { force?: boolean } = {}): boolean => {
       const text = raw.trim();
       if (!text) return false;
+      if (stage === 'film' && /\b(?:replace|swap|redo|keep|change)\b[^.]*\b(?:scene|shot)\b|\bdramatic (?:ending|finale)\b|\bending\b[^.]*\bdramatic\b/i.test(text)) {
+        void (editRef.current?.(text) ?? Promise.resolve(false)).then((handled) => { if (!handled) say('assistant', 'I did not find a scene-level edit in that. Say, for example, “replace the second shot with a different camera movement” or “make the ending more dramatic”.'); });
+        return true;
+      }
       if (stage === 'storyboarding' || stage === 'building') {
         say('assistant', `I'm still ${stage === 'building' ? 'building the film' : 'working on the storyboard'} — press Stop to cancel it, then send that again.`);
         return true;
@@ -664,6 +675,7 @@ export function useFilmDirector(opts: {
 
   const approve = useCallback(async () => {
     if (!storyboard) return;
+    corrected.current = false;
     const my = gen.current;
     const live = () => gen.current === my;
     const glog: typeof log = (label, status) => {
@@ -772,6 +784,23 @@ export function useFilmDirector(opts: {
           }
           const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
           say('assistant', [...finalReviewLines(report), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current)}.` : ''].filter(Boolean).join('\n'));
+          // Correction loop: a shot the reviewer failed (stage 5) is rebuilt on its own with the reviewer's note as its starting problem;
+          // the rest of the film is kept. One pass only; the film then needs a new review (status: review pending).
+          const shotFails = report.items.filter((i) => !i.ok && i.stage === '5' && i.seconds.length);
+          if (shotFails.length && !corrected.current && unchanged) {
+            corrected.current = true;
+            const shots = reviewShots(project);
+            const hints: Record<string, string[]> = {};
+            const idx = new Set<number>();
+            for (const f of shotFails) {
+              const frame = Math.round(f.seconds[0] * project.fps);
+              const at = shots.findIndex((x) => frame >= x.clip.start && frame < x.clip.start + x.clip.duration);
+              if (at < 0 || !shots[at].stem) continue;
+              idx.add(at);
+              hints[shots[at].stem!] = [...(hints[shots[at].stem!] ?? []), `${f.id}: ${f.text}`];
+            }
+            if (idx.size && storyboard) void rebuildRef.current?.(storyboard.plan, [...idx], [`Correcting from the review: rebuilding shot${idx.size === 1 ? '' : 's'} ${[...idx].map((i) => i + 1).join(', ')} with the reviewer's notes.`], hints);
+          }
         })
         .catch((error) => {
           // No key or no answer: the program's checks above stand, but say the review did not happen.
@@ -789,6 +818,69 @@ export function useFilmDirector(opts: {
       say('assistant', `Building the film failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
   }, [log, mark, say, storyboard, upd, failRunning]);
+
+  /** Rebuild the film from a (possibly edited) storyboard: only `touched` scenes are rebuilt and re-checked, the rest keep their adapted source and their record. */
+  const rebuildFilm = useCallback(async (plan: DirectorPlan, touched: number[], notes: string[], hints?: Record<string, string[]>): Promise<boolean> => {
+    if (!storyboard || !film) return false;
+    const my = gen.current;
+    const live = () => gen.current === my;
+    const s = optsRef.current.settings();
+    const media = storyboard.media ?? s.media;
+    const abort = new AbortController();
+    buildController.current = abort;
+    setStage('building');
+    mark('animate', 'active', 'Rebuilding the changed scenes');
+    upd((r) => startStage(r, 'build'));
+    try {
+      const touchedStems = touched.map((i) => resolveMotionTemplate(plan.scenes[i].recipeId)?.componentName).filter((x): x is string => Boolean(x));
+      const out = await buildFilmProject(plan, { ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
+      const { project } = fixFilm(out);
+      const only = new Set(touchedStems);
+      const checks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 45_000, signal: abort.signal, only }).catch(() => []);
+      if (!live()) return true;
+      const prior = runRef.current?.scenes ?? [];
+      const fresh = recordScenes(sceneRecords(plan, materialOf(storyboard.capture, media)), project, checks);
+      // Scenes the edit did not touch keep the record they had earned; only the touched ones are re-checked.
+      const scenes = fresh.map((rec, i) => (touched.includes(i) || !prior[i] ? rec : prior[i]));
+      upd((r) => ({ ...r, review: { ran: false, state: 'not-run', findings: [] }, stages: { ...r.stages, review: { status: 'pending', attempts: 0 } } }));
+      upd((r) => completeStage(r, { stage: 'build', scenes }, { edited: touched.length }));
+      const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: plan, videos: media.filter((m) => m.kind === 'video').length });
+      upd((r) => completeStage(startStage(r, 'qa'), { stage: 'qa', issues: qa.issues, framesChecked: 0 }));
+      const built = { project: { ...project, run: runRef.current ?? undefined }, qa };
+      setStoryboard({ ...storyboard, plan: plan });
+      setFilm(built);
+      setStage('film');
+      optsRef.current.onBuilt?.(built);
+      say('assistant', [...notes, `Rebuilt the film from the edited storyboard: scene${touched.length === 1 ? '' : 's'} ${touched.map((i) => i + 1).join(', ') || '—'} changed, the others kept. ${runRef.current ? finalStatusLine(runRef.current) : ''}.`].filter(Boolean).join('\n'));
+    } catch (error) {
+      if (!live()) return true;
+      failRunning(error instanceof Error ? error.message : 'failed');
+      setStage('film');
+      say('assistant', `The edit failed (${error instanceof Error ? error.message : 'error'}); the film is as it was.`);
+    }
+    return true;
+  }, [film, say, storyboard, upd, failRunning, mark, log]);
+
+  /**
+   * Scene-level edits of the finished film ("keep the first scene, replace the second shot, make the ending more dramatic"):
+   * the storyboard is edited, the film is rebuilt from it (timing, seams and sound cues are recalculated by the code that
+   * built it), untouched shots keep their adapted source, and only the touched shots are checked again. The earlier review
+   * no longer applies to the changed film, so the status goes back to "review pending".
+   */
+  const editFilm = useCallback(async (text: string) => {
+    if (!storyboard || !film) return false;
+    const edits = parseFilmEdits(text, storyboard.plan);
+    if (!edits.length) return false;
+    say('user', text);
+    const brief = storyboard.brief;
+    if (!brief) { say('assistant', 'This film was made before the brief was recorded, so I cannot check an edit against it. Rebuild it from the chat, or edit it in the Workbench.'); return true; }
+    const res = applyFilmEdits(storyboard.plan, edits, { brief });
+    if (!res.touched.length && !edits.some((e) => e.kind === 'dramatic-ending')) { say('assistant', [...res.notes, ...res.refused, 'Nothing was changed.'].join('\n')); return true; }
+    return rebuildFilm(res.plan, res.touched, [...res.notes, ...res.refused]);
+  }, [film, say, storyboard, rebuildFilm]);
+
+  editRef.current = editFilm;
+  rebuildRef.current = rebuildFilm;
 
   /** An MP4 was rendered from the film: only now is it delivered. */
   const markDelivered = useCallback(() => mark('deliver', 'done', 'MP4 rendered'), [mark]);

@@ -43,11 +43,12 @@ export const CONTENT_VISIBLE = 0.01;
 
 export interface SceneQaResult { clipId: string; stem: string; state: 'passed' | 'failed' | 'pending'; frames: number[]; note: string }
 
-export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps, opts: { budgetMs?: number; signal?: AbortSignal } = {}): Promise<SceneQaResult[]> {
+export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps, opts: { budgetMs?: number; signal?: AbortSignal; only?: ReadonlySet<string> } = {}): Promise<SceneQaResult[]> {
   const out: SceneQaResult[] = [];
   const started = Date.now();
   const clips = project.tracks.flatMap((t) => t.clips).filter((c) => stemOf(c)).sort((a, b) => a.start - b.start);
   for (const clip of clips) {
+    if (opts.only && !opts.only.has(stemOf(clip))) continue;
     const stem = stemOf(clip);
     const { need } = needsOf(stem);
     const peak = Math.floor(clip.duration * 0.5);

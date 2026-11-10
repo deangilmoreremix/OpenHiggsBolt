@@ -50,6 +50,8 @@ export interface AdaptContext {
   crops: string[];
   brand?: AdaptRequest['brand'];
   content?: unknown;
+  /** What a reviewer found wrong with a shot earlier, by recipe: the first round starts from it. */
+  hints?: Record<string, string[]>;
 }
 
 const stemOf = (c: ClipData) => (c.cardId.startsWith('demo:') ? c.cardId.slice(5) : '');
@@ -96,7 +98,7 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
   ctx = { ...ctx, screens, crops };
   const slots = { screens: ctx.screens, crops: ctx.crops, layout: ctx.layout, brand: ctx.brand };
   const [card, reference] = await Promise.all([(deps.card ?? fetchRecipeCard)(stem).catch(() => null), (deps.reference ?? fetchReferenceFrames)(stem).catch(() => [])]);
-  let problems: string[] = [];
+  let problems: string[] = ctx.hints?.[stem] ?? [];
   let stills: string[] = [];
   for (let round = 0; round < ADAPT_LIMITS.rounds; round++) {
     if (signal.aborted) return null;

@@ -27,6 +27,7 @@ import { buildProductBrief, briefLines, decisionTable, type ProductBrief, type D
 import { materialOf } from './material';
 import { gateStoryboard } from './storyboardGate';
 import { needsOf, satisfies } from './recipeNeeds';
+import { transplantAdaptation } from './editFilm';
 import { mergeCaptures, neededPages } from './targetedCapture';
 import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
@@ -442,7 +443,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -536,6 +537,11 @@ export async function buildFilmProject(
   }
   const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}), ...(opts.direction ? { direction: opts.direction } : {}) };
   let built: ProjectData = { ...project, spec };
+  if (opts.reuse) {
+    const t = transplantAdaptation(opts.reuse.project, built, new Set(opts.reuse.touchedStems));
+    built = t.project;
+    if (t.kept) log(`Kept the adapted source of ${t.kept} untouched shot${t.kept === 1 ? '' : 's'}`, 'done');
+  }
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
   const skip = (reason: string) => {
     log(`Shot adaptation skipped: ${reason}`, 'done');
@@ -553,7 +559,7 @@ export async function buildFilmProject(
       return need !== 'abstract' && need !== 'none' && satisfies(need, material, part).ok;
     };
     const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture?.brand?.fontFamily ?? undefined };
-    const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content };
+    const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content, ...(opts.hints ? { hints: opts.hints } : {}) };
     const deps = {
       render: async (p: ProjectData, f: number, signal: AbortSignal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
       snapshot: async (r: unknown) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
