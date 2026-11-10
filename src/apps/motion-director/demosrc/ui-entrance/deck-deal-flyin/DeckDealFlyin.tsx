@@ -126,7 +126,6 @@ const BRUSH_TILE = (() => {
 const T = 4000; // 桌面平面外扩（页面坐标），任意斜角不穿帮
 
 export const DeckDealFlyin: React.FC = () => {
-  const VARIANT: string = (typeof window !== 'undefined' && (window as unknown as { __shotVariant?: string }).__shotVariant) || ''; // TEMP: parity experiment
   const frame = useCurrentFrame();
   const cam = camAt(frame);
 
@@ -164,36 +163,18 @@ export const DeckDealFlyin: React.FC = () => {
         <div style={{ position: 'absolute', inset: 0, perspective: `${persp.toFixed(2)}px`, perspectiveOrigin: '960px 540px' }}>
           <div
             style={{
-              position: 'absolute', width: 1920, height: BOARD_H, ...(VARIANT.includes('scale') ? {} : { zoom: cam.zoom }),
-              transform: VARIANT.includes('scale')
-                ? `translate(960px, 540px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg) rotateZ(${cam.rotZ.toFixed(3)}deg) translate(${(-cam.cx * cam.zoom).toFixed(3)}px, ${(-cam.cy * cam.zoom).toFixed(3)}px) scale3d(${cam.zoom}, ${cam.zoom}, ${cam.zoom})`
-                : `translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg) rotateZ(${cam.rotZ.toFixed(3)}deg)`,
-              transformOrigin: VARIANT.includes('scale') ? '0 0' : `${cam.cx.toFixed(2)}px ${cam.cy.toFixed(2)}px`,
+              position: 'absolute', width: 1920, height: BOARD_H, zoom: cam.zoom,
+              transform: `translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg) rotateZ(${cam.rotZ.toFixed(3)}deg)`,
+              transformOrigin: `${cam.cx.toFixed(2)}px ${cam.cy.toFixed(2)}px`,
               transformStyle: 'preserve-3d',
             }}
           >
-            {VARIANT.includes('svgtex') && (
-              <div style={{ position: 'absolute', left: -T, top: -T, width: 1920 + 2 * T, height: BOARD_H + 2 * T, WebkitMaskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`, maskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)` }}>
-                <svg width={1920 + 2 * T} height={BOARD_H + 2 * T} xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', left: 0, top: 0 }}>
-                  <defs>
-                    <filter id="brush" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-                      <feTurbulence type="fractalNoise" baseFrequency="0.0018 0.62" numOctaves={3} seed={11} stitchTiles="stitch" />
-                      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.4 0.4 0.4 0 -0.5" />
-                    </filter>
-                    <pattern id="brushTile" width="640" height="640" patternUnits="userSpaceOnUse"><rect width="640" height="640" filter="url(#brush)" /></pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#brushTile)" />
-                </svg>
-              </div>
-            )}
             {/* 石墨桌面：远处柔边隐进暗场 */}
             <div
               style={{
-                position: 'absolute', left: -T, top: -T, width: 1920 + 2 * T, height: BOARD_H + 2 * T, background: VARIANT.includes('flat') ? 'linear-gradient(115deg, #1b1c1f 0%, #24262a 30%, #18191c 56%, #202226 80%, #141518 100%)' : tableBg,
-                ...(VARIANT.includes('nomask') ? {} : {
-                  WebkitMaskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
-                  maskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
-                }),
+                position: 'absolute', left: -T, top: -T, width: 1920 + 2 * T, height: BOARD_H + 2 * T, background: tableBg,
+                WebkitMaskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
+                maskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
               }}
             />
 
