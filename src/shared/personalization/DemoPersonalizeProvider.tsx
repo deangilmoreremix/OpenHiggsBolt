@@ -5343,7 +5343,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // A full presenter clip made silent for "Keep the original video's
           // sound" only gets that sound back in the layered render; without it
           // the clip is silent, so it isn't offered as the finished video.
-          publishUrl: soundMissing ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
+          // A clip that lacks the layers the customer approved is never offered for publishing.
+          publishUrl: soundMissing || (burnInLayers && !burned && genResult.type === 'video') ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
+          // Three independent outcomes, so one failing never reads as the others failing:
+          //  generation (the AI clip), render (the approved layers added in this browser), cloudSave (the stored copy).
+          exportStatus: {
+            generation: 'ok',
+            render: !burnInLayers || genResult.type !== 'video' ? 'not-needed' : burned ? 'ok' : 'failed',
+            cloudSave: !burned ? 'not-needed' : layeredStored ? 'saved' : 'failed',
+          },
           ...(soundMissing ? { soundMissing: true } : {}),
           ...(layersNote || soundMissing || exportWarning || savedCopyMissingLayers
             ? {
