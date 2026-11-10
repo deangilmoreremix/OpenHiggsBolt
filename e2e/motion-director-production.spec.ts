@@ -119,8 +119,8 @@ test.describe('film production workflow', () => {
     // Scene QA looked at the multiplane shot on its own and found the photos in it.
     const multi = project.run.scenes.find((s: { component: string }) => s.component === 'MultiplaneReal');
     expect(multi.validation.state).toBe('passed');
-    fs.mkdirSync('test-results/production', { recursive: true });
-    fs.writeFileSync('test-results/production/run-upload-film.json', JSON.stringify({ run: project.run, frame, photosSeen: seenPhotos }, null, 1));
+    fs.mkdirSync('docs/motion-director-pipeline-audit/round8', { recursive: true });
+    fs.writeFileSync('docs/motion-director-pipeline-audit/round8/run-upload-film.json', JSON.stringify({ run: project.run, frame, photosSeen: seenPhotos }, null, 1));
   });
 
   test('editing the finished film by scene: keep one, replace one, stronger ending; the rest is kept and the film is rebuilt', async ({ page }) => {
