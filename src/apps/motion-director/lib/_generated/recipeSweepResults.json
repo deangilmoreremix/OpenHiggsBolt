@@ -2,16 +2,16 @@
  "Basic3DScene": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1362.3,
+  "variance": 1383.5,
   "lines": 13,
   "replaced": 9,
   "neutral": 1,
-  "textDiff": 0.02868
+  "textDiff": 0.02865
  },
  "CrashImpactReal": {
   "renderable": true,
-  "supplied": 0.9646,
-  "variance": 3284,
+  "supplied": 0.9947,
+  "variance": 1425.2,
   "lines": 10,
   "replaced": 9,
   "neutral": 0,
@@ -19,35 +19,35 @@
  },
  "CrashZoomReal": {
   "renderable": true,
-  "supplied": 0.9781,
-  "variance": 1120,
+  "supplied": 0.989,
+  "variance": 1733.6,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.00002
  },
  "CursorFlyover": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2964.5,
+  "variance": 3487.5,
   "lines": 27,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.00431
+  "textDiff": 0.00562
  },
  "MultiplaneReal": {
   "renderable": true,
-  "supplied": 0.1657,
-  "variance": 3292.1,
+  "supplied": 0.1668,
+  "variance": 3333.6,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.05052
+  "textDiff": 0.05059
  },
  "GrazeFaceTour": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 7644.3,
+  "variance": 5917.4,
   "lines": 52,
   "replaced": 11,
   "neutral": 0,
@@ -56,25 +56,25 @@
  "OverheadTabletopDrop": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 7249.7,
+  "variance": 7528.2,
   "lines": 39,
   "replaced": 9,
   "neutral": 1,
-  "textDiff": 0.03108
+  "textDiff": 0.03153
  },
  "TiltReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1502.7,
+  "supplied": 0.1085,
+  "variance": 1496,
   "lines": 16,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.03321
+  "textDiff": 0.03549
  },
  "DroneDiveLanding": {
   "renderable": true,
   "supplied": 0,
-  "variance": 1361.9,
+  "variance": 2853.8,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -83,52 +83,52 @@
  "ExplodedView": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2445,
+  "variance": 2531,
   "lines": 23,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00384
+  "textDiff": 0.00997
  },
  "SteepTiltGlide": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 10092.8,
+  "supplied": 0.1085,
+  "variance": 10590.8,
   "lines": 25,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.00132
+  "textDiff": 0.00125
  },
  "BulletTimeFreezeOrbit": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 792.7,
+  "variance": 795.2,
   "lines": 9,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.00819
+  "textDiff": 0.00828
  },
  "PullBackIsolation": {
   "renderable": true,
-  "supplied": 0.0611,
-  "variance": 2570.9,
+  "supplied": 0.1017,
+  "variance": 3857,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.00016
+  "textDiff": 0.00049
  },
  "Terminal3D": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 670.4,
+  "variance": 829.8,
   "lines": 16,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.01411
  },
  "BeforeAfterSliderScrub": {
   "renderable": true,
   "supplied": 0.6936,
-  "variance": 585.1,
+  "variance": 598.2,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
@@ -137,34 +137,34 @@
  "AxisRescaleShockV2": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2491.6,
+  "variance": 2493.7,
   "lines": 16,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.02641
+  "textDiff": 0.02884
  },
  "OscilloscopeStreamV2": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1212.8,
+  "variance": 1227.2,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.00705
+  "textDiff": 0.00767
  },
  "UnitDotSwarmRegroupV2": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3049.1,
+  "variance": 3194.3,
   "lines": 9,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.02148
+  "textDiff": 0.02307
  },
  "NeedleSweepSelftest": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 718.6,
+  "variance": 719.9,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
@@ -173,11 +173,11 @@
  "TapeScrollFixedPointer": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2970.6,
+  "variance": 2979.6,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.03439
+  "textDiff": 0.03469
  },
  "BrakeReticleLock": {
   "renderable": true,
@@ -186,16 +186,16 @@
   "lines": 61,
   "replaced": 12,
   "neutral": 2,
-  "textDiff": 0.00191
+  "textDiff": 0.01005
  },
  "ChangelogScrollBrake": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2929.8,
+  "variance": 2923.1,
   "lines": 52,
   "replaced": 11,
   "neutral": 1,
-  "textDiff": 0
+  "textDiff": 0.00747
  },
  "TimelineTravel": {
   "renderable": true,
@@ -204,48 +204,48 @@
   "lines": 23,
   "replaced": 10,
   "neutral": 1,
-  "textDiff": 0.00375
+  "textDiff": 0.00535
  },
  "AssembleThenTypeFlyin": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1694.7,
+  "variance": 1644.8,
   "lines": 20,
   "replaced": 10,
   "neutral": 1,
-  "textDiff": 0.03882
+  "textDiff": 0.03878
  },
  "AuroraBloomBgFlip": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2587.1,
+  "variance": 2586.9,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.02115
+  "textDiff": 0.0213
  },
  "BrandFrameSnap": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 5981.1,
+  "supplied": 0.1177,
+  "variance": 5974.4,
   "lines": 34,
   "replaced": 8,
   "neutral": 1,
-  "textDiff": 0.00604
+  "textDiff": 0.00615
  },
  "ReticleLockOn": {
   "renderable": true,
-  "supplied": 0.9972,
-  "variance": 139.4,
+  "supplied": 1,
+  "variance": 214.5,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00549
+  "textDiff": 0.00655
  },
  "FlylineArc": {
   "renderable": true,
   "supplied": 0,
-  "variance": 84.4,
+  "variance": 84.8,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -254,34 +254,34 @@
  "GlowOrbAmbient": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1795.3,
+  "variance": 1817.7,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.03557
+  "textDiff": 0.03562
  },
  "OrbFlylineRelay": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1198.8,
+  "variance": 1199.6,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.01293
+  "textDiff": 0.01307
  },
  "AttentionBounce": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2434.7,
+  "variance": 3123.2,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.01024
+  "textDiff": 0.00981
  },
  "AnimeImpact": {
   "renderable": true,
-  "supplied": 0.5715,
-  "variance": 1228.8,
+  "supplied": 0.8812,
+  "variance": 1224,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -290,52 +290,52 @@
  "HitCounter": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2645.5,
+  "variance": 2647.9,
   "lines": 14,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.03722
+  "textDiff": 0.03724
  },
  "SheenSweepRetry": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 6449,
+  "variance": 6448,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.0445
+  "textDiff": 0.04455
  },
  "SpotlightSweepReveal": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1298,
+  "variance": 1332.5,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.04724
+  "textDiff": 0.05076
  },
  "RadialRipplePhoneChips": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3155.8,
+  "variance": 3225,
   "lines": 25,
   "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.00382
+  "textDiff": 0.00363
  },
  "RisoMisregistrationHit": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3012.9,
+  "supplied": 0.1085,
+  "variance": 3152.4,
   "lines": 12,
   "replaced": 9,
   "neutral": 2,
-  "textDiff": 0.14
+  "textDiff": 0.15028
  },
  "ScanBracketSweep": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2800.7,
+  "variance": 2786.9,
   "lines": 23,
   "replaced": 8,
   "neutral": 0,
@@ -344,61 +344,61 @@
  "ScanlineAnnotateFocus": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3322.8,
+  "variance": 3323.8,
   "lines": 20,
   "replaced": 8,
   "neutral": 2,
-  "textDiff": 0.03781
+  "textDiff": 0.03788
  },
  "ScanlineAssembleFlyin": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1592.9,
+  "variance": 1592.8,
   "lines": 26,
   "replaced": 8,
   "neutral": 1,
-  "textDiff": 0.01123
+  "textDiff": 0.01122
  },
  "ImpactBurstKit": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 6523.5,
+  "variance": 7061.3,
   "lines": 23,
   "replaced": 9,
   "neutral": 2,
-  "textDiff": 0.03273
+  "textDiff": 0.03276
  },
  "KanadaPerspectiveSnap": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2096.5,
+  "supplied": 0.1085,
+  "variance": 2097.8,
   "lines": 10,
   "replaced": 9,
   "neutral": 1,
-  "textDiff": 0.02451
+  "textDiff": 0.02438
  },
  "ScoreSlam": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1731.4,
+  "variance": 1733,
   "lines": 6,
   "replaced": 6,
   "neutral": 1,
-  "textDiff": 0.03352
+  "textDiff": 0.03344
  },
  "CornerSpotlightReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3432.6,
+  "supplied": 0.1085,
+  "variance": 3470.7,
   "lines": 6,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.03924
+  "textDiff": 0.03988
  },
  "GlowWakeSleepPanel": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 13457.9,
+  "variance": 13477.9,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -406,8 +406,8 @@
  },
  "SlideSpotlightPan": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 7919.3,
+  "supplied": 0.1085,
+  "variance": 8513.4,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -416,34 +416,34 @@
  "AutolayoutGapDial": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1475.9,
+  "variance": 1534.7,
   "lines": 7,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.00658
+  "textDiff": 0.00668
  },
  "DiagramCascadeBuild": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 765.8,
+  "variance": 768.3,
   "lines": 14,
   "replaced": 6,
   "neutral": 1,
-  "textDiff": 0.0066
+  "textDiff": 0.00668
  },
  "PanelToCanvasMaterialize": {
   "renderable": true,
-  "supplied": 0.0178,
-  "variance": 1941.1,
+  "supplied": 0.0179,
+  "variance": 1953.2,
   "lines": 31,
   "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.01248
+  "textDiff": 0.01217
  },
  "ChipGridSingleSelectBlackout": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3397,
+  "variance": 3400.9,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
@@ -451,8 +451,8 @@
  },
  "CursorCastEnsemble": {
   "renderable": true,
-  "supplied": 0.0025,
-  "variance": 1469.9,
+  "supplied": 0.0024,
+  "variance": 1473.1,
   "lines": 25,
   "replaced": 9,
   "neutral": 1,
@@ -460,16 +460,16 @@
  },
  "GlassPillDictationTyping": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1902.4,
+  "supplied": 0.1084,
+  "variance": 1912.5,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00901
+  "textDiff": 0.00899
  },
  "HashtagToPillMaterialize": {
   "renderable": true,
-  "supplied": 0.1074,
+  "supplied": 0.1085,
   "variance": 2761.6,
   "lines": 8,
   "replaced": 8,
@@ -478,7 +478,7 @@
  },
  "PickerCarouselFeatureCycle": {
   "renderable": true,
-  "supplied": 0.1074,
+  "supplied": 0.1084,
   "variance": 2522.5,
   "lines": 7,
   "replaced": 7,
@@ -487,17 +487,17 @@
  },
  "SegmentedThumbHero": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2896.4,
+  "supplied": 0.1084,
+  "variance": 2897.4,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00783
+  "textDiff": 0.00842
  },
  "PaletteThemeRipple": {
   "renderable": true,
-  "supplied": 0.0899,
-  "variance": 3944.5,
+  "supplied": 0.0907,
+  "variance": 4097.5,
   "lines": 30,
   "replaced": 12,
   "neutral": 1,
@@ -505,17 +505,17 @@
  },
  "ThemeSweepToggle": {
   "renderable": true,
-  "supplied": 0.0368,
-  "variance": 3022.3,
+  "supplied": 0.3166,
+  "variance": 6119.8,
   "lines": 22,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00102
+  "textDiff": 0.00726
  },
  "TypeAndFilter": {
   "renderable": true,
-  "supplied": 0.9754,
-  "variance": 1973.5,
+  "supplied": 0.955,
+  "variance": 1986.8,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -524,52 +524,52 @@
  "VoiceWaveformLive": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2555.6,
+  "variance": 2722.2,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.02267
+  "textDiff": 0.02899
  },
  "CraneRiseReveal": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2868.4,
+  "variance": 3651,
   "lines": 46,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.00993
+  "textDiff": 0.01283
  },
  "DatavizLandscapeOpen": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 594.5,
+  "variance": 699.9,
   "lines": 14,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.0029
+  "textDiff": 0.00285
  },
  "Fracture": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 503.9,
+  "variance": 539.1,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.00043
  },
  "IconFieldColorize": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3285.5,
+  "variance": 3397.8,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.04104
+  "textDiff": 0.04318
  },
  "LetterspaceMaterialize": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1928.2,
+  "supplied": 0.1084,
+  "variance": 1939.1,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -587,16 +587,16 @@
  "OrbitRingTitleOpen": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3488.7,
+  "variance": 3478.4,
   "lines": 24,
   "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.05849
+  "textDiff": 0.05896
  },
  "SpotlightHeroCard": {
   "renderable": true,
-  "supplied": 0.0065,
-  "variance": 119.7,
+  "supplied": 0.95,
+  "variance": 968.8,
   "lines": 2,
   "replaced": 2,
   "neutral": 1,
@@ -605,16 +605,16 @@
  "StrokeSegmentBuild": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1490.5,
+  "variance": 1492.5,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00602
+  "textDiff": 0.00616
  },
  "TextAsMask": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 9106,
+  "variance": 9112.5,
   "lines": 15,
   "replaced": 8,
   "neutral": 0,
@@ -623,7 +623,7 @@
  "GrainDissolve": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 969.8,
+  "variance": 1144.9,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -631,8 +631,8 @@
  },
  "LogoShrinkWordmarkLockup": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 555.7,
+  "supplied": 0.1085,
+  "variance": 1793.8,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -641,16 +641,16 @@
  "NeonTripleMarquee": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1437.9,
+  "variance": 1421.9,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.16328
+  "textDiff": 0.18507
  },
  "OutroGroupPhotoLaunch": {
   "renderable": true,
-  "supplied": 0.5665,
-  "variance": 4648.3,
+  "supplied": 0.6572,
+  "variance": 4962.9,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -659,16 +659,16 @@
  "UiStripAwayOutro": {
   "renderable": true,
   "supplied": 0.063,
-  "variance": 2960.9,
+  "variance": 6773,
   "lines": 29,
   "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.00038
+  "textDiff": 0.00076
  },
  "IconFlipBloomLogo": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2710.9,
+  "supplied": 0.1085,
+  "variance": 2717.6,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -677,52 +677,52 @@
  "InputMorphsIntoLogo": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2245.2,
+  "variance": 2829.4,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.01174
  },
  "PaparazziFlash": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1374.4,
+  "variance": 1462.7,
   "lines": 10,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.03446
+  "textDiff": 0.03852
  },
  "BeatStepListThemeCycle": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1263.2,
+  "variance": 2102.8,
   "lines": 8,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.01344
+  "textDiff": 0.01333
  },
  "ComicPanelSplit": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2184.7,
+  "variance": 2195.4,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.04757
+  "textDiff": 0.04759
  },
  "QuadSplitParallelScenes": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 7668.1,
+  "variance": 7700.6,
   "lines": 23,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.0263
+  "textDiff": 0.02703
  },
  "JumpCutPunchIn": {
   "renderable": false,
   "supplied": 1,
-  "variance": 0.5,
+  "variance": 0.6,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -731,24 +731,24 @@
  "SakugaTimingShift": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3136.7,
+  "variance": 3142.1,
   "lines": 11,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.02009
+  "textDiff": 0.01845
  },
  "FreezeAnnotateReal": {
   "renderable": true,
-  "supplied": 0.2493,
-  "variance": 3360.1,
+  "supplied": 0.2849,
+  "variance": 3652.3,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.00411
+  "textDiff": 0.01401
  },
  "TrailerBumper": {
   "renderable": true,
-  "supplied": 0,
+  "supplied": 1,
   "variance": 625.8,
   "lines": 1,
   "replaced": 1,
@@ -758,34 +758,34 @@
  "BottomPushStackWipe": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2341.5,
+  "variance": 2731.4,
   "lines": 29,
   "replaced": 10,
   "neutral": 1,
-  "textDiff": 0.04392
+  "textDiff": 0.03745
  },
  "CardFlipReveal": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 10451.6,
+  "variance": 10459.1,
   "lines": 28,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00557
+  "textDiff": 0.00877
  },
  "CardFlockTumble": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 10123.1,
+  "variance": 10123.3,
   "lines": 38,
   "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.00083
+  "textDiff": 0.0009
  },
  "CircleMatchIris": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2160.6,
+  "variance": 2158,
   "lines": 26,
   "replaced": 8,
   "neutral": 0,
@@ -794,61 +794,61 @@
  "GradientTransition": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1434.2,
+  "variance": 2478.5,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.02344
+  "textDiff": 0.06024
  },
  "LineCarryTransition": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2764.1,
+  "variance": 3332.5,
   "lines": 13,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00293
+  "textDiff": 0.00953
  },
  "MosaicReframe": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2575.3,
+  "variance": 3299.4,
   "lines": 8,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.01878
+  "textDiff": 0.02502
  },
  "BarnDoorSplit": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1817,
+  "variance": 1829.6,
   "lines": 11,
   "replaced": 9,
   "neutral": 2,
-  "textDiff": 0.07771
+  "textDiff": 0.07175
  },
  "InkBleedReveal": {
   "renderable": true,
   "supplied": 1,
-  "variance": 2856.6,
+  "variance": 4636.9,
   "lines": 5,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.02641
  },
  "PortalWipeV2": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3398.5,
+  "variance": 4000.9,
   "lines": 25,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.01493
+  "textDiff": 0.01797
  },
  "WhipBrakeReal": {
   "renderable": true,
   "supplied": 0,
-  "variance": 275.6,
+  "variance": 467.8,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
@@ -857,52 +857,52 @@
  "GlitchDisplace": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2043.6,
+  "variance": 2392,
   "lines": 22,
   "replaced": 10,
   "neutral": 1,
-  "textDiff": 0.03314
+  "textDiff": 0.03333
  },
  "InvisibleCut": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2364.5,
+  "supplied": 0.1084,
+  "variance": 3144.3,
   "lines": 21,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00606
+  "textDiff": 0.01267
  },
  "LightLeakBurn": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2520.8,
+  "supplied": 0.1085,
+  "variance": 2523.3,
   "lines": 10,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.03826
+  "textDiff": 0.04024
  },
  "VersusSlam": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2621.9,
+  "supplied": 0.1084,
+  "variance": 3402.9,
   "lines": 13,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00384
+  "textDiff": 0.00392
  },
  "LetterformZoom": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3465.4,
+  "variance": 3832.7,
   "lines": 17,
   "replaced": 9,
   "neutral": 1,
-  "textDiff": 0.30743
+  "textDiff": 0.38542
  },
  "WhiteFlashLogoSimplifyCut": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2341.8,
+  "supplied": 0.1085,
+  "variance": 2342,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -910,34 +910,34 @@
  },
  "BlindsSlice": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 5206.6,
+  "supplied": 0.1085,
+  "variance": 6785.8,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.00307
+  "textDiff": 0.00347
  },
  "BlurSlide": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2898.6,
+  "supplied": 0.1085,
+  "variance": 2903.1,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.06351
+  "textDiff": 0.06399
  },
  "BraceExpand": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 668.5,
+  "supplied": 0.1085,
+  "variance": 667.7,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00469
+  "textDiff": 0.00474
  },
  "BrandInkOpen": {
   "renderable": true,
-  "supplied": 0.1074,
+  "supplied": 0.1084,
   "variance": 2715.8,
   "lines": 1,
   "replaced": 0,
@@ -946,8 +946,8 @@
  },
  "CountdownArcScatter": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2614.9,
+  "supplied": 0.1084,
+  "variance": 2881.8,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
@@ -956,34 +956,34 @@
  "FlyingWords": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1330.8,
+  "variance": 1577.4,
   "lines": 22,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.00719
+  "textDiff": 0.04778
  },
  "GlitchCycle": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1111.7,
+  "variance": 1297.7,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.00405
+  "textDiff": 0.02826
  },
  "GradientWordSweep": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1393.3,
+  "supplied": 0.1084,
+  "variance": 1641.4,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.05168
+  "textDiff": 0.05273
  },
  "LeadWordZoomAssemble": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3052.2,
+  "variance": 3675.3,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
@@ -992,20 +992,20 @@
  "MarkerUnderlineTitle": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2951.7,
+  "variance": 2951.8,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.02335
+  "textDiff": 0.02361
  },
  "OutlineWordFill": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1502.2,
+  "variance": 1636.2,
   "lines": 6,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.03363
+  "textDiff": 0.03457
  },
  "PaperTitleCard": {
   "renderable": true,
@@ -1019,7 +1019,7 @@
  "PillChipSlotCycleHandled": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 4737.8,
+  "variance": 4739.7,
   "lines": 6,
   "replaced": 4,
   "neutral": 0,
@@ -1037,25 +1037,25 @@
  "TextColumnConverge": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 673.8,
+  "variance": 687.6,
   "lines": 11,
   "replaced": 8,
   "neutral": 1,
-  "textDiff": 0.0045
+  "textDiff": 0.00446
  },
  "TitleDemoteToLabel": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 6032.2,
+  "variance": 6033.2,
   "lines": 24,
   "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.03283
+  "textDiff": 0.03281
  },
  "LetterformDriftAssembly": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3176.8,
+  "variance": 3187.3,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -1063,48 +1063,48 @@
  },
  "SplitTextStagger": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3031,
+  "supplied": 0.1085,
+  "variance": 3032.3,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.03847
+  "textDiff": 0.03766
  },
  "TextOnPath": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2041.9,
+  "variance": 2047.6,
   "lines": 10,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.03113
+  "textDiff": 0.03172
  },
  "LetterDropPhysics": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3079.4,
+  "variance": 3069,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00299
+  "textDiff": 0.00318
  },
  "FontWeightPump": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3284,
+  "variance": 4507.1,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.00005
+  "textDiff": 0.00274
  },
  "KaraokeFillSync": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 4056.6,
+  "variance": 4105.8,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.07168
+  "textDiff": 0.07715
  },
  "TypewriterErrorRetype": {
   "renderable": true,
@@ -1113,12 +1113,12 @@
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.00186
+  "textDiff": 0.02003
  },
  "VerticalWordRollBlurCycle": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 3475.1,
+  "variance": 3477,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
@@ -1127,25 +1127,25 @@
  "WordRelayFilmstrip": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 9186.1,
+  "variance": 9189.8,
   "lines": 74,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00587
+  "textDiff": 0.00552
  },
  "WordRelayGeometry": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 1062.6,
+  "variance": 2053.4,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.0426
+  "textDiff": 0.05403
  },
  "AvatarBracketCarousel": {
   "renderable": true,
   "supplied": 0.0194,
-  "variance": 1083.5,
+  "variance": 1089.3,
   "lines": 5,
   "replaced": 4,
   "neutral": 0,
@@ -1153,44 +1153,44 @@
  },
  "BezierSourceConvergeMerge": {
   "renderable": true,
-  "supplied": 0.011,
-  "variance": 929.5,
+  "supplied": 0.0117,
+  "variance": 912.7,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0.00278
  },
  "CardStack": {
   "renderable": true,
-  "supplied": 0.0602,
-  "variance": 2657.5,
+  "supplied": 0.0643,
+  "variance": 2689.4,
   "lines": 22,
   "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.03168
+  "textDiff": 0.03127
  },
  "Carousel3D": {
   "renderable": true,
-  "supplied": 0.0184,
-  "variance": 1029.2,
+  "supplied": 0.0185,
+  "variance": 908.4,
   "lines": 20,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00208
+  "textDiff": 0.01318
  },
  "ClonerDepthEcho": {
   "renderable": true,
   "supplied": 0.065,
-  "variance": 1576.7,
+  "variance": 1576,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.03936
+  "textDiff": 0.03872
  },
  "DeckDealFlyin": {
   "renderable": true,
-  "supplied": 0.108,
-  "variance": 3073.9,
+  "supplied": 0.1956,
+  "variance": 4730.8,
   "lines": 4,
   "replaced": 4,
   "neutral": 2,
@@ -1199,43 +1199,43 @@
  "DocParkLeftPillDeal": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2571,
+  "variance": 2589.8,
   "lines": 25,
   "replaced": 11,
   "neutral": 3,
-  "textDiff": 0.01385
+  "textDiff": 0.02302
  },
  "DocumentTypewriterReveal": {
   "renderable": true,
-  "supplied": 0.6601,
-  "variance": 4625.1,
+  "supplied": 0.7204,
+  "variance": 4843.7,
   "lines": 20,
   "replaced": 13,
   "neutral": 6,
-  "textDiff": 0.00071
+  "textDiff": 0.0008
  },
  "DrawSvgTrace": {
   "renderable": true,
   "supplied": 0.0635,
-  "variance": 2256.3,
+  "variance": 2258.6,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.0163
+  "textDiff": 0.01661
  },
  "ContactShadowLift": {
   "renderable": true,
-  "supplied": 0.123,
-  "variance": 3001,
+  "supplied": 0.1232,
+  "variance": 3569.9,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.02997
+  "textDiff": 0.03038
  },
  "IntegrationHubMap": {
   "renderable": true,
-  "supplied": 0.2869,
-  "variance": 3929.3,
+  "supplied": 0.7196,
+  "variance": 4745.1,
   "lines": 45,
   "replaced": 11,
   "neutral": 0,
@@ -1243,17 +1243,17 @@
  },
  "ListReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2806.8,
+  "supplied": 0.1085,
+  "variance": 2814.7,
   "lines": 9,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.04595
+  "textDiff": 0.04557
  },
  "ListStackPress": {
   "renderable": true,
-  "supplied": 0.4834,
-  "variance": 3441.9,
+  "supplied": 0.4787,
+  "variance": 3436.1,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
@@ -1261,8 +1261,8 @@
  },
  "NeonFrameForerun": {
   "renderable": true,
-  "supplied": 0.4367,
-  "variance": 1140,
+  "supplied": 0.4405,
+  "variance": 1163.2,
   "lines": 23,
   "replaced": 8,
   "neutral": 0,
@@ -1270,8 +1270,8 @@
  },
  "NeonFrameForerunOrbit": {
   "renderable": true,
-  "supplied": 0.4464,
-  "variance": 1141.6,
+  "supplied": 0.4238,
+  "variance": 1165.8,
   "lines": 52,
   "replaced": 9,
   "neutral": 0,
@@ -1279,8 +1279,8 @@
  },
  "PageWaterfallWall": {
   "renderable": true,
-  "supplied": 0.2489,
-  "variance": 2908.5,
+  "supplied": 0.2598,
+  "variance": 3159,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -1288,7 +1288,7 @@
  },
  "ProductCardProgressiveAssemble": {
   "renderable": true,
-  "supplied": 0.1124,
+  "supplied": 0.1131,
   "variance": 3774.9,
   "lines": 20,
   "replaced": 11,
@@ -1297,8 +1297,8 @@
  },
  "RadialWave": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1449.9,
+  "supplied": 0.1084,
+  "variance": 1417.3,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -1306,17 +1306,17 @@
  },
  "ResearchCardStackScroll": {
   "renderable": true,
-  "supplied": 0.0695,
-  "variance": 11840.2,
+  "supplied": 0.0728,
+  "variance": 12056.5,
   "lines": 12,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00937
+  "textDiff": 0.01063
  },
  "RowEmbed": {
   "renderable": true,
-  "supplied": 0.9078,
-  "variance": 905.4,
+  "supplied": 1,
+  "variance": 704.9,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -1325,7 +1325,7 @@
  "ValueStaggerGradient": {
   "renderable": true,
   "supplied": 0.1074,
-  "variance": 2250.7,
+  "variance": 1979.8,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
@@ -1334,7 +1334,7 @@
  "BentoLightUp": {
   "renderable": true,
   "supplied": 0.1701,
-  "variance": 3952.6,
+  "variance": 3952.8,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
@@ -1343,7 +1343,7 @@
  "WireframeDrawOn": {
   "renderable": true,
   "supplied": 1,
-  "variance": 20.5,
+  "variance": 177.4,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
