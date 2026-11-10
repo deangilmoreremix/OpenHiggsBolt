@@ -130,8 +130,9 @@ test.describe('film production workflow', () => {
     await page.getByRole('button', { name: 'Approve & build film' }).click();
     await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 10 * 60_000 });
     await expect(chat).toContainText('The draft:', { timeout: 60_000 });
-    await page.getByPlaceholder('Describe your motion video...').fill('Keep the first scene, replace the second shot with a different camera movement, and make the ending more dramatic.');
-    await page.getByRole('button', { name: 'Generate' }).click();
+    const composer = page.locator('textarea').last();
+    await composer.fill('Keep the first scene, replace the second shot with a different camera movement, and make the ending more dramatic.');
+    await composer.press('Enter');
     await expect(chat).toContainText('Rebuilt the film from the edited storyboard', { timeout: 5 * 60_000 });
     await expect(chat).toContainText('Scene 2:');
     await expect(chat).toContainText('Kept scene 1.');
