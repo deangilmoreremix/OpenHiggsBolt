@@ -134,6 +134,9 @@ test.describe('Phase 5 — layout templates: card vs editor vs preview vs export
 
         // 3) Approve and run the real in-browser export.
         await dialog.getByRole('button', { name: /Approve this personalization|^Approved$/i }).click({ timeout: 30_000 });
+        // An unrecorded clip licence is never assumed: confirm before a final export.
+        const rights = page.getByTestId('guided-rights-confirm').locator('input');
+        if (await rights.count()) await rights.check();
         await dialog.getByRole('button', { name: 'Render branded video' }).click({ timeout: 60_000 });
         await expect
           .poll(

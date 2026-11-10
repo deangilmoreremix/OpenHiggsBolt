@@ -119,6 +119,13 @@ test.describe('Image styling — rounded product image on real footage, preview 
         await target.locator('[data-testid="personalization-template-use"]').click();
         await page.waitForTimeout(1500);
 
+        // Optional A/B: turn the image shadow off through the editor's own control.
+        if (process.env.PHASE5_SHADOW) {
+          await dialog.getByRole('button', { name: /Step 4/i }).click();
+          await dialog.getByRole('button', { name: 'Select Product image' }).click();
+          await dialog.getByLabel('Image shadow').selectOption(process.env.PHASE5_SHADOW);
+        }
+
         // Step 4: what the Layout Quality Check says for THIS footage.
         await dialog.getByRole('button', { name: /Step 4/i }).click();
         await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
@@ -132,13 +139,18 @@ test.describe('Image styling — rounded product image on real footage, preview 
             l.map((x) => `${x.getAttribute('data-code')}:${x.getAttribute('data-severity')} ${(x.textContent ?? '').trim().slice(0, 110)}`)),
         };
         await panel.screenshot({ path: path.join(OUT, `${slug}-2-quality-before.png`) });
+        // The customer marks where the subject is (panel control); the engine then avoids it.
+        if (process.env.PHASE5_SUBJECT) {
+          await page.getByTestId(`layout-quality-subject-${process.env.PHASE5_SUBJECT}`).click();
+          await page.waitForTimeout(1200);
+        }
         // Apply the engine's recommendation (never moves hand-placed or locked layers) and re-check.
         const readIssues = () => page.locator('[data-testid="layout-quality-issues"] li').evaluateAll((l) =>
           l.map((x) => `${x.getAttribute('data-code')}:${x.getAttribute('data-severity')} ${(x.textContent ?? '').trim().slice(0, 110)}`));
         const layerPositions = () => page.evaluate(() => (window as unknown as { __personalizationCtx?: { previewSettings?: { layers: { id: string; x: number; y: number }[] } } }).__personalizationCtx?.previewSettings?.layers.map((l) => `${l.id}@${l.x.toFixed(3)},${l.y.toFixed(3)}`) ?? []);
         const positionsBefore = await layerPositions();
         let afterRecommended: { status: string | null; issues: string[] } | null = null;
-        if (await page.locator('[data-testid="layout-quality-fix"]').count()) {
+        if (!process.env.PHASE5_SHADOW && await page.locator('[data-testid="layout-quality-fix"]').count()) {
           await page.getByTestId('layout-quality-apply').click();
           await page.waitForTimeout(1500);
           afterRecommended = { status: await page.getByTestId('layout-quality-status').getAttribute('data-status'), issues: await readIssues() };
