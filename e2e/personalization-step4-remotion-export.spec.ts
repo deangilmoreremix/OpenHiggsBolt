@@ -432,6 +432,9 @@ async function approve(page: Page): Promise<void> {
  */
 async function renderBrandedVideo(page: Page): Promise<{ size: number; type: string }> {
   const dialog = page.getByRole('dialog');
+  // An unrecorded clip licence is never assumed: the customer confirms before a final export.
+  const rights = page.getByTestId('guided-rights-confirm').locator('input');
+  if (await rights.count()) await rights.check();
   await dialog.getByRole('button', { name: 'Render branded video' }).click({ timeout: 60_000 });
 
   await expect
