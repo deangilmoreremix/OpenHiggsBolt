@@ -23,7 +23,7 @@
 //   134–158 hold 24f：静止落定，带评论图钉的目标卡停在左侧
 import React, { useId } from 'react';
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 import { EASE, FONT, SpeedBlur, mix, ramp, velocity } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, springAt, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
@@ -37,12 +37,8 @@ const INK = L.accent; // 钴蓝马克笔
 const CARD_W = 600;
 const GAP = 52;
 const PITCH = CARD_W + GAP;
-const RAIL = layout.projects.cards;
 const TARGET_K = 5;
 const TARGET_FILE = 'card9.png'; // nano-lab: automated research loop
-const SHIFT = RAIL.findIndex((c) => c.file === TARGET_FILE) - TARGET_K;
-const fileOf = (k: number) => RAIL[(((k + SHIFT) % RAIL.length) + RAIL.length) % RAIL.length].file;
-const cardH = (file: string) => (file === 'card1.png' || file === 'card2.png' ? (CARD_W * 576) / 716 : (CARD_W * 624) / 716);
 const RAIL_TOP = 336;
 const PX = 26; // 每源帧导轨位移（px）
 
@@ -62,16 +58,28 @@ const srcAt = (f: number) => {
 const OFFSET = 960 - (TARGET_K * PITCH + CARD_W / 2) + FREEZE * PX;
 const railX = (f: number) => OFFSET - srcAt(f) * PX;
 
-// 目标卡显示尺寸 → 圈注几何（定格时卡被拾起 −16px、放大 3%）
-const TARGET_H = cardH(TARGET_FILE);
 const CX = 960;
-const CY = RAIL_TOP + TARGET_H / 2 - 16;
-const RX = 1.2 * (CARD_W / 2) * 1.03;
-const RY = 1.22 * (TARGET_H / 2) * 1.03;
 const SE = 2 / 3; // 超椭圆参数指数 2/n（n=3）
 
-// 一笔马克笔圈：左上起笔，顺时针 1.08 圈，半径随行程内收 4%（收笔不闭合，像手画）
-const circlePath = (() => {
+/**
+ * The rail of cards and the marker circle drawn around the target. The rail is the page's cards in a row (their own
+ * pictures and proportions: a customer's cards are not the sample's 716 x 576/624 crops), and the circle is sized to the
+ * target card. With the sample's layout this is the original rail, target and circle.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const RAIL = layout.projects.cards;
+  const target = customer ? Math.min(layout.projects.main ?? 0, RAIL.length - 1) : RAIL.findIndex((c) => c.file === TARGET_FILE);
+  const SHIFT = target - TARGET_K;
+  const cardAt = (k: number) => RAIL[(((k + SHIFT) % RAIL.length) + RAIL.length) % RAIL.length];
+  const fileOf = (k: number) => cardAt(k).file;
+  const cardH = (k: number) => (customer ? (CARD_W * cardAt(k).h) / cardAt(k).w : cardAt(k).file === 'card1.png' || cardAt(k).file === 'card2.png' ? (CARD_W * 576) / 716 : (CARD_W * 624) / 716);
+  // 目标卡显示尺寸 → 圈注几何（定格时卡被拾起 −16px、放大 3%）
+  const TARGET_H = cardH(TARGET_K);
+  const CY = RAIL_TOP + TARGET_H / 2 - 16;
+  const RX = 1.2 * (CARD_W / 2) * 1.03;
+  const RY = 1.22 * (TARGET_H / 2) * 1.03;
+  // 一笔马克笔圈：左上起笔，顺时针 1.08 圈，半径随行程内收 4%（收笔不闭合，像手画）
   const N = 140;
   const a0 = -2.3;
   const pts: string[] = [];
@@ -84,8 +92,9 @@ const circlePath = (() => {
     const py = Math.sign(sn) * Math.pow(Math.abs(sn), SE) * RY * k;
     pts.push(`${(CX + px).toFixed(1)} ${(CY + py).toFixed(1)}`);
   }
-  return `M ${pts.join(' L ')}`;
-})();
+  return { fileOf, cardH, TARGET_H, CY, RX, RY, circlePath: `M ${pts.join(' L ')}` };
+};
+void SAMPLE_LAYOUT;
 
 // 时间码（30fps）：定格后停住
 const timecode = (f: number) => {
@@ -117,6 +126,8 @@ const Bracket: React.FC<{ x: number; y: number; sx: 1 | -1; sy: 1 | -1; s: numbe
 );
 
 export const FreezeAnnotateReal: React.FC = () => {
+  const layout = useLiveLayout();
+  const { fileOf, cardH, TARGET_H, CY, RX, RY, circlePath } = React.useMemo(() => geometryOf(layout), [layout]);
   const frame = useCurrentFrame();
   const roughId = `rough-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 
@@ -159,7 +170,7 @@ export const FreezeAnnotateReal: React.FC = () => {
     if (left > 1980 || left + CARD_W < -60) continue;
     const file = fileOf(k);
     const isT = k === TARGET_K;
-    const h = cardH(file);
+    const h = cardH(k);
     const lift = isT ? focus : 0;
     cards.push(
       <div

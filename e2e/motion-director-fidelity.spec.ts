@@ -17,8 +17,10 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'FreezeAnnotateReal', frames: { entry: 20, freeze: 50, peak: 90, settled: 150 }, sampleMain: 8, customMain: 1, heroFrames: ['freeze', 'peak'], areaOnly: true, maxAreaRatio: 1.6 },
+  { stem: 'TypeAndFilter', frames: { entry: 14, full: 52, peak: 62, settled: 72 }, sampleMain: 8, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.5 },
   { stem: 'MultiplaneReal', frames: { entry: 8, slide: 70, peak: 130, settled: 160 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true },
   { stem: 'CrashImpactReal', frames: { entry: 12, scan: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
   { stem: 'CrashZoomReal', frames: { entry: 10, lock: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
@@ -80,7 +82,10 @@ for (const cfg of RECIPES) {
     fs.mkdirSync(OUT, { recursive: true });
     fs.writeFileSync(path.join(OUT, `fidelity-${cfg.stem}.json`), JSON.stringify({ identity: idDiff, hero: rows }, null, 1));
 
-    for (const d of idDiff) expect(d.diff, `identity: ${d.frame} frame differs from the unmodified recipe`).toBeLessThan(0.0005);
+    for (const d of idDiff) {
+      if (cfg.idTolerance && !(d.frame in cfg.idTolerance)) continue;
+      expect(d.diff, `identity: ${d.frame} frame differs from the unmodified recipe`).toBeLessThan(cfg.idTolerance?.[d.frame] ?? 0.0005);
+    }
     for (const r of rows.filter((r) => cfg.heroFrames.includes(r.frame))) {
       expect(r.customer.n, `${r.frame}: the customer's hero card is visible`).toBeGreaterThan(0);
       expect(Math.abs(r.customer.cx - r.twin.cx), `${r.frame}: hero centre x (camera target)`).toBeLessThan(0.05);
@@ -92,7 +97,7 @@ for (const cfg of RECIPES) {
         expect(r.customer.share / r.twin.share, `${r.frame}: hero area on screen`).toBeGreaterThan(0.8);
       }
       // The same card seen once: its colour covers no more of the frame than the twin's card does (a duplicate beneath would double it).
-      expect(r.customer.share / r.twin.share, `${r.frame}: the card appears once`).toBeLessThan(1.25);
+      expect(r.customer.share / r.twin.share, `${r.frame}: the card appears once`).toBeLessThan(cfg.maxAreaRatio ?? 1.25);
     }
   });
 }
