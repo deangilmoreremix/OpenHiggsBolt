@@ -6,6 +6,7 @@ import { useSocialPublish } from '@/components/SocialPublishProvider';
 import { storeFile } from './lib/mediaUpload';
 import { useStore } from './store';
 import { isMusicTrack } from './types';
+import { explainExportProblem } from './lib/exportErrors';
 import { estimateExportSec } from './lib/exportCost';
 import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
@@ -21,6 +22,8 @@ type JobState = {
 };
 
 const EXPORT_EVENT = 'motion-studio:export';
+/** Fired when the toolbar has rendered an MP4; the film chat listens so its Deliver step is not left waiting. */
+export const FILM_EXPORTED_EVENT = 'motion-director:film-exported';
 
 /** Start an MP4 export from elsewhere in the studio (the Agent chat's "render the MP4"). */
 export const requestExport = () => {
@@ -75,7 +78,7 @@ const ExportButton: React.FC = () => {
       console.log('[motion-studio:export] canRender result', JSON.stringify({ canRender: canRenderResult.canRender, issues: canRenderResult.issues, resolvedVideoCodec: canRenderResult.videoCodec, resolvedAudioCodec: canRenderResult.audioCodec }));
     } catch (e) {
       console.error('[motion-studio:export] canRender threw', e);
-      window.alert(t('export.startFailed') + ': ' + (e instanceof Error ? e.message : String(e)));
+      setJob({ id: 'check', status: 'error', progress: 0, filename: project.name, error: explainExportProblem(e) });
       return;
     }
 
@@ -84,7 +87,7 @@ const ExportButton: React.FC = () => {
         ? canRenderResult.issues.join(', ')
         : 'This browser cannot encode MP4 in this configuration.';
       console.error('[motion-studio:export] canRender=false', detail);
-      window.alert(t('export.startFailed') + ': ' + detail);
+      setJob({ id: 'check', status: 'error', progress: 0, filename: project.name, error: explainExportProblem(canRenderResult.issues.length ? canRenderResult.issues : detail) });
       return;
     }
 
@@ -115,6 +118,8 @@ const ExportButton: React.FC = () => {
       // A render that resolves after the user cancelled is discarded, not marked done.
       if (!controller.signal.aborted) {
         setJob((prev) => (prev ? { ...prev, status: 'done', progress: 1, blob: result.blob } : null));
+        // The chat's Deliver step turns done when an MP4 exists, wherever it was rendered from.
+        window.dispatchEvent(new Event(FILM_EXPORTED_EVENT));
       }
     } catch (e) {
       // A cancelled render is not a failure: no alert, just the cancelled state.
@@ -124,8 +129,7 @@ const ExportButton: React.FC = () => {
       } else {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('[motion-studio:export] render failed', e);
-        window.alert(t('export.startFailed') + ': ' + msg);
-        setJob((prev) => (prev ? { ...prev, status: 'error', error: msg } : null));
+        setJob((prev) => (prev ? { ...prev, status: 'error', error: explainExportProblem(e) } : null));
       }
     } finally {
       releaseGuard();
@@ -233,13 +237,12 @@ const ExportButton: React.FC = () => {
   }
   if (job?.status === 'error') {
     return (
-      <button
-        className="btn danger"
-        title={job.error}
-        onClick={start}
-      >
-        {t('export.failedRetry')}
-      </button>
+      <>
+        <span className="text-xs" style={{ color: '#fca5a5', maxWidth: 360 }} role="alert" data-testid="export-error">{job.error}</span>
+        <button className="btn danger" title={job.error} onClick={start}>
+          {t('export.failedRetry')}
+        </button>
+      </>
     );
   }
   // A ranking of how heavy the film's shots are to draw, scaled to the draft size when chosen.

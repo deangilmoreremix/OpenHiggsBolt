@@ -9,6 +9,7 @@ import { sceneDetail } from '../lib/coCreate';
 import { motionTemplateTitle, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
+import { explainExportProblem } from '../lib/exportErrors';
 import { isMusicTrack, projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, registerParityHook, supportsHtmlInCanvas } from '../webRenderer';
@@ -98,7 +99,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
       void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
-      setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
+      setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : explainExportProblem(error) });
     } finally {
       releaseGuard();
     }

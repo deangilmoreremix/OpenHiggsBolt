@@ -725,6 +725,13 @@ export function useFilmDirector(opts: {
   /** An MP4 was rendered from the film: only now is it delivered. */
   const markDelivered = useCallback(() => mark('deliver', 'done', 'MP4 rendered'), [mark]);
 
+  // An MP4 rendered from the workbench toolbar delivers the film too.
+  useEffect(() => {
+    const onExported = () => markDelivered();
+    window.addEventListener('motion-director:film-exported', onExported);
+    return () => window.removeEventListener('motion-director:film-exported', onExported);
+  }, [markDelivered]);
+
   const revise = useCallback(() => {
     say('assistant', 'What should change? Name shots to swap in (e.g. “use crash-zoom-punch instead”), a new length, or new copy.');
   }, [say]);
