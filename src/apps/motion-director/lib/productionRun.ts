@@ -112,7 +112,7 @@ export type Output =
   | { stage: 'storyboard'; scenes: number; failedChecks: string[] }
   | { stage: 'assets'; scenes: SceneRecord[] }
   | { stage: 'build'; scenes: SceneRecord[] }
-  | { stage: 'sound'; cues: number; track: string | null }
+  | { stage: 'sound'; cues: number; track: string | null; /** Cuts between shots with no sound near them. */ silentCuts?: number }
   | { stage: 'qa'; issues: string[]; framesChecked: number }
   | { stage: 'review'; review: ReviewRecord };
 
@@ -142,7 +142,8 @@ export function missingOutput(o: Output): { reason: string; whoCanFix: 'program'
       return open.length ? { reason: `scene ${open.map((s) => s.n).join(', ')} still show${open.length === 1 ? 's' : ''} the sample content`, whoCanFix: 'program' } : null;
     }
     case 'sound':
-      return o.cues > 0 || o.track ? null : { reason: 'the film has no sound cues and no music', whoCanFix: 'program' };
+      if (!(o.cues > 0 || o.track)) return { reason: 'the film has no sound cues and no music', whoCanFix: 'program' };
+      return o.silentCuts ? { reason: `${o.silentCuts} cut${o.silentCuts === 1 ? '' : 's'} between shots ha${o.silentCuts === 1 ? 's' : 've'} no sound`, whoCanFix: 'program' } : null;
     case 'qa':
       return o.issues.length ? { reason: `${o.issues.length} unresolved problem${o.issues.length === 1 ? '' : 's'}: ${o.issues.slice(0, 3).join('; ')}`, whoCanFix: 'program' } : null;
     case 'review':
@@ -163,7 +164,7 @@ export function completeStage(run: ProductionRun, output: Output, summary?: Reco
   if (output.stage === 'review') next = { ...next, review: output.review };
   if (!miss) return touch(next, id, { status: 'completed', note: undefined, summary, endedAt: now }, now);
   // Output exists but is not clean: it can be shown, it cannot be called done.
-  const showable = id === 'build' || id === 'qa' || id === 'storyboard';
+  const showable = id === 'build' || id === 'qa' || id === 'storyboard' || id === 'sound';
   if (showable && miss.whoCanFix === 'program') return touch(next, id, { status: 'needs-review', note: miss.reason, summary, endedAt: now }, now);
   return touch(next, id, { status: miss.whoCanFix === 'person' ? 'needs-input' : 'failed', note: miss.reason, summary, endedAt: now }, now);
 }

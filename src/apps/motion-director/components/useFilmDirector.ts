@@ -44,6 +44,7 @@ import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
 import { completeStage, failStage, finalStatus, finalStatusLine, newRun, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
 import { materialOf } from '../lib/material';
+import { soundRecord } from '../lib/soundRecord';
 import { applyFilmEdits, parseFilmEdits } from '../lib/editFilm';
 import { briefLines as briefLinesOf } from '../lib/productBrief';
 import { sceneRecords } from '../lib/recipeNeeds';
@@ -722,7 +723,8 @@ export function useFilmDirector(opts: {
       const material = materialOf(storyboard.capture, media, { brandLogo: Boolean(s.brandKit?.logo) });
       const scenes = recordScenes(sceneRecords(storyboard.plan, material), project, sceneChecks);
       upd((r) => completeStage(r, { stage: 'build', scenes }, { adapted: made.adapted, parameterized: made.parameterized, unmodified: made.unmodified }));
-      upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null }, { cues: cuts }), 'qa'));
+      const snd = soundRecord(project);
+      upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null, silentCuts: snd.silentCuts.length }, { cues: cuts, cuts: snd.cuts, cutsWithSound: snd.cutsWithSound, music: snd.music?.name ?? null, silentAt: snd.silentCuts }), 'qa'));
       const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
       qa.framesChecked = frames.checked;
