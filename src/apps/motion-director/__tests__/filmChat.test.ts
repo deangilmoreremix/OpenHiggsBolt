@@ -366,5 +366,10 @@ describe('Ink Press storyboard copy', () => {
     // The heading is the headline, so the caption is not the same words again.
     expect(shots[1].caption).not.toBe(shots[1].headline);
   });
-});
 
+  it('does not say a caption twice either', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance });
+    const captions = plan.scenes.filter((s) => s.kind === 'shot' && s.caption).map((s) => s.caption);
+    expect(new Set(captions).size).toBe(captions.length);
+  });
+});

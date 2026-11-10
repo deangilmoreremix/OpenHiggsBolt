@@ -18,6 +18,7 @@ import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
 import { personalisesWithSite, captureQuality } from './captureQuality';
+import { checkAssembly } from './filmAssembly';
 import type { AdaptationOutcome } from './personalization';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
@@ -548,9 +549,15 @@ export interface FilmQaReport {
 }
 
 /** Structural check of a built film: every clip resolves, shots run back to back, nothing runs past the end. */
-export function checkFilmStructure(project: ProjectData, opts: { hasProductImages: boolean } = { hasProductImages: false }): FilmQaReport {
+export function checkFilmStructure(project: ProjectData, opts: { hasProductImages: boolean; plan?: DirectorPlan; videos?: number } = { hasProductImages: false }): FilmQaReport {
   const issues: string[] = [];
   const warnings: string[] = [];
+  // The film must be the storyboard that was approved.
+  if (opts.plan) {
+    const made = checkAssembly(project, opts.plan, { videos: opts.videos });
+    issues.push(...made.issues);
+    warnings.push(...made.warnings);
+  }
   const end = projectEndFrame(project);
   if (end <= 0) issues.push('The film is empty.');
   for (const track of project.tracks) {

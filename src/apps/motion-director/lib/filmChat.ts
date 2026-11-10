@@ -340,7 +340,11 @@ export function inkPressPlan(opts: {
     }
     if (scene.headline) onScreen.add(scene.headline);
     // The site's heading is the caption, unless it is already this shot's headline.
-    scenes.push(heading && heading !== scene.headline ? { ...scene, caption: heading } : scene);
+    let caption = heading && heading !== scene.headline ? heading : scene.caption;
+    // A caption already on screen in an earlier scene is not said twice (upstream: no repeated tagline).
+    if (caption && onScreen.has(caption)) caption = '';
+    if (caption) onScreen.add(caption);
+    scenes.push({ ...scene, caption });
   });
   if (withTitles) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Try *${name}* today.`, caption: fit(site?.ctas?.[0], PLAN_LIMITS.captionChars), transition: 'cut' });
