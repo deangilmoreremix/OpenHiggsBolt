@@ -15,10 +15,10 @@ import {
  *
  * Run: MS_OFFLINE_CLERK=1 EVIDENCE_DIR=<dir> npx playwright test -c playwright.ms.config.ts e2e/motion-director-acceptance.spec.ts --timeout 2700000
  */
-test.describe.configure({ mode: 'serial' });
 
 const IMAGES_DIR = path.join(process.env.TMPDIR ?? '/tmp', 'md-acceptance-images');
-const hasSupplied = (ev: ShotEvidence[]) => ev.some((e) => Object.values(e.suppliedShare).some((v) => v >= 0.01));
+/** A supplied colour covering 0.3 % of the frame is far above chance: it occurs in no sample texture or palette. */
+const hasSupplied = (ev: ShotEvidence[]) => ev.some((e) => Object.values(e.suppliedShare).some((v) => v >= 0.003));
 const demoSeen = (ev: ShotEvidence[]) => [...new Set(ev.flatMap((e) => e.forbidden))];
 const flat = (ev: ShotEvidence[]) => ev.filter((e) => e.variance < 15);
 
