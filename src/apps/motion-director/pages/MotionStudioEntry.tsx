@@ -31,6 +31,7 @@ import {
 } from '@/apps/design-agent/ui';
 import { RecipePreview } from '../components/RecipePreview';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
+import { personalizableLabel } from '../lib/recipeContract';
 import { isSlowToExport } from '../lib/exportCost';
 import { FilmDirectorChat } from '../components/FilmDirectorChat';
 import { useFilmDirector } from '../components/useFilmDirector';
@@ -349,7 +350,7 @@ export default function MotionStudioEntry() {
       key={tpl.id}
       label={motionTemplateTitle(tpl)}
       meta={tpl.nameEn}
-      description={[description, isProductTextureShot(tpl.componentName) ? 'Shows your site\'s pages' : drawsSampleScreen(tpl) ? 'Draws a sample screen; your site appears beside it' : '', isSlowToExport(tpl.componentName) ? 'Slow to export' : ''].filter(Boolean).join(' · ')}
+      description={[description, personalizableLabel(tpl.componentName), isProductTextureShot(tpl.componentName) ? 'Shows your site\'s pages' : drawsSampleScreen(tpl) ? 'Draws a sample screen; your site appears beside it' : '', isSlowToExport(tpl.componentName) ? 'Slow to export' : ''].filter(Boolean).join(' · ')}
       selected={selectedRecipes.includes(tpl.id)}
       onSelect={() => pickRecipe(tpl.id)}
       media={<RecipePreview recipe={tpl} playing={playingRecipe === tpl.id} />}
