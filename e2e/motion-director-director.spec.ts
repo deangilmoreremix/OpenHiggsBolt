@@ -71,7 +71,7 @@ async function mockDirector(page: Page) {
         logo: CAPTURE_LOGO,
         // Upstream-style capture: more routes of the site, and what it says about itself.
         pages: [
-          { name: 'home', path: '/', url: CAPTURE_PAGE, width: 3840, height: 3492, layout: { pageH: 1746, sections: [], cards: [] } },
+          { name: 'home', path: '/', url: CAPTURE_PAGE, width: 3840, height: 3492, layout: { pageH: 1746, sections: [], cards: [0, 1, 2, 3, 4, 5].map((i) => ({ x: 200 + (i % 3) * 520, y: 300 + Math.floor(i / 3) * 420, width: 480, height: 380 })) } },
           { name: 'pricing', path: '/pricing', url: CAPTURE_PRICING, width: 3840, height: 2400, layout: { pageH: 1200, sections: [], cards: [] } },
         ],
         cutouts: { nav: null, search: null, button: null },
