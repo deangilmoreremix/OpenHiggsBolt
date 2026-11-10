@@ -71,7 +71,7 @@ export interface FilmMusic {
 
 const FPS = 30;
 /** Recipes that read the page's geometry (their layout comes from the capture, not the sample site). Grows as each is repaired and proven. */
-export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(['SpotlightHeroCard']);
+export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(['SpotlightHeroCard', 'DeckDealFlyin']);
 const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 /**

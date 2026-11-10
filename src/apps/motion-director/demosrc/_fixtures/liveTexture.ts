@@ -109,6 +109,16 @@ export function liveCard(index: number, sampleFile: string): string {
 }
 
 /**
+ * A card of a layout-mapped shot: when the card is one of the customer page's own (`crop:<n>`, the exact picture of that
+ * card) it is that picture; otherwise it is `liveCard`, as before. Call during render.
+ */
+export function layoutCard(index: number, file: string): string {
+  const overrides = use(LiveTextureContext);
+  if (file.startsWith('crop:')) return overrides[file] ?? overrides['card:0'] ?? staticFile(`${LIVE_DIR}card1.png`);
+  return liveCard(index, file);
+}
+
+/**
  * Picture `index` of the scene's own site pictures (cards, photos, page slices, each distinct while
  * there are enough), or null when the clip carries none — then the recipe draws its sample UI as designed.
  * For recipes that draw a made-up interface: a panel, window, card or thumbnail shows the site instead.

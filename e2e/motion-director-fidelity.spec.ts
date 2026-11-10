@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'DeckDealFlyin', kind: 'grid', frames: { entry: 4, deal: 60, peak: 100, settled: 145 }, sampleMain: 0, customMain: 0, heroFrames: [] },
   { stem: 'SpotlightHeroCard', frames: { entry: 4, rise: 62, peak: 95, settled: 168 }, sampleMain: 3, customMain: 1, heroFrames: ['rise', 'peak', 'settled'] },
 ];
 
@@ -42,6 +43,22 @@ for (const cfg of RECIPES) {
     const custImg = fixtureImages(custL);
     const twin = await shots({ custom: { screens: [twinImg.screen], cardCrops: twinImg.crops, emptyPlate: twinImg.plate, captureLayout: captureLayoutOf(twinL), main: cfg.sampleMain } });
     const cust = await shots({ custom: { screens: [custImg.screen], cardCrops: custImg.crops, emptyPlate: custImg.plate, captureLayout: captureLayoutOf(custL), main: cfg.customMain } });
+    if (cfg.kind === 'grid') {
+      // Every card of the customer's page must be dealt onto the board: its unique colour shows in the frame.
+      const seen = (img: { w: number; h: number; data: Buffer }, layout: typeof custL) => layout.cards.map((c) => colorFootprint(img, c.color).n > 0);
+      const visible = names.map((n, i) => ({ frame: n, twin: seen(rawRgbFull(twin[i]), twinL).filter(Boolean).length + '/' + twinL.cards.length, customer: seen(rawRgbFull(cust[i]), custL).filter(Boolean).length + '/' + custL.cards.length }));
+      names.forEach((n, i) => {
+        save(OUT, `${cfg.stem}-${n}-baseline.png`, baseline[i]);
+        save(OUT, `${cfg.stem}-${n}-twin.png`, twin[i]);
+        save(OUT, `${cfg.stem}-${n}-customer.png`, cust[i]);
+      });
+      fs.mkdirSync(OUT, { recursive: true });
+      fs.writeFileSync(path.join(OUT, `fidelity-${cfg.stem}.json`), JSON.stringify({ identity: idDiff, visible }, null, 1));
+      for (const d of idDiff) expect(d.diff, `identity: ${d.frame} frame differs from the unmodified recipe`).toBeLessThan(0.0005);
+      const last = visible[visible.length - 1];
+      expect(Number(last.customer.split('/')[0]), `settled: the customer's cards are on the board (${last.customer})`).toBeGreaterThanOrEqual(Math.ceil(custL.cards.length * 0.75));
+      return;
+    }
     const twinHero = twinL.cards[cfg.sampleMain].color;
     const custHero = custL.cards[cfg.customMain].color;
     const rows = names.map((n, i) => {
