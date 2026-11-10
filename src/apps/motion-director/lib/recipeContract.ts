@@ -57,6 +57,9 @@ export const TEXT_VISIBLE = 0.0005;
 export const BRAND_VISIBLE = 0.002;
 
 /** What each recipe reads of the person's material, from its own source (scripts/gen-recipe-reads.mjs). */
+export const GLYPH_PATH_WORDMARKS: Readonly<Record<string, string>> = {
+  LetterspaceMaterialize: 'it draws a fixed wordmark as SVG glyph outlines; a company name would need its letters outlined (not done)',
+};
 const READS = recipeReads as unknown as Record<string, { brand: boolean; textures: boolean; fixtures: boolean }>;
 
 const RESULTS = sweep as unknown as Record<string, SweepResult>;
@@ -75,6 +78,8 @@ export function classify(stem: string, r: SweepResult | undefined): Pick<RecipeC
   if (words >= WORDS_SHARE) return { renderable: true, personalizable: 'tested', basis: `${r.replaced} of ${r.lines} lines of text replaced with the site's words`, noSiteWords };
   // A recipe with no words of its own whose wordmark, logo and colours come from the company's brand: the brand is what there is to replace, and it was seen to.
   if (r.lines === 0 && brandShown) return { renderable: true, personalizable: 'tested', basis: `its wordmark, logo and colours are the company's own (the brand changed ${((r.brandDiff ?? 0) * 100).toFixed(1)}% of a frame)`, noSiteWords };
+  // Drawn as outlines of a fixed word (SVG glyph paths), not text: the person's name cannot reach it.
+  if (stem in GLYPH_PATH_WORDMARKS) return { renderable: true, personalizable: 'sample-only', basis: GLYPH_PATH_WORDMARKS[stem], noSiteWords };
   if (r.lines === 0 && !kinds.brand && !kinds.textures && !kinds.fixtures && !reads) return { renderable: true, personalizable: 'not-applicable', basis: 'it draws no interface, words, brand or picture of its own: there is nothing in it to replace', noSiteWords };
   if (r.replaced > 0 && shown) return { renderable: true, personalizable: 'partly', basis: `only ${r.replaced} of ${r.lines} lines of text could be replaced${reads ? '; its pictures did not show the supplied ones' : ''}`, noSiteWords };
   return { renderable: true, personalizable: 'sample-only', basis: r.replaced > 0 && !shown ? 'its words were replaced but the replacement did not show in the frames' : reads ? 'it reads pictures but the supplied ones did not appear' : r.lines ? 'none of its text could be replaced' : 'it has no pictures or words of the person to draw', noSiteWords };

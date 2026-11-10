@@ -1,1352 +1,1502 @@
 {
  "Basic3DScene": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1383.5,
+  "supplied": 0.1068,
+  "variance": 1236.4,
   "lines": 13,
-  "replaced": 9,
+  "replaced": 13,
   "neutral": 1,
-  "textDiff": 0.02865
+  "textDiff": 0.02363,
+  "brandDiff": 0.00569
  },
  "CrashImpactReal": {
   "renderable": true,
-  "supplied": 0.9947,
-  "variance": 1425.2,
+  "supplied": 0.9104,
+  "variance": 1391.1,
   "lines": 10,
-  "replaced": 9,
+  "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.02917
+  "textDiff": 0.03191,
+  "brandDiff": 0
  },
  "CrashZoomReal": {
   "renderable": true,
-  "supplied": 0.989,
-  "variance": 1733.6,
+  "supplied": 0.9265,
+  "variance": 1685.5,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.00002
+  "textDiff": 0.00002,
+  "brandDiff": 0.03733
  },
  "CursorFlyover": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3487.5,
+  "supplied": 0.1068,
+  "variance": 3532.1,
   "lines": 27,
-  "replaced": 8,
+  "replaced": 16,
   "neutral": 0,
-  "textDiff": 0.00562
+  "textDiff": 0.02337,
+  "brandDiff": 0.01151
  },
  "MultiplaneReal": {
   "renderable": true,
-  "supplied": 0.1668,
-  "variance": 3333.6,
+  "supplied": 0.1659,
+  "variance": 3426,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.05059
+  "textDiff": 0.04941,
+  "brandDiff": 0.02899
  },
  "GrazeFaceTour": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 5917.4,
+  "supplied": 0.1068,
+  "variance": 5885.2,
   "lines": 52,
-  "replaced": 11,
+  "replaced": 23,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00321
  },
  "OverheadTabletopDrop": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 7528.2,
+  "supplied": 0.1068,
+  "variance": 7595,
   "lines": 39,
-  "replaced": 9,
+  "replaced": 20,
   "neutral": 1,
-  "textDiff": 0.03153
+  "textDiff": 0.08502,
+  "brandDiff": 0.00762
  },
  "TiltReveal": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 1496,
+  "supplied": 0.1078,
+  "variance": 1716.6,
   "lines": 16,
-  "replaced": 9,
+  "replaced": 16,
   "neutral": 0,
-  "textDiff": 0.03549
+  "textDiff": 0.03267,
+  "brandDiff": 0.01311
  },
  "DroneDiveLanding": {
   "renderable": true,
   "supplied": 0,
-  "variance": 2853.8,
+  "variance": 2914.6,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00063
  },
  "ExplodedView": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2531,
+  "supplied": 0.1068,
+  "variance": 2582.4,
   "lines": 23,
-  "replaced": 9,
+  "replaced": 18,
   "neutral": 0,
-  "textDiff": 0.00997
+  "textDiff": 0.01083,
+  "brandDiff": 0.00635
  },
  "SteepTiltGlide": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 10590.8,
+  "supplied": 0.1078,
+  "variance": 10619.4,
   "lines": 25,
-  "replaced": 8,
+  "replaced": 15,
   "neutral": 0,
-  "textDiff": 0.00125
+  "textDiff": 0.01083,
+  "brandDiff": 0.01557
  },
  "BulletTimeFreezeOrbit": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 795.2,
+  "supplied": 0.1068,
+  "variance": 765.4,
   "lines": 9,
-  "replaced": 6,
+  "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.00828
+  "textDiff": 0.00889,
+  "brandDiff": 0.0059
  },
  "PullBackIsolation": {
   "renderable": true,
-  "supplied": 0.1017,
-  "variance": 3857,
+  "supplied": 0.101,
+  "variance": 3984.2,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.00049
+  "textDiff": 0.00047,
+  "brandDiff": 0.02175
  },
  "Terminal3D": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 829.8,
+  "supplied": 0.1068,
+  "variance": 814.9,
   "lines": 16,
-  "replaced": 8,
+  "replaced": 14,
   "neutral": 0,
-  "textDiff": 0.01411
+  "textDiff": 0.02566,
+  "brandDiff": 0.00936
  },
  "BeforeAfterSliderScrub": {
   "renderable": true,
-  "supplied": 0.6936,
-  "variance": 598.2,
+  "supplied": 0.6499,
+  "variance": 690.7,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00056
+  "textDiff": 0.00128,
+  "brandDiff": 0.00872
  },
  "AxisRescaleShockV2": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2493.7,
+  "supplied": 0.1068,
+  "variance": 2535.4,
   "lines": 16,
-  "replaced": 5,
+  "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.02884
+  "textDiff": 0.03323,
+  "brandDiff": 0.00514
  },
  "OscilloscopeStreamV2": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1227.2,
+  "supplied": 0.1068,
+  "variance": 1217,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.00767
+  "textDiff": 0.00507,
+  "brandDiff": 0.00693
  },
  "UnitDotSwarmRegroupV2": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3194.3,
+  "supplied": 0.1068,
+  "variance": 3234.4,
   "lines": 9,
-  "replaced": 8,
+  "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.02307
+  "textDiff": 0.02307,
+  "brandDiff": 0.00859
  },
  "NeedleSweepSelftest": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 719.9,
+  "supplied": 0.1068,
+  "variance": 711.7,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00344
+  "textDiff": 0.00354,
+  "brandDiff": 0.01976
  },
  "TapeScrollFixedPointer": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2979.6,
+  "supplied": 0.1068,
+  "variance": 2983.9,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.03469
+  "textDiff": 0.03146,
+  "brandDiff": 0.0303
  },
  "BrakeReticleLock": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2585.3,
+  "supplied": 0.1068,
+  "variance": 2616.1,
   "lines": 61,
-  "replaced": 12,
+  "replaced": 26,
   "neutral": 2,
-  "textDiff": 0.01005
+  "textDiff": 0.00951,
+  "brandDiff": 0.00365
  },
  "ChangelogScrollBrake": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2923.1,
+  "supplied": 0.1068,
+  "variance": 2965.7,
   "lines": 52,
-  "replaced": 11,
+  "replaced": 26,
   "neutral": 1,
-  "textDiff": 0.00747
+  "textDiff": 0.01554,
+  "brandDiff": 0.00497
  },
  "TimelineTravel": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3008.7,
+  "supplied": 0.1068,
+  "variance": 3079.3,
   "lines": 23,
-  "replaced": 10,
+  "replaced": 19,
   "neutral": 1,
-  "textDiff": 0.00535
+  "textDiff": 0.01731,
+  "brandDiff": 0.00425
  },
  "AssembleThenTypeFlyin": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1644.8,
+  "supplied": 0.1068,
+  "variance": 1700.4,
   "lines": 20,
-  "replaced": 10,
+  "replaced": 17,
   "neutral": 1,
-  "textDiff": 0.03878
+  "textDiff": 0.04948,
+  "brandDiff": 0.0009
  },
  "AuroraBloomBgFlip": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2586.9,
+  "supplied": 0.1068,
+  "variance": 2627.7,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.0213
+  "textDiff": 0.0213,
+  "brandDiff": 0.02502
  },
  "BrandFrameSnap": {
   "renderable": true,
   "supplied": 0.1177,
-  "variance": 5974.4,
+  "variance": 6001,
   "lines": 34,
-  "replaced": 8,
+  "replaced": 17,
   "neutral": 1,
-  "textDiff": 0.00615
+  "textDiff": 0.00793,
+  "brandDiff": 0.00491
  },
  "ReticleLockOn": {
   "renderable": true,
-  "supplied": 1,
-  "variance": 214.5,
+  "supplied": 0.9543,
+  "variance": 317.8,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00655
+  "textDiff": 0.00368,
+  "brandDiff": 0.00418
  },
  "FlylineArc": {
   "renderable": true,
   "supplied": 0,
-  "variance": 84.8,
+  "variance": 128.1,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00035
  },
  "GlowOrbAmbient": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1817.7,
+  "supplied": 0.1068,
+  "variance": 1854.6,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.03562
+  "textDiff": 0.035,
+  "brandDiff": 0.04965
  },
  "OrbFlylineRelay": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1199.6,
+  "supplied": 0.1068,
+  "variance": 1208.5,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.01307
+  "textDiff": 0.01411,
+  "brandDiff": 0.02583
  },
  "AttentionBounce": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3123.2,
+  "supplied": 0.1068,
+  "variance": 3155.5,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00981
+  "textDiff": 0.00997,
+  "brandDiff": 0.02519
  },
  "AnimeImpact": {
   "renderable": true,
-  "supplied": 0.8812,
-  "variance": 1224,
+  "supplied": 0.8376,
+  "variance": 1222.3,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00609
  },
  "HitCounter": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2647.9,
+  "supplied": 0.1068,
+  "variance": 2694.9,
   "lines": 14,
-  "replaced": 9,
+  "replaced": 14,
   "neutral": 0,
-  "textDiff": 0.03724
+  "textDiff": 0.04087,
+  "brandDiff": 0.99953
  },
  "SheenSweepRetry": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 6448,
+  "supplied": 0.1068,
+  "variance": 6454.1,
   "lines": 7,
   "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.04455
+  "textDiff": 0.04182,
+  "brandDiff": 0.00526
  },
  "SpotlightSweepReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1332.5,
+  "supplied": 0.1068,
+  "variance": 1441.4,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.05076
+  "textDiff": 0.05634,
+  "brandDiff": 0.00288
  },
  "RadialRipplePhoneChips": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3225,
+  "supplied": 0.1068,
+  "variance": 3251.9,
   "lines": 25,
-  "replaced": 10,
+  "replaced": 19,
   "neutral": 0,
-  "textDiff": 0.00363
+  "textDiff": 0.04915,
+  "brandDiff": 0.01262
  },
  "RisoMisregistrationHit": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 3152.4,
+  "supplied": 0.1078,
+  "variance": 3142.8,
   "lines": 12,
-  "replaced": 9,
+  "replaced": 12,
   "neutral": 2,
-  "textDiff": 0.15028
+  "textDiff": 0.14809,
+  "brandDiff": 0.21967
  },
  "ScanBracketSweep": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2786.9,
+  "supplied": 0.1068,
+  "variance": 2832.6,
   "lines": 23,
-  "replaced": 8,
+  "replaced": 14,
   "neutral": 0,
-  "textDiff": 0.0009
+  "textDiff": 0.00078,
+  "brandDiff": 0.00106
  },
  "ScanlineAnnotateFocus": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3323.8,
+  "supplied": 0.1068,
+  "variance": 3353.3,
   "lines": 20,
-  "replaced": 8,
+  "replaced": 14,
   "neutral": 2,
-  "textDiff": 0.03788
+  "textDiff": 0.04781,
+  "brandDiff": 0.00663
  },
  "ScanlineAssembleFlyin": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1592.8,
+  "supplied": 0.1068,
+  "variance": 1726,
   "lines": 26,
-  "replaced": 8,
+  "replaced": 16,
   "neutral": 1,
-  "textDiff": 0.01122
+  "textDiff": 0.04759,
+  "brandDiff": 0.01882
  },
  "ImpactBurstKit": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 7061.3,
+  "supplied": 0.1068,
+  "variance": 7144.1,
   "lines": 23,
-  "replaced": 9,
+  "replaced": 19,
   "neutral": 2,
-  "textDiff": 0.03276
+  "textDiff": 0.04345,
+  "brandDiff": 0.0254
  },
  "KanadaPerspectiveSnap": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2097.8,
+  "supplied": 0.1078,
+  "variance": 1990.3,
   "lines": 10,
-  "replaced": 9,
+  "replaced": 10,
   "neutral": 1,
-  "textDiff": 0.02438
+  "textDiff": 0.02905,
+  "brandDiff": 0.01061
  },
  "ScoreSlam": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1733,
+  "supplied": 0.1068,
+  "variance": 1757.5,
   "lines": 6,
   "replaced": 6,
   "neutral": 1,
-  "textDiff": 0.03344
+  "textDiff": 0.03462,
+  "brandDiff": 0.0101
  },
  "CornerSpotlightReveal": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 3470.7,
+  "supplied": 0.1077,
+  "variance": 3567.3,
   "lines": 6,
-  "replaced": 4,
+  "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.03988
+  "textDiff": 0.04639,
+  "brandDiff": 0.00111
  },
  "GlowWakeSleepPanel": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 13477.9,
+  "supplied": 0.1068,
+  "variance": 13495.7,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00892
  },
  "SlideSpotlightPan": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 8513.4,
+  "supplied": 0.1077,
+  "variance": 8551.4,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00764
  },
  "AutolayoutGapDial": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1534.7,
+  "supplied": 0.1068,
+  "variance": 1526,
   "lines": 7,
-  "replaced": 5,
+  "replaced": 7,
   "neutral": 0,
-  "textDiff": 0.00668
+  "textDiff": 0.0091,
+  "brandDiff": 0
  },
  "DiagramCascadeBuild": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 768.3,
+  "supplied": 0.1068,
+  "variance": 802.2,
   "lines": 14,
-  "replaced": 6,
+  "replaced": 12,
   "neutral": 1,
-  "textDiff": 0.00668
+  "textDiff": 0.01566,
+  "brandDiff": 0.00024
  },
  "PanelToCanvasMaterialize": {
   "renderable": true,
   "supplied": 0.0179,
-  "variance": 1953.2,
+  "variance": 1992.7,
   "lines": 31,
-  "replaced": 10,
+  "replaced": 20,
   "neutral": 0,
-  "textDiff": 0.01217
+  "textDiff": 0.01865,
+  "brandDiff": 0.00333
  },
  "ChipGridSingleSelectBlackout": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3400.9,
+  "supplied": 0.1068,
+  "variance": 3440,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.03583
+  "textDiff": 0.02899,
+  "brandDiff": 0.01828
  },
  "CursorCastEnsemble": {
   "renderable": true,
   "supplied": 0.0024,
-  "variance": 1473.1,
+  "variance": 1444,
   "lines": 25,
-  "replaced": 9,
+  "replaced": 17,
   "neutral": 1,
-  "textDiff": 0.05592
+  "textDiff": 0.06464,
+  "brandDiff": 0.00552
  },
  "GlassPillDictationTyping": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 1912.5,
+  "supplied": 0.1078,
+  "variance": 1949.9,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00899
+  "textDiff": 0.00899,
+  "brandDiff": 0.00257
  },
  "HashtagToPillMaterialize": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2761.6,
+  "supplied": 0.1078,
+  "variance": 2787.9,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.06946
+  "textDiff": 0.06884,
+  "brandDiff": 0.01679
  },
  "PickerCarouselFeatureCycle": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 2522.5,
+  "supplied": 0.1078,
+  "variance": 2565.1,
   "lines": 7,
   "replaced": 7,
   "neutral": 1,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00226
  },
  "SegmentedThumbHero": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 2897.4,
+  "supplied": 0.1078,
+  "variance": 2968.9,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00842
+  "textDiff": 0.01207,
+  "brandDiff": 0.00132
  },
  "PaletteThemeRipple": {
   "renderable": true,
-  "supplied": 0.0907,
-  "variance": 4097.5,
+  "supplied": 0.0906,
+  "variance": 4225.3,
   "lines": 30,
-  "replaced": 12,
+  "replaced": 20,
   "neutral": 1,
-  "textDiff": 0.00915
+  "textDiff": 0.01241,
+  "brandDiff": 0.17932
  },
  "ThemeSweepToggle": {
   "renderable": true,
-  "supplied": 0.3166,
-  "variance": 6119.8,
+  "supplied": 0.294,
+  "variance": 6091.9,
   "lines": 22,
-  "replaced": 9,
+  "replaced": 17,
   "neutral": 0,
-  "textDiff": 0.00726
+  "textDiff": 0.01832,
+  "brandDiff": 0.09701
  },
  "TypeAndFilter": {
   "renderable": true,
-  "supplied": 0.955,
-  "variance": 1986.8,
+  "supplied": 0.8793,
+  "variance": 2058.5,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00693
  },
  "VoiceWaveformLive": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2722.2,
+  "supplied": 0.1068,
+  "variance": 2781.7,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.02899
+  "textDiff": 0.03302,
+  "brandDiff": 0.09899
  },
  "CraneRiseReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3651,
+  "supplied": 0.1068,
+  "variance": 3724.6,
   "lines": 46,
-  "replaced": 8,
+  "replaced": 15,
   "neutral": 0,
-  "textDiff": 0.01283
+  "textDiff": 0.02526,
+  "brandDiff": 0.00698
  },
  "DatavizLandscapeOpen": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 699.9,
+  "supplied": 0.1068,
+  "variance": 687,
   "lines": 14,
-  "replaced": 5,
+  "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.00285
+  "textDiff": 0.00347,
+  "brandDiff": 0.01179
  },
  "Fracture": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 539.1,
+  "supplied": 0.1068,
+  "variance": 529.4,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00043
+  "textDiff": 0.00043,
+  "brandDiff": 0.01931
  },
  "IconFieldColorize": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3397.8,
+  "supplied": 0.1068,
+  "variance": 3410.6,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.04318
+  "textDiff": 0.04352,
+  "brandDiff": 0.04486
  },
  "LetterspaceMaterialize": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 1939.1,
+  "supplied": 0.1078,
+  "variance": 1940.7,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.48819
  },
  "MagicianCardFlourish": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1325.7,
+  "supplied": 0.1068,
+  "variance": 1327.4,
   "lines": 9,
   "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.03116
+  "textDiff": 0.03139,
+  "brandDiff": 0.00406
  },
  "OrbitRingTitleOpen": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3478.4,
+  "supplied": 0.1068,
+  "variance": 3479.6,
   "lines": 24,
-  "replaced": 11,
+  "replaced": 18,
   "neutral": 0,
-  "textDiff": 0.05896
+  "textDiff": 0.06167,
+  "brandDiff": 0.03543
  },
  "SpotlightHeroCard": {
   "renderable": true,
-  "supplied": 0.95,
-  "variance": 968.8,
+  "supplied": 0.883,
+  "variance": 1646.3,
   "lines": 2,
   "replaced": 2,
   "neutral": 1,
-  "textDiff": 0
+  "textDiff": 0.02616,
+  "brandDiff": 0
  },
  "StrokeSegmentBuild": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1492.5,
+  "supplied": 0.1068,
+  "variance": 1486.6,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00616
+  "textDiff": 0.00616,
+  "brandDiff": 0.00896
  },
  "TextAsMask": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 9112.5,
+  "supplied": 0.1068,
+  "variance": 9106.5,
   "lines": 15,
-  "replaced": 8,
+  "replaced": 15,
   "neutral": 0,
-  "textDiff": 0.00594
+  "textDiff": 0.00998,
+  "brandDiff": 0.01113
  },
  "GrainDissolve": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1144.9,
+  "supplied": 0.1068,
+  "variance": 1130,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.04135
  },
  "LogoShrinkWordmarkLockup": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 1793.8,
+  "supplied": 0.1077,
+  "variance": 1785.1,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00924
  },
  "NeonTripleMarquee": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1421.9,
+  "supplied": 0.1068,
+  "variance": 1361.3,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.18507
+  "textDiff": 0.17981,
+  "brandDiff": 0.35851
  },
  "OutroGroupPhotoLaunch": {
   "renderable": true,
-  "supplied": 0.6572,
-  "variance": 4962.9,
+  "supplied": 0.6563,
+  "variance": 4927.5,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.04752
  },
  "UiStripAwayOutro": {
   "renderable": true,
-  "supplied": 0.063,
-  "variance": 6773,
+  "supplied": 0.0626,
+  "variance": 6851.3,
   "lines": 29,
-  "replaced": 10,
+  "replaced": 17,
   "neutral": 0,
-  "textDiff": 0.00076
+  "textDiff": 0.00149,
+  "brandDiff": 0.01526
  },
  "IconFlipBloomLogo": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2717.6,
+  "supplied": 0.1077,
+  "variance": 2761.5,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.05215
  },
  "InputMorphsIntoLogo": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2829.4,
+  "supplied": 0.1068,
+  "variance": 2870,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.01174
+  "textDiff": 0.01231,
+  "brandDiff": 0.02307
  },
  "PaparazziFlash": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1462.7,
+  "supplied": 0.1068,
+  "variance": 1486,
   "lines": 10,
-  "replaced": 7,
+  "replaced": 10,
   "neutral": 0,
-  "textDiff": 0.03852
+  "textDiff": 0.04075,
+  "brandDiff": 0.00962
  },
  "BeatStepListThemeCycle": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2102.8,
+  "supplied": 0.1068,
+  "variance": 2120.9,
   "lines": 8,
-  "replaced": 4,
+  "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.01333
+  "textDiff": 0.02957,
+  "brandDiff": 0.05373
  },
  "ComicPanelSplit": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2195.4,
+  "supplied": 0.1068,
+  "variance": 2186.9,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.04759
+  "textDiff": 0.04759,
+  "brandDiff": 0.05085
  },
  "QuadSplitParallelScenes": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 7700.6,
+  "supplied": 0.1068,
+  "variance": 7922.2,
   "lines": 23,
-  "replaced": 9,
+  "replaced": 14,
   "neutral": 0,
-  "textDiff": 0.02703
+  "textDiff": 0.1025,
+  "brandDiff": 0.01203
  },
  "JumpCutPunchIn": {
-  "renderable": false,
-  "supplied": 1,
-  "variance": 0.6,
+  "renderable": true,
+  "supplied": 0.9526,
+  "variance": 101.6,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.05106
  },
  "SakugaTimingShift": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3142.1,
+  "supplied": 0.1068,
+  "variance": 3264.6,
   "lines": 11,
-  "replaced": 9,
+  "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.01845
+  "textDiff": 0.02273,
+  "brandDiff": 0.02788
  },
  "FreezeAnnotateReal": {
   "renderable": true,
-  "supplied": 0.2849,
-  "variance": 3652.3,
+  "supplied": 0.2831,
+  "variance": 3778.4,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.01401
+  "textDiff": 0.01392,
+  "brandDiff": 0.00406
  },
  "TrailerBumper": {
   "renderable": true,
-  "supplied": 1,
+  "supplied": 0.9878,
   "variance": 625.8,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.0025
+  "textDiff": 0.0025,
+  "brandDiff": 0.05187
  },
  "BottomPushStackWipe": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2731.4,
+  "supplied": 0.1068,
+  "variance": 2725.5,
   "lines": 29,
-  "replaced": 10,
+  "replaced": 21,
   "neutral": 1,
-  "textDiff": 0.03745
+  "textDiff": 0.04432,
+  "brandDiff": 0.80142
  },
  "CardFlipReveal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 10459.1,
+  "supplied": 0.1068,
+  "variance": 10465.2,
   "lines": 28,
-  "replaced": 9,
+  "replaced": 21,
   "neutral": 0,
-  "textDiff": 0.00877
+  "textDiff": 0.06547,
+  "brandDiff": 0.00939
  },
  "CardFlockTumble": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 10123.3,
+  "supplied": 0.1068,
+  "variance": 10131.5,
   "lines": 38,
-  "replaced": 10,
+  "replaced": 20,
   "neutral": 0,
-  "textDiff": 0.0009
+  "textDiff": 0.00196,
+  "brandDiff": 0.01036
  },
  "CircleMatchIris": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2158,
+  "supplied": 0.1068,
+  "variance": 2150.2,
   "lines": 26,
-  "replaced": 8,
+  "replaced": 18,
   "neutral": 0,
-  "textDiff": 0.00394
+  "textDiff": 0.0126,
+  "brandDiff": 0.05082
  },
  "GradientTransition": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2478.5,
+  "supplied": 0.1068,
+  "variance": 2475.7,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.06024
+  "textDiff": 0.06024,
+  "brandDiff": 0.05986
  },
  "LineCarryTransition": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3332.5,
+  "supplied": 0.1068,
+  "variance": 3533,
   "lines": 13,
-  "replaced": 7,
+  "replaced": 12,
   "neutral": 0,
-  "textDiff": 0.00953
+  "textDiff": 0.03535,
+  "brandDiff": 0.0338
  },
  "MosaicReframe": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3299.4,
+  "supplied": 0.1068,
+  "variance": 3356.5,
   "lines": 8,
-  "replaced": 7,
+  "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.02502
+  "textDiff": 0.01936,
+  "brandDiff": 0.02481
  },
  "BarnDoorSplit": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1829.6,
+  "supplied": 0.1068,
+  "variance": 1820.6,
   "lines": 11,
-  "replaced": 9,
+  "replaced": 11,
   "neutral": 2,
-  "textDiff": 0.07175
+  "textDiff": 0.07179,
+  "brandDiff": 0.41526
  },
  "InkBleedReveal": {
   "renderable": true,
-  "supplied": 1,
-  "variance": 4636.9,
+  "supplied": 0.9416,
+  "variance": 4744.1,
   "lines": 5,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.02641
+  "textDiff": 0.02637,
+  "brandDiff": 0.00313
  },
  "PortalWipeV2": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 4000.9,
+  "supplied": 0.1068,
+  "variance": 4034.4,
   "lines": 25,
-  "replaced": 9,
+  "replaced": 18,
   "neutral": 0,
-  "textDiff": 0.01797
+  "textDiff": 0.02389,
+  "brandDiff": 0.00523
  },
  "WhipBrakeReal": {
   "renderable": true,
-  "supplied": 0,
-  "variance": 467.8,
+  "supplied": 0.1757,
+  "variance": 3730.6,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00498
+  "textDiff": 0.00498,
+  "brandDiff": 0.00352
  },
  "GlitchDisplace": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2392,
+  "supplied": 0.1068,
+  "variance": 2385.7,
   "lines": 22,
-  "replaced": 10,
+  "replaced": 18,
   "neutral": 1,
-  "textDiff": 0.03333
+  "textDiff": 0.03755,
+  "brandDiff": 0.11609
  },
  "InvisibleCut": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 3144.3,
+  "supplied": 0.1078,
+  "variance": 3176.1,
   "lines": 21,
-  "replaced": 9,
+  "replaced": 18,
   "neutral": 0,
-  "textDiff": 0.01267
+  "textDiff": 0.03514,
+  "brandDiff": 0.04012
  },
  "LightLeakBurn": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2523.3,
+  "supplied": 0.1077,
+  "variance": 2528.7,
   "lines": 10,
-  "replaced": 8,
+  "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.04024
+  "textDiff": 0.04024,
+  "brandDiff": 0.00969
  },
  "VersusSlam": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 3402.9,
+  "supplied": 0.1078,
+  "variance": 3412.1,
   "lines": 13,
-  "replaced": 9,
+  "replaced": 13,
   "neutral": 0,
-  "textDiff": 0.00392
+  "textDiff": 0.04273,
+  "brandDiff": 0.00349
  },
  "LetterformZoom": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3832.7,
+  "supplied": 0.1068,
+  "variance": 3823.1,
   "lines": 17,
-  "replaced": 9,
+  "replaced": 15,
   "neutral": 1,
-  "textDiff": 0.38542
+  "textDiff": 0.38542,
+  "brandDiff": 0.09745
  },
  "WhiteFlashLogoSimplifyCut": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2342,
+  "supplied": 0.1078,
+  "variance": 2383.7,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.06158
  },
  "BlindsSlice": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 6785.8,
+  "supplied": 0.1077,
+  "variance": 6816.3,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.00347
+  "textDiff": 0.00347,
+  "brandDiff": 0.00332
  },
  "BlurSlide": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2903.1,
+  "supplied": 0.1078,
+  "variance": 2966.1,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.06399
+  "textDiff": 0.06866,
+  "brandDiff": 0.0046
  },
  "BraceExpand": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 667.7,
+  "supplied": 0.1078,
+  "variance": 658.7,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00474
+  "textDiff": 0.00474,
+  "brandDiff": 0.02417
  },
  "BrandInkOpen": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 2715.8,
+  "supplied": 0.1078,
+  "variance": 2759.6,
   "lines": 1,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.02474
  },
  "CountdownArcScatter": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 2881.8,
+  "supplied": 0.1078,
+  "variance": 2922.1,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00167
+  "textDiff": 0.00146,
+  "brandDiff": 0.01604
  },
  "FlyingWords": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1577.4,
+  "supplied": 0.1068,
+  "variance": 1600.8,
   "lines": 22,
-  "replaced": 5,
+  "replaced": 11,
   "neutral": 0,
-  "textDiff": 0.04778
+  "textDiff": 0.04649,
+  "brandDiff": 0.0483
  },
  "GlitchCycle": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1297.7,
+  "supplied": 0.1068,
+  "variance": 1287.9,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.02826
+  "textDiff": 0.02665,
+  "brandDiff": 0.00347
  },
  "GradientWordSweep": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 1641.4,
+  "supplied": 0.1078,
+  "variance": 1644.8,
   "lines": 3,
   "replaced": 3,
   "neutral": 0,
-  "textDiff": 0.05273
+  "textDiff": 0.05108,
+  "brandDiff": 0.0334
  },
  "LeadWordZoomAssemble": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3675.3,
+  "supplied": 0.1068,
+  "variance": 3711.8,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00573
+  "textDiff": 0.00573,
+  "brandDiff": 0
  },
  "MarkerUnderlineTitle": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2951.8,
+  "supplied": 0.1068,
+  "variance": 3009.4,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.02361
+  "textDiff": 0.02181,
+  "brandDiff": 0.03394
  },
  "OutlineWordFill": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1636.2,
-  "lines": 6,
-  "replaced": 5,
-  "neutral": 0,
-  "textDiff": 0.03457
- },
- "PaperTitleCard": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3451.1,
-  "lines": 6,
-  "replaced": 5,
-  "neutral": 0,
-  "textDiff": 0.05528
- },
- "PillChipSlotCycleHandled": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 4739.7,
-  "lines": 6,
-  "replaced": 4,
-  "neutral": 0,
-  "textDiff": 0.00809
- },
- "PillSlotCycle": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3755.8,
-  "lines": 8,
-  "replaced": 4,
-  "neutral": 0,
-  "textDiff": 0.00988
- },
- "TextColumnConverge": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 687.6,
-  "lines": 11,
-  "replaced": 8,
-  "neutral": 1,
-  "textDiff": 0.00446
- },
- "TitleDemoteToLabel": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 6033.2,
-  "lines": 24,
-  "replaced": 11,
-  "neutral": 0,
-  "textDiff": 0.03281
- },
- "LetterformDriftAssembly": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3187.3,
-  "lines": 0,
-  "replaced": 0,
-  "neutral": 0,
-  "textDiff": 0
- },
- "SplitTextStagger": {
-  "renderable": true,
-  "supplied": 0.1085,
-  "variance": 3032.3,
-  "lines": 1,
-  "replaced": 1,
-  "neutral": 0,
-  "textDiff": 0.03766
- },
- "TextOnPath": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2047.6,
-  "lines": 10,
-  "replaced": 7,
-  "neutral": 0,
-  "textDiff": 0.03172
- },
- "LetterDropPhysics": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3069,
-  "lines": 1,
-  "replaced": 1,
-  "neutral": 0,
-  "textDiff": 0.00318
- },
- "FontWeightPump": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 4507.1,
-  "lines": 4,
-  "replaced": 4,
-  "neutral": 0,
-  "textDiff": 0.00274
- },
- "KaraokeFillSync": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 4105.8,
-  "lines": 4,
-  "replaced": 4,
-  "neutral": 0,
-  "textDiff": 0.07715
- },
- "TypewriterErrorRetype": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2679.9,
-  "lines": 3,
-  "replaced": 3,
-  "neutral": 0,
-  "textDiff": 0.02003
- },
- "VerticalWordRollBlurCycle": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 3477,
-  "lines": 5,
-  "replaced": 5,
-  "neutral": 0,
-  "textDiff": 0.02332
- },
- "WordRelayFilmstrip": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 9189.8,
-  "lines": 74,
-  "replaced": 9,
-  "neutral": 0,
-  "textDiff": 0.00552
- },
- "WordRelayGeometry": {
-  "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2053.4,
+  "supplied": 0.1068,
+  "variance": 1700.6,
   "lines": 6,
   "replaced": 6,
   "neutral": 0,
-  "textDiff": 0.05403
+  "textDiff": 0.04632,
+  "brandDiff": 0.03366
+ },
+ "PaperTitleCard": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 3439.3,
+  "lines": 6,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.05028,
+  "brandDiff": 0
+ },
+ "PillChipSlotCycleHandled": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 5005.2,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.07387,
+  "brandDiff": 0
+ },
+ "PillSlotCycle": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 3800,
+  "lines": 8,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.00988,
+  "brandDiff": 0
+ },
+ "TextColumnConverge": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 676.4,
+  "lines": 11,
+  "replaced": 11,
+  "neutral": 1,
+  "textDiff": 0.00606,
+  "brandDiff": 0
+ },
+ "TitleDemoteToLabel": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 6094.5,
+  "lines": 24,
+  "replaced": 23,
+  "neutral": 0,
+  "textDiff": 0.04773,
+  "brandDiff": 0.00668
+ },
+ "LetterformDriftAssembly": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 3232.7,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0,
+  "brandDiff": 0.07306
+ },
+ "SplitTextStagger": {
+  "renderable": true,
+  "supplied": 0.1077,
+  "variance": 3073,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.03766,
+  "brandDiff": 0
+ },
+ "TextOnPath": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 2030.6,
+  "lines": 10,
+  "replaced": 10,
+  "neutral": 0,
+  "textDiff": 0.03203,
+  "brandDiff": 0.00285
+ },
+ "LetterDropPhysics": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 3109.5,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00318,
+  "brandDiff": 0.07476
+ },
+ "FontWeightPump": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 4504.8,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00274,
+  "brandDiff": 0.0578
+ },
+ "KaraokeFillSync": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 4180.6,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.07569,
+  "brandDiff": 0.01757
+ },
+ "TypewriterErrorRetype": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 2721.2,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.01976,
+  "brandDiff": 0.00333
+ },
+ "VerticalWordRollBlurCycle": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 3341.6,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.01679,
+  "brandDiff": 0
+ },
+ "WordRelayFilmstrip": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 9182.3,
+  "lines": 74,
+  "replaced": 24,
+  "neutral": 0,
+  "textDiff": 0.00589,
+  "brandDiff": 0.01595
+ },
+ "WordRelayGeometry": {
+  "renderable": true,
+  "supplied": 0.1068,
+  "variance": 2106.5,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.05856,
+  "brandDiff": 0.00076
  },
  "AvatarBracketCarousel": {
   "renderable": true,
   "supplied": 0.0194,
-  "variance": 1089.3,
+  "variance": 1438.1,
   "lines": 5,
-  "replaced": 4,
+  "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.00214
+  "textDiff": 0.11241,
+  "brandDiff": 0
  },
  "BezierSourceConvergeMerge": {
   "renderable": true,
   "supplied": 0.0117,
-  "variance": 912.7,
+  "variance": 942.5,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00278
+  "textDiff": 0.00278,
+  "brandDiff": 0.01132
  },
  "CardStack": {
   "renderable": true,
-  "supplied": 0.0643,
-  "variance": 2689.4,
+  "supplied": 0.0642,
+  "variance": 2765.4,
   "lines": 22,
-  "replaced": 11,
+  "replaced": 17,
   "neutral": 0,
-  "textDiff": 0.03127
+  "textDiff": 0.03363,
+  "brandDiff": 0.02901
  },
  "Carousel3D": {
   "renderable": true,
-  "supplied": 0.0185,
-  "variance": 908.4,
+  "supplied": 0.0182,
+  "variance": 865.8,
   "lines": 20,
-  "replaced": 7,
+  "replaced": 15,
   "neutral": 0,
-  "textDiff": 0.01318
+  "textDiff": 0.01472,
+  "brandDiff": 0.01002
  },
  "ClonerDepthEcho": {
   "renderable": true,
-  "supplied": 0.065,
-  "variance": 1576,
+  "supplied": 0.0649,
+  "variance": 1589.6,
   "lines": 4,
   "replaced": 4,
   "neutral": 0,
-  "textDiff": 0.03872
+  "textDiff": 0.03882,
+  "brandDiff": 0.04458
  },
  "DeckDealFlyin": {
   "renderable": true,
-  "supplied": 0.1956,
-  "variance": 4730.8,
+  "supplied": 0.1161,
+  "variance": 3545.5,
   "lines": 4,
   "replaced": 4,
   "neutral": 2,
-  "textDiff": 0.03024
+  "textDiff": 0.03071,
+  "brandDiff": 0.00066
  },
  "DocParkLeftPillDeal": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 2589.8,
+  "supplied": 0.1068,
+  "variance": 2640.4,
   "lines": 25,
-  "replaced": 11,
+  "replaced": 23,
   "neutral": 3,
-  "textDiff": 0.02302
+  "textDiff": 0.02811,
+  "brandDiff": 0.00639
  },
  "DocumentTypewriterReveal": {
   "renderable": true,
-  "supplied": 0.7204,
-  "variance": 4843.7,
+  "supplied": 0.1068,
+  "variance": 11887,
   "lines": 20,
-  "replaced": 13,
+  "replaced": 18,
   "neutral": 6,
-  "textDiff": 0.0008
+  "textDiff": 0.02497,
+  "brandDiff": 0.00243
  },
  "DrawSvgTrace": {
   "renderable": true,
-  "supplied": 0.0635,
-  "variance": 2258.6,
+  "supplied": 0.0633,
+  "variance": 2293,
   "lines": 5,
   "replaced": 5,
   "neutral": 0,
-  "textDiff": 0.01661
+  "textDiff": 0.01661,
+  "brandDiff": 0.01302
  },
  "ContactShadowLift": {
   "renderable": true,
-  "supplied": 0.1232,
-  "variance": 3569.9,
+  "supplied": 0.1226,
+  "variance": 3704.7,
   "lines": 8,
   "replaced": 8,
   "neutral": 0,
-  "textDiff": 0.03038
+  "textDiff": 0.02604,
+  "brandDiff": 0.00767
  },
  "IntegrationHubMap": {
   "renderable": true,
-  "supplied": 0.7196,
-  "variance": 4745.1,
+  "supplied": 0.7108,
+  "variance": 4588.2,
   "lines": 45,
-  "replaced": 11,
+  "replaced": 25,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00918
  },
  "ListReveal": {
   "renderable": true,
-  "supplied": 0.1085,
-  "variance": 2814.7,
+  "supplied": 0.1078,
+  "variance": 2811.5,
   "lines": 9,
-  "replaced": 7,
+  "replaced": 9,
   "neutral": 0,
-  "textDiff": 0.04557
+  "textDiff": 0.04868,
+  "brandDiff": 0.00342
  },
  "ListStackPress": {
   "renderable": true,
-  "supplied": 0.4787,
-  "variance": 3436.1,
+  "supplied": 0.4447,
+  "variance": 3622.1,
   "lines": 2,
   "replaced": 2,
   "neutral": 0,
-  "textDiff": 0.00113
+  "textDiff": 0.00113,
+  "brandDiff": 0
  },
  "NeonFrameForerun": {
   "renderable": true,
-  "supplied": 0.4405,
-  "variance": 1163.2,
+  "supplied": 0.4338,
+  "variance": 1154.8,
   "lines": 23,
-  "replaced": 8,
+  "replaced": 17,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.00082
  },
  "NeonFrameForerunOrbit": {
   "renderable": true,
-  "supplied": 0.4238,
-  "variance": 1165.8,
+  "supplied": 0.4174,
+  "variance": 1164.7,
   "lines": 52,
-  "replaced": 9,
+  "replaced": 23,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.05019
  },
  "PageWaterfallWall": {
   "renderable": true,
-  "supplied": 0.2598,
-  "variance": 3159,
+  "supplied": 0.2497,
+  "variance": 3037.1,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0
  },
  "ProductCardProgressiveAssemble": {
   "renderable": true,
-  "supplied": 0.1131,
-  "variance": 3774.9,
+  "supplied": 0.1127,
+  "variance": 3823.8,
   "lines": 20,
-  "replaced": 11,
+  "replaced": 16,
   "neutral": 4,
-  "textDiff": 0.04269
+  "textDiff": 0.04125,
+  "brandDiff": 0.05273
  },
  "RadialWave": {
   "renderable": true,
-  "supplied": 0.1084,
-  "variance": 1417.3,
+  "supplied": 0.1078,
+  "variance": 1413.6,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.14859
  },
  "ResearchCardStackScroll": {
   "renderable": true,
-  "supplied": 0.0728,
-  "variance": 12056.5,
+  "supplied": 0.0724,
+  "variance": 12042.3,
   "lines": 12,
-  "replaced": 7,
+  "replaced": 12,
   "neutral": 0,
-  "textDiff": 0.01063
+  "textDiff": 0.01064,
+  "brandDiff": 0.00998
  },
  "RowEmbed": {
   "renderable": true,
-  "supplied": 1,
-  "variance": 704.9,
+  "supplied": 0.9792,
+  "variance": 121.5,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0
  },
  "ValueStaggerGradient": {
   "renderable": true,
-  "supplied": 0.1074,
-  "variance": 1979.8,
+  "supplied": 0.1068,
+  "variance": 1974.8,
   "lines": 1,
   "replaced": 1,
   "neutral": 0,
-  "textDiff": 0.00031
+  "textDiff": 0.00031,
+  "brandDiff": 0.1204
  },
  "BentoLightUp": {
   "renderable": true,
-  "supplied": 0.1701,
-  "variance": 3952.8,
+  "supplied": 0.1682,
+  "variance": 3801.7,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.01335
  },
  "WireframeDrawOn": {
   "renderable": true,
-  "supplied": 1,
-  "variance": 177.4,
+  "supplied": 0.9416,
+  "variance": 193.4,
   "lines": 0,
   "replaced": 0,
   "neutral": 0,
-  "textDiff": 0
+  "textDiff": 0,
+  "brandDiff": 0.01965
  }
 }
