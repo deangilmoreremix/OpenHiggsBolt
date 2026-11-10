@@ -1,3 +1,4 @@
+import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AbsoluteFill,
@@ -514,7 +515,12 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           if (entrance.translateY) transformParts.push(`translateY(${entrance.translateY}px)`)
           if (entrance.scale !== 1) transformParts.push(`scale(${entrance.scale})`)
 
+          // The layer's media role decides stacking and image fitting.
+          const designForRole = isDesign && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+          const role = roleForLayer(layer, designForRole ? { id: designForRole.id, category: designForRole.category } : null)
+          const roleContract = contractFor(role)
           const layerStyle: React.CSSProperties = {
+            zIndex: layerZIndex(role, visibleLayers.indexOf(layer)),
             left: box.leftPx,
             top: box.topPx,
             width: box.widthPx,
@@ -590,7 +596,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
               <AbsoluteFill key={layer.id} style={{ ...layerStyle, height: box.widthPx }}>
                 <Img
                   src={imageUrl}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: roleContract.objectFit === 'cover' ? 'cover' : 'contain' }}
                 />
               </AbsoluteFill>
             )

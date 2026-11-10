@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { contractFor, roleForLayer } from './mediaRoles'
 import type {
   PersonalizationPreviewSettings,
   PreviewAnimationId,
@@ -810,7 +811,10 @@ export function toBox(
 
   if (isImageLayerKind(layer.kind)) {
     const widthPx = Math.round(scale * width)
-    const leftPx = clampLeftToSafeArea(Math.round(x * width - widthPx / 2), widthPx, width)
+    const rawLeft = Math.round(x * width - widthPx / 2)
+    const leftPx = contractFor(roleForLayer(layer)).clampToSafeArea
+      ? clampLeftToSafeArea(rawLeft, widthPx, width)
+      : rawLeft
     const topPx = Math.max(0, Math.round(y * height - widthPx / 2))
     return { leftPx, topPx, widthPx, heightPx: widthPx, fontSizePx: 0 }
   }
@@ -822,7 +826,10 @@ export function toBox(
   const drawn = resolvedText ?? layer.text ?? ''
   const chars = Math.max(4, (drawn.length || 8) * 0.55)
   const widthPx = Math.round(Math.min(width * 0.9, fontSizePx * chars))
-  const leftPx = clampLeftToSafeArea(Math.round(x * width - widthPx / 2), widthPx, width)
+  const rawLeft = Math.round(x * width - widthPx / 2)
+  const leftPx = contractFor(roleForLayer(layer)).clampToSafeArea
+    ? clampLeftToSafeArea(rawLeft, widthPx, width)
+    : rawLeft
   const topPx = Math.max(0, Math.round(y * height - fontSizePx / 2))
   return { leftPx, topPx, widthPx, fontSizePx }
 }
