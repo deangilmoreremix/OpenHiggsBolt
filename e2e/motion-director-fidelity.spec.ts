@@ -19,6 +19,7 @@ const SCALE = 0.5;
 
 interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'WhipBrakeReal', frames: { entry: 10, whip: 30, peak: 70, settled: 120 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.6 },
   { stem: 'FreezeAnnotateReal', frames: { entry: 20, freeze: 50, peak: 90, settled: 150 }, sampleMain: 8, customMain: 1, heroFrames: ['freeze', 'peak'], areaOnly: true, maxAreaRatio: 1.6 },
   { stem: 'TypeAndFilter', frames: { entry: 14, full: 52, peak: 62, settled: 72 }, sampleMain: 8, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.5 },
   { stem: 'MultiplaneReal', frames: { entry: 8, slide: 70, peak: 130, settled: 160 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true },

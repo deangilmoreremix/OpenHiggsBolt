@@ -81,6 +81,7 @@ export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.ro
   MultiplaneReal: 'projects.cards',
   TypeAndFilter: 'projects.cards',
   FreezeAnnotateReal: 'projects.cards',
+  WhipBrakeReal: 'projects.cards',
 };
 export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
 /** The layout is handed to a recipe only when the capture really contains what that recipe reads. */
