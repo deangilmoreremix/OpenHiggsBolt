@@ -62,6 +62,7 @@ import type {
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import type { ProtectedZone } from './preview/types'
+import { measureImageHints } from './preview/imageHintsLoader'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
 import {
   loadClients,
@@ -5546,6 +5547,32 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }),
     }))
   }, [])
+
+  // Measure each ASSIGNED image once (aspect ratio, transparent corners, an existing frame)
+  // and keep the result in the shared preview settings, so the gallery card, editor,
+  // preview and export all style the same image identically. Files are never modified.
+  const measuredImageUrlsRef = useRef<Set<string>>(new Set())
+  const assignedImageUrlsKey = [
+    assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url,
+    assets.products?.[0]?.uploadedUrl || assets.products?.[0]?.url,
+    assets.products?.[1]?.uploadedUrl || assets.products?.[1]?.url,
+    ...previewSettings.layers.map((l) => l.imageUrl),
+  ]
+    .filter((u): u is string => typeof u === 'string' && u.length > 0)
+    .join('|')
+  useEffect(() => {
+    const urls = (assignedImageUrlsKey ? assignedImageUrlsKey.split('|') : []).filter(
+      (u) => !measuredImageUrlsRef.current.has(u) && !previewSettings.imageHints?.[u],
+    )
+    if (!urls.length) return
+    urls.forEach((u) => measuredImageUrlsRef.current.add(u))
+    // No stale-result guard: the merge is idempotent, and a URL is only measured once.
+    void measureImageHints(urls).then((measured) => {
+      if (!Object.keys(measured).length) return
+      setPreviewSettings((prev) => ({ ...prev, imageHints: { ...(prev.imageHints ?? {}), ...measured } }))
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedImageUrlsKey])
 
   const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
     markSessionStarted()

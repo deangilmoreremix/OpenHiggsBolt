@@ -4,6 +4,8 @@
  * so saved placements correspond to the actual video resolution.
  */
 
+import type { ImageHints, ImageStyle } from './imageStyle'
+
 export type PreviewLayoutId =
   | 'business-introduction'
   | 'product-showcase'
@@ -78,6 +80,13 @@ export interface PreviewLayer {
    * the editor will not drag it until it is unlocked.
    */
   locked?: boolean
+  /**
+   * How an image layer is drawn (shape, corner radius, border, shadow, fit, crop,
+   * exit). Absent or `auto` = the system chooses from the role and what is known
+   * about the image; a customer edit makes it theirs. Overlay-only: the original
+   * file is never modified.
+   */
+  imageStyle?: ImageStyle
   /**
    * Who decided the layer's current position: `manual` = the customer (drag,
    * resize or a position preset) — the placement engine never moves it on its
@@ -169,6 +178,12 @@ export interface PersonalizationPreviewSettings {
    * saved before placement checks existed still restore.
    */
   protectedZones?: ProtectedZone[]
+  /**
+   * What is known about each assigned image, keyed by URL (measured aspect ratio,
+   * transparent corners, an existing frame). Lets every surface — gallery card,
+   * editor, preview and export — style the same image the same way.
+   */
+  imageHints?: Record<string, ImageHints>
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

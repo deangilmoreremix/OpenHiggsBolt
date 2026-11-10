@@ -1,6 +1,8 @@
 import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
 import { ownText, resolveLayerImageUrl, resolveLayerText } from './layerContent'
 import { endCardFrames } from './endCard'
+import { exitFactors, resolveImageStyle } from './imageStyle'
+import { StyledBusinessImage } from './StyledBusinessImage'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AbsoluteFill,
@@ -559,12 +561,32 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           }
 
           if (isImage) {
+            // Overlay-only styling: the file is untouched; the role, what is known about
+            // the image and the layer's own style decide how it is framed.
+            const hints = settings.imageHints?.[imageUrl]
+            const resolved = resolveImageStyle({ role, layerStyle: layer.imageStyle, hints })
+            const exit = resolved.style ? exitFactors(resolved.style, frame, layer.endFrame) : { opacity: 1, scale: 1 }
             return (
               <AbsoluteFill key={layer.id} style={{ ...layerStyle, height: box.widthPx }}>
-                <Img
-                  src={imageUrl}
-                  style={{ width: '100%', height: '100%', objectFit: roleContract.objectFit === 'cover' ? 'cover' : 'contain' }}
-                />
+                <div style={{ position: 'absolute', inset: 0, opacity: exit.opacity, transform: exit.scale !== 1 ? `scale(${exit.scale})` : undefined }}>
+                  {resolved.style ? (
+                    <StyledBusinessImage
+                      src={imageUrl}
+                      imageStyle={resolved.style}
+                      boxWidth={box.widthPx}
+                      boxHeight={box.widthPx}
+                      compHeight={compH}
+                      brand={settings.brandColors}
+                      aspect={hints?.aspect}
+                      ImageComponent={Img as never}
+                    />
+                  ) : (
+                    <Img
+                      src={imageUrl}
+                      style={{ width: '100%', height: '100%', objectFit: roleContract.objectFit === 'cover' ? 'cover' : 'contain' }}
+                    />
+                  )}
+                </div>
               </AbsoluteFill>
             )
           }

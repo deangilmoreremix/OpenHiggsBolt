@@ -7,6 +7,7 @@
  */
 
 import { contractFor, roleForLayer } from './mediaRoles'
+import { normalizeImageStyle, type ImageHints } from './imageStyle'
 import type {
   ProtectedZone,
   PersonalizationPreviewSettings,
@@ -888,10 +889,28 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   const textSlotOverrides = normalizeTextSlotOverrides(raw.textSlotOverrides)
   if (textSlotOverrides) normalized.textSlotOverrides = textSlotOverrides
   if (raw.locked === true) normalized.locked = true
+  const imageStyle = normalizeImageStyle(raw.imageStyle)
+  if (imageStyle) normalized.imageStyle = imageStyle
   if (raw.placementSource === 'manual' || raw.placementSource === 'recommended') {
     normalized.placementSource = raw.placementSource
   }
   return normalized
+}
+
+/** Keeps only well-formed image hints (booleans and a positive finite aspect). */
+export function normalizeImageHints(raw: unknown): Record<string, ImageHints> | undefined {
+  if (!isRecord(raw)) return undefined
+  const out: Record<string, ImageHints> = {}
+  for (const [url, h] of Object.entries(raw)) {
+    if (!url || url.startsWith('blob:') || !isRecord(h)) continue
+    const hint: ImageHints = {}
+    if (typeof h.aspect === 'number' && Number.isFinite(h.aspect) && h.aspect > 0) hint.aspect = h.aspect
+    for (const k of ['transparentCorners', 'alreadyFramed', 'hasTransparency', 'isHeadshot'] as const) {
+      if (h[k] === true) hint[k] = true
+    }
+    if (Object.keys(hint).length) out[url] = hint
+  }
+  return Object.keys(out).length ? out : undefined
 }
 
 /** Keeps only well-formed zones: finite numbers, positive size, inside the frame. */
@@ -1053,6 +1072,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
   const zones = normalizeProtectedZones(raw.protectedZones)
   if (zones) out.protectedZones = zones
+  const hints = normalizeImageHints(raw.imageHints)
+  if (hints) out.imageHints = hints
 
    return out
   } catch {
