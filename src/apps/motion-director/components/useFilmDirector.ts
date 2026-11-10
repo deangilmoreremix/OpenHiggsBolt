@@ -32,6 +32,7 @@ import {
   stillToJpeg,
   checkFilmStructure,
   storyboardFilm,
+  StoryboardError,
   type ActivityStatus,
   type FilmBrandKit,
   type FilmQaReport,
@@ -296,8 +297,16 @@ export function useFilmDirector(opts: {
         );
       } catch (error) {
         if (!live()) return;
-        setStage('idle');
         mark('storyboard', 'error', error instanceof Error ? error.message : 'failed');
+        if (error instanceof StoryboardError) {
+          // Nothing was substituted: the request goes back on the table with the existing choices, so retrying and
+          // using the template are the person's decision.
+          offerReq.current = req;
+          setStage('offer');
+          say('assistant', `The AI director could not plan this film: ${error.message}.\n\nNothing was substituted. Choose “Let the director pick shots” to try again, or “Use Ink Press” to build it from the Ink Press template instead.`);
+          return;
+        }
+        setStage('idle');
         say('assistant', `I could not storyboard that: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     },

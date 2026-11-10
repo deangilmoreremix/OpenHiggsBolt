@@ -219,7 +219,10 @@ export async function storyboardFilm(
   let direction: StoryboardResult['direction'];
   if (autonomous) {
     log('Weighing visual directions for the product', 'running');
-    const options = await requestDirections(guidedAsk).catch(() => null);
+    const options = await requestDirections(guidedAsk).catch((error) => {
+      log(`Visual directions unavailable (${error instanceof Error ? error.message : 'error'}); planning without a weighed direction`, 'done');
+      return null;
+    });
     const chosen = options?.directions[options.recommended] ?? options?.directions[0];
     if (options && chosen) {
       direction = { chosen, others: options.directions.filter((d) => d !== chosen).map((d) => d.name) };
@@ -231,7 +234,10 @@ export async function storyboardFilm(
   let mapping: MappingRow[] | null = req.mapping?.length ? req.mapping : null;
   if (autonomous) {
     log('Mapping each feature to a first-choice and a fallback shot card', 'running');
-    mapping = await requestMapping({ ...guidedAsk, direction: directionNote }).catch(() => null);
+    mapping = await requestMapping({ ...guidedAsk, direction: directionNote }).catch((error) => {
+      log(`Feature-to-shot map unavailable (${error instanceof Error ? error.message : 'error'}); planning without one`, 'done');
+      return null;
+    });
     if (mapping?.length) {
       log(`Feature → shot map · ${mapping.length} features`, 'done');
       for (const r of mapping) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
@@ -286,6 +292,11 @@ export async function storyboardFilm(
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
     return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release, direction };
   } catch (error) {
+    // The AI director failed for a reason of its own (an outage, a rate limit, a bad answer): say what it was and stop,
+    // instead of handing back an unrelated template film. The template stands in only when the person asked for it, or
+    // when there is no usable key (a setting, said plainly, not a failure).
+    const keyProblem = error instanceof DirectorError && (error.status === 401 || error.status === 403);
+    if (!keyProblem && opts.template !== 'inkpress' && !(error instanceof DirectorError && error.code === 'CANCELLED')) throw new StoryboardError(error);
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
@@ -511,6 +522,19 @@ export async function buildFilmProject(
   }
   log(`Film built · ${built.tracks.length} tracks`, 'done');
   return built;
+}
+
+/** The AI director could not plan the film. Carries the real code and message; nothing was substituted. */
+export class StoryboardError extends Error {
+  readonly code: string;
+  readonly status: number;
+  constructor(cause: unknown) {
+    const e = cause instanceof DirectorError ? cause : null;
+    super(e ? `${e.message}${e.code ? ` (${e.code}${e.status ? `, HTTP ${e.status}` : ''})` : ''}` : cause instanceof Error ? cause.message : 'The director failed');
+    this.name = 'StoryboardError';
+    this.code = e?.code ?? 'DIRECTOR_FAILED';
+    this.status = e?.status ?? 0;
+  }
 }
 
 export interface FilmQaReport {

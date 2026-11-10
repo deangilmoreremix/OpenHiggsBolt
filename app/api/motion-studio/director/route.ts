@@ -25,6 +25,7 @@ import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { AESTHETIC_RULES, FINAL_REVIEW } from '@/apps/motion-director/lib/_generated/reviewChecklists'
 import { requireMotionStudioUser } from '../lib/auth'
+import { directorFailure } from '../lib/directorFailure'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -549,11 +550,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ plan: validatePlan(raw, { targetSec: durationSec }) })
   } catch (err) {
-    const status = (err as { status?: number })?.status
     console.warn('[motion-studio/director] failed', err instanceof Error ? err.message : String(err))
-    if (status === 401 || status === 403) {
-      return NextResponse.json({ error: 'OpenAI rejected the API key', code: 'OPENAI_KEY_REJECTED' }, { status: 401 })
-    }
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'The director failed', code: 'DIRECTOR_FAILED' }, { status: 502 })
+    return directorFailure(err)
   }
 }
