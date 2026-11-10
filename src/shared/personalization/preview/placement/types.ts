@@ -40,6 +40,8 @@ export interface PlacementLayer {
   imageUrl?: string
   /** Natural width/height of the image, when measured. Lets checks use the VISIBLE area of a contained image. */
   imageAspect?: number
+  /** Extra space the styled image's shadow occupies around its frame, in composition px. */
+  bleedPx?: number
   /** For design layers: false when the design is not registered / not supported here. */
   designSupported?: boolean
 }

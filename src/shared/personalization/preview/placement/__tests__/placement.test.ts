@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createLayer, applyLayoutPreset, createDefaultPreviewSettings, layoutDefaultGeometry } from '../../presets'
-import { recommendPlacement, evaluateLayoutQuality, buildPlacementInput, type LumaSample, type ProtectedZone } from '..'
+import { recommendPlacement, evaluateLayoutQuality, buildPlacementInput, boxOf, type LumaSample, type ProtectedZone } from '..'
 import type { PersonalizationPreviewSettings, PreviewInputProps } from '../../types'
 
 const BRAND: PreviewInputProps['brand'] = {
@@ -330,5 +330,43 @@ describe('size candidates and the end card', () => {
     expect(withCard.issues.some((i) => i.code === 'low-contrast')).toBe(false)
     const noCard = evaluateLayoutQuality(build({ ...s, showEndCard: false }, { zones: [zone(0.8, 0.1, 0.15, 0.2)], samples: [dark, brightUnderEndCard] }))
     expect(noCard.issues.some((i) => i.code === 'low-contrast')).toBe(true)
+  })
+})
+
+describe('styled images in placement', () => {
+  const withHints = (s: PersonalizationPreviewSettings, hints: Record<string, object>): PersonalizationPreviewSettings => ({ ...s, imageHints: hints as never })
+  const P = 'https://cdn.example.com/p.png'
+  it('counts the shadow as occupied space for a styled product image, not for a logo', () => {
+    const s = withHints(settingsFor('product-showcase'), { [P]: { aspect: 1.5 }, 'https://cdn.example.com/logo.png': { aspect: 3 } })
+    const input = build(s)
+    const img = input.layers.find((l) => l.layer.id === 'productImage')!
+    const logo = input.layers.find((l) => l.layer.id === 'logo')!
+    expect(img.bleedPx).toBeGreaterThan(0)
+    expect(logo.bleedPx).toBe(0)
+  })
+  it('a headshot circle occupies a square; a covering image fills its box; a contained one hugs the picture', () => {
+    const base = settingsFor('product-showcase')
+    const circle = build({ ...withHints(base, { [P]: { aspect: 0.8, isHeadshot: true } }) })
+    expect(circle.layers.find((l) => l.layer.id === 'productImage')!.imageAspect).toBe(1)
+    const cover = build({ ...withHints(base, { [P]: { aspect: 2 } }), layers: base.layers.map((l) => (l.id === 'productImage' ? { ...l, imageStyle: { shape: 'rounded-rect', radius: 0.1, fit: 'cover', cropX: 0.5, cropY: 0.5, borderWidth: 0, borderColor: 'brand-primary', shadow: 'none', fill: null, auto: false } } : l)) as never })
+    expect(cover.layers.find((l) => l.layer.id === 'productImage')!.imageAspect).toBeUndefined()
+    const contain = build(withHints(base, { [P]: { aspect: 2 } }))
+    expect(contain.layers.find((l) => l.layer.id === 'productImage')!.imageAspect).toBe(2)
+  })
+  it('an image whose shadow footprint reaches a neighbouring overlay is reported as colliding', () => {
+    // place the headline so it is just outside the image box but inside the shadow bleed
+    let s = withHints(settingsFor('product-showcase'), { [P]: { aspect: 1 } })
+    const imgLayer = s.layers.find((l) => l.id === 'productImage')!
+    const probe = build(s).layers.find((l) => l.layer.id === 'productImage')!
+    const bleed = probe.bleedPx ?? 0
+    expect(bleed).toBeGreaterThan(2)
+    const box = boxOf(imgLayer, '', imgLayer.x, imgLayer.y, s.width, s.height, 1)
+    // headline box left edge = image right edge + 1px (outside the picture, inside the shadow)
+    const head = s.layers.find((l) => l.id === 'headline')!
+    const hb = boxOf(head, BRAND.headline, head.x, head.y, s.width, s.height)
+    const nx = (box.left + box.width + 1 + hb.width / 2) / s.width
+    s = move(s, 'headline', { x: nx, y: (box.top + 40) / s.height })
+    const q = evaluateLayoutQuality(build(s, { zones: [zone(0.45, 0.0, 0.1, 0.05)], samples: [flat(0.05)] }))
+    expect(q.issues.some((i) => i.code === 'overlay-collision')).toBe(true)
   })
 })

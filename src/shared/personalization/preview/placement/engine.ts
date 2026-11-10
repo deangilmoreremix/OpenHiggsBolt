@@ -17,6 +17,7 @@ import { layerBoxMetrics } from '../../guided/overlayGeometry'
 import { contractFor } from '../mediaRoles'
 import type { PreviewLayer } from '../types'
 import {
+  inflate,
   area,
   contrastRatio,
   hexLuminance,
@@ -177,10 +178,12 @@ function scoreCandidate(
   }
   let p = 0
   const a = Math.max(1, area(box))
+  // what the layer visibly occupies, shadow included
+  const hit = inflate(box, l.bleedPx ?? 0)
 
   if (!contract.mayCoverSubject) {
     for (const z of input.zones) {
-      const ov = intersectionArea(box, zoneToPx(z, width, height))
+      const ov = intersectionArea(hit, zoneToPx(z, width, height))
       if (ov > 0) {
         p += 300 * (ov / a)
         reasons.push(`covers ${z.label}`)
@@ -188,7 +191,7 @@ function scoreCandidate(
     }
   }
   for (const o of placed) {
-    const ov = intersectionArea(box, o.box)
+    const ov = intersectionArea(hit, o.box)
     if (ov > 0) {
       p += 400 * (ov / Math.max(1, Math.min(a, area(o.box))))
       reasons.push('overlaps another overlay')

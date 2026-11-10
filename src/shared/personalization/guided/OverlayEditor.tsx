@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
+import { StyledBusinessImage } from '../preview/StyledBusinessImage'
+import { resolveImageStyle, type ImageStyle } from '../preview/imageStyle'
+import { roleForLayer } from '../preview/mediaRoles'
+import { ImageStyleControls } from './ImageStyleControls'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import {
   PREVIEW_ANIMATIONS,
@@ -502,7 +506,27 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   }}
                 >
                   {isImageLayerKind(layer.kind) ? (
-                    <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                    (() => {
+                      // The same component and rules as the video, scaled to the stage.
+                      const hints = inputProps.settings?.imageHints?.[imageUrl]
+                      const resolved = resolveImageStyle({ role: roleForLayer(layer), layerStyle: layer.imageStyle, hints })
+                      return resolved.style ? (
+                        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                          <StyledBusinessImage
+                            src={imageUrl}
+                            imageStyle={resolved.style}
+                            boxWidth={box.width}
+                            boxHeight={box.width}
+                            compHeight={compH}
+                            factor={factor}
+                            brand={settings.brandColors}
+                            aspect={hints?.aspect}
+                          />
+                        </div>
+                      ) : (
+                        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      )
+                    })()
                   ) : isDesign ? (
                     <div
                       style={{
@@ -759,6 +783,27 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   </select>
                 </div>
               )}
+
+              {isImageLayerKind(selected.kind) && (() => {
+                const url = (selected.imageUrl || (selected.kind === 'logo' ? brand.logoUrl : selected.kind === 'serviceImage' ? brand.serviceUrl ?? brand.productUrl : brand.productUrl ?? brand.serviceUrl)) ?? ''
+                const hints = inputProps.settings?.imageHints?.[url]
+                const resolved = resolveImageStyle({ role: roleForLayer(selected), layerStyle: selected.imageStyle, hints })
+                if (!resolved.style) return null
+                const current: ImageStyle = resolved.style
+                // An edit starts from the look being shown and makes it the customer's own.
+                const edit = (patch: Partial<ImageStyle>) => {
+                  updatePreviewLayer(selected.id, { imageStyle: { ...current, ...patch, auto: false } })
+                }
+                return (
+                  <ImageStyleControls
+                    style={current}
+                    isAuto={!selected.imageStyle || selected.imageStyle.auto === true}
+                    reason={resolved.reason}
+                    onChange={edit}
+                    onReset={() => updatePreviewLayer(selected.id, { imageStyle: undefined })}
+                  />
+                )
+              })()}
 
               <div>
                 <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>

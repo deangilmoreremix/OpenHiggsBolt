@@ -18,6 +18,7 @@
 import { layerBoxMetrics } from '../../guided/overlayGeometry'
 import { contractFor } from '../mediaRoles'
 import {
+  inflate,
   area,
   intersectionArea,
   outsideSafeArea,
@@ -86,7 +87,7 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
     }
     if (!contract.mayCoverSubject) {
       for (const z of input.zones) {
-        const ov = intersectionArea(box, zoneToPx(z, width, height))
+        const ov = intersectionArea(inflate(box, l.bleedPx ?? 0), zoneToPx(z, width, height))
         if (ov / Math.max(1, area(box)) > SUBJECT_RATIO) {
           issues.push({
             code: isImage && l.role !== 'logo' ? 'media-over-subject' : 'text-over-subject',
@@ -124,9 +125,11 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
       const [as, ae] = window(a)
       const [bs, be] = window(b)
       if (Math.max(as, bs) > Math.min(ae, be)) continue
-      const ba = boxes.get(a.layer.id)
-      const bb = boxes.get(b.layer.id)
-      if (!ba || !bb) continue
+      const ba0 = boxes.get(a.layer.id)
+      const bb0 = boxes.get(b.layer.id)
+      if (!ba0 || !bb0) continue
+      const ba = inflate(ba0, a.bleedPx ?? 0) // shadows count as occupied space
+      const bb = inflate(bb0, b.bleedPx ?? 0)
       const ov = intersectionArea(ba, bb)
       if (ov / Math.max(1, Math.min(area(ba), area(bb))) > COLLISION_RATIO) {
         issues.push({ code: 'overlay-collision', severity: 'adjust', layerId: b.layer.id,

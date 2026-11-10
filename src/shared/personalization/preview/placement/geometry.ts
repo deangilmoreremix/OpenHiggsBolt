@@ -67,3 +67,8 @@ export function contrastRatio(a: number, b: number): number {
   const lo = Math.min(a, b)
   return (hi + 0.05) / (lo + 0.05)
 }
+
+/** A rect grown by `px` on every side (a shadow's footprint). */
+export function inflate(r: PxRect, px: number): PxRect {
+  return px > 0 ? { left: r.left - px, top: r.top - px, width: r.width + 2 * px, height: r.height + 2 * px } : r
+}
