@@ -332,9 +332,21 @@ export async function fetchReferenceFrames(stem: string): Promise<string[]> {
 export async function fetchRecipeSource(stem: string): Promise<string | null> {
   try {
     const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.tsx.txt`);
+    if (res.status === 404) throw new SourcesUnavailableError(stem);
     return res.ok ? await res.text() : null;
-  } catch {
+  } catch (error) {
+    if (error instanceof SourcesUnavailableError) throw error;
     return null;
+  }
+}
+
+/**
+ * The recipe sources the adapter reads (public/motion-studio/sources, written by scripts/gen-demo-sources.mjs during the
+ * build) are not served. That is a deployment problem, not the model's: say so instead of "did not pass its checks".
+ */
+export class SourcesUnavailableError extends Error {
+  constructor(readonly stem: string) {
+    super(`The recipe sources are not deployed (/motion-studio/sources/${stem}.tsx.txt returned 404). Shots keep their plain recipes; this is a build problem, not a model failure.`);
   }
 }
 

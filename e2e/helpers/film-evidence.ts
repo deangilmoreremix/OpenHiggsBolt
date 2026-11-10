@@ -15,7 +15,11 @@ export type Rgb = [number, number, number];
 export const SUPPLIED: Record<string, Rgb> = { magenta: [236, 0, 140], lime: [110, 210, 0], orange: [255, 120, 0], cyan: [0, 175, 235] };
 
 /** Text that belongs to the Shotcraft demos or the studio itself and must not appear in a personalised film. */
-export const DEMO_STRINGS = ['SmartVideo GO', 'Motion Studio', 'Shotcraft', 'shotcraft', 'video-shotcraft', 'Your product,', 'in motion.', 'Paper Radar', 'Shot recipes', 'Beat-synced', '2.5D camera', 'REAL PAGE CAPTURES', 'Combo'];
+export const BRANDING_STRINGS = ['SmartVideo GO', 'Motion Studio', 'Shotcraft', 'shotcraft', 'video-shotcraft', 'Your product,'];
+/** Sample content of the demos: allowed only in a shot the chat reports as unmodified. */
+export const SAMPLE_UI_STRINGS = ['Paper Radar', 'Shot recipes', 'Beat-synced', '2.5D camera', 'Pick a move', 'Combo'];
+/** "real page captures" is a false claim for uploaded pictures; it is only true when the site's pages were captured. */
+export const PAGE_CAPTURE_CLAIM = 'REAL PAGE CAPTURES';
 
 export function solidPng(width: number, height: number, rgb: Rgb): Buffer {
   const table = Array.from({ length: 256 }, (_, n) => {
@@ -165,7 +169,7 @@ export async function sampleFrame(page: Page, frame: number): Promise<{ text: st
   return { text, img: rawRgb(png), png };
 }
 
-export interface ShotEvidence { card: string; frame: number; suppliedShare: Record<string, number>; forbidden: string[]; variance: number }
+export interface ShotEvidence { card: string; frame: number; suppliedShare: Record<string, number>; branding: string[]; sampleUi: string[]; variance: number }
 
 /** For each recipe shot, two settled frames: the supplied-colour share, demo strings seen, and a flatness measure. */
 export async function collectShotEvidence(page: Page, info: FilmInfo, testInfo: TestInfo, tag: string): Promise<ShotEvidence[]> {
@@ -182,7 +186,8 @@ export async function collectShotEvidence(page: Page, info: FilmInfo, testInfo: 
         card: shot.cardId,
         frame,
         suppliedShare: Object.fromEntries(Object.entries(SUPPLIED).map(([k, rgb]) => [k, +colorShare(s.img, rgb).toFixed(4)])),
-        forbidden: DEMO_STRINGS.filter((d) => s.text.includes(d)),
+        branding: BRANDING_STRINGS.filter((d) => s.text.includes(d)),
+        sampleUi: [...SAMPLE_UI_STRINGS, PAGE_CAPTURE_CLAIM].filter((d) => s.text.includes(d)),
         variance: +variance(s.img).toFixed(1),
       });
     }
@@ -198,6 +203,11 @@ export async function exportMp4ViaChat(page: Page, opts: { draft: boolean; to: s
   const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
   await download.saveAs(opts.to);
   return opts.to;
+}
+
+/** Names of the shots the chat says are unmodified ("Hit Counter is unmodified: ..."), squashed for comparison with a stem. */
+export function reportedUnmodified(chatText: string): string[] {
+  return [...chatText.matchAll(/([A-Z][A-Za-z0-9' -]+?) is unmodified:/g)].map((m) => m[1].toLowerCase().replace(/[^a-z0-9]/g, ''));
 }
 
 export function writeEvidence(testInfo: TestInfo, name: string, data: unknown) {

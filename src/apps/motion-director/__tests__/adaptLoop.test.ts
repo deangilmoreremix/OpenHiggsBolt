@@ -120,3 +120,16 @@ describe('adapting shots', () => {
     expect(logs.some((l) => /kept as the plain recipe/.test(l))).toBe(true);
   });
 });
+
+describe('undeployed recipe sources', () => {
+  it('are named as a deployment problem and stop the run, not blamed on the model', async () => {
+    const { SourcesUnavailableError } = await import('../lib/directorClient');
+    const logs: string[] = [];
+    let outcome: unknown = null;
+    const source = vi.fn(async () => { throw new SourcesUnavailableError('RowEmbed'); });
+    await adaptFilm(project(), ctx, deps({ source }), (l) => logs.push(l), undefined, (o) => { outcome = o; });
+    expect(logs.join('\n')).toMatch(/recipe sources are not deployed/);
+    expect(logs.join('\n')).not.toMatch(/did not pass (?:its|their) checks/);
+    expect(outcome).toMatchObject({ kind: 'stopped', adapted: 0 });
+  });
+});

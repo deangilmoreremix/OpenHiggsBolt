@@ -17,6 +17,8 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
 import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
+import { personalisesWithSite, captureQuality } from './captureQuality';
+import type { AdaptationOutcome } from './personalization';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
 import { mergeCaptures, neededPages } from './targetedCapture';
@@ -28,7 +30,7 @@ import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
-import { fallbackTexts } from './retext';
+import { fallbackTexts, neutralTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
@@ -170,7 +172,7 @@ export async function storyboardFilm(
       const pulled = [capture.logo ? 'logo' : '', capture.assets?.length ? `${capture.assets.length} found pictures (${[...new Set(capture.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(
         capture.partial
-          ? `Captured ${capture.title || req.siteUrl} · its words only (no screenshots in time)`
+          ? `Partial capture of ${capture.title || req.siteUrl} · its words only (no screenshots in time), so the film cannot show the site's own pages`
           : `Captured ${capture.title || req.siteUrl} · ${pages} page${pages === 1 ? '' : 's'} (${(capture.pages ?? []).map((p) => p.path).join(', ') || '/'}) · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`,
         'done',
       );
@@ -306,9 +308,15 @@ export async function storyboardFilm(
  * (so the studio's own demos keep SmartVideo GO); the plan's palette and the site's own
  * words and font replace the demo's.
  */
-export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): BrandInput | undefined {
+export function brandFor(plan: DirectorPlan, capture: SiteCapture | null, productName?: string | null): BrandInput | undefined {
   const name = capture ? siteNameOf(capture.title || '', capture.url) : '';
-  if (!capture || !name) return undefined;
+  if (!capture || !name) {
+    // No site: a film still speaks as the person's product when it has a name, so the studio's own brand (SmartVideo GO)
+    // never shows in it. Nothing else is invented about the product.
+    const own = (productName ?? '').trim();
+    if (!own || /^(?:your product|product)$/i.test(own)) return undefined;
+    return { name: own, logo: null, accent: plan.palette.accent, accent2: plan.palette.accent, ink: plan.palette.text, paper: plan.palette.background, repo: '', taglines: [], features: [] };
+  }
   const content = capture.content;
   const taglines = [content?.headline, content?.description, ...(content?.headings ?? [])].filter((v): v is string => Boolean(v)).map((v) => v.trim().slice(0, 80));
   return {
@@ -331,22 +339,33 @@ export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): Brand
  * template text from the site and the storyboard; with no key, or when it cannot be reached,
  * the site's own headline, headings and menu fill the same lines.
  */
-export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog): Promise<Record<number, Record<string, string>>> {
+export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog, ctx: { pictures?: number } = {}): Promise<Record<number, Record<string, string>>> {
   const stringsOf = (recipeId: string) => {
     const t = recipeId ? resolveMotionTemplate(recipeId) : undefined;
     return t ? DEMO_TEXTS[t.componentName] ?? [] : [];
   };
   const hasWords = plan.scenes.some((sc) => sc.kind === 'shot' && stringsOf(sc.recipeId).length > 0);
   if (!hasWords) return {};
+  const sitePages = personalisesWithSite(capture);
+  // The demo's own names and claims, made the person's own (the product's name, true labels): applies with or without a site.
+  const neutral = (i: number, sc: DirectorPlan['scenes'][number]) => (sc.kind === 'shot' ? neutralTexts(stringsOf(sc.recipeId), product, { sitePages, hasPictures: (ctx.pictures ?? 0) > 0 }) : {});
+  const withNeutral = (map: Record<number, Record<string, string>>) => {
+    const merged: Record<number, Record<string, string>> = { ...map };
+    plan.scenes.forEach((sc, i) => {
+      const n = neutral(i, sc);
+      if (Object.keys(n).length) merged[i] = { ...n, ...(map[i] ?? {}) };
+    });
+    return merged;
+  };
   log('Writing your words into the shots', 'running');
   try {
     const texts = await requestRetext({ plan, product, capture });
     if (Object.keys(texts).length) {
-      log('Shots now say your words', 'done');
-      return texts;
+      log(sitePages ? 'Shots now say your words' : 'Shots now say your words where there were words to use', 'done');
+      return withNeutral(texts);
     }
-  } catch {
-    /* fall through to the site's own words */
+  } catch (error) {
+    log(`The director could not write the shots' words (${error instanceof Error ? error.message : 'error'}); using the site's own words instead`, 'done');
   }
   const out: Record<number, Record<string, string>> = {};
   const used = new Set<string>();
@@ -357,14 +376,15 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
     const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used, rules?.text === 'structural');
     if (Object.keys(map).length) out[i] = map;
   });
-  log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');
-  return out;
+  const merged = withNeutral(out);
+  log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : Object.keys(merged).length ? 'Replaced the demo names and claims in the shots with yours (no site words to use)' : 'Kept the template words (no site words to use)', 'done');
+  return merged;
 }
 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; signal?: AbortSignal },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -428,9 +448,9 @@ export async function buildFilmProject(
     if (map) drums = map;
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
   }
-  const brand = brandFor(plan, opts.capture);
+  const brand = brandFor(plan, opts.capture, plan.title.split(/\s[—–-]\s/)[0]);
   const product = brand?.name ?? plan.title.split(/\s[—–-]\s/)[0];
-  const texts = await writeShotWords(plan, opts.capture, product, log);
+  const texts = await writeShotWords(plan, opts.capture, product, log, { pictures: opts.media.filter((m) => m.kind === 'image').length });
   log('Animating the shots and laying in sound design', 'running');
   const videos = opts.media.filter((m) => m.kind === 'video').map((m) => ({ url: m.url, name: m.name, durationSec: m.durationSec }));
   if (videos.length) log(`Cutting in ${videos.length} attached video${videos.length === 1 ? '' : 's'}`, 'done');
@@ -456,7 +476,14 @@ export async function buildFilmProject(
   const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}), ...(opts.direction ? { direction: opts.direction } : {}) };
   let built: ProjectData = { ...project, spec };
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
-  if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {
+  const skip = (reason: string) => {
+    log(`Shot adaptation skipped: ${reason}`, 'done');
+    opts.onAdaptation?.({ kind: 'skipped', reason });
+  };
+  if (opts.adaptShots === false) skip('turned off');
+  else if (!opts.capture) skip('no site was captured, so there is no page to adapt the shots to');
+  else if (captureQuality(opts.capture) !== 'complete') skip('only the site\'s words were captured (no page screenshots)');
+  else {
     const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture.brand?.fontFamily ?? undefined };
     built = await adaptFilm(
       built,
@@ -474,7 +501,9 @@ export async function buildFilmProject(
       },
       log,
       opts.signal,
+      opts.onAdaptation,
     ).catch((error) => {
+      opts.onAdaptation?.({ kind: 'stopped', adapted: 0, attempted: 0, reason: error instanceof Error ? error.message : 'error' });
       // Say so: a film that kept every plain recipe is not the film the person approved.
       if (!opts.signal?.aborted) log(`Shot adaptation failed: ${error instanceof Error ? error.message : 'error'}; the film keeps its plain recipes`, 'error');
       return built;

@@ -1,6 +1,7 @@
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import type { ClipData, ProjectData } from '../types';
-import { fetchRecipeCard, fetchRecipeSource, fetchReferenceFrames, requestAdapt, DirectorError, type AdaptRequest } from './directorClient';
+import { fetchRecipeCard, fetchRecipeSource, fetchReferenceFrames, requestAdapt, DirectorError, SourcesUnavailableError, type AdaptRequest } from './directorClient';
+import type { AdaptationOutcome } from './personalization';
 import { checkAdaptedSource } from './shotAdapter';
 import { prepareAdapted } from './adaptedRuntime';
 import { rulesOf } from './shotRules';
@@ -140,9 +141,12 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
 }
 
 /** Adapt the film's best shots within the time budget. Never throws except for a missing key / refusal on the first shot. */
-export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal): Promise<ProjectData> {
+export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal, onOutcome?: (outcome: AdaptationOutcome) => void): Promise<ProjectData> {
   const targets = adaptTargets(project);
-  if (!targets.length) return project;
+  if (!targets.length) {
+    onOutcome?.({ kind: 'skipped', reason: 'no shot of this film is one the adapter rewrites' });
+    return project;
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ADAPT_LIMITS.budgetMs);
   outer?.addEventListener('abort', () => controller.abort(), { once: true });
@@ -176,8 +180,9 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
           await (deps.sleep ?? waitFor)(ADAPT_LIMITS.backoffMs, controller.signal);
           continue;
         }
-        // No key or refusal: say so once and stop asking.
+        // No key, a refusal or undeployed recipe sources: say so once and stop asking.
         const reason = error instanceof Error ? error.message : 'Shot adaptation is unavailable';
+        if (error instanceof SourcesUnavailableError) queue.length = 0;
         if (!stop) log(reason, 'error');
         stopReason = reason;
         stop = true;
@@ -191,6 +196,9 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
   }
   // Every shot that did not come out adapted is counted, with the reason, so the film is not silently plain.
   const kept = targets.length - adapted;
+  onOutcome?.(stopReason
+    ? { kind: 'stopped', adapted, attempted: targets.length, reason: stopReason }
+    : { kind: 'ran', adapted, attempted: targets.length, ...(kept > 0 && outer?.aborted ? { note: 'stopped' } : {}) });
   if (kept > 0) {
     const reason = stopReason ? stopReason : outer?.aborted ? 'stopped' : controller.signal.aborted ? 'time budget reached' : 'the adapted versions did not pass their checks';
     log(`${kept} of ${targets.length} shot${targets.length === 1 ? '' : 's'} kept as the plain recipe (${reason})`, stopReason || controller.signal.aborted ? 'error' : 'done');

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { test, expect } from '@playwright/test';
 import { installStudioSession } from './helpers/motion-studio';
 import {
-  SUPPLIED, buildFilmViaChat, collectShotEvidence, decodeAll, exportMp4ViaChat, extractFrame, filmInfo, probe, rawRgb, stubCompleteCapture, stubDirector,
+  SUPPLIED, buildFilmViaChat, reportedUnmodified, collectShotEvidence, decodeAll, exportMp4ViaChat, extractFrame, filmInfo, probe, rawRgb, stubCompleteCapture, stubDirector,
   variance, writeEvidence, writeSuppliedImages, type ShotEvidence,
 } from './helpers/film-evidence';
 
@@ -19,7 +19,13 @@ import {
 const IMAGES_DIR = path.join(process.env.TMPDIR ?? '/tmp', 'md-acceptance-images');
 /** A supplied colour covering 0.3 % of the frame is far above chance: it occurs in no sample texture or palette. */
 const hasSupplied = (ev: ShotEvidence[]) => ev.some((e) => Object.values(e.suppliedShare).some((v) => v >= 0.003));
-const demoSeen = (ev: ShotEvidence[]) => [...new Set(ev.flatMap((e) => e.forbidden))];
+/** Studio or Shotcraft branding in any shot is always a failure. */
+const brandingSeen = (ev: ShotEvidence[]) => [...new Set(ev.flatMap((e) => e.branding))];
+/** Sample content is a failure unless the chat reports that shot as unmodified (and a "real page captures" claim needs captured pages). */
+const sampleSeen = (ev: ShotEvidence[], chatText: string, sitePages = false) => {
+  const unmodified = reportedUnmodified(chatText);
+  return [...new Set(ev.filter((e) => !unmodified.includes(e.card.slice(5).toLowerCase())).flatMap((e) => e.sampleUi.filter((x) => sitePages || x !== 'REAL PAGE CAPTURES')))];
+};
 const flat = (ev: ShotEvidence[]) => ev.filter((e) => e.variance < 15);
 
 test.beforeEach(async ({ page }) => {
@@ -35,7 +41,8 @@ test('A. one personalised shot from supplied images', async ({ page }, testInfo)
   writeEvidence(testInfo, 'A', { built, shots: info.shots, ev });
   expect(info.shots.filter((s) => s.cardId.startsWith('demo:'))).toHaveLength(1);
   expect(hasSupplied(ev), 'the supplied pictures appear in the shot').toBe(true);
-  expect(demoSeen(ev), 'no demo branding').toEqual([]);
+  expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
+  expect(sampleSeen(ev, built.chatText), 'no sample content outside shots reported as unmodified').toEqual([]);
   expect(flat(ev), 'no blank frames').toEqual([]);
 });
 
@@ -59,7 +66,8 @@ test('B. three-shot film with transitions is assembled in order', async ({ page 
   for (const a of audio) expect(a.start + a.duration, 'audio ends inside the film').toBeLessThanOrEqual(info.endFrame + 1);
   expect(info.tracks.some((t) => t.role === 'music'), 'music track present').toBe(true);
   const ev = await collectShotEvidence(page, info, testInfo, 'B');
-  expect(demoSeen(ev), 'no demo branding').toEqual([]);
+  expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
+  expect(sampleSeen(ev, built.chatText), 'no sample content outside shots reported as unmodified').toEqual([]);
 });
 
 test('C. film from a real website (connections.com)', async ({ page }, testInfo) => {
@@ -74,7 +82,8 @@ test('C. film from a real website (connections.com)', async ({ page }, testInfo)
   expect(built.chatText, 'no claim of sample pages').not.toMatch(/sample pages instead/i);
   expect(info.shots.some((s) => s.props?.logo), 'a title card carries the site logo').toBe(true);
   expect(info.shots.some((s) => (s.props?.screens ?? 0) > 0), 'product shots carry the site pages').toBe(true);
-  expect(demoSeen(ev), 'no demo branding').toEqual([]);
+  expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
+  expect(sampleSeen(ev, built.chatText, true), 'no sample content outside shots reported as unmodified').toEqual([]);
   expect(flat(ev)).toEqual([]);
 });
 
@@ -85,7 +94,8 @@ test('D. film from uploaded images, no website', async ({ page }, testInfo) => {
   const ev = await collectShotEvidence(page, info, testInfo, 'D');
   writeEvidence(testInfo, 'D', { built, shots: info.shots, ev });
   expect(hasSupplied(ev), 'the uploaded pictures appear in the film').toBe(true);
-  expect(demoSeen(ev), 'no demo branding').toEqual([]);
+  expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
+  expect(sampleSeen(ev, built.chatText), 'no sample content outside shots reported as unmodified').toEqual([]);
   expect(flat(ev)).toEqual([]);
 });
 
@@ -102,7 +112,8 @@ test('E. film from user-selected recipes: each is personalised or reported as no
     const reported = new RegExp(`${r}[^\\n]{0,160}(not personali[sz]ed|unmodified|sample)|(not personali[sz]ed|unmodified|sample)[^\\n]{0,160}${r}`, 'i').test(built.chatText);
     expect(personalised || reported, `${r} is either personalised or reported as not personalised`).toBe(true);
   }
-  expect(demoSeen(ev), 'no demo branding').toEqual([]);
+  expect(brandingSeen(ev), 'no studio or Shotcraft branding').toEqual([]);
+  expect(sampleSeen(ev, built.chatText), 'no sample content outside shots reported as unmodified').toEqual([]);
 });
 
 test('F. a film exports to a playable MP4 whose frames match what was built', async ({ page }, testInfo) => {
@@ -135,7 +146,8 @@ test('G. no demo branding or sample UI in personalised output', async ({ page },
   const info = await filmInfo(page);
   const ev = await collectShotEvidence(page, info, testInfo, 'G');
   writeEvidence(testInfo, 'G', { built, ev });
-  expect(demoSeen(ev), 'demo strings seen in the output').toEqual([]);
+  expect(brandingSeen(ev), 'branding seen in the output').toEqual([]);
+  expect(sampleSeen(ev, built.chatText), 'sample content seen outside shots reported as unmodified').toEqual([]);
 });
 
 test('H1. failed adaptation is reported, not counted as success', async ({ page }, testInfo) => {

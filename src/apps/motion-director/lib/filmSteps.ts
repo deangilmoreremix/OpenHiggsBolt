@@ -4,7 +4,7 @@
  * Plain data so the hook, the chat UI and tests share one definition.
  */
 export type FilmStepId = 'product' | 'capture' | 'storyboard' | 'animate' | 'beat' | 'qa' | 'deliver';
-export type FilmStepState = 'todo' | 'active' | 'done' | 'skipped' | 'error';
+export type FilmStepState = 'todo' | 'active' | 'done' | 'warning' | 'skipped' | 'error';
 
 export interface FilmStep {
   id: FilmStepId;

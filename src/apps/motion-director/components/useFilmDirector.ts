@@ -39,6 +39,8 @@ import {
 } from '../lib/filmPipeline';
 import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
+import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
+import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
 
 /**
  * The film conversation: one chat turns a request into a finished film.
@@ -178,7 +180,8 @@ export function useFilmDirector(opts: {
       const glog: typeof log = (label, status) => {
         if (!live()) return;
         log(label, status);
-        if (/^Captured /.test(label)) mark('capture', 'done', label.replace(/^Captured [^·]*· ?/, ''));
+        if (/^Partial capture of /.test(label)) mark('capture', 'warning', label.replace(/^Partial capture of [^·]*· ?/, ''));
+        else if (/^Captured /.test(label)) mark('capture', 'done', label.replace(/^Captured [^·]*· ?/, ''));
         else if (/^Could not capture/.test(label)) {
           mark('capture', 'error', label);
           say('assistant', `${label}. The film will use sample pages instead of your site. Send the address again (or attach screenshots) and I'll re-capture.`);
@@ -289,7 +292,7 @@ export function useFilmDirector(opts: {
         if (decided.length) say('assistant', decided.join('\n\n'));
         say(
           'assistant',
-          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}${result.source === 'director' && result.plan.summary ? `${result.plan.summary}\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${result.capture ? ', using your captured pages' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, ask me why I chose something, or tell me what to change.`,
+          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}${result.source === 'director' && result.plan.summary ? `${result.plan.summary}\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${personalisesWithSite(result.capture) ? ', using your captured pages' : result.capture ? ', using only your site\'s words (its pages could not be screenshotted)' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, ask me why I chose something, or tell me what to change.`,
         );
       } catch (error) {
         if (!live()) return;
@@ -412,8 +415,13 @@ export function useFilmDirector(opts: {
           });
           if (!live()) return;
           g.capture = capture;
-          log(`Captured ${capture.title || req.siteUrl}`, 'done');
-          mark('capture', 'done', `${capture.pages?.length || 1} page${(capture.pages?.length || 1) === 1 ? '' : 's'} · ${capture.crops.length} card crops`);
+          if (captureQuality(capture) === 'complete') {
+            log(`Captured ${capture.title || req.siteUrl}`, 'done');
+            mark('capture', 'done', `${capture.pages?.length || 1} page${(capture.pages?.length || 1) === 1 ? '' : 's'} · ${capture.crops.length} card crops`);
+          } else {
+            log(`Partial capture of ${capture.title || req.siteUrl} · its words only`, 'done');
+            mark('capture', 'warning', 'The site\'s words only: its pages could not be screenshotted');
+          }
         } catch (error) {
           if (!live()) return;
           const label = `Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`;
@@ -618,14 +626,24 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
+      let adaptation: AdaptationOutcome | null = null;
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const musicClip = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'audio-clip' && /bgmlib|^blob:/.test(String(c.props?.file ?? '')));
       const music = media.find((m) => m.kind === 'audio') ?? (musicClip ? { name: String(musicClip.label ?? 'music') } : undefined);
-      mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
+      // What became of each recipe shot: adapted, parameterised (it draws the person's own pictures or words) or the plain demo.
+      const made = summarizePersonalization(filmPersonalization(project));
+      const adaptLine = (() => {
+        const a = adaptation as AdaptationOutcome | null;
+        if (!a) return '';
+        if (a.kind === 'skipped') return `Shot adaptation did not run: ${a.reason}.`;
+        if (a.kind === 'stopped') return `Shot adaptation stopped after ${a.adapted} of ${a.attempted}: ${a.reason}`;
+        return `Shot adaptation: ${a.adapted} of ${a.attempted} shots rewritten for your product${a.adapted === 0 ? ' (the rest keep their plain recipes)' : ''}.`;
+      })();
+      mark('animate', made.total > 0 && made.personalized === 0 ? 'warning' : 'done', made.total ? made.line : `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
       const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
@@ -648,12 +666,15 @@ export function useFilmDirector(opts: {
         'assistant',
         [
           `Your film is ready: ${Math.round(project.tracks.reduce((m, t) => t.clips.reduce((mm, c) => Math.max(mm, c.start + c.duration), m), 0) / project.fps)}s at ${project.width}×${project.height}, ${project.fps} fps, ${project.tracks.map((t) => t.name).join(' / ')} tracks.`,
+          made.total ? `${made.line}.` : '',
+          ...made.details,
+          adaptLine,
           qa.ok ? (partial ? `Frame QA found no problems in the ${qa.framesChecked} of ${planned} frames it had time to check.` : `Frame QA passed${qa.framesChecked ? ` (${qa.framesChecked} frames rendered)` : ''}.`) : `Frame QA found ${qa.issues.length} issue${qa.issues.length === 1 ? '' : 's'}:\n- ${qa.issues.join('\n- ')}`,
           ...qa.warnings,
           ...(qa.review ? reviewSummary(qa.review) : []),
           ...(fixed.length ? ['Fixed before showing you:', ...fixed.map((f) => `- ${f}`)] : []),
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
-        ].join('\n'),
+        ].filter(Boolean).join('\n'),
       );
       // Stage 7: the independent reviewer (a model that did not make the film) gets the spec, every shot's card,
       // its reference frames next to the film's, the seams and the two checklists; it arrives as a follow-up,

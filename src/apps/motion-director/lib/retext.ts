@@ -54,3 +54,22 @@ export function fallbackTexts(strings: readonly string[], content: SiteContent |
   }
   return out;
 }
+
+/**
+ * Lines of a recipe that name the studio, the demo's product or a sample claim, made the person's own. This is
+ * what a film with no website falls back on: nothing is invented about the product, only the demo's own names and
+ * claims are replaced (the product name for "Your product" and the studio brands; a true label for "real page
+ * captures" when the pictures are not captured pages).
+ */
+export function neutralTexts(strings: readonly string[], name: string, opts: { sitePages: boolean; hasPictures: boolean }): TextMap {
+  const out: TextMap = {};
+  const own = name.trim().slice(0, 24);
+  if (!own) return out;
+  for (const line of strings) {
+    if (/\byour product\b/i.test(line)) out[line] = line.replace(/your product/i, own);
+    else if (/\b(?:SmartVideo GO|Motion Studio|video-shotcraft|Shotcraft)\b/i.test(line)) out[line] = line.replace(/SmartVideo GO|Motion Studio|video-shotcraft|Shotcraft/gi, own);
+    else if (!opts.sitePages && /real page captures?/i.test(line)) out[line] = opts.hasPictures ? 'YOUR PICTURES' : 'YOUR WORK';
+  }
+  return out;
+}
+

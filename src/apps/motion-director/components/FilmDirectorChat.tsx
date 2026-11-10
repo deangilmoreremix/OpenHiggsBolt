@@ -21,6 +21,7 @@ import { buildCatalogue } from '../lib/pictureCatalogue';
 import { assignPictures } from '../lib/assignPictures';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
+import { personalisesWithSite } from '../lib/captureQuality';
 
 /**
  * The film conversation as it appears in chat: messages, the Ink Press
@@ -214,6 +215,7 @@ const STEP_COLORS: Record<FilmStepState, { border: string; num: string; label: s
   todo: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Waiting' },
   active: { border: 'rgba(232,176,92,0.7)', num: '#e8b05c', label: 'Working…' },
   done: { border: 'rgba(34,197,94,0.45)', num: '#86efac', label: 'Done' },
+  warning: { border: 'rgba(232,176,92,0.7)', num: '#e8b05c', label: 'Partly done' },
   skipped: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Skipped' },
   error: { border: 'rgba(248,113,113,0.6)', num: '#fca5a5', label: 'Problem' },
 };
@@ -357,7 +359,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           testId="director-plan"
           eyebrow={storyboard?.source === 'director' ? 'MOTION DIRECTOR STORYBOARD' : 'INK PRESS STORYBOARD'}
           title={plan.title}
-          meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${storyboard?.capture ? ' · uses your site' : ''}`}
+          meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${personalisesWithSite(storyboard?.capture) ? ' · uses your site' : storyboard?.capture ? ' · uses your site\'s words only' : ''}`}
           steps={withVideos(plan.scenes.map((scene, i) => {
             const startSec = plan.scenes.slice(0, i).reduce((sum, sc) => sum + sc.durationSec, 0);
             const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
