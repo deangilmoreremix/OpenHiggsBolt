@@ -430,7 +430,7 @@ export async function buildFilmProject(
         pageH: opts.capture.pages?.[0]?.layout?.pageH ?? opts.capture.page.height,
         cardCrops: opts.capture.crops,
         emptyPlate: opts.capture.emptyPlate ?? null,
-        ...(captureQuality(opts.capture) === 'complete' && layoutFromCapture(opts.capture).usable ? { liveLayout: layoutFromCapture(opts.capture).layout } : {}),
+        ...(captureQuality(opts.capture) === 'complete' && (layoutFromCapture(opts.capture).usable || layoutFromCapture(opts.capture).rowsUsable) ? { liveLayout: layoutFromCapture(opts.capture).layout } : {}),
         sectionNames: opts.capture.content?.headings ?? [],
         nav: opts.capture.content?.nav ?? [],
         ctas: opts.capture.content?.ctas ?? [],

@@ -13,24 +13,49 @@
 // - 槽位接触影随行接近而收紧变实（近地小而实），离地时是大而虚的环境影；
 // - 相机取景改为全程被页面铺满（原起点露出页顶外空白、终点露出页底外 160px 空白）。
 import React from 'react';
-import { AbsoluteFill, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
+import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { Grain, Vignette } from '../../_fixtures/Polish';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity, unionRect } from '../../_textures/retarget';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { isWebRendering } from '../../_fixtures/ExportMode';
 
 export const ROW_EMBED_DURATION = 68;
 
-const DETAIL_H = layout.detail.pageH;
-const rows = layout.detail.rows;
+const SAMPLE_ROWS = SAMPLE_LAYOUT.detail.rows;
+const SAMPLE_UNION = unionRect(SAMPLE_ROWS);
 const PAGE_BG = '#f9f6f1'; // 截图里内容区的真实底色（逐像素采样）
 
 // 起点 cy=500@1.12：页顶刚好出画；终点 cy=740@1.25：边下摇边微推近，页底贴住画框下沿，
 // 画框上沿落在「编辑元数据」分隔线与「项目资料」之间（不切半行字）
-const DETAIL_CAM: CamKey2D[] = [
+const SAMPLE_CAM: CamKey2D[] = [
   { frame: 0, cx: 960, cy: 500, zoom: 1.12 },
   { frame: 68, cx: 960, cy: 740, zoom: 1.25 },
 ];
+
+/**
+ * The page the rows are embedded into and the camera over it. The camera was authored around the sample's five rows;
+ * on another page the same composition is carried over by the similarity from the sample's rows to the page's rows
+ * (identity for the sample), keeping the page filling the frame as the note above requires.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const rows = layout.detail.rows;
+  const pageH = layout.detail.pageH;
+  if (layout.detail.rows === SAMPLE_ROWS) return { rows, pageH, cam: SAMPLE_CAM, customer: false };
+  const sim = similarity(SAMPLE_UNION, unionRect(rows));
+  const cam = SAMPLE_CAM.map((k) => {
+    const zoom = sim.zoom(k.zoom);
+    const p = sim.point(k.cx, k.cy);
+    // Keep the page behind the whole frame: the view (1920/zoom x 1080/zoom) stays inside the page.
+    const halfW = 960 / zoom;
+    const halfH = 540 / zoom;
+    const cx = halfW * 2 >= 1920 ? 960 : Math.min(1920 - halfW, Math.max(halfW, p.x));
+    const cy = halfH * 2 >= pageH ? pageH / 2 : Math.min(pageH - halfH, Math.max(halfH, p.y));
+    return { ...k, zoom, cx, cy };
+  });
+  return { rows, pageH, cam, customer: true };
+};
 
 const CUES = [12, 22, 31, 39, 46];
 const FLY = 12;
@@ -41,6 +66,8 @@ const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 const airOf = (frame: number, cue: number) => 1 - interpolate(frame, [cue, cue + FLY], [0, 1], { ...clamp, easing: FLY_EASE });
 
 export const RowEmbed: React.FC = () => {
+  const layout = useLiveLayout();
+  const { rows, pageH: DETAIL_H, cam: DETAIL_CAM, customer } = React.useMemo(() => geometryOf(layout), [layout]);
   const detailSrc = liveTexture('detail-full.png');
   // A real site page (not the sample): the empty slot is the page's own region out of focus — a flat
   // patch of the sample's paper colour would show as a white box on any other page.
@@ -93,9 +120,8 @@ export const RowEmbed: React.FC = () => {
                 <div
                   style={{
                     position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff',
-                    backgroundImage: `url(${detailSrc})`,
-                    backgroundSize: `1920px ${DETAIL_H}px`,
-                    backgroundPosition: `-${r.x}px -${r.y}px`,
+                    // The web renderer (MP4 export) does not paint `background-image: url()`: there the same crop is an <img>.
+                    ...(isWebRendering() ? {} : { backgroundImage: `url(${detailSrc})`, backgroundSize: `1920px ${DETAIL_H}px`, backgroundPosition: `-${r.x}px -${r.y}px` }),
                     // 两层影：离地时大而虚的环境影 + 随高度变淡的近地影；顶部 1px 受光
                     boxShadow:
                       `inset 0 1px 0 rgba(255,255,255,${(0.9 * air).toFixed(3)}), ` +
@@ -103,7 +129,9 @@ export const RowEmbed: React.FC = () => {
                       `0 ${(34 * air).toFixed(1)}px ${(64 * air).toFixed(1)}px -${(10 * air).toFixed(1)}px rgba(40,30,18,${(0.24 * air).toFixed(3)}), ` +
                       `0 ${(6 * air).toFixed(1)}px ${(14 * air).toFixed(1)}px rgba(40,30,18,${(0.1 * air).toFixed(3)})`,
                   }}
-                />
+                >
+                  {isWebRendering() && <Img src={detailSrc} style={{ position: 'absolute', left: -r.x, top: -r.y, width: 1920, height: DETAIL_H, maxWidth: 'none' }} />}
+                </div>
               </div>
             );
             // 槽位接触影：行越近越实越小（落地前 4f 最浓），落地后 3f 淡掉
@@ -153,7 +181,9 @@ export const RowEmbed: React.FC = () => {
                   style={{
                     position: 'absolute', left: r.x - 8, top: r.y - 4,
                     width: r.w + 24, height: r.h + 8,
-                    ...(sitePage
+                    ...(customer
+                      ? { background: layout.projects.bg ?? PAGE_BG } // the empty slot is the customer page's own background, not a ghost of the row
+                      : sitePage
                       ? { backgroundImage: `url(${detailSrc})`, backgroundSize: `1920px ${DETAIL_H}px`, backgroundPosition: `-${r.x - 8}px -${r.y - 4}px`, filter: 'blur(7px) saturate(0.5) brightness(0.96)' }
                       : { background: PAGE_BG }),
                     opacity: patchOpacity, zIndex: 1, pointerEvents: 'none',

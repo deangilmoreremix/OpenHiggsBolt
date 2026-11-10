@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { colorFootprint, diffShare, rawRgbFull, writeEvidence } from './helpers/film-evidence';
-import { customerFixture, fixtureImages, sampleTwin, captureLayoutOf, COLORS } from './helpers/layout-fixture';
+import { customerFixture, customerRows, fixtureImages, sampleRowsTwin, sampleTwin, captureLayoutOf, captureRowsOf, COLORS } from './helpers/layout-fixture';
 import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 
 /**
@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'RowEmbed', rows: true, frames: { entry: 4, mid: 30, peak: 52, settled: 66 }, sampleMain: 2, customMain: 2, heroFrames: ['peak', 'settled'] },
   { stem: 'DeckDealFlyin', kind: 'grid', frames: { entry: 4, deal: 60, peak: 100, settled: 145 }, sampleMain: 0, customMain: 0, heroFrames: [] },
   { stem: 'SpotlightHeroCard', frames: { entry: 4, rise: 62, peak: 95, settled: 168 }, sampleMain: 3, customMain: 1, heroFrames: ['rise', 'peak', 'settled'] },
 ];
@@ -37,12 +38,13 @@ for (const cfg of RECIPES) {
     const idDiff = names.map((n, i) => ({ frame: n, diff: diffShare(rawRgbFull(baseline[i]), rawRgbFull(identity[i])) }));
 
     // 2./3. TARGET and NO DUPLICATE against the twin
-    const twinL = sampleTwin();
-    const custL = customerFixture();
+    const twinL = cfg.rows ? sampleRowsTwin() : sampleTwin();
+    const custL = cfg.rows ? customerRows() : customerFixture();
+    const layoutOf = cfg.rows ? captureRowsOf : captureLayoutOf;
     const twinImg = fixtureImages(twinL);
     const custImg = fixtureImages(custL);
-    const twin = await shots({ custom: { screens: [twinImg.screen], cardCrops: twinImg.crops, emptyPlate: twinImg.plate, captureLayout: captureLayoutOf(twinL), main: cfg.sampleMain } });
-    const cust = await shots({ custom: { screens: [custImg.screen], cardCrops: custImg.crops, emptyPlate: custImg.plate, captureLayout: captureLayoutOf(custL), main: cfg.customMain } });
+    const twin = await shots({ custom: { screens: [twinImg.screen], cardCrops: twinImg.crops, emptyPlate: twinImg.plate, captureLayout: layoutOf(twinL), main: cfg.sampleMain } });
+    const cust = await shots({ custom: { screens: [custImg.screen], cardCrops: custImg.crops, emptyPlate: custImg.plate, captureLayout: layoutOf(custL), main: cfg.customMain } });
     if (cfg.kind === 'grid') {
       // Every card of the customer's page must be dealt onto the board: its unique colour shows in the frame.
       const seen = (img: { w: number; h: number; data: Buffer }, layout: typeof custL) => layout.cards.map((c) => colorFootprint(img, c.color).n > 0);

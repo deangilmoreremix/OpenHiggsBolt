@@ -71,7 +71,18 @@ export interface FilmMusic {
 
 const FPS = 30;
 /** Recipes that read the page's geometry (their layout comes from the capture, not the sample site). Grows as each is repaired and proven. */
-export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(['SpotlightHeroCard', 'DeckDealFlyin']);
+/** Recipes whose geometry was retargeted onto a customer's page, and the part of the layout each one reads. */
+export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.rows'>> = {
+  SpotlightHeroCard: 'projects.cards',
+  DeckDealFlyin: 'projects.cards',
+  RowEmbed: 'detail.rows',
+};
+export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
+/** The layout is handed to a recipe only when the capture really contains what that recipe reads. */
+const layoutFits = (stem: string, layout: unknown) => {
+  const source = (layout as { source?: { mapped?: string[] } } | undefined)?.source;
+  return !source || Boolean(source.mapped?.includes(LAYOUT_NEEDS[stem])); // no `source` = the sample's own layout
+};
 const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 /**
@@ -404,7 +415,7 @@ const INSET_PAGE_H = 1200;
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
           // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
           // Shots that read the page's geometry get the customer's own (the sample's boxes would put the pictures in the wrong places).
-          ...(usesCapture && opts.capture?.liveLayout && LAYOUT_RECIPES.has(template.componentName) ? { liveLayout: opts.capture.liveLayout, cardCrops: opts.capture.cardCrops ?? [], ...(opts.capture.emptyPlate ? { emptyPlate: opts.capture.emptyPlate } : {}) } : {}),
+          ...(usesCapture && opts.capture?.liveLayout && LAYOUT_RECIPES.has(template.componentName) && layoutFits(template.componentName, opts.capture.liveLayout) ? { liveLayout: opts.capture.liveLayout, cardCrops: opts.capture.cardCrops ?? [], ...(opts.capture.emptyPlate ? { emptyPlate: opts.capture.emptyPlate } : {}) } : {}),
           ...(!usesCapture && opts.capture?.scenes?.[i]?.crops.length ? { scenePictures: { screens: opts.capture.scenes[i]!.screens.slice(0, 3), crops: opts.capture.scenes[i]!.crops } } : {}),
           ...(usesCapture
             ? opts.capture?.scenes?.[i]?.crops.length

@@ -15,6 +15,32 @@ export interface CustomerLayoutResult {
   cards: number;
   /** Recipes can only land on real cards when there are enough of them. */
   usable: boolean;
+  /** How many stacked rows were found on the page the row shots play on (the sample has 5). */
+  rows: number;
+  /** Row shots (RowEmbed) need at least MIN_ROWS real rows. */
+  rowsUsable: boolean;
+}
+
+export const MIN_ROWS = 3;
+
+interface R { x: number; y: number; width: number; height: number }
+/**
+ * Stacked rows of a page: wide, short blocks that share a left edge and width, one under another. Taken from the page's
+ * sections and cards; the biggest consistent group wins. Fewer than MIN_ROWS means the page has no row structure.
+ */
+export function rowsOf(pageH: number, blocks: readonly R[]): Array<{ x: number; y: number; w: number; h: number }> {
+  const cand = blocks.filter((b) => b.width >= 500 && b.height >= 40 && b.height <= 260 && b.y >= 0 && b.y + b.height <= pageH + 1).sort((a, b) => a.y - b.y);
+  let best: R[] = [];
+  for (const a of cand) {
+    const group: R[] = [];
+    for (const b of cand) {
+      if (Math.abs(b.x - a.x) > 40 || Math.abs(b.width - a.width) > 80) continue;
+      if (group.length && b.y < group[group.length - 1].y + group[group.length - 1].height - 4) continue; // overlaps the previous row
+      group.push(b);
+    }
+    if (group.length > best.length) best = group;
+  }
+  return best.slice(0, 5).map((b) => ({ x: Math.round(b.x * 100) / 100, y: Math.round(b.y * 100) / 100, w: Math.round(b.width * 100) / 100, h: Math.round(b.height * 100) / 100 }));
 }
 
 /** A page needs at least this many card-like blocks for the card shots to have something real to land on. */
@@ -46,9 +72,18 @@ export function layoutFromCapture(capture: Pick<SiteCapture, 'pages' | 'page' | 
     layout.projects.sections = sections.map((s) => ({ text: '', x: r(s.x), y: r(s.y), w: r(s.width), h: r(s.height) })) as unknown as typeof layout.projects.sections;
     mapped.push('projects.sections');
   }
+  // The page the row shots play on is the capture's second page (the sample's detail page), or the first when there is one.
+  const detailRoute = capture?.pages?.length ? capture.pages[1 % capture.pages.length]?.layout : null;
+  const rows = detailRoute ? rowsOf(detailRoute.pageH, [...(detailRoute.sections ?? []), ...(detailRoute.cards ?? [])] as R[]) : [];
+  if (detailRoute && rows.length >= MIN_ROWS) {
+    layout.detail.pageH = Math.round(detailRoute.pageH);
+    layout.detail.rows = rows;
+    mapped.push('detail.pageH', 'detail.rows');
+    sample.splice(sample.indexOf('detail'), 1);
+  }
   // The empty plate is the page with its cards hidden: it is what shows beneath a lifted or flying card.
   if (capture?.emptyPlate) mapped.push('plate');
   if (capture?.brand?.background) layout.projects.bg = capture.brand.background;
   layout.source = { mapped, sample };
-  return { layout, cards: cards.length, usable: cards.length >= MIN_CARDS };
+  return { layout, cards: cards.length, usable: cards.length >= MIN_CARDS, rows: rows.length, rowsUsable: rows.length >= MIN_ROWS };
 }
