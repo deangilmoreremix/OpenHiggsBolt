@@ -14,7 +14,7 @@ import { CARD_FPS, type CardDef } from '../cards/types';
 import type { AspectRatio } from '../projectContract';
 import { t } from '../i18n';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
-import { uid, type ClipData, type ProjectData } from '../types';
+import { uid, type ClipData, type ProjectData, type TrackData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
@@ -456,7 +456,7 @@ const INSET_PAGE_H = 1200;
   }
 
   const total = Math.max(at, FPS);
-  const tracks = [
+  const tracks: TrackData[] = [
     { id: uid('track'), name: t('track.transitions'), clips: flashes },
     { id: uid('track'), name: t('track.captions'), clips: captions },
     { id: uid('track'), name: 'Site', clips: insets },
@@ -468,6 +468,7 @@ const INSET_PAGE_H = 1200;
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
+      role: 'music' as const,
       // Music sits under the SFX at about a third of full volume, with a 1 s fade in and a 1.7 s fade out (sound-design 3).
       clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 50, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
     });

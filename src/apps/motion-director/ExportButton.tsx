@@ -5,6 +5,7 @@ import { useT } from './i18n';
 import { useSocialPublish } from '@/components/SocialPublishProvider';
 import { storeFile } from './lib/mediaUpload';
 import { useStore } from './store';
+import { isMusicTrack } from './types';
 import { estimateExportSec } from './lib/exportCost';
 import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
@@ -99,7 +100,7 @@ const ExportButton: React.FC = () => {
     try {
       const result = await renderVideoOnWeb({
         // Only the music bed goes; sound effects and video sound stay.
-        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
+        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => !isMusicTrack(track)) } : project,
         videoCodec: canRenderResult.videoCodec,
         audioCodec: canRenderResult.audioCodec,
         scale: draft ? 2 / 3 : 1,

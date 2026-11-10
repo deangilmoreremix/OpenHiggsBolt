@@ -29,9 +29,14 @@ export interface ClipData {
 export interface TrackData {
   id: string;
   name: string;
+  /** What the track is for, independent of its (translated, renamable) name. Only the music bed is marked. */
+  role?: 'music';
   hidden?: boolean;
   clips: ClipData[];
 }
+
+/** The music bed: marked by role, or (older projects) named Music in any of the app's languages. */
+export const isMusicTrack = (track: Pick<TrackData, 'name' | 'role'>): boolean => track.role === 'music' || /^(music|音乐|музыка)$/i.test(track.name.trim());
 
 export interface ProjectData {
   /** Visual preset; absent means the manifest's default, preserving older JSON. */
