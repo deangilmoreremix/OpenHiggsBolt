@@ -555,7 +555,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
     for (const f of list) {
       if (controller.signal.aborted) break;
       try {
-        await render(project, f, controller.signal, 0.5);
+        await render(project, f, controller.signal, 0.5, true);
         checked++;
       } catch (error) {
         if (controller.signal.aborted) break;

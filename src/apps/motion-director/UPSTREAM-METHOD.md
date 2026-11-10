@@ -51,3 +51,8 @@ Narration videos. **Licence: PolyForm Noncommercial 1.0.0**, so commercial use n
 ## Upstream audio (shotcraft, 2026-10-29)
 Per-project Freesound sourcing replaced the shared SFX library (see NOTICE.md). Motion Director keeps its bundled library for now. Moving over means: a Freesound client and per-clip licence/credit fields, replacing `SEAM_SOUNDS` / `BRAND_SOUNDS` in `lib/buildFilm.ts`, regenerating `sfxPeaks.ts` from fetched files, and changing the `sfxlib/` path checks in `filmFix.ts`, `filmReview.ts` and `useFilmDirector.ts`.
 
+## Preview / export parity (what is and is not checked)
+- Same component both ways: the Player preview and `renderMediaOnWeb` / `renderStillOnWeb` draw `MainComposition`.
+- Known, deliberate differences (locked in `__tests__/previewExportParity.test.ts`): the preview runs one second past the export; export mode draws about a third of the motion-blur samples; audio gain above 1 plays in the export but is clamped to 1 in the preview; `OUTPUT_AUDIO_OFFSET_F` compensates encoder delay in the export only. Frame QA now renders its stills in export mode (`renderStillOnWebExport(…, asExport)`), so it checks what the MP4 will show.
+- Not done: a pixel comparison of a Player frame against the same export frame. It needs a browser, the dev server and a signed-in session (like `e2e/motion-studio-export-mp4.spec.ts`), and has not been written or run. Upstream's own check is `npm run parity` (< 0.1 % differing pixels) in its workbench.
+

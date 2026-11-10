@@ -151,9 +151,9 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
   const signal = guard.signal;
   const { width, height, fps } = project;
 
-  // MainComposition is the React component used by the Remotion Player preview.
-  // We wrap it to inject renderExact=true so the web renderer gets the full
-  // project duration (matching the server-side export behavior).
+  // MainComposition is the same React component the Remotion Player preview draws. The export's length is the
+  // content's exact end (`projectEndFrame`); the preview adds one second of margin (`projectDuration`).
+  // `renderExact` is read only by remotion/Root.tsx (Remotion Studio); MainComposition ignores it.
   const Component = MainComposition;
   const inputProps = { project, renderExact: true };
   const durationInFrames = Math.max(2, projectEndFrame(project));
@@ -359,6 +359,8 @@ export const renderStillOnWebExport = async (
   signal?: AbortSignal,
   /** Output size factor; the frame checks and the frame review do not need full size (a half-size still is ~3× quicker). */
   scale = 1,
+  /** Draw as the MP4 export draws (motion blur at export quality). Frame QA sets it so it checks what the export will show. */
+  asExport = false,
 ): Promise<StillResult> => {
   const { width, height, fps } = project;
   const inputProps = { project, renderExact: true };
@@ -383,11 +385,13 @@ export const renderStillOnWebExport = async (
   };
 
   setWebRendering(true);
+  if (asExport) setExportMode(true);
   let result;
   try {
     result = await renderStillOnWeb(renderOpts);
   } finally {
     setWebRendering(false);
+    if (asExport) setExportMode(false);
   }
 
   const blob = await result.blob();
