@@ -62,7 +62,7 @@ export function buildPlacementInput(args: {
         intended,
         imageUrl,
         imageAspect,
-        bleedPx: styled ? shadowBleedPx(styled, settings.height) + (styled.frame === 'polaroid' ? Math.round(settings.height * 0.05) : 0) : 0,
+        bleedPx: styled ? shadowBleedPx(styled, settings.height) + (styled.frame === 'polaroid' ? Math.round(layer.scale * settings.width * 0.15) : 0) : 0, // polaroid: white frame + thicker bottom + 5° tilt
         presetId: styled?.presetId,
         splitSide: isSplit ? (styled?.splitSide ?? (settings.height > settings.width * 1.1 ? 'bottom' : 'right')) : undefined,
         designSupported: layer.kind === 'design' ? facts?.supported ?? false : undefined,

@@ -129,7 +129,7 @@ function priority(l: PlacementLayer): number {
 /** Smallest size a layer may be shrunk to, as a fraction of its current scale (template limits). */
 export const MIN_SCALE_FACTOR = 0.8
 const TEXT_SCALE_FACTORS = [1, 0.9, MIN_SCALE_FACTOR]
-const IMAGE_SCALE_FACTORS = [1, 0.8, 0.65]
+const IMAGE_SCALE_FACTORS = [1, 0.8, 0.65, 0.5]
 
 type Candidate = { x: number; y: number; f: number }
 
@@ -167,6 +167,8 @@ function scoreCandidate(
   f: number,
   input: PlacementInput,
   placed: { id: string; role: string; kind: string; box: PxRect }[],
+  /** Text that has not been placed yet: a picture should not land on it (softer than a placed overlay). */
+  soft: { id: string; box: PxRect }[] = [],
 ): Scored {
   const { width, height } = input
   const contract = contractFor(l.role)
@@ -195,6 +197,14 @@ function scoreCandidate(
     if (ov > 0) {
       p += 400 * (ov / Math.max(1, Math.min(a, area(o.box))))
       reasons.push('overlaps another overlay')
+    }
+  }
+  for (const o of soft) {
+    if (o.id === l.layer.id) continue
+    const ov = intersectionArea(hit, o.box)
+    if (ov > 0) {
+      p += 250 * (ov / Math.max(1, Math.min(a, area(o.box))))
+      reasons.push('covers text')
     }
   }
   if (l.text && input.samples.length) {
@@ -235,12 +245,16 @@ export function recommendPlacement(input: PlacementInput): PlacementResult {
     movable.push(l)
   }
 
+  // Text still to be placed is a soft obstacle for pictures (they are placed first).
+  const soft = movable
+    .filter((m) => m.role === 'text' && m.text)
+    .map((m) => ({ id: m.layer.id, box: boxOf(m.layer, m.text, m.layer.x, m.layer.y, width, height, m.imageAspect) }))
   const proposals: PlacementProposal[] = []
   for (const l of [...movable].sort((a, b) => priority(a) - priority(b))) {
-    const current = scoreCandidate(l, l.layer.x, l.layer.y, 1, input, placed)
+    const current = scoreCandidate(l, l.layer.x, l.layer.y, 1, input, placed, soft)
     let best: { x: number; y: number; f: number; s: Scored } | null = null
     for (const c of candidatesFor(l)) {
-      const s = scoreCandidate(l, c.x, c.y, c.f, input, placed)
+      const s = scoreCandidate(l, c.x, c.y, c.f, input, placed, soft)
       if (s.valid && (!best || s.penalty < best.s.penalty - 1e-9)) best = { ...c, s }
     }
     if (!best) {

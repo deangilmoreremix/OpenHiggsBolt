@@ -146,7 +146,7 @@ describe('preset rendering', () => {
   it('Product Spotlight: warm glow edge and an optional promo badge', () => {
     const style = { ...presetStyle('product-spotlight'), badge: '20% OFF' }
     const el = mount(style, { aspect: 1 })
-    expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toContain('rgba(255,180,87')
+    expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toContain('rgba(255,166,61')
     expect(q(el, '[data-styled-image="badge"]')!.textContent).toBe('20% OFF')
     expect(q(mount(presetStyle('product-spotlight'), { aspect: 1 }), '[data-styled-image="badge"]')).toBeNull()
   })

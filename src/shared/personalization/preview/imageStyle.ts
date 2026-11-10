@@ -322,7 +322,7 @@ export function shadowCss(style: ImageStyle, compH: number, factor = 1): string 
     const s = SHADOWS_SPEC[style.shadow]
     parts.push(`0 ${px(s.y)}px ${px(s.blur)}px rgba(0,0,0,${s.alpha})`)
   }
-  if (style.glow) parts.push(`0 0 ${px(0.03)}px ${px(0.004)}px ${hexToRgba(style.glow, 0.55)}`)
+  if (style.glow) parts.push(`0 0 ${px(0.04)}px ${px(0.008)}px ${hexToRgba(style.glow, 0.8)}`)
   return parts.length ? parts.join(', ') : undefined
 }
 
@@ -336,7 +336,7 @@ export function hexToRgba(hex: string, alpha: number): string {
 /** Extra space around the frame the shadow occupies, in px (for collision margins). */
 export function shadowBleedPx(style: ImageStyle, compH: number): number {
   const drop = style.shadow === 'none' ? 0 : Math.ceil((SHADOWS_SPEC[style.shadow].y + SHADOWS_SPEC[style.shadow].blur) * compH)
-  const glow = style.glow ? Math.ceil(0.034 * compH) : 0
+  const glow = style.glow ? Math.ceil(0.05 * compH) : 0
   return Math.max(drop, glow)
 }
 

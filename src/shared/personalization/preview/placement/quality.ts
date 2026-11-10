@@ -159,9 +159,9 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
   }
 
   // too crowded: picture overlays together take too much of the frame (or there are too many)
-  const pictures = drawn.filter((l) => l.role === 'product-image' || l.role === 'service-image' || l.presetId === 'split-screen')
+  // A Split Screen panel is a deliberate half-frame layout, not a stray overlay: it is judged by its own rule.
+  const pictures = drawn.filter((l) => (l.role === 'product-image' || l.role === 'service-image') && l.presetId !== 'split-screen')
   const pictureArea = pictures.reduce((sum, l) => {
-    if (l.presetId === 'split-screen') return sum + (width * height) / 2
     const b = boxes.get(l.layer.id)
     return sum + (b ? area(b) : 0)
   }, 0)

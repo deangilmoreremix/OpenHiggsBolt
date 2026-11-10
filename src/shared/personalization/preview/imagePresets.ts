@@ -72,7 +72,7 @@ export const IMAGE_PRESETS: Readonly<Record<ImagePresetId, ImagePreset>> = Objec
     description: 'The whole product with a warm glow edge and a deeper shadow, so it reads as the hero. Add an optional promo badge such as “20% OFF”.',
     roles: ['product'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.26, images: { min: 1, max: 1 } },
-    style: ALL({ shape: 'rounded-rect', radiusComp: 0.03, fit: 'contain', shadow: 'medium', spotlight: true, glow: '#ffb457' }),
+    style: ALL({ shape: 'rounded-rect', radiusComp: 0.03, fit: 'contain', shadow: 'medium', spotlight: true, glow: '#ffa63d' }),
   },
   'cinematic-reveal': {
     id: 'cinematic-reveal', label: 'Cinematic Image Reveal',

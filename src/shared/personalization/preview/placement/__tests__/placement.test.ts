@@ -411,6 +411,23 @@ describe('image overlay presets in the quality check', () => {
     const ok = evaluateLayoutQuality(build({ ...settingsFor('product-showcase'), imageHints: hints as never }, { zones: [zone(0.45, 0.0, 0.05, 0.05)], samples: [flat(0.05)] }))
     expect(ok.issues.some((i) => i.code === 'overlay-crowded')).toBe(false)
   })
+  it('a Polaroid is placed clear of the business-name text and of a marked subject (never on top of either)', () => {
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings['imageHints'] }
+    s = withStyle(s, 'productImage', presetStyle('polaroid', '16:9', false))
+    s = { ...s, layers: s.layers.map((l) => (l.id === 'productImage' ? { ...l, placementSource: undefined } : l)) }
+    const subject = zone(0.38, 0.0, 0.26, 1.0, 'Perfume bottle')
+    const input = build(s, { zones: [subject], samples: [flat(0.05)] })
+    const proposals = recommendPlacement(input).proposals
+    const applied = { ...s, layers: s.layers.map((l) => { const pr = proposals.find((x) => x.layerId === l.id); return pr ? { ...l, x: pr.x, y: pr.y, scale: pr.scale } : l }) }
+    const q = evaluateLayoutQuality(build(applied, { zones: [subject], samples: [flat(0.05)] }))
+    expect(q.issues.filter((i) => i.code === 'media-over-subject' || i.code === 'overlay-collision')).toEqual([])
+  })
+  it('a Split Screen panel is not reported as a crowded overlay on its own', () => {
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings['imageHints'] }
+    s = withStyle(s, 'productImage', { ...presetStyle('split-screen', '16:9', false), splitSide: 'left' })
+    const q = evaluateLayoutQuality(build(s, { zones: [zone(0.6, 0.1, 0.3, 0.8)], samples: [flat(0.05)] }))
+    expect(q.issues.some((i) => i.code === 'overlay-crowded')).toBe(false)
+  })
   it('a polaroid and a styled image count their frame/shadow footprint', () => {
     let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     s = withStyle(s, 'productImage', presetStyle('polaroid', '16:9', false))

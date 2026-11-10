@@ -164,9 +164,10 @@ test.describe('Image Overlay Styles — each preset on real footage, selected in
           await dialog.getByTestId(`image-preset-${PRESET}`).click();
           if (PRESET === 'multi-image-collage') {
             const boxes = dialog.getByTestId('collage-picker').locator('input[type=checkbox]');
-            const n = Math.min(3, await boxes.count());
+            const n = Math.min(Number(process.env.PHASE5_COLLAGE_N ?? 3), await boxes.count());
             for (let i = 0; i < n; i++) await boxes.nth(i).check();
           }
+          if (process.env.PHASE5_BADGE) await dialog.getByLabel('Promo badge text').fill(process.env.PHASE5_BADGE);
           await page.waitForTimeout(800);
         }
 

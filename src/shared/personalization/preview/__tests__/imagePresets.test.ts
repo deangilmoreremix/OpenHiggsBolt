@@ -114,7 +114,7 @@ describe('presets', () => {
     expect(presetStyle('cinematic-reveal').reveal).toBe('diagonal')
     expect(presetStyle('polaroid')).toMatchObject({ frame: 'polaroid', tilt: -5, accent: 'heart' })
     expect(presetStyle('soft-masked')).toMatchObject({ shape: 'blob', mask: 'soft', glow: '#ffc98a' })
-    expect(presetStyle('product-spotlight')).toMatchObject({ glow: '#ffb457', spotlight: true })
+    expect(presetStyle('product-spotlight')).toMatchObject({ glow: '#ffa63d', spotlight: true })
     expect(presetStyle('soft-masked')).toMatchObject({ mask: 'soft', shadow: 'none' })
     expect(IMAGE_PRESETS['split-screen'].placement.mayCoverSubject).toBe(true)
     expect(IMAGE_PRESETS['multi-image-collage'].placement.images).toEqual({ min: 2, max: 4 })

@@ -54,7 +54,7 @@ const HeartDoodle: React.FC<{ size: number }> = ({ size }) => (
 )
 const Sparkle: React.FC<{ size: number }> = ({ size }) => (
   <svg data-styled-image="sparkle" width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
-    <path d="M12 2v20M2 12h20M5.5 5.5l13 13M18.5 5.5l-13 13" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M12 1v22M1 12h22M5 5l14 14M19 5L5 19" fill="none" stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))" }} />
   </svg>
 )
 
@@ -104,7 +104,7 @@ export const StyledBusinessImage: React.FC<StyledBusinessImageProps> = ({
     const outer = { left: frame.left - pad, top: frame.top - pad, width: frame.width + 2 * pad, height: frame.height + pad + padBottom }
     const outerRadius = polaroid ? `${Math.round(short * 0.02)}px` : radius
     const soft = imageStyle.mask === 'soft'
-    const mask = soft ? 'radial-gradient(ellipse at center, #000 62%, rgba(0,0,0,0) 100%)' : undefined
+    const mask = soft ? 'radial-gradient(ellipse at center, #000 38%, rgba(0,0,0,0) 98%)' : undefined
     const wipe = reveal === 'wipe'
     const diagonal = reveal === 'diagonal'
     // Diagonal wipe: the edge slants by SKEW % and travels from 0 to 100 + SKEW; clip-path polygon, frame-driven.
@@ -190,8 +190,8 @@ export const StyledBusinessImage: React.FC<StyledBusinessImageProps> = ({
           {polaroid && imageStyle.accent === 'heart' && (
             <>
               <div style={{ position: 'absolute', right: pad * 1.2, bottom: padBottom * 0.18 }}><HeartDoodle size={Math.round(padBottom * 0.62)} /></div>
-              <div style={{ position: 'absolute', right: -Math.round(short * 0.03), top: -Math.round(short * 0.03) }}><Sparkle size={Math.round(short * 0.1)} /></div>
-              <div style={{ position: 'absolute', left: -Math.round(short * 0.02), top: Math.round(short * 0.12) }}><Sparkle size={Math.round(short * 0.06)} /></div>
+              <div style={{ position: 'absolute', right: -Math.round(short * 0.03), top: -Math.round(short * 0.03) }}><Sparkle size={Math.round(short * 0.16)} /></div>
+              <div style={{ position: 'absolute', left: -Math.round(short * 0.02), top: Math.round(short * 0.12) }}><Sparkle size={Math.round(short * 0.1)} /></div>
             </>
           )}
           {imageStyle.badge && (
