@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
-import { StyledBusinessImage } from '../preview/StyledBusinessImage'
-import { resolveImageStyle, type ImageStyle } from '../preview/imageStyle'
+import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
+import type { ImageStyle } from '../preview/imageStyle'
+import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview/imagePresets'
 import { roleForLayer } from '../preview/mediaRoles'
 import { ImageStyleControls } from './ImageStyleControls'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -482,6 +483,25 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               const isSelected = selected?.id === layer.id
               const color = layer.color ?? (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
               const design = isDesign && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+              // Image presentation: the SAME resolver as the composition, so the stage shows what the video shows.
+              const imgHints = isImageLayerKind(layer.kind) ? inputProps.settings?.imageHints?.[imageUrl] : undefined
+              let look = isImageLayerKind(layer.kind)
+                ? resolveImageLook({ role: roleForLayer(layer), kind: layer.kind, layerStyle: layer.imageStyle, hints: imgHints, layout: settings.layout, aspect: settings.aspectRatio })
+                : null
+              const imgUrls = [imageUrl, ...(layer.imageUrls ?? [])].filter(Boolean)
+              if (look?.style?.presetId === 'multi-image-collage' && imgUrls.length < 2) look = { ...look, style: presetStyle('rounded-floating-card', settings.aspectRatio) }
+              const isSplit = look?.style?.presetId === 'split-screen'
+
+              if (isSplit && look?.style) {
+                // A half-frame panel is placed in composition space (not a draggable box).
+                return (
+                  <div key={layer.id} role="button" tabIndex={0} aria-label={`Select ${LAYER_LABELS[layer.kind]}`} aria-pressed={isSelected}
+                    onClick={() => setSelectedId(layer.id)} onKeyDown={(event) => onLayerKeyDown(event, layer)}
+                    style={{ position: 'absolute', left: 0, top: 0, width: compW * factor, height: compH * factor, opacity: layer.opacity, pointerEvents: 'none' }}>
+                    <SplitPanel src={imageUrl} side={look.style.splitSide ?? (compH > compW * 1.1 ? 'bottom' : 'right')} imageStyle={look.style} compWidth={compW * factor} compHeight={compH * factor} />
+                  </div>
+                )
+              }
 
               return (
                 <div
@@ -506,27 +526,26 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   }}
                 >
                   {isImageLayerKind(layer.kind) ? (
-                    (() => {
-                      // The same component and rules as the video, scaled to the stage.
-                      const hints = inputProps.settings?.imageHints?.[imageUrl]
-                      const resolved = resolveImageStyle({ role: roleForLayer(layer), layerStyle: layer.imageStyle, hints })
-                      return resolved.style ? (
-                        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                    look?.style ? (
+                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                        {look.style.presetId === 'multi-image-collage' ? (
+                          <ImageCollage urls={imgUrls.slice(0, 4)} imageStyle={look.style} boxWidth={box.width} boxHeight={box.width} compHeight={compH} factor={factor} brand={settings.brandColors} />
+                        ) : (
                           <StyledBusinessImage
                             src={imageUrl}
-                            imageStyle={resolved.style}
+                            imageStyle={look.style}
                             boxWidth={box.width}
                             boxHeight={box.width}
                             compHeight={compH}
                             factor={factor}
                             brand={settings.brandColors}
-                            aspect={hints?.aspect}
+                            aspect={imgHints?.aspect}
                           />
-                        </div>
-                      ) : (
-                        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                      )
-                    })()
+                        )}
+                      </div>
+                    ) : (
+                      <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                    )
                   ) : isDesign ? (
                     <div
                       style={{
@@ -787,7 +806,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               {isImageLayerKind(selected.kind) && (() => {
                 const url = (selected.imageUrl || (selected.kind === 'logo' ? brand.logoUrl : selected.kind === 'serviceImage' ? brand.serviceUrl ?? brand.productUrl : brand.productUrl ?? brand.serviceUrl)) ?? ''
                 const hints = inputProps.settings?.imageHints?.[url]
-                const resolved = resolveImageStyle({ role: roleForLayer(selected), layerStyle: selected.imageStyle, hints })
+                const resolved = resolveImageLook({ role: roleForLayer(selected), kind: selected.kind, layerStyle: selected.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio })
                 if (!resolved.style) return null
                 const current: ImageStyle = resolved.style
                 // An edit starts from the look being shown and makes it the customer's own.
@@ -796,6 +815,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 }
                 return (
                   <ImageStyleControls
+                    role={(hints?.role ?? imageRoleForLayerKind(selected.kind))}
+                    onPreset={(id) => updatePreviewLayer(selected.id, { imageStyle: presetStyle(id, settings.aspectRatio, false) })}
+                    libraryOptions={imageOptions(selected).filter((o) => o.value && o.value !== url).map((o) => ({ value: o.value, label: o.label }))}
+                    extraUrls={selected.imageUrls ?? []}
+                    onExtraUrls={(urls) => updatePreviewLayer(selected.id, { imageUrls: urls.length ? urls : undefined })}
                     style={current}
                     isAuto={!selected.imageStyle || selected.imageStyle.auto === true}
                     reason={resolved.reason}

@@ -107,3 +107,59 @@ describe('Overlay editor — image styling', () => {
     expect((screen.getByLabelText('Image shadow') as HTMLSelectElement).value).toBe('none')
   })
 })
+
+describe('Overlay editor — Image Overlay Styles selector', () => {
+  const ids = ['rounded-floating-card', 'circular-portrait', 'product-spotlight', 'cinematic-reveal', 'multi-image-collage', 'polaroid', 'split-screen', 'soft-masked']
+
+  it('lists all eight presets, marks suitability for the image role, and keeps the existing controls', () => {
+    mount([product()])
+    for (const id of ids) expect(screen.getByTestId(`image-preset-${id}`), id).toBeTruthy()
+    expect(screen.getByTestId('image-preset-product-spotlight').textContent).toMatch(/Suits product images/)
+    expect(screen.getByTestId('image-preset-circular-portrait').textContent).toMatch(/Less suited to product images/)
+    // the earlier rounded-image controls are all still there as overrides
+    for (const label of ['Image shape', 'Corner radius', 'Border colour', 'Image shadow', 'Image fit', 'Image exit']) expect(screen.getByLabelText(label), label).toBeTruthy()
+  })
+
+  it('choosing a preset stores it as the customer\'s style; the stage shows it; overrides still work on top', () => {
+    const { container } = mount([product()])
+    fireEvent.click(screen.getByTestId('image-preset-polaroid'))
+    expect(layersNow[0].imageStyle).toMatchObject({ presetId: 'polaroid', frame: 'polaroid', auto: false })
+    expect(container.querySelector('[data-preset="polaroid"]')).toBeTruthy()
+    expect(screen.getByTestId('image-preset-polaroid').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.change(screen.getByLabelText('Image shadow'), { target: { value: 'none' } })
+    expect(layersNow[0].imageStyle).toMatchObject({ presetId: 'polaroid', shadow: 'none', auto: false })
+  })
+
+  it('points at the existing template instead of duplicating it', () => {
+    mount([product()])
+    fireEvent.click(screen.getByTestId('image-preset-polaroid'))
+    expect(screen.getByTestId('image-preset-reuse').textContent).toMatch(/Polaroid Drop/)
+    fireEvent.click(screen.getByTestId('image-preset-soft-masked'))
+    expect(screen.queryByTestId('image-preset-reuse')).toBeNull() // soft-masked is new, not a reuse
+  })
+
+  it('collage shows its picker; with fewer than two pictures the stage falls back to the plain card', () => {
+    const { container } = mount([product()])
+    fireEvent.click(screen.getByTestId('image-preset-multi-image-collage'))
+    expect(screen.getByTestId('collage-picker')).toBeTruthy()
+    expect(container.querySelector('[data-styled-image="collage"]')).toBeNull() // only one picture
+    expect(container.querySelector('[data-styled-image="outer"]')).toBeTruthy()
+  })
+
+  it('split screen draws a half-frame panel and offers the side control', () => {
+    const { container } = mount([product()])
+    fireEvent.click(screen.getByTestId('image-preset-split-screen'))
+    expect(container.querySelector('[data-styled-image="split"]')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Split screen side'), { target: { value: 'left' } })
+    expect(layersNow[0].imageStyle).toMatchObject({ presetId: 'split-screen', splitSide: 'left', splitSideAuto: false })
+    expect((container.querySelector('[data-styled-image="split"]') as HTMLElement).getAttribute('data-side')).toBe('left')
+  })
+
+  it('"Back to automatic" returns to the role-based default', () => {
+    mount([product()])
+    fireEvent.click(screen.getByTestId('image-preset-soft-masked'))
+    act(() => { screen.getByTestId('image-style-reset').click() })
+    expect(layersNow[0].imageStyle).toBeUndefined()
+    expect(screen.getByTestId('image-style-mode').textContent).toBe('Automatic')
+  })
+})

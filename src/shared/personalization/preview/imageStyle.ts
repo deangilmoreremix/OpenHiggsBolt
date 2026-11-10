@@ -22,6 +22,19 @@
  */
 import type { OverlayMediaRole } from './mediaRoles'
 
+/** The explicit purpose of an assigned business image (never inferred from a filename or discovery order). */
+export type ImageRole = 'product' | 'service' | 'portrait' | 'property' | 'portfolio' | 'logo' | 'general'
+
+export type ImagePresetId =
+  | 'rounded-floating-card'
+  | 'circular-portrait'
+  | 'product-spotlight'
+  | 'cinematic-reveal'
+  | 'multi-image-collage'
+  | 'polaroid'
+  | 'split-screen'
+  | 'soft-masked'
+
 export type ImageShape = 'rounded-rect' | 'circle' | 'pill' | 'square' | 'custom'
 export type ImageShadow = 'none' | 'subtle' | 'medium'
 export type ImageFit = 'contain' | 'cover'
@@ -45,11 +58,41 @@ export interface ImageStyle {
   fill: string | null
   /** How the image leaves when the layer has an end frame (entrances use the layer's own animation). */
   exit?: 'none' | 'fade' | 'shrink'
+  /** The presentation preset this look came from (the customer can still override every field). */
+  presetId?: ImagePresetId
+  /** Soft radial glow behind the image (Product Spotlight). */
+  spotlight?: boolean
+  /** A physical frame drawn around the picture. */
+  frame?: 'none' | 'polaroid'
+  /** Feathered edges instead of a hard clip (Soft Masked Image). */
+  mask?: 'none' | 'soft'
+  /** Entrance: a wipe + slow scale instead of the layer's own animation (Cinematic Image Reveal). */
+  reveal?: 'none' | 'wipe'
+  /** Tilt in degrees (Polaroid). */
+  tilt?: number
+  /** Which half of the frame a split-screen panel takes. */
+  splitSide?: 'left' | 'right' | 'top' | 'bottom'
+  /** The split side was chosen by the system from verified subject zones (re-chosen when they change). */
+  splitSideAuto?: boolean
   /** Chosen by the system; cleared by any customer edit. */
   auto?: boolean
 }
 
 export const EXIT_FRAMES = 10
+
+export const REVEAL_FRAMES = 24
+
+/**
+ * Cinematic reveal: a left-to-right wipe with a slow settle from 106 % to 100 % scale, driven
+ * purely by the frame number so the preview and the exported MP4 are identical.
+ * `progress` 0 → hidden, 1 → fully shown.
+ */
+export function revealFactors(style: Pick<ImageStyle, 'reveal'>, frame: number, startFrame: number): { progress: number; scale: number } {
+  if (style.reveal !== 'wipe') return { progress: 1, scale: 1 }
+  const t = clamp((frame - startFrame) / REVEAL_FRAMES, 0, 1)
+  const eased = 1 - Math.pow(1 - t, 3)
+  return { progress: eased, scale: 1.06 - 0.06 * eased }
+}
 
 /** Opacity and scale multipliers for the exit animation at `frame` (1/1 when not exiting). */
 export function exitFactors(style: Pick<ImageStyle, 'exit'>, frame: number, endFrame: number | undefined): { opacity: number; scale: number } {
@@ -70,6 +113,8 @@ export interface ImageHints {
   hasTransparency?: boolean
   /** The asset was explicitly identified as a portrait/headshot. */
   isHeadshot?: boolean
+  /** The explicit role of this image (from the customer's assignment or the discovery category). */
+  role?: ImageRole
 }
 
 export const ROUNDED_RECT_DEFAULT: ImageStyle = Object.freeze({
@@ -116,6 +161,15 @@ export function normalizeImageStyle(raw: unknown, base: ImageStyle = ROUNDED_REC
   if (Array.isArray(r.customRadii) && r.customRadii.length === 4) {
     style.customRadii = r.customRadii.map((v) => clamp(num(v, 0), 0, 0.5)) as [number, number, number, number]
   }
+  const PRESETS: ImagePresetId[] = ['rounded-floating-card', 'circular-portrait', 'product-spotlight', 'cinematic-reveal', 'multi-image-collage', 'polaroid', 'split-screen', 'soft-masked']
+  if (PRESETS.includes(r.presetId as ImagePresetId)) style.presetId = r.presetId as ImagePresetId
+  if (r.spotlight === true) style.spotlight = true
+  if (r.frame === 'polaroid') style.frame = 'polaroid'
+  if (r.mask === 'soft') style.mask = 'soft'
+  if (r.reveal === 'wipe') style.reveal = 'wipe'
+  if (typeof r.tilt === 'number' && Number.isFinite(r.tilt)) style.tilt = clamp(r.tilt, -15, 15)
+  if (r.splitSide === 'left' || r.splitSide === 'right' || r.splitSide === 'top' || r.splitSide === 'bottom') style.splitSide = r.splitSide
+  if (r.splitSideAuto === true) style.splitSideAuto = true
   if (r.exit === 'fade' || r.exit === 'shrink' || r.exit === 'none') style.exit = r.exit
   if (r.auto === true) style.auto = true
   return style

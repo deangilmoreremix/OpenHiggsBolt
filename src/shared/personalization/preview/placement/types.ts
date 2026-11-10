@@ -42,6 +42,10 @@ export interface PlacementLayer {
   imageAspect?: number
   /** Extra space the styled image's shadow occupies around its frame, in composition px. */
   bleedPx?: number
+  /** The image presentation preset in effect (collage, split screen, polaroid…). */
+  presetId?: string
+  /** For a split-screen panel: the side it takes. */
+  splitSide?: 'left' | 'right' | 'top' | 'bottom'
   /** For design layers: false when the design is not registered / not supported here. */
   designSupported?: boolean
 }
@@ -106,6 +110,8 @@ export type QualityIssueCode =
   | 'duplicate-text'
   | 'subject-unknown'
   | 'contrast-unverified'
+  | 'split-covers-footage'
+  | 'overlay-crowded'
   | 'baked-in-unknown'
   | 'rights-unverified'
 

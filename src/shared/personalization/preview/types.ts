@@ -87,6 +87,8 @@ export interface PreviewLayer {
    * file is never modified.
    */
   imageStyle?: ImageStyle
+  /** Extra pictures for the multi-image presets (collage), customer-picked from the library (≤ 4 with the main one). */
+  imageUrls?: string[]
   /**
    * Who decided the layer's current position: `manual` = the customer (drag,
    * resize or a position preset) — the placement engine never moves it on its

@@ -891,6 +891,10 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   if (raw.locked === true) normalized.locked = true
   const imageStyle = normalizeImageStyle(raw.imageStyle)
   if (imageStyle) normalized.imageStyle = imageStyle
+  if (Array.isArray(raw.imageUrls)) {
+    const urls = raw.imageUrls.filter((u): u is string => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:')).slice(0, 4)
+    if (urls.length) normalized.imageUrls = urls
+  }
   if (raw.placementSource === 'manual' || raw.placementSource === 'recommended') {
     normalized.placementSource = raw.placementSource
   }
@@ -908,6 +912,7 @@ export function normalizeImageHints(raw: unknown): Record<string, ImageHints> | 
     for (const k of ['transparentCorners', 'alreadyFramed', 'hasTransparency', 'isHeadshot'] as const) {
       if (h[k] === true) hint[k] = true
     }
+    if (['product', 'service', 'portrait', 'property', 'portfolio', 'logo', 'general'].includes(h.role as string)) hint.role = h.role as ImageHints['role']
     if (Object.keys(hint).length) out[url] = hint
   }
   return Object.keys(out).length ? out : undefined

@@ -1,8 +1,9 @@
 import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
 import { ownText, resolveLayerImageUrl, resolveLayerText } from './layerContent'
 import { endCardFrames } from './endCard'
-import { exitFactors, resolveImageStyle } from './imageStyle'
-import { StyledBusinessImage } from './StyledBusinessImage'
+import { exitFactors, revealFactors } from './imageStyle'
+import { presetStyle, resolveImageLook } from './imagePresets'
+import { ImageCollage, SplitPanel, StyledBusinessImage } from './StyledBusinessImage'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AbsoluteFill,
@@ -561,24 +562,58 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           }
 
           if (isImage) {
-            // Overlay-only styling: the file is untouched; the role, what is known about
-            // the image and the layer's own style decide how it is framed.
+            // Overlay-only styling: the file is untouched; the image's explicit role, the template
+            // and the layer's own style decide how it is presented.
             const hints = settings.imageHints?.[imageUrl]
-            const resolved = resolveImageStyle({ role, layerStyle: layer.imageStyle, hints })
-            const exit = resolved.style ? exitFactors(resolved.style, frame, layer.endFrame) : { opacity: 1, scale: 1 }
+            const resolved = resolveImageLook({
+              role, kind: layer.kind, layerStyle: layer.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio,
+            })
+            let style = resolved.style
+            const urls = [imageUrl, ...(layer.imageUrls ?? [])].filter(Boolean)
+            // A collage needs 2+ pictures; with fewer it falls back to the plain floating card.
+            if (style?.presetId === 'multi-image-collage' && urls.length < 2) style = presetStyle('rounded-floating-card', settings.aspectRatio)
+            const exit = style ? exitFactors(style, frame, layer.endFrame) : { opacity: 1, scale: 1 }
+            const brandColors = settings.brandColors
+
+            // Split Screen: a half-frame panel in COMPOSITION coordinates (not the layer's own box).
+            if (style?.presetId === 'split-screen') {
+              const side = style.splitSide ?? (compH > compW * 1.1 ? 'bottom' : 'right')
+              const slide = revealFactors({ reveal: 'wipe' }, frame, layer.startFrame + (layer.animationDelay || 0))
+              return (
+                <AbsoluteFill key={layer.id} style={{ zIndex: layerStyle.zIndex, opacity: layer.opacity * exit.opacity * slide.progress, pointerEvents: 'none' }}>
+                  <SplitPanel src={imageUrl} side={side} imageStyle={style} compWidth={compW} compHeight={compH} ImageComponent={Img as never} />
+                </AbsoluteFill>
+              )
+            }
+
+            const reveal = style ? revealFactors(style, frame, layer.startFrame + (layer.animationDelay || 0)) : { progress: 1, scale: 1 }
+            // A reveal replaces the layer's own entrance animation.
+            const boxStyle = style?.reveal === 'wipe' ? { ...layerStyle, opacity: layer.opacity, transform: undefined } : layerStyle
             return (
-              <AbsoluteFill key={layer.id} style={{ ...layerStyle, height: box.widthPx }}>
+              <AbsoluteFill key={layer.id} style={{ ...boxStyle, height: box.widthPx }}>
                 <div style={{ position: 'absolute', inset: 0, opacity: exit.opacity, transform: exit.scale !== 1 ? `scale(${exit.scale})` : undefined }}>
-                  {resolved.style ? (
-                    <StyledBusinessImage
-                      src={imageUrl}
-                      imageStyle={resolved.style}
+                  {style?.presetId === 'multi-image-collage' ? (
+                    <ImageCollage
+                      urls={urls.slice(0, 4)}
+                      imageStyle={style}
                       boxWidth={box.widthPx}
                       boxHeight={box.widthPx}
                       compHeight={compH}
-                      brand={settings.brandColors}
+                      brand={brandColors}
+                      ImageComponent={Img as never}
+                    />
+                  ) : style ? (
+                    <StyledBusinessImage
+                      src={imageUrl}
+                      imageStyle={style}
+                      boxWidth={box.widthPx}
+                      boxHeight={box.widthPx}
+                      compHeight={compH}
+                      brand={brandColors}
                       aspect={hints?.aspect}
                       ImageComponent={Img as never}
+                      revealProgress={reveal.progress}
+                      revealScale={reveal.scale}
                     />
                   ) : (
                     <Img

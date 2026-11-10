@@ -1,7 +1,8 @@
 'use client'
 
 import { C, hintStyle, inputStyle, labelStyle, secondaryButtonStyle } from './tokens'
-import type { ImageShadow, ImageShape, ImageStyle } from '../preview/imageStyle'
+import type { ImagePresetId, ImageRole, ImageShadow, ImageShape, ImageStyle } from '../preview/imageStyle'
+import { IMAGE_PRESETS, IMAGE_PRESET_ORDER, presetSuitsRole } from '../preview/imagePresets'
 
 const SHAPES: { id: ImageShape; label: string }[] = [
   { id: 'rounded-rect', label: 'Rounded rectangle' },
@@ -28,12 +29,24 @@ export function ImageStyleControls({
   reason,
   onChange,
   onReset,
+  role = 'general',
+  onPreset,
+  libraryOptions = [],
+  extraUrls = [],
+  onExtraUrls,
 }: {
   style: ImageStyle
   isAuto: boolean
   reason: string
   onChange: (patch: Partial<ImageStyle>) => void
   onReset: () => void
+  /** The image's explicit role (product, service, portrait, property, portfolio, general). */
+  role?: ImageRole
+  onPreset?: (id: ImagePresetId) => void
+  /** Library pictures the customer can add to a collage. */
+  libraryOptions?: { value: string; label: string }[]
+  extraUrls?: string[]
+  onExtraUrls?: (urls: string[]) => void
 }): React.JSX.Element {
   const row = { display: 'grid', gap: 4 } as const
   return (
@@ -43,6 +56,76 @@ export function ImageStyleControls({
         <span data-testid="image-style-mode" style={{ ...hintStyle, margin: 0 }}>{isAuto ? 'Automatic' : 'Your style'}</span>
       </div>
       {isAuto && <p style={{ ...hintStyle, margin: 0 }}>Chosen automatically: {reason}. Change anything below to take control.</p>}
+
+      {onPreset && (
+        <div data-testid="image-overlay-styles" style={{ display: 'grid', gap: 6 }}>
+          <div style={labelStyle}>Image overlay styles</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+            {IMAGE_PRESET_ORDER.map((id) => {
+              const preset = IMAGE_PRESETS[id]
+              const active = style.presetId === id
+              const suits = presetSuitsRole(id, role)
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`image-preset-${id}`}
+                  aria-label={`Image style preset: ${preset.label}`}
+                  aria-pressed={active}
+                  title={preset.description + (preset.reusesDesign ? ` (Also available as the “${preset.reusesDesign.name}” template.)` : '')}
+                  onClick={() => onPreset(id)}
+                  style={{
+                    textAlign: 'left', padding: '7px 8px', borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.text,
+                    background: active ? C.cyanSoft : 'rgba(255,255,255,.03)',
+                    border: `1px solid ${active ? C.cyanBorder : C.border}`,
+                    opacity: suits ? 1 : 0.62,
+                  }}
+                >
+                  {preset.label}
+                  <span style={{ display: 'block', fontSize: 9, fontWeight: 600, color: C.muted, marginTop: 2 }}>
+                    {suits ? `Suits ${role} images` : `Less suited to ${role} images`}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {style.presetId && IMAGE_PRESETS[style.presetId].reusesDesign && (
+            <p data-testid="image-preset-reuse" style={{ ...hintStyle, margin: 0 }}>
+              Want the animated full-scene version? The “{IMAGE_PRESETS[style.presetId].reusesDesign!.name}” template already provides it.
+            </p>
+          )}
+        </div>
+      )}
+
+      {style.presetId === 'multi-image-collage' && onExtraUrls && (
+        <div data-testid="collage-picker" style={{ display: 'grid', gap: 6 }}>
+          <div style={labelStyle}>Collage pictures ({extraUrls.length + 1} of 2–4)</div>
+          {libraryOptions.length === 0 && <p style={{ ...hintStyle, margin: 0 }}>Add more pictures to your assets to build a collage.</p>}
+          {libraryOptions.map((o) => (
+            <label key={o.value} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11, color: C.text }}>
+              <input
+                type="checkbox"
+                aria-label={`Collage picture: ${o.label}`}
+                checked={extraUrls.includes(o.value)}
+                onChange={(e) => {
+                  const next = e.target.checked ? [...extraUrls, o.value] : extraUrls.filter((u) => u !== o.value)
+                  onExtraUrls(next.slice(0, 3))
+                }}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+
+      {style.presetId === 'split-screen' && (
+        <div style={{ display: 'grid', gap: 4 }}>
+          <label style={labelStyle}>Panel side {style.splitSideAuto ? '(automatic)' : ''}</label>
+          <select aria-label="Split screen side" value={style.splitSide ?? 'right'} onChange={(e) => onChange({ splitSide: e.target.value as 'left' | 'right' | 'top' | 'bottom', splitSideAuto: false })} style={inputStyle}>
+            <option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option>
+          </select>
+        </div>
+      )}
 
       <div style={row}>
         <label style={labelStyle}>Shape</label>

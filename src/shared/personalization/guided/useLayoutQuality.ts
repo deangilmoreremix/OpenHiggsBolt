@@ -18,6 +18,7 @@ import {
   type ProtectedZone,
   type QualityReport,
 } from '../preview/placement'
+import { splitSideFor } from '../preview/imagePresets'
 import {
   compositionZones,
   profileForSource,
@@ -62,7 +63,7 @@ const SUBJECT_ZONES: Record<'left' | 'center' | 'right', Omit<ProtectedZone, 'id
 
 export function useLayoutQuality(inputProps: PreviewInputProps): LayoutQualityState {
   const ctx = useDemoPersonalize()
-  const { previewSettings: settings, source, setPreviewProtectedZones, applyPreviewPlacements } = ctx
+  const { previewSettings: settings, source, setPreviewProtectedZones, applyPreviewPlacements, updatePreviewLayer } = ctx
   const brand = inputProps?.brand ?? EMPTY_BRAND
   const videoUrl = inputProps?.videoUrl ?? null
   const isImageSource = Boolean(inputProps?.isImageSource)
@@ -152,6 +153,16 @@ export function useLayoutQuality(inputProps: PreviewInputProps): LayoutQualitySt
     const result = recommendPlacement(input)
     const items = result.proposals.filter((p) => p.moved)
     if (items.length) applyPreviewPlacements(items)
+    // Split Screen takes the side that overlaps the verified subject least. A side the customer
+    // chose explicitly (no `splitSideAuto`) is never overridden.
+    const side = splitSideFor(zones, settings.width, settings.height)
+    for (const layer of settings.layers) {
+      const st = layer.imageStyle
+      if (st?.presetId !== 'split-screen') continue
+      if (st.splitSide && st.splitSideAuto !== true) continue
+      if (st.splitSide === side) continue
+      updatePreviewLayer(layer.id, { imageStyle: { ...st, splitSide: side, splitSideAuto: true } })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoKey])
 

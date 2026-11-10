@@ -14,6 +14,7 @@ import type {
   PersonalizationSource,
 } from '../types'
 import type { ImageHints } from '../preview/imageStyle'
+import { imageRoleFromCategory } from '../preview/imagePresets'
 import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
@@ -64,6 +65,9 @@ export function buildPreviewInput(
     if (aspect && aspect > 0) hint.aspect = aspect
     if (asset.hasTransparency) hint.hasTransparency = true
     if (asset.sourceCategory === 'person' && aspect && aspect >= 0.7 && aspect <= 1.4) hint.isHeadshot = true
+    // The explicit role: logo slot → logo; otherwise the discovery category. Never a filename or discovery order.
+    if (asset.role === 'logo') hint.role = 'logo'
+    else if (asset.sourceCategory) hint.role = imageRoleFromCategory(asset.sourceCategory)
     if (Object.keys(hint).length) assetHints[url] = hint
   }
   addHint(assets.primaryLogo)

@@ -139,6 +139,37 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
     }
   }
 
+  // split-screen panels cover half the frame on purpose: say so, and check the side against the subject
+  for (const l of visible.filter((x) => x.presetId === 'split-screen')) {
+    const horizontal = l.splitSide === 'left' || l.splitSide === 'right'
+    const panel = {
+      left: l.splitSide === 'right' ? width / 2 : 0, top: l.splitSide === 'bottom' ? height / 2 : 0,
+      width: horizontal ? width / 2 : width, height: horizontal ? height : height / 2,
+    }
+    if (input.zones.length === 0) {
+      issues.push({ code: 'split-covers-footage', severity: 'review', layerId: l.layer.id, ...dur(l), fixable: false,
+        message: 'Split Screen covers half of the video, and the subject area is not marked, so it cannot be checked. Look at the preview, or mark the subject.' })
+    } else {
+      const covered = input.zones.some((z) => intersectionArea(panel, zoneToPx(z, width, height)) / Math.max(1, area(zoneToPx(z, width, height))) > 0.25)
+      if (covered) {
+        issues.push({ code: 'split-covers-footage', severity: 'adjust', layerId: l.layer.id, ...dur(l), fixable: false,
+          message: 'The Split Screen panel covers the subject. Use the other side.' })
+      }
+    }
+  }
+
+  // too crowded: picture overlays together take too much of the frame (or there are too many)
+  const pictures = drawn.filter((l) => l.role === 'product-image' || l.role === 'service-image' || l.presetId === 'split-screen')
+  const pictureArea = pictures.reduce((sum, l) => {
+    if (l.presetId === 'split-screen') return sum + (width * height) / 2
+    const b = boxes.get(l.layer.id)
+    return sum + (b ? area(b) : 0)
+  }, 0)
+  if (pictures.length > 3 || pictureArea / (width * height) > 0.45) {
+    issues.push({ code: 'overlay-crowded', severity: 'adjust', fixable: false,
+      message: 'Too many or too large picture overlays for this scene. Hide one or use a smaller style.' })
+  }
+
   // identical copy typed on two text layers
   const seen = new Map<string, PlacementLayer>()
   for (const l of visible) {

@@ -2,7 +2,8 @@ import { layoutDefaultGeometry } from '../presets'
 import { roleForLayer } from '../mediaRoles'
 import { endCardFrames } from '../endCard'
 import { resolveLayerImageUrl, resolveLayerText } from '../layerContent'
-import { resolveImageStyle, shadowBleedPx } from '../imageStyle'
+import { shadowBleedPx } from '../imageStyle'
+import { resolveImageLook } from '../imagePresets'
 import type { PersonalizationPreviewSettings, PreviewInputProps } from '../types'
 import type { LumaSample, PlacementInput, ProtectedZone } from './types'
 
@@ -35,15 +36,18 @@ export function buildPlacementInput(args: {
     layers: settings.layers.map((layer) => {
       const facts = layer.kind === 'design' && layer.designId ? args.designFacts?.(layer.designId) : undefined
       const intended = layoutDefaultGeometry(settings.layout, layer.kind, settings.aspectRatio)
-      const role = roleForLayer(layer, facts ? { id: facts.id, category: facts.category } : null)
+      let role = roleForLayer(layer, facts ? { id: facts.id, category: facts.category } : null)
       const imageUrl = resolveLayerImageUrl(layer, brand)
       // What an image actually occupies once styled: a circle is a square, a covering image
       // fills its whole box, a contained one hugs the picture; its shadow adds a bleed.
       const hints = settings.imageHints?.[imageUrl]
       const styled = layer.kind === 'logo' || layer.kind === 'productImage' || layer.kind === 'serviceImage'
-        ? resolveImageStyle({ role, layerStyle: layer.imageStyle, hints }).style
+        ? resolveImageLook({ role, kind: layer.kind, layerStyle: layer.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio }).style
         : null
       // the shared hints are what the composition frames by, so they win
+      // a split-screen panel covers half the frame by design: it is not an auto-placed overlay
+      const isSplit = styled?.presetId === 'split-screen'
+      if (isSplit) role = 'full-frame-replacement'
       const measuredAspect = hints?.aspect ?? args.imageAspects?.[imageUrl]
       const imageAspect = !styled
         ? measuredAspect
@@ -58,7 +62,9 @@ export function buildPlacementInput(args: {
         intended,
         imageUrl,
         imageAspect,
-        bleedPx: styled ? shadowBleedPx(styled, settings.height) : 0,
+        bleedPx: styled ? shadowBleedPx(styled, settings.height) + (styled.frame === 'polaroid' ? Math.round(settings.height * 0.05) : 0) : 0,
+        presetId: styled?.presetId,
+        splitSide: isSplit ? (styled?.splitSide ?? (settings.height > settings.width * 1.1 ? 'bottom' : 'right')) : undefined,
         designSupported: layer.kind === 'design' ? facts?.supported ?? false : undefined,
       }
     }),

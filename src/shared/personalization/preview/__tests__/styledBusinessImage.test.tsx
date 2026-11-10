@@ -89,3 +89,70 @@ describe('StyledBusinessImage', () => {
     expect(q(el, '[data-styled-image="clip"]')!.style.background).toMatch(/#ffffff|rgb\(255, 255, 255\)/)
   })
 })
+
+import { ImageCollage, SplitPanel } from '../StyledBusinessImage'
+import { presetStyle } from '../imagePresets'
+
+describe('preset rendering', () => {
+  it('Product Spotlight: a glow BEHIND the image, the shadow on the outer wrapper', () => {
+    const el = mount(presetStyle('product-spotlight'), { aspect: 1 })
+    const glow = q(el, '[data-styled-image="spotlight"]')!
+    expect(glow.style.background).toContain('radial-gradient')
+    expect(glow.compareDocumentPosition(q(el, '[data-styled-image="outer"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // outer is after → drawn above
+    expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toMatch(/0\.38/) // medium
+    expect(q(el, 'img')!.style.objectFit).toBe('contain') // the whole product
+  })
+  it('Polaroid: white frame with a thicker bottom, tilted, shadow on the outer wrapper', () => {
+    const el = mount(presetStyle('polaroid'), { aspect: 1 })
+    const outer = q(el, '[data-styled-image="outer"]')!
+    const clip = q(el, '[data-styled-image="clip"]')!
+    expect(outer.style.transform).toContain('rotate(-3deg)')
+    expect(clip.style.background).toMatch(/#ffffff|rgb\(255, 255, 255\)/)
+    const [top, , bottom] = clip.style.padding.split(' ').map(parseFloat)
+    expect(bottom).toBeGreaterThan(top * 2.5)
+    expect(outer.style.boxShadow).toMatch(/rgba/)
+    expect(clip.style.boxShadow).toBe('')
+  })
+  it('Soft Masked Image: feathered mask, no border and no shadow', () => {
+    const el = mount(presetStyle('soft-masked'), { aspect: 1.5 })
+    const clip = q(el, '[data-styled-image="clip"]')!
+    expect(clip.style.maskImage || clip.style.getPropertyValue('-webkit-mask-image')).toContain('radial-gradient')
+    expect(clip.style.border).toBe('')
+    expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toBe('')
+  })
+  it('Cinematic Reveal: clip-path wipe and fade follow the progress prop', () => {
+    const style = presetStyle('cinematic-reveal')
+    const half = mount(style, { aspect: 1.5, revealProgress: 0.4, revealScale: 1.03 })
+    expect(q(half, '[data-styled-image="clip"]')!.style.clipPath).toBe('inset(0 60% 0 0)')
+    expect(q(half, '[data-styled-image="outer"]')!.style.opacity).toBe('0.4')
+    expect(q(half, '[data-styled-image="outer"]')!.style.transform).toContain('scale(1.03)')
+    const done = mount(style, { aspect: 1.5, revealProgress: 1 })
+    expect(q(done, '[data-styled-image="clip"]')!.style.clipPath).toBe('inset(0 0% 0 0)')
+  })
+  it('Collage: one rounded tile per picture, never overlapping, each with its own shadow', () => {
+    const el = document.createElement('div'); document.body.appendChild(el)
+    const root = createRoot(el); mounted.push({ root, el })
+    act(() => { root.render(<ImageCollage urls={['a', 'b', 'c']} imageStyle={presetStyle('multi-image-collage')} boxWidth={400} boxHeight={400} compHeight={1000} brand={{ primary: '#111', accent: '#222' }} />) })
+    const tiles = Array.from(el.querySelectorAll('[data-styled-image="tile"]')) as HTMLElement[]
+    expect(tiles).toHaveLength(3)
+    const r = tiles.map((t) => ({ l: parseFloat(t.style.left), t: parseFloat(t.style.top), w: parseFloat(t.style.width), h: parseFloat(t.style.height) }))
+    for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) {
+      const ow = Math.min(r[i].l + r[i].w, r[j].l + r[j].w) - Math.max(r[i].l, r[j].l)
+      const oh = Math.min(r[i].t + r[i].h, r[j].t + r[j].h) - Math.max(r[i].t, r[j].t)
+      expect(ow > 0.01 && oh > 0.01).toBe(false)
+    }
+    expect(tiles.every((t) => t.style.boxShadow.includes('rgba'))).toBe(true)
+    expect(el.querySelectorAll('img')).toHaveLength(3)
+  })
+  it('Split Screen: the panel fills exactly one half of the composition', () => {
+    const cases: [('left' | 'right' | 'top' | 'bottom'), number[]][] = [['right', [960, 0, 960, 1080]], ['left', [0, 0, 960, 1080]], ['top', [0, 0, 1920, 540]], ['bottom', [0, 540, 1920, 540]]]
+    for (const [side, [l, t, w, h]] of cases) {
+      const el = document.createElement('div'); document.body.appendChild(el)
+      const root = createRoot(el); mounted.push({ root, el })
+      act(() => { root.render(<SplitPanel src="x" side={side} imageStyle={presetStyle('split-screen')} compWidth={1920} compHeight={1080} />) })
+      const p = el.querySelector('[data-styled-image="split"]') as HTMLElement
+      expect([parseFloat(p.style.left), parseFloat(p.style.top), parseFloat(p.style.width), parseFloat(p.style.height)], side).toEqual([l, t, w, h])
+      expect((p.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover')
+    }
+  })
+})
