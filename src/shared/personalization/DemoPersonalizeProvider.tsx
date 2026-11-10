@@ -107,6 +107,8 @@ import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
   applyDesignTemplate,
+  addDesignTemplate,
+  removeDesignLayer,
   resetLayoutToDefaults,
   resetPreviewDesign,
   normalizePreviewSettings,
@@ -993,6 +995,15 @@ export type DemoPersonalizeContextValue = {
    activeRemotionDesignId: string | null
    /** Applies a design, or clears the applied design when given null. */
    setRemotionDesign: (designId: string | null) => void
+  /** Adds a design on top of the current layout (every existing layer is kept), instead of replacing it. */
+  addRemotionDesign: (designId: string) => void
+  /** Takes one design layer off the video, leaving the other layers. */
+  removePreviewDesignLayer: (layerId: string) => void
+  /** Undo / redo of edits to the preview (layers, designs, layout). */
+  undoPreview: () => void
+  redoPreview: () => void
+  canUndoPreview: boolean
+  canRedoPreview: boolean
    /** Why the last `setRemotionDesign` call failed, or null. */
    remotionDesignError: string | null
    previewApproved: boolean
@@ -5548,6 +5559,67 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current))
   }, [])
 
+  const addRemotionDesign = useCallback((designId: string) => {
+    markSessionStarted()
+    if (!getRemotionDesignTemplate(designId)) {
+      remotionDesignErrorIdRef.current = designId
+      setRemotionDesignError(`That design is not available.`)
+      return
+    }
+    remotionDesignErrorIdRef.current = null
+    setRemotionDesignError(null)
+    setPreviewSettings((prev) => addDesignTemplate(prev, designId, previewSeedRef.current))
+  }, [])
+
+  const removePreviewDesignLayer = useCallback((layerId: string) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => removeDesignLayer(prev, layerId))
+  }, [])
+
+  // ── Undo / redo for edits to the preview ─────────────────────────────────
+  // Every change to the preview settings (a drag, a text edit, applying or replacing a design…) is one history
+  // step; rapid-fire changes (a drag, typing) within 600 ms coalesce so one Undo takes back the whole gesture.
+  const historyRef = useRef<{ past: PersonalizationPreviewSettings[]; future: PersonalizationPreviewSettings[]; last: PersonalizationPreviewSettings | null; applying: boolean; lastPush: number; sourceId: string | null }>(
+    { past: [], future: [], last: null, applying: false, lastPush: 0, sourceId: null },
+  )
+  const [, setHistoryTick] = useState(0)
+  useEffect(() => {
+    const h = historyRef.current
+    const sourceId = source?.id ?? null
+    if (h.sourceId !== sourceId) { h.past = []; h.future = []; h.last = previewSettings; h.sourceId = sourceId; setHistoryTick((t) => t + 1); return }
+    if (h.applying) { h.applying = false; h.last = previewSettings; return }
+    if (h.last === null || h.last === previewSettings) { h.last = previewSettings; return }
+    const now = Date.now()
+    if (now - h.lastPush > 600) {
+      h.past.push(h.last)
+      if (h.past.length > 50) h.past.shift()
+    }
+    h.lastPush = now
+    h.future = []
+    h.last = previewSettings
+    setHistoryTick((t) => t + 1)
+  }, [previewSettings, source?.id])
+  const undoPreview = useCallback(() => {
+    const h = historyRef.current
+    const prev = h.past.pop()
+    if (!prev || !h.last) return
+    h.future.push(h.last)
+    h.applying = true
+    h.lastPush = 0
+    setPreviewSettings(prev)
+    setHistoryTick((t) => t + 1)
+  }, [])
+  const redoPreview = useCallback(() => {
+    const h = historyRef.current
+    const next = h.future.pop()
+    if (!next || !h.last) return
+    h.past.push(h.last)
+    h.applying = true
+    h.lastPush = 0
+    setPreviewSettings(next)
+    setHistoryTick((t) => t + 1)
+  }, [])
+
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
     markSessionStarted()
     const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
@@ -6317,6 +6389,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     remotionDesignTemplates,
     activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
     setRemotionDesign,
+    addRemotionDesign,
+    removePreviewDesignLayer,
+    undoPreview,
+    redoPreview,
+    canUndoPreview: historyRef.current.past.length > 0,
+    canRedoPreview: historyRef.current.future.length > 0,
     remotionDesignError,
     previewApproved,
     approvalStale,

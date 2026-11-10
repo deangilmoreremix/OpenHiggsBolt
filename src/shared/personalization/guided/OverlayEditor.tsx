@@ -229,6 +229,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     updatePreviewLayer,
     setPreviewLayerLocked,
     setRemotionDesign,
+    undoPreview,
+    redoPreview,
+    canUndoPreview,
+    canRedoPreview,
     updatePreviewComposition,
     resetPreviewLayout,
     assets,
@@ -427,6 +431,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
         <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
           Edit on the video
         </h3>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+          <button type="button" data-testid="editor-undo" aria-label="Undo" disabled={!canUndoPreview} onClick={() => undoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canUndoPreview ? 1 : 0.5 }}>Undo</button>
+          <button type="button" data-testid="editor-redo" aria-label="Redo" disabled={!canRedoPreview} onClick={() => redoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canRedoPreview ? 1 : 0.5 }}>Redo</button>
+        </span>
         <button
           type="button"
           onClick={() => resetPreviewLayout()}

@@ -740,6 +740,36 @@ export function applyDesignTemplate(
 }
 
 /**
+ * ADD a design on top of the current layout instead of replacing it: every existing layer (the customer's
+ * text, positions, pictures, locks) is kept exactly as it is and the design joins as one more layer.
+ *
+ * Pure. Adding a design that is already on the video, or an unknown id, is a no-op. The design layer is built by
+ * `applyDesignTemplate`, so its text/media defaults come from the same place. `remotionDesignId` records the
+ * design only when none was applied before (it is the single "main design" the saved projects carry).
+ */
+export function addDesignTemplate(
+  prev: PersonalizationPreviewSettings,
+  designId: string,
+  ctx?: ApplyLayoutContext,
+): PersonalizationPreviewSettings {
+  const design = getRemotionDesignTemplate(designId)
+  if (!design) return prev
+  const layers = Array.isArray(prev.layers) ? prev.layers : []
+  if (layers.some((l) => l && l.kind === 'design' && l.designId === design.id)) return prev
+  const built = applyDesignTemplate({ ...prev, layers: [] }, design.id, ctx).layers[0]
+  if (!built) return prev
+  return { ...prev, layers: [...layers, built], remotionDesignId: prev.remotionDesignId ?? design.id }
+}
+
+/** Takes ONE design layer off the video (other layers untouched). */
+export function removeDesignLayer(prev: PersonalizationPreviewSettings, layerId: string): PersonalizationPreviewSettings {
+  const layers = (prev.layers ?? []).filter((l) => !(l.id === layerId && l.kind === 'design'))
+  if (layers.length === (prev.layers ?? []).length) return prev
+  const remaining = layers.find((l) => l.kind === 'design' && l.designId)
+  return { ...prev, layers, remotionDesignId: remaining?.designId ?? null }
+}
+
+/**
  * Clears the applied Remotion design and restores the default layout.
  *
  * Pure: `prev` is never mutated and a new settings object is returned.

@@ -1,5 +1,6 @@
 'use client'
 
+import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -151,21 +152,15 @@ export function StepPreviewApprove(): React.JSX.Element {
         </div>
         {remotionDesignTemplates.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ ...labelStyle, marginBottom: 6 }}>Designs</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {remotionDesignTemplates.map((design) => (
-                <button
-                  key={design.id}
-                  type="button"
-                  onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
-                  aria-pressed={activeRemotionDesignId === design.id}
-                  title={design.description}
-                  style={chipStyle(activeRemotionDesignId === design.id)}
-                >
-                  {design.name}
-                </button>
-              ))}
-            </div>
+            <DesignRecommendations
+              designs={remotionDesignTemplates}
+              aspectRatio={previewSettings.aspectRatio}
+              activeDesignId={activeRemotionDesignId}
+              available={{ logo: Boolean(assets?.primaryLogo), product: (assets?.products?.length || 0) > 0, service: (assets?.products?.length || 0) > 0 }}
+              onSelectDesign={setRemotionDesign}
+              onAddDesign={ctx.addRemotionDesign}
+              onSelectLayout={setPreviewLayout}
+            />
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
                 {fixedSvgIdWarning}
