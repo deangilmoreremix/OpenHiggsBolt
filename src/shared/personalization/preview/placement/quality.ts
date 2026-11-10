@@ -11,7 +11,8 @@
  *                        no frame measurements, duplicated copy) — it does NOT say "fine"
  *
  * Only CONFIRMED critical rendering failures (a required image that is missing or
- * has an invalid URL, a design that cannot render here) block export. Subjective
+ * has an invalid address, a design that cannot render here) block export. A visible
+ * image layer with no image at all only warns: it draws nothing and breaks nothing. Subjective
  * layout concerns never do.
  */
 import { layerBoxMetrics } from '../../guided/overlayGeometry'
@@ -56,7 +57,9 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
     if (isImage) {
       const url = (l.imageUrl ?? '').trim()
       if (!url) {
-        issues.push({ code: 'missing-media', severity: 'critical', layerId: l.layer.id, ...dur(l), fixable: false,
+        // Nothing renders for this layer, but nothing is broken either: the
+        // layout simply has no image yet. Tell the customer; do not block.
+        issues.push({ code: 'missing-media', severity: 'adjust', layerId: l.layer.id, ...dur(l), fixable: false,
           message: `${contract.label} has no image, so it will not appear in the video. Add one or hide the layer.` })
       } else if (!VALID_URL.test(url)) {
         issues.push({ code: 'missing-media', severity: 'critical', layerId: l.layer.id, ...dur(l), fixable: false,

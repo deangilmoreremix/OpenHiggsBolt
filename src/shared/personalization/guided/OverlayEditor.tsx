@@ -217,6 +217,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   const {
     previewSettings,
     updatePreviewLayer,
+    setPreviewLayerLocked,
     updatePreviewComposition,
     resetPreviewLayout,
     assets,
@@ -227,6 +228,16 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   const stageWidth = useStageWidth(stageRef)
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
   const dragRef = useRef<DragState | null>(null)
+
+  // The Layout Quality Check's "Show" selects the affected layer here.
+  useEffect(() => {
+    const onSelect = (event: Event) => {
+      const id = (event as CustomEvent<{ layerId?: string }>).detail?.layerId
+      if (id && settings.layers.some((l) => l.id === id)) setSelectedId(id)
+    }
+    window.addEventListener('personalization:select-layer', onSelect)
+    return () => window.removeEventListener('personalization:select-layer', onSelect)
+  }, [settings.layers])
 
   const brand = inputProps.brand
   const { width: compW, height: compH } = resolveCompositionSize(settings.width, settings.height)
@@ -334,6 +345,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
+    if (layer.locked) return // locked: selectable, but not draggable until unlocked
     dragRef.current = {
       layerId: layer.id,
       pointerId: typeof event.pointerId === 'number' ? event.pointerId : null,
@@ -368,6 +380,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     if (!delta) return
     event.preventDefault()
     setSelectedId(layer.id)
+    if (layer.locked) return
     commitPosition(layer.id, offsetLayer(layer, delta.dx, delta.dy, compW, compH))
   }
 
@@ -825,6 +838,17 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   />
                 </div>
               </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: C.text, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  aria-label="Lock position"
+                  data-testid="overlay-lock-position"
+                  checked={selected.locked === true}
+                  onChange={(event) => setPreviewLayerLocked(selected.id, event.target.checked)}
+                />
+                Lock position (recommendations and layout changes will not move it)
+              </label>
 
               <div>
                 <div style={labelStyle}>Position presets</div>

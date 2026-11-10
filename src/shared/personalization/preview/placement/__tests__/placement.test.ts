@@ -156,15 +156,22 @@ describe('layout quality check', () => {
     expect(q.notes.join(' ')).toMatch(/baked into the source video/)
   })
 
-  it('blocks export only for confirmed critical failures (missing media), never for subjective issues', () => {
-    // no product image anywhere -> the Product Showcase image cannot render
-    const q = evaluateLayoutQuality(build(settingsFor('product-showcase'), {
+  it('a layer with no image only warns; a broken image address blocks (confirmed rendering failure)', () => {
+    const none = evaluateLayoutQuality(build(settingsFor('product-showcase'), {
       brand: { ...BRAND, productUrl: null, serviceUrl: null },
       zones: [zone(0.4, 0.1, 0.2, 0.3)], samples: [flat(0.05)],
     } as never))
-    expect(q.blocksExport).toBe(true)
-    expect(q.issues.find((i) => i.code === 'missing-media')?.severity).toBe('critical')
-    // a purely subjective problem (text over subject) does not block
+    const missing = none.issues.find((i) => i.code === 'missing-media')!
+    expect(missing.severity).toBe('adjust')
+    expect(none.blocksExport).toBe(false)
+    let s = settingsFor('product-showcase')
+    s = move(s, 'productImage', { imageUrl: 'ftp://broken' })
+    const broken = evaluateLayoutQuality(build(s, { zones: [zone(0.4, 0.1, 0.2, 0.3)], samples: [flat(0.05)] }))
+    expect(broken.issues.find((i) => i.code === 'missing-media')?.severity).toBe('critical')
+    expect(broken.blocksExport).toBe(true)
+  })
+
+  it('a purely subjective problem (text over the subject) never blocks export', () => {
     let s = settingsFor('business-introduction')
     s = move(s, 'headline', { x: 0.5, y: 0.5 })
     const subj = evaluateLayoutQuality(build(s, { zones: [zone(0.35, 0.1, 0.3, 0.8)], samples: [flat(0.05)] }))

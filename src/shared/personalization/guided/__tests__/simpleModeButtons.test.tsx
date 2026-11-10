@@ -91,7 +91,12 @@ describe('Step 4: approve, render and AI', () => {
     previewCtx({ previewApproved: true })
     render(<StepPreviewApprove />)
     expect((screen.getByText('Approved ✓').closest('button') as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: /Render branded video/ }) as HTMLButtonElement).disabled).toBe(false)
+    const renderButton = () => screen.getByRole('button', { name: /Render branded video/ }) as HTMLButtonElement
+    // An unrecorded licence is never assumed: the customer confirms before a final export.
+    expect(renderButton().disabled).toBe(true)
+    const confirm = screen.getByTestId('guided-rights-confirm').querySelector('input') as HTMLInputElement
+    act(() => { confirm.click() })
+    expect(renderButton().disabled).toBe(false)
   })
 
   it('says when a change cleared the approval', () => {
