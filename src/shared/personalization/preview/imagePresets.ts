@@ -50,13 +50,14 @@ export const IMAGE_PRESETS: Readonly<Record<ImagePresetId, ImagePreset>> = Objec
   'rounded-floating-card': {
     id: 'rounded-floating-card', label: 'Rounded Floating Card',
     description: 'A rounded picture with a soft shadow — the clean everyday choice.',
-    roles: ['product', 'service', 'property', 'portfolio', 'general'],
+    roles: ['product', 'service', 'property', 'portfolio', 'general', 'food', 'real-estate'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.22, images: { min: 1, max: 1 } },
     style: {
+      // Corner radius is ~28 px at 1080p (radiusComp 0.028 of the shorter side) with a thin white border.
       '16:9': { shape: 'rounded-rect', radius: 0.12, fit: 'contain', shadow: 'subtle' },
-      '9:16': { shape: 'rounded-rect', radius: 0.14, fit: 'contain', shadow: 'subtle' },
-      '1:1': { shape: 'rounded-rect', radius: 0.13, fit: 'contain', shadow: 'subtle' },
-      '4:5': { shape: 'rounded-rect', radius: 0.13, fit: 'contain', shadow: 'subtle' },
+      '9:16': { shape: 'rounded-rect', radius: 0.12, fit: 'contain', shadow: 'subtle' },
+      '1:1': { shape: 'rounded-rect', radius: 0.12, fit: 'contain', shadow: 'subtle' },
+      '4:5': { shape: 'rounded-rect', radius: 0.12, fit: 'contain', shadow: 'subtle' },
     },
   },
   'circular-portrait': {
@@ -68,49 +69,49 @@ export const IMAGE_PRESETS: Readonly<Record<ImagePresetId, ImagePreset>> = Objec
   },
   'product-spotlight': {
     id: 'product-spotlight', label: 'Product Spotlight',
-    description: 'The whole product on a soft glow with a deeper shadow, so it reads as the hero.',
+    description: 'The whole product with a warm glow edge and a deeper shadow, so it reads as the hero. Add an optional promo badge such as “20% OFF”.',
     roles: ['product'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.26, images: { min: 1, max: 1 } },
-    style: ALL({ shape: 'rounded-rect', radius: 0.1, fit: 'contain', shadow: 'medium', spotlight: true }),
+    style: ALL({ shape: 'rounded-rect', radiusComp: 0.03, fit: 'contain', shadow: 'medium', spotlight: true, glow: '#ffb457' }),
   },
   'cinematic-reveal': {
     id: 'cinematic-reveal', label: 'Cinematic Image Reveal',
-    description: 'A wide rounded picture that wipes in with a slow settle.',
-    roles: ['property', 'portfolio', 'service', 'general'],
+    description: 'A wide rounded picture revealed by a diagonal wipe with a glowing light streak.',
+    roles: ['property', 'portfolio', 'service', 'general', 'real-estate', 'food'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.3, images: { min: 1, max: 1 } },
     reusesDesign: undefined,
-    style: ALL({ shape: 'rounded-rect', radius: 0.05, fit: 'contain', shadow: 'medium', reveal: 'wipe' }),
+    style: ALL({ shape: 'rounded-rect', radius: 0.05, fit: 'contain', shadow: 'medium', reveal: 'diagonal' }),
   },
   'multi-image-collage': {
     id: 'multi-image-collage', label: 'Multi-Image Collage',
-    description: '2–4 pictures in rounded tiles with even spacing.',
-    roles: ['portfolio', 'property', 'product', 'general'],
+    description: 'Two stacked rounded tiles with thin white borders (up to four tiles).',
+    roles: ['portfolio', 'property', 'product', 'general', 'food', 'real-estate'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.34, images: { min: 2, max: 4 } },
     reusesDesign: { id: 'rve-gallery-grid', name: 'Gallery Grid' },
     style: ALL({ shape: 'rounded-rect', radius: 0.08, fit: 'cover', shadow: 'subtle' }),
   },
   polaroid: {
     id: 'polaroid', label: 'Polaroid',
-    description: 'A white photo frame with a slight tilt.',
-    roles: ['portfolio', 'general', 'property', 'service'],
+    description: 'A white photo frame with a clear tilt, a hand-drawn heart and sparkles.',
+    roles: ['portfolio', 'general', 'property', 'service', 'food', 'real-estate'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.24, images: { min: 1, max: 1 } },
     reusesDesign: { id: 'rve-polaroid-frame', name: 'Polaroid Drop' },
-    style: ALL({ shape: 'square', radius: 0, fit: 'cover', shadow: 'medium', frame: 'polaroid', tilt: -3 }),
+    style: ALL({ shape: 'square', radius: 0, fit: 'cover', shadow: 'medium', frame: 'polaroid', tilt: -5, accent: 'heart' }),
   },
   'split-screen': {
     id: 'split-screen', label: 'Split Screen',
-    description: 'The picture takes one half of the frame; your video fills the other half.',
-    roles: ['property', 'portfolio', 'service', 'product', 'general'],
+    description: 'The picture takes one half of the frame behind a diagonal divider with a white line; your video fills the rest.',
+    roles: ['property', 'portfolio', 'service', 'product', 'general', 'food', 'real-estate'],
     placement: { needsSafeZone: false, mayCoverSubject: true, maxFrameFraction: 0.5, images: { min: 1, max: 1 } },
     reusesDesign: { id: 'rve-image-comparison-slider', name: 'Before & After' },
     style: ALL({ shape: 'square', radius: 0, fit: 'cover', shadow: 'medium' }), // side: automatic from verified zones, else right/bottom
   },
   'soft-masked': {
     id: 'soft-masked', label: 'Soft Masked Image',
-    description: 'Feathered edges that melt into the footage — no hard rectangle.',
-    roles: ['general', 'property', 'portfolio', 'service'],
+    description: 'An organic blob shape with feathered edges and a soft warm glow — no hard rectangle.',
+    roles: ['general', 'property', 'portfolio', 'service', 'food', 'real-estate'],
     placement: { needsSafeZone: true, mayCoverSubject: false, maxFrameFraction: 0.28, images: { min: 1, max: 1 } },
-    style: ALL({ shape: 'rounded-rect', radius: 0.2, fit: 'cover', shadow: 'none', mask: 'soft', borderWidth: 0 }),
+    style: ALL({ shape: 'blob', radius: 0.2, fit: 'cover', shadow: 'none', mask: 'soft', borderWidth: 0, glow: '#ffc98a' }),
   },
 })
 
@@ -150,7 +151,9 @@ export function defaultPresetFor(role: ImageRole, layout?: string | null): Image
     case 'portrait': return 'circular-portrait'
     case 'product': return layout === 'product-showcase' ? 'product-spotlight' : 'rounded-floating-card'
     case 'service': return 'rounded-floating-card'
-    case 'property': return 'cinematic-reveal'
+    case 'property': // storefront / office / listing: a wide rounded card
+    case 'real-estate': return 'rounded-floating-card'
+    case 'food': return 'rounded-floating-card' // rounded rectangle, subtle shadow
     case 'portfolio': return 'rounded-floating-card'
     default: return 'rounded-floating-card'
   }
@@ -195,7 +198,7 @@ export function collageTiles(count: number, gap = 0.03): { x: number; y: number;
   const g = gap
   const half = (1 - g) / 2
   if (n === 1) return [{ x: 0, y: 0, w: 1, h: 1 }]
-  if (n === 2) return [{ x: 0, y: 0, w: half, h: 1 }, { x: half + g, y: 0, w: half, h: 1 }]
+  if (n === 2) return [{ x: 0, y: 0, w: 1, h: half }, { x: 0, y: half + g, w: 1, h: half }] // two stacked tiles
   if (n === 3) return [{ x: 0, y: 0, w: half, h: 1 }, { x: half + g, y: 0, w: half, h: half }, { x: half + g, y: half + g, w: half, h: half }]
   return [
     { x: 0, y: 0, w: half, h: half }, { x: half + g, y: 0, w: half, h: half },
@@ -209,6 +212,8 @@ export interface ResolveLookInput {
   /** The layer kind, used for the fallback image role when the asset carries none. */
   kind: string
   layerStyle?: ImageStyle
+  /** The customer's explicit role for this picture (wins over the asset's discovery category). */
+  layerRole?: ImageRole
   hints?: ImageHints
   /** A style the selected template declares (wins over defaults). */
   templateStyle?: Partial<ImageStyle>
@@ -223,14 +228,14 @@ export interface ResolveLookInput {
  * image's explicit role + the template (a template-declared style overrides the preset's fields).
  */
 export function resolveImageLook(input: ResolveLookInput): ResolvedImageStyle {
-  const { role, kind, layerStyle, hints = {}, templateStyle, layout, aspect = '16:9' } = input
+  const { role, kind, layerStyle, layerRole, hints = {}, templateStyle, layout, aspect = '16:9' } = input
   if (!isStylableRole(role)) return { style: null, reason: 'role keeps its own treatment' }
   if (layerStyle && layerStyle.auto !== true) return { style: layerStyle, reason: 'customer-edited' }
-  if (role === 'logo' || hints.role === 'logo') return { style: { ...ORIGINAL_STYLE }, reason: 'logo keeps its original proportions and transparency' }
+  if (role === 'logo' || (hints.role === 'logo' && !layerRole)) return { style: { ...ORIGINAL_STYLE }, reason: 'logo keeps its original proportions and transparency' }
   if (hints.transparentCorners || hints.alreadyFramed || hints.hasTransparency) {
     return { style: { ...ORIGINAL_STYLE }, reason: hints.alreadyFramed ? 'already framed' : 'transparent or already shaped' }
   }
-  const imageRole: ImageRole = hints.role ?? (hints.isHeadshot ? 'portrait' : imageRoleForLayerKind(kind))
+  const imageRole: ImageRole = layerRole ?? hints.role ?? (hints.isHeadshot ? 'portrait' : imageRoleForLayerKind(kind))
   const id = defaultPresetFor(imageRole, layout)
   if (!id) return { style: { ...ORIGINAL_STYLE }, reason: 'no preset for this role' }
   let style = presetStyle(id, aspect)

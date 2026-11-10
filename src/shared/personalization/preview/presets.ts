@@ -7,7 +7,7 @@
  */
 
 import { contractFor, roleForLayer } from './mediaRoles'
-import { normalizeImageStyle, type ImageHints } from './imageStyle'
+import { IMAGE_ROLES, normalizeImageStyle, type ImageHints, type ImageRole } from './imageStyle'
 import type {
   ProtectedZone,
   PersonalizationPreviewSettings,
@@ -891,6 +891,7 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   if (raw.locked === true) normalized.locked = true
   const imageStyle = normalizeImageStyle(raw.imageStyle)
   if (imageStyle) normalized.imageStyle = imageStyle
+  if (typeof raw.imageRole === 'string' && (IMAGE_ROLES as readonly string[]).includes(raw.imageRole)) normalized.imageRole = raw.imageRole as ImageRole
   if (Array.isArray(raw.imageUrls)) {
     const urls = raw.imageUrls.filter((u): u is string => typeof u === 'string' && u.trim() !== '' && !u.startsWith('blob:')).slice(0, 4)
     if (urls.length) normalized.imageUrls = urls

@@ -4,7 +4,7 @@
  * so saved placements correspond to the actual video resolution.
  */
 
-import type { ImageHints, ImageStyle } from './imageStyle'
+import type { ImageHints, ImageRole, ImageStyle } from './imageStyle'
 
 export type PreviewLayoutId =
   | 'business-introduction'
@@ -89,6 +89,8 @@ export interface PreviewLayer {
   imageStyle?: ImageStyle
   /** Extra pictures for the multi-image presets (collage), customer-picked from the library (≤ 4 with the main one). */
   imageUrls?: string[]
+  /** The customer's explicit role for this picture (food, real estate, portrait…); wins over the discovery category. */
+  imageRole?: ImageRole
   /**
    * Who decided the layer's current position: `manual` = the customer (drag,
    * resize or a position preset) — the placement engine never moves it on its

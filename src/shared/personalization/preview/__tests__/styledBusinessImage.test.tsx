@@ -21,7 +21,7 @@ const q = (el: HTMLElement, s: string) => el.querySelector(s) as HTMLElement | n
 
 describe('StyledBusinessImage', () => {
   it('clips on the INNER element and puts the shadow on the OUTER wrapper so it is not clipped', () => {
-    const el = mount({ ...ROUNDED_RECT_DEFAULT, borderWidth: 0.005 })
+    const el = mount({ ...ROUNDED_RECT_DEFAULT, radiusComp: undefined, borderWidth: 0.005 })
     const outer = q(el, '[data-styled-image="outer"]')!
     const clip = q(el, '[data-styled-image="clip"]')!
     expect(outer.style.boxShadow).toMatch(/rgba\(0,\s*0,\s*0,\s*0\.28\)/)
@@ -90,7 +90,7 @@ describe('StyledBusinessImage', () => {
   })
 })
 
-import { ImageCollage, SplitPanel } from '../StyledBusinessImage'
+import { ImageCollage, SplitPanel, splitPanelPolygon } from '../StyledBusinessImage'
 import { presetStyle } from '../imagePresets'
 
 describe('preset rendering', () => {
@@ -106,7 +106,9 @@ describe('preset rendering', () => {
     const el = mount(presetStyle('polaroid'), { aspect: 1 })
     const outer = q(el, '[data-styled-image="outer"]')!
     const clip = q(el, '[data-styled-image="clip"]')!
-    expect(outer.style.transform).toContain('rotate(-3deg)')
+    expect(outer.style.transform).toContain('rotate(-5deg)')
+    expect(el.querySelector('[data-styled-image="heart"]')).not.toBeNull()
+    expect(el.querySelectorAll('[data-styled-image="sparkle"]').length).toBeGreaterThanOrEqual(2)
     expect(clip.style.background).toMatch(/#ffffff|rgb\(255, 255, 255\)/)
     const [top, , bottom] = clip.style.padding.split(' ').map(parseFloat)
     expect(bottom).toBeGreaterThan(top * 2.5)
@@ -120,14 +122,38 @@ describe('preset rendering', () => {
     expect(clip.style.border).toBe('')
     expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toBe('')
   })
-  it('Cinematic Reveal: clip-path wipe and fade follow the progress prop', () => {
+  it('Cinematic Reveal: a diagonal polygon wipe with a light streak follows the progress prop', () => {
     const style = presetStyle('cinematic-reveal')
     const half = mount(style, { aspect: 1.5, revealProgress: 0.4, revealScale: 1.03 })
-    expect(q(half, '[data-styled-image="clip"]')!.style.clipPath).toBe('inset(0 60% 0 0)')
-    expect(q(half, '[data-styled-image="outer"]')!.style.opacity).toBe('0.4')
+    const cp = q(half, '[data-styled-image="clip"]')!.style.clipPath
+    expect(cp).toMatch(/^polygon\(0% 0%, 48\.80% 0%, 26\.80% 100%, 0% 100%\)$/) // slanted: top edge ahead of the bottom edge
+    expect(q(half, '[data-styled-image="streak"]')).not.toBeNull()
     expect(q(half, '[data-styled-image="outer"]')!.style.transform).toContain('scale(1.03)')
     const done = mount(style, { aspect: 1.5, revealProgress: 1 })
-    expect(q(done, '[data-styled-image="clip"]')!.style.clipPath).toBe('inset(0 0% 0 0)')
+    expect(q(done, '[data-styled-image="clip"]')!.style.clipPath).toBe('')
+    expect(q(done, '[data-styled-image="streak"]')).toBeNull()
+  })
+  it('corner radius is ~28 px at 1080p whatever the picture size, scaled by the stage factor', () => {
+    const r = (factor: number, short: number) => {
+      const el = mount({ ...ROUNDED_RECT_DEFAULT }, { compShort: short, factor } as never)
+      return parseFloat(q(el, '[data-styled-image="clip"]')!.style.borderRadius)
+    }
+    expect(r(1, 1080)).toBeCloseTo(30.24, 1)
+    expect(r(0.5, 1080)).toBeCloseTo(15.12, 1)
+    expect(r(1, 1080)).toBeGreaterThanOrEqual(24)
+    expect(r(1, 1080)).toBeLessThanOrEqual(32)
+  })
+  it('Product Spotlight: warm glow edge and an optional promo badge', () => {
+    const style = { ...presetStyle('product-spotlight'), badge: '20% OFF' }
+    const el = mount(style, { aspect: 1 })
+    expect(q(el, '[data-styled-image="outer"]')!.style.boxShadow).toContain('rgba(255,180,87')
+    expect(q(el, '[data-styled-image="badge"]')!.textContent).toBe('20% OFF')
+    expect(q(mount(presetStyle('product-spotlight'), { aspect: 1 }), '[data-styled-image="badge"]')).toBeNull()
+  })
+  it('Soft Masked: an organic blob shape with a feathered mask and a glow that follows the silhouette', () => {
+    const el = mount(presetStyle('soft-masked'), { aspect: 1.5 })
+    expect(q(el, '[data-styled-image="clip"]')!.style.borderRadius).toContain('/')
+    expect(q(el, '[data-styled-image="outer"]')!.style.filter).toContain('drop-shadow')
   })
   it('Collage: one rounded tile per picture, never overlapping, each with its own shadow', () => {
     const el = document.createElement('div'); document.body.appendChild(el)
@@ -150,9 +176,19 @@ describe('preset rendering', () => {
       const el = document.createElement('div'); document.body.appendChild(el)
       const root = createRoot(el); mounted.push({ root, el })
       act(() => { root.render(<SplitPanel src="x" side={side} imageStyle={presetStyle('split-screen')} compWidth={1920} compHeight={1080} />) })
-      const p = el.querySelector('[data-styled-image="split"]') as HTMLElement
-      expect([parseFloat(p.style.left), parseFloat(p.style.top), parseFloat(p.style.width), parseFloat(p.style.height)], side).toEqual([l, t, w, h])
-      expect((p.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover')
+      const panel = el.querySelector('[data-styled-image="split-panel"]') as HTMLElement
+      const { points, line } = splitPanelPolygon(side, 1920, 1080)
+      // The panel covers its own half (within the diagonal's lean) and nothing of the other side.
+      const xs = points.map((q2) => q2[0]); const ys = points.map((q2) => q2[1])
+      expect(Math.min(...xs)).toBeGreaterThanOrEqual(side === 'right' ? 960 - 1920 * 0.06 : 0)
+      expect(Math.max(...xs)).toBeLessThanOrEqual(side === 'left' ? 960 + 1920 * 0.06 : 1920)
+      expect(Math.min(...ys)).toBeGreaterThanOrEqual(side === 'bottom' ? 540 - 1080 * 0.06 : 0)
+      expect(panel.style.clipPath).toContain('polygon(')
+      expect(line[0][0] === line[1][0] && line[0][1] === line[1][1]).toBe(false) // a real line…
+      if (side === 'left' || side === 'right') expect(line[0][0]).not.toBe(line[1][0]) // …that is diagonal, not vertical
+      expect(el.querySelector('[data-styled-image="split-line"]')).not.toBeNull()
+      void l; void t; void w; void h
+      expect((panel.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover')
     }
   })
 })

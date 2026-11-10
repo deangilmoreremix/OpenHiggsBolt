@@ -566,7 +566,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             // and the layer's own style decide how it is presented.
             const hints = settings.imageHints?.[imageUrl]
             const resolved = resolveImageLook({
-              role, kind: layer.kind, layerStyle: layer.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio,
+              role, kind: layer.kind, layerStyle: layer.imageStyle, layerRole: layer.imageRole, hints, layout: settings.layout, aspect: settings.aspectRatio,
             })
             let style = resolved.style
             const urls = [imageUrl, ...(layer.imageUrls ?? [])].filter(Boolean)
@@ -588,7 +588,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
             const reveal = style ? revealFactors(style, frame, layer.startFrame + (layer.animationDelay || 0)) : { progress: 1, scale: 1 }
             // A reveal replaces the layer's own entrance animation.
-            const boxStyle = style?.reveal === 'wipe' ? { ...layerStyle, opacity: layer.opacity, transform: undefined } : layerStyle
+            const boxStyle = (style?.reveal === 'wipe' || style?.reveal === 'diagonal') ? { ...layerStyle, opacity: layer.opacity, transform: undefined } : layerStyle
             return (
               <AbsoluteFill key={layer.id} style={{ ...boxStyle, height: box.widthPx }}>
                 <div style={{ position: 'absolute', inset: 0, opacity: exit.opacity, transform: exit.scale !== 1 ? `scale(${exit.scale})` : undefined }}>
@@ -599,6 +599,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                       boxWidth={box.widthPx}
                       boxHeight={box.widthPx}
                       compHeight={compH}
+                      compShort={Math.min(compW, compH)}
                       brand={brandColors}
                       ImageComponent={Img as never}
                     />
@@ -609,6 +610,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                       boxWidth={box.widthPx}
                       boxHeight={box.widthPx}
                       compHeight={compH}
+                      compShort={Math.min(compW, compH)}
                       brand={brandColors}
                       aspect={hints?.aspect}
                       ImageComponent={Img as never}

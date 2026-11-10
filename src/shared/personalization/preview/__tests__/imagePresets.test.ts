@@ -41,7 +41,9 @@ describe('image roles come from explicit categories and assignments — not file
 describe('role + template → default preset', () => {
   it('chooses by role', () => {
     expect(defaultPresetFor('portrait')).toBe('circular-portrait')
-    expect(defaultPresetFor('property')).toBe('cinematic-reveal')
+    expect(defaultPresetFor('property')).toBe('rounded-floating-card') // wide rounded card per the role table
+    expect(defaultPresetFor('real-estate')).toBe('rounded-floating-card')
+    expect(defaultPresetFor('food')).toBe('rounded-floating-card')
     expect(defaultPresetFor('service')).toBe('rounded-floating-card')
     expect(defaultPresetFor('portfolio')).toBe('rounded-floating-card')
     expect(defaultPresetFor('general')).toBe('rounded-floating-card')
@@ -61,9 +63,9 @@ describe('role + template → default preset', () => {
 })
 
 describe('resolveImageLook', () => {
-  it('portrait role → circle; property → cinematic reveal; product in Product Showcase → spotlight', () => {
+  it('portrait role → circle; property → wide rounded card; product in Product Showcase → spotlight', () => {
     expect(look({ hints: { role: 'portrait' } }).style).toMatchObject({ presetId: 'circular-portrait', shape: 'circle', fit: 'cover' })
-    expect(look({ hints: { role: 'property', aspect: 1.6 } }).style).toMatchObject({ presetId: 'cinematic-reveal', reveal: 'wipe' })
+    expect(look({ hints: { role: 'property', aspect: 1.6 } }).style).toMatchObject({ presetId: 'rounded-floating-card', shape: 'rounded-rect', radiusComp: 0.028, borderWidth: 0.003, borderColor: '#ffffff' })
     expect(look({ layout: 'product-showcase', hints: { role: 'product', aspect: 1 } }).style).toMatchObject({ presetId: 'product-spotlight', spotlight: true, fit: 'contain' })
   })
   it('a photo that merely contains a person (not a portrait role) is not circular', () => {
@@ -109,8 +111,10 @@ describe('presets', () => {
     expect(presetStyle('rounded-floating-card').shadow).toBe('subtle')
     expect(presetStyle('circular-portrait').borderWidth).toBeGreaterThan(0)
     expect(presetStyle('product-spotlight')).toMatchObject({ spotlight: true, shadow: 'medium', fit: 'contain' })
-    expect(presetStyle('cinematic-reveal').reveal).toBe('wipe')
-    expect(presetStyle('polaroid')).toMatchObject({ frame: 'polaroid', tilt: -3 })
+    expect(presetStyle('cinematic-reveal').reveal).toBe('diagonal')
+    expect(presetStyle('polaroid')).toMatchObject({ frame: 'polaroid', tilt: -5, accent: 'heart' })
+    expect(presetStyle('soft-masked')).toMatchObject({ shape: 'blob', mask: 'soft', glow: '#ffc98a' })
+    expect(presetStyle('product-spotlight')).toMatchObject({ glow: '#ffb457', spotlight: true })
     expect(presetStyle('soft-masked')).toMatchObject({ mask: 'soft', shadow: 'none' })
     expect(IMAGE_PRESETS['split-screen'].placement.mayCoverSubject).toBe(true)
     expect(IMAGE_PRESETS['multi-image-collage'].placement.images).toEqual({ min: 2, max: 4 })
@@ -142,6 +146,12 @@ describe('collage and split geometry', () => {
     expect(four[1].x - (four[0].x + four[0].w)).toBeCloseTo(0.03, 9)
     expect(four[2].y - (four[0].y + four[0].h)).toBeCloseTo(0.03, 9)
   })
+  it('two pictures stack vertically as bordered tiles', () => {
+    const [a, b] = collageTiles(2)
+    expect(a).toMatchObject({ x: 0, w: 1 })
+    expect(b.y).toBeGreaterThan(a.y + a.h)
+    expect(presetStyle('multi-image-collage')).toMatchObject({ borderColor: '#ffffff' })
+  })
   it('clamps the tile count to 1–4', () => { expect(collageTiles(9)).toHaveLength(4); expect(collageTiles(0)).toHaveLength(1) })
   it('split screen takes the half that overlaps the subject least', () => {
     expect(splitSideFor([{ x: 0.05, y: 0.1, w: 0.3, h: 0.8 }], 1920, 1080)).toBe('right')
@@ -171,7 +181,7 @@ describe('persistence and back-compat', () => {
     const layer = { ...createLayer('productImage'), imageStyle: presetStyle('polaroid', '1:1', false), imageUrls: ['https://a/1.png', 'https://a/2.png', 'blob:dead', ''] }
     const out = normalizePreviewSettings({ ...base, layers: [layer] })
     const l = out.layers[0]
-    expect(l.imageStyle).toMatchObject({ presetId: 'polaroid', frame: 'polaroid', tilt: -3 })
+    expect(l.imageStyle).toMatchObject({ presetId: 'polaroid', frame: 'polaroid', tilt: -5 })
     expect(l.imageStyle!.auto).toBeUndefined() // a customer's choice stays theirs
     expect(l.imageUrls).toEqual(['https://a/1.png', 'https://a/2.png']) // dead blob and blanks dropped
     expect(normalizePreviewSettings(JSON.parse(JSON.stringify(out))).layers[0].imageStyle?.presetId).toBe('polaroid')

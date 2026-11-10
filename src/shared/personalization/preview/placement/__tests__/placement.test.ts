@@ -379,7 +379,7 @@ describe('image overlay presets in the quality check', () => {
   const P = 'https://cdn.example.com/p.png'
   const hints = { [P]: { aspect: 1.5 } }
   it('Split Screen without a marked subject is Review Required — never claimed safe', () => {
-    let s = { ...settingsFor('product-showcase'), imageHints: hints as never }
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     s = withStyle(s, 'productImage', presetStyle('split-screen', '16:9', false))
     const q = evaluateLayoutQuality(build(s, { zones: [], samples: [flat(0.05)] }))
     const issue = q.issues.find((i) => i.code === 'split-covers-footage')!
@@ -387,7 +387,7 @@ describe('image overlay presets in the quality check', () => {
     expect(q.blocksExport).toBe(false)
   })
   it('Split Screen over a verified subject asks for the other side; away from it, nothing is reported', () => {
-    let s = { ...settingsFor('product-showcase'), imageHints: hints as never }
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     const right = withStyle(s, 'productImage', { ...presetStyle('split-screen', '16:9', false), splitSide: 'right' })
     const subjectRight = zone(0.6, 0.1, 0.3, 0.8)
     expect(evaluateLayoutQuality(build(right, { zones: [subjectRight], samples: [flat(0.05)] })).issues.find((i) => i.code === 'split-covers-footage')?.severity).toBe('adjust')
@@ -395,7 +395,7 @@ describe('image overlay presets in the quality check', () => {
     expect(evaluateLayoutQuality(build(left, { zones: [subjectRight], samples: [flat(0.05)] })).issues.some((i) => i.code === 'split-covers-footage')).toBe(false)
   })
   it('a split panel is not auto-placed and may cover footage by design', () => {
-    let s = { ...settingsFor('product-showcase'), imageHints: hints as never }
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     s = withStyle(s, 'productImage', presetStyle('split-screen', '16:9', false))
     const input = build(s, { zones: [zone(0.1, 0.1, 0.3, 0.8)], samples: [flat(0.05)] })
     const layer = input.layers.find((l) => l.layer.id === 'productImage')!
@@ -403,7 +403,7 @@ describe('image overlay presets in the quality check', () => {
     expect(recommendPlacement(input).skipped.find((k) => k.layerId === 'productImage')?.reason).toBe('not-auto-placeable')
   })
   it('flags a crowded scene instead of stacking picture overlays', () => {
-    let s = { ...settingsFor('product-showcase'), imageHints: hints as never }
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     s = withStyle(s, 'productImage', { ...presetStyle('rounded-floating-card', '16:9', false) })
     s = { ...s, layers: s.layers.map((l) => (l.id === 'productImage' ? { ...l, scale: 0.8 } : l)) }
     const q = evaluateLayoutQuality(build(s, { zones: [zone(0.45, 0.0, 0.05, 0.05)], samples: [flat(0.05)] }))
@@ -412,7 +412,7 @@ describe('image overlay presets in the quality check', () => {
     expect(ok.issues.some((i) => i.code === 'overlay-crowded')).toBe(false)
   })
   it('a polaroid and a styled image count their frame/shadow footprint', () => {
-    let s = { ...settingsFor('product-showcase'), imageHints: hints as never }
+    let s: PersonalizationPreviewSettings = { ...settingsFor('product-showcase'), imageHints: hints as PersonalizationPreviewSettings["imageHints"] }
     s = withStyle(s, 'productImage', presetStyle('polaroid', '16:9', false))
     const l = build(s).layers.find((x) => x.layer.id === 'productImage')!
     expect(l.bleedPx).toBeGreaterThan(40)

@@ -23,7 +23,9 @@
 import type { OverlayMediaRole } from './mediaRoles'
 
 /** The explicit purpose of an assigned business image (never inferred from a filename or discovery order). */
-export type ImageRole = 'product' | 'service' | 'portrait' | 'property' | 'portfolio' | 'logo' | 'general'
+export type ImageRole = 'product' | 'service' | 'portrait' | 'property' | 'portfolio' | 'logo' | 'general' | 'food' | 'real-estate'
+
+export const IMAGE_ROLES = ['product', 'service', 'portrait', 'property', 'portfolio', 'logo', 'general', 'food', 'real-estate'] as const
 
 export type ImagePresetId =
   | 'rounded-floating-card'
@@ -35,7 +37,7 @@ export type ImagePresetId =
   | 'split-screen'
   | 'soft-masked'
 
-export type ImageShape = 'rounded-rect' | 'circle' | 'pill' | 'square' | 'custom'
+export type ImageShape = 'rounded-rect' | 'circle' | 'pill' | 'square' | 'custom' | 'blob'
 export type ImageShadow = 'none' | 'subtle' | 'medium'
 export type ImageFit = 'contain' | 'cover'
 
@@ -43,6 +45,17 @@ export interface ImageStyle {
   shape: ImageShape
   /** Corner radius as a fraction of the frame's SHORTER side (0..0.5). rounded-rect only. */
   radius: number
+  /**
+   * Corner radius as a fraction of the COMPOSITION'S shorter side (0.028 ≈ 30 px at 1080 p). When set it wins
+   * over `radius`, so card corners look the same size whatever the picture's size.
+   */
+  radiusComp?: number
+  /** A warm rim glow around the frame (hex colour). */
+  glow?: string
+  /** A promo callout pill on the frame's corner, e.g. "20% OFF". */
+  badge?: string
+  /** A hand-drawn accent on a Polaroid. */
+  accent?: 'none' | 'heart'
   /** Per-corner radii (tl, tr, br, bl) as fractions of the shorter side; `custom` only. */
   customRadii?: [number, number, number, number]
   fit: ImageFit
@@ -67,7 +80,7 @@ export interface ImageStyle {
   /** Feathered edges instead of a hard clip (Soft Masked Image). */
   mask?: 'none' | 'soft'
   /** Entrance: a wipe + slow scale instead of the layer's own animation (Cinematic Image Reveal). */
-  reveal?: 'none' | 'wipe'
+  reveal?: 'none' | 'wipe' | 'diagonal'
   /** Tilt in degrees (Polaroid). */
   tilt?: number
   /** Which half of the frame a split-screen panel takes. */
@@ -88,7 +101,7 @@ export const REVEAL_FRAMES = 24
  * `progress` 0 → hidden, 1 → fully shown.
  */
 export function revealFactors(style: Pick<ImageStyle, 'reveal'>, frame: number, startFrame: number): { progress: number; scale: number } {
-  if (style.reveal !== 'wipe') return { progress: 1, scale: 1 }
+  if (style.reveal !== 'wipe' && style.reveal !== 'diagonal') return { progress: 1, scale: 1 }
   const t = clamp((frame - startFrame) / REVEAL_FRAMES, 0, 1)
   const eased = 1 - Math.pow(1 - t, 3)
   return { progress: eased, scale: 1.06 - 0.06 * eased }
@@ -118,13 +131,13 @@ export interface ImageHints {
 }
 
 export const ROUNDED_RECT_DEFAULT: ImageStyle = Object.freeze({
-  shape: 'rounded-rect', radius: 0.12, fit: 'contain', cropX: 0.5, cropY: 0.5,
-  borderWidth: 0, borderColor: 'brand-primary', shadow: 'subtle', fill: null, auto: true,
+  shape: 'rounded-rect', radius: 0.12, radiusComp: 0.028, fit: 'contain', cropX: 0.5, cropY: 0.5,
+  borderWidth: 0.003, borderColor: '#ffffff', shadow: 'subtle', fill: null, auto: true,
 }) as ImageStyle
 
 export const HEADSHOT_DEFAULT: ImageStyle = Object.freeze({
   shape: 'circle', radius: 0.5, fit: 'cover', cropX: 0.5, cropY: 0.35,
-  borderWidth: 0.004, borderColor: 'brand-primary', shadow: 'subtle', fill: null, auto: true,
+  borderWidth: 0.004, borderColor: '#ffffff', shadow: 'subtle', fill: null, auto: true,
 }) as ImageStyle
 
 /** The unstyled look: original proportions, no clip, no frame, no shadow. */
@@ -150,6 +163,7 @@ export function normalizeImageStyle(raw: unknown, base: ImageStyle = ROUNDED_REC
   const style: ImageStyle = {
     shape: SHAPES.includes(r.shape as ImageShape) ? (r.shape as ImageShape) : base.shape,
     radius: clamp(num(r.radius, base.radius), 0, 0.5),
+    radiusComp: r.radiusComp === undefined ? undefined : clamp(num(r.radiusComp, base.radiusComp ?? 0), 0, 0.08),
     fit: r.fit === 'cover' ? 'cover' : r.fit === 'contain' ? 'contain' : base.fit,
     cropX: clamp(num(r.cropX, base.cropX), 0, 1),
     cropY: clamp(num(r.cropY, base.cropY), 0, 1),
@@ -158,6 +172,7 @@ export function normalizeImageStyle(raw: unknown, base: ImageStyle = ROUNDED_REC
     shadow: SHADOWS.includes(r.shadow as ImageShadow) ? (r.shadow as ImageShadow) : base.shadow,
     fill: typeof r.fill === 'string' && /^#[0-9a-f]{3,8}$/i.test(r.fill.trim()) ? r.fill.trim() : null,
   }
+  if (style.radiusComp === undefined) delete style.radiusComp
   if (Array.isArray(r.customRadii) && r.customRadii.length === 4) {
     style.customRadii = r.customRadii.map((v) => clamp(num(v, 0), 0, 0.5)) as [number, number, number, number]
   }
@@ -166,9 +181,12 @@ export function normalizeImageStyle(raw: unknown, base: ImageStyle = ROUNDED_REC
   if (r.spotlight === true) style.spotlight = true
   if (r.frame === 'polaroid') style.frame = 'polaroid'
   if (r.mask === 'soft') style.mask = 'soft'
-  if (r.reveal === 'wipe') style.reveal = 'wipe'
+  if (r.reveal === 'wipe' || r.reveal === 'diagonal') style.reveal = r.reveal
   if (typeof r.tilt === 'number' && Number.isFinite(r.tilt)) style.tilt = clamp(r.tilt, -15, 15)
   if (r.splitSide === 'left' || r.splitSide === 'right' || r.splitSide === 'top' || r.splitSide === 'bottom') style.splitSide = r.splitSide
+  if (typeof r.glow === 'string' && /^#[0-9a-f]{3,8}$/i.test(r.glow.trim())) style.glow = r.glow.trim()
+  if (typeof r.badge === 'string' && r.badge.trim()) style.badge = r.badge.trim().slice(0, 24)
+  if (r.accent === 'heart') style.accent = 'heart'
   if (r.splitSideAuto === true) style.splitSideAuto = true
   if (r.exit === 'fade' || r.exit === 'shrink' || r.exit === 'none') style.exit = r.exit
   if (r.auto === true) style.auto = true
@@ -254,17 +272,29 @@ export function frameRect(style: ImageStyle, boxW: number, boxH: number, aspect?
 }
 
 /** CSS border-radius for a frame; radii scale with the frame (itself scaled by the composition). */
-export function borderRadiusCss(style: ImageStyle, frame: Pick<FramePx, 'width' | 'height'>): string {
+export function borderRadiusCss(
+  style: ImageStyle,
+  frame: Pick<FramePx, 'width' | 'height'>,
+  /** The composition's SHORTER side in composition px, and the surface scale factor (for `radiusComp`). */
+  comp?: { short: number; factor?: number },
+): string {
   const short = Math.min(frame.width, frame.height)
   switch (style.shape) {
     case 'circle': return '50%'
     case 'pill': return `${short / 2}px`
     case 'square': return '0'
+    case 'blob': return '58% 42% 61% 39% / 47% 55% 45% 53%'
     case 'custom': {
       const r = style.customRadii ?? [style.radius, style.radius, style.radius, style.radius]
       return r.map((f) => `${Math.round(f * short * 100) / 100}px`).join(' ')
     }
-    default: return `${Math.round(clamp(style.radius, 0, 0.5) * short * 100) / 100}px`
+    default: {
+      if (style.radiusComp !== undefined && comp) {
+        const px = Math.min(style.radiusComp * comp.short * (comp.factor ?? 1), short / 2)
+        return `${Math.round(px * 100) / 100}px`
+      }
+      return `${Math.round(clamp(style.radius, 0, 0.5) * short * 100) / 100}px`
+    }
   }
 }
 
@@ -284,19 +314,30 @@ const SHADOWS_SPEC: Record<Exclude<ImageShadow, 'none'>, { y: number; blur: numb
   medium: { y: 0.012, blur: 0.036, alpha: 0.38 },
 }
 
-/** CSS box-shadow for the OUTER wrapper (never on the clipped element). */
+/** CSS box-shadow for the OUTER wrapper (never on the clipped element): the drop shadow plus an optional warm rim glow. */
 export function shadowCss(style: ImageStyle, compH: number, factor = 1): string | undefined {
-  if (style.shadow === 'none') return undefined
-  const s = SHADOWS_SPEC[style.shadow]
   const px = (f: number) => Math.round(f * compH * factor * 100) / 100
-  return `0 ${px(s.y)}px ${px(s.blur)}px rgba(0,0,0,${s.alpha})`
+  const parts: string[] = []
+  if (style.shadow !== 'none') {
+    const s = SHADOWS_SPEC[style.shadow]
+    parts.push(`0 ${px(s.y)}px ${px(s.blur)}px rgba(0,0,0,${s.alpha})`)
+  }
+  if (style.glow) parts.push(`0 0 ${px(0.03)}px ${px(0.004)}px ${hexToRgba(style.glow, 0.55)}`)
+  return parts.length ? parts.join(', ') : undefined
+}
+
+export function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.replace('#', '')
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  const n = parseInt(h.slice(0, 6), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
 }
 
 /** Extra space around the frame the shadow occupies, in px (for collision margins). */
 export function shadowBleedPx(style: ImageStyle, compH: number): number {
-  if (style.shadow === 'none') return 0
-  const s = SHADOWS_SPEC[style.shadow]
-  return Math.ceil((s.y + s.blur) * compH)
+  const drop = style.shadow === 'none' ? 0 : Math.ceil((SHADOWS_SPEC[style.shadow].y + SHADOWS_SPEC[style.shadow].blur) * compH)
+  const glow = style.glow ? Math.ceil(0.034 * compH) : 0
+  return Math.max(drop, glow)
 }
 
 /** CSS object-position from the crop focus. */

@@ -486,7 +486,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               // Image presentation: the SAME resolver as the composition, so the stage shows what the video shows.
               const imgHints = isImageLayerKind(layer.kind) ? inputProps.settings?.imageHints?.[imageUrl] : undefined
               let look = isImageLayerKind(layer.kind)
-                ? resolveImageLook({ role: roleForLayer(layer), kind: layer.kind, layerStyle: layer.imageStyle, hints: imgHints, layout: settings.layout, aspect: settings.aspectRatio })
+                ? resolveImageLook({ role: roleForLayer(layer), kind: layer.kind, layerStyle: layer.imageStyle, layerRole: layer.imageRole, hints: imgHints, layout: settings.layout, aspect: settings.aspectRatio })
                 : null
               const imgUrls = [imageUrl, ...(layer.imageUrls ?? [])].filter(Boolean)
               if (look?.style?.presetId === 'multi-image-collage' && imgUrls.length < 2) look = { ...look, style: presetStyle('rounded-floating-card', settings.aspectRatio) }
@@ -529,7 +529,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     look?.style ? (
                       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                         {look.style.presetId === 'multi-image-collage' ? (
-                          <ImageCollage urls={imgUrls.slice(0, 4)} imageStyle={look.style} boxWidth={box.width} boxHeight={box.width} compHeight={compH} factor={factor} brand={settings.brandColors} />
+                          <ImageCollage urls={imgUrls.slice(0, 4)} imageStyle={look.style} boxWidth={box.width} boxHeight={box.width} compHeight={compH} compShort={Math.min(compW, compH)} factor={factor} brand={settings.brandColors} />
                         ) : (
                           <StyledBusinessImage
                             src={imageUrl}
@@ -537,6 +537,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                             boxWidth={box.width}
                             boxHeight={box.width}
                             compHeight={compH}
+                            compShort={Math.min(compW, compH)}
                             factor={factor}
                             brand={settings.brandColors}
                             aspect={imgHints?.aspect}
@@ -806,7 +807,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               {isImageLayerKind(selected.kind) && (() => {
                 const url = (selected.imageUrl || (selected.kind === 'logo' ? brand.logoUrl : selected.kind === 'serviceImage' ? brand.serviceUrl ?? brand.productUrl : brand.productUrl ?? brand.serviceUrl)) ?? ''
                 const hints = inputProps.settings?.imageHints?.[url]
-                const resolved = resolveImageLook({ role: roleForLayer(selected), kind: selected.kind, layerStyle: selected.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio })
+                const resolved = resolveImageLook({ role: roleForLayer(selected), kind: selected.kind, layerStyle: selected.imageStyle, layerRole: selected.imageRole, hints, layout: settings.layout, aspect: settings.aspectRatio })
                 if (!resolved.style) return null
                 const current: ImageStyle = resolved.style
                 // An edit starts from the look being shown and makes it the customer's own.
@@ -815,7 +816,9 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 }
                 return (
                   <ImageStyleControls
-                    role={(hints?.role ?? imageRoleForLayerKind(selected.kind))}
+                    role={(selected.imageRole ?? hints?.role ?? imageRoleForLayerKind(selected.kind))}
+                    compShort={Math.min(compW, compH)}
+                    onRole={(r) => updatePreviewLayer(selected.id, { imageRole: r, imageStyle: undefined })}
                     onPreset={(id) => updatePreviewLayer(selected.id, { imageStyle: presetStyle(id, settings.aspectRatio, false) })}
                     libraryOptions={imageOptions(selected).filter((o) => o.value && o.value !== url).map((o) => ({ value: o.value, label: o.label }))}
                     extraUrls={selected.imageUrls ?? []}

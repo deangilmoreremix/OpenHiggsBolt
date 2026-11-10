@@ -42,7 +42,7 @@ export function buildPlacementInput(args: {
       // fills its whole box, a contained one hugs the picture; its shadow adds a bleed.
       const hints = settings.imageHints?.[imageUrl]
       const styled = layer.kind === 'logo' || layer.kind === 'productImage' || layer.kind === 'serviceImage'
-        ? resolveImageLook({ role, kind: layer.kind, layerStyle: layer.imageStyle, hints, layout: settings.layout, aspect: settings.aspectRatio }).style
+        ? resolveImageLook({ role, kind: layer.kind, layerStyle: layer.imageStyle, layerRole: layer.imageRole, hints, layout: settings.layout, aspect: settings.aspectRatio }).style
         : null
       // the shared hints are what the composition frames by, so they win
       // a split-screen panel covers half the frame by design: it is not an auto-placed overlay

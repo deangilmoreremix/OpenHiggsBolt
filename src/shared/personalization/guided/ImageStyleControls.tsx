@@ -11,6 +11,11 @@ const SHAPES: { id: ImageShape; label: string }[] = [
   { id: 'square', label: 'Original (square corners)' },
   { id: 'custom', label: 'Custom corners' },
 ]
+const ROLE_OPTIONS: { id: ImageRole; label: string }[] = [
+  { id: 'product', label: 'A product' }, { id: 'service', label: 'A service' }, { id: 'food', label: 'Food' },
+  { id: 'real-estate', label: 'Real estate' }, { id: 'property', label: 'A storefront / office' },
+  { id: 'portrait', label: 'A portrait / headshot' }, { id: 'portfolio', label: 'Completed work' }, { id: 'general', label: 'Something else' },
+]
 const SHADOWS: { id: ImageShadow; label: string }[] = [
   { id: 'none', label: 'None' },
   { id: 'subtle', label: 'Subtle' },
@@ -31,6 +36,8 @@ export function ImageStyleControls({
   onReset,
   role = 'general',
   onPreset,
+  compShort = 1080,
+  onRole,
   libraryOptions = [],
   extraUrls = [],
   onExtraUrls,
@@ -43,6 +50,10 @@ export function ImageStyleControls({
   /** The image's explicit role (product, service, portrait, property, portfolio, general). */
   role?: ImageRole
   onPreset?: (id: ImagePresetId) => void
+  /** Composition shorter side (px) so the corner radius shows in real pixels at 1080p scale. */
+  compShort?: number
+  /** Lets the customer state what the picture is (food, real estate…). */
+  onRole?: (role: ImageRole) => void
   /** Library pictures the customer can add to a collage. */
   libraryOptions?: { value: string; label: string }[]
   extraUrls?: string[]
@@ -56,6 +67,15 @@ export function ImageStyleControls({
         <span data-testid="image-style-mode" style={{ ...hintStyle, margin: 0 }}>{isAuto ? 'Automatic' : 'Your style'}</span>
       </div>
       {isAuto && <p style={{ ...hintStyle, margin: 0 }}>Chosen automatically: {reason}. Change anything below to take control.</p>}
+
+      {onRole && role !== 'logo' && (
+        <div style={row}>
+          <label style={labelStyle}>This picture is</label>
+          <select aria-label="Image role" value={role} onChange={(e) => onRole(e.target.value as ImageRole)} style={inputStyle}>
+            {ROLE_OPTIONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </div>
+      )}
 
       {onPreset && (
         <div data-testid="image-overlay-styles" style={{ display: 'grid', gap: 6 }}>
@@ -136,9 +156,14 @@ export function ImageStyleControls({
 
       {(style.shape === 'rounded-rect' || style.shape === 'custom') && (
         <div style={row}>
-          <label style={labelStyle}>Corner radius ({Math.round(style.radius * 100)}%)</label>
-          <input type="range" aria-label="Corner radius" min={0} max={0.5} step={0.01} value={style.radius}
-            onChange={(e) => onChange({ radius: Number(e.target.value) })} style={{ width: '100%', accentColor: C.cyan }} />
+          <label style={labelStyle}>Corner radius ({style.radiusComp !== undefined ? `${Math.round(style.radiusComp * 1080)} px at 1080p` : `${Math.round(style.radius * 100)}%`})</label>
+          {style.radiusComp !== undefined ? (
+            <input type="range" aria-label="Corner radius" min={0} max={80} step={1} value={Math.round(style.radiusComp * 1080)}
+              onChange={(e) => onChange({ radiusComp: Number(e.target.value) / 1080 })} style={{ width: '100%', accentColor: C.cyan }} />
+          ) : (
+            <input type="range" aria-label="Corner radius" min={0} max={0.5} step={0.01} value={style.radius}
+              onChange={(e) => onChange({ radius: Number(e.target.value) })} style={{ width: '100%', accentColor: C.cyan }} />
+          )}
         </div>
       )}
 
@@ -160,11 +185,23 @@ export function ImageStyleControls({
       </div>
 
       <div style={row}>
-        <label style={labelStyle}>Shadow</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" aria-label="Shadow" checked={style.shadow !== 'none'}
+            onChange={(e) => onChange({ shadow: e.target.checked ? (style.shadow === 'none' ? 'subtle' : style.shadow) : 'none' })} />
+          Shadow
+        </label>
         <select aria-label="Image shadow" value={style.shadow} onChange={(e) => onChange({ shadow: e.target.value as ImageShadow })} style={inputStyle}>
           {SHADOWS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
       </div>
+
+      {style.presetId === 'product-spotlight' && (
+        <div style={row}>
+          <label style={labelStyle}>Promo badge (optional)</label>
+          <input aria-label="Promo badge text" maxLength={24} placeholder="e.g. 20% OFF" value={style.badge ?? ''}
+            onChange={(e) => onChange({ badge: e.target.value.trim() ? e.target.value.slice(0, 24) : undefined })} style={inputStyle} />
+        </div>
+      )}
 
       <div style={row}>
         <label style={labelStyle}>Fit</label>

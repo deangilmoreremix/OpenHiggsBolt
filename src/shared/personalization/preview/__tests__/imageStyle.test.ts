@@ -122,9 +122,9 @@ describe('frameRect and crop', () => {
 
 describe('normalizeImageStyle', () => {
   it('clamps and repairs stored styles', () => {
-    const s = normalizeImageStyle({ shape: 'blob', radius: 9, fit: 'stretch', cropX: -3, cropY: 4, borderWidth: 1, borderColor: ' ', shadow: 'huge', fill: 'red' })!
+    const s = normalizeImageStyle({ shape: 'hexagon', radius: 9, fit: 'stretch', cropX: -3, cropY: 4, borderWidth: 1, borderColor: ' ', shadow: 'huge', fill: 'red' })!
     expect(s).toMatchObject({ shape: 'rounded-rect', radius: 0.5, fit: 'contain', cropX: 0, cropY: 1, borderWidth: 0.03, shadow: 'subtle', fill: null })
-    expect(s.borderColor).toBe('brand-primary')
+    expect(s.borderColor).toBe('#ffffff')
     expect(normalizeImageStyle(null)).toBeUndefined()
     expect(normalizeImageStyle('x')).toBeUndefined()
     expect(normalizeImageStyle({ shape: 'custom', customRadii: [0.1, 0.2, 9, 0] })!.customRadii).toEqual([0.1, 0.2, 0.5, 0])
