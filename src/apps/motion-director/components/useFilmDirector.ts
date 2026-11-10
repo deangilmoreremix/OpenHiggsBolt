@@ -42,6 +42,11 @@ import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
+import { completeStage, failStage, finalStatus, finalStatusLine, newRun, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
+import { materialOf } from '../lib/material';
+import { briefLines as briefLinesOf } from '../lib/productBrief';
+import { sceneRecords } from '../lib/recipeNeeds';
+import { browserPixels, recordScenes, validateShotScenes } from '../lib/sceneQa';
 
 /**
  * The film conversation: one chat turns a request into a finished film.
@@ -141,6 +146,16 @@ export function useFilmDirector(opts: {
   /** The seven workflow steps (Product → Deliver) with their live state. */
   const [steps, setSteps] = useState<FilmStep[]>(initialSteps);
   const mark = useCallback((id: FilmStepId, state: FilmStepState, detail?: string) => setSteps((prev) => markStep(prev, id, state, detail)), []);
+  /** The production run: the one record the step strip, the chat's status lines and the saved project read (lib/productionRun). */
+  const [run, setRun] = useState<ProductionRun | null>(null);
+  const runRef = useRef<ProductionRun | null>(null);
+  const upd = useCallback((fn: (r: ProductionRun) => ProductionRun) => {
+    if (!runRef.current) return;
+    runRef.current = fn(runRef.current);
+    setRun(runRef.current);
+  }, []);
+  /** A stage that was running when something threw did not finish: say so on the record. */
+  const failRunning = useCallback((why: string) => upd((r) => { const id = STAGE_ORDER.find((x) => r.stages[x].status === 'running'); return id ? failStage(r, id, why) : r; }), [upd]);
   const pending = useRef<{ req: FilmRequest; template: FilmTemplateChoice } | null>(null);
   const offerReq = useRef<FilmRequest | null>(null);
   const guided = useRef<GuidedState | null>(null);
@@ -217,6 +232,9 @@ export function useFilmDirector(opts: {
           ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`)
           : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
       setSteps(markStep(next, 'storyboard', 'active'));
+      const mode: CreationMode = template === 'inkpress' ? 'inkpress' : full.single ? 'single' : full.mapping?.length ? 'cocreate' : 'autonomous';
+      runRef.current = startStage(newRun(full.prompt, mode), 'brief');
+      setRun(runRef.current);
       if (!req.siteUrl && !media.some((m) => m.kind === 'image')) {
         say('assistant', 'No product URL or screenshots yet, so the product shots will use sample pages. Add your URL to the message (or attach screenshots) any time and I will re-capture.');
       }
@@ -231,10 +249,31 @@ export function useFilmDirector(opts: {
             capture: known ?? (reuseCapture ? storyboard?.capture ?? null : null),
             reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
             cancelled: () => !live(),
+            media,
+            // Stage 0 and 1 outputs are recorded the moment they exist, so later stages (and a reload) can use them.
+            onBrief: (b) => live() && upd((r) => startStage(completeStage(r, { stage: 'brief', productName: b.productName, kind: b.kind, features: b.features, objective: b.objective }, { kind: b.kind, features: b.features.length, missing: b.missing }), 'direction')),
+            onDirection: (d) => {
+              if (!live()) return;
+              upd((r) => startStage(completeStage(r, { stage: 'direction', chosen: d.chosen.name }, { source: d.source ?? 'director' }), 'mapping'));
+              // Stage 1: the styleframes are rendered NOW, before any shot is chosen, from the direction just chosen.
+              void renderStyleframes({ options: { directions: [d.chosen], recommended: 0 }, capture: known ?? null, product: d.chosen.name, opening: true }).then((frames) => {
+                if (live() && frames.length) setFrames(frames);
+              });
+            },
           },
           glog,
         );
         if (!live()) return;
+        upd((r) => {
+          let x = r;
+          const why = mode === 'inkpress' ? 'the Ink Press template fixes its look' : mode === 'cocreate' ? 'chosen with you' : 'a single shot';
+          if (['pending', 'running'].includes(x.stages.direction.status)) x = skipStage(x, 'direction', result.direction ? 'recorded with the storyboard' : why);
+          if (result.mapping?.length) x = completeStage(['pending', 'running'].includes(x.stages.mapping.status) ? startStage(x, 'mapping') : x, { stage: 'mapping', rows: result.mapping }, { rows: result.mapping.length });
+          else if (['pending', 'running'].includes(x.stages.mapping.status)) x = skipStage(x, 'mapping', mode === 'inkpress' ? 'the Ink Press scenes are the map' : mode === 'single' ? 'a single shot' : 'no map was requested');
+          // Failures the gate could not repair block the storyboard from being called clean; a pick of the person's own is reported, not blocking.
+          x = completeStage(startStage(x, 'storyboard'), { stage: 'storyboard', scenes: result.plan.scenes.length, failedChecks: (result.gate?.failed ?? []).filter((f) => !/your pick/.test(f)) }, { release: result.release?.filter((i) => !i.ok).length ?? 0 });
+          return completeStage(startStage(x, 'assets'), { stage: 'assets', scenes: sceneRecords(result.plan, materialOf(result.capture, media)) });
+        });
         result.videos = videos;
         result.media = media;
         setStoryboard(result);
@@ -290,6 +329,12 @@ export function useFilmDirector(opts: {
           result.mapping?.length ? `Feature → shot map:\n${mappingMessage(result.mapping).split('\n').slice(1).filter((l) => /^\d+\./.test(l)).join('\n')}` : '',
           result.release?.length ? releaseLine(result.release) : '',
         ].filter(Boolean);
+        const brief = result.brief;
+        if (brief) decided.unshift(`Product brief: ${briefLinesOf(brief).join(' · ')}`);
+        if (result.gate?.swaps.length) decided.push(`Storyboard gate swapped: ${result.gate.swaps.join('; ')}.`);
+        const gateFailed = result.gate?.failed ?? [];
+        const stage = runRef.current?.stages.assets;
+        if (stage?.status === 'needs-input' || gateFailed.length) decided.push(`Heads up: ${[...gateFailed, ...(stage?.status === 'needs-input' && stage.note ? [stage.note] : [])].join('; ')}. Those shots will play as the plain recipe unless you add what they need (a site URL, or images), and the film will say so.`);
         if (decided.length) say('assistant', decided.join('\n\n'));
         say(
           'assistant',
@@ -297,6 +342,7 @@ export function useFilmDirector(opts: {
         );
       } catch (error) {
         if (!live()) return;
+        failRunning(error instanceof Error ? error.message : 'failed');
         mark('storyboard', 'error', error instanceof Error ? error.message : 'failed');
         if (error instanceof StoryboardError) {
           // Nothing was substituted: the request goes back on the table with the existing choices, so retrying and
@@ -310,7 +356,7 @@ export function useFilmDirector(opts: {
         say('assistant', `I could not storyboard that: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     },
-    [log, mark, say, storyboard?.capture],
+    [log, mark, say, storyboard?.capture, upd, failRunning, setFrames],
   );
 
 
@@ -632,6 +678,9 @@ export function useFilmDirector(opts: {
     buildController.current = buildAbort;
     setStage('building');
     mark('animate', 'active', 'Building the Remotion project');
+    // A storyboard from an earlier session has no run in memory: start one so the build is recorded like any other.
+    if (!runRef.current) { runRef.current = newRun(pending.current?.req.prompt ?? storyboard.plan.title, 'autonomous'); setRun(runRef.current); }
+    upd((r) => startStage(r, 'build'));
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
@@ -654,6 +703,14 @@ export function useFilmDirector(opts: {
       })();
       mark('animate', made.total > 0 && made.personalized === 0 ? 'warning' : 'done', made.total ? made.line : `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
+      // Stage 5 closes only after each shot was looked at on its own: the person's content must change the shot's frames.
+      glog('Checking each shot on its own against the plain recipe', 'running');
+      const sceneChecks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 60_000, signal: buildAbort.signal }).catch(() => []);
+      if (!live()) return;
+      const material = materialOf(storyboard.capture, media, { brandLogo: Boolean(s.brandKit?.logo) });
+      const scenes = recordScenes(sceneRecords(storyboard.plan, material), project, sceneChecks);
+      upd((r) => completeStage(r, { stage: 'build', scenes }, { adapted: made.adapted, parameterized: made.parameterized, unmodified: made.unmodified }));
+      upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null }, { cues: cuts }), 'qa'));
       const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
       qa.framesChecked = frames.checked;
@@ -663,7 +720,8 @@ export function useFilmDirector(opts: {
       const planned = frames.total ?? frames.checked;
       const partial = planned > frames.checked + frames.failed.length;
       if (partial) qa.warnings.push(`Frame QA is incomplete: ${frames.checked + frames.failed.length} of ${planned} frames were checked.`);
-      const built = { project, qa };
+      upd((r) => completeStage(r, { stage: 'qa', issues: qa.issues, framesChecked: qa.framesChecked }, { warnings: qa.warnings.length }));
+      const built = { project: { ...project, run: runRef.current ?? undefined }, qa };
       setFilm(built);
       setStage('film');
       if (!frames.checked && !frames.failed.length) mark('qa', qa.ok ? 'done' : 'error', qa.ok ? 'Structure checked' : `${qa.issues.length} issue(s)`);
@@ -674,7 +732,7 @@ export function useFilmDirector(opts: {
       say(
         'assistant',
         [
-          `Your film is ready: ${Math.round(project.tracks.reduce((m, t) => t.clips.reduce((mm, c) => Math.max(mm, c.start + c.duration), m), 0) / project.fps)}s at ${project.width}×${project.height}, ${project.fps} fps, ${project.tracks.map((t) => t.name).join(' / ')} tracks.`,
+          `${runRef.current ? finalStatusLine(runRef.current) : 'Draft'}.\nThe draft: ${Math.round(project.tracks.reduce((m, t) => t.clips.reduce((mm, c) => Math.max(mm, c.start + c.duration), m), 0) / project.fps)}s at ${project.width}×${project.height}, ${project.fps} fps, ${project.tracks.map((t) => t.name).join(' / ')} tracks.`,
           made.total ? `${made.line}.` : '',
           ...made.details,
           adaptLine,
@@ -682,19 +740,26 @@ export function useFilmDirector(opts: {
           ...qa.warnings,
           ...(qa.review ? reviewSummary(qa.review) : []),
           ...(fixed.length ? ['Fixed before showing you:', ...fixed.map((f) => `- ${f}`)] : []),
+          runRef.current && runRef.current.stages.build.status !== 'completed' ? `Build check: ${runRef.current.stages.build.note ?? 'not clean'}.` : '',
           'Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.',
         ].filter(Boolean).join('\n'),
       );
       // Stage 7: the independent reviewer (a model that did not make the film) gets the spec, every shot's card,
       // its reference frames next to the film's, the seams and the two checklists; it arrives as a follow-up,
       // and a seam it fails goes back to a plain cut (stage 3).
+      upd((r) => startStage(r, 'review'));
       void runFinalReview(project, {
         frame: async (p, f, signal) => stillToJpeg((await (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.25)).blob, 480),
         reference: fetchReferenceFrames,
         request: (body) => requestFinalReview(body),
       })
         .then((report) => {
-          if (!live() || !report.items.length) return;
+          if (!live()) return;
+          // The reviewer answered: record what it found, with the shot and the second, and whether it passed.
+          const fails = report.items.filter((i) => !i.ok);
+          const record: ReviewRecord = { ran: true, state: fails.length ? 'failed' : 'passed', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
+          upd((r) => completeStage(r, { stage: 'review', review: record }, { fails: fails.length, checks: report.items.length }));
+          if (!report.items.length) { say('assistant', 'The independent review returned no checks, so it is recorded as not run.'); return; }
           const { project: repaired, fixed } = applyReviewFixes(project, report.items);
           // Only the film that was reviewed is repaired: if it was edited (here or in the workbench) while the
           // review ran, the fix is offered instead of replacing the edited film.
@@ -706,21 +771,24 @@ export function useFilmDirector(opts: {
             optsRef.current.onBuilt?.(next);
           }
           const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
-          say('assistant', [...finalReviewLines(report), ...notes].join('\n'));
+          say('assistant', [...finalReviewLines(report), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current)}.` : ''].filter(Boolean).join('\n'));
         })
         .catch((error) => {
           // No key or no answer: the program's checks above stand, but say the review did not happen.
           if (!live()) return;
           log(`Final review skipped: ${error instanceof Error ? error.message : 'no answer'}`, 'error');
+          upd((r) => completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [], note: error instanceof Error ? error.message.slice(0, 80) : 'no answer' } }));
+          say('assistant', `The independent review did not run (${error instanceof Error ? error.message : 'no answer'}), so this film is a draft that passed the technical checks, not a reviewed film. ${runRef.current ? finalStatusLine(runRef.current) : ''}`);
         });
     } catch (error) {
       if (!live()) return;
+      failRunning(error instanceof Error ? error.message : 'failed');
       setStage('plan');
       mark('animate', 'error', error instanceof Error ? error.message : 'failed');
       log(error instanceof Error ? error.message : 'Could not build the film', 'error');
       say('assistant', `Building the film failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
-  }, [log, mark, say, storyboard]);
+  }, [log, mark, say, storyboard, upd, failRunning]);
 
   /** An MP4 was rendered from the film: only now is it delivered. */
   const markDelivered = useCallback(() => mark('deliver', 'done', 'MP4 rendered'), [mark]);
@@ -774,7 +842,15 @@ export function useFilmDirector(opts: {
     setFrames([]);
   }, [setFrames]);
 
-  return { messages, stage, activity, steps, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
+  // The strip shows what the run recorded for the stages it covers (storyboard, build, sound, QA + review); capture and product keep their own detail.
+  const shownSteps = run
+    ? steps.map((st) => {
+        if (!['storyboard', 'animate', 'beat', 'qa'].includes(st.id)) return st;
+        const d = stepsOf(run).find((x) => x.id === st.id);
+        return d && d.state !== 'todo' ? { ...st, state: d.state, detail: d.detail ?? st.detail } : st;
+      })
+    : steps;
+  return { messages, stage, activity, steps: shownSteps, run, status: run ? finalStatus(run) : null, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

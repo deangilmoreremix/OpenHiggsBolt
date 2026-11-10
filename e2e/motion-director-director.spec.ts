@@ -248,7 +248,7 @@ test.describe('Motion Studio director', () => {
     await expect(film).toBeVisible({ timeout: 120_000 });
     await expect(film).toContainText('1920×1080 · 30 fps');
     await expect(film.locator('.__remotion-player')).toBeVisible();
-    await expect(chat).toContainText('Your film is ready');
+    await expect(chat).toContainText('The draft:');
     // The first six workflow steps ran. Deliver waits for an MP4: a built film is not a delivered one.
     const steps = page.getByTestId('film-steps');
     for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa']) {
