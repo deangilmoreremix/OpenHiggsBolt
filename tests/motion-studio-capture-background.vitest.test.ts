@@ -158,6 +158,19 @@ describe('GET /api/motion-studio/capture/status', () => {
     expect((await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).status).toBe(404)
     expect((await GET(req('GET', '/api/motion-studio/capture/status?jobId=../../etc'))).status).toBe(404)
   })
+
+  it('answers 503, not 404, when storage itself fails', async () => {
+    const real = storage.download
+    storage.download = async () => ({ data: null, error: { message: 'connection reset by peer' } })
+    try {
+      const { GET } = await import('@/app/api/motion-studio/capture/status/route')
+      const res = await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))
+      expect(res.status).toBe(503)
+      expect(await res.json()).toMatchObject({ code: 'STORAGE_UNAVAILABLE' })
+    } finally {
+      storage.download = real
+    }
+  })
 })
 
 describe('the background worker', () => {

@@ -139,7 +139,7 @@ export async function captureSite(
       if (++failures > 5) throw error;
     }
   }
-  throw new DirectorError('it took longer than 2½ minutes', 'TIMEOUT', 408);
+  throw new DirectorError(`it took longer than ${Math.round(maxWait / 60_000 * 2) / 2} minutes`, 'TIMEOUT', 408);
 }
 
 export async function requestPlan(body: {

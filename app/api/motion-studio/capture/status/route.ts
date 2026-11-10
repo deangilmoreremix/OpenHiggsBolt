@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CAPTURE_BUCKET, readCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
+import { CAPTURE_BUCKET, CaptureStorageError, readCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
 import { requireMotionStudioUser } from '../../lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -16,9 +16,16 @@ export async function GET(req: NextRequest) {
   const user = await requireMotionStudioUser(req)
   if (!user.ok) return user.response
   const jobId = req.nextUrl.searchParams.get('jobId') ?? ''
-  const { createServerClient } = await import('@/lib/supabase')
-  const storage = createServerClient().storage.from(CAPTURE_BUCKET) as unknown as CaptureStorage
-  const job = await readCaptureJob(storage, user.userId, jobId)
+  let job
+  try {
+    const { createServerClient } = await import('@/lib/supabase')
+    const storage = createServerClient().storage.from(CAPTURE_BUCKET) as unknown as CaptureStorage
+    job = await readCaptureJob(storage, user.userId, jobId)
+  } catch (error) {
+    // Storage being down is not "no such capture": the client keeps polling on a 503.
+    const message = error instanceof CaptureStorageError ? error.message : 'Capture storage is unavailable'
+    return NextResponse.json({ error: message, code: 'STORAGE_UNAVAILABLE' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  }
   if (!job) return NextResponse.json({ error: 'No such capture', code: 'NOT_FOUND' }, { status: 404, headers: { 'Cache-Control': 'no-store' } })
   return NextResponse.json(job, { headers: { 'Cache-Control': 'no-store' } })
 }
