@@ -72,7 +72,7 @@ export interface FilmMusic {
 const FPS = 30;
 /** Recipes that read the page's geometry (their layout comes from the capture, not the sample site). Grows as each is repaired and proven. */
 /** Recipes whose geometry was retargeted onto a customer's page, and the part of the layout each one reads. */
-export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.rows'>> = {
+export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.rows' | 'papers.cards5'>> = {
   SpotlightHeroCard: 'projects.cards',
   DeckDealFlyin: 'projects.cards',
   RowEmbed: 'detail.rows',
@@ -83,6 +83,7 @@ export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.ro
   FreezeAnnotateReal: 'projects.cards',
   WhipBrakeReal: 'projects.cards',
   OutroGroupPhotoLaunch: 'projects.cards',
+  ListStackPress: 'papers.cards5',
 };
 export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
 /** The layout is handed to a recipe only when the capture really contains what that recipe reads. */

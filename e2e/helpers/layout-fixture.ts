@@ -115,15 +115,22 @@ export function captureLayoutOf(f: FixtureLayout) {
 }
 
 /** The sample's five detail rows (live-layout.json `detail`), each its own colour: the twin for row shots. */
-export function sampleRowsTwin(): FixtureLayout {
+export function sampleRowsTwin(key: 'detail' | 'papers' = 'detail'): FixtureLayout {
   const j = JSON.parse(fs.readFileSync(path.resolve('src/apps/motion-director/demosrc/_textures/live-layout.json'), 'utf8'));
-  return { pageH: j.detail.pageH, bg: [234, 238, 242], cards: j.detail.rows.map((c: { x: number; y: number; w: number; h: number }, i: number) => ({ x: c.x, y: c.y, w: c.w, h: c.h, color: COLORS[i % COLORS.length] })) };
+  const rows = key === 'detail' ? j.detail.rows : j.papers.cards;
+  return { pageH: key === 'detail' ? j.detail.pageH : j.papers.pageH, bg: [234, 238, 242], cards: rows.map((c: { x: number; y: number; w: number; h: number }, i: number) => ({ x: c.x, y: c.y, w: c.w, h: c.h, color: COLORS[i % COLORS.length] })) };
 }
 
 /** A customer page unlike the sample's detail page: 5 wider, taller rows at another offset, a taller page. */
 export function customerRows(): FixtureLayout {
   const cards: FixtureCard[] = [0, 1, 2, 3, 4].map((i) => ({ x: 300, y: 520 + i * 140, w: 1320, h: 118, color: COLORS[i % COLORS.length] }));
   return { pageH: 1500, bg: [234, 238, 242], cards };
+}
+
+/** A customer's list page: five tall rows (the stack shot's cards) at another offset and width. */
+export function customerPapers(): FixtureLayout {
+  const cards: FixtureCard[] = [0, 1, 2, 3, 4].map((i) => ({ x: 300, y: 300 + i * 250, w: 1320, h: 230, color: COLORS[i % COLORS.length] }));
+  return { pageH: 1700, bg: [234, 238, 242], cards };
 }
 
 /** The layout a capture reports for a page whose blocks are rows: they come as sections. */

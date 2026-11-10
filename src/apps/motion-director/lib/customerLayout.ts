@@ -89,6 +89,7 @@ export function layoutFromCapture(capture: Pick<SiteCapture, 'pages' | 'page' | 
     layout.papers.pageH = Math.round(papersRoute.pageH);
     layout.papers.cards = paperRows as unknown as typeof layout.papers.cards;
     mapped.push('papers.pageH', 'papers.cards');
+    if (paperRows.length >= 5) mapped.push('papers.cards5'); // the stack shot needs five rows
   }
   const wbrRoute = routeAt(2);
   if (wbrRoute && wbrRoute.pageH > 0) {

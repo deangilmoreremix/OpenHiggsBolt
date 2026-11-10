@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { colorFootprint, diffShare, rawRgbFull, writeEvidence } from './helpers/film-evidence';
-import { customerFixture, customerRows, fixtureImages, sampleRowsTwin, sampleTwin, captureLayoutOf, captureRowsOf, COLORS } from './helpers/layout-fixture';
+import { customerFixture, customerPapers, customerRows, fixtureImages, sampleRowsTwin, sampleTwin, captureLayoutOf, captureRowsOf, COLORS } from './helpers/layout-fixture';
 import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 
 /**
@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; /** Measure the hero only inside this part of the frame [x0,y0,x1,y1] (fractions): the shot's composition is fixed, and the page behind it shows the same card blurred. */ roi?: [number, number, number, number]; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean | 'papers'; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; /** Measure the hero only inside this part of the frame [x0,y0,x1,y1] (fractions): the shot's composition is fixed, and the page behind it shows the same card blurred. */ roi?: [number, number, number, number]; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'ListStackPress', rows: 'papers', frames: { entry: 3, mid: 40, peak: 70, settled: 86 }, sampleMain: 2, customMain: 2, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.7 },
   { stem: 'OutroGroupPhotoLaunch', frames: { entry: 14, gather: 40, peak: 80, settled: 125 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.6, roi: [0, 0.08, 0.3, 0.55], idTolerance: { entry: 0.0005, gather: 0.003, peak: 0.003, settled: 0.003 } /* sub-pixel text differences in the paper elements between two renders of the same sample (max 0.2 % of pixels, text edges) */ },
   { stem: 'WhipBrakeReal', frames: { entry: 10, whip: 30, peak: 70, settled: 120 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.6 },
   { stem: 'FreezeAnnotateReal', frames: { entry: 20, freeze: 50, peak: 90, settled: 150 }, sampleMain: 8, customMain: 1, heroFrames: ['freeze', 'peak'], areaOnly: true, maxAreaRatio: 1.6 },
@@ -46,8 +47,8 @@ for (const cfg of RECIPES) {
     const idDiff = names.map((n, i) => ({ frame: n, diff: diffShare(rawRgbFull(baseline[i]), rawRgbFull(identity[i])) }));
 
     // 2./3. TARGET and NO DUPLICATE against the twin
-    const twinL = cfg.rows ? sampleRowsTwin() : sampleTwin();
-    const custL = cfg.rows ? customerRows() : customerFixture();
+    const twinL = cfg.rows ? sampleRowsTwin(cfg.rows === 'papers' ? 'papers' : 'detail') : sampleTwin();
+    const custL = cfg.rows ? (cfg.rows === 'papers' ? customerPapers() : customerRows()) : customerFixture();
     const layoutOf = cfg.rows ? captureRowsOf : captureLayoutOf;
     const twinImg = fixtureImages(twinL);
     const custImg = fixtureImages(custL);
