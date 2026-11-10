@@ -38,7 +38,7 @@ describe('recipe needs gate only on what a recipe reads', () => {
   it('maps recipes to the kind of material they read', () => {
     expect(needsOf('DeckDealFlyin').need).toBe('page');
     expect(needsOf('DocumentTypewriterReveal').need).toBe('document');
-    expect(needsOf('MultiplaneReal').need).toBe('page');
+    expect(needsOf('MultiplaneReal').need).toBe('images'); // a gallery: uploaded pictures are enough
     expect(needsOf('RadialWave').need).toBe('abstract');
   });
   it('uploaded photos satisfy an image shot with no website, but not a page-geometry shot', () => {

@@ -149,14 +149,14 @@ export const WhipBrakeReal: React.FC = () => {
           {RAIL.map((c, k) => (c ? (
             <div key={`${c.file}-${k}`} style={customer ? { ...cardStyle(k), height: heightOf(c), top: RAIL_Y + (CARD_H - heightOf(c)) / 2 } : { ...cardStyle(k), height: heightOf(c) }}>
               {/* The picture fills a box that carries the radius and shadow (the MP4 renderer draws a bare <img> with these styles as nothing). */}
-              <Img src={liveTexture(c.file)} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12 }} />
+              <Img src={liveTexture(c.file)} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover' }} />
             </div>
           ) : (
             <div key="target" style={{
               ...cardStyle(k), height: customer ? heightOf(hero) : CARD_H, top: (customer ? RAIL_Y + (CARD_H - heightOf(hero)) / 2 : RAIL_Y) - 12 * lift, transform: lift > 0 ? `scale(${targetScale.toFixed(4)})` : undefined,
               boxShadow: softShadow(mix(8, 44, lift), { color: L.shadow, strength: 1.3 }), zIndex: 2,
             }}>
-              <Img src={liveTexture(customer ? hero.file : 'card4-hires.png')} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12 }} />
+              <Img src={liveTexture(customer ? hero.file : 'card4-hires.png')} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover' }} />
             </div>
           )))}
           {/* 刻度尺：每卡一个大刻度 + 序号，中间 4 根细刻度 */}

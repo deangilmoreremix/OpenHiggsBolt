@@ -198,7 +198,7 @@ export const FreezeAnnotateReal: React.FC = () => {
         />
         <Img
           src={liveTexture(file)}
-          style={{ position: 'relative', width: '100%', height: '100%', display: 'block', borderRadius: 16 }}
+          style={{ position: 'relative', width: '100%', height: '100%', display: 'block', borderRadius: 16, objectFit: 'cover' }}
         />
         {isT && pin > 0.001 && (
           <div

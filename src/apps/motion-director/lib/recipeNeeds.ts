@@ -17,8 +17,15 @@ export type Need = SceneRecord['needs'];
 
 const READS = recipeReads as unknown as Record<string, { brand: boolean; textures: boolean; fixtures: boolean }>;
 
+/**
+ * Recipes that lay the person's pictures in a rail or gallery of their own (they do not need the captured page's geometry):
+ * uploaded images are enough, cropped to the card (objectFit: cover), and a captured page's cards are used when there is one.
+ */
+export const GALLERY_RECIPES: ReadonlySet<string> = new Set(['MultiplaneReal', 'WhipBrakeReal', 'FreezeAnnotateReal']);
+
 export function needsOf(stem: string): { need: Need; part?: string } {
   if (stem in GEOMETRY_UNMAPPED) return { need: 'document' };
+  if (GALLERY_RECIPES.has(stem)) return { need: 'images' };
   if (stem in LAYOUT_NEEDS) return { need: 'page', part: LAYOUT_NEEDS[stem] };
   if (isProductTextureShot(stem)) return { need: 'images' };
   const r = READS[stem] ?? { brand: false, textures: false, fixtures: false };

@@ -98,7 +98,7 @@ export const MultiplaneReal: React.FC = () => {
               transform: hero ? `translateY(${(-14 * lift).toFixed(2)}px) scale(${(1 + 0.035 * lift).toFixed(4)})` : undefined,
               boxShadow: `0 0 0 ${hero ? (2.5 * ring).toFixed(2) : 0}px ${alpha(L.accent, 0.9)}, ${softShadow(e, { color: L.shadow, strength: 1.2 })}`,
             }}>
-              <Img src={liveTexture(customer ? c.file : hero ? 'card4-hires.png' : c.file)} style={{ width: '100%', height: '100%' }} />
+              <Img src={liveTexture(customer ? c.file : hero ? 'card4-hires.png' : c.file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           );
         })}

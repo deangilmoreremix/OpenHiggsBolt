@@ -51,10 +51,12 @@ export function gateStoryboard(
     const sampleOnly = !personalised(t.componentName) && recipeContract(t.componentName).personalizable === 'sample-only';
     if (fit.ok && !sampleOnly) return s;
     const why = fit.ok ? 'it draws its own sample content and cannot show the business' : fit.why;
-    const alt = MOTION_TEMPLATES.filter((m, k, all) => all.findIndex((x) => x.componentName === m.componentName) === k)
-      .filter((m: MotionTemplate) => m.category === t.category && !used.has(m.id) && suitableFor(m.componentName, brief.kind, brief.material).ok && personalised(m.componentName))
-      .sort((a, b) => Math.abs(a.durationSec - s.durationSec) - Math.abs(b.durationSec - s.durationSec))
-      .find((m) => !filmRuleViolations(scenes.map((x, k) => (k === i ? { ...x, recipeId: m.id } : x)), keep, ctx.ground).some((v) => v.index === i));
+    const unique = MOTION_TEMPLATES.filter((m, k, all) => all.findIndex((x) => x.componentName === m.componentName) === k);
+    const ok = (m: MotionTemplate) => !used.has(m.id) && suitableFor(m.componentName, brief.kind, brief.material).ok && personalised(m.componentName)
+      && !filmRuleViolations(scenes.map((x, k) => (k === i ? { ...x, recipeId: m.id } : x)), keep, ctx.ground).some((v) => v.index === i);
+    const byLength = (a: MotionTemplate, b: MotionTemplate) => Math.abs(a.durationSec - s.durationSec) - Math.abs(b.durationSec - s.durationSec);
+    // The same family first; else any family that is not a seam, so a film is not left with a shot the material cannot support.
+    const alt = unique.filter((m) => m.category === t.category && ok(m)).sort(byLength)[0] ?? unique.filter((m) => m.category !== 'transition' && ok(m)).sort(byLength)[0];
     if (!alt) {
       failed.push(`scene ${i + 1} (${t.nameEn}): ${why}, and no suitable shot of its kind was found`);
       return s;

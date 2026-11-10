@@ -770,17 +770,24 @@ export function useFilmDirector(opts: {
         .then((report) => {
           if (!live()) return;
           // The reviewer answered: record what it found, with the shot and the second, and whether it passed.
+          // A reviewer that returned no checks did not review anything: that is "did not run", never "passed".
+          if (!report.items.length) {
+            upd((r) => completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [], note: 'the reviewer returned no checks' } }));
+            say('assistant', `The independent review did not run (the reviewer returned no checks), so this film is a draft that passed the technical checks, not a reviewed film. ${runRef.current ? finalStatusLine(runRef.current) : ''}`);
+            return;
+          }
           const fails = report.items.filter((i) => !i.ok);
           const record: ReviewRecord = { ran: true, state: fails.length ? 'failed' : 'passed', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
           upd((r) => completeStage(r, { stage: 'review', review: record }, { fails: fails.length, checks: report.items.length }));
-          if (!report.items.length) { say('assistant', 'The independent review returned no checks, so it is recorded as not run.'); return; }
-          const { project: repaired, fixed } = applyReviewFixes(project, report.items);
+          const { project: repaired0, fixed } = applyReviewFixes(project, report.items);
+          const repaired = { ...repaired0, run: runRef.current ?? undefined };
           // Only the film that was reviewed is repaired: if it was edited (here or in the workbench) while the
           // review ran, the fix is offered instead of replacing the edited film.
           const reader = optsRef.current.currentProject;
           const unchanged = reviewStillApplies({ installed: lastFilm.current, reviewed: built, current: reader, project });
-          if (fixed.length && unchanged) {
-            const next = { ...built, project: repaired };
+          if (unchanged) {
+            // The film as it is, with the run as it now stands (the review's outcome is part of what is saved), and any seam repair.
+            const next = { ...built, project: fixed.length ? repaired : { ...built.project, run: runRef.current ?? undefined } };
             setFilm(next);
             optsRef.current.onBuilt?.(next);
           }
