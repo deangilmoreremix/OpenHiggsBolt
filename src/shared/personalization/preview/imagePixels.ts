@@ -33,16 +33,20 @@ export function analyzeImagePixels(data: ArrayLike<number>, width: number, heigh
   const corners = [cornerTransparent(0, 0), cornerTransparent(width - patch, 0), cornerTransparent(0, height - patch), cornerTransparent(width - patch, height - patch)]
   const transparentCorners = corners.filter(Boolean).length >= 3
 
-  // ring: outer band (2%) vs interior; a uniform, non-white, clearly different ring reads as a frame
+  // frame: a thin, uniform, non-white ring whose colour STOPS at the ring. The band just inside
+  // it is compared with the ring: a solid backdrop continues inward (ring ≈ inner band), a
+  // decorative frame does not (ring ≠ inner band). Plain white margins are never a frame.
   const band = Math.max(1, Math.round(Math.min(width, height) * 0.02))
+  const innerFrom = Math.max(band + 1, Math.round(Math.min(width, height) * 0.05))
+  const innerTo = Math.max(innerFrom + 1, Math.round(Math.min(width, height) * 0.09))
   const ring: number[] = []
   const inner: number[] = []
-  for (let y = 0; y < height; y += 2) for (let x = 0; x < width; x += 2) {
+  for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
     const o = at(x, y)
     if (data[o + 3] < 200) continue
-    const edge = x < band || y < band || x >= width - band || y >= height - band
-    const deep = x >= width * 0.15 && x < width * 0.85 && y >= height * 0.15 && y < height * 0.85
-    if (edge) ring.push(lumaAt(data, o)); else if (deep) inner.push(lumaAt(data, o))
+    const d = Math.min(x, y, width - 1 - x, height - 1 - y) // distance to the nearest edge
+    if (d < band) ring.push(lumaAt(data, o))
+    else if (d >= innerFrom && d < innerTo) inner.push(lumaAt(data, o))
   }
   let alreadyFramed = false
   if (ring.length > 20 && inner.length > 20) {
@@ -50,7 +54,6 @@ export function analyzeImagePixels(data: ArrayLike<number>, width: number, heigh
     const rm = mean(ring)
     const rstd = Math.sqrt(ring.reduce((s, v) => s + (v - rm) ** 2, 0) / ring.length)
     const im = mean(inner)
-    // plain white/near-white margins are common for product photos and are NOT a frame
     alreadyFramed = rstd < 6 && rm < 235 && Math.abs(rm - im) > 40
   }
   return { transparentCorners, alreadyFramed, hasTransparency: transparentFraction > 0.02, transparentFraction }

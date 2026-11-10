@@ -158,6 +158,10 @@ describe('analyzeImagePixels', () => {
     const framed = image(W, W, (x, y) => (x < 4 || y < 4 || x >= W - 4 || y >= W - 4 ? [20, 40, 120, 255] : [230, 200, 60 + ((x + y) % 40), 255]))
     expect(analyzeImagePixels(framed, W, W).alreadyFramed).toBe(true)
   })
+  it('a solid coloured backdrop with a bright subject is NOT a frame (the colour continues inward)', () => {
+    const backdrop = image(W, W, (x, y) => (Math.hypot(x - 50, y - 50) < 35 ? [255, 212, 0, 255] : [163, 59, 107, 255]))
+    expect(analyzeImagePixels(backdrop, W, W).alreadyFramed).toBe(false)
+  })
   it('a plain white margin is NOT mistaken for a frame', () => {
     const margin = image(W, W, (x, y) => (x < 4 || y < 4 || x >= W - 4 || y >= W - 4 ? [255, 255, 255, 255] : [30 + ((x * 5) % 90), 40, 50 + ((y * 3) % 90), 255]))
     expect(analyzeImagePixels(margin, W, W).alreadyFramed).toBe(false)
