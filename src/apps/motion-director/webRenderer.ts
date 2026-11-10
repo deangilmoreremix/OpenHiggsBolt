@@ -406,3 +406,30 @@ export const renderStillOnWebExport = async (
 export const createDownloadUrl = (blob: Blob): string => {
   return URL.createObjectURL(blob);
 };
+
+/**
+ * Test hook for e2e/motion-director-parity.spec.ts: `window.__motionParity` seeks the preview player and renders a
+ * frame the way the MP4 export draws it. Registered only outside production (same rule as the `__e2e_auth_bypass`
+ * cookie) and removed again when the film changes. Returns the cleanup function.
+ */
+export const registerParityHook = (project: ProjectData, seek: (frame: number) => void): (() => void) => {
+  if (process.env.NODE_ENV === 'production' || typeof window === 'undefined') return () => {};
+  const hook = {
+    project: { width: project.width, height: project.height, fps: project.fps, endFrame: projectEndFrame(project) },
+    seek,
+    /** The export's frame as a PNG data URL. */
+    exportStill: async (frame: number): Promise<string> => {
+      const { blob } = await renderStillOnWebExport(project, frame, undefined, 1, true);
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    },
+  };
+  (window as unknown as { __motionParity?: typeof hook }).__motionParity = hook;
+  return () => {
+    if ((window as unknown as { __motionParity?: unknown }).__motionParity === hook) delete (window as unknown as { __motionParity?: unknown }).__motionParity;
+  };
+};

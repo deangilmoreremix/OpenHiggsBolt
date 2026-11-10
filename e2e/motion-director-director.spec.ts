@@ -123,7 +123,8 @@ async function mockDirector(page: Page) {
           scenes: [
             { kind: 'title', recipeId: '', durationSec: 2.5, headline: 'Meet *Acme*', caption: 'The new way to ship', transition: 'cut' },
             { kind: 'shot', recipeId: 'camera/crash-zoom-punch/CrashImpactReal', durationSec: 4.5, headline: 'Your real product', caption: 'LIVE PAGES', transition: 'flash', feature: 'Plan in minutes', action: 'cards deal in', asset: 'hero section of your page', sfx: 'impact on the flash' },
-            { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 5, headline: 'Every release counts', caption: '', transition: 'cut' },
+            // The scene carries the mapped feature, so the release check (lib/releaseCheck.ts) finds it covered and swaps nothing.
+            { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 5, headline: 'Every release counts', caption: '', transition: 'cut', feature: 'Release with confidence' },
             { kind: 'title', recipeId: '', durationSec: 3, headline: 'Try *Acme* today', caption: 'acme.example.com', transition: 'cut' },
           ],
         },
@@ -156,8 +157,8 @@ test.describe('Motion Studio director', () => {
     // Each storyboard row says what the scene shows and does.
     await expect(plan).toContainText('shows: hero section of your page');
     await expect(plan).toContainText('sound: impact on the flash');
-    await expect(page.getByText('Captured Acme · 2 pages (/, /pricing) · 1 card crops · logo · 1 site image')).toBeVisible();
-    await expect(page.getByText('Read the site: "Ship faster with Acme" · 2 sections')).toBeVisible();
+    // What was captured is shown in the Capture step; the site's own words reach the director (checked below via planCapture).
+    await expect(page.getByTestId('film-steps').locator('[data-step="capture"]')).toContainText('2 pages (/, /pricing) · 1 card crops · logo · 1 site image');
     // The director is given the site's own words and every captured route.
     expect(calls.planCapture).toMatchObject({ pages: ['/', '/pricing'], content: { headline: 'Ship faster with Acme', ctas: ['Start free'] } });
     // The assets pulled from the site are shown in the chat.
@@ -177,13 +178,30 @@ test.describe('Motion Studio director', () => {
     const titles = all.filter((c: any) => c.cardId === 'inkpress-title-card');
     expect(titles.length).toBeGreaterThan(0);
     for (const t of titles) expect(t.props.logo).toBe(CAPTURE_LOGO);
-    expect(all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops[0]).toBe(CAPTURE_IMAGE);
+    // Each scene takes its own pictures from the catalogue (lib/assignPictures), so the card slots hold the
+    // site's own pictures (its card crop and image), not the sample ones.
+    const cardSlots: string[] = all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops ?? [];
+    expect(cardSlots.length).toBeGreaterThan(0);
+    for (const url of cardSlots) expect([CAPTURE_CROP, CAPTURE_IMAGE]).toContain(url);
     // Every captured route is a screen of the product shots, the page asked for first.
     expect(all.find((c: any) => Array.isArray(c.props?.screens))?.props.screens.slice(0, 2)).toEqual([CAPTURE_PAGE, CAPTURE_PRICING]);
-    // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
-    // + 1 flash cut + 3 sound effects (one per scene change) + background
-    // + 1 site inset (the Hit Counter shot draws its own UI, so it gets a picture of the site)
-    await expect(page.locator('.clip')).toHaveCount(12, { timeout: 30_000 });
+    // The film's clips, by kind: the opener title card, the two shots, the closing title turned into the
+    // site's logo reveal, 2 caption strips (one per shot), 1 connected seam (the flash), the site inset (the Hit
+    // Counter shot draws its own UI), the background, and 8 audio clips: 3 scene-change sounds, the title's
+    // stamp, the logo reveal's impact + riser + sparkle, and the library music track a film gets when none is attached.
+    const byCard = (await savedClips()).reduce((m: Record<string, number>, c: any) => ({ ...m, [c.cardId]: (m[c.cardId] ?? 0) + 1 }), {});
+    expect(byCard).toEqual({
+      'inkpress-title-card': 1,
+      'demo:CrashImpactReal': 1,
+      'demo:HitCounter': 1,
+      'brand-logo-reveal': 1,
+      'inkpress-caption': 2,
+      'connected-seam': 1,
+      'site-inset': 1,
+      'bg-paper': 1,
+      'audio-clip': 8,
+    });
+    await expect(page.locator('.clip')).toHaveCount(17, { timeout: 30_000 });
 
     // The product shot renders the captured page, not the sample texture.
     // Seek into the product shot (2.5s–7s) by clicking the ruler above it.

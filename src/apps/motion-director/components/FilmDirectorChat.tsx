@@ -2,7 +2,7 @@
 
 import { audioReport, measureRenderedAudio } from '../lib/renderedAudio';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Player } from '@remotion/player';
+import { Player, type PlayerRef } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { sceneDetail } from '../lib/coCreate';
@@ -11,7 +11,7 @@ import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
 import { isMusicTrack, projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
-import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, supportsHtmlInCanvas } from '../webRenderer';
+import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, registerParityHook, supportsHtmlInCanvas } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
@@ -64,7 +64,10 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
   const [fasterExportHint] = useState(() => isChromiumBrowser() && !supportsHtmlInCanvas());
   const abort = useRef<AbortController | null>(null);
+  const playerRef = useRef<PlayerRef>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
+  // Dev / e2e only: lets the preview-vs-export parity spec seek this player and render the same frame as the export does.
+  useEffect(() => registerParityHook(project, (frame) => playerRef.current?.seekTo(frame)), [project]);
   useEffect(() => () => {
     abort.current?.abort();
   }, []);
@@ -118,6 +121,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
       </div>
       <div className="overflow-hidden rounded-xl" style={{ aspectRatio: `${project.width} / ${project.height}`, maxHeight: 420, background: '#000' }}>
         <Player
+          ref={playerRef}
           component={MainComposition}
           inputProps={inputProps}
           durationInFrames={projectDuration(project)}
