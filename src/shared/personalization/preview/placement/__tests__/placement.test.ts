@@ -249,3 +249,24 @@ describe('source-aware review items', () => {
     expect(ok.status).toBe('ready')
   })
 })
+
+import { recommendRestoredPlacement } from '..'
+
+describe('restore recommended placement', () => {
+  it('returns hand-placed layers to the template position, adjusted only where the footage needs it, and never touches locked ones', () => {
+    let s = settingsFor('business-introduction')
+    s = move(s, 'businessName', { x: 0.9, y: 0.9, placementSource: 'manual' })
+    s = move(s, 'headline', { x: 0.5, y: 0.5, locked: true })
+    const input = build(s, { zones: [zone(0.8, 0.1, 0.15, 0.2)], samples: [flat(0.05)] })
+    const r = recommendRestoredPlacement(input)
+    const bn = r.proposals.find((p) => p.layerId === 'businessName')!
+    const intended = layoutDefaultGeometry('business-introduction', 'businessName', '16:9')
+    // back at the template position (not where the customer dragged it), nudged at most a
+    // little where the template position itself collides with the logo
+    expect(bn.x).toBeCloseTo(intended.x, 6)
+    expect(Math.abs(bn.y - intended.y)).toBeLessThan(0.06)
+    expect(bn.y).toBeLessThan(0.5)
+    expect(r.proposals.find((p) => p.layerId === 'headline')).toBeUndefined() // locked
+    expect(r.skipped.find((k) => k.layerId === 'headline')?.reason).toBe('locked')
+  })
+})

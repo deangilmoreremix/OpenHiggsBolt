@@ -61,6 +61,7 @@ import type {
   PreviewAspectRatio,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
+import type { ProtectedZone } from './preview/types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
 import {
   loadClients,
@@ -962,6 +963,16 @@ export type DemoPersonalizeContextValue = {
   setPreviewVideo: (video: PreviewVideoRef | null) => void
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  /** Locks/unlocks a layer: a locked layer is never moved by the editor, a reflow or the placement engine. */
+  setPreviewLayerLocked: (layerId: string, locked: boolean) => void
+  /** Regions of the footage the overlays must not cover (customer-marked subject areas). */
+  setPreviewProtectedZones: (zones: ProtectedZone[]) => void
+  /**
+   * Applies placement-engine results. Locked layers are skipped; the layers are
+   * marked `recommended` (not `manual`), so a later recommendation may move them again.
+   * With `overrideManual`, hand-placed layers are replaced too (Restore Recommended Placement).
+   */
+  applyPreviewPlacements: (items: { layerId: string; x: number; y: number; scale?: number }[], options?: { overrideManual?: boolean }) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
    resetPreviewLayout: () => void
@@ -5521,13 +5532,66 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
     markSessionStarted()
+    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
     setPreviewSettings((prev) => ({
       ...prev,
-      layers: prev.layers.map((layer) =>
-        layer.id === layerId ? clampPreviewLayer({ ...layer, ...patch }) : layer,
-      ),
+      layers: prev.layers.map((layer) => {
+        if (layer.id !== layerId) return layer
+        // A locked layer does not move or resize until it is unlocked.
+        if (layer.locked && touchesGeometry && patch.locked !== false) return layer
+        // A geometry edit through here is the customer's own: the placement
+        // engine must never move the layer on its own afterwards.
+        const source = touchesGeometry && patch.placementSource === undefined ? { placementSource: 'manual' as const } : {}
+        return clampPreviewLayer({ ...layer, ...patch, ...source })
+      }),
     }))
   }, [])
+
+  const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => ({
+      ...prev,
+      layers: prev.layers.map((layer) => {
+        if (layer.id !== layerId) return layer
+        const next = { ...layer }
+        if (locked) next.locked = true
+        else delete next.locked
+        return next
+      }),
+    }))
+  }, [])
+
+  const setPreviewProtectedZones = useCallback((zones: ProtectedZone[]) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => {
+      const next = { ...prev }
+      if (zones.length) next.protectedZones = zones
+      else delete next.protectedZones
+      return next
+    })
+  }, [])
+
+  const applyPreviewPlacements = useCallback(
+    (items: { layerId: string; x: number; y: number; scale?: number }[], options?: { overrideManual?: boolean }) => {
+      markSessionStarted()
+      setPreviewSettings((prev) => ({
+        ...prev,
+        layers: prev.layers.map((layer) => {
+          const item = items.find((i) => i.layerId === layer.id)
+          if (!item || layer.locked) return layer
+          if (layer.placementSource === 'manual' && !options?.overrideManual) return layer
+          return clampPreviewLayer({
+            ...layer,
+            x: item.x,
+            y: item.y,
+            scale: item.scale ?? layer.scale,
+            placementSource: 'recommended',
+          })
+        }),
+      }))
+    },
+    [],
+  )
 
   const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
     markSessionStarted()
@@ -6192,6 +6256,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo,
     setPreviewLayout,
     updatePreviewLayer,
+    setPreviewLayerLocked,
+    setPreviewProtectedZones,
+    applyPreviewPlacements,
     updatePreviewBrandColors,
     updatePreviewComposition,
     resetPreviewLayout,
