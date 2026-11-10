@@ -123,6 +123,26 @@ test.describe('film production workflow', () => {
     fs.writeFileSync('test-results/production/run-upload-film.json', JSON.stringify({ run: project.run, frame, photosSeen: seenPhotos }, null, 1));
   });
 
+  test('editing the finished film by scene: keep one, replace one, stronger ending; the rest is kept and the film is rebuilt', async ({ page }) => {
+    test.setTimeout(15 * 60_000);
+    await runUploadFilm(page, 'none');
+    const chat = page.getByTestId('film-chat');
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 10 * 60_000 });
+    await expect(chat).toContainText('The draft:', { timeout: 60_000 });
+    await page.getByPlaceholder('Describe your motion video...').fill('Keep the first scene, replace the second shot with a different camera movement, and make the ending more dramatic.');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(chat).toContainText('Rebuilt the film from the edited storyboard', { timeout: 5 * 60_000 });
+    await expect(chat).toContainText('Scene 2:');
+    await expect(chat).toContainText('Kept scene 1.');
+    await expect(chat).toContainText('Ending: flash cuts');
+    const p = await projectOf(page);
+    // The edit invalidated the earlier review; the sound cues were recomputed with the new cuts.
+    expect(p.run.stages.review.status).toBe('pending');
+    const sfx = (p.tracks as Array<{ clips: Array<{ cardId: string; props?: { file?: string } }> }>).flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(c.props?.file ?? ''));
+    expect(sfx.length).toBeGreaterThan(3);
+  });
+
   test('a reviewer that ran and passed makes the film ready; one that fails a shot blocks it', async ({ page }) => {
     test.setTimeout(15 * 60_000);
     await runUploadFilm(page, 'pass');
