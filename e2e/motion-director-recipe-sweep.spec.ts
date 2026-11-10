@@ -23,17 +23,26 @@ test('sweep every recipe with supplied pictures, brand and words', async ({ page
   await page.waitForFunction(() => Boolean((window as unknown as { __recipeSweep?: unknown }).__recipeSweep), null, { timeout: 60_000 });
   const stems: string[] = await page.evaluate(() => (window as unknown as { __recipeSweep: { stems: string[] } }).__recipeSweep.stems);
   const only = process.env.SWEEP_ONLY?.split(',');
-  const results: Record<string, { renderable: boolean; supplied: number; variance: number; lines: number; replaced: number; neutral: number; error?: string }> = {};
+  const results: Record<string, { renderable: boolean; supplied: number; variance: number; lines: number; replaced: number; neutral: number; textDiff: number; error?: string }> = {};
   for (const stem of stems.filter((s) => !only || only.includes(s))) {
-    const r = await page.evaluate(({ s }) => (window as unknown as { __recipeSweep: { render: (stem: string, f: number[]) => Promise<{ lines: number; replaced: number; neutral: number; frames: string[]; error?: string }> } }).__recipeSweep.render(s, [0.35, 0.8]), { s: stem });
+    const r = await page.evaluate(({ s }) => (window as unknown as { __recipeSweep: { render: (stem: string, f: number[]) => Promise<{ lines: number; replaced: number; neutral: number; frames: string[]; plain: string[]; error?: string }> } }).__recipeSweep.render(s, [0.1, 0.25, 0.4, 0.6, 0.85]), { s: stem });
     let supplied = 0;
     let v = 0;
+    let textDiff = 0;
     for (const f of r.frames) {
       const img = rawRgb(Buffer.from(f.replace(/^data:image\/png;base64,/, ''), 'base64'));
       supplied = Math.max(supplied, ...Object.values(SUPPLIED).map((rgb) => colorShare(img, rgb)));
       v = Math.max(v, variance(img));
     }
-    results[stem] = { renderable: !r.error && r.frames.length === 2 && v > 15, supplied: +supplied.toFixed(4), variance: +v.toFixed(1), lines: r.lines, replaced: r.replaced, neutral: r.neutral, ...(r.error ? { error: r.error.slice(0, 160) } : {}) };
+    // Share of pixels that changed when the person's words replaced the template's: the words are visible only if this is above zero.
+    r.frames.forEach((f, i) => {
+      const a = rawRgb(Buffer.from(f.replace(/^data:image\/png;base64,/, ''), 'base64'));
+      const b = rawRgb(Buffer.from(r.plain[i].replace(/^data:image\/png;base64,/, ''), 'base64'));
+      let diff = 0;
+      for (let k = 0; k < a.data.length; k += 3) if (Math.max(Math.abs(a.data[k] - b.data[k]), Math.abs(a.data[k + 1] - b.data[k + 1]), Math.abs(a.data[k + 2] - b.data[k + 2])) > 32) diff++;
+      textDiff = Math.max(textDiff, diff / (a.data.length / 3));
+    });
+    results[stem] = { renderable: !r.error && r.frames.length === 5 && v > 15, supplied: +supplied.toFixed(4), variance: +v.toFixed(1), lines: r.lines, replaced: r.replaced, neutral: r.neutral, textDiff: +textDiff.toFixed(5), ...(r.error ? { error: r.error.slice(0, 160) } : {}) };
   }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const previous = fs.existsSync(OUT) && only ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};

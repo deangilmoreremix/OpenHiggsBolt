@@ -1,1 +1,1352 @@
-{}
+{
+ "Basic3DScene": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1362.3,
+  "lines": 13,
+  "replaced": 9,
+  "neutral": 1,
+  "textDiff": 0.02868
+ },
+ "CrashImpactReal": {
+  "renderable": true,
+  "supplied": 0.9646,
+  "variance": 3284,
+  "lines": 10,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.02917
+ },
+ "CrashZoomReal": {
+  "renderable": true,
+  "supplied": 0.9781,
+  "variance": 1120,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "CursorFlyover": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2964.5,
+  "lines": 27,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00431
+ },
+ "MultiplaneReal": {
+  "renderable": true,
+  "supplied": 0.1657,
+  "variance": 3292.1,
+  "lines": 8,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.05052
+ },
+ "GrazeFaceTour": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 7644.3,
+  "lines": 52,
+  "replaced": 11,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "OverheadTabletopDrop": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 7249.7,
+  "lines": 39,
+  "replaced": 9,
+  "neutral": 1,
+  "textDiff": 0.03108
+ },
+ "TiltReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1502.7,
+  "lines": 16,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.03321
+ },
+ "DroneDiveLanding": {
+  "renderable": true,
+  "supplied": 0,
+  "variance": 1361.9,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "ExplodedView": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2445,
+  "lines": 23,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00384
+ },
+ "SteepTiltGlide": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 10092.8,
+  "lines": 25,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00132
+ },
+ "BulletTimeFreezeOrbit": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 792.7,
+  "lines": 9,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.00819
+ },
+ "PullBackIsolation": {
+  "renderable": true,
+  "supplied": 0.0611,
+  "variance": 2570.9,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00016
+ },
+ "Terminal3D": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 670.4,
+  "lines": 16,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "BeforeAfterSliderScrub": {
+  "renderable": true,
+  "supplied": 0.6936,
+  "variance": 585.1,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00056
+ },
+ "AxisRescaleShockV2": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2491.6,
+  "lines": 16,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.02641
+ },
+ "OscilloscopeStreamV2": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1212.8,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.00705
+ },
+ "UnitDotSwarmRegroupV2": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3049.1,
+  "lines": 9,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.02148
+ },
+ "NeedleSweepSelftest": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 718.6,
+  "lines": 7,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.00344
+ },
+ "TapeScrollFixedPointer": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2970.6,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.03439
+ },
+ "BrakeReticleLock": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2585.3,
+  "lines": 61,
+  "replaced": 12,
+  "neutral": 2,
+  "textDiff": 0.00191
+ },
+ "ChangelogScrollBrake": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2929.8,
+  "lines": 52,
+  "replaced": 11,
+  "neutral": 1,
+  "textDiff": 0
+ },
+ "TimelineTravel": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3008.7,
+  "lines": 23,
+  "replaced": 10,
+  "neutral": 1,
+  "textDiff": 0.00375
+ },
+ "AssembleThenTypeFlyin": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1694.7,
+  "lines": 20,
+  "replaced": 10,
+  "neutral": 1,
+  "textDiff": 0.03882
+ },
+ "AuroraBloomBgFlip": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2587.1,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.02115
+ },
+ "BrandFrameSnap": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 5981.1,
+  "lines": 34,
+  "replaced": 8,
+  "neutral": 1,
+  "textDiff": 0.00604
+ },
+ "ReticleLockOn": {
+  "renderable": true,
+  "supplied": 0.9972,
+  "variance": 139.4,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00549
+ },
+ "FlylineArc": {
+  "renderable": true,
+  "supplied": 0,
+  "variance": 84.4,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "GlowOrbAmbient": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1795.3,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.03557
+ },
+ "OrbFlylineRelay": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1198.8,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.01293
+ },
+ "AttentionBounce": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2434.7,
+  "lines": 7,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.01024
+ },
+ "AnimeImpact": {
+  "renderable": true,
+  "supplied": 0.5715,
+  "variance": 1228.8,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "HitCounter": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2645.5,
+  "lines": 14,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.03722
+ },
+ "SheenSweepRetry": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 6449,
+  "lines": 7,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.0445
+ },
+ "SpotlightSweepReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1298,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.04724
+ },
+ "RadialRipplePhoneChips": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3155.8,
+  "lines": 25,
+  "replaced": 10,
+  "neutral": 0,
+  "textDiff": 0.00382
+ },
+ "RisoMisregistrationHit": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3012.9,
+  "lines": 12,
+  "replaced": 9,
+  "neutral": 2,
+  "textDiff": 0.14
+ },
+ "ScanBracketSweep": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2800.7,
+  "lines": 23,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.0009
+ },
+ "ScanlineAnnotateFocus": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3322.8,
+  "lines": 20,
+  "replaced": 8,
+  "neutral": 2,
+  "textDiff": 0.03781
+ },
+ "ScanlineAssembleFlyin": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1592.9,
+  "lines": 26,
+  "replaced": 8,
+  "neutral": 1,
+  "textDiff": 0.01123
+ },
+ "ImpactBurstKit": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 6523.5,
+  "lines": 23,
+  "replaced": 9,
+  "neutral": 2,
+  "textDiff": 0.03273
+ },
+ "KanadaPerspectiveSnap": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2096.5,
+  "lines": 10,
+  "replaced": 9,
+  "neutral": 1,
+  "textDiff": 0.02451
+ },
+ "ScoreSlam": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1731.4,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 1,
+  "textDiff": 0.03352
+ },
+ "CornerSpotlightReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3432.6,
+  "lines": 6,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.03924
+ },
+ "GlowWakeSleepPanel": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 13457.9,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "SlideSpotlightPan": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 7919.3,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "AutolayoutGapDial": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1475.9,
+  "lines": 7,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.00658
+ },
+ "DiagramCascadeBuild": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 765.8,
+  "lines": 14,
+  "replaced": 6,
+  "neutral": 1,
+  "textDiff": 0.0066
+ },
+ "PanelToCanvasMaterialize": {
+  "renderable": true,
+  "supplied": 0.0178,
+  "variance": 1941.1,
+  "lines": 31,
+  "replaced": 10,
+  "neutral": 0,
+  "textDiff": 0.01248
+ },
+ "ChipGridSingleSelectBlackout": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3397,
+  "lines": 8,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.03583
+ },
+ "CursorCastEnsemble": {
+  "renderable": true,
+  "supplied": 0.0025,
+  "variance": 1469.9,
+  "lines": 25,
+  "replaced": 9,
+  "neutral": 1,
+  "textDiff": 0.05592
+ },
+ "GlassPillDictationTyping": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1902.4,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00901
+ },
+ "HashtagToPillMaterialize": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2761.6,
+  "lines": 8,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.06946
+ },
+ "PickerCarouselFeatureCycle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2522.5,
+  "lines": 7,
+  "replaced": 7,
+  "neutral": 1,
+  "textDiff": 0
+ },
+ "SegmentedThumbHero": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2896.4,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00783
+ },
+ "PaletteThemeRipple": {
+  "renderable": true,
+  "supplied": 0.0899,
+  "variance": 3944.5,
+  "lines": 30,
+  "replaced": 12,
+  "neutral": 1,
+  "textDiff": 0.00915
+ },
+ "ThemeSweepToggle": {
+  "renderable": true,
+  "supplied": 0.0368,
+  "variance": 3022.3,
+  "lines": 22,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00102
+ },
+ "TypeAndFilter": {
+  "renderable": true,
+  "supplied": 0.9754,
+  "variance": 1973.5,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "VoiceWaveformLive": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2555.6,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.02267
+ },
+ "CraneRiseReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2868.4,
+  "lines": 46,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00993
+ },
+ "DatavizLandscapeOpen": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 594.5,
+  "lines": 14,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.0029
+ },
+ "Fracture": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 503.9,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "IconFieldColorize": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3285.5,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.04104
+ },
+ "LetterspaceMaterialize": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1928.2,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "MagicianCardFlourish": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1325.7,
+  "lines": 9,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.03116
+ },
+ "OrbitRingTitleOpen": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3488.7,
+  "lines": 24,
+  "replaced": 11,
+  "neutral": 0,
+  "textDiff": 0.05849
+ },
+ "SpotlightHeroCard": {
+  "renderable": true,
+  "supplied": 0.0065,
+  "variance": 119.7,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 1,
+  "textDiff": 0
+ },
+ "StrokeSegmentBuild": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1490.5,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00602
+ },
+ "TextAsMask": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 9106,
+  "lines": 15,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00594
+ },
+ "GrainDissolve": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 969.8,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "LogoShrinkWordmarkLockup": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 555.7,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "NeonTripleMarquee": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1437.9,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.16328
+ },
+ "OutroGroupPhotoLaunch": {
+  "renderable": true,
+  "supplied": 0.5665,
+  "variance": 4648.3,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "UiStripAwayOutro": {
+  "renderable": true,
+  "supplied": 0.063,
+  "variance": 2960.9,
+  "lines": 29,
+  "replaced": 10,
+  "neutral": 0,
+  "textDiff": 0.00038
+ },
+ "IconFlipBloomLogo": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2710.9,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "InputMorphsIntoLogo": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2245.2,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "PaparazziFlash": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1374.4,
+  "lines": 10,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.03446
+ },
+ "BeatStepListThemeCycle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1263.2,
+  "lines": 8,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.01344
+ },
+ "ComicPanelSplit": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2184.7,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.04757
+ },
+ "QuadSplitParallelScenes": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 7668.1,
+  "lines": 23,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.0263
+ },
+ "JumpCutPunchIn": {
+  "renderable": false,
+  "supplied": 1,
+  "variance": 0.5,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "SakugaTimingShift": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3136.7,
+  "lines": 11,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.02009
+ },
+ "FreezeAnnotateReal": {
+  "renderable": true,
+  "supplied": 0.2493,
+  "variance": 3360.1,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.00411
+ },
+ "TrailerBumper": {
+  "renderable": true,
+  "supplied": 0,
+  "variance": 625.8,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.0025
+ },
+ "BottomPushStackWipe": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2341.5,
+  "lines": 29,
+  "replaced": 10,
+  "neutral": 1,
+  "textDiff": 0.04392
+ },
+ "CardFlipReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 10451.6,
+  "lines": 28,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00557
+ },
+ "CardFlockTumble": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 10123.1,
+  "lines": 38,
+  "replaced": 10,
+  "neutral": 0,
+  "textDiff": 0.00083
+ },
+ "CircleMatchIris": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2160.6,
+  "lines": 26,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00394
+ },
+ "GradientTransition": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1434.2,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.02344
+ },
+ "LineCarryTransition": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2764.1,
+  "lines": 13,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.00293
+ },
+ "MosaicReframe": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2575.3,
+  "lines": 8,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.01878
+ },
+ "BarnDoorSplit": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1817,
+  "lines": 11,
+  "replaced": 9,
+  "neutral": 2,
+  "textDiff": 0.07771
+ },
+ "InkBleedReveal": {
+  "renderable": true,
+  "supplied": 1,
+  "variance": 2856.6,
+  "lines": 5,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "PortalWipeV2": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3398.5,
+  "lines": 25,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.01493
+ },
+ "WhipBrakeReal": {
+  "renderable": true,
+  "supplied": 0,
+  "variance": 275.6,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00498
+ },
+ "GlitchDisplace": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2043.6,
+  "lines": 22,
+  "replaced": 10,
+  "neutral": 1,
+  "textDiff": 0.03314
+ },
+ "InvisibleCut": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2364.5,
+  "lines": 21,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00606
+ },
+ "LightLeakBurn": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2520.8,
+  "lines": 10,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.03826
+ },
+ "VersusSlam": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2621.9,
+  "lines": 13,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00384
+ },
+ "LetterformZoom": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3465.4,
+  "lines": 17,
+  "replaced": 9,
+  "neutral": 1,
+  "textDiff": 0.30743
+ },
+ "WhiteFlashLogoSimplifyCut": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2341.8,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "BlindsSlice": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 5206.6,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.00307
+ },
+ "BlurSlide": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2898.6,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.06351
+ },
+ "BraceExpand": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 668.5,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00469
+ },
+ "BrandInkOpen": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2715.8,
+  "lines": 1,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "CountdownArcScatter": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2614.9,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00167
+ },
+ "FlyingWords": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1330.8,
+  "lines": 22,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.00719
+ },
+ "GlitchCycle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1111.7,
+  "lines": 8,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.00405
+ },
+ "GradientWordSweep": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1393.3,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.05168
+ },
+ "LeadWordZoomAssemble": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3052.2,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00573
+ },
+ "MarkerUnderlineTitle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2951.7,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.02335
+ },
+ "OutlineWordFill": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1502.2,
+  "lines": 6,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.03363
+ },
+ "PaperTitleCard": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3451.1,
+  "lines": 6,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.05528
+ },
+ "PillChipSlotCycleHandled": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 4737.8,
+  "lines": 6,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00809
+ },
+ "PillSlotCycle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3755.8,
+  "lines": 8,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00988
+ },
+ "TextColumnConverge": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 673.8,
+  "lines": 11,
+  "replaced": 8,
+  "neutral": 1,
+  "textDiff": 0.0045
+ },
+ "TitleDemoteToLabel": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 6032.2,
+  "lines": 24,
+  "replaced": 11,
+  "neutral": 0,
+  "textDiff": 0.03283
+ },
+ "LetterformDriftAssembly": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3176.8,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "SplitTextStagger": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3031,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.03847
+ },
+ "TextOnPath": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2041.9,
+  "lines": 10,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.03113
+ },
+ "LetterDropPhysics": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3079.4,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00299
+ },
+ "FontWeightPump": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3284,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00005
+ },
+ "KaraokeFillSync": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 4056.6,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.07168
+ },
+ "TypewriterErrorRetype": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2679.9,
+  "lines": 3,
+  "replaced": 3,
+  "neutral": 0,
+  "textDiff": 0.00186
+ },
+ "VerticalWordRollBlurCycle": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 3475.1,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.02332
+ },
+ "WordRelayFilmstrip": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 9186.1,
+  "lines": 74,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0.00587
+ },
+ "WordRelayGeometry": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1062.6,
+  "lines": 6,
+  "replaced": 6,
+  "neutral": 0,
+  "textDiff": 0.0426
+ },
+ "AvatarBracketCarousel": {
+  "renderable": true,
+  "supplied": 0.0194,
+  "variance": 1083.5,
+  "lines": 5,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.00214
+ },
+ "BezierSourceConvergeMerge": {
+  "renderable": true,
+  "supplied": 0.011,
+  "variance": 929.5,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "CardStack": {
+  "renderable": true,
+  "supplied": 0.0602,
+  "variance": 2657.5,
+  "lines": 22,
+  "replaced": 11,
+  "neutral": 0,
+  "textDiff": 0.03168
+ },
+ "Carousel3D": {
+  "renderable": true,
+  "supplied": 0.0184,
+  "variance": 1029.2,
+  "lines": 20,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.00208
+ },
+ "ClonerDepthEcho": {
+  "renderable": true,
+  "supplied": 0.065,
+  "variance": 1576.7,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 0,
+  "textDiff": 0.03936
+ },
+ "DeckDealFlyin": {
+  "renderable": true,
+  "supplied": 0.108,
+  "variance": 3073.9,
+  "lines": 4,
+  "replaced": 4,
+  "neutral": 2,
+  "textDiff": 0.03024
+ },
+ "DocParkLeftPillDeal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2571,
+  "lines": 25,
+  "replaced": 11,
+  "neutral": 3,
+  "textDiff": 0.01385
+ },
+ "DocumentTypewriterReveal": {
+  "renderable": true,
+  "supplied": 0.6601,
+  "variance": 4625.1,
+  "lines": 20,
+  "replaced": 13,
+  "neutral": 6,
+  "textDiff": 0.00071
+ },
+ "DrawSvgTrace": {
+  "renderable": true,
+  "supplied": 0.0635,
+  "variance": 2256.3,
+  "lines": 5,
+  "replaced": 5,
+  "neutral": 0,
+  "textDiff": 0.0163
+ },
+ "ContactShadowLift": {
+  "renderable": true,
+  "supplied": 0.123,
+  "variance": 3001,
+  "lines": 8,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0.02997
+ },
+ "IntegrationHubMap": {
+  "renderable": true,
+  "supplied": 0.2869,
+  "variance": 3929.3,
+  "lines": 45,
+  "replaced": 11,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "ListReveal": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2806.8,
+  "lines": 9,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.04595
+ },
+ "ListStackPress": {
+  "renderable": true,
+  "supplied": 0.4834,
+  "variance": 3441.9,
+  "lines": 2,
+  "replaced": 2,
+  "neutral": 0,
+  "textDiff": 0.00113
+ },
+ "NeonFrameForerun": {
+  "renderable": true,
+  "supplied": 0.4367,
+  "variance": 1140,
+  "lines": 23,
+  "replaced": 8,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "NeonFrameForerunOrbit": {
+  "renderable": true,
+  "supplied": 0.4464,
+  "variance": 1141.6,
+  "lines": 52,
+  "replaced": 9,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "PageWaterfallWall": {
+  "renderable": true,
+  "supplied": 0.2489,
+  "variance": 2908.5,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "ProductCardProgressiveAssemble": {
+  "renderable": true,
+  "supplied": 0.1124,
+  "variance": 3774.9,
+  "lines": 20,
+  "replaced": 11,
+  "neutral": 4,
+  "textDiff": 0.04269
+ },
+ "RadialWave": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 1449.9,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "ResearchCardStackScroll": {
+  "renderable": true,
+  "supplied": 0.0695,
+  "variance": 11840.2,
+  "lines": 12,
+  "replaced": 7,
+  "neutral": 0,
+  "textDiff": 0.00937
+ },
+ "RowEmbed": {
+  "renderable": true,
+  "supplied": 0.9078,
+  "variance": 905.4,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "ValueStaggerGradient": {
+  "renderable": true,
+  "supplied": 0.1074,
+  "variance": 2250.7,
+  "lines": 1,
+  "replaced": 1,
+  "neutral": 0,
+  "textDiff": 0.00031
+ },
+ "BentoLightUp": {
+  "renderable": true,
+  "supplied": 0.1701,
+  "variance": 3952.6,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ },
+ "WireframeDrawOn": {
+  "renderable": true,
+  "supplied": 1,
+  "variance": 20.5,
+  "lines": 0,
+  "replaced": 0,
+  "neutral": 0,
+  "textDiff": 0
+ }
+}

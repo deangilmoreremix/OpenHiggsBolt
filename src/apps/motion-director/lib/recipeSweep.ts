@@ -54,23 +54,31 @@ export function registerSweepHook(): void {
   if (process.env.NODE_ENV === 'production' || typeof window === 'undefined') return;
   const hook = {
     stems: MOTION_TEMPLATES.map((t) => t.componentName).filter((s, i, all) => all.indexOf(s) === i),
-    async render(stem: string, fractions: number[]): Promise<{ lines: number; replaced: number; neutral: number; frames: string[]; error?: string }> {
-      try {
-        const { project, lines, replaced, neutral, durationFrames } = sweepProject(stem);
+    /** Frames of the recipe with the person's words, and (`plain`) with the template's own words, to see whether the words changed anything. */
+    async render(stem: string, fractions: number[]): Promise<{ lines: number; replaced: number; neutral: number; frames: string[]; plain: string[]; error?: string }> {
+      const still = async (project: ProjectData, f: number) => {
         const { renderStillOnWebExport } = await import('../webRenderer');
+        const { blob } = await renderStillOnWebExport(project, f, undefined, 0.35, true);
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+      };
+      try {
+        const mine = sweepProject(stem);
+        const plain = sweepProject(stem, { withWords: false });
+        const at = (n: number, f: number) => Math.min(n - 1, Math.round(n * f));
         const frames: string[] = [];
+        const plainFrames: string[] = [];
         for (const f of fractions) {
-          const { blob } = await renderStillOnWebExport(project, Math.min(durationFrames - 1, Math.round(durationFrames * f)), undefined, 0.35, true);
-          frames.push(await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(blob);
-          }));
+          frames.push(await still(mine.project, at(mine.durationFrames, f)));
+          plainFrames.push(await still(plain.project, at(plain.durationFrames, f)));
         }
-        return { lines, replaced, neutral, frames };
+        return { lines: mine.lines, replaced: mine.replaced, neutral: mine.neutral, frames, plain: plainFrames };
       } catch (error) {
-        return { lines: 0, replaced: 0, neutral: 0, frames: [], error: error instanceof Error ? error.message : String(error) };
+        return { lines: 0, replaced: 0, neutral: 0, frames: [], plain: [], error: error instanceof Error ? error.message : String(error) };
       }
     },
   };

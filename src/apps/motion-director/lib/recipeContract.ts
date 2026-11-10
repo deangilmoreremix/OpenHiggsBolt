@@ -23,6 +23,8 @@ export interface SweepResult {
   replaced: number;
   /** Lines replaced with only the product's name (a film with no site words). */
   neutral: number;
+  /** Share of pixels that changed when the person's words replaced the template's (0 when the words never showed). */
+  textDiff?: number;
   error?: string;
 }
 
@@ -46,6 +48,8 @@ export interface RecipeContract {
 export const PICTURE_SHARE = 0.02;
 /** A recipe's words count as the person's when at least this share of its lines was replaced. */
 export const WORDS_SHARE = 0.5;
+/** ...and the replacement must be visible: at least this share of a frame's pixels changed. */
+export const TEXT_VISIBLE = 0.0005;
 
 const RESULTS = sweep as unknown as Record<string, SweepResult>;
 
@@ -54,12 +58,13 @@ export function classify(stem: string, r: SweepResult | undefined): Pick<RecipeC
   if (!r.renderable) return { renderable: false, personalizable: 'untested', basis: `did not render${r.error ? `: ${r.error}` : ' (blank frames)'}`, noSiteWords: null };
   const reads = isProductTextureShot(stem);
   const pictures = reads && r.supplied >= PICTURE_SHARE;
-  const words = r.lines > 0 ? r.replaced / r.lines : 0;
+  const shown = r.textDiff === undefined || r.textDiff >= TEXT_VISIBLE;
+  const words = r.lines > 0 && shown ? r.replaced / r.lines : 0;
   const noSiteWords = r.lines > 0 ? +(r.neutral / r.lines).toFixed(2) : null;
   if (pictures) return { renderable: true, personalizable: 'tested', basis: `supplied pictures filled ${(r.supplied * 100).toFixed(0)}% of a frame`, noSiteWords };
   if (words >= WORDS_SHARE) return { renderable: true, personalizable: 'tested', basis: `${r.replaced} of ${r.lines} lines of text replaced with the site's words`, noSiteWords };
-  if (r.replaced > 0) return { renderable: true, personalizable: 'partly', basis: `only ${r.replaced} of ${r.lines} lines of text could be replaced${reads ? '; its pictures did not show the supplied ones' : ''}`, noSiteWords };
-  return { renderable: true, personalizable: 'sample-only', basis: reads ? 'it reads pictures but the supplied ones did not appear' : r.lines ? 'none of its text could be replaced' : 'it has no pictures or words of the person to draw', noSiteWords };
+  if (r.replaced > 0 && shown) return { renderable: true, personalizable: 'partly', basis: `only ${r.replaced} of ${r.lines} lines of text could be replaced${reads ? '; its pictures did not show the supplied ones' : ''}`, noSiteWords };
+  return { renderable: true, personalizable: 'sample-only', basis: r.replaced > 0 && !shown ? 'its words were replaced but the replacement did not show in the frames' : reads ? 'it reads pictures but the supplied ones did not appear' : r.lines ? 'none of its text could be replaced' : 'it has no pictures or words of the person to draw', noSiteWords };
 }
 
 export function recipeContract(stem: string): RecipeContract {
@@ -83,7 +88,7 @@ export function recipeContract(stem: string): RecipeContract {
 export function personalizableLabel(stem: string): string {
   const c = recipeContract(stem);
   switch (c.personalizable) {
-    case 'tested': return 'Personalizable (tested)';
+    case 'tested': return c.noSiteWords !== null && c.noSiteWords < WORDS_SHARE && !c.requiredAssets.includes('pictures') ? 'Personalizable with your site\'s words (tested)' : 'Personalizable (tested)';
     case 'partly': return 'Partly personalizable';
     case 'sample-only': return 'Draws its own sample content';
     default: return c.renderable === false ? 'Does not render' : 'Personalization not tested';

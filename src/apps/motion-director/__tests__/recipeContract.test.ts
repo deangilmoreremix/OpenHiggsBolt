@@ -27,6 +27,11 @@ describe('the recipe contract only calls a recipe personalizable when it was mea
     expect(classify('HitCounter', result({ lines: 14, replaced: 0 })).personalizable).toBe('sample-only');
   });
 
+  it('words that were replaced but never showed do not count', () => {
+    expect(classify('HitCounter', result({ lines: 14, replaced: 9, textDiff: 0 })).personalizable).toBe('sample-only');
+    expect(classify('HitCounter', result({ lines: 14, replaced: 9, textDiff: 0.02 })).personalizable).toBe('tested');
+  });
+
   it('records how much a film with no site words can replace', () => {
     expect(classify('HitCounter', result({ lines: 14, replaced: 9, neutral: 1 })).noSiteWords).toBeCloseTo(0.07, 2);
   });
