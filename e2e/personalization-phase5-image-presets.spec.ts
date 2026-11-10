@@ -84,11 +84,22 @@ async function seedBrand(page: Page) {
       g.fill()
       return c.toDataURL('image/png')
     }, [bg, fg, w, h, shape] as const);
-  const pictures = [
+  // REAL photographs (same-origin repo images used as stand-ins for a customer's own photos):
+  // product close-up, kitchen interior (real estate), selfie with food, portrait.
+  const photo = (file: string) => page.evaluate(async (u) => {
+    const blob = await (await fetch(u)).blob();
+    return await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(blob); });
+  }, `/media/promptfeed/previews/${file}`);
+  const pictures = process.env.PHASE5_REAL_PHOTOS === '0' ? [
     await makePic('#a33b6b', '#ffd400', 900, 600, 'circle'),
     await makePic('#1f5fae', '#ffffff', 800, 600, 'square'),
     await makePic('#1f8a70', '#ff8a00', 700, 700, 'triangle'),
     await makePic('#6a3fb5', '#ffe066', 900, 600, 'circle'),
+  ] : [
+    await photo(process.env.PHASE5_MAIN_PHOTO ?? '1521_luxury-diamond-ring-commercial-storyboard.jpg'),
+    await photo('1949_handheld-coffee-vlog-with-mini-dv-aesthetic.jpg'),
+    await photo('3310_handheld-selfie-vlog-eating-oden-in-hotel-room.jpg'),
+    await photo('2984_the-decadent-snap-artisanal-chocolate-bar-video-prompt.jpg'),
   ];
   const logoCard = page.locator('article.asset-card').filter({ hasText: '2. LOGO' });
   await logoCard.getByPlaceholder('Paste logo URL and press Enter').fill(logo);
