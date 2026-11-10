@@ -43,15 +43,18 @@ function movable(l: PlacementLayer): boolean {
 export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
   const { width, height } = input
   const issues: QualityIssue[] = []
+  const isImageRole = (l: PlacementLayer) => l.role === 'logo' || l.role === 'product-image' || l.role === 'service-image'
+  // A layer that draws nothing (an image layer with no image) is reported once as
+  // missing media, but never takes part in box checks: there is nothing to collide.
   const visible = input.layers.filter((l) => l.layer.visible)
-  const boxes = new Map(visible.map((l) => [l.layer.id, boxOf(l.layer, l.text, l.layer.x, l.layer.y, width, height, l.imageAspect)]))
+  const drawn = visible.filter((l) => !isImageRole(l) || (l.imageUrl ?? '').trim() !== '')
+  const boxes = new Map(drawn.map((l) => [l.layer.id, boxOf(l.layer, l.text, l.layer.x, l.layer.y, width, height, l.imageAspect)]))
   const window = (l: PlacementLayer) => visibleSeconds(l.layer, input.fps, input.durationInFrames)
   const dur = (l: PlacementLayer) => ({ tStart: window(l)[0], tEnd: window(l)[1] })
 
   for (const l of visible) {
     const contract = contractFor(l.role)
-    const box = boxes.get(l.layer.id)!
-    const isImage = l.role === 'logo' || l.role === 'product-image' || l.role === 'service-image'
+    const isImage = isImageRole(l)
 
     // ── critical: the element cannot render ─────────────────────────────
     if (isImage) {
@@ -73,6 +76,8 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
 
     // A design owns its own box (often the whole frame): box checks do not apply.
     if (l.layer.kind === 'design') continue
+    const box = boxes.get(l.layer.id)
+    if (!box) continue // draws nothing
 
     // ── adjustments ─────────────────────────────────────────────────────
     if (contract.clampToSafeArea && outsideSafeArea(box, width, height)) {
@@ -110,17 +115,18 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
   }
 
   // collisions between overlays that should not overlap
-  for (let i = 0; i < visible.length; i++) {
-    for (let j = i + 1; j < visible.length; j++) {
-      const a = visible[i]
-      const b = visible[j]
+  for (let i = 0; i < drawn.length; i++) {
+    for (let j = i + 1; j < drawn.length; j++) {
+      const a = drawn[i]
+      const b = drawn[j]
       if (a.layer.kind === 'design' || b.layer.kind === 'design') continue
       if (contractFor(a.role).mayCoverSubject || contractFor(b.role).mayCoverSubject) continue
       const [as, ae] = window(a)
       const [bs, be] = window(b)
       if (Math.max(as, bs) > Math.min(ae, be)) continue
-      const ba = boxes.get(a.layer.id)!
-      const bb = boxes.get(b.layer.id)!
+      const ba = boxes.get(a.layer.id)
+      const bb = boxes.get(b.layer.id)
+      if (!ba || !bb) continue
       const ov = intersectionArea(ba, bb)
       if (ov / Math.max(1, Math.min(area(ba), area(bb))) > COLLISION_RATIO) {
         issues.push({ code: 'overlay-collision', severity: 'adjust', layerId: b.layer.id,
@@ -143,7 +149,7 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
   }
 
   // ── review: things that cannot be verified ───────────────────────────
-  const needsSubject = visible.some((l) => !contractFor(l.role).mayCoverSubject)
+  const needsSubject = drawn.some((l) => !contractFor(l.role).mayCoverSubject)
   if (needsSubject && input.zones.length === 0) {
     issues.push({ code: 'subject-unknown', severity: 'review', fixable: false,
       message: 'The subject area of the footage is not marked, so text and images cannot be checked against it. Mark where the subject is.' })

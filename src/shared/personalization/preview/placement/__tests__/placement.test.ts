@@ -277,3 +277,14 @@ describe('restore recommended placement', () => {
     expect(r.skipped.find((k) => k.layerId === 'headline')?.reason).toBe('locked')
   })
 })
+
+describe('layers that draw nothing', () => {
+  it('an image layer with no image is reported once and never collides or gets placed', () => {
+    const s = settingsFor('business-introduction')
+    const q = evaluateLayoutQuality(build(s, { brand: { ...BRAND, logoUrl: null }, zones: [zone(0.8, 0.1, 0.15, 0.2)], samples: [flat(0.05)] } as never))
+    expect(q.issues.filter((i) => i.code === 'missing-media')).toHaveLength(1)
+    expect(q.issues.some((i) => i.code === 'overlay-collision')).toBe(false)
+    const r = recommendPlacement(build(s, { brand: { ...BRAND, logoUrl: null }, zones: [], samples: [] } as never))
+    expect(r.proposals.find((p) => p.layerId === 'logo')).toBeUndefined()
+  })
+})

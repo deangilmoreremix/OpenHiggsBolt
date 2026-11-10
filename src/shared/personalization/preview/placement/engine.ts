@@ -205,6 +205,8 @@ export function recommendPlacement(input: PlacementInput): PlacementResult {
   for (const l of input.layers) {
     const contract = contractFor(l.role)
     if (!l.layer.visible) { skipped.push({ layerId: l.layer.id, reason: 'hidden' }); continue }
+    // an image layer with no image draws nothing: nothing to place, nothing to avoid
+    if ((l.role === 'logo' || l.role === 'product-image' || l.role === 'service-image') && !(l.imageUrl ?? '').trim()) { skipped.push({ layerId: l.layer.id, reason: 'hidden' }); continue }
     const box = boxOf(l.layer, l.text, l.layer.x, l.layer.y, width, height, l.imageAspect)
     if (l.layer.locked) { skipped.push({ layerId: l.layer.id, reason: 'locked' }); placed.push({ id: l.layer.id, role: l.role, kind: l.layer.kind, box }); continue }
     if (l.layer.placementSource === 'manual') { skipped.push({ layerId: l.layer.id, reason: 'manual' }); placed.push({ id: l.layer.id, role: l.role, kind: l.layer.kind, box }); continue }

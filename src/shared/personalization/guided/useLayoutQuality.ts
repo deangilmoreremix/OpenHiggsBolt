@@ -98,7 +98,14 @@ export function useLayoutQuality(inputProps: PreviewInputProps): LayoutQualitySt
     return () => { live = false }
   }, [imageUrls])
 
-  const sourcePath = typeof source?.sourceMedia === 'string' ? source.sourceMedia : null
+  // The profile follows the video that is actually previewed/rendered: a demo picked
+  // in Step 2 lives in the preview video, not in `source.sourceMedia`.
+  const sourcePath =
+    typeof videoUrl === 'string' && videoUrl
+      ? videoUrl
+      : typeof source?.sourceMedia === 'string'
+        ? source.sourceMedia
+        : null
   const profile = useMemo(() => {
     const facts = sourcePath ? getMediaFacts(sourcePath) : undefined
     return profileForSource({ videoSrc: sourcePath, title: source?.title, width: facts?.width, height: facts?.height })
