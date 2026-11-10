@@ -86,6 +86,15 @@ export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.ro
   ListStackPress: 'papers.cards5',
 };
 export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
+/**
+ * Recipes that read the page's geometry but are NOT retargeted onto a customer's page, with why. They play as the sample demo
+ * (plus the framed inset of the site) instead of drawing the customer's pictures in the sample's boxes.
+ *  - DocumentTypewriterReveal: its technique is typing out a document's text blocks (headings, list items, two side rails and a list
+ *    of earlier issues). A capture has page rectangles, not that text structure, so the blocks cannot be mapped without inventing them.
+ */
+export const GEOMETRY_UNMAPPED: Readonly<Record<string, string>> = {
+  DocumentTypewriterReveal: 'its document layout (text blocks, side rails, issue list) is not part of a page capture',
+};
 /** The layout is handed to a recipe only when the capture really contains what that recipe reads. */
 const layoutFits = (stem: string, layout: unknown) => {
   const source = (layout as { source?: { mapped?: string[] } } | undefined)?.source;
@@ -414,7 +423,7 @@ const INSET_PAGE_H = 1200;
       const cardId = template ? motionCardId(template) : '';
       const card = CARDS[cardId];
       if (!template || !card) return; // unreachable: undrawable scenes took the title-card branch above
-      const usesCapture = isProductTextureShot(template.componentName) && (screens.length > 0 || crops.length > 0 || Boolean(opts.capture?.liveLayout));
+      const usesCapture = isProductTextureShot(template.componentName) && !(template.componentName in GEOMETRY_UNMAPPED) && (screens.length > 0 || crops.length > 0 || Boolean(opts.capture?.liveLayout));
       shots.push(
         // Shots carry their own typography; the headline goes in the caption
         // strip rather than over the shot.
