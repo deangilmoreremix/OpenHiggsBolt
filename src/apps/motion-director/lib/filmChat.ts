@@ -342,7 +342,10 @@ export function inkPressPlan(opts: {
     // The site's heading is the caption, unless it is already this shot's headline.
     let caption = heading && heading !== scene.headline ? heading : scene.caption;
     // A caption already on screen in an earlier scene is not said twice (upstream: no repeated tagline).
+    // A repeat falls back to the product's name (true, and a shot is never left mute) rather than to nothing.
     if (caption && onScreen.has(caption)) caption = '';
+    // A shot is not left without a caption: the product's name (true) fills it when the category's lines are used up.
+    if (!caption && scene.kind === 'shot' && name !== 'your product' && !onScreen.has(name)) caption = name;
     if (caption) onScreen.add(caption);
     scenes.push({ ...scene, caption });
   });

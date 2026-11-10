@@ -372,4 +372,11 @@ describe('Ink Press storyboard copy', () => {
     const captions = plan.scenes.filter((s) => s.kind === 'shot' && s.caption).map((s) => s.caption);
     expect(new Set(captions).size).toBe(captions.length);
   });
+
+  it('a repeated caption becomes the product name, so the shot is not left without one', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance, productName: 'Acme' });
+    const shots = plan.scenes.filter((s) => s.kind === 'shot');
+    expect(shots[0].caption).toBeTruthy();
+    expect(shots[1].caption).toBe('Acme');
+  });
 });
