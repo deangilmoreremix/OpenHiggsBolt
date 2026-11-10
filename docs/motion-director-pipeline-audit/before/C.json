@@ -1,0 +1,160 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nhttps://www.connections.com/\n02\n✓\nCapture\nReal page assets\n1 page (/) · 2 card crops · logo\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\n23 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n9 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nMake a launch film for https://www.connections.com/ with the Ink Press template\n03:49 PM\nI read South Florida’s Premier Managed IT | Connections for Business — it says “Finally, a Cure for Your IT Headaches”, with calls to action “FREE RISK ASSESSMENT”, “SCHEDULE YOUR FREE AUDIT”, “VIEW MORE TESTIMONIALS”. I captured 1 page, 2 card crops, the logo to use in the film.\n03:49 PM\nNo key. I used the Ink Press template instead.\n\nStoryboard “Connections for Business — Ink Press” — 6 scenes, 20s, using your captured pages:\n1. 0:00–0:01 · Title card · on screen: “Meet Connections for Business.” · caption: Finally, a Cure for Your IT Headaches\n2. 0:01–0:04 · People & pictures · message: The people and pictures · on screen: “Identify & Secure” · motion: the site's own pictures, one after another · shows: your images · bottom-push cut\n3. 0:04–0:10 · Spotlight Hero Card · on screen: “Front and centre.” · caption: Identify & Secure · bottom-push cut\n4. 0:10–0:15 · Deck Deal Flyin · on screen: “Every page, live.” · caption: Initiate & Relieve · dip cut\n5. 0:15–0:17 · Row Embed · on screen: “Assess & Lead” · caption: Real screens, not mock-ups\n6. 0:17–0:19 · Title card · on screen: “Try Connections for Business today.” · caption: FREE RISK ASSESSMENT\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n03:49 PM\nYour film is ready: 20s at 1920×1080, 30 fps, Transitions / Captions / Shots / Background / SFX / Music tracks.\nFrame QA passed (20 frames rendered).\nReview against the shot cards' checklist: 14 passed, 1 to fix.\n- S3 ✗ Cut short before they finish: row-embed at 15.3s.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n03:49 PM\n↺ New film\n✓ Each scene gets its own pictures: 9 different pictures across 4 scenes\n✓ Cuts snapped to the beat of house-vibez\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 4 of 5 cuts within 3 frames of a beat (worst 7 frames), 5 on a kick or a downbeat\n! No key.\n! 3 of 3 shots kept as the plain recipe (No key.)\n✓ Film built · 6 tracks\n✓ Frame QA · 20 frames render cleanly\nFrom South Florida’s Premier Managed IT | Connections for Business:\nFINAL FILM\nConnections for Business — Ink Press\n1920×1080 · 30 fps · h264\nMeet\nConnections\nfor\nBusiness.\nFINALLY, A CURE FOR YOUR IT HEADACHES\n0:00 / 0:21\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~3 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nhttps://www.connections.com/\n02\n✓\nCapture\nReal page assets\n1 page (/) · 2 card crops · logo\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\n23 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n9 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "shots": [
+  {
+   "cardId": "inkpress-title-card",
+   "start": 0,
+   "duration": 61,
+   "props": {
+    "adaptedCode": false,
+    "logo": true,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "inkpress-title-card"
+  },
+  {
+   "cardId": "brand-gallery",
+   "start": 61,
+   "duration": 88,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "brand-gallery"
+  },
+  {
+   "cardId": "demo:SpotlightHeroCard",
+   "start": 149,
+   "duration": 162,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 3,
+    "crops": 4,
+    "texts": 2
+   },
+   "label": "demo:SpotlightHeroCard"
+  },
+  {
+   "cardId": "demo:DeckDealFlyin",
+   "start": 311,
+   "duration": 148,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 3,
+    "crops": 6,
+    "texts": 4
+   },
+   "label": "demo:DeckDealFlyin"
+  },
+  {
+   "cardId": "demo:RowEmbed",
+   "start": 459,
+   "duration": 52,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 3,
+    "crops": 3,
+    "texts": 0
+   },
+   "label": "demo:RowEmbed"
+  },
+  {
+   "cardId": "brand-logo-reveal",
+   "start": 511,
+   "duration": 89,
+   "props": {
+    "adaptedCode": false,
+    "logo": true,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "brand-logo-reveal"
+  }
+ ],
+ "ev": [
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 222,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 563.1
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 287,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 574.8
+  },
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 378,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 6442
+  },
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 437,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 4115.7
+  },
+  {
+   "card": "demo:RowEmbed",
+   "frame": 482,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 9788.6
+  },
+  {
+   "card": "demo:RowEmbed",
+   "frame": 503,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 9046.3
+  }
+ ]
+}
