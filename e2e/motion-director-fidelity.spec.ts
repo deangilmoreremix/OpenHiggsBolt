@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'MultiplaneReal', frames: { entry: 8, slide: 70, peak: 130, settled: 160 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true },
   { stem: 'CrashImpactReal', frames: { entry: 12, scan: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
   { stem: 'CrashZoomReal', frames: { entry: 10, lock: 30, peak: 47, settled: 100 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'] },
   { stem: 'RowEmbed', rows: true, frames: { entry: 4, mid: 30, peak: 52, settled: 66 }, sampleMain: 2, customMain: 2, heroFrames: ['peak', 'settled'] },
@@ -84,8 +85,12 @@ for (const cfg of RECIPES) {
       expect(r.customer.n, `${r.frame}: the customer's hero card is visible`).toBeGreaterThan(0);
       expect(Math.abs(r.customer.cx - r.twin.cx), `${r.frame}: hero centre x (camera target)`).toBeLessThan(0.05);
       expect(Math.abs(r.customer.cy - r.twin.cy), `${r.frame}: hero centre y (camera target)`).toBeLessThan(0.07);
-      expect(r.customer.w / r.twin.w, `${r.frame}: hero width on screen`).toBeGreaterThan(0.85);
-      expect(r.customer.w / r.twin.w, `${r.frame}: hero width on screen`).toBeLessThan(1.15);
+      if (!cfg.areaOnly) {
+        expect(r.customer.w / r.twin.w, `${r.frame}: hero width on screen`).toBeGreaterThan(0.85);
+        expect(r.customer.w / r.twin.w, `${r.frame}: hero width on screen`).toBeLessThan(1.15);
+      } else {
+        expect(r.customer.share / r.twin.share, `${r.frame}: hero area on screen`).toBeGreaterThan(0.8);
+      }
       // The same card seen once: its colour covers no more of the frame than the twin's card does (a duplicate beneath would double it).
       expect(r.customer.share / r.twin.share, `${r.frame}: the card appears once`).toBeLessThan(1.25);
     }
