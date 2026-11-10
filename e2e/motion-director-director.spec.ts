@@ -231,11 +231,12 @@ test.describe('Motion Studio director', () => {
     await expect(film).toContainText('1920×1080 · 30 fps');
     await expect(film.locator('.__remotion-player')).toBeVisible();
     await expect(chat).toContainText('Your film is ready');
-    // The seven workflow steps, Product → Deliver, all ran.
+    // The first six workflow steps ran. Deliver waits for an MP4: a built film is not a delivered one.
     const steps = page.getByTestId('film-steps');
-    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa', 'deliver']) {
+    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa']) {
       await expect(steps.locator(`[data-step="${id}"]`)).toHaveAttribute('data-state', 'done');
     }
+    await expect(steps.locator('[data-step="deliver"]')).toHaveAttribute('data-state', 'todo');
     await expect(steps.locator('[data-step="capture"]')).toContainText('1 card crops · logo · 1 site image');
     await expect(page.getByTestId('film-render')).toBeVisible();
     await captureEvidence(page, `${OUT}/chat-film-desktop.png`, { minBytes: 10 * 1024 });
@@ -292,6 +293,8 @@ test.describe('Motion Studio director', () => {
     await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
     const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
     expect(download.suggestedFilename()).toMatch(/\.mp4$/);
+    // The MP4 exists now, so the Deliver step is done.
+    await expect(page.getByTestId('film-steps').locator('[data-step="deliver"]')).toHaveAttribute('data-state', 'done');
     const bytes = await (await import('node:fs/promises')).readFile((await download.path())!);
     expect(bytes.length).toBeGreaterThan(20_000);
     // ISO-BMFF: an `ftyp` box at offset 4.
