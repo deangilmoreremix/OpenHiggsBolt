@@ -28,6 +28,13 @@ walk(ROOT)
 
 fs.rmSync(OUT, { recursive: true, force: true })
 fs.mkdirSync(OUT, { recursive: true })
+const factsSource = fs.readFileSync(path.resolve('src/apps/motion-director/demosrc/_generated/shotFacts.ts'), 'utf8')
+/** The generated facts of a recipe as readable text ("" when it has none). */
+const shotFactsOf = (stem) => {
+  const m = factsSource.match(new RegExp(`\\n "${stem}": \\{([\\s\\S]*?)\\n \\}`))
+  return m ? m[1].split('\n').map((l) => l.trim()).filter(Boolean).join('\n') : ''
+}
+const stubbed = []
 const index = {}
 let cards = 0
 for (const file of files.sort()) {
@@ -44,7 +51,14 @@ for (const file of files.sort()) {
   if (rel.length === 2 && fs.existsSync(card)) {
     fs.copyFileSync(card, path.join(OUT, `${stem}.card.md`))
     cards++
+  } else if (rel.length === 2) {
+    // No shot card file upstream for this recipe: publish what the build knows (its generated facts), so the adapter
+    // still reads a card, and say so. The build never ships a recipe with no card at all.
+    const facts = shotFactsOf(stem)
+    fs.writeFileSync(path.join(OUT, `${stem}.card.md`), `---\nname: ${rel[1]}\n---\n（no upstream card file; generated from the build's shot facts）\n\n${facts}\n`)
+    cards++
+    stubbed.push(stem)
   }
 }
 fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(index))
-console.log(`gen-demo-sources: ${Object.keys(index).length} recipes, ${cards} shot cards`)
+console.log(`gen-demo-sources: ${Object.keys(index).length} recipes, ${cards} shot cards${stubbed.length ? ` (${stubbed.length} generated from shot facts: ${stubbed.join(', ')})` : ''}`)
