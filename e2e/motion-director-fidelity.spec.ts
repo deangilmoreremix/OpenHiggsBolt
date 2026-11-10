@@ -17,8 +17,9 @@ import { openSweep, recipeFrames, save } from './helpers/recipe-frames';
 const OUT = process.env.EVIDENCE_DIR ?? path.resolve('test-results/fidelity');
 const SCALE = 0.5;
 
-interface Config { stem: string; kind?: 'hero' | 'grid'; rows?: boolean | 'papers'; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; /** Measure the hero only inside this part of the frame [x0,y0,x1,y1] (fractions): the shot's composition is fixed, and the page behind it shows the same card blurred. */ roi?: [number, number, number, number]; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
+interface Config { stem: string; kind?: 'hero' | 'grid' | 'zoom'; rows?: boolean | 'papers'; /** The card's colour also appears elsewhere in the twin, so its bounding box is not comparable; its area and centre still are. */ areaOnly?: boolean; /** Identity may differ by this share where the export draws something the unmodified recipe's export did not (see the recipe note). */ idTolerance?: Record<string, number>; /** Largest customer/twin ratio of the hero's screen area: the zoom is scaled from another card than the hero (a duplicate beneath would double it, i.e. 2). */ maxAreaRatio?: number; /** Measure the hero only inside this part of the frame [x0,y0,x1,y1] (fractions): the shot's composition is fixed, and the page behind it shows the same card blurred. */ roi?: [number, number, number, number]; frames: Record<string, number>; sampleMain: number; customMain: number; heroFrames: string[] }
 const RECIPES: Config[] = [
+  { stem: 'JumpCutPunchIn', kind: 'zoom', frames: { entry: 10, jump1: 50, jump2: 100, settled: 130 }, sampleMain: 3, customMain: 1, heroFrames: [] },
   { stem: 'ListStackPress', rows: 'papers', frames: { entry: 3, mid: 40, peak: 70, settled: 86 }, sampleMain: 2, customMain: 2, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.7 },
   { stem: 'OutroGroupPhotoLaunch', frames: { entry: 14, gather: 40, peak: 80, settled: 125 }, sampleMain: 3, customMain: 1, heroFrames: ['peak', 'settled'], areaOnly: true, maxAreaRatio: 1.6, roi: [0, 0.08, 0.3, 0.55], idTolerance: { entry: 0.0005, gather: 0.003, peak: 0.003, settled: 0.003 } /* sub-pixel text differences in the paper elements between two renders of the same sample (max 0.2 % of pixels, text edges) */ },
   { stem: 'WhipBrakeReal', frames: { entry: 10, whip: 30, peak: 70, settled: 120 }, sampleMain: 3, customMain: 1, heroFrames: ['settled'], areaOnly: true, maxAreaRatio: 1.6 },
@@ -54,6 +55,26 @@ for (const cfg of RECIPES) {
     const custImg = fixtureImages(custL);
     const twin = await shots({ custom: { screens: [twinImg.screen], cardCrops: twinImg.crops, emptyPlate: twinImg.plate, captureLayout: layoutOf(twinL), main: cfg.sampleMain } });
     const cust = await shots({ custom: { screens: [custImg.screen], cardCrops: custImg.crops, emptyPlate: custImg.plate, captureLayout: layoutOf(custL), main: cfg.customMain } });
+    if (cfg.kind === 'zoom') {
+      // The zoom lands on the customer's own card: it stays where the page puts it and grows by the authored steps (1.0, 1.6, 2.6).
+      const hero = custL.cards[cfg.customMain];
+      const fp = names.map((n, i) => ({ frame: n, ...colorFootprint(rawRgbFull(cust[i]), hero.color) }));
+      names.forEach((n, i) => { save(OUT, `${cfg.stem}-${n}-baseline.png`, baseline[i]); save(OUT, `${cfg.stem}-${n}-twin.png`, twin[i]); save(OUT, `${cfg.stem}-${n}-customer.png`, cust[i]); });
+      fs.mkdirSync(OUT, { recursive: true });
+      fs.writeFileSync(path.join(OUT, `fidelity-${cfg.stem}.json`), JSON.stringify({ identity: idDiff, footprint: fp }, null, 1));
+      for (const d of idDiff) expect(d.diff, `identity: ${d.frame} frame differs from the unmodified recipe`).toBeLessThan(0.0005);
+      const ex = (hero.x + hero.w / 2) / 1920, ey = (hero.y + hero.h / 2) / 1080;
+      for (const f of fp) {
+        expect(f.n, `${f.frame}: the customer's card is on screen`).toBeGreaterThan(0);
+        expect(Math.abs(f.cx - ex), `${f.frame}: the zoom stays centred on the card (x)`).toBeLessThan(0.02);
+        expect(Math.abs(f.cy - ey), `${f.frame}: the zoom stays centred on the card (y)`).toBeLessThan(0.03);
+      }
+      expect(fp[1].w / fp[0].w, 'first jump zooms 1.6x').toBeGreaterThan(1.45);
+      expect(fp[1].w / fp[0].w, 'first jump zooms 1.6x').toBeLessThan(1.75);
+      expect(fp[2].w / fp[0].w, 'second jump zooms 2.6x').toBeGreaterThan(2.3);
+      expect(fp[2].w / fp[0].w, 'second jump zooms 2.6x').toBeLessThan(2.9);
+      return;
+    }
     if (cfg.kind === 'grid') {
       // Every card of the customer's page must be dealt onto the board: its unique colour shows in the frame.
       const seen = (img: { w: number; h: number; data: Buffer }, layout: typeof custL) => layout.cards.map((c) => colorFootprint(img, c.color).n > 0);
@@ -113,3 +134,34 @@ for (const cfg of RECIPES) {
     }
   });
 }
+
+/**
+ * JumpCutPunchIn on its own (a project of this one shot, no other recipe, no brand scene before it): it must draw, and show the
+ * authored three zoom steps, both as the sample demo and on a customer's page. (It was reported blank when exercised with a
+ * flat-colour stand-in picture; a real page, and the sample, both draw.)
+ */
+test('JumpCutPunchIn plays standalone: not blank, three distinct zoom steps', async ({ page }) => {
+  test.setTimeout(20 * 60_000);
+  await openSweep(page);
+  const DUR = 135;
+  const at = [0.1, 0.3, 0.55, 0.9].map((f) => Math.round(DUR * f));
+  const spread = (img: { data: Buffer }) => {
+    let sum = 0, sq = 0;
+    const n = img.data.length / 3;
+    for (let i = 0; i < img.data.length; i += 3) { const l = (img.data[i] + img.data[i + 1] + img.data[i + 2]) / 3; sum += l; sq += l * l; }
+    const m = sum / n;
+    return Math.sqrt(Math.max(0, sq / n - m * m));
+  };
+  const L = customerFixture();
+  const im = fixtureImages(L);
+  for (const [label, opts] of [['sample', { sample: true }], ['customer page', { custom: { screens: [im.screen], cardCrops: im.crops, emptyPlate: im.plate, captureLayout: captureLayoutOf(L) } }]] as const) {
+    const r = await recipeFrames(page, 'JumpCutPunchIn', at, { scale: 0.5, ...opts });
+    expect(r.durationFrames, 'the catalog plays the full authored length').toBe(DUR);
+    const imgs = r.png.map(rawRgbFull);
+    imgs.forEach((img, i) => expect(spread(img), `${label}: frame ${at[i]} is not blank`).toBeGreaterThan(8));
+    // the cuts are hard: consecutive steps differ a lot; the last two frames (both on the final step) are alike
+    expect(diffShare(imgs[0], imgs[1]), `${label}: first cut changes the frame`).toBeGreaterThan(0.15);
+    expect(diffShare(imgs[1], imgs[2]), `${label}: second cut changes the frame`).toBeGreaterThan(0.15);
+    expect(diffShare(imgs[2], imgs[3]), `${label}: the final step only drifts (0.8 %), it does not cut`).toBeLessThan(0.08);
+  }
+});

@@ -84,6 +84,7 @@ export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.ro
   WhipBrakeReal: 'projects.cards',
   OutroGroupPhotoLaunch: 'projects.cards',
   ListStackPress: 'papers.cards5',
+  JumpCutPunchIn: 'projects.cards',
 };
 export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
 /**

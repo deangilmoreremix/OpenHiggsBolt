@@ -98,8 +98,11 @@ describe('which recipes carry the customer\'s layout', () => {
   it('lists the repaired recipes and what each reads; none is also marked unmapped', () => {
     expect([...LAYOUT_RECIPES].sort()).toEqual(Object.keys(LAYOUT_NEEDS).sort());
     for (const stem of Object.keys(GEOMETRY_UNMAPPED)) expect(LAYOUT_RECIPES.has(stem)).toBe(false);
-    // 11 of the 12 recipes that read live-layout.json are retargeted; the 12th is named, with its reason.
-    expect(LAYOUT_RECIPES.size + Object.keys(GEOMETRY_UNMAPPED).length).toBe(12);
+    // 11 of the 12 recipes that import live-layout.json are retargeted, the 12th is named with its reason, and JumpCutPunchIn
+    // (which draws the captured page through FakeDashboard) is retargeted as well.
+    expect(LAYOUT_RECIPES.size).toBe(12);
+    expect(Object.keys(GEOMETRY_UNMAPPED)).toEqual(['DocumentTypewriterReveal']);
+    expect(LAYOUT_RECIPES.has('JumpCutPunchIn')).toBe(true);
   });
 });
 
