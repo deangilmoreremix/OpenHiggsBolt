@@ -1,4 +1,5 @@
 import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
+import { ownText, resolveLayerImageUrl, resolveLayerText } from './layerContent'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   AbsoluteFill,
@@ -115,40 +116,6 @@ export function readableTextOn(background: string, dark: string): string {
   const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
   const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
   return luminance > 0.18 ? dark : '#ffffff'
-}
-
-/** The layer's own text, or null when it has none (unset or cleared). */
-function ownText(layer: PreviewLayer): string | null {
-  return typeof layer.text === 'string' && layer.text.trim() ? layer.text : null
-}
-
-function resolveLayerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
-  switch (layer.kind) {
-    // Cleared text falls back like unset text, matching the editor.
-    case 'businessName':
-      return ownText(layer) ?? brand.businessName
-    case 'headline':
-      return ownText(layer) ?? brand.headline
-    case 'tagline':
-      return ownText(layer) ?? brand.headline
-    case 'offer':
-      return ownText(layer) ?? brand.offer
-    case 'cta':
-      return ownText(layer) ?? brand.cta
-    default:
-      return ownText(layer) ?? ''
-  }
-}
-
-function resolveLayerImageUrl(
-  layer: PreviewLayer,
-  brand: PreviewInputProps['brand'],
-): string {
-  if (layer.imageUrl) return layer.imageUrl
-  if (layer.kind === 'serviceImage') return brand.serviceUrl ?? brand.productUrl ?? ''
-  if (layer.kind === 'productImage') return brand.productUrl ?? brand.serviceUrl ?? ''
-  if (layer.kind === 'logo') return brand.logoUrl ?? ''
-  return ''
 }
 
 /**

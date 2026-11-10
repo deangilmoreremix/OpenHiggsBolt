@@ -8,6 +8,7 @@
 
 import { contractFor, roleForLayer } from './mediaRoles'
 import type {
+  ProtectedZone,
   PersonalizationPreviewSettings,
   PreviewAnimationId,
   PreviewAspectRatio,
@@ -478,7 +479,7 @@ export function layoutLayerGeometry(
 }
 
 /** A layer's untouched geometry: the layout's own default, else the generic one. */
-function baseGeometry(
+export function layoutDefaultGeometry(
   layoutId: PreviewLayoutId | null | undefined,
   kind: PreviewLayerKind,
   aspect: PreviewAspectRatio | undefined,
@@ -507,8 +508,8 @@ export function reflowLayersForAspect(
   let changed = false
   const layers = (Array.isArray(settings.layers) ? settings.layers : []).map((layer) => {
     if (layer.kind === 'design') return layer
-    const was = baseGeometry(settings.layout, layer.kind, previousAspect)
-    const now = baseGeometry(settings.layout, layer.kind, nextAspect)
+    const was = layoutDefaultGeometry(settings.layout, layer.kind, previousAspect)
+    const now = layoutDefaultGeometry(settings.layout, layer.kind, nextAspect)
     if (sameGeometry(layer, now) || !sameGeometry(layer, was)) return layer
     changed = true
     return { ...layer, ...now }
@@ -575,8 +576,8 @@ export function applyLayoutPreset(
     if (kept) {
       // A kept layer the customer never moved follows the NEW layout's default
       // geometry; one they moved or resized keeps exactly where they put it.
-      const next = baseGeometry(layoutId, kind, settings.aspectRatio)
-      const untouched = sameGeometry(kept, baseGeometry(settings.layout, kind, settings.aspectRatio))
+      const next = layoutDefaultGeometry(layoutId, kind, settings.aspectRatio)
+      const untouched = sameGeometry(kept, layoutDefaultGeometry(settings.layout, kind, settings.aspectRatio))
       return clampLayer({ ...kept, ...(untouched ? next : {}) })
     }
     return createSeededLayer(kind, ctx, layoutId, settings.aspectRatio)
@@ -782,6 +783,14 @@ function clampLeftToSafeArea(leftPx: number, widthPx: number, frameWidth: number
   return Math.min(max, Math.max(margin, leftPx))
 }
 
+/** Vertical counterpart of `clampLeftToSafeArea` for boxes whose height is known. */
+function clampTopToSafeArea(topPx: number, heightPx: number, frameHeight: number): number {
+  const margin = Math.round(frameHeight * BOX_SAFE_MARGIN)
+  const max = frameHeight - margin - heightPx
+  if (max < margin) return Math.round((frameHeight - heightPx) / 2)
+  return Math.min(max, Math.max(margin, topPx))
+}
+
 /**
  * Converts normalized center coordinates plus scale into pixels.
  * Image layers use scale as a width fraction and are square; text layers use
@@ -815,7 +824,10 @@ export function toBox(
     const leftPx = contractFor(roleForLayer(layer)).clampToSafeArea
       ? clampLeftToSafeArea(rawLeft, widthPx, width)
       : rawLeft
-    const topPx = Math.max(0, Math.round(y * height - widthPx / 2))
+    const rawTop = Math.round(y * height - widthPx / 2)
+    const topPx = contractFor(roleForLayer(layer)).clampToSafeArea
+      ? clampTopToSafeArea(rawTop, widthPx, height)
+      : Math.max(0, rawTop)
     return { leftPx, topPx, widthPx, heightPx: widthPx, fontSizePx: 0 }
   }
 
@@ -875,7 +887,37 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   // keeps rendering the brand values for the slots the customer never edited.
   const textSlotOverrides = normalizeTextSlotOverrides(raw.textSlotOverrides)
   if (textSlotOverrides) normalized.textSlotOverrides = textSlotOverrides
+  if (raw.locked === true) normalized.locked = true
+  if (raw.placementSource === 'manual' || raw.placementSource === 'recommended') {
+    normalized.placementSource = raw.placementSource
+  }
   return normalized
+}
+
+/** Keeps only well-formed zones: finite numbers, positive size, inside the frame. */
+export function normalizeProtectedZones(raw: unknown): ProtectedZone[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: ProtectedZone[] = []
+  for (const z of raw) {
+    if (!isRecord(z)) continue
+    const x = finiteNumber(z.x, NaN)
+    const y = finiteNumber(z.y, NaN)
+    const w = finiteNumber(z.w, NaN)
+    const h = finiteNumber(z.h, NaN)
+    if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) continue
+    const cx = Math.min(1, Math.max(0, x))
+    const cy = Math.min(1, Math.max(0, y))
+    out.push({
+      id: nonEmptyString(z.id) ?? `zone-${out.length + 1}`,
+      label: nonEmptyString(z.label) ?? 'Subject',
+      source: z.source === 'template' ? 'template' : 'user',
+      x: cx,
+      y: cy,
+      w: Math.min(1 - cx, w),
+      h: Math.min(1 - cy, h),
+    })
+  }
+  return out.length ? out : undefined
 }
 
 /**
@@ -1009,6 +1051,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    // The applied Remotion design. Absent in projects saved before the design
    // registry existed, so it falls back to null instead of throwing.
    out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
+  const zones = normalizeProtectedZones(raw.protectedZones)
+  if (zones) out.protectedZones = zones
 
    return out
   } catch {

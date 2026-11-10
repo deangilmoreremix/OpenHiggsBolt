@@ -73,6 +73,33 @@ export interface PreviewLayer {
    * Absent => the slot falls back to its brand field.
    */
   textSlotOverrides?: Record<string, string>
+  /**
+   * The customer locked this layer: placement and reflow never move it, and
+   * the editor will not drag it until it is unlocked.
+   */
+  locked?: boolean
+  /**
+   * Who decided the layer's current position: `manual` = the customer (drag,
+   * resize or a position preset) — the placement engine never moves it on its
+   * own; `recommended` = the placement engine. Absent = the template default.
+   */
+  placementSource?: 'manual' | 'recommended'
+}
+
+/** A rectangle in normalized frame coordinates; (x, y) is the TOP-LEFT corner. */
+export interface NormRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** A region overlays must not cover (the footage's subject, a baked-in graphic…). */
+export interface ProtectedZone extends NormRect {
+  id: string
+  label: string
+  /** `template` = declared by the template/source, `user` = marked by the customer. */
+  source: 'template' | 'user'
 }
 
 export interface PreviewBrandColors {
@@ -137,6 +164,11 @@ export interface PersonalizationPreviewSettings {
    * restore; the normalizer falls back to `null`.
    */
   remotionDesignId?: string | null
+  /**
+   * Regions of the footage the overlays must not cover. Optional so projects
+   * saved before placement checks existed still restore.
+   */
+  protectedZones?: ProtectedZone[]
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

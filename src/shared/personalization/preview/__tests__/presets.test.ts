@@ -486,7 +486,8 @@ describe('toBox', () => {
     // Centered at x = 0.08 the box would hang 3% outside the frame; it is kept
     // inside the 2% safe area instead of being clipped.
     expect(box.leftPx).toBe(Math.round(1920 * 0.02))
-    expect(box.topPx).toBe(Math.max(0, Math.round(0.08 * 1080 - 422 / 2)))
+    // the top edge stays inside the 2 % safe area too
+    expect(box.topPx).toBe(Math.round(1080 * 0.02))
   })
 
   it('clamps the top edge to the composition', () => {
