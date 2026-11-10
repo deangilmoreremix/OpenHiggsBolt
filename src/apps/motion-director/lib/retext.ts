@@ -24,7 +24,7 @@ export interface SceneWords {
  * by the scenes of one film). Each replacement is about as long as the line it replaces so the
  * layout holds. Lines nothing fits keep the template's words.
  */
-export function fallbackTexts(strings: readonly string[], content: SiteContent | null | undefined, name: string, scene?: SceneWords, used: Set<string> = new Set(), keepShape = false): TextMap {
+export function fallbackTexts(strings: readonly string[], content: SiteContent | null | undefined, name: string, scene?: SceneWords, used: Set<string> = new Set(), keepShape = false, repeatWords = true): TextMap {
   const clean = (v: string | undefined) => (v ?? '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
   const rotate = <T,>(list: T[]): T[] => (list.length && scene ? [...list.slice(scene.index % list.length), ...list.slice(0, scene.index % list.length)] : list);
   const sentences = rotate([content?.headline, content?.description, ...(content?.headings ?? [])].map(clean).filter(Boolean));
@@ -33,6 +33,12 @@ export function fallbackTexts(strings: readonly string[], content: SiteContent |
     const hit = pool.find((c) => !used.has(c) && c.length <= max);
     if (hit) used.add(hit);
     return hit;
+  };
+  // When the site's words run out (a long recipe, or later scenes of one film), repeat them rather than leave the template's own copy.
+  let again = 0;
+  const reuse = (pool: string[], max: number): string | undefined => {
+    const fits = pool.filter((c) => c.length <= max);
+    return fits.length ? fits[again++ % fits.length] : undefined;
   };
   const lead = [clean(scene?.headline), clean(scene?.caption)].filter(Boolean);
   const out: TextMap = {};
@@ -49,6 +55,7 @@ export function fallbackTexts(strings: readonly string[], content: SiteContent |
       if (to.length > limit) to = undefined;
     }
     to ??= long ? take(sentences, limit) : take(labels, limit);
+    if (!to && repeatWords) to = long ? reuse(sentences, limit) : reuse(labels, limit);
     // Words that are part of an effect keep their word count and length.
     if (to && (!keepShape || keepsShape(to, line))) out[line] = to;
   }
