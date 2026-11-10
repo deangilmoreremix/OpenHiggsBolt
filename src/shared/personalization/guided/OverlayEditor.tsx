@@ -5,8 +5,9 @@ import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
 import type { ImageStyle } from '../preview/imageStyle'
 import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview/imagePresets'
-import { roleForLayer } from '../preview/mediaRoles'
+import { MEDIA_ROLE_CONTRACTS, roleForLayer } from '../preview/mediaRoles'
 import { ImageStyleControls } from './ImageStyleControls'
+import { DesignLayerPlayer } from './DesignLayerPlayer'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import {
   PREVIEW_ANIMATIONS,
@@ -217,12 +218,17 @@ export interface OverlayEditorProps {
  * Geometry (cross-aspect mapping, safe-area clamping, keyboard nudges and the
  * image-asset option mapping) lives in `./overlayGeometry`.
  */
+/** Timing is edited in SECONDS (what the customer sees on the clock) and stored in frames, so it survives a frame-rate change. */
+export const framesToSeconds = (frames: number, fps: number) => Math.round((frames / Math.max(1, fps)) * 100) / 100
+export const secondsToFrames = (seconds: number, fps: number) => Math.max(0, Math.round((Number.isFinite(seconds) ? seconds : 0) * Math.max(1, fps)))
+
 export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     previewSettings,
     updatePreviewLayer,
     setPreviewLayerLocked,
+    setRemotionDesign,
     updatePreviewComposition,
     resetPreviewLayout,
     assets,
@@ -233,6 +239,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   const stageWidth = useStageWidth(stageRef)
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
   const dragRef = useRef<DragState | null>(null)
+  const [confirmRemoveDesign, setConfirmRemoveDesign] = useState(false)
 
   // The Layout Quality Check's "Show" selects the affected layer here.
   useEffect(() => {
@@ -346,10 +353,18 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     setSelectedId(settings.layers[0]?.id || '')
   }, [selectedId, settings.layers])
 
+  /** What the customer may do with this layer, from its media role (full-frame designs and effects are neither dragged nor resized). */
+  const contractOf = (layer: PreviewLayer) => {
+    const d = layer.kind === 'design' && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+    return MEDIA_ROLE_CONTRACTS[roleForLayer(layer, d ? { id: d.id, category: d.category } : null)]
+  }
+
   const startDrag = (event: React.PointerEvent, layer: PreviewLayer, mode: 'move' | 'resize') => {
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
+    const allowed = contractOf(layer)
+    if (mode === 'move' ? !allowed.userMovable : !allowed.userResizable) return
     if (layer.locked) return // locked: selectable, but not draggable until unlocked
     dragRef.current = {
       layerId: layer.id,
@@ -385,7 +400,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     if (!delta) return
     event.preventDefault()
     setSelectedId(layer.id)
-    if (layer.locked) return
+    if (layer.locked || !contractOf(layer).userMovable) return
     commitPosition(layer.id, offsetLayer(layer, delta.dx, delta.dy, compW, compH))
   }
 
@@ -518,7 +533,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     top: box.top,
                     width: box.width,
                     height: box.height,
-                    cursor: 'move',
+                    cursor: contractOf(layer).userMovable ? 'move' : 'default',
                     outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
                     outlineOffset: 2,
                     opacity: layer.opacity,
@@ -548,24 +563,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                       <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
                     )
                   ) : isDesign ? (
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        color: settings.brandColors.text,
-                        fontSize: Math.max(10, Math.round(compH * 0.024)),
-                        fontWeight: 700,
-                        border: `1px dashed ${C.cyanBorder}`,
-                        borderRadius: 10,
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {design ? design.name : 'Design'}
-                    </div>
+                    // The REAL design, drawn by the same composition the video uses (not a name label).
+                    <DesignLayerPlayer layer={layer} inputProps={inputProps} fallbackLabel={design ? design.name : 'Design'} />
                   ) : layer.kind === 'cta' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                       <span
@@ -603,7 +602,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                       {text}
                     </div>
                   )}
-                  {isSelected && (
+                  {isSelected && contractOf(layer).userResizable && (
                     <div
                       role="button"
                       tabIndex={0}
@@ -697,6 +696,31 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 </div>
               )}
 
+              {selected.kind === 'design' && selectedDesign && (
+                <div data-testid="design-actions" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* Two different things: restoring keeps the design and clears YOUR edits to it; removing takes the design off the video. */}
+                  <button
+                    type="button"
+                    data-testid="design-restore-defaults"
+                    onClick={() => updatePreviewLayer(selected.id, { textSlotOverrides: undefined, color: undefined, fontFamily: undefined, imageUrl: undefined })}
+                    style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px' }}
+                  >
+                    Restore design defaults
+                  </button>
+                  {!confirmRemoveDesign ? (
+                    <button type="button" data-testid="design-remove" onClick={() => setConfirmRemoveDesign(true)} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px' }}>
+                      Remove design
+                    </button>
+                  ) : (
+                    <span role="alert" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 10, color: C.muted }}>
+                      Remove “{selectedDesign.name}” from the video?
+                      <button type="button" data-testid="design-remove-confirm" onClick={() => { setConfirmRemoveDesign(false); setRemotionDesign(null) }} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Yes, remove</button>
+                      <button type="button" onClick={() => setConfirmRemoveDesign(false)} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Keep</button>
+                    </span>
+                  )}
+                </div>
+              )}
+
               {TEXT_KINDS.includes(selected.kind) && (
                 <>
                   {selected.kind === 'design' && selectedDesign ? (
@@ -738,6 +762,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                       />
                     </div>
                   )}
+                  {/* A design with no text has no text colour or font: those controls would do nothing. */}
+                  {!(selected.kind === 'design' && selectedSlots.length === 0) && (
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
                     <div>
                       <label style={labelStyle} htmlFor={controlId('color')}>{selected.kind === 'cta' ? 'Button color' : 'Color'}</label>
@@ -783,6 +809,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     </div>
                     )}
                   </div>
+                  )}
                 </>
               )}
 
@@ -884,28 +911,30 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
               <div className="grid grid-cols-2" style={{ gap: 8 }}>
                 <div>
-                  <label style={labelStyle} htmlFor={controlId('delay')}>Appear after (frames)</label>
+                  <label style={labelStyle} htmlFor={controlId('delay')}>Animation starts after (seconds)</label>
                   <input
                     id={controlId('delay')}
                     type="number"
-                    aria-label="Appear after frames"
+                    aria-label="Animation starts after seconds"
                     min={0}
-                    max={Math.max(0, settings.durationInFrames)}
-                    value={selected.animationDelay}
-                    onChange={(event) => updatePreviewLayer(selected.id, { animationDelay: Math.max(0, Number(event.target.value) || 0) })}
+                    max={Math.max(0, settings.durationInFrames / settings.fps)}
+                    step={0.1}
+                    value={framesToSeconds(selected.animationDelay, settings.fps)}
+                    onChange={(event) => updatePreviewLayer(selected.id, { animationDelay: secondsToFrames(Number(event.target.value), settings.fps) })}
                     style={{ ...inputStyle, minHeight: 34 }}
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor={controlId('start')}>Show from (frames)</label>
+                  <label style={labelStyle} htmlFor={controlId('start')}>Shown from (seconds)</label>
                   <input
                     id={controlId('start')}
                     type="number"
-                    aria-label="Show from frames"
+                    aria-label="Shown from seconds"
                     min={0}
-                    max={Math.max(0, settings.durationInFrames)}
-                    value={selected.startFrame}
-                    onChange={(event) => updatePreviewLayer(selected.id, { startFrame: Math.max(0, Number(event.target.value) || 0) })}
+                    max={Math.max(0, settings.durationInFrames / settings.fps)}
+                    step={0.1}
+                    value={framesToSeconds(selected.startFrame, settings.fps)}
+                    onChange={(event) => updatePreviewLayer(selected.id, { startFrame: secondsToFrames(Number(event.target.value), settings.fps) })}
                     style={{ ...inputStyle, minHeight: 34 }}
                   />
                 </div>
