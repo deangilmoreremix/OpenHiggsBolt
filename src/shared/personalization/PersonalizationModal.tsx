@@ -44,6 +44,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { SocialIcons } from './SocialIcons'
+import { useBusinessEnrichment, mergeCardContacts } from './useBusinessEnrichment'
 import { DEFAULT_ADVANCED_SECTIONS, useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { AutoFillKey } from './businessContentFromResearch'
 import type { AdvancedEditingSections, AdvancedEditingTab } from './types'
@@ -2404,6 +2405,7 @@ function ConfigurationView(props: any) {
   // Long result lists show a page at a time so the section stays short.
   const [shownResultCount, setShownResultCount] = useState(RESULTS_PAGE)
   useEffect(() => { setShownResultCount(RESULTS_PAGE) }, [businessSearchResults])
+  const enrichStates = useBusinessEnrichment(businessSearchResults.slice(0, shownResultCount))
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -3064,7 +3066,9 @@ function ConfigurationView(props: any) {
               </div>
               {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
-                {businessSearchResults.slice(0, shownResultCount).map((business) => (
+                {businessSearchResults.slice(0, shownResultCount).map((business) => {
+                  const contacts = mergeCardContacts(business, enrichStates[business.id])
+                  return (
                   <div
                     key={business.id}
                     style={{
@@ -3103,7 +3107,13 @@ function ConfigurationView(props: any) {
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
-                          <SocialIcons name={business.name} links={{ facebook: business.facebook, instagram: business.instagram, linkedin: business.linkedin, youtube: business.youtube, tiktok: business.tiktok }} />
+                          {contacts.email && (
+                            <span title={contacts.email.title} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Email</span>
+                          )}
+                          <SocialIcons name={business.name} links={contacts.links} titles={contacts.titles} />
+                          {contacts.loading && (
+                            <span style={{ fontSize: 9, fontWeight: 600, color: C.muted2 }} aria-live="polite">Looking up contacts…</span>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -3154,7 +3164,7 @@ function ConfigurationView(props: any) {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
                 {businessSearchResults.length > shownResultCount && (
                   <button
                     type="button"

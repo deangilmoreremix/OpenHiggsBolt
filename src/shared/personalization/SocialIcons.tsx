@@ -48,11 +48,13 @@ export interface SocialIconsProps {
   size?: number
   /** Business name, used in the accessible label ("Instagram page for Joe's"). */
   name?: string
+  /** Optional hover text per network (e.g. where the profile was found). */
+  titles?: Partial<Record<SocialNetwork, string>>
 }
 
 let gradientSeq = 0
 
-export function SocialIcons({ links, size = 14, name }: SocialIconsProps) {
+export function SocialIcons({ links, size = 14, name, titles }: SocialIconsProps) {
   const items = ORDER.map((n) => ({ n, href: socialHref(n, links[n]) })).filter((x): x is { n: SocialNetwork; href: string } => !!x.href)
   const [gid] = React.useState(() => `ig-grad-${++gradientSeq}`)
   if (!items.length) return null
@@ -63,7 +65,7 @@ export function SocialIcons({ links, size = 14, name }: SocialIconsProps) {
         return (
           <a
             key={n} href={href} target="_blank" rel="noopener noreferrer"
-            aria-label={name ? `${LABEL[n]} page for ${name}` : `${LABEL[n]} page`} title={`${LABEL[n]} page`}
+            aria-label={name ? `${LABEL[n]} page for ${name}` : `${LABEL[n]} page`} title={titles?.[n] ? `${LABEL[n]} page — ${titles[n]}` : `${LABEL[n]} page`}
             data-network={n} onClick={(e) => e.stopPropagation()}
             style={{ display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}
           >

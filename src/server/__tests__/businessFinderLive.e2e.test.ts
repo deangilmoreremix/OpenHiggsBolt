@@ -33,6 +33,7 @@ describe.skipIf(!live)('LIVE Business Finder + enrichment', () => {
     const er = await call(enrich, 'enrich-business', { businesses: withSites.map((b: any) => ({ id: b.id, website: b.website })) })
     const eb = await er.json()
     console.log('ENRICH', er.status, JSON.stringify(eb.results?.map((r: any) => ({ site: r.website, ok: r.ok, err: r.error, pages: r.enrichment?.pagesVisited?.length, robots: r.enrichment?.robots?.status, emails: r.enrichment?.emails?.map((e: any) => [e.value, e.method, e.confidence]), phones: r.enrichment?.phones?.length, socials: Object.keys(r.enrichment?.socials ?? {}), notes: r.enrichment?.notes })), null, 1))
+    if (process.env.LIVE_DUMP_ENRICH) (await import('node:fs')).writeFileSync(process.env.LIVE_DUMP_ENRICH, JSON.stringify(eb))
     expect(er.status).toBe(200)
   }, 120_000)
 })
