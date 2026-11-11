@@ -1,3 +1,4 @@
+import { SYNONYM_GROUPS } from '@/data/helpIntents';
 /**
  * Retrieval for the "Ask SmartVideo" help agent: pure BM25 over the prebuilt
  * chunk index (src/data/helpIndex.json). No network, no embeddings; the
@@ -11,6 +12,8 @@ export interface HelpChunk {
   url: string;
   /** Studio chunks: the Academy "Create with <studio>" guide. */
   guideUrl?: string;
+  /** Plain-language things people say they want to do ("what you can ask" chunks only). */
+  phrases?: string[];
   text: string;
 }
 
@@ -45,6 +48,7 @@ interface Prepared {
   tf: Map<string, number>;
   len: number;
   titleTokens: Set<string>;
+  phraseTokens: Set<string>[];
 }
 
 export interface Index {
@@ -62,7 +66,7 @@ export function buildIndex(chunks: HelpChunk[]): Index {
     for (const t of toks) tf.set(t, (tf.get(t) ?? 0) + 1);
     for (const t of tf.keys()) df.set(t, (df.get(t) ?? 0) + 1);
     total += toks.length;
-    return { chunk, tf, len: toks.length, titleTokens: new Set(tokenize(chunk.title)) };
+    return { chunk, tf, len: toks.length, titleTokens: new Set(tokenize(chunk.title)), phraseTokens: (chunk.phrases ?? []).map((p) => new Set(tokenize(p))) };
   });
   return { docs, df, avgLen: docs.length ? total / docs.length : 1 };
 }
@@ -70,24 +74,49 @@ export function buildIndex(chunks: HelpChunk[]): Index {
 const K1 = 1.4;
 const B = 0.75;
 
+/** Related words (stemmed) for each stemmed word, from the synonym groups. */
+const RELATED: Map<string, Set<string>> = (() => {
+  const m = new Map<string, Set<string>>();
+  for (const group of SYNONYM_GROUPS) {
+    const stems = [...new Set(group.flatMap((w) => tokenize(w)))];
+    for (const a of stems) for (const b of stems) if (a !== b) (m.get(a) ?? m.set(a, new Set()).get(a)!).add(b);
+  }
+  return m;
+})();
+const SYNONYM_WEIGHT = 0.45;
+
 export function search(index: Index, query: string, opts: SearchOptions = {}): { chunk: HelpChunk; score: number }[] {
   const q = [...new Set(tokenize(query))];
   if (!q.length) return [];
+  // original words count fully; related words count a little, so "make a photo talk" also finds "lip sync"
+  const weights = new Map<string, number>(q.map((t) => [t, 1]));
+  for (const t of q) for (const r of RELATED.get(t) ?? []) if (!weights.has(r)) weights.set(r, SYNONYM_WEIGHT);
   const N = index.docs.length;
   const scored: { chunk: HelpChunk; score: number }[] = [];
   for (const d of index.docs) {
     let score = 0;
     let matched = 0;
-    for (const t of q) {
+    for (const [t, w] of weights) {
       const f = d.tf.get(t);
       if (!f) continue;
-      matched++;
+      if (w === 1) matched++;
       const n = index.df.get(t) ?? 0;
       const idf = Math.log(1 + (N - n + 0.5) / (n + 0.5));
-      score += idf * ((f * (K1 + 1)) / (f + K1 * (1 - B + (B * d.len) / index.avgLen)));
-      if (d.titleTokens.has(t)) score += idf * 1.3;
+      score += w * idf * ((f * (K1 + 1)) / (f + K1 * (1 - B + (B * d.len) / index.avgLen)));
+      if (d.titleTokens.has(t)) score += w * idf * 1.3;
     }
     if (!matched) continue;
+    // a question that closely matches one of the things people say they want to do is a strong signal
+    if (d.phraseTokens.length) {
+      let best = 0;
+      for (const ph of d.phraseTokens) {
+        if (!ph.size) continue;
+        let o = 0;
+        for (const t of q) if (ph.has(t)) o++;
+        best = Math.max(best, o / Math.max(q.length, ph.size));
+      }
+      if (best >= 0.4) score += 12 * best;
+    }
     score *= 0.6 + 0.4 * (matched / q.length); // reward covering more of the question
     if (opts.studioId && d.chunk.studioId === opts.studioId) score *= 1.35;
     scored.push({ chunk: d.chunk, score });
@@ -104,6 +133,18 @@ export function search(index: Index, query: string, opts: SearchOptions = {}): {
     perUrl.set(s.chunk.url, c + 1);
     out.push(s);
     if (out.length >= (opts.limit ?? 6)) break;
+  }
+  // mix kinds: a strong studio / course / walkthrough match should not be crowded out by one kind
+  const limit = opts.limit ?? 6;
+  const top = scored[0]?.score ?? 0;
+  for (const kind of ['studio', 'academy', 'reseller'] as const) {
+    if (out.length < Math.min(limit, 4) || out.some((o) => o.chunk.kind === kind)) continue;
+    const best = scored.find((x) => x.chunk.kind === kind && (perUrl.get(x.chunk.url) ?? 0) < 2);
+    if (!best || best.score < top * 0.7) continue;
+    // replace the weakest item whose kind has more than one entry
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (out.filter((o) => o.chunk.kind === out[i].chunk.kind).length > 1) { out[i] = best; break; }
+    }
   }
   return out;
 }

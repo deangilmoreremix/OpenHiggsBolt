@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODULES } from '../src/content/resellerAcademy';
+import { STUDIO_INTENTS, TRACK_INTENTS, RESELLER_MODULE_INTENTS } from '../src/data/helpIntents';
 import { ACADEMY_STUDIO_GUIDES, academyStudioUrl, academyTrackUrl, getStudioGuide } from '../src/data/academyStudioGuides';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,6 +30,7 @@ export interface HelpChunk {
   url: string;
   /** For studio chunks: the Academy "Create with <studio>" guide. */
   guideUrl?: string;
+  phrases?: string[];
   text: string;
 }
 
@@ -139,6 +141,31 @@ for (const g of GUIDES) {
       text: `${g.label} is a studio in SmartVideo GO AI, opened at ${g.route}. Detailed how-to documentation for this studio has not been written yet.`,
     });
   }
+}
+
+/* ----------------- plain-language "what people ask" chunks ----------------- */
+for (const g of GUIDES) {
+  const phrases = STUDIO_INTENTS[g.id];
+  if (!phrases?.length) continue;
+  push({
+    id: `studio:${g.id}:ask`, kind: 'studio', studioId: g.id, title: `${g.label} — What you can ask or do here`, url: g.route, guideUrl: academyStudioUrl(g.id), phrases,
+    text: `${g.label} (${g.route}). People use ${g.label} when they want to: ${phrases.join('; ')}. ${g.tagline}`,
+  });
+}
+for (const [track, phrases] of Object.entries(TRACK_INTENTS)) {
+  push({
+    id: `academy:${track}:ask`, kind: 'academy', studioId: null, title: `${trackTitle(track)} — What this course helps you do`, url: academyTrackUrl(track), phrases,
+    text: `Academy course ${trackTitle(track)}. Take this course when you want to: ${phrases.join('; ')}.`,
+  });
+}
+for (const m of MODULES) {
+  const phrases = RESELLER_MODULE_INTENTS[m.id];
+  if (!phrases?.length) continue;
+  const first = m.lessons[0].id;
+  push({
+    id: `reseller:${first}-ask`, kind: 'reseller', studioId: 'apps', title: `Reseller Setup Walkthrough Module ${m.id} — ${m.title}`, url: `/academy/reseller/launch?lesson=${first}`, phrases,
+    text: `Reseller Setup Walkthrough, Module ${m.id} (${m.title}). Use this module when you want to: ${phrases.join('; ')}. Lessons: ${m.lessons.map((l) => `${l.id} ${l.title}`).join('; ')}.`,
+  });
 }
 
 /* ------------------------------ academy ------------------------------ */
