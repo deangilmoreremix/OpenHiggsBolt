@@ -854,3 +854,14 @@ New entries added: `edit`, `motion-control`, `zackd`, `apps`. Hard-coded model c
 - **Audio:** the code enforces a 10 MB audio limit and mp3/wav/webm, while the on-screen hint says "MP3, WAV, M4A up to 20MB".
 - **Agents:** inline chat/create views in `AgentStudio.jsx` read `params.tab` while the app routes with `slug`, so they may never be shown; the chat UI comes from the `ai-agent` package, whose source is not in this checkout.
 - **Video:** `VideoStudioParity.jsx` is not imported anywhere (its Advanced controls are undocumented because users cannot reach them).
+
+## Social Publishing rework (2026-11-11, after the review above)
+Social Publishing is a modal (not a studio) that helps write the post and publishes it through MuAPI's social API (docs: muapi.ai/docs/social-publishing, muapi.ai/social-media-api, per-platform pages muapi.ai/playground/<platform>-publish). The defects listed above were fixed:
+- **One publish path** (`src/shared/api/publishOrchestrator.ts`): Review "Publish", Destinations "Publish Now" and the footer Publish all post; destinations that already published are skipped (no double posts); Retry/Reconnect act on one destination; unexpected responses are failures, not successes; polling fails fast on 4xx / platform failure.
+- **Write-step text and Title are what get published** (`mergeCopy`); no "Untitled" — publishing is blocked with a reason instead.
+- **Per-platform payloads** (`src/shared/api/socialPayloads.ts`): exact documented fields for YouTube, Instagram, TikTok (title/caption limits, privacy, placement, cover_url from the thumbnail); Facebook, LinkedIn, Pinterest, Threads and X send only what MuAPI's playground pages show (account_id, media_url, text, placement / board_id, link / reply_settings). Undocumented fields (schedule, location, alt text) are no longer sent. **Unverified for those five platforms:** MuAPI's pages do not state endpoint paths, required fields or exact parameter names for them; names were taken from the page labels and implementation guides (`caption`, `placement`, `board_id`, `link`, `reply_settings`). They are marked "basic" in the UI and need one live test per platform.
+- Connect URLs for all 8 platforms (no silent YouTube fallback); proxy now forwards DELETE/PATCH for `/social/(ext/)accounts/{id}` only (disconnect/rename) with the same auth + entitlement.
+- Local/temporary media (blob:, data:) is uploaded to MuAPI before publishing.
+- AI writing (our feature, not MuAPI's) uses the customer's OpenAI key; the add-key message appears only when an AI action is used without a key.
+- Removed the unused standalone app `src/apps/social-publishing/SocialPublishing.tsx` and the unused `socialPublishService.ts`.
+- **Not verified live:** no real posts were made (they would be public and cost money). Thumbnail upload to YouTube is not sent (MuAPI's YouTube thumbnail endpoint is not documented on the pages read).
