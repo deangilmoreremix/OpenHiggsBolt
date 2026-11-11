@@ -170,6 +170,8 @@ export default function ZackD({
   const [project, setProject] = useState(blank);
   const [history, setHistory] = useState([]);
   const [pending, setPending] = useState(() => new Set());
+  const pendingRef = useRef(pending); // current pending keys, for guards that run inside async work
+  pendingRef.current = pending;
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -262,6 +264,7 @@ export default function ZackD({
   const genClip = async (shot) => {
     const kf = proj.current.shots[shot.shot_id]?.keyframe;
     if (!kf) throw new Error('Generate the keyframe first.');
+    if (pendingRef.current.has(`kf:${shot.shot_id}`)) throw new Error('This shot\'s keyframe is still being generated. Wait for it before animating.');
     return tracked('clip', shot.shot_id, (onRequestId) => jobs.clip({ imageUrl: kf, prompt: clipPrompt(shot), onRequestId }));
   };
   const genNarration = () => tracked('narration', 'narration', (onRequestId) => jobs.narration({ text: narrationText(proj.current.map), voice: proj.current.voice, speed: DEFAULT_TTS_SPEED, onRequestId }));
@@ -509,12 +512,12 @@ export default function ZackD({
                       const label = `${x.shot_id} · ${x.camera_move.replace(/_/g, ' ')}`;
                       return asClip ? (
                         <MediaCard key={x.shot_id} id={`clip:${x.shot_id}`} label={label} kind="video" url={e.clip} prompt={clipPrompt(x)}
-                          pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`clip:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
+                          pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`clip:${x.shot_id}`) || pending.has(`kf:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                           onRedo={() => batch('Clip', [x], (i) => `clip:${i.shot_id}`, genClip, 'Generate this clip?')}
                           onRedoKeyframe={e.clip ? () => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe, 'Regenerate this keyframe? The current clip is discarded and must be animated again (paid).') : undefined} />
                       ) : (
                         <MediaCard key={x.shot_id} id={`kf:${x.shot_id}`} label={label} kind="image" url={e.keyframe} prompt={keyframePrompt(x, sheets, { look: project.look, boost: project.consistencyBoost })}
-                          pending={pending.has(`kf:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`kf:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
+                          pending={pending.has(`kf:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`kf:${x.shot_id}`) || pending.has(`clip:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                           onRedo={() => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe)} />
                       );
                     })}

@@ -286,4 +286,17 @@ describe('ZackD studio (built like the video studios)', () => {
     const nar = await screen.findByLabelText('Narration, beat 1');
     await waitFor(() => expect(nar.disabled).toBe(true));
   });
+
+  it('does not offer clip regeneration while that shot\'s keyframe is still being recovered', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), JSON.stringify([{ rid: 'req_kf', slot: 'keyframe', id: 'beat_1_a', ts: Date.now() }]));
+    vi.mocked(muapi.resumeGeneration).mockImplementationOnce(() => new Promise(() => {}));
+    const { container } = render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await waitFor(() => expect(container.querySelector('[data-result-card="clip:beat_1_a"]')).toBeTruthy());
+    const card = container.querySelector('[data-result-card="clip:beat_1_a"]');
+    const redo = within(card).getAllByRole('button').filter((b) => /^(Redo|Generate)\b/.test(b.getAttribute('aria-label') || ''));
+    expect(redo.length).toBeGreaterThan(0);
+    redo.forEach((b) => expect(b.disabled).toBe(true));
+  });
 });
