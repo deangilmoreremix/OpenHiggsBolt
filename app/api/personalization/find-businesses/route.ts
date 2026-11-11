@@ -3,6 +3,7 @@ import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, dedu
 import type { BusinessDiscoveryRecord, OwnershipType } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { createStageDeadline, withDeadline, DeadlineExceededError, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
+import { runBackfill, planBackfillStages, BACKFILL_TARGET } from '@/server/businessDiscovery/backfill'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 
@@ -657,7 +658,90 @@ export async function POST(req: NextRequest) {
     // Deduplicate, classify ownership, exclude big-box chains by default, then
     // score and sort (classification needs the full batch of names, so it runs
     // at the route level — see processDiscoveryBatch above).
-    const { enriched, stats } = processDiscoveryBatch(winner.records as any[], includeChains)
+    let { enriched, stats } = processDiscoveryBatch(winner.records as any[], includeChains)
+
+    // ── Backfill to the target ───────────────────────────────────────────
+    // `limit` is a cap, not a guarantee: after de-duplication and chain
+    // exclusion a first pass can hold fewer than the target. Widen the search
+    // (radius ladder, then related niches) while the request budget allows, and
+    // report honestly when the area simply has fewer independents. Opt out with
+    // `backfill: false`; the first-pass answer above is used as-is in that case.
+    const backfillTarget = Math.min(limit, BACKFILL_TARGET)
+    const BACKFILL_MIN_REMAINING_MS = 6_000
+    let backfillMeta: Record<string, unknown> | undefined
+    if (body?.backfill !== false && enriched.length < backfillTarget && deadline.remaining() > BACKFILL_MIN_REMAINING_MS) {
+      const stages = planBackfillStages(niche, boundedRadius)
+      const outcome = await runBackfill({
+        target: backfillTarget,
+        stages,
+        startStage: 1, // stage 0 is the search that just ran
+        seed: winner.records as BusinessDiscoveryRecord[],
+        qualify: (records) => processDiscoveryBatch(records, includeChains).enriched,
+        outOfTime: () => deadline.remaining() < BACKFILL_MIN_REMAINING_MS,
+        search: async (stage) => {
+          const stageAbort = new AbortController()
+          const onAbort = () => stageAbort.abort()
+          deadline.signal.addEventListener('abort', onAbort, { once: true })
+          const common = {
+            niche: stage.niche,
+            latitude: geocodeResult.latitude,
+            longitude: geocodeResult.longitude,
+            radiusMiles: stage.radiusMiles,
+            limit: limit * 3,
+            signal: stageAbort.signal,
+          }
+          try {
+            const stageRace = await withDeadline(
+              raceProviders(
+                [
+                  discoverBusinesses(common).then(
+                    (records) => ({ source: 'OPENSTREETMAP' as const, records }),
+                    (error: Error) => ({ source: 'OPENSTREETMAP' as const, error }),
+                  ),
+                  searchBusinessesViaNominatim({ ...common, location }).then(
+                    (records) => ({ source: 'NOMINATIM_SEARCH' as const, records }),
+                    (error: Error) => ({ source: 'NOMINATIM_SEARCH' as const, error }),
+                  ),
+                ],
+                () => stageAbort.abort(),
+              ),
+              deadline,
+            )
+            if (!stageRace.winner?.records) {
+              const err = stageRace.outcomes.find((o) => o.error)?.error
+              throw new Error(err?.message ?? 'no results')
+            }
+            return stageRace.winner.records as BusinessDiscoveryRecord[]
+          } finally {
+            stageAbort.abort()
+            deadline.signal.removeEventListener('abort', onAbort)
+          }
+        },
+      })
+      const final = processDiscoveryBatch(outcome.qualifying as BusinessDiscoveryRecord[], includeChains)
+      enriched = final.enriched
+      stats = final.stats
+      backfillMeta = {
+        requested: backfillTarget,
+        found: outcome.found,
+        exhausted: outcome.exhausted,
+        stoppedBy: outcome.stoppedBy,
+        stagesUsed: outcome.stages.length,
+        maxRadiusMiles: outcome.stages.reduce((m, st) => Math.max(m, st.radiusMiles), boundedRadius),
+        stages: outcome.stages.map((st) => ({
+          radiusMiles: st.radiusMiles, niche: st.niche, kind: st.kind,
+          returned: st.returned, newUnique: st.newUnique, qualifyingAfter: st.qualifyingAfter,
+          ...(st.error ? { failed: true } : {}),
+        })),
+        ...(outcome.found < backfillTarget
+          ? {
+              message: outcome.exhausted
+                ? `Only ${outcome.found} independent local businesses were found within ${outcome.stages.reduce((m, st) => Math.max(m, st.radiusMiles), boundedRadius)} miles after widening the search and trying related categories.`
+                : `Found ${outcome.found} of ${backfillTarget} independent businesses before the time limit; try again or narrow the location.`,
+            }
+          : {}),
+      }
+    }
 
     // Limit results
     const limited = enriched.slice(0, limit)
@@ -702,6 +786,7 @@ export async function POST(req: NextRequest) {
         providerUsed: winner.source,
         durationMs,
         correlationId,
+        ...(backfillMeta ? { backfill: backfillMeta } : {}),
         ...(partial ? { partial } : {}),
       },
       { headers: { 'x-correlation-id': correlationId } },
