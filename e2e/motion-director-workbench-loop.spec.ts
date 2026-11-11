@@ -181,6 +181,8 @@ test.describe('Workbench loop', () => {
     await page.getByTestId('resume-run').click();
     await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 10 * 60_000 });
     await openWorkbench(page);
+    // The store saves the opened film after a short debounce: wait for the saved copy rather than reading storage the instant the editor appears.
+    await expect.poll(async () => (await saved(page))?.run?.stages?.build?.status, { timeout: 15_000 }).toBe('completed');
     const before = await saved(page);
     expect(before.run?.stages?.build?.status).toBe('completed');
     expect(clipsOf(before).some((c) => c.cardId === 'demo:MultiplaneReal')).toBe(true);
