@@ -335,4 +335,22 @@ describe('ZackD studio (built like the video studios)', () => {
     await step(second.container, 'Write script');
     expect(second.container.querySelector('button[data-step]').disabled).toBe(false);
   });
+
+  it('an older project\'s recovered job finishing does not unlock the shown project\'s job for the same shot', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    localStorage.setItem(scopedPersistKey('zackd_project_v1', KEY), JSON.stringify({ pid: 'shown-project', topic: 'A topic' }));
+    localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), JSON.stringify([
+      { rid: 'req_old', slot: 'keyframe', id: 'beat_1_a', pid: 'older-project', ts: Date.now() },
+      { rid: 'req_shown', slot: 'keyframe', id: 'beat_1_a', pid: 'shown-project', ts: Date.now() },
+    ]));
+    // the older project's job finishes at once; the shown project's job keeps running
+    vi.mocked(muapi.resumeGeneration).mockClear();
+    vi.mocked(muapi.resumeGeneration)
+      .mockImplementationOnce(async () => ({ url: 'https://cdn.example.com/old-keyframe.png' }))
+      .mockImplementationOnce(() => new Promise(() => {}));
+    const { container } = render(<ZackD apiKey={KEY} />);
+    await waitFor(() => expect(muapi.resumeGeneration).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 50)); // let the older job settle
+    expect(container.querySelector('button[data-step]').disabled).toBe(true); // still waiting for the shown project's job
+  });
 });

@@ -243,6 +243,7 @@ export default function ZackD({
     const locking = list.filter((j) => !j.pid || !shownPid || j.pid === shownPid);
     if (locking.length) setPending((p) => new Set([...p, ...locking.map(pendingKeyOf)]));
     locking.forEach((j) => { if (j.pid) recoveryLocks.current.set(pendingKeyOf(j), j.pid); });
+    const lockedRids = new Set(locking.map((j) => j.rid)); // only these jobs took a lock, so only they may release one
     const ctl = new AbortController();
     list.forEach(async (j) => {
       let settled = true; // false = the job may still be running: keep its record so a later visit can pick it up
@@ -251,8 +252,10 @@ export default function ZackD({
         if (!j.pid || j.pid === proj.current.pid) { applyResult(j, r?.url); toast('Recovered a generation that was still running'); }
       } catch (e) { if (ctl.signal.aborted || isRecoverable(e)) settled = false; /* else a confirmed failure: drop it */ }
       if (settled) writePending(readPending().filter((x) => x.rid !== j.rid)); // a local cancel keeps it for the next load
-      if (recoveryLocks.current.get(pendingKeyOf(j)) === j.pid) recoveryLocks.current.delete(pendingKeyOf(j));
-      setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
+      if (lockedRids.has(j.rid)) {
+        if (recoveryLocks.current.get(pendingKeyOf(j)) === j.pid) recoveryLocks.current.delete(pendingKeyOf(j));
+        setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
+      }
     });
     return () => ctl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
