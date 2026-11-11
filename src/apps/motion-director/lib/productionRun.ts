@@ -146,7 +146,7 @@ export type Output =
   | { stage: 'storyboard'; scenes: number; failedChecks: string[] }
   | { stage: 'assets'; scenes: SceneRecord[] }
   | { stage: 'build'; scenes: SceneRecord[] }
-  | { stage: 'sound'; cues: number; track: string | null; /** Cuts between shots with no sound near them. */ silentCuts?: number }
+  | { stage: 'sound'; cues: number; track: string | null; /** Planned actions without their sound, sounds off their frame, or sound in a silent film (lib/soundRecord `problems`). */ problems?: number }
   | { stage: 'qa'; issues: string[]; framesChecked: number; /** Checks the QA planned (frames to inspect) and how many were really done. */ required?: number; done?: number }
   | { stage: 'review'; review: ReviewRecord };
 
@@ -177,7 +177,7 @@ export function missingOutput(o: Output): { reason: string; whoCanFix: 'program'
     }
     case 'sound':
       if (!(o.cues > 0 || o.track)) return { reason: 'the film has no sound cues and no music', whoCanFix: 'program' };
-      return o.silentCuts ? { reason: `${o.silentCuts} cut${o.silentCuts === 1 ? '' : 's'} between shots ha${o.silentCuts === 1 ? 's' : 've'} no sound`, whoCanFix: 'program' } : null;
+      return o.problems ? { reason: `${o.problems} sound problem${o.problems === 1 ? '' : 's'}: a planned action without its sound, a sound off its frame, or sound in a silent film`, whoCanFix: 'program' } : null;
     case 'qa': {
       if (o.issues.length) return { reason: `${o.issues.length} unresolved problem${o.issues.length === 1 ? '' : 's'}: ${o.issues.slice(0, 3).join('; ')}`, whoCanFix: 'program' };
       const required = o.required ?? 0;

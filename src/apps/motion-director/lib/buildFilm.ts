@@ -150,14 +150,23 @@ export const sfxGain = (name: string): number => {
   return Math.min(5, Math.round(10 ** ((-8 - db) / 20) * 100) / 100);
 };
 
-const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string } = {}): ClipData => {
+/** Why a cue exists: the cinematic action it belongs to and the frame that action lands on (sound is tied to motion, never scattered). */
+export interface SoundIntent {
+  action: 'whoosh' | 'impact' | 'riser' | 'sparkle' | 'stamp' | 'type' | 'hit';
+  anchor: 'cut' | 'landing' | 'reveal' | 'finale' | 'title';
+  /** The frame the action lands on (the cue's peak is pinned to it). */
+  frame: number;
+  /** Required: a planned action that must have its sound. Optional: an accent that may be dropped without harm. */
+  need: 'required' | 'optional';
+}
+const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string; intent?: Omit<SoundIntent, 'frame'> } = {}): ClipData => {
   const lag = peakLagF(name);
   const raw = peakFrame - lag - OUTPUT_AUDIO_OFFSET_F;
   const start = Math.max(0, Math.round(raw));
   const trim = raw < 0 ? Math.round(-raw) : 0;
   const frames = Math.max(2, Math.ceil(((o.tailMs ?? 700) / 1000) * FPS + (lag - trim)));
   const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
-  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100 }, { label: o.label, inOffset: trim });
+  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100, ...(o.intent ? { intent: { ...o.intent, frame: peakFrame } } : {}) }, { label: o.label, inOffset: trim });
 };
 /** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
 const LOGO_IMPACT_F = 12;
@@ -166,7 +175,7 @@ const LOGO_IMPACT_F = 12;
  * (scripts/gen-riser.py, public/motion-studio/sfxlib/riser), pinned by its peak, which is the last
  * moment of the file, to the frame just before the impact lands.
  */
-const riserBuild = (impactFrame: number): ClipData => pinSfx('riser/riser-rise-build', impactFrame - 1, { tailMs: 60, volume: 0.6, label: 'Build' });
+const riserBuild = (impactFrame: number): ClipData => pinSfx('riser/riser-rise-build', impactFrame - 1, { tailMs: 60, volume: 0.6, label: 'Build', intent: { action: 'riser', anchor: 'finale', need: 'required' } });
 /** Sound cues of each brand scene: [file, peak frame after the scene starts, tail after the peak (ms), volume, label]. Typing is a run of single key hits. */
 type Cue = readonly [string, number, number, number, string];
 const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {
@@ -348,7 +357,8 @@ const INSET_PAGE_H = 1200;
     if (kind !== 'cut') seams.push({ at, kind, n: wipeIndex });
     const pair = SEAM_SOUNDS[kind] ?? SEAM_SOUNDS.cut;
     const turn = (soundTurn[kind] = (soundTurn[kind] ?? -1) + 1);
-    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh' }));
+    // A hit (flash/glitch) or a styled seam (whip, wipe, push...) is a planned action with a required sound; a plain cut's whoosh is an optional accent.
+    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh', intent: { action: hit ? 'impact' : 'whoosh', anchor: 'cut', need: kind === 'cut' ? 'optional' : 'required' } }));
   };
   let wipes = 0;
 
@@ -369,7 +379,7 @@ const INSET_PAGE_H = 1200;
       return !found || !CARDS[motionCardId(found)];
     })();
     if (scene.kind === 'title' || undrawable) {
-      sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp' }));
+      sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp', intent: { action: 'stamp', anchor: 'title', need: 'optional' } }));
       shots.push(
         clip('inkpress-title-card', at, frames, {
           text: scene.headline,
@@ -415,7 +425,7 @@ const INSET_PAGE_H = 1200;
       const url = String(props.url ?? '');
       const cues = [...(scene.recipeId === 'brand/url-scan' ? typingCues(url.length) : []), ...(BRAND_SOUNDS[scene.recipeId] ?? [])];
       for (const [file, peak, tail, volume, label] of cues) {
-        if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label }));
+        if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label, intent: { action: /impact|boom|hit/i.test(`${file}${label ?? ''}`) ? 'impact' : /sparkle|chime|shine/i.test(`${file}${label ?? ''}`) ? 'sparkle' : /type|key/i.test(`${file}${label ?? ''}`) ? 'type' : 'whoosh', anchor: 'reveal', need: 'optional' } }));
       }
       if (scene.recipeId === 'brand/logo-reveal') sfx.push(riserBuild(at + LOGO_IMPACT_F));
       shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));

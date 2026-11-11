@@ -735,9 +735,9 @@ export function useFilmDirector(opts: {
       const material = materialOf(storyboard.capture, media, { brandLogo: Boolean(s.brandKit?.logo) });
       const scenes = recordScenes(sceneRecords(storyboard.plan, material), project, sceneChecks);
       upd((r) => completeStage(r, { stage: 'build', scenes }, { adapted: made.adapted, parameterized: made.parameterized, unmodified: made.unmodified }));
-      const snd = soundRecord(project);
+      const snd = soundRecord(project, { plan: storyboard.plan, silent: Boolean(runRef.current?.silent) });
       if (runRef.current?.silent) { upd((r) => startStage(skipStage(r, 'sound', 'the person asked for a silent film'), 'qa')); } else
-      upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null, silentCuts: snd.silentCuts.length }, { cues: cuts, cuts: snd.cuts, cutsWithSound: snd.cutsWithSound, music: snd.music?.name ?? null, silentAt: snd.silentCuts }), 'qa'));
+      upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null, problems: snd.problems }, { cues: cuts, planned: snd.planned, satisfied: snd.satisfied, optionalSounded: snd.optionalSounded, musicOnly: snd.musicOnly, silentTransitions: snd.silentTransitions, music: snd.music?.name ?? null, missingAt: snd.missing, mistimed: snd.mistimed.length }), 'qa'));
       const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
       qa.framesChecked = frames.checked;
