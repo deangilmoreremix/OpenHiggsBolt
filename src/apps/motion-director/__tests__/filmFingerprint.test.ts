@@ -62,3 +62,39 @@ describe('a stale review cannot approve a changed film', () => {
     expect(finalStatus(r, filmFingerprint(edited))).toBe('review-pending');
   });
 });
+
+describe('the run is saved with the project and a Workbench edit invalidates the review', () => {
+  const review = (fp: string): ReviewRecord => ({ ran: true, state: 'passed', findings: [], schemaValid: true, coversRequired: true, filmFingerprint: fp, criteria: ['P', 'F', 'V', 'S', 'B', 'D', 'Q'].map((g) => ({ id: `${g}1`, ok: true })) } as ReviewRecord);
+  const scene = { n: 1, recipeId: 'r', component: 'SpotlightHeroCard', needs: 'page' as const, assets: { state: 'satisfied' as const, refs: [] }, personalization: 'parameterized' as const, validation: { state: 'passed' as const } };
+  const readyRun = (fp: string) => {
+    let r = newRun('x', 'autonomous');
+    r = completeStage(r, { stage: 'brief', productName: 'A', kind: 'software', features: [], objective: 'o' });
+    r = completeStage(r, { stage: 'direction', chosen: 'd' });
+    r = completeStage(r, { stage: 'mapping', rows: [{ feature: 'f', firstShot: 's' }] });
+    r = completeStage(r, { stage: 'storyboard', scenes: 3, failedChecks: [] });
+    r = completeStage(r, { stage: 'assets', scenes: [scene] });
+    r = completeStage(r, { stage: 'build', scenes: [scene] });
+    r = completeStage(r, { stage: 'sound', cues: 3, track: null });
+    r = completeStage(startStage(r, 'qa'), { stage: 'qa', issues: [], framesChecked: 5, required: 5, done: 5 });
+    return completeStage(r, { stage: 'review', review: review(fp) });
+  };
+  it('every stage record and the review survive being saved with the project and reloaded', () => {
+    const p = base();
+    const saved = JSON.parse(JSON.stringify({ ...p, run: readyRun(filmFingerprint(p)) })) as ProjectData & { run: ReturnType<typeof readyRun> };
+    for (const id of ['brief', 'direction', 'mapping', 'storyboard', 'assets', 'build', 'sound', 'qa', 'review'] as const) expect(saved.run.stages[id].status, id).toBe('completed');
+    expect(saved.run.review.filmFingerprint).toBe(filmFingerprint(p));
+    // The fingerprint ignores the run itself, so saving the run does not change what the review was tied to.
+    expect(filmFingerprint(saved)).toBe(filmFingerprint(p));
+    expect(finalStatus(saved.run, filmFingerprint(saved))).toBe('ready');
+  });
+  it.each([
+    ['a title/caption changed', (p: ProjectData) => film(p.tracks[0].clips.map((c) => (c.id === 'a' ? { ...c, props: { ...c.props, title: 'New title' } } : c)))],
+    ['an image replaced', (p: ProjectData) => film(p.tracks[0].clips.map((c) => (c.id === 'a' ? { ...c, props: { ...c.props, screens: ['https://x/other.png'] } } : c)))],
+    ['a duration changed', (p: ProjectData) => film(p.tracks[0].clips.map((c) => (c.id === 'a' ? { ...c, duration: 90 } : c)))],
+    ['the adapted source edited', (p: ProjectData) => film(p.tracks[0].clips.map((c) => (c.id === 'a' ? { ...c, props: { ...c.props, adaptedCode: 'export const A = () => 1;' } } : c)))],
+  ])('%s after the review: the film is no longer approved', (_n, edit) => {
+    const p = base();
+    const run = JSON.parse(JSON.stringify(readyRun(filmFingerprint(p))));
+    expect(finalStatus(run, filmFingerprint(edit(p)))).toBe('review-pending');
+  });
+});

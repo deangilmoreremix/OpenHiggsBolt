@@ -1,17 +1,17 @@
 {
  "run": {
   "version": 1,
-  "id": "run_mwbf7z8s",
+  "id": "run_mwbks9lp",
   "mode": "autonomous",
   "request": "Make a 20-second luxury real estate video with these three photos of a beachfront home for Seaside Homes. Cinematic camera movement, end with a call to book a tour.",
-  "createdAt": 1794359339308,
-  "updatedAt": 1794359344827,
+  "createdAt": 1794368683933,
+  "updatedAt": 1794368690528,
   "stages": {
    "brief": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359339308,
-    "endedAt": 1794359339310,
+    "startedAt": 1794368683933,
+    "endedAt": 1794368683935,
     "summary": {
      "kind": "real-estate",
      "features": 0,
@@ -21,8 +21,8 @@
    "direction": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359339310,
-    "endedAt": 1794359339375,
+    "startedAt": 1794368683935,
+    "endedAt": 1794368684009,
     "summary": {
      "source": "director"
     }
@@ -30,8 +30,8 @@
    "mapping": {
     "status": "completed",
     "attempts": 2,
-    "startedAt": 1794359339523,
-    "endedAt": 1794359339523,
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684105,
     "summary": {
      "rows": 1
     }
@@ -39,8 +39,8 @@
    "storyboard": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359339524,
-    "endedAt": 1794359339524,
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684105,
     "summary": {
      "release": 0
     }
@@ -48,14 +48,14 @@
    "assets": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359339524,
-    "endedAt": 1794359339524
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684106
    },
    "build": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359339777,
-    "endedAt": 1794359342767,
+    "startedAt": 1794368684415,
+    "endedAt": 1794368688034,
     "summary": {
      "adapted": 0,
      "parameterized": 2,
@@ -65,8 +65,8 @@
    "sound": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359342767,
-    "endedAt": 1794359342767,
+    "startedAt": 1794368688035,
+    "endedAt": 1794368688035,
     "summary": {
      "cues": 7,
      "planned": 1,
@@ -82,8 +82,8 @@
    "qa": {
     "status": "completed",
     "attempts": 1,
-    "startedAt": 1794359342767,
-    "endedAt": 1794359344827,
+    "startedAt": 1794368688035,
+    "endedAt": 1794368690528,
     "summary": {
      "warnings": 0,
      "required": 14,
@@ -134,7 +134,7 @@
      ],
      "note": "6 mechanical checks held at entering, peak and settled"
     },
-    "fingerprint": "467a6e0fcc3f1290b4e74a3c76d914a9",
+    "fingerprint": "d8d616f17dafb9b0e04f8d144058c772",
     "checks": [
      {
       "frame": "entering",
@@ -219,7 +219,7 @@
      ],
      "note": "6 mechanical checks held at entering, peak and settled"
     },
-    "fingerprint": "941f8309f1ee2ba2dbc680bcc7ece2f1",
+    "fingerprint": "9231c26cb3c1a5e11af63df444e22efa",
     "checks": [
      {
       "frame": "entering",
@@ -308,7 +308,7 @@
   },
   "qaIssues": [],
   "fingerprints": {
-   "build": "6915b7d974922cc352b78f1ab446251d"
+   "build": "085a1f7bd37980d183f4f34465712db2"
   }
  },
  "frame": 415,

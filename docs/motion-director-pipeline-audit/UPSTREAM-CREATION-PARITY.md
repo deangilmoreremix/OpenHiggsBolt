@@ -1,4 +1,4 @@
-# Upstream creation parity (Round 8)
+# Upstream creation parity (Round 8, updated in Round 9 — see "Round 9 update" at the end; the Round 8 limitations list below is superseded where noted there)
 
 Upstream: `Vincentwei1021/video-shotcraft` (vendored at `.claude/skills/video-shotcraft`: SKILL.md, references/pipeline.md, guided-free-creation, aesthetic-rules, final-review, sequences/promo-energy-arc, music-beat-sync, sound-design, sfx-sourcing, workbench, template/).
 Application: `src/apps/motion-director/`. Renderer (`@remotion/web-renderer`), Netlify/Supabase/auth/BYOK, Workbench and the Round 6-7 repairs are unchanged.
@@ -51,3 +51,29 @@ Export frame of the Multiplane shot contains the supplied photo colours (≥1 of
 - The sound stage verifies cut coverage and records licences; whether the sound *feels* right is not machine-verifiable.
 - Freesound per-project sourcing (upstream sfx-sourcing) is not adopted: bundled library kept (documented difference).
 - Browser MP4 export and ffprobe were verified by acceptance F on the Round 8 code; the Workbench edit → save → reload → re-export loop was not run end to end this round.
+
+
+## Round 9 update (verification round)
+
+Four claims stay separate — **C** code · **T** unit tests · **B** real browser (Playwright + Chromium, offline, director route mocked) · **L** live AI with an authorized key. **L is `BLOCKED — NO AUTHORIZED KEY` for every stage that needs a model** (brief model mode, direction, mapping, storyboard plan, per-shot source adaptation, adapted-source validation against a real answer, frame review, final review). `gpt-6-astra` is the configured model; OpenAI documents it for the Responses API and Structured Outputs, so it was not changed. Access through the application's BYOK key and successful live requests are unverified.
+
+| Upstream stage | What Round 9 added / proved | C | T | B | L |
+|---|---|---|---|---|---|
+| Modes | run records match the mode: Ink Press → direction/mapping `skipped` with a legitimate waiver; autonomous → both `completed`, no approval prompt; co-creation → `completed` with the person (source `person`). Co-creation was previously recorded as a non-legit skip, so it could never be `ready`: fixed. | yes | productionRun | `motion-director-modes` (2), `director` co-create test asserts the run | no |
+| 0–3 brief / direction / mapping / storyboard gate | unchanged from Round 8; autonomous failure now leaves the stage not-completed (blocker), never a silent skip | yes | productBriefGate, productionRun | `motion-director-production` (5) | no |
+| 4 asset collection | `DocumentTypewriterReveal` now has a structured document input (`lib/documentContent.ts`: title, sections, rails, history; from the site's words or the person's text; refused under 8 blocks). It types the document instead of a screenshot. | yes | documentContent (5), documentRecipe (2: words in frame, no screenshot, no sample words; and exactly the sample without content) | `motion-director-document` (real export renderer; frames in `round9/document/`) | no |
+| 5 per-shot source adaptation | acceptance gate in the adaptation loop (`sceneQa.verifyAdaptation`: asset identity, mechanical checks, motion phases vs the unadapted recipe) — a response that fails is rejected, not adapted; the project clip is proven to carry the validated source; save → reload → Workbench reopen keeps it | yes | adaptLoop, sceneQa | `adaptation-proof` ×3 (SpotlightHeroCard, DeckDealFlyin, RowEmbed): **reference source, not a model** (the unmodified recipe source stands in for the model) | **BLOCKED** (`e2e/live/adaptation.spec.ts`) |
+| scene QA | entering / peak / settled checkpoints; mechanical vs needs-visual-judgement; camera shots that move into a picture are not called "cut off" | yes | sceneQa | production, acceptance | no |
+| 6 sound | cues carry intent (action, anchor, frame); title cards and plain cuts are allowed music-only; timing within 3 frames; sound in a silent film fails | yes | soundRecord | production (sound stage) | no |
+| 7 review + readiness | `ready` needs every required stage completed or legitimately waived, QA required==done, a schema-valid review covering P/F/V/S/B/D/Q, tied to the exact film fingerprint; an **unavailable reviewer is a warning (`needs-review`)**, never a pass | yes | productionRun, filmFingerprint (incl. new: run survives save/reload; caption, image, duration, adapted-source edits each return the film to `review-pending`) | production (pass / one-item / fail-shot / correction), director | **BLOCKED** |
+| recovery | checkpoint after every stage and each adapted shot (`lib/runStore.ts`); after a reload: Resume / Start over; tab-only pictures and dropped captures are reported, not faked | yes | runStore (9) | `motion-director-resume` (3) | n/a |
+| Deliver + Workbench | create → Workbench → edit scene, replace image, change title → save → reload → reopen (tracks, clip counts, photos, sound/music byte-identical) → draft MP4 export (h264 1280×720, AAC, 19.5 s) with the replacement logo and the photos in the exported frames; and interrupt → reload → Resume → edit | yes | — | `motion-director-workbench-loop` (2) | no |
+
+### Example trace (uploaded photos, no website; director route simulated)
+Unchanged from Round 8 (`round8/run-upload-film.json`, regenerated this round): brief (real estate) → direction → mapping → storyboard (gate swapped SpotlightHeroCard) → assets → build (2 shots parameterized, 0 adapted — no model) → sound → qa (14/14 frames) → review `unavailable` → status "draft passed the technical checks · independent review unavailable", **not** ready.
+
+### Round 8 limitations now closed
+Interrupted-run recovery wired to reload; DocumentTypewriterReveal structured input; co-creation boundaries and Ink Press waivers re-tested with run records; Workbench edit → save → reload → re-export loop run end to end.
+
+### Still open
+Live model planning, source adaptation, frame review, final review (L). Business classification is rule-based. Sound *quality* is not machine-verifiable. Freesound sourcing not adopted (bundled library). The offline adaptation proof uses the recipe's own source, so it proves the checks and the pipeline, not the model's writing.
