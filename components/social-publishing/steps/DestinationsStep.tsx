@@ -663,6 +663,7 @@ export default function DestinationsStep({
                       {r.accountId && <span className="text-white/40 ml-1">#{r.accountId}</span>}
                     </p>
                     {r.error && <p className="text-[11px] text-red-400 truncate">{r.error}</p>}
+                    {r.note && !r.error && <p className="text-[11px] text-white/50">{r.note}</p>}
                     {r.url && !r.error && (
                       <a
                         href={String(r.url)}

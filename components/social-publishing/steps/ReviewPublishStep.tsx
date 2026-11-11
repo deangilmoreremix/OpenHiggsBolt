@@ -210,6 +210,9 @@ export default function ReviewPublishStep({
                         {r.error}
                       </span>
                     )}
+                    {isPublished && r.note && (
+                      <span className="text-[10px] text-white/50 max-w-[320px] text-right leading-snug">{r.note}</span>
+                    )}
                     {isPublished && r.url && (
                       <a
                         href={r.url}

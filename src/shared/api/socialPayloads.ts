@@ -6,10 +6,16 @@
  * https://muapi.ai/playground/<platform>-publish (Facebook, LinkedIn,
  * Pinterest, Threads, X — field labels and, where given, parameter names).
  *
- * `confidence: 'documented'` means the field names above are listed in the docs.
- * `confidence: 'basic'` means MuAPI shows only labels/limited names for that
- * platform, so only the minimal, well-attested fields are sent; the UI tells the
- * user. Nothing undocumented (schedule, location, alt text …) is ever sent.
+ * `confidence: 'documented'`: full field list with limits in the docs page.
+ * `confidence: 'basic'`: the platform's playground page names only a few fields
+ * (parameter names confirmed from its implementation guide: Facebook account_id,
+ * media_url, caption, placement; LinkedIn account_id, media_url, caption;
+ * Pinterest account_id, board_id, media_url, title, caption, link; Threads
+ * account_id, media_url, caption, placement; X account_id, media_url, caption,
+ * reply_settings) and does not say which are required, so exactly those are sent
+ * and the UI tells the user. Nothing undocumented (schedule, location, alt text …)
+ * is ever sent. Unresolved: Threads' accepted placement strings (page says both
+ * 'timeline' and 'feed'), so only 'reels' is ever sent explicitly.
  *
  * Pure functions: no network, no React. Unit-tested.
  */

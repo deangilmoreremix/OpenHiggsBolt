@@ -9,14 +9,17 @@ import {
   publishToThreads,
   publishToX,
   pollSocialResult,
+  setYouTubeThumbnail,
 } from '@/lib/muapi'
-import { PLATFORM_SPECS, buildPublishPayload, describePublishError, type PlatformId } from './socialPayloads'
+import { PLATFORM_SPECS, buildPublishPayload, describePublishError, isPublicMediaUrl, type PlatformId } from './socialPayloads'
 
 type PublishFn = (apiKey: string, payload: Record<string, any>) => Promise<any>
 
 export interface PublishDeps {
   publish: Record<PlatformId, PublishFn>
   poll: (apiKey: string, requestId: string) => Promise<any>
+  /** MuAPI youtube-set-thumbnail (optional so tests/other callers can omit it). */
+  setYouTubeThumbnail?: PublishFn
 }
 
 const defaultDeps: PublishDeps = {
@@ -31,6 +34,7 @@ const defaultDeps: PublishDeps = {
     x: publishToX,
   },
   poll: (apiKey, requestId) => pollSocialResult(apiKey, requestId, 120, 2000),
+  setYouTubeThumbnail,
 }
 
 export interface PublishOrchestratorOptions {
@@ -44,9 +48,47 @@ export interface PublishOrchestratorOptions {
   deps?: PublishDeps
 }
 
+/** The YouTube video id from a publish result (watch / youtu.be / shorts URL, or an explicit id). */
+export function extractYouTubeVideoId(out: any): string | null {
+  if (!out || typeof out !== 'object') return null
+  if (typeof out.video_id === 'string' && out.video_id) return out.video_id
+  const url = out.url || out.link || out.permalink
+  if (typeof url !== 'string') return null
+  try {
+    const u = new URL(url)
+    const v = u.searchParams.get('v')
+    if (v) return v
+    const m = u.pathname.match(/^\/(?:shorts\/|embed\/)?([A-Za-z0-9_-]{6,})$/)
+    if (m && /youtu\.?be/.test(u.hostname)) return m[1]
+  } catch {
+    /* not a URL */
+  }
+  return null
+}
+
 function resultUrl(out: any): string | undefined {
   if (!out || typeof out !== 'object') return undefined
   return out.url || out.link || out.permalink || undefined
+}
+
+/**
+ * After a YouTube video is published, set its thumbnail (MuAPI youtube-set-thumbnail:
+ * account_id, video_id, thumbnail_url; JPEG/PNG under 2MB at a public URL). The post is
+ * already live, so a failure here is reported as a note, never as a failed publish.
+ */
+async function applyYouTubeThumbnail(deps: PublishDeps, apiKey: string, accountId: string | undefined, out: any, thumbnailUrl: string): Promise<string> {
+  if (!deps.setYouTubeThumbnail) return 'Published. The thumbnail was not set.'
+  if (!isPublicMediaUrl(thumbnailUrl)) return 'Published. The thumbnail was not set because it is not a public image link.'
+  const videoId = extractYouTubeVideoId(out)
+  if (!videoId) return 'Published. The thumbnail was not set because YouTube did not return the video ID. Set it in YouTube Studio.'
+  try {
+    const submit = await deps.setYouTubeThumbnail(apiKey, { account_id: Number(accountId), video_id: videoId, thumbnail_url: thumbnailUrl })
+    const id = String(submit?.request_id || submit?.id || '')
+    if (id) await deps.poll(apiKey, id)
+    return 'Thumbnail set on YouTube.'
+  } catch (err) {
+    return `Published, but the thumbnail could not be set: ${describePublishError(err, 'YouTube')} (JPEG or PNG under 2MB; custom thumbnails also need a verified YouTube channel).`
+  }
 }
 
 /**
@@ -101,7 +143,7 @@ export async function publishOne(
     onSubmitted?.(requestId)
     const final = await deps.poll(apiKey, requestId)
     const out = final?.output ?? final?.data?.output ?? final
-    return {
+    const result: PublishResult = {
       platform: destination.platform,
       status: 'published',
       url: resultUrl(out),
@@ -109,6 +151,10 @@ export async function publishOne(
       requestId,
       output: out,
     }
+    if (platform === 'youtube' && thumbnail?.imageUrl) {
+      result.note = await applyYouTubeThumbnail(deps, apiKey, destination.accountId, out, thumbnail.imageUrl)
+    }
+    return result
   } catch (err) {
     return fail(describePublishError(err, label), requestId)
   }
