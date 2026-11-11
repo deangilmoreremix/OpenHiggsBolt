@@ -60,13 +60,17 @@ const DownloadIcon = () => (
 const RedoIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" /></svg>
 );
+const ImageIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+);
 
 /** One result card, same anatomy as the Video Studio gallery: hover-play media, overlay actions, mobile actions, footer. */
-function MediaCard({ id, label, kind, url, prompt, aspect = 'aspect-[9/16]', pending, disabled, onRedo, onOpen, onCopyError }) {
+function MediaCard({ id, label, kind, url, prompt, aspect = 'aspect-[9/16]', pending, disabled, onRedo, onRedoKeyframe, onOpen, onCopyError }) {
   const name = `${id.replace(/[^a-z0-9]+/gi, '-')}.${kind === 'video' ? 'mp4' : 'png'}`;
   const actions = [];
   if (url) actions.push({ kind: 'download', label: 'Download', onSelect: () => downloadFile(url, name) });
   if (onRedo) actions.push({ kind: 'redo', label: url ? 'Redo' : 'Generate', onSelect: onRedo, disabled });
+  if (onRedoKeyframe) actions.push({ kind: 'redo', label: 'Redo keyframe', onSelect: onRedoKeyframe, disabled });
   return (
     <div className={`${CARD} ${url ? 'cursor-pointer' : ''}`} data-result-card={id} onClick={() => url && !pending && onOpen?.(url, kind)}>
       {pending ? (
@@ -85,6 +89,7 @@ function MediaCard({ id, label, kind, url, prompt, aspect = 'aspect-[9/16]', pen
       <div className="absolute top-2 right-2 hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         {prompt && url && <GenerationCopyButtons prompt={prompt} onCopyError={onCopyError} />}
         {url && <button type="button" title="Download" aria-label={`Download ${label}`} onClick={(e) => { e.stopPropagation(); downloadFile(url, name); }} className={OVERLAY_BTN}><DownloadIcon /></button>}
+        {onRedoKeyframe && <button type="button" title="Redo keyframe" aria-label={`Redo keyframe ${label}`} disabled={disabled} onClick={(e) => { e.stopPropagation(); onRedoKeyframe(); }} className={OVERLAY_BTN}><ImageIcon /></button>}
         {onRedo && <button type="button" title={url ? 'Redo' : 'Generate'} aria-label={`${url ? 'Redo' : 'Generate'} ${label}`} disabled={disabled} onClick={(e) => { e.stopPropagation(); onRedo(); }} className={OVERLAY_BTN}><RedoIcon /></button>}
       </div>
       <MobileGenerationActions prompt={url ? prompt : undefined} onCopyError={onCopyError} actions={actions} />
@@ -328,7 +333,7 @@ export default function ZackD({
         const url = URL.createObjectURL(out.blob);
         finalRef.current = url;
         setCaptioned(null);
-        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic });
+        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations });
         toast.success('Final cut ready');
         onGenerationComplete?.({ url, model: 'zackd', prompt: project.topic, type: 'video' });
       } else if (out.reason !== 'cancelled') fail(out.error);
@@ -383,7 +388,7 @@ export default function ZackD({
         <div className="flex flex-wrap gap-2 justify-center">
           <button type="button" className={promptControlClassName({ compact: true })} onClick={() => downloadFile(final.url, `zackd-short.${final.ext}`)}><span className={PROMPT_CONTROL_LABEL_CLASS}>Download video</span></button>
           <PostFinalToSocial apiKey={apiKey} final={final} busy={busy} onError={fail} />
-          <button type="button" className={promptControlClassName({ compact: true })} onClick={() => { const u = URL.createObjectURL(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' })); downloadFile(u, 'zackd-short.srt'); setTimeout(() => URL.revokeObjectURL(u), 2000); }}><span className={PROMPT_CONTROL_LABEL_CLASS}>Captions (.srt)</span></button>
+          <button type="button" className={promptControlClassName({ compact: true })} onClick={() => { const u = URL.createObjectURL(new Blob([buildSrt(project.map.beats, undefined, final.durations)], { type: 'text/plain' })); downloadFile(u, 'zackd-short.srt'); setTimeout(() => URL.revokeObjectURL(u), 2000); }}><span className={PROMPT_CONTROL_LABEL_CLASS}>Captions (.srt)</span></button>
           <button type="button" className={promptControlClassName({ compact: true })} onClick={newProject}><span className={PROMPT_CONTROL_LABEL_CLASS}>New project</span></button>
         </div>
         <p className="text-xs text-white/40">The .srt is a free, separate caption file. To burn animated captions into the video, use the option below.</p>
@@ -476,7 +481,8 @@ export default function ZackD({
                       return asClip ? (
                         <MediaCard key={x.shot_id} id={`clip:${x.shot_id}`} label={label} kind="video" url={e.clip} prompt={clipPrompt(x)}
                           pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
-                          onRedo={() => batch('Clip', [x], (i) => `clip:${i.shot_id}`, genClip, 'Generate this clip?')} />
+                          onRedo={() => batch('Clip', [x], (i) => `clip:${i.shot_id}`, genClip, 'Generate this clip?')}
+                          onRedoKeyframe={e.clip ? () => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe, 'Regenerate this keyframe? The current clip is discarded and must be animated again (paid).') : undefined} />
                       ) : (
                         <MediaCard key={x.shot_id} id={`kf:${x.shot_id}`} label={label} kind="image" url={e.keyframe} prompt={keyframePrompt(x, sheets, { look: project.look, boost: project.consistencyBoost })}
                           pending={pending.has(`kf:${x.shot_id}`)} disabled={busy || !hasKey} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}

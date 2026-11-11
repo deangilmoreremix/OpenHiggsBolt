@@ -144,6 +144,22 @@ describe('ZackD studio (built like the video studios)', () => {
     expect(muapi.uploadFile).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps keyframe redo available on an animated shot and passes real clip lengths to the .srt', async () => {
+    renderFinalCut.mockResolvedValueOnce({ ok: true, blob: new Blob(['x'], { type: 'video/mp4' }), extension: 'mp4', warning: null, durations: [8, 8, 8, 8, 8] });
+    const { container } = render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await step(container, 'Render final cut');
+    const clipCard = container.querySelector('[data-result-card="clip:beat_1_a"]');
+    expect(within(clipCard).getByRole('button', { name: /Redo keyframe/ })).toBeTruthy();
+    fireEvent.click(action(container));
+    await screen.findByRole('button', { name: 'Post to social' });
+    const created = []; const orig = URL.createObjectURL; URL.createObjectURL = (b) => { created.push(b); return 'blob:x'; };
+    fireEvent.click(screen.getByRole('button', { name: /Captions \(\.srt\)/ }));
+    URL.createObjectURL = orig;
+    const text = await created.at(-1).text();
+    expect(text).toMatch(/00:00:\d\d,\d{3} --> 00:00:(1\d|2\d),/); // spans the 8 s clips, not the 3 s plan
+  });
+
   it('burns captions on demand: gated on narration, confirms cost, uploads the cut, shows the result, adds history', async () => {
     const cb = callbacks();
     const { container } = render(<ZackD apiKey={KEY} {...cb} />);

@@ -39,19 +39,31 @@ export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC,
   };
 }
 
-/** SRT captions, 6 words per cue, spread across each beat's on-screen window (no overlapping cues). */
-export function buildSrt(beats, transitionSec = TRANSITION_SEC) {
+/**
+ * SRT captions, 6 words per cue, spread across each beat's on-screen window (no overlapping cues).
+ * `durations` (optional) = the real per-shot lengths of the rendered cut in shot order (from planFinalCut); without them
+ * the beat map's planned `duration_sec` is used. Shots overlap by min(transition, clip, timeline), as in the render.
+ */
+export function buildSrt(beats, transitionSec = TRANSITION_SEC, durations = null) {
   const ts = (sec) => {
     const ms = Math.max(0, Math.round(sec * 1000));
     const p = (v, l = 2) => String(v).padStart(l, '0');
     return `${p(Math.floor(ms / 3600000))}:${p(Math.floor(ms / 60000) % 60)}:${p(Math.floor(ms / 1000) % 60)},${p(ms % 1000, 3)}`;
   };
-  let shotIndex = 0; let cursor = 0; let prevEnd = 0; let idx = 0;
+  let shotIndex = 0; let timeline = 0; let prevEnd = 0; let idx = 0;
   const out = [];
   (beats || []).forEach((b) => {
-    const start = Math.max(cursor - shotIndex * transitionSec, prevEnd);
-    let end = start;
-    b.shots.forEach((s) => { end = cursor - shotIndex * transitionSec + s.duration_sec; cursor += s.duration_sec; shotIndex += 1; });
+    let start = null; let end = 0;
+    b.shots.forEach((s) => {
+      const len = Array.isArray(durations) && durations[shotIndex] > 0 ? durations[shotIndex] : s.duration_sec;
+      const overlap = shotIndex === 0 ? 0 : Math.min(transitionSec, len, timeline);
+      const at = shotIndex === 0 ? 0 : timeline - overlap;
+      if (start === null) start = at;
+      end = at + len;
+      timeline = at + len;
+      shotIndex += 1;
+    });
+    start = Math.max(start ?? 0, prevEnd);
     end = Math.max(end, start + 0.1); prevEnd = end;
     const words = String(b.narration || '').split(/\s+/).filter(Boolean);
     const chunks = [];

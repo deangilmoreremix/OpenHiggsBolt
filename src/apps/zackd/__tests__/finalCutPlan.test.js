@@ -50,4 +50,15 @@ describe('buildSrt', () => {
     expect(srt).toContain('2\n00:00:02,750 --> 00:00:05,500\nseven eight');
     expect(srt).toContain('3\n00:00:05,500 --> 00:00:09,000\nnext beat');
   });
+
+  it('follows the rendered clip lengths when given them (8 s clips planned as 3 s)', () => {
+    const beats = [
+      { narration: 'one two', shots: [{ duration_sec: 3 }, { duration_sec: 3 }] },
+      { narration: 'three four', shots: [{ duration_sec: 3 }] },
+    ];
+    expect(buildSrt(beats, 0.5)).toContain('00:00:00,000 --> 00:00:05,500\none two');
+    const real = buildSrt(beats, 0.5, [8, 8, 8]);
+    expect(real).toContain('00:00:00,000 --> 00:00:15,500\none two'); // 8 + (8 - 0.5)
+    expect(real).toContain('00:00:15,500 --> 00:00:23,000\nthree four');
+  });
 });
