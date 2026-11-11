@@ -333,7 +333,7 @@ export default function ZackD({
         const url = URL.createObjectURL(out.blob);
         finalRef.current = url;
         setCaptioned(null);
-        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations });
+        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations, hasNarration: !!(proj.current.mixVoice && proj.current.narration) });
         toast.success('Final cut ready');
         onGenerationComplete?.({ url, model: 'zackd', prompt: project.topic, type: 'video' });
       } else if (out.reason !== 'cancelled') fail(out.error);
@@ -345,6 +345,7 @@ export default function ZackD({
   async function burnCaptions() {
     if (busy || !final?.blob) return;
     if (!project.narration) { fail('Captions are generated from the spoken audio. Add narration first.'); return; }
+    if (!final.hasNarration) { fail('This cut does not include the narration. Mix it in (Advanced) and render again before burning captions.'); return; }
     if (!window.confirm('Burn captions into the video with MuAPI AI Captions? About $0.20 minimum ($0.005 per second), and it takes a few minutes.')) return;
     setBusy(true); onGenerationStart?.(); setProgress('Uploading the video…');
     abort.current = new AbortController();
@@ -407,9 +408,10 @@ export default function ZackD({
             ))}
           </div>
           <div>
-            <button type="button" disabled={busy || !hasKey || !project.narration} onClick={burnCaptions} className={promptControlClassName({ active: true })}><span className={PROMPT_CONTROL_LABEL_CLASS}>{captioned ? 'Burn again' : 'Burn captions'}</span></button>
+            <button type="button" disabled={busy || !hasKey || !project.narration || !final.hasNarration} onClick={burnCaptions} className={promptControlClassName({ active: true })}><span className={PROMPT_CONTROL_LABEL_CLASS}>{captioned ? 'Burn again' : 'Burn captions'}</span></button>
           </div>
           {!project.narration && <p className="text-xs text-white/40">Generate narration first: captions are transcribed from the spoken audio.</p>}
+          {project.narration && !final.hasNarration && <p className="text-xs text-white/40">This cut does not contain the narration. Turn on “Mix in the narration and music” in Advanced and render again, then burn captions.</p>}
           {captioned && (
             <>
               <video src={captioned.url} className="max-h-[60vh] rounded-2xl bg-black border border-white/10" style={{ aspectRatio: '9 / 16' }} controls loop playsInline />

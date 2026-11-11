@@ -169,6 +169,11 @@ describe('ZackD studio (built like the video studios)', () => {
     expect(burn.disabled).toBe(true); // no narration yet
     fireEvent.click(screen.getByRole('button', { name: 'Generate narration' }));
     await waitFor(() => expect(container.querySelector('audio')).toBeTruthy());
+    // narration made after the render is not in the cut: burning would transcribe the clips' own sound, so re-render first
+    expect(screen.getByRole('button', { name: 'Burn captions' }).disabled).toBe(true);
+    expect(screen.getByText(/This cut does not contain the narration/)).toBeTruthy();
+    await step(container, 'Render again'); fireEvent.click(action(container));
+    await waitFor(() => expect(renderFinalCut.mock.calls.at(-1)[0]).toMatchObject({ mixVoice: true }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Burn captions' }).disabled).toBe(false));
     fireEvent.change(screen.getByLabelText('Caption language'), { target: { value: 'Spanish (Mexico)' } });
     fireEvent.click(screen.getByRole('button', { name: 'Beast' }));
