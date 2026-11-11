@@ -205,5 +205,14 @@ const ids = new Set(chunks.map((c) => c.id));
 if (ids.size !== chunks.length) { console.error('Duplicate chunk ids'); process.exit(1); }
 
 const out = { meta: { generatedBy: 'scripts/build-help-index.ts', chunkCount: chunks.length, byKind: Object.fromEntries(['studio', 'academy', 'reseller', 'app'].map((k) => [k, chunks.filter((c) => c.kind === k).length])) }, chunks };
-fs.writeFileSync(path.join(ROOT, 'src/data/helpIndex.json'), JSON.stringify(out) + '\n');
-console.log('help index:', JSON.stringify(out.meta));
+const target = path.join(ROOT, 'src/data/helpIndex.json');
+const next = JSON.stringify(out) + '\n';
+if (process.argv.includes('--check')) {
+  // used by tests/help-index-fresh.vitest.test.ts: fail when the committed index is stale
+  const current = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : '';
+  if (current !== next) { console.error('helpIndex.json is stale. Run: npm run build:help-index'); process.exit(2); }
+  console.log('help index is up to date:', JSON.stringify(out.meta));
+} else {
+  fs.writeFileSync(target, next);
+  console.log('help index:', JSON.stringify(out.meta));
+}

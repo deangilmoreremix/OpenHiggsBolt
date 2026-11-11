@@ -5,6 +5,7 @@ import index from '@/data/helpIndex.json';
 import { buildIndex, search, studioIdFromPath, tokenize, type HelpChunk } from '@/lib/helpSearch';
 import { MODULES } from '@/content/resellerAcademy';
 import { WORKSHOP_APP_IDS } from '@/lib/resellerAcademyApps';
+import { ACADEMY_STUDIO_GUIDES, academyStudioUrl } from '@/data/academyStudioGuides';
 
 const chunks = (index as unknown as { chunks: HelpChunk[] }).chunks;
 const idx = buildIndex(chunks);
@@ -26,7 +27,7 @@ describe('help index integrity', () => {
         const id = c.url.replace(/^\/(studio\/)?/, '');
         const ok = c.url === '/studio' || c.url === '/photo-studio' || c.url === '/brand-studio' || c.url === '/studio/apps' || shell.includes(`id: '${id}'`) || fs.existsSync(path.join(process.cwd(), 'app/studio')) ;
         expect(ok, c.id).toBe(true);
-      } else if (c.kind === 'academy') expect(c.url).toBe('/academy');
+      } else if (c.kind === 'academy') expect(c.url).toMatch(/^\/academy\?track=[^&]+(&lesson=[^&]+)?$/);
       else if (c.kind === 'reseller') expect(lessonIds.has(c.url.split('lesson=')[1]), c.id).toBe(true);
       else expect(WORKSHOP_APP_IDS.includes(c.url.split('/').pop()!), c.id).toBe(true);
     }
@@ -93,5 +94,21 @@ describe('helpers', () => {
     expect(studioIdFromPath('/photo-studio')).toBe('photo-studio');
     expect(studioIdFromPath('/academy/reseller/launch')).toBe('apps');
     expect(studioIdFromPath('/')).toBeNull();
+  });
+});
+
+describe('assistant links every studio to its page and its Academy guide', () => {
+  for (const g of ACADEMY_STUDIO_GUIDES) {
+    it(`${g.label}: "how do I use ${g.label}" returns its guide with both links`, () => {
+      const top = search(idx, `How do I use ${g.label} step by step?`, { limit: 6 });
+      const hit = top.find((t) => t.chunk.studioId === g.id);
+      expect(hit, `top: ${top.map((t) => t.chunk.id).join(', ')}`).toBeTruthy();
+      expect(hit!.chunk.url).toBe(g.route);
+      expect(hit!.chunk.guideUrl).toBe(academyStudioUrl(g.id));
+    });
+  }
+  it('academy lesson chunks deep-link to the exact lesson', () => {
+    const lesson = chunks.find((c) => c.kind === 'academy' && c.id.includes(':lessons:'))!;
+    expect(lesson.url).toMatch(/^\/academy\?track=.+&lesson=.+/);
   });
 });

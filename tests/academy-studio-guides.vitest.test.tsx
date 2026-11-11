@@ -74,7 +74,7 @@ describe('Academy deep links', () => {
   it('ignores unknown studio/track values and falls back safely', () => {
     render(<AcademyCourse tracks={tracks as never} initial={{ view: 'studio-reference', studio: 'does-not-exist', track: 'nope' }} />);
     expect(screen.queryByTestId('studio-create-guide')).toBeNull();
-    expect(screen.getByText('Studio Reference')).toBeTruthy();
+    expect(screen.getAllByText('Studio Reference').length).toBeGreaterThan(0);
   });
   it('Studio Reference search finds a studio by its label', () => {
     render(<AcademyCourse tracks={tracks as never} initial={{ view: 'studio-reference' }} />);
