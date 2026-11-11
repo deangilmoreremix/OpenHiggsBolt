@@ -23,6 +23,7 @@ describe.skipIf(!live)('LIVE Business Finder + enrichment', () => {
     const body = await res.json()
     console.log('FIND', res.status, JSON.stringify({ count: body.count, providerUsed: body.providerUsed, backfill: body.backfill, stats: body.stats, error: body.error, code: body.code }, null, 1))
     console.log('SAMPLE', JSON.stringify((body.businesses ?? []).slice(0, 8).map((b: any) => ({ n: b.name, own: b.ownershipType ?? b.ownership, w: b.website })), null, 1))
+    if (process.env.LIVE_DUMP) (await import('node:fs')).writeFileSync(process.env.LIVE_DUMP, JSON.stringify(body))
     expect(res.status).toBe(200)
     const chains = (body.businesses ?? []).filter((b: any) => (b.ownershipType ?? b.ownership) === 'national_bigbox')
     expect(chains).toEqual([])
