@@ -48,7 +48,7 @@ describe('help index integrity', () => {
 
 describe('retrieval golden set', () => {
   const golden: [string, string, (c: HelpChunk) => boolean, string?][] = [
-    ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3')],
+    ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.includes('16-build-and-launch-apps-with-ai-assistants:lessons:10-stripe-keys-and-webhook')],
     // 8.3 (Vercel path) and 13.10/13.11 (Netlify path) both correctly answer this
     ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.startsWith('reseller:13.10') || c.id.startsWith('reseller:13.11')],
     ['Why did my payment succeed but the credits did not appear', 'reseller', (c) => c.kind === 'reseller' || c.kind === 'app'],

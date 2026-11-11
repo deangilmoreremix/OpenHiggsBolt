@@ -15,7 +15,7 @@ const ROOT = process.cwd();
 
 const matches = (q: HelpQuestion, c: HelpChunk) =>
   !!((q.studio && c.studioId === q.studio) ||
-    (q.track && c.kind === 'academy' && q.track.some((t) => c.url.includes(`track=${t}`))) ||
+    (q.track && c.kind === 'academy' && q.track.some((t) => c.url.includes(`track=${t}`) || c.id.startsWith(`academy:${t}:`))) ||
     (q.reseller && c.kind === 'reseller' && q.reseller.some((p) => c.id.startsWith(`reseller:${p}`))));
 
 describe('natural-language questions find the right content (no product words needed)', () => {

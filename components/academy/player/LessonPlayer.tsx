@@ -108,7 +108,7 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
   };
 
   return (
-    <div data-testid="lesson-player">
+    <div data-testid="lesson-player" className="min-w-0 max-w-full">
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: semantic.textSecondary }}>
         {parsed.minutes ? <span>About {parsed.minutes} minutes</span> : null}
         {parsed.outcome ? <span>You will finish with: {parsed.outcome}</span> : null}
@@ -132,7 +132,7 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
       </div>
 
       {steps.length > 1 && (
-        <nav aria-label="Lesson steps" className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
+        <nav aria-label="Lesson steps" className="relative mb-4 flex min-w-0 max-w-full gap-1.5 overflow-x-auto pb-1">
           {steps.map((s, i) => {
             const isDone = complete || done.includes(s.id);
             const isCurrent = i === index;
