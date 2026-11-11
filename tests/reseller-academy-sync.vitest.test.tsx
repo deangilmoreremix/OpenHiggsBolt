@@ -1,0 +1,51 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { useAcademyProgress } from '@/components/reseller/academy/useAcademyProgress';
+import { WORKSHOP_APP_IDS } from '@/lib/resellerAcademyApps';
+import { PROGRESS_STORAGE_KEY, emptyProgress, setLessonComplete } from '@/lib/resellerAcademyProgress';
+
+const OWNER_KEY = `${PROGRESS_STORAGE_KEY}:owner`;
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+let fetchMock: ReturnType<typeof vi.fn>;
+
+beforeEach(() => { localStorage.clear(); fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe('academy progress sync (review fixes)', () => {
+  it('keeps work done while the first account request is still pending', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.resolve(json({ ok: true })) : new Promise<Response>((res) => { release = res; })));
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    act(() => result.current.selectApp(WORKSHOP_APP_IDS[0]));
+    const older = { ...emptyProgress(), updatedAt: 1 };
+    await act(async () => { release(json({ progress: older, owner: 'userA' })); });
+    await waitFor(() => expect(result.current.sync).not.toBe('local'));
+    expect(result.current.progress.selectedAppId).toBe(WORKSHOP_APP_IDS[0]);
+  });
+
+  it('uploads newer browser progress when the account copy is older or missing', async () => {
+    const local = setLessonComplete(emptyProgress(), '1.1', true, 5000);
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(local));
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: null, owner: 'userA' })));
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(fetchMock.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'PUT')).toBe(true), { timeout: 3000 });
+    const put = fetchMock.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'PUT')!;
+    expect(JSON.parse((put[1] as RequestInit).body as string).progress.completedLessons).toEqual(['1.1']);
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+  });
+
+  it('never gives one account the browser progress of another', async () => {
+    const other = setLessonComplete(emptyProgress(), '1.1', true, 9000);
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(other));
+    localStorage.setItem(OWNER_KEY, 'userA');
+    fetchMock.mockImplementation(() => Promise.resolve(json({ progress: null, owner: 'userB' })));
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    expect(result.current.progress.completedLessons).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(PROGRESS_STORAGE_KEY)!).completedLessons).toEqual([]);
+    expect(localStorage.getItem(OWNER_KEY)).toBe('userB');
+    expect(fetchMock.mock.calls.every((c) => (c[1] as RequestInit | undefined)?.method !== 'PUT')).toBe(true);
+  });
+});

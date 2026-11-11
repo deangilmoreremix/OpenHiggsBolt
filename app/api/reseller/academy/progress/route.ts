@@ -47,7 +47,8 @@ export async function GET() {
       .maybeSingle();
     if (error) throw error;
     const progress = data ? sanitizeProgress(data.state, LESSON_IDS, listResellerAppIds()) : null;
-    return NextResponse.json({ progress }, { headers: { 'Cache-Control': 'no-store' } });
+    // `owner` lets the browser tell whether its saved copy belongs to this account
+    return NextResponse.json({ progress, owner: g.userId }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'STORE_UNAVAILABLE' }, { status: 503 });
   }

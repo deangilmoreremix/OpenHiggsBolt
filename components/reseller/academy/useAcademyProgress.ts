@@ -6,6 +6,8 @@ import { WORKSHOP_APP_IDS } from '@/lib/resellerAcademyApps';
 import {
   emptyProgress,
   loadLocal,
+  loadOwner,
+  saveOwner,
   markPhase,
   mergeProgress,
   saveLocal,
@@ -37,33 +39,6 @@ export function useAcademyProgress(syncRemote = true) {
   const latest = useRef(progress);
   latest.current = progress;
 
-  // hydrate: local first (instant), then merge the account copy
-  useEffect(() => {
-    let cancelled = false;
-    const local = loadLocal(LESSON_IDS, WORKSHOP_APP_IDS);
-    setProgress(local);
-    setReady(true);
-    if (!syncRemote) return;
-    (async () => {
-      try {
-        const res = await fetch(ENDPOINT, { cache: 'no-store' });
-        if (!res.ok) throw new Error(String(res.status));
-        const body = (await res.json()) as { progress: unknown };
-        const remote = body.progress ? sanitizeProgress(body.progress, LESSON_IDS, WORKSHOP_APP_IDS) : null;
-        if (cancelled) return;
-        const merged = mergeProgress(local, remote);
-        setProgress(merged);
-        saveLocal(merged);
-        setSync('saved');
-      } catch {
-        if (!cancelled) setSync('offline');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [syncRemote]);
-
   const push = useCallback(
     (p: AcademyProgress) => {
       saveLocal(p);
@@ -85,6 +60,40 @@ export function useAcademyProgress(syncRemote = true) {
     },
     [syncRemote],
   );
+
+  // hydrate: local first (instant), then merge the account copy
+  useEffect(() => {
+    let cancelled = false;
+    const local = loadLocal(LESSON_IDS, WORKSHOP_APP_IDS);
+    setProgress(local);
+    setReady(true);
+    if (!syncRemote) return;
+    (async () => {
+      try {
+        const res = await fetch(ENDPOINT, { cache: 'no-store' });
+        if (!res.ok) throw new Error(String(res.status));
+        const body = (await res.json()) as { progress: unknown; owner?: unknown };
+        const owner = typeof body.owner === 'string' ? body.owner : null;
+        const remote = body.progress ? sanitizeProgress(body.progress, LESSON_IDS, WORKSHOP_APP_IDS) : null;
+        if (cancelled) return;
+        // Browser progress saved by a different account must never reach this one.
+        const storedOwner = loadOwner();
+        const foreign = !!owner && !!storedOwner && storedOwner !== owner;
+        // Merge against the CURRENT state, so work done while this request was pending is kept.
+        const merged = mergeProgress(foreign ? emptyProgress() : latest.current, remote);
+        if (owner) saveOwner(owner);
+        setProgress(merged);
+        saveLocal(merged);
+        if (merged !== remote && merged.updatedAt > 0) push(merged); // newer browser progress goes up now
+        else setSync('saved');
+      } catch {
+        if (!cancelled) setSync('offline');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [syncRemote, push]);
 
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);

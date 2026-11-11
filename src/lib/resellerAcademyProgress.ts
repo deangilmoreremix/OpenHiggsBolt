@@ -179,6 +179,26 @@ export function loadLocal(lessonIds: readonly string[], appIds?: readonly string
   }
 }
 
+/**
+ * Browser progress is tagged with the account that last synced it, so a second learner
+ * on the same browser never inherits (or overwrites with) the first learner's progress.
+ */
+const OWNER_KEY = `${PROGRESS_STORAGE_KEY}:owner`;
+export function loadOwner(): string | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+export function saveOwner(owner: string): void {
+  try {
+    if (typeof window !== 'undefined') window.localStorage.setItem(OWNER_KEY, owner);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function saveLocal(p: AcademyProgress): void {
   try {
     if (typeof window !== 'undefined') window.localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(p));
