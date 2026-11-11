@@ -65,4 +65,36 @@ describe('academy progress sync (review fixes)', () => {
     expect(sent.completedLessons).toEqual(['1.1']);
     expect(sent.lastLessonId).toBe('1.2');
   });
+
+  it('replays what the learner chose for a checkbox, not a flip, after the account copy loads', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.resolve(json({ ok: true })) : new Promise<Response>((res) => { release = res; })));
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    act(() => result.current.toggle('1.1', 0)); // the learner ticks box 0 on a new browser
+    const remote = { ...emptyProgress(), updatedAt: 4000, checks: { '1.1': [0] } }; // already ticked on the account
+    await act(async () => { release(json({ progress: remote, owner: 'userA' })); });
+    await waitFor(() => expect(result.current.sync).not.toBe('local'));
+    expect(result.current.progress.checks['1.1']).toEqual([0]);
+  });
+
+  it('sends one save at a time, so an older request cannot land after a newer one', async () => {
+    const puts: { body: string; done: (r: Response) => void }[] = [];
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      return new Promise<Response>((res) => puts.push({ body: init.body as string, done: res }));
+    });
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    act(() => result.current.complete('1.1', true));
+    await waitFor(() => expect(puts.length).toBe(1), { timeout: 3000 });
+    act(() => result.current.complete('1.2', true)); // second edit while the first save is still in flight
+    await new Promise((r) => setTimeout(r, 900));
+    expect(puts.length).toBe(1); // the second save waits for the first
+    await act(async () => { puts[0].done(json({ ok: true })); });
+    await waitFor(() => expect(puts.length).toBe(2), { timeout: 3000 });
+    expect(JSON.parse(puts[1].body).progress.completedLessons).toEqual(['1.1', '1.2']);
+    await act(async () => { puts[1].done(json({ ok: true })); });
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+  });
 });

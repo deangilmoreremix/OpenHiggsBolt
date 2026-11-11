@@ -113,6 +113,13 @@ export function toggleCheck(p: AcademyProgress, lessonId: string, index: number,
   return touch({ ...p, checks }, now);
 }
 
+/** Idempotent version of toggleCheck: sets the box to the value the learner chose. */
+export function setCheck(p: AcademyProgress, lessonId: string, index: number, checked: boolean, now: number): AcademyProgress {
+  const cur = p.checks[lessonId] ?? [];
+  if (cur.includes(index) === checked) return p;
+  return toggleCheck(p, lessonId, index, now);
+}
+
 export function setLessonComplete(p: AcademyProgress, lessonId: string, done: boolean, now: number): AcademyProgress {
   const has = p.completedLessons.includes(lessonId);
   if (done === has) return p;

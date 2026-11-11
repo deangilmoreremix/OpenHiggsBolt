@@ -13,8 +13,8 @@ import {
   saveLocal,
   sanitizeProgress,
   selectApp,
+  setCheck,
   setLessonComplete,
-  toggleCheck,
   visitLesson,
   type AcademyProgress,
   type Phase,
@@ -42,26 +42,44 @@ export function useAcademyProgress(syncRemote = true) {
   const hydrated = useRef(!syncRemote);
   const pending = useRef<Array<(p: AcademyProgress, now: number) => AcademyProgress>>([]);
 
+  // One save at a time, always sending the latest state, so a slow older request can never land
+  // after (and overwrite) a newer one.
+  const sending = useRef(false);
+  const again = useRef(false);
+  const flush = useCallback(async () => {
+    if (sending.current) {
+      again.current = true;
+      return;
+    }
+    sending.current = true;
+    try {
+      let ok = false;
+      do {
+        again.current = false;
+        const res = await fetch(ENDPOINT, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ progress: latest.current }),
+        });
+        ok = res.ok;
+      } while (again.current);
+      setSync(ok ? 'saved' : 'offline');
+    } catch {
+      setSync('offline');
+    } finally {
+      sending.current = false;
+    }
+  }, []);
+
   const push = useCallback(
     (p: AcademyProgress) => {
       saveLocal(p);
       if (!syncRemote) return;
       if (timer.current) clearTimeout(timer.current);
       setSync('syncing');
-      timer.current = setTimeout(async () => {
-        try {
-          const res = await fetch(ENDPOINT, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ progress: latest.current }),
-          });
-          setSync(res.ok ? 'saved' : 'offline');
-        } catch {
-          setSync('offline');
-        }
-      }, 600);
+      timer.current = setTimeout(() => void flush(), 600);
     },
-    [syncRemote],
+    [syncRemote, flush],
   );
 
   // hydrate: local first (instant), then merge the account copy
@@ -136,7 +154,11 @@ export function useAcademyProgress(syncRemote = true) {
     selectApp: (id: string | null) => apply((p, n) => selectApp(p, id, n)),
     visit: (lessonId: string) => apply((p, n) => visitLesson(p, lessonId, n)),
     phase: (lessonId: string, ph: Phase) => apply((p, n) => markPhase(p, lessonId, ph, n)),
-    toggle: (lessonId: string, i: number) => apply((p, n) => toggleCheck(p, lessonId, i, n)),
+    toggle: (lessonId: string, i: number) => {
+      // capture the learner's intent now, so replaying it after hydration sets (not flips) the box
+      const checked = !(latest.current.checks[lessonId] ?? []).includes(i);
+      apply((p, n) => setCheck(p, lessonId, i, checked, n));
+    },
     complete: (lessonId: string, done: boolean) => apply((p, n) => setLessonComplete(p, lessonId, done, n)),
   };
 }

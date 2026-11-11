@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const authMock = vi.fn();
 const resolveMock = vi.fn();
 const upsert = vi.fn(async () => ({ error: null }));
+let stored: unknown = null;
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/resellerAccess', async (orig) => ({ ...(await orig<object>()), resolveResellerEntitlements: (...a: unknown[]) => resolveMock(...a) }));
 vi.mock('@/lib/supabaseServer', () => ({
   getSupabaseAdmin: () => ({
-    from: () => ({ upsert, select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
+    from: () => ({ upsert, select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: stored, error: null }) }) }) }),
   }),
 }));
 
@@ -16,7 +17,7 @@ import { GET, PUT } from './progress/route';
 const req = (body: unknown) => new Request('http://x/api', { method: 'PUT', body: JSON.stringify(body) }) as never;
 const trained = { userId: 'u1', entitlements: { apps_studio_training: true } };
 
-beforeEach(() => { authMock.mockReset(); resolveMock.mockReset(); upsert.mockClear(); });
+beforeEach(() => { authMock.mockReset(); resolveMock.mockReset(); upsert.mockClear(); stored = null; });
 
 describe('academy progress API', () => {
   it('401 when signed out', async () => {
@@ -37,5 +38,23 @@ describe('academy progress API', () => {
     const row = (upsert.mock.calls[0] as unknown[])[0] as { clerk_user_id: string; state: { completedLessons: string[] } };
     expect(row.clerk_user_id).toBe('u1');
     expect(row.state.completedLessons).toEqual(['1.1']);
+  });
+  it('ignores a request that is older than what is already saved (out-of-order requests)', async () => {
+    authMock.mockResolvedValue({ userId: 'u1' });
+    resolveMock.mockResolvedValue(trained);
+    stored = { state: { updatedAt: 9000, completedLessons: ['1.1', '1.2'] } };
+    const res = await PUT(req({ progress: { updatedAt: 5000, completedLessons: ['1.1'] } }));
+    expect(res!.status).toBe(200);
+    const body = await res!.json();
+    expect(body.stale).toBe(true);
+    expect(body.progress.completedLessons).toEqual(['1.1', '1.2']);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+  it('accepts a request that is as new or newer', async () => {
+    authMock.mockResolvedValue({ userId: 'u1' });
+    resolveMock.mockResolvedValue(trained);
+    stored = { state: { updatedAt: 5000, completedLessons: ['1.1'] } };
+    await PUT(req({ progress: { updatedAt: 9000, completedLessons: ['1.1', '1.2'] } }));
+    expect(upsert).toHaveBeenCalledTimes(1);
   });
 });

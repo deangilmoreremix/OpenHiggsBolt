@@ -69,6 +69,15 @@ export async function PUT(req: NextRequest) {
   const progress = sanitizeProgress((body as { progress?: unknown } | null)?.progress, LESSON_IDS, listResellerAppIds());
 
   try {
+    // never let an older request overwrite newer saved progress (requests can arrive out of order)
+    const existing = await getSupabaseAdmin().from('reseller_academy_progress').select('state').eq('clerk_user_id', g.userId).maybeSingle();
+    if (existing.error) throw existing.error;
+    if (existing.data) {
+      const stored = sanitizeProgress(existing.data.state, LESSON_IDS, listResellerAppIds());
+      if (stored.updatedAt > progress.updatedAt) {
+        return NextResponse.json({ ok: true, stale: true, progress: stored }, { headers: { 'Cache-Control': 'no-store' } });
+      }
+    }
     const { error } = await getSupabaseAdmin()
       .from('reseller_academy_progress')
       .upsert(
