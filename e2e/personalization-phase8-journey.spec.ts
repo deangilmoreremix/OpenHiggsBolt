@@ -185,4 +185,46 @@ test.describe('Phase 8 credit-free journey (real browser, real export)', () => {
     fs.writeFileSync(path.join(OUT, 'advanced-requests.json'), JSON.stringify({ total: requests.length, ai }, null, 2));
     expect(ai, `AI requests: ${ai.join(', ')}`).toEqual([]);
   });
+
+  test('Editor (S1) + undo/redo + Add vs Replace in a real browser', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+    const editor = dialog.getByText('Edit on the video').locator('xpath=ancestor::div[1]/..');
+
+    // Undo/redo: edit the headline text, undo, redo.
+    await dialog.getByRole('button', { name: /^Select Headline/ }).click();
+    const text = dialog.getByLabel('Layer text');
+    const original = await text.inputValue();
+    await text.fill('Undo me please');
+    await page.waitForTimeout(800);
+    await expect(dialog.getByTestId('editor-undo')).toBeEnabled();
+    await dialog.getByTestId('editor-undo').click();
+    await expect(text).toHaveValue(original);
+    await dialog.getByTestId('editor-redo').click();
+    await expect(text).toHaveValue('Undo me please');
+
+    // Add on top keeps the layout's layers (and the edit); the design joins as one more layer.
+    const layerRows = () => dialog.getByRole('button', { name: /^Select / }).count();
+    const before = await layerRows();
+    await dialog.getByTestId('design-how-add').click();
+    await dialog.getByTestId('design-goal-stand-out').click();
+    await dialog.locator('[data-testid^="design-rec-"]').first().click();
+    await expect.poll(layerRows).toBe(before + 1);
+    await dialog.getByRole('button', { name: /^Select Headline/ }).click();
+    await expect(dialog.getByLabel('Layer text')).toHaveValue('Undo me please');
+
+    // S1: select the design layer; the stage draws the real animation, not a label; no resize handle; no text controls.
+    await dialog.getByRole('button', { name: /^Select Design/ }).click();
+    await expect(dialog.getByTestId('design-layer-player').first()).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /^Resize Design/ })).toHaveCount(0);
+    await expect(dialog.getByLabel('Text color')).toHaveCount(0);
+    await expect(dialog.getByTestId('design-restore-defaults')).toBeVisible();
+    await page.waitForTimeout(1500);
+    await dialog.getByText('Edit on the video').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUT, 'editor-starfield.png') });
+  });
 });

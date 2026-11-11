@@ -24,8 +24,8 @@ Branch `claude/ecstatic-ritchie-fak2d5`. Evidence classes: **unit** (Vitest/jsdo
 
 | | Verdict |
 |---|---|
-| S1 Starfield editor | **Unverified in a real browser** — fixed in code (real design player, no name label, no drag/resize, no text controls, seconds, restore vs remove) and unit-tested |
-| S2 UNAUTHENTICATED | **Partly verified** — Simple Mode journey makes no prompt/AI request (real browser); Advanced no-mode path unit-tested; AI-failure "retry/return" flow not built |
+| S1 Starfield editor | **Pass (real browser screenshot, `docs/phase8-evidence/editor-design-layer.png`)**: a design layer (Bokeh Particles, added via "Add on top") is drawn animated on the stage, not a name label; no resize handle, no text colour/font controls ("This design has no editable text"); Restore design defaults and Remove design shown; undo/redo and Add-vs-Replace (layers + edit kept) exercised. Export frame of the added design not compared |
+| S2 UNAUTHENTICATED | **Partly verified** — Simple Mode (4 ratios) and Advanced (real browser) journeys make zero prompt/AI/MuAPI/recast requests; AI-failure "retry/return" flow still NOT built |
 | S3 Quick Adjustments | **Pass** (real-browser screenshot): goals + 6 cards + full library; one shared selection |
 | S4 Recast | **Unverified** for a real recast; option, credit notice, skip-by-default verified; duplicate-start guard unit-tested |
 | S5 UX board | **Partial** — credit-free flow completes in Simple Mode; no progress/"next action" redesign |
@@ -41,3 +41,9 @@ Reusable, pure modules (no provider imports): `preview/placement/*`, `preview/im
 1. ~~Rights gate~~ RESOLVED: the owner confirmed all 123 registry demo clips are usable with no restrictions; they are `verified-owned` (no Review item, no export confirmation). Uploaded / non-registry clips remain unverified and keep the confirmation gate.
 2. ~~Storefront/office as "property"~~ CONFIRMED by the owner.
 3. RemotionUI licence is MIT (no attribution required); integrating any of its 217 components is a separate, un-started piece of work.
+
+## Update (after 99c8836)
+- Rights: owner confirmed all 123 registry clips usable with no restrictions -> `verified-owned` (752b59a). Storefront/office = property confirmed.
+- Real-browser Advanced "Create without AI" journey: pass, 47 requests, 0 AI (1242e4e). It found and fixed a real bug: the Advanced create button errored "Approve the preview first" (no approve step in Advanced) -> `createFinalVideo({ approveNow: true })`.
+- Journey exported + frames inspected at 9:16, 1:1, 4:5 (0 AI requests each) (4edd0f6).
+- Still open: AI-failure error state + Return to editing / Retry (S2); 25-asset end-to-end in a real browser (S7); remaining timing inputs in seconds + editor tabs; real recast run (needs MuAPI authorization); RemotionUI integration (owner chose "not now").
