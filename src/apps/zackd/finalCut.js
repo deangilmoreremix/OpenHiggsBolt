@@ -24,6 +24,9 @@ export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = nu
   let plan;
   // `shots` carry { src, planned, zoom }; the real length of each clip is measured here, as upstream does with ffprobe.
   const measured = await Promise.all(shots.map((s) => (s.duration > 0 ? s.duration : probeDuration(s.src))));
+  // A clip whose length cannot be read must not silently get its planned (shorter) length when the cut is meant to be full length.
+  const unmeasured = measured.findIndex((d, i) => d == null && !trimToPlanned && !(shots[i].duration > 0));
+  if (unmeasured >= 0) return { ok: false, reason: 'probe-failed', error: `Could not read the length of clip ${unmeasured + 1}. Check that it plays, or turn on "Trim each clip to its planned shot length" in Advanced.` };
   const withDurations = shots.map((s, i) => ({ ...s, duration: measured[i] ?? s.planned ?? 3 }));
   const voice = !!(mixVoice && (narrationUrl || musicUrl));
   try { plan = planFinalCut(withDurations, { keepClipAudio, mixVoice: voice, hasNarration: !!(mixVoice && narrationUrl), trimToPlanned }); } catch (e) { return { ok: false, reason: 'bad-input', error: e.message }; }

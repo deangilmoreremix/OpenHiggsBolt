@@ -225,4 +225,15 @@ describe('ZackD studio (built like the video studios)', () => {
     expect(action(container).disabled).toBe(true);
     expect(screen.getByText(/Add your MuAPI key in Settings/)).toBeTruthy();
   });
+
+  it('survives a corrupt pending-jobs record and acknowledges dropped files', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), '{"not":"an array"}');
+    const handled = vi.fn();
+    const files = [new File(['x'], 'a.png', { type: 'image/png' })];
+    const { container } = render(<ZackD apiKey={KEY} droppedFiles={files} onFilesHandled={handled} />);
+    await waitFor(() => expect(handled).toHaveBeenCalled());
+    type('What happens when you swallow gum?');
+    await step(container, 'Write script'); // renders and is usable: the bad record did not break the resume effect
+  });
 });

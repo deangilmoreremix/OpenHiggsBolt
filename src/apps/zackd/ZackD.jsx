@@ -34,8 +34,9 @@ const PENDING_KEY = 'zackd_pending_v1';
 const CONCURRENCY = 3;
 const MAX_PENDING_AGE_MS = 60 * 60 * 1000;
 
+const newPid = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 const blank = () => ({
-  topic: '', map: null, approved: false, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE,
+  pid: newPid(), topic: '', map: null, approved: false, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE,
   narration: null, music: null, templateId: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME, ...DEFAULT_EXTRAS,
 });
 
@@ -155,8 +156,10 @@ function PostFinalToSocial({ apiKey, final, busy, onError }) {
 }
 
 export default function ZackD({
-  apiKey, templateData, onGenerationStart, onGenerationEnd, onGenerationComplete, onGenerationError,
+  apiKey, templateData, droppedFiles, onFilesHandled, onGenerationStart, onGenerationEnd, onGenerationComplete, onGenerationError,
 }) {
+  // Zack D takes a topic, not files: acknowledge dropped files so the shell does not hand them to another studio later.
+  useEffect(() => { if (droppedFiles?.length) onFilesHandled?.(); }, [droppedFiles, onFilesHandled]);
   const storeKey = useMemo(() => scopedPersistKey(STORE_KEY, apiKey), [apiKey]);
   const historyKey = useMemo(() => scopedPersistKey(HISTORY_KEY, apiKey), [apiKey]);
   const pendingKey = useMemo(() => scopedPersistKey(PENDING_KEY, apiKey), [apiKey]);
@@ -205,7 +208,7 @@ export default function ZackD({
   };
 
   // ---- pending jobs: resumed after a reload through the app's own resumeGeneration -------------------------------------
-  const readPending = () => readJson(pendingKey, []).filter((j) => Date.now() - j.ts < MAX_PENDING_AGE_MS);
+  const readPending = () => { const list = readJson(pendingKey, []); return Array.isArray(list) ? list.filter((j) => j && Date.now() - j.ts < MAX_PENDING_AGE_MS) : []; };
   const writePending = (list) => { try { localStorage.setItem(pendingKey, JSON.stringify(list)); } catch { /* ignore */ } };
   const applyResult = useCallback((meta, url) => {
     if (!url || isPlaceholderUrl(url)) return;
@@ -218,31 +221,36 @@ export default function ZackD({
       return p;
     });
   }, []);
+  const pendingKeyOf = (j) => (j.slot === 'sheet' ? `sheet:${j.id}` : j.slot === 'keyframe' ? `kf:${j.id}` : j.slot === 'clip' ? `clip:${j.id}` : j.slot);
   useEffect(() => {
     if (!apiKey || typeof muapi.resumeGeneration !== 'function') return undefined;
     const list = readPending();
     writePending(list);
+    // resumed jobs show as in progress, and the action button waits for them, so a paid request is not submitted twice
+    if (list.length) setPending((p) => new Set([...p, ...list.map(pendingKeyOf)]));
     const ctl = new AbortController();
     list.forEach(async (j) => {
+      let settled = true;
       try {
         const r = await muapi.resumeGeneration(apiKey, j.rid, { maxAttempts: 120, signal: ctl.signal });
-        applyResult(j, r?.url);
-        toast('Recovered a generation that was still running');
-      } catch { /* expired or failed: drop it */ }
-      writePending(readPending().filter((x) => x.rid !== j.rid));
+        if (!j.pid || j.pid === proj.current.pid) { applyResult(j, r?.url); toast('Recovered a generation that was still running'); }
+      } catch (e) { if (e?.name === 'AbortError' || ctl.signal.aborted) settled = false; /* else expired or failed: drop it */ }
+      if (settled) writePending(readPending().filter((x) => x.rid !== j.rid)); // a local cancel keeps it for the next load
+      setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
     });
     return () => ctl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, pendingKey]);
 
   async function tracked(slot, id, run) {
-    let rid = null;
-    const onRequestId = (r) => { rid = r; writePending([...readPending(), { rid: r, slot, id, ts: Date.now() }]); };
+    const pid = proj.current.pid; // the project this job belongs to
+    const rids = [];
+    const onRequestId = (r) => { rids.push(r); writePending([...readPending(), { rid: r, slot, id, pid, ts: Date.now() }]); };
     try {
       const out = await run(onRequestId);
-      applyResult({ slot, id }, out.url);
+      if (proj.current.pid === pid) applyResult({ slot, id }, out.url); // a new project/template started meanwhile: drop it
       return out;
-    } finally { if (rid) writePending(readPending().filter((x) => x.rid !== rid)); }
+    } finally { if (rids.length) writePending(readPending().filter((x) => !rids.includes(x.rid))); }
   }
   const genSheet = (sh) => tracked('sheet', sh.id, (onRequestId) => jobs.image({ prompt: characterSheetPrompt(sh, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '16:9', onRequestId }));
   const genKeyframe = (shot) => tracked('keyframe', shot.shot_id, (onRequestId) => jobs.image({ prompt: keyframePrompt(shot, proj.current.map.character_sheets, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '9:16', onRequestId }));
@@ -299,7 +307,7 @@ export default function ZackD({
     if (busy || !project.topic.trim()) return;
     // MuAPI has no text endpoint, so the script is an editable starter beat map (the upstream scripts' own default
     // is also a fixed skeleton); nothing is generated or charged until the script is approved.
-    set({ map: starterBeatMap(project.topic), approved: false, sheets: {}, shots: {}, narration: null, music: null, templateId: null });
+    set({ pid: newPid(), map: starterBeatMap(project.topic), approved: false, sheets: {}, shots: {}, narration: null, music: null, templateId: null });
     setFinal(null); setCaptioned(null);
   }
 
@@ -654,7 +662,7 @@ export default function ZackD({
               </div>
             </PromptControls>
 
-            <PromptAction onClick={onAction} disabled={busy || !!next.disabled || (needsKey && !hasKey)} data-step={next.id} title={needsKey && !hasKey ? 'Add your MuAPI key in Settings to generate media' : undefined}>
+            <PromptAction onClick={onAction} disabled={busy || pending.size > 0 || !!next.disabled || (needsKey && !hasKey)} data-step={next.id} title={needsKey && !hasKey ? 'Add your MuAPI key in Settings to generate media' : undefined}>
               {busy ? (<><span className="animate-spin inline-block text-black">◌</span> Working</>) : <span>{next.label}</span>}
             </PromptAction>
           </PromptFooter>
