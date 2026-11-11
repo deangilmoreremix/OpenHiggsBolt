@@ -46,6 +46,16 @@ describe('Academy studio guide manifest', () => {
       }
     }
   });
+  it('Academy track 16 lessons are each stated as under 20 minutes', () => {
+    const dir = path.join(root, 'src/content/academy/16-build-and-launch-apps-with-ai-assistants/lessons');
+    const files = fs.readdirSync(dir).filter((f) => /^\d\d-.*\.md$/.test(f) && !f.startsWith('00-'));
+    expect(files.length).toBe(13);
+    for (const f of files) {
+      const m = fs.readFileSync(path.join(dir, f), 'utf8').match(/\*\*Time:\*\* about (\d+) minutes/);
+      expect(m, f).toBeTruthy();
+      expect(Number(m![1]), f).toBeLessThan(20);
+    }
+  });
   it('builds deep links', () => {
     expect(academyStudioUrl('image')).toBe('/academy?view=studio-reference&studio=image&tab=create');
     expect(academyTrackUrl('ugc', '01-how-ugc-works')).toBe('/academy?track=ugc&lesson=01-how-ugc-works');

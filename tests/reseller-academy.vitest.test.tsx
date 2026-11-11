@@ -22,6 +22,11 @@ describe('curriculum', () => {
     expect(MODULES.map((m) => m.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(new Set(LESSON_IDS).size).toBe(LESSON_IDS.length);
   });
+  it('Module 13 (Claude/ChatGPT + Netlify + Clerk + Stripe) has 13 lessons, each under 20 minutes', () => {
+    const m13 = MODULES.find((m) => m.id === 13)!;
+    expect(m13.lessons.map((l) => l.id)).toEqual(['13.1', '13.2', '13.3', '13.4', '13.5', '13.6', '13.7', '13.8', '13.9', '13.10', '13.11', '13.12', '13.13']);
+    for (const l of m13.lessons) expect(l.minutes, l.id).toBeLessThan(20);
+  });
   it('Stripe module has lessons 7.1-7.5', () => {
     expect(MODULES[6].lessons.map((l) => l.id)).toEqual(['7.1', '7.2', '7.3', '7.4', '7.5']);
   });

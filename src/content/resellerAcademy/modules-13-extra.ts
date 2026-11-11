@@ -22,10 +22,10 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
     ],
     follow: [
       { text: 'Turn on two-step sign-in in each of the four accounts and save the recovery codes somewhere safe, away from the chat.' },
-      { text: 'In Clerk, find the API keys page and look at it without copying anything. You will use the keys in lesson 13.6.', link: K.clerkDocs },
+      { text: 'In Clerk, find the API keys page and look at it without copying anything. You will use the keys in lesson 13.8.', link: K.clerkDocs },
     ],
     advanced: [
-      'Netlify can deploy from several branches. The "production" branch is what customers see; every other branch can get its own preview address. You will use previews to test Clerk safely in 13.6.',
+      'Netlify can deploy from several branches. The "production" branch is what customers see; every other branch can get its own preview address. You will use previews to test Clerk safely in 13.9.',
       'Clerk separates a development instance from a production instance, each with its own keys and its own users. Stripe separates test mode from live mode the same way. Keep this pattern in mind: nothing carries over from "practice" to "real" automatically.',
     ],
     complete: ['Two-step sign-in is on and recovery codes are saved', 'I wrote today\'s date next to each free-plan limit'],
@@ -85,7 +85,7 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
     ],
     advanced: [
       'Fix one error at a time and redeploy after each. The first error is usually the real one; later errors are often consequences of it.',
-      'At this stage the home page should load. Sign-in and payments may not work yet: Clerk replaces sign-in in 13.6 and the Stripe webhook is created in 13.7.',
+      'At this stage the home page should load. Sign-in and payments may not work yet: Clerk replaces sign-in in lessons 13.7 to 13.9 and the Stripe webhook is created in 13.10.',
     ],
     mistakes: ['Fixing several errors at once so you cannot tell which fix worked.', 'A typo or wrong capital in a variable name.'],
   },
@@ -93,7 +93,7 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
     learn: [
       'Clerk keeps the account and the session. Your app asks Clerk "who is signed in?" and gets a user ID, then uses it to find or create its own user record and its credits. That link is what must not break.',
       'The plan comes before the code. Ask where users and credits are stored, how a Clerk user maps to a record, how a new user gets starting credits, and what happens to people who already signed in with Google. A brand-new app with no customers can ignore the last one.',
-      'Clerk\'s development instance works on netlify.app and preview addresses. A production instance needs your own domain, has its own keys and its own user list, and is set up in lesson 13.8.',
+      'Clerk\'s development instance works on netlify.app and preview addresses. A production instance needs your own domain, has its own keys and its own user list, and is set up in lesson 13.13.',
     ],
     follow: [
       { text: 'Ask for the change on a new branch called clerk-signup, one explained file at a time. Ask it to tell you the variable names to add in Netlify, not the values.', copy: { label: 'Prompt', value: 'Create a branch called clerk-signup and make the change you described. Explain each file you change. Tell me the exact environment variable names I need to add in Netlify. Do not ask me for secret keys.' } },
@@ -114,7 +114,7 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
     ],
     follow: [
       { text: 'Test the unhappy paths: a declined test card must add nothing, cancelling on the Checkout page must come back with no credits, and buying twice must add credits twice, not once or four times.', link: K.stripeTesting },
-      { text: 'If credits go to the wrong person, stop and ask the assistant how a checkout is tied to a user. This usually traces back to the user mapping from 13.6.' },
+      { text: 'If credits go to the wrong person, stop and ask the assistant how a checkout is tied to a user. This usually traces back to the user mapping from lessons 13.7 to 13.9.' },
     ],
     advanced: [
       'A trailing slash or a wrong path in the webhook address is a very common cause of "payment succeeded but credits did not appear". Compare the endpoint address with the path in your workshop panel character by character.',

@@ -1,4 +1,4 @@
-import type { Module } from './types';
+import type { Lesson, Module } from './types';
 import { LINKS as K } from './links';
 import { MODULE_13_EXTRA } from './modules-13-extra';
 
@@ -202,12 +202,12 @@ const BASE_13: Module[] = [
         outcome: 'You have a repeatable checklist and prompts you can run for every app you launch.',
         appPanel: 'launch',
         learn: [
-          'Every app follows the same path: accounts (13.1), connectors (13.2 or 13.3), brief the assistant (13.4), host on Netlify (13.5), add Clerk (13.6), connect Stripe (13.7), then branding, domain and a full customer test from Module 10.',
+          'Every app follows the same path: accounts (13.1), connectors (13.2 or 13.3), brief the assistant (13.4), host on Netlify (13.5 and 13.6), add Clerk (13.7 to 13.9), connect Stripe (13.10 and 13.11), then branding, domain and a full customer test from Module 10.',
           'What changes from app to app is only the facts in your workshop panel: its name, its database and its variable names. The prompts stay the same, so you can reuse them.',
           'When you are happy, go live deliberately: a live Stripe key, your own domain, and a final test with a small real payment you refund yourself.',
         ],
         follow: [
-          { text: 'Save the briefing and the prompts from 13.4 to 13.7 in a note so you can paste them for your next app.' },
+          { text: 'Save the briefing and the prompts from 13.4 to 13.11 in a note so you can paste them for your next app.' },
           { text: 'Run the full customer test from Module 10 on your Netlify address.' },
           { text: 'Ask the assistant for a go-live checklist for your specific app and compare it with Module 10 and 11.', copy: { label: 'Prompt', value: 'Give me a go-live checklist for this app on Netlify with Clerk and Stripe: domain, live keys, webhook, Clerk production instance, and a final test. Mark each item as something I do in a dashboard or something you change in the code.' } },
         ],
@@ -222,20 +222,61 @@ const BASE_13: Module[] = [
   },
 ];
 
-/** Base lessons plus the extra depth for each lesson (more explanation, steps and advanced notes). */
-export const MODULES_13: Module[] = BASE_13.map((m) => ({
-  ...m,
-  lessons: m.lessons.map((l) => {
-    const x = MODULE_13_EXTRA[l.id];
-    if (!x) return l;
-    return {
-      ...l,
-      learn: [...l.learn, ...(x.learn ?? [])],
-      follow: [...l.follow, ...(x.follow ?? [])],
-      complete: [...l.complete, ...(x.complete ?? [])],
-      mistakes: [...l.mistakes, ...(x.mistakes ?? [])],
-      advanced: [...(l.advanced ?? []), ...(x.advanced ?? [])],
-      minutes: Math.round(l.minutes * 1.5),
-    };
-  }),
-}));
+/** Every lesson is under 20 minutes. Long topics are split into parts that each end at a safe stopping point. */
+const MERGED: Record<string, Lesson> = {};
+for (const l of BASE_13[0].lessons) {
+  const x = MODULE_13_EXTRA[l.id] ?? {};
+  MERGED[l.id] = {
+    ...l,
+    learn: [...l.learn, ...(x.learn ?? [])],
+    follow: [...l.follow, ...(x.follow ?? [])],
+    complete: [...l.complete, ...(x.complete ?? [])],
+    mistakes: [...l.mistakes, ...(x.mistakes ?? [])],
+    advanced: [...(l.advanced ?? []), ...(x.advanced ?? [])],
+  };
+}
+const pick = <T,>(arr: T[], idx: number[]): T[] => idx.map((i) => arr[i]).filter((v) => v !== undefined);
+
+interface Part {
+  from: string; id: string; title: string; minutes: number; outcome: string;
+  learn?: number[]; extraLearn?: string[]; follow?: number[]; complete: string[]; verify: string[];
+  mistakes?: number[]; advanced?: boolean; troubleshooting?: boolean; appPanel?: Lesson['appPanel'];
+}
+const PARTS: Part[] = [
+  { from: '13.1', id: '13.1', title: 'Start your free accounts: Netlify, Clerk and Stripe', minutes: 18, outcome: 'You have free Netlify, Clerk and Stripe accounts (Stripe in test mode) plus GitHub, and know what each one does.', complete: [], verify: [], advanced: true, troubleshooting: true },
+  { from: '13.2', id: '13.2', title: 'Connect Claude to Netlify, Clerk and Stripe with connectors', minutes: 18, outcome: 'Claude can see your Netlify sites, your Clerk application and your Stripe test data, with your approval each time.', complete: [], verify: [], advanced: true, troubleshooting: true },
+  { from: '13.3', id: '13.3', title: 'Connect ChatGPT the same way', minutes: 15, outcome: 'ChatGPT can use the same three services, or you know exactly what your plan does not allow.', complete: [], verify: [], advanced: true, troubleshooting: true },
+  { from: '13.4', id: '13.4', title: 'Give the assistant your app and your plan', minutes: 18, outcome: 'Your assistant knows which app you are building, what it already includes and what you want changed.', complete: [], verify: [], advanced: true, troubleshooting: true },
+  { from: '13.5', id: '13.5', title: 'Check your app is ready and create the Netlify site', minutes: 18, outcome: 'Your app is checked for Netlify and a Netlify site is connected to your GitHub repo.', learn: [0, 3], follow: [0, 4, 1], complete: ['The assistant listed the build command and every variable name, matching my workshop page', 'Any change was on a branch and explained first', 'A Netlify site exists, connected to my repository'], verify: ['Your Netlify dashboard lists the new site connected to your repository.'], mistakes: [], appPanel: 'envvars' },
+  { from: '13.5', id: '13.6', title: 'Add variables, deploy and fix failures', minutes: 18, outcome: 'Your app builds on Netlify and opens at a netlify.app address, with every secret in Netlify and none in the chat.', learn: [1, 2, 4, 5], follow: [2, 5, 3, 6], complete: ['All variables are set in Netlify, not in chat', 'I redeployed after adding variables', 'The deploy shows Published'], verify: ['Your netlify.app address opens your app\'s home page.'], mistakes: [0, 1], advanced: true, troubleshooting: true, appPanel: 'envvars' },
+  { from: '13.6', id: '13.7', title: 'Plan the Clerk change', minutes: 15, outcome: 'You have a reviewed plan for replacing NextAuth with Clerk that keeps every person\'s credits.', learn: [0, 4, 5, 2], follow: [0], complete: ['The plan mapped Clerk users to credits', 'It says what happens to existing users, or I have none', 'The plan does not touch payment code'], verify: ['You can say in one sentence how a Clerk user is linked to their credits.'], mistakes: [0], appPanel: 'accounts' },
+  { from: '13.6', id: '13.8', title: 'Make the Clerk change and add the keys', minutes: 15, outcome: 'Clerk works on a Netlify preview deploy, with its keys in Netlify only.', learn: [1, 3, 6], follow: [1, 5, 2], complete: ['The change is on a branch called clerk-signup', 'Clerk keys are in Netlify only', 'A preview deploy of the branch built successfully'], verify: ['The preview deploy opens and shows Clerk sign-in.'], mistakes: [1], appPanel: 'accounts' },
+  { from: '13.6', id: '13.9', title: 'Test sign-up and merge', minutes: 15, outcome: 'A fresh test sign-up works, appears in Clerk and has the right credits, and the branch is merged.', extraLearn: ['Test on the preview deploy from the last lesson with a brand-new email, because an existing session hides problems. Only merge when every check passes.'], follow: [3, 6, 7, 4], complete: ['A new test user signed up and appears in Clerk', 'Credits look right and survive sign-out and sign-in', 'I merged only after every test passed'], verify: ['The test user is listed in the Clerk dashboard and sees their own credits in the app.'], mistakes: [], advanced: true, troubleshooting: true, appPanel: 'accounts' },
+  { from: '13.7', id: '13.10', title: 'Stripe keys and the webhook', minutes: 18, outcome: 'Your Stripe test keys and a webhook endpoint are connected to your Netlify site.', learn: [0, 3, 4], follow: [0, 1], complete: ['Stripe test keys and the webhook signing secret are in Netlify only', 'The webhook points at my site and the path from my workshop page', 'I redeployed after adding them'], verify: ['Stripe lists your webhook endpoint in test mode.'], mistakes: [], appPanel: 'webhook' },
+  { from: '13.7', id: '13.11', title: 'Test purchase and check it from the chat', minutes: 15, outcome: 'A test purchase on your Netlify site adds credits, and your assistant confirms it from Stripe.', learn: [1, 2, 5], follow: [2, 3, 4, 5], complete: ['A test purchase added credits', 'The assistant confirmed the payment and webhook from Stripe', 'A declined card added nothing'], verify: ['Stripe shows the test payment succeeded and the webhook delivery succeeded, and your credits increased.'], mistakes: [0, 1], advanced: true, troubleshooting: true, appPanel: 'webhook' },
+  { from: '13.8', id: '13.12', title: 'Save your prompts and run the customer test', minutes: 15, outcome: 'You have a repeatable checklist for any of the 38 apps and a passing customer test on your Netlify address.', learn: [0, 1, 5], follow: [0, 1, 6], complete: ['I saved my reusable prompts', 'I ran the full customer test'], verify: ['You could repeat this build for a second app using only your saved prompts and its workshop page.'], mistakes: [], appPanel: 'launch' },
+  { from: '13.8', id: '13.13', title: 'Go live: domain, Clerk production and Stripe live', minutes: 18, outcome: 'Your app is live on your own domain with Clerk production and Stripe live, tested with a real payment you refunded.', learn: [2, 3, 4], follow: [2, 3, 4, 5], complete: ['I have a go-live checklist for this app', 'I understand domain, Clerk production and Stripe live are three separate switches', 'I refunded my own test purchase'], verify: ['A real sign-up and a small real payment work on your own domain, and the live webhook delivery succeeded.'], mistakes: [0, 1], advanced: true, troubleshooting: true, appPanel: 'launch' },
+];
+
+const lessons: Lesson[] = PARTS.map((p) => {
+  const m = MERGED[p.from];
+  const whole = p.learn === undefined && p.follow === undefined;
+  const learn = whole ? m.learn : [...pick(m.learn, p.learn ?? []), ...(p.extraLearn ?? [])];
+  return {
+    ...m,
+    id: p.id,
+    title: p.title,
+    minutes: p.minutes,
+    outcome: p.outcome,
+    learn,
+    follow: whole ? m.follow : pick(m.follow, p.follow ?? []),
+    complete: p.complete.length ? p.complete : m.complete,
+    verify: p.verify.length ? p.verify : m.verify,
+    mistakes: whole ? m.mistakes : pick(m.mistakes, p.mistakes ?? []).concat(p.mistakes?.length ? [] : ['Skipping a check at the end of the lesson.']),
+    advanced: p.advanced ? m.advanced : undefined,
+    troubleshooting: whole || p.troubleshooting ? m.troubleshooting : [{ problem: 'Something did not match what the lesson says you should see.', fix: 'Stop, copy the exact message or describe what you see to your assistant, and ask it to explain the first problem before changing anything.' }],
+    appPanel: p.appPanel ?? m.appPanel,
+  };
+});
+
+export const MODULES_13: Module[] = [{ ...BASE_13[0], lessons }];

@@ -23,18 +23,25 @@ By the end you will have, for one app of your choice:
 
 ## The lessons
 
+Every lesson takes **under 20 minutes**, so you can finish one in a sitting and stop at a safe point.
+
 | # | Lesson | Time | What you finish with |
 | --- | --- | --- | --- |
-| 1 | Start your free accounts | 20 min | Netlify, Clerk, Stripe (test), GitHub |
-| 2 | Connect Claude with connectors | 20 min | Claude can read your three services |
-| 3 | Connect ChatGPT the same way | 20 min | ChatGPT can, or you know it cannot on your plan |
-| 4 | Brief your assistant on the app | 25 min | An assistant that understands your app |
-| 5 | Host on Netlify | 40 min | A live netlify.app address |
-| 6 | Add Clerk sign-up | 45 min | Real sign-up and sign-in |
-| 7 | Stripe test payments | 40 min | A test purchase that adds credits |
-| 8 | The full build and going live | 40 min | A repeatable checklist and a go-live plan |
+| 1 | Start your free accounts | 18 min | Netlify, Clerk, Stripe (test), GitHub |
+| 2 | Connect Claude with connectors | 18 min | Claude can read your three services |
+| 3 | Connect ChatGPT the same way | 15 min | ChatGPT can, or you know it cannot on your plan |
+| 4 | Brief your assistant on the app | 18 min | An assistant that understands your app |
+| 5 | Check readiness and create the Netlify site | 18 min | A Netlify site connected to your repo |
+| 6 | Add variables, deploy and fix failures | 18 min | A live netlify.app address |
+| 7 | Plan the Clerk change | 15 min | A reviewed plan that protects credits |
+| 8 | Make the Clerk change and add the keys | 15 min | Clerk on a preview deploy |
+| 9 | Test sign-up and merge | 15 min | Real sign-up and sign-in, merged |
+| 10 | Stripe keys and the webhook | 18 min | Test keys and a webhook endpoint |
+| 11 | Test purchase and check it from the chat | 15 min | A test purchase that adds credits |
+| 12 | Save your prompts and run the customer test | 15 min | A repeatable checklist |
+| 13 | Go live: domain, Clerk production, Stripe live | 18 min | A live business |
 
-Plan on a weekend for your first app. The second one will take an afternoon.
+Plan on a weekend for your first app, taking breaks between lessons. The second app will take an afternoon.
 
 ## What the apps already include (and what they do not)
 
@@ -76,4 +83,4 @@ The Reseller Setup Walkthrough (`/academy/reseller/launch`) takes you through Ve
 * **Connector (plugin):** a switch that lets Claude or ChatGPT use another service for you.
 * **Test mode:** Stripe's practice mode: fake cards, no real money.
 
-When you are ready, start with lesson 1.
+When you are ready, start with lesson 1. Each lesson ends at a safe stopping point.

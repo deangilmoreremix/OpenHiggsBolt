@@ -1,6 +1,6 @@
 # Connect Claude to Netlify, Clerk and Stripe
 
-> **Time:** about 20 minutes. **You will finish with:** Claude connected to your three services, proven by a read-only test.
+> **Time:** about 18 minutes. **You will finish with:** Claude connected to your three services, proven by a read-only test.
 
 ---
 

@@ -1,6 +1,6 @@
 # Start your free accounts: Netlify, Clerk and Stripe
 
-> **Time:** about 20 minutes. **You will finish with:** GitHub, Netlify, Clerk and Stripe accounts, all protected, with Stripe in test mode.
+> **Time:** about 18 minutes. **You will finish with:** GitHub, Netlify, Clerk and Stripe accounts, all protected, with Stripe in test mode.
 
 ---
 
@@ -15,7 +15,7 @@ A live app is several services working together. Each account has one job, and k
 | **Clerk** | Handles sign-up, sign-in and user accounts | Your application and its keys |
 | **Stripe** | Takes payments and reports them | Test keys, a webhook, test payments |
 
-The AI part (MuAPI) and the database (Supabase or Neon) you already set up in Modules 4 and 5 of the Reseller Setup Walkthrough. If you have not done those, finish them first; lesson 5 needs the database address.
+The AI part (MuAPI) and the database (Supabase or Neon) you already set up in Modules 4 and 5 of the Reseller Setup Walkthrough. If you have not done those, finish them first; lesson 6 needs the database address.
 
 ## What "free" means here
 
@@ -52,7 +52,7 @@ Sign in to the account you used in the Reseller Setup Walkthrough. Your app shou
 
 1. Create or sign in to your Stripe account.
 2. Make sure you are in **test mode** (Stripe shows a Test mode or Sandbox indicator in the dashboard). Everything in this track uses test mode.
-3. You do not need to activate your account for real payments yet. That is lesson 8 and Module 9.
+3. You do not need to activate your account for real payments yet. That is lesson 13 and Module 9.
 
 ### 5. Protect every account
 

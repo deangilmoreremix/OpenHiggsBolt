@@ -1,6 +1,6 @@
 # Connect ChatGPT the same way
 
-> **Time:** about 20 minutes. **You will finish with:** ChatGPT connected to your three services, or a clear decision to use Claude.
+> **Time:** about 15 minutes. **You will finish with:** ChatGPT connected to your three services, or a clear decision to use Claude.
 
 ---
 

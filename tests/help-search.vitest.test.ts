@@ -48,8 +48,8 @@ describe('help index integrity', () => {
 describe('retrieval golden set', () => {
   const golden: [string, string, (c: HelpChunk) => boolean, string?][] = [
     ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3')],
-    // 8.3 (Vercel path) and 13.7 (Netlify path) both correctly answer this
-    ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.startsWith('reseller:13.7')],
+    // 8.3 (Vercel path) and 13.10/13.11 (Netlify path) both correctly answer this
+    ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.startsWith('reseller:13.10') || c.id.startsWith('reseller:13.11')],
     ['Why did my payment succeed but the credits did not appear', 'reseller', (c) => c.kind === 'reseller' || c.kind === 'app'],
     ['How do I connect my own domain to Vercel', 'reseller', (c) => c.id.startsWith('reseller:10.2')],
     ['What is test mode in Stripe', 'reseller', (c) => c.id.startsWith('reseller:7.5')],
@@ -118,7 +118,7 @@ describe('Netlify / Clerk / Stripe with Claude or ChatGPT lessons', () => {
   it.each([
     ['How do I connect Claude to Netlify, Clerk and Stripe with connectors?', ['reseller:13.2', 'academy:16-build-and-launch-apps-with-ai-assistants']],
     ['How do I start free Netlify, Clerk and Stripe accounts?', ['reseller:13.1', 'academy:16-build-and-launch-apps-with-ai-assistants']],
-    ['How do I add Clerk sign up to my app?', ['reseller:13.6']],
+    ['How do I add Clerk sign up to my app?', ['reseller:13.7', 'reseller:13.8', 'reseller:13.9']],
     ['How do I connect ChatGPT connectors to Netlify?', ['reseller:13.3', 'academy:16-build-and-launch-apps-with-ai-assistants']],
   ])('finds the lesson for: %s', (q, prefixes) => {
     const ids = search(idx, q, { studioId: 'apps', limit: 6 }).map((h) => h.chunk.id);

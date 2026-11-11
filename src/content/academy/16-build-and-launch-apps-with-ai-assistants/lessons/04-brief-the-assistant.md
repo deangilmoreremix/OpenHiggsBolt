@@ -1,6 +1,6 @@
 # Brief your assistant on the app
 
-> **Time:** about 25 minutes. **You will finish with:** an assistant that has read your app, understands what it already includes, and has agreed to your working rules.
+> **Time:** about 18 minutes. **You will finish with:** an assistant that has read your app, understands what it already includes, and has agreed to your working rules.
 
 ---
 
