@@ -347,7 +347,7 @@ export default function ZackD({
         const url = URL.createObjectURL(out.blob);
         finalRef.current = url;
         setCaptioned(null);
-        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations, hasNarration: !!(proj.current.mixVoice && proj.current.narration) });
+        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations, hasNarration: !!(project.mixVoice && project.narration) }); // from the inputs this render was started with (project), not the live state, which can change while it encodes
         toast.success('Final cut ready');
         onGenerationComplete?.({ url, model: 'zackd', prompt: project.topic, type: 'video' });
       } else if (out.reason !== 'cancelled') fail(out.error);
