@@ -1,5 +1,6 @@
 import type { Module } from './types';
 import { LINKS as K } from './links';
+import { MODULE_13_EXTRA } from './modules-13-extra';
 
 /**
  * Module 13 — build and launch with Claude / ChatGPT + Netlify + Clerk + Stripe.
@@ -12,7 +13,7 @@ import { LINKS as K } from './links';
  *    "follow the official page" instead of quoting exact labels.
  *  - Secrets never go into the chat. They go into Netlify / Clerk / Stripe dashboards.
  */
-export const MODULES_13: Module[] = [
+const BASE_13: Module[] = [
   {
     id: 13,
     title: 'Build Your App with Claude or ChatGPT, Netlify, Clerk and Stripe',
@@ -220,3 +221,21 @@ export const MODULES_13: Module[] = [
     ],
   },
 ];
+
+/** Base lessons plus the extra depth for each lesson (more explanation, steps and advanced notes). */
+export const MODULES_13: Module[] = BASE_13.map((m) => ({
+  ...m,
+  lessons: m.lessons.map((l) => {
+    const x = MODULE_13_EXTRA[l.id];
+    if (!x) return l;
+    return {
+      ...l,
+      learn: [...l.learn, ...(x.learn ?? [])],
+      follow: [...l.follow, ...(x.follow ?? [])],
+      complete: [...l.complete, ...(x.complete ?? [])],
+      mistakes: [...l.mistakes, ...(x.mistakes ?? [])],
+      advanced: [...(l.advanced ?? []), ...(x.advanced ?? [])],
+      minutes: Math.round(l.minutes * 1.5),
+    };
+  }),
+}));

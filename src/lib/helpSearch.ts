@@ -93,12 +93,12 @@ export function search(index: Index, query: string, opts: SearchOptions = {}): {
     scored.push({ chunk: d.chunk, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  // at most 3 chunks from the same page so sources stay varied
+  // at most 2 chunks from the same page so sources stay varied
   const perUrl = new Map<string, number>();
   const out: { chunk: HelpChunk; score: number }[] = [];
   for (const s of scored) {
     const c = perUrl.get(s.chunk.url) ?? 0;
-    if (c >= 3) continue;
+    if (c >= 2) continue;
     // the 38 per-app chunks look alike; keep them from crowding out lessons
     if (s.chunk.kind === 'app' && out.filter((o) => o.chunk.kind === 'app').length >= 2) continue;
     perUrl.set(s.chunk.url, c + 1);

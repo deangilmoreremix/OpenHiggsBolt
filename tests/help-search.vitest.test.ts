@@ -48,7 +48,8 @@ describe('help index integrity', () => {
 describe('retrieval golden set', () => {
   const golden: [string, string, (c: HelpChunk) => boolean, string?][] = [
     ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3')],
-    ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3')],
+    // 8.3 (Vercel path) and 13.7 (Netlify path) both correctly answer this
+    ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.startsWith('reseller:13.7')],
     ['Why did my payment succeed but the credits did not appear', 'reseller', (c) => c.kind === 'reseller' || c.kind === 'app'],
     ['How do I connect my own domain to Vercel', 'reseller', (c) => c.id.startsWith('reseller:10.2')],
     ['What is test mode in Stripe', 'reseller', (c) => c.id.startsWith('reseller:7.5')],
