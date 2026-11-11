@@ -152,7 +152,7 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
 }
 
 /** Adapt the film's best shots within the time budget. Never throws except for a missing key / refusal on the first shot. */
-export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal, onOutcome?: (outcome: AdaptationOutcome) => void, opts: { only?: ReadonlySet<string>; eligible?: (clip: ClipData) => boolean } = {}): Promise<ProjectData> {
+export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: AdaptDeps, log: AdaptLog, outer?: AbortSignal, onOutcome?: (outcome: AdaptationOutcome) => void, opts: { only?: ReadonlySet<string>; eligible?: (clip: ClipData) => boolean; /** Called after each shot is adapted with the film so far, so progress can be checkpointed. */ onShot?: (project: ProjectData) => void } = {}): Promise<ProjectData> {
   const every = adaptTargets(project, { ...opts, all: true });
   const targets = every.slice(0, ADAPT_LIMITS.shots);
   // Shots beyond the per-pass limit are not dropped: they are reported as pending so a continuation pass picks them up.
@@ -183,6 +183,7 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
         if (done) {
           result = withClip(result, clip.id, done.props);
           adapted++;
+          try { opts.onShot?.(result); } catch { /* a checkpoint failure never stops the adaptation */ }
           log(`Adapted ${name}${done.notes ? ` · ${done.notes}` : ''}`, 'done');
         } else {
           log(`Kept the original ${name} (the adapted version did not pass its checks)`, 'done');

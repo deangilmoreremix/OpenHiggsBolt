@@ -286,6 +286,30 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         </div>
       )}
       {shown.map((m, i) => <FilmMessage key={`${m.ts}-${i}`} message={m} />)}
+      {director.resumeOffer && (
+        <div className="rounded-xl px-3 py-3 text-xs" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-default, rgba(255,255,255,0.12))' }} data-testid="resume-offer">
+          {(() => {
+            const o = director.resumeOffer.action;
+            const run = director.resumeOffer.cp.run;
+            const title = `A film was interrupted: “${run.request.slice(0, 80)}”`;
+            if (o.kind === 'resume') return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">It stopped at the {o.from} stage. {o.kept} shot{o.kept === 1 ? ' is' : 's are'} already adapted and kept; {o.scenes || 'the remaining'} scene{o.scenes === 1 ? '' : 's'} still to build.</p>
+              <div className="flex gap-2"><button type="button" onClick={director.resumeRun} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="resume-run">Resume</button><button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Start over</button></div>
+            </>;
+            if (o.kind === 'needs-input') return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">It cannot be resumed as it is: {o.needs.join('; ')}.</p>
+              <button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Start over</button>
+            </>;
+            return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">Nothing to continue from: {o.kind === 'restart' ? o.why : o.why}. Send the request again.</p>
+              <button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Dismiss</button>
+            </>;
+          })()}
+        </div>
+      )}
       {stage === 'offer' && (
         <div className="flex flex-wrap gap-2" data-testid="inkpress-offer">
           <button type="button" onClick={() => director.chooseTemplate('inkpress')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)}>Use Ink Press</button>

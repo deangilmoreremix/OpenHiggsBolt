@@ -443,7 +443,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -583,14 +583,14 @@ export async function buildFilmProject(
       if (!opts.signal?.aborted) log(`Shot adaptation failed: ${error instanceof Error ? error.message : 'error'}; the film keeps its plain recipes`, 'error');
     };
     try {
-      built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { first = o; if (!(('pending' in o) && o.pending?.length)) opts.onAdaptation?.(o); }, { eligible });
+      built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { first = o; if (!(('pending' in o) && o.pending?.length)) opts.onAdaptation?.(o); }, { eligible, ...(opts.onShot ? { onShot: opts.onShot } : {}) });
       // Continuation: the shots the first pass did not reach (its time budget, its per-pass limit) get their own pass, once,
       // instead of being left plain without a word.
       const pending = first && 'pending' in first ? (first as { pending?: string[] }).pending : undefined;
       if (pending?.length && !opts.signal?.aborted && first && (first as AdaptationOutcome).kind !== 'stopped') {
         log(`${pending.length} more shot${pending.length === 1 ? '' : 's'} to adapt: continuing`, 'running');
         let second = null as AdaptationOutcome | null;
-        built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { second = o; }, { eligible, only: new Set(pending) });
+        built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { second = o; }, { eligible, only: new Set(pending), ...(opts.onShot ? { onShot: opts.onShot } : {}) });
         const a1 = first as { adapted: number; attempted: number };
         const a2 = (second ?? { adapted: 0, attempted: 0 }) as { adapted: number; attempted: number; pending?: string[] };
         opts.onAdaptation?.({ kind: 'ran', adapted: a1.adapted + a2.adapted, attempted: a1.attempted + a2.attempted, ...(a2.pending?.length ? { pending: a2.pending } : {}) });

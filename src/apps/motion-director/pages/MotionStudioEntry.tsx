@@ -245,7 +245,7 @@ export default function MotionStudioEntry() {
       pickedRecipes: selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean),
     }),
   });
-  const conversing = director.messages.length > 0;
+  const conversing = director.messages.length > 0 || Boolean(director.resumeOffer);
   /** Keep the newest message / storyboard / film in view. */
   const chatRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

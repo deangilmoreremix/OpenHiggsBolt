@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { adaptedOf, adaptedStub, clearCheckpoint, decideResume, loadCheckpoint, saveCheckpoint, type AdaptedShot, type ResumeAction, type RunCheckpoint } from '../lib/runStore';
 import type { AspectRatio } from '../projectContract';
 import type { ProjectData } from '../types';
 import type { MediaAttachment } from '../lib/mediaUpload';
@@ -42,7 +43,7 @@ import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
-import { completeStage, failStage, finalStatus, finalStatusLine, newRun, reviewCoverage, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
+import { completeStage, failStage, recoverRun, finalStatus, finalStatusLine, newRun, reviewCoverage, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
 import { filmFingerprint } from '../lib/filmFingerprint';
 import { materialOf } from '../lib/material';
 import { soundRecord } from '../lib/soundRecord';
@@ -155,10 +156,18 @@ export function useFilmDirector(opts: {
   /** The production run: the one record the step strip, the chat's status lines and the saved project read (lib/productionRun). */
   const [run, setRun] = useState<ProductionRun | null>(null);
   const runRef = useRef<ProductionRun | null>(null);
+  // Checkpoints (P6): the run, the request, the approved storyboard and the shots already adapted are stored after every stage and every adapted shot.
+  const sbRef = useRef<StoryboardResult | null>(null);
+  const adaptedRef = useRef<AdaptedShot[]>([]);
+  const checkpointRef = useRef<() => void>(() => undefined);
+  /** A run found in storage that was interrupted, and what resuming it would do. */
+  const [resumeOffer, setResumeOffer] = useState<{ action: ResumeAction; cp: RunCheckpoint } | null>(null);
+  const resumeJob = useRef<{ adapted: AdaptedShot[] } | null>(null);
   const upd = useCallback((fn: (r: ProductionRun) => ProductionRun) => {
     if (!runRef.current) return;
     runRef.current = fn(runRef.current);
     setRun(runRef.current);
+    checkpointRef.current();
   }, []);
   /** Fingerprint of the film as it is NOW (the Workbench's copy when the caller keeps one, else this hook's): approvals are tied to it. */
   const curFp = useCallback((): string | undefined => {
@@ -168,6 +177,26 @@ export function useFilmDirector(opts: {
   /** A stage that was running when something threw did not finish: say so on the record. */
   const failRunning = useCallback((why: string) => upd((r) => { const id = STAGE_ORDER.find((x) => r.stages[x].status === 'running'); return id ? failStage(r, id, why) : r; }), [upd]);
   const pending = useRef<{ req: FilmRequest; template: FilmTemplateChoice } | null>(null);
+  useEffect(() => { sbRef.current = storyboard; if (storyboard) checkpointRef.current(); }, [storyboard]);
+  checkpointRef.current = () => {
+    const r = runRef.current;
+    if (!r) return;
+    const sb = sbRef.current;
+    saveCheckpoint({
+      run: r,
+      request: { prompt: pending.current?.req.prompt ?? r.request, aspectRatio: String(pending.current?.req.aspectRatio ?? optsRef.current.settings().aspectRatio), template: pending.current?.template === 'inkpress' ? 'inkpress' : 'director' },
+      ...(sb ? { storyboard: { plan: sb.plan, capture: sb.capture, source: sb.source, note: sb.note, videos: sb.videos, media: sb.media, mapping: sb.mapping, release: sb.release, direction: sb.direction, brief: sb.brief, decisions: sb.decisions, gate: sb.gate } } : {}),
+      adapted: adaptedRef.current,
+    });
+  };
+  // On mount: an interrupted production in storage is recovered and offered (Resume / Start over), never silently restarted or dropped.
+  useEffect(() => {
+    const cp = loadCheckpoint();
+    if (!cp) return;
+    const action = decideResume(cp);
+    if (action.kind !== 'none') setResumeOffer({ action, cp });
+    else if (cp.run.stages.build.status === 'completed') { /* a built film is the Workbench's project; the slot is kept for its run record */ }
+  }, []);
   const offerReq = useRef<FilmRequest | null>(null);
   const guided = useRef<GuidedState | null>(null);
   const optsRef = useRef(opts);
@@ -703,11 +732,13 @@ export function useFilmDirector(opts: {
     // A storyboard from an earlier session has no run in memory: start one so the build is recorded like any other.
     if (!runRef.current) { runRef.current = newRun(pending.current?.req.prompt ?? storyboard.plan.title, 'autonomous'); setRun(runRef.current); }
     upd((r) => startStage(r, 'build'));
+    if (!resumeJob.current) adaptedRef.current = [];
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
       let adaptation: AdaptationOutcome | null = null;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, onShot: (pr) => { adaptedRef.current = adaptedOf(pr); checkpointRef.current(); }, ...(resumeJob.current ? { reuse: { project: adaptedStub(resumeJob.current.adapted) as never, touchedStems: [] } } : {}), direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
+      resumeJob.current = null;
       // Findings the program can repair safely are repaired once, and said.
       const fixedFilm = fixFilm(buildOut);
       // A silent film carries no sound clips at all (no music, no effects).
@@ -909,6 +940,27 @@ export function useFilmDirector(opts: {
   editRef.current = editFilm;
   rebuildRef.current = rebuildFilm;
 
+  /** Resume the interrupted production: the stored storyboard and the shots already adapted are kept; only the rest is built. */
+  const [resumeGo, setResumeGo] = useState(0);
+  const resumeRun = useCallback(() => {
+    if (!resumeOffer || resumeOffer.action.kind !== 'resume') return;
+    const { cp, action } = resumeOffer;
+    runRef.current = recoverRun(cp.run);
+    setRun(runRef.current);
+    pending.current = { req: { prompt: cp.request.prompt, recipes: [], single: null, template: undefined, durationSec: null, siteUrl: null, aspectRatio: (['16:9', '9:16', '1:1'].includes(cp.request.aspectRatio) ? cp.request.aspectRatio : null) as FilmRequest['aspectRatio'] } as FilmRequest, template: cp.request.template };
+    adaptedRef.current = cp.adapted;
+    resumeJob.current = { adapted: cp.adapted };
+    setStoryboard(cp.storyboard as StoryboardResult);
+    setStage('plan');
+    setResumeOffer(null);
+    say('assistant', `Resuming the interrupted film at the ${action.from} stage: the storyboard and ${action.kept} already-adapted shot${action.kept === 1 ? '' : 's'} are kept; the rest is built now.`);
+    setResumeGo((n) => n + 1);
+  }, [resumeOffer, say]);
+  useEffect(() => { if (resumeGo && resumeJob.current && storyboard) void approve(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeGo]);
+  /** "Start over": the stored run is dropped. */
+  const discardRun = useCallback(() => { clearCheckpoint(); adaptedRef.current = []; setResumeOffer(null); }, []);
+
   /** An MP4 was rendered from the film: only now is it delivered. */
   const markDelivered = useCallback(() => mark('deliver', 'done', 'MP4 rendered'), [mark]);
 
@@ -949,6 +1001,9 @@ export function useFilmDirector(opts: {
 
   const reset = useCallback(() => {
     gen.current++;
+    clearCheckpoint();
+    adaptedRef.current = [];
+    resumeJob.current = null;
     pending.current = null;
     offerReq.current = null;
     guided.current = null;
@@ -969,7 +1024,7 @@ export function useFilmDirector(opts: {
         return d && d.state !== 'todo' ? { ...st, state: d.state, detail: d.detail ?? st.detail } : st;
       })
     : steps;
-  return { messages, stage, activity, steps: shownSteps, run, status: run ? finalStatus(run, curFp()) : null, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
+  return { messages, stage, activity, steps: shownSteps, run, status: run ? finalStatus(run, curFp()) : null, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset, resumeOffer, resumeRun, discardRun };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;
