@@ -122,6 +122,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Motion Studio was removed; its old links open Motion Director.
+  async redirects() {
+    return [
+      { source: '/studio/motion-studio', destination: '/studio/motion-director', permanent: false },
+      { source: '/studio/motion-studio/:path*', destination: '/studio/motion-director', permanent: false },
+    ];
+  },
   allowedDevOrigins: [
     'http://localhost:3000',
     'http://127.0.0.1:3000',

@@ -16,6 +16,7 @@ import {
 } from 'studio/src/components/prompt/PromptComposer';
 import MobileGenerationActions, { GenerationCopyButtons } from 'studio/src/components/MobileGenerationActions.jsx';
 import TemplateBanner from 'studio/src/components/TemplateBanner.jsx';
+import { PublishStep, useSocialPublish } from '@/components/SocialPublishProvider';
 import { scopedPersistKey } from 'studio/src/persistKey.js';
 import * as muapi from 'studio/src/muapi.js';
 import { createJobs, pool } from './jobs.js';
@@ -113,6 +114,39 @@ function Lightbox({ media, onClose }) {
 
 function readJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
+}
+
+// Publishing needs a hosted URL, but the final cut only exists as an in-browser blob: upload it first.
+function PostFinalToSocial({ apiKey, final, busy, onError }) {
+  const { openPublish } = useSocialPublish();
+  const [uploading, setUploading] = useState(false);
+  // An upload that finishes for an older cut (re-render, new project, template, unmount) must not open the
+  // publish modal with a video that is no longer on screen.
+  const current = useRef(final);
+  current.current = final;
+  useEffect(() => () => { current.current = null; }, []);
+  // Instagram only takes MP4/MOV; the in-browser renderer falls back to WebM on some browsers.
+  const unsupported = final && final.ext && final.ext !== 'mp4';
+  async function go() {
+    const started = final;
+    if (uploading || !started?.blob || unsupported) return;
+    setUploading(true);
+    try {
+      const file = new File([started.blob], `zackd-short.${started.ext || 'mp4'}`, { type: started.blob.type || 'video/mp4' });
+      const url = await muapi.uploadFile(apiKey, file);
+      if (current.current !== started) return;
+      openPublish({ mediaUrl: url, mediaType: 'video', title: started.topic ? String(started.topic).slice(0, 50) : 'Zack D short' });
+    } catch (e) { if (current.current === started) onError(e?.message || 'Could not upload the video for publishing.'); }
+    setUploading(false);
+  }
+  return (
+    <button
+      type="button" className={promptControlClassName({ compact: true })} disabled={busy || uploading || !apiKey || unsupported} onClick={go}
+      title={unsupported ? 'This cut was rendered as WebM, which Instagram and TikTok reject. Re-render in a browser that can make MP4 (Chrome or Edge) to post it.' : undefined}
+    >
+      <span className={PROMPT_CONTROL_LABEL_CLASS}>{uploading ? 'Uploading…' : unsupported ? 'Post (needs MP4)' : 'Post to social'}</span>
+    </button>
+  );
 }
 
 export default function ZackD({
@@ -294,7 +328,7 @@ export default function ZackD({
         const url = URL.createObjectURL(out.blob);
         finalRef.current = url;
         setCaptioned(null);
-        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false });
+        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic });
         toast.success('Final cut ready');
         onGenerationComplete?.({ url, model: 'zackd', prompt: project.topic, type: 'video' });
       } else if (out.reason !== 'cancelled') fail(out.error);
@@ -314,7 +348,7 @@ export default function ZackD({
       const videoUrl = await muapi.uploadFile(apiKey, file);
       setProgress('Burning captions (2-3 minutes)…');
       const { url } = await jobs.captions({ videoUrl, language: project.captionLang, theme: project.captionTheme });
-      setCaptioned({ url }); addHistory(url);
+      setCaptioned({ url, topic: final.topic }); addHistory(url);
       toast.success('Captions ready');
       onGenerationComplete?.({ url, model: 'ai-captions', prompt: project.topic, type: 'video' });
     } catch (e) { fail(e?.message || 'Burning captions failed.'); }
@@ -348,6 +382,7 @@ export default function ZackD({
         {final.warning && <p className="text-xs text-white/50">{final.warning}</p>}
         <div className="flex flex-wrap gap-2 justify-center">
           <button type="button" className={promptControlClassName({ compact: true })} onClick={() => downloadFile(final.url, `zackd-short.${final.ext}`)}><span className={PROMPT_CONTROL_LABEL_CLASS}>Download video</span></button>
+          <PostFinalToSocial apiKey={apiKey} final={final} busy={busy} onError={fail} />
           <button type="button" className={promptControlClassName({ compact: true })} onClick={() => { const u = URL.createObjectURL(new Blob([buildSrt(project.map.beats)], { type: 'text/plain' })); downloadFile(u, 'zackd-short.srt'); setTimeout(() => URL.revokeObjectURL(u), 2000); }}><span className={PROMPT_CONTROL_LABEL_CLASS}>Captions (.srt)</span></button>
           <button type="button" className={promptControlClassName({ compact: true })} onClick={newProject}><span className={PROMPT_CONTROL_LABEL_CLASS}>New project</span></button>
         </div>
@@ -374,6 +409,7 @@ export default function ZackD({
             <>
               <video src={captioned.url} className="max-h-[60vh] rounded-2xl bg-black border border-white/10" style={{ aspectRatio: '9 / 16' }} controls loop playsInline />
               <a className={promptControlClassName({ compact: true })} href={captioned.url} target="_blank" rel="noopener noreferrer"><span className={PROMPT_CONTROL_LABEL_CLASS}>Open / download captioned video</span></a>
+              <PublishStep mediaUrl={captioned.url} mediaType="video" title={captioned.topic ? String(captioned.topic).slice(0, 50) : 'Zack D short'} />
             </>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page, type BrowserContext } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { artifactDir } from './helpers/artifactDir';
 
 /**
  * Phase 2 — the Remotion designs survive the REAL browser export.
@@ -99,7 +100,7 @@ const MAX_CONTROL_BRAND_PIXELS = 5;
 const ARTIFACT_DIR = path.join(process.cwd(), 'test-results', 'remotion-export');
 
 /** Where the per-design visual evidence is written. */
-const SCREENSHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-3');
+const SCREENSHOT_DIR = artifactDir('docs', 'screenshots', 'phase-3');
 
 /** The minimum number of designs the registry must expose (5 + 10 + 4). */
 const MIN_REGISTRY_DESIGNS = 19;
@@ -431,6 +432,9 @@ async function approve(page: Page): Promise<void> {
  */
 async function renderBrandedVideo(page: Page): Promise<{ size: number; type: string }> {
   const dialog = page.getByRole('dialog');
+  // An unrecorded clip licence is never assumed: the customer confirms before a final export.
+  const rights = page.getByTestId('guided-rights-confirm').locator('input');
+  if (await rights.count()) await rights.check();
   await dialog.getByRole('button', { name: 'Render branded video' }).click({ timeout: 60_000 });
 
   await expect

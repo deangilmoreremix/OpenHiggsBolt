@@ -4,6 +4,8 @@
  * so saved placements correspond to the actual video resolution.
  */
 
+import type { ImageHints, ImageRole, ImageStyle } from './imageStyle'
+
 export type PreviewLayoutId =
   | 'business-introduction'
   | 'product-showcase'
@@ -73,6 +75,44 @@ export interface PreviewLayer {
    * Absent => the slot falls back to its brand field.
    */
   textSlotOverrides?: Record<string, string>
+  /**
+   * The customer locked this layer: placement and reflow never move it, and
+   * the editor will not drag it until it is unlocked.
+   */
+  locked?: boolean
+  /**
+   * How an image layer is drawn (shape, corner radius, border, shadow, fit, crop,
+   * exit). Absent or `auto` = the system chooses from the role and what is known
+   * about the image; a customer edit makes it theirs. Overlay-only: the original
+   * file is never modified.
+   */
+  imageStyle?: ImageStyle
+  /** Extra pictures for the multi-image presets (collage), customer-picked from the library (≤ 4 with the main one). */
+  imageUrls?: string[]
+  /** The customer's explicit role for this picture (food, real estate, portrait…); wins over the discovery category. */
+  imageRole?: ImageRole
+  /**
+   * Who decided the layer's current position: `manual` = the customer (drag,
+   * resize or a position preset) — the placement engine never moves it on its
+   * own; `recommended` = the placement engine. Absent = the template default.
+   */
+  placementSource?: 'manual' | 'recommended'
+}
+
+/** A rectangle in normalized frame coordinates; (x, y) is the TOP-LEFT corner. */
+export interface NormRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** A region overlays must not cover (the footage's subject, a baked-in graphic…). */
+export interface ProtectedZone extends NormRect {
+  id: string
+  label: string
+  /** `template` = declared by the template/source, `user` = marked by the customer. */
+  source: 'template' | 'user'
 }
 
 export interface PreviewBrandColors {
@@ -137,6 +177,17 @@ export interface PersonalizationPreviewSettings {
    * restore; the normalizer falls back to `null`.
    */
   remotionDesignId?: string | null
+  /**
+   * Regions of the footage the overlays must not cover. Optional so projects
+   * saved before placement checks existed still restore.
+   */
+  protectedZones?: ProtectedZone[]
+  /**
+   * What is known about each assigned image, keyed by URL (measured aspect ratio,
+   * transparent corners, an existing frame). Lets every surface — gallery card,
+   * editor, preview and export — style the same image the same way.
+   */
+  imageHints?: Record<string, ImageHints>
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

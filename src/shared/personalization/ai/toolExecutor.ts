@@ -64,7 +64,8 @@ function executeListAssets(_args: Record<string, unknown>, ctx: DemoPersonalizeC
   if ((!promptState?.personalized && !promptState?.edited) && outputType !== 'prompt') {
     recs.push({ type: 'missing_prompt', message: 'Prompt has not been personalized yet.', priority: 'medium', suggestedAction: 'personalize_prompt' })
   }
-  if (outputType !== 'prompt' && !mode) {
+  // Creating without AI is a local render of the approved overlays: no mode is needed.
+  if (outputType !== 'prompt' && !mode && ctx.creationMethod !== 'browser') {
     recs.push({ type: 'missing_mode', message: 'No personalization mode selected.', priority: 'high', suggestedAction: 'select_mode' })
   }
   return recs
@@ -82,7 +83,7 @@ const LIKENESS_MODES = ['face_only', 'full_body', 'replace_face', 'replace_perso
  * checklist / footer, so both always agree.
  */
 export function validateProjectRequirements(
-  ctx: Pick<DemoPersonalizeContextValue, 'assets' | 'clientForm' | 'source' | 'mode' | 'outputType' | 'promptState' | 'genOptions'>,
+  ctx: Pick<DemoPersonalizeContextValue, 'assets' | 'clientForm' | 'source' | 'mode' | 'outputType' | 'promptState' | 'genOptions'> & { creationMethod?: 'browser' | 'ai' },
 ): AIMissingRequirement[] {
   const missing: AIMissingRequirement[] = []
   const { clientForm, source, mode, outputType, promptState, genOptions } = ctx
@@ -101,7 +102,8 @@ export function validateProjectRequirements(
   if (!businessName) {
     missing.push({ field: 'client.businessName', label: 'Business Name', severity: 'error', message: 'Add the business name.' })
   }
-  if (outputType !== 'prompt' && !mode) {
+  // Creating without AI is a local render of the approved overlays: no mode is needed.
+  if (outputType !== 'prompt' && !mode && ctx.creationMethod !== 'browser') {
     missing.push({ field: 'mode', label: 'Personalization Mode', severity: 'error', message: 'Select how this should be personalized.' })
   }
 

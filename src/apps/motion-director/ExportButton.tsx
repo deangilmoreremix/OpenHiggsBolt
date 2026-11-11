@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useT } from './i18n';
+import { useSocialPublish } from '@/components/SocialPublishProvider';
+import { storeFile } from './lib/mediaUpload';
 import { useStore } from './store';
 import { estimateExportSec } from './lib/exportCost';
 import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
@@ -26,6 +28,10 @@ export const requestExport = () => {
 
 const ExportButton: React.FC = () => {
   const t = useT();
+  const { openPublish } = useSocialPublish();
+  const [posting, setPosting] = useState(false);
+  /** Counts exports: a film still uploading for publishing is dropped once a newer export has started. */
+  const exportGeneration = useRef(0);
   const [job, setJob] = useState<JobState | null>(null);
   const [withoutMusic, setWithoutMusic] = useState(false);
   // Draft renders the same frames at 720p: about a third less work per frame.
@@ -54,6 +60,7 @@ const ExportButton: React.FC = () => {
   };
 
   const runExport = async () => {
+    exportGeneration.current += 1;
     const project = useStore.getState().project;
 
     // First, check if the browser can render media on web
@@ -144,6 +151,25 @@ const ExportButton: React.FC = () => {
     };
   }, []);
 
+  /** Publishing needs a hosted file, and the exported MP4 only exists in this tab: store it first. */
+  const postToSocial = async () => {
+    if (!job?.blob || posting) return;
+    const generation = exportGeneration.current;
+    setPosting(true);
+    try {
+      const name = `${job.filename ?? 'Motion Director'}.mp4`;
+      const url = await storeFile(new File([job.blob], name, { type: 'video/mp4' }));
+      if (!url) {
+        window.alert('Could not upload the film for publishing. Download it and post it from your device.');
+        return;
+      }
+      if (generation !== exportGeneration.current) return; // a newer export replaced this film
+      openPublish({ mediaUrl: url, mediaType: 'video', title: String(job.filename ?? 'Motion Director film').slice(0, 50) });
+    } finally {
+      setPosting(false);
+    }
+  };
+
   const downloadUrl = job?.blob ? createDownloadUrl(job.blob) : undefined;
 
   // Clean up the object URL when the blob or component unmounts.
@@ -193,6 +219,9 @@ const ExportButton: React.FC = () => {
         >
           {t('export.done')}
         </a>
+        <button className="btn" onClick={postToSocial} disabled={posting} data-testid="export-post-to-social">
+          {posting ? 'Uploading…' : 'Post to social'}
+        </button>
         <button className="btn primary" onClick={start}>
           {t('export.again')}
         </button>

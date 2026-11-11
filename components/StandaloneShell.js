@@ -18,6 +18,7 @@ import { DemoPersonalizeProvider } from '@/shared/personalization';
 import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
 import PreviewModeBadge from '@/access/PreviewModeBadge';
+import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
 
@@ -41,16 +42,15 @@ const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 const AppsStudio = loadStudio('AppsStudio');
+const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
-const MotionStudioEntry = dynamic(() => import('../src/apps/motion-studio/MotionStudio'), { ssr: false });
 const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/MotionStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -99,6 +99,7 @@ const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
+  { id: 'edit',    label: 'Edit' },
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
@@ -108,7 +109,6 @@ const TABS = [
   { id: 'storyboard', label: 'Storyboard' },
   { id: 'zackd', label: 'Zack D Studio' },
   { id: 'marketing', label: 'Marketing Studio' },
-  { id: 'motion-studio', label: 'Motion Studio' },
   { id: 'motion-director', label: 'Motion Director' },
   { id: 'recast', label: 'Body Swap' },
   { id: 'layers', label: 'Layers Studio' },
@@ -118,7 +118,6 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
-  { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
@@ -141,14 +140,15 @@ function SignOutButton() {
 
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
-  image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
+  image: 'image', 'brand-studio': 'brand-studio', video: 'video', edit: 'edit', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', 'motion-control': 'motion-control', lipsync: 'lipsync', cinema: 'cinema',
-  storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-studio', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
+  storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
-  'social-publishing': 'social-publishing',
+  // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
+  'social-publishing': 'image',
   'go-ai-viral': 'go-ai-viral',
   apps: 'apps',
 };
@@ -159,7 +159,7 @@ const SLUG_TO_TAB = {
 // keep their mount-on-active behaviour.
 const PERSISTENT_STUDIO_TABS = [
   'image', 'video', 'clipping', 'vibe-motion', 'motion-control', 'lipsync', 'cinema',
-  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer', 'zackd',
+  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer', 'zackd', 'edit',
 ];
 
 const NOTIFICATIONS_STORAGE_KEY = 'open_gen_notifications_v1';
@@ -938,9 +938,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('cinema', (active) => <CinemaStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['cinema']} />)}
          {persistentStudio('audio', (active) => <AudioStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['audio']} />)}
          {persistentStudio('marketing', (active) => <MarketingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['marketing']} />)}
-         {activeTab === 'motion-studio' && <MotionStudioEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'motion-director' && <MotionDirectorEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {persistentStudio('recast', (active) => <RecastStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['recast']} />)}
+         {persistentStudio('edit', (active) => <EditStudio apiKey={apiKey} active={active} {...generationCallbacks['edit']} />)}
          {persistentStudio('layers', (active) => <LayersStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['layers']} />)}
          {persistentStudio('workflows', (active) => <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} {...generationCallbacks['workflows']} />)}
          {persistentStudio('agents', (active) => <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} locale={locale} />)}
@@ -955,8 +955,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
            </div>
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
-          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>
       </DemoPersonalizeProvider>

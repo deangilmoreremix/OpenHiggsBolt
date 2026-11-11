@@ -179,15 +179,18 @@ describe('entitlement revocation', () => {
     expect(db.user_entitlements[0].status).toBe('active');
   });
 
-  it('makes paid resolution return false for a revoked row', async () => {
-    seedRow();
+  it('a revoked row loses paid apps but keeps the open base access', async () => {
+    seedRow({ entitlements: { smartvideo_go: true, go_viral_ai: true } });
     const { resolveSmartVideoAccessForUser, revokeEntitlement } = await loadModule();
+
+    expect((await resolveSmartVideoAccessForUser('user_123'))?.hasSmartVideoViral).toBe(true);
 
     const revoked = await revokeEntitlement({ clerkUserId: 'user_123' });
     expect(revoked.revoked).toBe(true);
 
     const access = await resolveSmartVideoAccessForUser('user_123');
-    expect(access?.hasSmartVideoGo).toBe(false);
     expect(access?.status).toBe('inactive');
+    expect(access?.hasSmartVideoGo).toBe(true);
+    expect(access?.hasSmartVideoViral).toBe(false);
   });
 });

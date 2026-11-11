@@ -8,7 +8,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/studio",
-    "packages/Vibe-Workflow/packages/workflow-builder",
+    "packages/workflow-builder",
     "packages/Open-Poe-AI/packages/agents",
     "apps/cutai/frontend"
   ],
@@ -53,6 +53,8 @@
     "source:status": "node scripts/verify-source-of-truth.mjs",
     "source:verify": "node scripts/verify-source-of-truth.mjs",
     "build:metadata": "node scripts/generate-build-info.mjs",
+    "thumbnails:edit-tools": "node scripts/generate-edit-tool-thumbnails.mjs",
+    "thumbnails:workflow-templates": "node scripts/generate-workflow-template-thumbnails.mjs",
     "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs && node scripts/build-fast-discovery.mjs && node scripts/build-motion-capture.mjs && node scripts/gen-demo-sources.mjs",
     "build:fast-discovery": "node scripts/build-fast-discovery.mjs",
     "build:motion-capture": "node scripts/build-motion-capture.mjs",
@@ -192,7 +194,7 @@
     "swiper": "14.3.0",
     "tailwindcss": "^3.4.0",
     "three": "0.186.1",
-    "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
+    "workflow-builder": "file:./packages/workflow-builder",
     "zod": "4.3.6",
     "zustand": "5.0.8"
   },

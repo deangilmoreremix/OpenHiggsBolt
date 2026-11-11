@@ -1,11 +1,12 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
+import { artifactDir } from './helpers/artifactDir';
 
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+const OUTPUT_DIR = artifactDir('visual-assets', 'marketing-current', 'personalization');
 
 async function ensureDir(filePath: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });

@@ -9,7 +9,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PersonalizationComposition } from '../PersonalizationComposition'
-import { createDefaultPreviewSettings } from '../presets'
+import { createDefaultPreviewSettings, applyLayoutPreset } from '../presets'
 import type { PreviewInputProps } from '../types'
 import { buildPreviewInput } from '../../guided/buildPreviewInput'
 
@@ -194,5 +194,43 @@ describe('repeated business name', () => {
     const { container } = mountComposition(props)
     const pill = Array.from(container.querySelectorAll('span')).find((el) => el.textContent === 'Book now') as HTMLElement
     expect(pill.style.background).toMatch(/rgb\(255, 0, 0\)|#ff0000/)
+  })
+
+  it('service promotion draws a fallback headline/tagline pair once, not twice', () => {
+    const props = makeInputProps({ videoUrl: 'https://cdn.example.com/good.mp4' })
+    props.brand = { ...props.brand, businessName: 'Kreindler & Kreindler LLP', headline: 'Kreindler & Kreindler LLP' }
+    props.settings = applyLayoutPreset({ ...props.settings, showEndCard: false }, 'service-promotion')
+    const kinds = props.settings.layers.map((l) => l.kind)
+    expect(kinds).toContain('headline')
+    expect(kinds).toContain('tagline')
+    const { container } = mountComposition(props)
+    // headline and tagline both fall back to the same text: drawn once.
+    expect(count(container.textContent || '', 'Kreindler & Kreindler LLP')).toBe(1)
+  })
+
+  it('a fallback headline yields to a tagline whose own text is the same', () => {
+    const props = makeInputProps({ videoUrl: 'https://cdn.example.com/good.mp4' })
+    props.brand = { ...props.brand, businessName: 'Acme Roofing', headline: 'Acme Roofing' }
+    const base = applyLayoutPreset({ ...props.settings, showEndCard: false }, 'service-promotion')
+    props.settings = {
+      ...base,
+      layers: base.layers.map((l) => (l.kind === 'tagline' ? { ...l, text: 'Acme Roofing' } : l)),
+    }
+    const { container } = mountComposition(props)
+    expect(count(container.textContent || '', 'Acme Roofing')).toBe(1)
+  })
+
+  it('own text on two layers is never dropped', () => {
+    const props = makeInputProps({ videoUrl: 'https://cdn.example.com/good.mp4' })
+    props.brand = { ...props.brand, businessName: 'Acme Roofing', headline: 'Acme Roofing' }
+    const base = applyLayoutPreset({ ...props.settings, showEndCard: false }, 'service-promotion')
+    props.settings = {
+      ...base,
+      layers: base.layers.map((l) =>
+        l.kind === 'tagline' || l.kind === 'headline' ? { ...l, text: 'Acme Roofing' } : l,
+      ),
+    }
+    const { container } = mountComposition(props)
+    expect(count(container.textContent || '', 'Acme Roofing')).toBe(2)
   })
 })

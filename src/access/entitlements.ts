@@ -2,6 +2,8 @@ export const ENTITLEMENTS = {
   SMARTVIDEO_GO: 'smartvideo_go',
   SMARTVIDEO_AI: 'smartvideo_ai',
   SMARTVIDEO_VIRAL: 'smartvideo_viral',
+  /** Key the GO-Viral purchase is recorded under in user_entitlements. */
+  GO_VIRAL_AI: 'go_viral_ai',
   FOUNDERS: 'founders',
 } as const;
 
@@ -18,6 +20,7 @@ export interface UserEntitlements {
   smartvideo_go: boolean;
   smartvideo_ai?: boolean;
   smartvideo_viral?: boolean;
+  go_viral_ai?: boolean;
   founders?: boolean;
 }
 
@@ -62,24 +65,27 @@ export function isQualifyingStatus(status?: string | null): boolean {
 }
 
 /**
- * Base SmartVideo GO access. Every signed-in Clerk user gets this by default
- * — no purchase required. A non-qualifying entitlement status (expired /
- * revoked) removes it unless the user is a super user.
+ * Base SmartVideo GO access: every app except the two paid ones (GO-Viral
+ * studio and the reseller apps). Every signed-in Clerk user has it — no
+ * purchase and no particular entitlement status is required, so there is no
+ * preview mode for these apps.
  */
-export function hasSmartVideoGo(entitlements: UserEntitlements, status?: string): boolean {
-  if (status === undefined || status === null || status === '') {
-    return true;
-  }
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
+export function hasSmartVideoGo(_entitlements?: UserEntitlements, _status?: string): boolean {
+  return true;
 }
 
 /**
- * go-ai-viral requires a paid smartvideo_viral entitlement with a qualifying
- * status. Not granted by default.
+ * GO-Viral studio is one of the two gated apps. It needs a paid GO-Viral
+ * entitlement with a qualifying status. Purchases are recorded as
+ * `go_viral_ai`; `smartvideo_viral` and `founders` also grant it.
  */
 export function hasSmartVideoViral(entitlements: UserEntitlements, status?: string): boolean {
   if (!isQualifyingStatus(status)) return false;
-  return entitlements.smartvideo_viral === true || entitlements.founders === true;
+  return (
+    entitlements.go_viral_ai === true ||
+    entitlements.smartvideo_viral === true ||
+    entitlements.founders === true
+  );
 }
 
 export interface AccessState {

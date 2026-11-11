@@ -18,7 +18,7 @@ const declared = new Set([
 const SCAN_ROOTS = ['src', 'app', 'components', 'lib']
 // Sub-workspaces have their own package.json; their imports are not the root's
 // responsibility. Node builtins are never package dependencies.
-const SUB_WORKSPACES = ['packages/studio', 'packages/Vibe-Workflow', 'packages/Open-Poe-AI', 'apps/']
+const SUB_WORKSPACES = ['packages/studio', 'packages/workflow-builder', 'packages/Open-Poe-AI', 'apps/']
 const NODE_BUILTINS = new Set([
   'assert', 'buffer', 'child_process', 'cluster', 'console', 'crypto', 'dns', 'events',
   'fs', 'http', 'http2', 'https', 'net', 'os', 'path', 'perf_hooks', 'process', 'punycode',

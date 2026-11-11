@@ -17,6 +17,11 @@ vi.mock('studio/src/muapi.js', () => ({
   uploadFile: vi.fn(async () => 'https://muapi.example.com/uploaded-cut.mp4'),
   resumeGeneration: vi.fn(async () => ({ url: 'https://cdn.example.com/resumed.png' })),
 }));
+const openPublish = vi.fn();
+vi.mock('@/components/SocialPublishProvider', () => ({
+  useSocialPublish: () => ({ openPublish: (...a) => openPublish(...a), closePublish: () => {}, openSocialPublisher: () => {} }),
+  PublishStep: ({ mediaUrl }) => (mediaUrl ? <button type="button" onClick={() => openPublish({ mediaUrl })}>Post captioned to social</button> : null),
+}));
 const renderFinalCut = vi.fn(async () => ({ ok: true, blob: new Blob(['x'], { type: 'video/mp4' }), extension: 'mp4', warning: null }));
 vi.mock('../finalCut.js', () => ({ renderFinalCut: (...a) => renderFinalCut(...a) }));
 
@@ -127,6 +132,16 @@ describe('ZackD studio (built like the video studios)', () => {
     await step(container, 'Render final cut'); fireEvent.click(action(container));
     await waitFor(() => expect(renderFinalCut).toHaveBeenCalled());
     expect(renderFinalCut.mock.calls[0][0]).toMatchObject({ mixVoice: true, trimToPlanned: true, narrationUrl: expect.stringContaining('cdn.example.com/audio') });
+  });
+
+  it('uploads the in-browser final cut and opens the publish modal (kept from main)', async () => {
+    const { container } = render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await step(container, 'Render final cut'); fireEvent.click(action(container));
+    const post = await screen.findByRole('button', { name: 'Post to social' });
+    fireEvent.click(post);
+    await waitFor(() => expect(openPublish).toHaveBeenCalledWith(expect.objectContaining({ mediaUrl: 'https://muapi.example.com/uploaded-cut.mp4', mediaType: 'video', title: expect.stringMatching(/Swallow Gum/) })));
+    expect(muapi.uploadFile).toHaveBeenCalledTimes(1);
   });
 
   it('burns captions on demand: gated on narration, confirms cost, uploads the cut, shows the result, adds history', async () => {

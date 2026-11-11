@@ -31,6 +31,7 @@ import { Configuration, GotScrapingHttpClient } from '@crawlee/core'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from './discoverAssets'
 import { isJunkAssetUrl, isSocialAssetUrl, normalizeAssetUrl, tokenize } from './discoveryAssetFilter'
+import { isThirdPartyAdUrl } from './adDomains'
 import { collectSiteLogoImages } from './discoverySiteLogo'
 import { checkDestination } from '../lib/networkSafety'
 import {
@@ -150,6 +151,7 @@ export function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: st
     // The same junk rules as the static path, so the two layers cannot
     // disagree about what an asset is.
     if (!isSiteLogo && isSocialAssetUrl(absolute)) return
+    if (!isSiteLogo && isThirdPartyAdUrl(absolute, baseUrl)) return
     if (!isSiteLogo && isJunkAssetUrl(absolute, altText ? tokenize(altText) : [])) return
     const key = normalizeAssetUrl(absolute)
     if (!key || seen.has(key)) return

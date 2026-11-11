@@ -220,6 +220,8 @@ describe('Advanced Editing readiness', () => {
     await act(async () => { latestCtx.setOutputType('video'); });
     await act(async () => { $(container, 'pz-tab-create')!.click(); });
     await act(async () => { $(container, 'pz-pill-create-output')!.click(); });
+    // The AI modes are offered once "Generate with AI" is chosen ("Create without AI" needs none).
+    await act(async () => { $(container, 'pz-method-ai')!.click(); });
 
     const reason = container.querySelector('[data-testid^="pz-mode-reason-"]') as HTMLElement
     expect(reason, 'a person mode is unavailable without a presenter photo').toBeTruthy()

@@ -37,6 +37,18 @@ vi.mock('../../DemoPersonalizeProvider', () => ({
 vi.mock('../../guided/OverlayEditor', () => ({
   OverlayEditor: () => null,
 }))
+// The layout quality check is a separate child of Step 4 with its own tests; this
+// file isolates the Step 4 design-chip warning against a minimal fake context.
+vi.mock('../../guided/LayoutQualityPanel', () => ({
+  LayoutQualityPanel: () => null,
+}))
+vi.mock('../../guided/useLayoutQuality', () => ({
+  useLayoutQuality: () => ({
+    report: { status: 'ready', issues: [], blocksExport: false, notes: [], analysis: {} },
+    rightsNeedConfirmation: false,
+    profile: {},
+  }),
+}))
 vi.mock('../../preview/BeforeAfterPreview', () => ({
   BeforeAfterPreview: () => null,
 }))

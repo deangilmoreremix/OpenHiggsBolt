@@ -15,7 +15,15 @@
 import { SITE_IMAGE_HEADERS, SITE_PAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-import { elementStructureKey, extractEmbeddedImageUrls, extractImageContext, propagateSimilarCategories } from './pageSignals'
+import {
+  canonicalizePageUrl,
+  elementStructureKey,
+  extractEmbeddedImageUrls,
+  extractImageContext,
+  isCrawlablePageUrl,
+  propagateSimilarCategories,
+} from './pageSignals'
+import { isThirdPartyAdUrl } from './adDomains'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import {
@@ -329,9 +337,11 @@ function extractInternalLinks(baseUrl: string, html: string): string[] {
     const href = $(elem).attr('href') || ''
     try {
       const absolute = new URL(href, base)
-      if (absolute.hostname === base.hostname) {
-        links.add(absolute.toString())
-      }
+      if (absolute.hostname !== base.hostname) return
+      if (absolute.protocol !== 'https:' && absolute.protocol !== 'http:') return
+      const url = canonicalizePageUrl(absolute.toString())
+      // A PDF, archive or video is not a page: it would waste a crawl slot.
+      if (isCrawlablePageUrl(url)) links.add(url)
     } catch {
       // skip invalid URLs
     }
@@ -450,6 +460,8 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
     const key = normalizeAssetUrl(absolute)
     if (!key || seen.has(key)) return
     if (isLikelyJunk(absolute, altText, isSiteLogo)) return
+    // Ad banners and tracking pixels served by ad networks (Scrapling's ad list).
+    if (!isSiteLogo && isThirdPartyAdUrl(absolute, baseUrl)) return
     seen.add(key)
     const around = element || contextElement
     const contextText = around ? extractImageContext($, around) || undefined : undefined

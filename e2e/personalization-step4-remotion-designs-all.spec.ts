@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { artifactDir } from './helpers/artifactDir';
 
 /**
  * Phase 2 — EVERY registered Remotion design is selectable in Simple Mode
@@ -45,7 +46,7 @@ import path from 'node:path';
  *     npx next start --port 3111
  */
 
-const SHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-2');
+const SHOT_DIR = artifactDir('docs', 'screenshots', 'phase-2');
 const TEMPLATE_DIR = path.join(process.cwd(), 'src', 'shared', 'personalization', 'templates');
 
 /** How many designs the registry must expose in Step 4. */
