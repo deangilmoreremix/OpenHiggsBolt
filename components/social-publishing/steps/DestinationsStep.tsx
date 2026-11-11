@@ -14,15 +14,25 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Tag,
+  MapPin,
+  Type,
   Send,
 } from 'lucide-react';
 import {
   listExternalSocialAccounts,
   connectSocialAccount,
   disconnectExternalSocialAccount,
+  publishToYouTube,
+  publishToInstagram,
+  publishToTikTok,
+  publishToFacebook,
+  publishToLinkedIn,
+  publishToPinterest,
+  publishToThreads,
+  publishToX,
+  pollSocialResult,
 } from '@/lib/muapi';
-import { PLATFORM_SPECS, describePublishError, isPublicMediaUrl, type PlatformId } from '@/shared/api/socialPayloads';
-import PlatformSettings from './PlatformSettings';
 import type { DestinationsStepProps, PublishResult, Destination, CopyState } from '../types';
 import AccountCard from '../accounts/AccountCard';
 import ConnectAccountButton from '../accounts/ConnectAccountButton';
@@ -69,7 +79,7 @@ function ThreadsIcon(props: any) {
   );
 }
 
-const RAW_PLATFORMS: Array<{
+const ALL_PLATFORMS: Array<{
   id: string
   name: string
   icon: React.ComponentType<any>
@@ -134,11 +144,14 @@ const RAW_PLATFORMS: Array<{
   },
 ];
 
-// What each platform accepts comes from the single spec table used for publishing.
-const ALL_PLATFORMS = RAW_PLATFORMS.map((p) => ({ ...p, supports: PLATFORM_SPECS[p.id as PlatformId]?.media ?? p.supports }));
-
 function formatError(err: any) {
-  return describePublishError(err);
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  let detail = data?.detail || data?.error || data?.message;
+  if (typeof detail === 'object') detail = JSON.stringify(detail);
+  if (status === 401) return 'Invalid API key (401). Check your MuAPI key in Settings.';
+  if (status) return `${err.message || 'Request failed'} (${status})${detail ? ' — ' + detail : ''}`;
+  return err?.message || 'Request failed.';
 }
 
 function uuidv4() {
@@ -157,7 +170,6 @@ export default function DestinationsStep({
   onChange,
   publishResults,
   onPublish,
-  onRetry,
   onUpdatePublishResults,
   publishing,
   apiKey,
@@ -173,6 +185,7 @@ export default function DestinationsStep({
   // Multi-select & per-destination settings
   const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [destSettings, setDestSettings] = useState<Record<string, any>>({});
   const [manualAccountIds, setManualAccountIds] = useState<Record<string, string>>({});
   const [announcement, setAnnouncement] = useState<any>(null);
 
@@ -303,58 +316,214 @@ export default function DestinationsStep({
     [destinations, onChange, manualAccountIds],
   );
 
-  /** Per-account settings live on the destination so publishing reads exactly what the user set. */
   const updateSetting = useCallback(
-    (accountId: string, key: string, value: any, accountName?: string) => {
-      const existing = destinations.find((d) => d.platform === activePlatform && d.accountId === accountId);
-      if (existing) {
-        onChange?.(destinations.map((d) => (d.id === existing.id ? { ...d, settings: { ...(d.settings || {}), [key]: value } } : d)));
-      } else {
-        onChange?.([
-          ...destinations,
-          {
-            id: `${activePlatform}:${accountId}:${uuidv4()}`,
-            platform: activePlatform as Destination['platform'],
-            accountId,
-            accountName: accountName || accountId,
-            enabled: false,
-            settings: { [key]: value },
-          },
-        ]);
-      }
+    (destId: string, key: string, value: any) => {
+      setDestSettings((prev) => ({
+        ...prev,
+        [destId]: { ...(prev[destId] || {}), [key]: value },
+      }));
     },
-    [destinations, onChange, activePlatform],
+    [],
   );
+
+  async function publishOne(destination: Destination, results: PublishResult[]) {
+    if (!apiKey || !asset.url.trim()) {
+      throw new Error('Missing API key or media URL.');
+    }
+    if (!destination.accountId) {
+      throw new Error('Missing account ID.');
+    }
+
+    const base = {
+      account_id: destination.accountId,
+      media_url: asset.url.trim(),
+    };
+    const settings = destSettings[destination.id] || destination.settings || {};
+    let payload: Record<string, any>;
+    let submit;
+
+    switch (destination.platform) {
+      case 'youtube':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || 'Untitled',
+          description: copy.description?.trim() || undefined,
+          tags: copy.tags?.trim() ? copy.tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+          privacy: settings.privacy || 'public',
+          category_id: '',
+          made_for_kids: false,
+        };
+        submit = await publishToYouTube(apiKey, payload);
+        break;
+      case 'instagram':
+        payload = {
+          ...base,
+          caption: copy.caption?.trim() || undefined,
+          media_type: mediaType === 'image' ? 'IMAGE' : 'VIDEO',
+          placement: 'reels',
+          share_to_feed: true,
+          ...settings,
+        };
+        submit = await publishToInstagram(apiKey, payload);
+        break;
+      case 'tiktok':
+        payload = {
+          ...base,
+          title: copy.tiktokTitle?.trim() || undefined,
+          privacy_level: 'PUBLIC_TO_EVERYONE',
+          disable_comment: false,
+          disable_duet: false,
+          disable_stitch: false,
+          ...settings,
+        };
+        submit = await publishToTikTok(apiKey, payload);
+        break;
+      case 'facebook':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || undefined,
+          description: copy.description?.trim() || undefined,
+          ...settings,
+        };
+        submit = await publishToFacebook(apiKey, payload);
+        break;
+      case 'linkedin':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || undefined,
+          description: copy.description?.trim() || undefined,
+          ...settings,
+        };
+        submit = await publishToLinkedIn(apiKey, payload);
+        break;
+      case 'pinterest':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || undefined,
+          description: copy.description?.trim() || undefined,
+          ...settings,
+        };
+        submit = await publishToPinterest(apiKey, payload);
+        break;
+      case 'threads':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || undefined,
+          description: copy.description?.trim() || undefined,
+          ...settings,
+        };
+        submit = await publishToThreads(apiKey, payload);
+        break;
+      case 'x':
+        payload = {
+          ...base,
+          title: copy.title?.trim() || undefined,
+          description: copy.description?.trim() || undefined,
+          ...settings,
+        };
+        submit = await publishToX(apiKey, payload);
+        break;
+      default:
+        throw new Error(`Unsupported platform: ${destination.platform}`);
+    }
+
+    const requestId = submit?.request_id || submit?.id;
+    if (!requestId) {
+      const out = submit?.output || submit?.data?.output || submit;
+      const url = out?.url || out?.media_id || out?.publish_id || submit?.url;
+      return {
+        platform: destination.platform,
+        status: 'published' as const,
+        url,
+        accountId: destination.accountId,
+        requestId: submit?.request_id,
+        output: submit,
+      };
+    }
+
+    const final = await pollSocialResult(apiKey, requestId, 120, 2000);
+    const out = final?.output || final?.data?.output || final;
+    const url = out?.url || out?.media_id || out?.publish_id || final?.url;
+    return {
+      platform: destination.platform,
+      status: 'published' as const,
+      url,
+      accountId: destination.accountId,
+      requestId,
+      output: out,
+    };
+  }
 
   const handlePublish = useCallback(async () => {
     if (!apiKey) {
-      setError('Add your MuAPI key in the API keys settings first.');
+      setError('Enter your MuAPI key in Settings first.');
       return;
     }
     if (!asset.url.trim()) {
-      setError('No media to publish.');
+      setError('No media URL to publish.');
       return;
     }
     if (selectedDestinations.length === 0) {
       setError('Select at least one destination.');
       return;
     }
+
     setError(null);
-    await onPublish?.(selectedDestinations);
-    setAnnouncement('Publishing finished. See the status list for each destination.');
-  }, [apiKey, asset.url, selectedDestinations, onPublish]);
+    const newResults: PublishResult[] = [...publishResults];
+    onPublish?.(selectedDestinations);
+
+    for (const dest of selectedDestinations) {
+      try {
+        const result = await publishOne(dest, newResults);
+        newResults.push(result);
+        onUpdatePublishResults?.([...newResults]);
+      } catch (err) {
+        const result: PublishResult = {
+          platform: dest.platform,
+          status: 'failed',
+          error: formatError(err),
+          accountId: dest.accountId,
+          requestId: '',
+        };
+        newResults.push(result);
+        onUpdatePublishResults?.([...newResults]);
+      }
+    }
+
+    setAnnouncement(`Publish completed: ${newResults.filter((r) => r.status === 'published').length} succeeded, ${newResults.filter((r) => r.status === 'failed').length} failed.`);
+  }, [apiKey, asset.url, selectedDestinations, publishResults, onPublish, onUpdatePublishResults]);
 
   const handleRetry = useCallback(
-    async (platform: string, accountId?: string) => {
-      setRetryingId(`${platform}:${accountId ?? ''}`);
+    async (destId: string) => {
+      const dest = destinations.find((d) => d.id === destId);
+      if (!dest || !apiKey) return;
+      setRetryingId(destId);
       setError(null);
       try {
-        await onRetry?.(platform, accountId);
+        const result = await publishOne(dest, publishResults);
+        const updated = publishResults.map((r) =>
+          r.platform === dest.platform && r.accountId === dest.accountId ? result : r,
+        );
+        onUpdatePublishResults?.(updated);
+        setAnnouncement(`Retry succeeded for ${dest.platform}`);
+      } catch (err) {
+        const result: PublishResult = {
+          platform: dest.platform,
+          status: 'failed',
+          error: formatError(err),
+          accountId: dest.accountId,
+          requestId: '',
+        };
+        const updated = publishResults.map((r) =>
+          r.platform === dest.platform && r.accountId === dest.accountId ? result : r,
+        );
+        onUpdatePublishResults?.(updated);
+        setAnnouncement(`Retry failed for ${dest.platform}: ${formatError(err)}`);
       } finally {
         setRetryingId(null);
       }
     },
-    [onRetry],
+    [destinations, apiKey, publishResults, onUpdatePublishResults],
   );
 
   const latestResult = publishResults[publishResults.length - 1];
@@ -395,16 +564,6 @@ export default function DestinationsStep({
       <p className="text-[11px] text-white/40 truncate" title={asset.url}>
         Media: {asset.url || '—'}
       </p>
-      {asset.url && !isPublicMediaUrl(asset.url) && (
-        <p className="text-[11px] text-white/50">
-          This file is stored on your device, so it will be uploaded to MuAPI automatically when you publish.
-        </p>
-      )}
-      {PLATFORM_SPECS[activePlatform as PlatformId]?.confidence === 'basic' && (
-        <p className="text-[11px] text-white/40">
-          MuAPI documents only the basics for {PLATFORM_SPECS[activePlatform as PlatformId].label} (account, media and text), so only those are sent.
-        </p>
-      )}
 
       {/* Platform picker */}
       <div className="grid grid-cols-4 gap-2 mb-4">
@@ -554,22 +713,77 @@ export default function DestinationsStep({
                     }
                   }}
                   onDisconnect={handleDisconnect}
-                  onExpand={() => setExpandedDestId(isExpanded ? null : `${activePlatform}:${id}`)}
+                  onExpand={(destId) => setExpandedDestId(isExpanded ? null : destId)}
                   expanded={isExpanded}
                   platformName={platformMeta?.name || activePlatform}
                   platformIcon={platformMeta?.icon || Link2}
                   platformAccent={platformMeta?.accent || '#22d3ee'}
                   result={result}
-                  onRetry={() => handleRetry(activePlatform, id)}
+                  onRetry={handleRetry}
                   retrying={retryingId === `${activePlatform}:${id}`}
                 >
                   {isExpanded && (
-                    <PlatformSettings
-                      platform={activePlatform as PlatformId}
-                      mediaType={mediaType}
-                      settings={(dest?.settings as Record<string, any>) || {}}
-                      onChange={(key, value) => updateSetting(id, key, value, a.account_name || a.platform_name)}
-                    />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-white/30 mb-1 uppercase tracking-wide">Privacy</label>
+                          <select
+                            value={destSettings[`${activePlatform}:${id}`]?.privacy || 'public'}
+                            onChange={(e) => updateSetting(`${activePlatform}:${id}`, 'privacy', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#22d3ee]/50 appearance-none"
+                          >
+                            <option value="public">Public</option>
+                            <option value="private">Private</option>
+                            <option value="unlisted">Unlisted</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-white/30 mb-1 uppercase tracking-wide">Schedule</label>
+                          <input
+                            type="datetime-local"
+                            value={destSettings[`${activePlatform}:${id}`]?.schedule || ''}
+                            onChange={(e) => updateSetting(`${activePlatform}:${id}`, 'schedule', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#22d3ee]/50"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-white/30 mb-1 uppercase tracking-wide flex items-center gap-1">
+                          <Tag size={10} /> Tags
+                        </label>
+                        <input
+                          value={destSettings[`${activePlatform}:${id}`]?.tags || ''}
+                          onChange={(e) => updateSetting(`${activePlatform}:${id}`, 'tags', e.target.value)}
+                          placeholder="tag1, tag2, tag3"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-white/30 mb-1 uppercase tracking-wide flex items-center gap-1">
+                          <MapPin size={10} /> Location
+                        </label>
+                        <input
+                          value={destSettings[`${activePlatform}:${id}`]?.location || ''}
+                          onChange={(e) => updateSetting(`${activePlatform}:${id}`, 'location', e.target.value)}
+                          placeholder="City, Country"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/50"
+                        />
+                      </div>
+                      {mediaType === 'image' && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-white/30 mb-1 uppercase tracking-wide flex items-center gap-1">
+                            <Type size={10} /> Alt text
+                          </label>
+                          <textarea
+                            value={destSettings[`${activePlatform}:${id}`]?.altText || ''}
+                            onChange={(e) => updateSetting(`${activePlatform}:${id}`, 'altText', e.target.value)}
+                            placeholder="Describe the image for accessibility..."
+                            rows={2}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/50 resize-none"
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                 </AccountCard>
               );
@@ -663,7 +877,6 @@ export default function DestinationsStep({
                       {r.accountId && <span className="text-white/40 ml-1">#{r.accountId}</span>}
                     </p>
                     {r.error && <p className="text-[11px] text-red-400 truncate">{r.error}</p>}
-                    {r.note && !r.error && <p className="text-[11px] text-white/50">{r.note}</p>}
                     {r.url && !r.error && (
                       <a
                         href={String(r.url)}
@@ -684,22 +897,16 @@ export default function DestinationsStep({
                     {isPublished && <Check size={10} />}
                     {r.status}
                   </span>
-                  {isFailed && /disconnected|not found/i.test(r.error || '') && (
-                    <button
-                      type="button"
-                      onClick={() => handleConnect(r.platform)}
-                      disabled={connecting}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-[#22d3ee] hover:bg-[#22d3ee]/10 transition-colors disabled:opacity-40 flex-shrink-0"
-                    >
-                      <Link2 size={10} />
-                      Reconnect
-                    </button>
-                  )}
                   {isFailed && (
                     <button
                       type="button"
-                      onClick={() => handleRetry(r.platform, r.accountId)}
-                      disabled={retryingId !== null || publishing}
+                      onClick={() => {
+                        const dest = destinations.find(
+                          (d) => d.platform === r.platform && d.accountId === r.accountId,
+                        );
+                        if (dest) handleRetry(dest.id);
+                      }}
+                      disabled={retryingId !== null}
                       className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-white/80 hover:bg-white/10 transition-colors disabled:opacity-40 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                     >
                       <RefreshCw size={10} />

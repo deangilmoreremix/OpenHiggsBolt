@@ -8482,33 +8482,35 @@
       "id": "social-publishing",
       "name": "Social Publishing",
       "route": "/studio/image",
-      "shortDescription": "A Publish to social window that opens on top of any studio after you create an image or video: it helps you write the post, then publishes it to your connected YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X accounts.",
+      "shortDescription": "A four-step Publish to social window, opened from the studios, to write copy, make a thumbnail, choose connected accounts and publish an image or video.",
       "fullDescription": "Social Publishing is not a studio tab of its own. It is a window (modal) titled Publish to social that opens on top of whatever studio you are in when you click a Post to social button next to a finished image or video. There is no /studio/social-publishing page: that old address now lands in Image Studio (/studio/image). The window has four steps shown at the top: Write, Thumbnail, Destinations and Review & Publish. It shows a Preview of the image or video on the right. Accounts are connected on the Destinations step (a Connect button opens the platform's authorisation page in a new tab), and the actual publish request is sent from that step with the Publish Now button. Video can go to YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X; an image can go to Instagram, Facebook, LinkedIn, Pinterest, Threads and X.",
       "keyFeatures": [
-        "Opens as a window from Post to social in the image and video studios (not a separate tab)",
+        "Opens as a window from Post to social buttons in the image and video studios (not a separate tab); the route is the studio you opened it from, for example /studio/image",
         "Four steps: Write, Thumbnail, Destinations, Review & Publish",
-        "Write: a Title field and post text with AI helpers (Write Post, Improve, Tone, Length, Platform Optimize), per-platform tabs for Master, YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X",
-        "AI writing runs on your own OpenAI key; you can always write by hand",
-        "Destinations: connect accounts for eight platforms and set the options each platform supports",
-        "One Publish button posts to every selected account, shows status for each, and Retry re-sends only the one that failed",
-        "Your Write-step text and Title are what get published; a thumbnail is sent as the Instagram cover and set as the YouTube thumbnail",
-        "Review shows an approximate MuAPI cost and tells you what to fix before publishing"
+        "Write: AI helpers for post copy (Write Post, Improve, Tone, Length, Platform Optimize) with three copy variants and platform tabs (Master, YouTube, Instagram, TikTok, Facebook)",
+        "Thumbnail: generate thumbnails from templates or a prompt, with Aspect Ratio, model, number of variations and Advanced options",
+        "Destinations: eight platforms, connect accounts, select one or more accounts, per-account settings (Privacy, Schedule, Tags, Location, Alt text for images)",
+        "Publish Now sends the post to every selected account, with per-account status and Retry for failures",
+        "Live Preview of the media beside the steps"
       ],
-      "howToUse": "Social Publishing is not a studio. It is a window titled Publish to social that opens on top of whatever studio you are in when you click Post to social next to a finished image or video (there is no separate page; the address you are on stays the studio's, for example /studio/image). Move through Write (write or generate the post, add a Title), Thumbnail (optional), Destinations (connect and choose accounts, set per-platform options) and Review & Publish, then click Publish.",
+      "howToUse": "Social Publishing is not a studio tab of its own. It is a window (modal) titled Publish to social that opens on top of whatever studio you are in when you click a Post to social button next to a finished image or video. There is no /studio/social-publishing page: that old address now lands in Image Studio (/studio/image). To use it: finish an image or video in a studio, click its Post to social button, move through Write and Thumbnail (both optional to browse), choose your accounts on Destinations, click Publish Now, and check the status list. Opened from Image Studio this is /studio/image; other studios open the same window from their own result buttons.",
       "howToSteps": [
-        "Make an image or video in a studio, then click Post to social next to the finished result. The Publish to social window opens on Write.",
-        "Write step: type what the post is about in Post topic (What is this post about?), then click Write Post to generate copy, or write your own. Fill in Title (required for YouTube, up to 100 characters; TikTok allows 150). Use the Master tab for the main text and the YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X tabs to tailor it. Use Improve, Tone, Length and Platform Optimize to refine. If you click an AI action without an OpenAI key you will see Add your OpenAI key to use AI writing with an Open API keys button; you can still write by hand.",
-        "Click Continue. Thumbnail step (optional): generate a thumbnail, or click Continue to skip. For Instagram videos the thumbnail is sent as the cover, and for YouTube it is set on the video after it is published (JPEG or PNG under 2MB).",
-        "Destinations step: click a platform, click Connect, finish the sign-in on the platform in the new tab, then click Refresh. Tick each account to post to. Open an account to set its options (YouTube: Privacy, Category, Tags, Made for kids; Instagram: Placement, Also share to feed; TikTok: Who can view and Turn off comments, duet or stitch; Facebook and Threads: Placement; Pinterest: Board ID and Destination link; X: Who can reply).",
-        "Click Continue to reach Review & Publish. Check the text, the destinations and the estimated MuAPI cost. If something blocks publishing, a Fix this before publishing: box lists it.",
-        "Click Publish. Each destination shows its own status. If one fails, read its message and click Retry (only that one is re-sent), or click Reconnect if the account was disconnected.",
-        "When every destination shows Published successfully, use View to open the post."
+        "Make an image or video in a studio (for example Image Studio at /studio/image, Video Studio, VFX Studio, Storyboard or Motion Director).",
+        "Click the Post to social button next to the finished result (in Image Studio it is a small round button that appears when you hover a generated image on a wide screen; in VFX Studio it is a labelled button beside Download; in Motion Director it appears after you export the film). The Publish to social window opens with the first step, Write.",
+        "Write step: type what the post is about in Post topic (What is this post about?). Click Write Post to generate three copy variants, or use Improve, Tone, Length and Platform Optimize on the text. Use the tabs Master, YouTube, Instagram, TikTok and Facebook to view copy per platform. Click Continue.",
+        "Thumbnail step (optional): choose Recommended or Explore Ideas, pick a template or type a prompt, set Aspect Ratio, and click Generate. You can click Continue without making a thumbnail.",
+        "Destinations step: click a platform tile (YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads or X). Images show only the platforms that accept images.",
+        "Click the Connect button for that platform; the platform's authorisation page opens in a new tab. Approve access, return and click Refresh to list the account. You can also paste a known account ID under Add account manually (account ID) and click Add.",
+        "Tick the checkbox on each account you want to publish to. Click the arrow on an account card to open its settings (Privacy, Schedule, Tags, Location, and Alt text for images).",
+        "Check the Selected destinations box, then click Publish Now. Each account shows a status (queued, uploading, processing, published or failed) in Publish status; a failed one has a Retry button.",
+        "Click Continue to reach Review & Publish to see a summary of the media, thumbnail, copy and destinations, and the results. Close the window with Close or the X at the top right when you are done."
       ],
       "gettingStarted": [
-        "Make an image or video in any studio and click Post to social.",
-        "On Write, add a Title and your post text (or click Write Post).",
-        "On Destinations, click a platform, then Connect, then Refresh and tick your account.",
-        "On Review & Publish, fix anything listed, then click Publish."
+        "Open a studio that makes images or videos, for example Image Studio at /studio/image.",
+        "Generate something, then click its Post to social button.",
+        "In the Publish to social window go to Destinations and connect an account with the Connect button for the platform.",
+        "Tick the account and click Publish Now.",
+        "Watch Publish status for published or failed."
       ],
       "tips": [
         "You can leave the window open while you authorise an account in the new tab; click Refresh afterwards to see it.",
@@ -8671,66 +8673,100 @@
       ],
       "limitationDetails": [
         {
-          "limitation": "Immediate publishing only",
-          "impact": "There is no schedule option; posts go out as soon as you click Publish.",
-          "workaround": "Click Publish at the time you want the post to go live."
+          "limitation": "Needs connected accounts",
+          "impact": "You cannot publish without at least one account ticked on Destinations.",
+          "workaround": "Click the Connect button for the platform, then Refresh."
         },
         {
-          "limitation": "Partial options on five platforms",
-          "impact": "Facebook, LinkedIn, Pinterest, Threads and X are published with the basics MuAPI documents (account, media, text and the options shown).",
-          "workaround": "Fine-tune anything else directly on the platform after posting."
+          "limitation": "Needs your MuAPI key",
+          "impact": "Without it Destinations shows 'No API key detected. Add your MuAPI key in Settings to use Social Publishing.'",
+          "workaround": "Open the API keys settings and add your MuAPI key."
         },
         {
-          "limitation": "AI writing needs an OpenAI key",
-          "impact": "Without it, the AI buttons show Add your OpenAI key to use AI writing.",
-          "workaround": "Add your key with Open API keys, or write the post yourself."
+          "limitation": "Text written in the Write step is not used by the publish request",
+          "impact": "In the current code the title and caption sent to platforms are the ones handed over by the studio (usually a short title taken from the prompt or file name); a YouTube post without a title is sent as 'Untitled'. Text you type in Write, and the Thumbnail you generate, are not included in the request.",
+          "workaround": "Check the posted result on the platform and edit the title and caption there if needed."
+        },
+        {
+          "limitation": "YouTube and TikTok accept video only",
+          "impact": "Images do not show those platforms.",
+          "workaround": "Use Instagram, Facebook, LinkedIn, Pinterest, Threads or X for images."
+        },
+        {
+          "limitation": "No publish history list",
+          "impact": "The old Publish history (last 12 in the browser) no longer exists in this window.",
+          "workaround": "Open the published links from the status list while the window is open."
+        },
+        {
+          "limitation": "Media must be reachable by URL",
+          "impact": "A file that exists only in your browser cannot be published directly.",
+          "workaround": "Studios that export locally (Motion Director) upload the file first when you click Post to social."
         }
       ],
       "troubleshootingSteps": [
         {
-          "issue": "Publish is disabled",
+          "issue": "No Post to social button",
           "steps": [
-            "Read the Fix this before publishing: box on Review & Publish.",
-            "Go Back to the step it mentions, for example add a Title on Write.",
-            "Return to Review & Publish and click Publish."
+            "Generate or open a finished image or video first; the button only appears next to a result.",
+            "In Image Studio the button appears on hover over a generated image on wide screens."
           ]
         },
         {
-          "issue": "An account shows as disconnected",
+          "issue": "Message 'Enter your MuAPI key in Settings first.'",
           "steps": [
-            "On the failed destination click Reconnect.",
-            "Finish the sign-in on the platform, then click Refresh on Destinations.",
-            "Click Retry."
+            "If generation is blocked, open the API keys settings and check your MuAPI key.",
+            "Then click Refresh on Destinations."
           ]
         },
         {
-          "issue": "AI writing asks for an OpenAI key",
+          "issue": "No accounts listed",
           "steps": [
-            "Click Open API keys and add your OpenAI key.",
-            "Return to Write and click Write Post again, or write the post by hand."
+            "The message 'No connected accounts yet. Use \"Connect account\" to authorize one.' means none are connected for that platform.",
+            "Click the Connect button for the platform, approve access in the new tab, then click Refresh."
+          ]
+        },
+        {
+          "issue": "Publish failed for one account",
+          "steps": [
+            "Read the red message in Publish status.",
+            "Click Retry on that account.",
+            "If it keeps failing, disconnect and reconnect the account."
+          ]
+        },
+        {
+          "issue": "Message 'Select at least one destination.'",
+          "steps": [
+            "Tick the checkbox on at least one account, then click Publish Now."
+          ]
+        },
+        {
+          "issue": "Write Post does nothing or shows an error",
+          "steps": [
+            "Enter a Post topic first ('Enter a post topic first').",
+            "The AI helpers use your OpenAI key from Settings; check it if the message mentions the key."
           ]
         }
       ],
       "commonProblems": [
         {
-          "problem": "My text did not appear on the platform",
-          "whyItHappens": "Each platform uses its own tab on the Write step; if that tab is empty the Master text is used.",
-          "howToFix": "Check the platform's tab on Write, then publish again after clicking Retry on that destination."
+          "problem": "My caption did not appear on the platform",
+          "whyItHappens": "The publish request uses the title and caption provided by the studio, not the text typed in the Write step.",
+          "howToFix": "Edit the post on the platform, or open the publish window again from a studio that supplies a title."
         },
         {
-          "problem": "A platform I want is missing",
-          "whyItHappens": "YouTube and TikTok accept video only, so they are hidden for images.",
-          "howToFix": "Publish a video, or choose Instagram, Facebook, LinkedIn, Pinterest, Threads or X for images."
+          "problem": "Platform I want is missing",
+          "whyItHappens": "YouTube and TikTok are shown for videos only.",
+          "howToFix": "Use a video, or choose another platform."
         },
         {
-          "problem": "Publish stays disabled",
-          "whyItHappens": "Something required is missing, such as a title or a connected account.",
-          "howToFix": "Read the Fix this before publishing: list and fix each item."
+          "problem": "Publish Now button not visible",
+          "whyItHappens": "It appears after at least one account is selected.",
+          "howToFix": "Tick an account first."
         },
         {
-          "problem": "Posted to one platform twice",
-          "whyItHappens": "This should not happen: Publish and Publish remaining skip destinations that already published.",
-          "howToFix": "Use Retry only on a destination that shows failed."
+          "problem": "The Publish button at the bottom does nothing on the last step",
+          "whyItHappens": "On Review & Publish the footer button does not send anything further; sending is done by Publish Now on Destinations.",
+          "howToFix": "Go back to Destinations and click Publish Now."
         }
       ],
       "exampleWorkflows": [
@@ -8801,47 +8837,47 @@
       "faqs": [
         {
           "question": "Where is Social Publishing in the studio list?",
-          "answer": "It is not in the studio list. It opens as a window from the Post to social button next to finished images and videos."
+          "answer": "It is not a tab. It is the Publish to social window that opens from Post to social buttons in the studios. The old /studio/social-publishing address lands in Image Studio (/studio/image)."
+        },
+        {
+          "question": "How do I open it?",
+          "answer": "Finish an image or video in a studio and click the Post to social button next to it."
         },
         {
           "question": "Which platforms are supported?",
-          "answer": "YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X. Images are not accepted by YouTube or TikTok."
+          "answer": "YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X. YouTube and TikTok are video only."
         },
         {
           "question": "How do I connect an account?",
-          "answer": "On Destinations click the platform, click Connect, finish the sign-in in the new tab, then click Refresh."
+          "answer": "On Destinations pick the platform and click its Connect button; approve access in the new tab and click Refresh."
         },
         {
-          "question": "Which button publishes?",
-          "answer": "Publish on Review & Publish, the Publish Now button on Destinations, and the footer Publish button on the last step all use the same publish action."
-        },
-        {
-          "question": "Does the AI write the post for me?",
-          "answer": "Yes, Write Post and the other AI buttons on the Write step draft and refine copy. They use your own OpenAI key. You can also write by hand."
-        },
-        {
-          "question": "Is the text I write what gets published?",
-          "answer": "Yes. Your Title and the text on the Write step (Master or the platform tab) are what is sent."
+          "question": "Which button actually publishes?",
+          "answer": "Publish Now on the Destinations step."
         },
         {
           "question": "Do I have to make a thumbnail?",
-          "answer": "No. If you make one, it is sent as the cover for Instagram videos and set as the thumbnail of your YouTube video after it is published (JPEG or PNG under 2MB; custom YouTube thumbnails also need a verified channel). Other platforms do not use it."
+          "answer": "No. The Thumbnail step can be skipped with Continue."
+        },
+        {
+          "question": "Is there a publish history?",
+          "answer": "No. This window shows the status of the posts you sent while it is open."
         },
         {
           "question": "Can I schedule a post?",
-          "answer": "No. MuAPI does not offer scheduling, so posts go out when you click Publish."
+          "answer": "Each account's settings have a Schedule field; whether a platform honours it was not verified."
         },
         {
-          "question": "What does it cost?",
-          "answer": "MuAPI charges per publish (about $0.01 for YouTube and about $0.02 for the others). Review & Publish shows an estimate. See MuAPI pricing for current rates."
+          "question": "Why does the Write text not appear on the platform?",
+          "answer": "In the current code the publish request uses the title and caption supplied by the studio, not the Write step text."
         },
         {
           "question": "Do I need an API key?",
-          "answer": "You need your MuAPI key to publish and your OpenAI key only for the AI writing buttons. Add both in the API keys settings."
+          "answer": "Yes. Destinations needs your MuAPI key; the Write and Thumbnail helpers use your OpenAI key from Settings."
         },
         {
-          "question": "What if one platform fails?",
-          "answer": "Read its message in Publish status. Click Retry to re-send just that one, or Reconnect if the account was disconnected. Platforms that already published are not posted again."
+          "question": "How do I close the window?",
+          "answer": "Click the X, press Esc, click outside the window, or use Cancel on the first step."
         }
       ],
       "whenToUse": [
@@ -8910,19 +8946,19 @@
         "Publish Now": "The button on Destinations that sends the post."
       },
       "sourceFiles": [
-        "components/SocialPublishModal.tsx",
         "components/SocialPublishProvider.tsx",
+        "components/SocialPublishModal.tsx",
+        "components/social-publishing/types.ts",
+        "components/social-publishing/SocialPublishStepper.tsx",
         "components/social-publishing/steps/WriteStep.tsx",
         "components/social-publishing/steps/ThumbnailStep.tsx",
         "components/social-publishing/steps/DestinationsStep.tsx",
-        "components/social-publishing/steps/PlatformSettings.tsx",
         "components/social-publishing/steps/ReviewPublishStep.tsx",
+        "components/social-publishing/accounts/AccountCard.tsx",
+        "components/social-publishing/accounts/ConnectAccountButton.tsx",
         "components/social-publishing/copy/AiWritingToolbar.tsx",
-        "components/social-publishing/copy/PlatformCopyTabs.tsx",
-        "components/social-publishing/types.ts",
-        "src/shared/api/socialPayloads.ts",
-        "src/shared/api/publishOrchestrator.ts",
-        "src/lib/muapi.js"
+        "components/StandaloneShell.js",
+        "src/apps/motion-director/ExportButton.tsx"
       ],
       "inputs": [
         "media",
@@ -8949,29 +8985,25 @@
         "image publishing"
       ],
       "troubleshooting": [
-        "No Post to social button: finish generating an image or video first; the button appears next to a finished result.",
-        "Message 'Add your MuAPI key in the API keys settings first.': open the API keys settings and add your MuAPI key.",
-        "No accounts listed: click Connect for that platform, finish signing in, then click Refresh.",
-        "'YouTube needs a title (up to 100 characters).': type a Title on the Write step.",
-        "A destination failed: read its message in Publish status, fix the cause, then click Retry. Click Reconnect if it says the account is disconnected.",
-        "Select at least one destination: tick an account on the Destinations step."
+        "No Post to social button: Generate or open a finished image or video first; the button only appears next to a result.",
+        "Message 'Enter your MuAPI key in Settings first.': If generation is blocked, open the API keys settings and check your MuAPI key.",
+        "No accounts listed: The message 'No connected accounts yet. Use \"Connect account\" to authorize one.' means none are connected for that platform.",
+        "Publish failed for one account: Read the red message in Publish status.",
+        "Message 'Select at least one destination.': Tick the checkbox on at least one account, then click Publish Now.",
+        "Write Post does nothing or shows an error: Enter a Post topic first ('Enter a post topic first')."
       ],
       "limitations": [
-        "Needs connected accounts (Connect on the Destinations step)",
-        "Needs your MuAPI key, and each publish costs a small MuAPI charge (about $0.01 for YouTube, about $0.02 for the other platforms; see MuAPI pricing)",
-        "AI writing needs your own OpenAI key; publishing does not",
-        "MuAPI documents full options only for YouTube, Instagram and TikTok; for Facebook, LinkedIn, Pinterest, Threads and X only the account, media and text (and the placement, board, link or reply options shown) are sent",
+        "Needs connected accounts",
+        "Needs your MuAPI key",
+        "Text written in the Write step is not used by the publish request",
         "YouTube and TikTok accept video only",
-        "Instagram posting needs an Instagram Business account",
-        "MuAPI does not offer scheduling, so posts are published immediately",
-        "The media must be reachable by MuAPI: files stored only on your device are uploaded automatically when you publish",
-        "Text limits: YouTube title 100, TikTok title 150, X post 280 characters",
-        "YouTube custom thumbnails need a verified YouTube channel; if setting the thumbnail fails, the video is still published and you will see a note"
+        "No publish history list",
+        "Media must be reachable by URL"
       ],
-      "description": "A Publish to social window that opens on top of any studio after you create an image or video: it helps you write the post, then publishes it to your connected YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X accounts.",
+      "description": "A four-step Publish to social window, opened from the studios, to write copy, make a thumbnail, choose connected accounts and publish an image or video.",
       "verification": {
         "status": "verified",
-        "evidence": "Rewritten after the 2026-11-11 Social Publishing fixes: components/SocialPublishModal.tsx, components/social-publishing/steps/*, src/shared/api/socialPayloads.ts, publishOrchestrator.ts. Platform fields follow muapi.ai/docs/social-publishing and the muapi.ai/playground/<platform>-publish pages; the five partially documented platforms send only the documented basics.",
+        "evidence": "Provider, modal, four step components and account components read directly from the repository on 2026-11-11; opening points found by searching for PublishStep/openPublish across studios.",
         "verifiedAt": "2026-11-11",
         "verifiedBy": "Code review 2026-11-11"
       }

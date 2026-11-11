@@ -937,7 +937,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
       {/* Studio Content */}
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
-      <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)}>
+      <SocialPublishProvider apiKey={apiKey}>
       <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}

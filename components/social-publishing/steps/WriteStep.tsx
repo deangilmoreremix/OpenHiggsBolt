@@ -43,16 +43,7 @@ const PLATFORMS = [
   { id: 'instagram', label: 'Instagram' },
   { id: 'tiktok', label: 'TikTok' },
   { id: 'facebook', label: 'Facebook' },
-  { id: 'linkedin', label: 'LinkedIn' },
-  { id: 'pinterest', label: 'Pinterest' },
-  { id: 'threads', label: 'Threads' },
-  { id: 'x', label: 'X' },
 ]
-
-/** True when an AI action failed only because the customer has not saved an OpenAI key. */
-export function isMissingOpenAiKeyError(message: string): boolean {
-  return /UNAUTHENTICATED|OpenAI error: 401|No OpenAI API key|OpenAI key/i.test(message)
-}
 
 const VARIANT_LABELS = [
   { id: 'v1', label: 'VERSION 1 — Direct' },
@@ -68,10 +59,6 @@ const emptyPlatforms: CopyState['platforms'] = {
   instagram: { caption: '' },
   tiktok: { caption: '' },
   facebook: { caption: '' },
-  linkedin: { caption: '' },
-  pinterest: { caption: '' },
-  threads: { caption: '' },
-  x: { caption: '' },
 }
 
 function buildEmptyCopy(master = ''): CopyState {
@@ -97,13 +84,12 @@ function getPrefillTopic(asset: WriteStepProps['asset']): string {
   )
 }
 
-export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteStepProps) {
+export function WriteStep({ asset, copy, onUpdateCopy }: WriteStepProps) {
   const [topic, setTopic] = useState(getPrefillTopic(asset))
   const [activePlatform, setActivePlatform] = useState('master')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [needsOpenAiKey, setNeedsOpenAiKey] = useState(false)
   const [localCopy, setLocalCopy] = useState<CopyState>(() =>
     copy.master || (copy.variants?.length || 0) > 0 ? copy : buildEmptyCopy('')
   )
@@ -132,7 +118,6 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
     if (activePlatform === 'instagram' && chars > 2200) warnings.push('Instagram caption exceeds 2200 chars')
     if (activePlatform === 'tiktok' && chars > 2200) warnings.push('TikTok caption exceeds 2200 chars')
     if (activePlatform === 'facebook' && chars > 63206) warnings.push('Facebook post exceeds 63206 chars')
-    if (activePlatform === 'x' && chars > 280) warnings.push('X posts are limited to 280 characters')
     if (counts.hashCount > 30) warnings.push('Too many hashtags may reduce reach')
     return warnings
   }, [activePlatform, counts])
@@ -167,7 +152,6 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
     }
     setLoading(true)
     setError(null)
-    setNeedsOpenAiKey(false)
     setStatus('Generating copy variants…')
     try {
       const result = await generateCopy(topic, asset)
@@ -181,25 +165,11 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
         master,
         variants,
         selectedVariantId: 'v1',
-        // fill the fields publishing needs; never overwrite what the user already typed
-        title: localCopy.title?.trim() ? localCopy.title : result.youtube?.title || '',
-        platforms: {
-          ...localCopy.platforms,
-          youtube: {
-            ...localCopy.platforms.youtube,
-            title: localCopy.platforms.youtube?.title?.trim() ? localCopy.platforms.youtube.title : result.youtube?.title || '',
-            description: localCopy.platforms.youtube?.description?.trim() ? localCopy.platforms.youtube.description : result.youtube?.description || '',
-          },
-          instagram: { ...localCopy.platforms.instagram, caption: localCopy.platforms.instagram?.caption?.trim() ? localCopy.platforms.instagram.caption : result.instagram?.caption || '' },
-          tiktok: { ...localCopy.platforms.tiktok, caption: localCopy.platforms.tiktok?.caption?.trim() ? localCopy.platforms.tiktok.caption : result.tiktok?.caption || '' },
-        },
       }
       emit(next)
       setStatus('Variants generated')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to generate copy'
-      if (isMissingOpenAiKeyError(msg)) setNeedsOpenAiKey(true)
-      else setError(msg)
+      setError(err instanceof Error ? err.message : 'Failed to generate copy')
     } finally {
       setLoading(false)
     }
@@ -221,7 +191,6 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
     }
     setLoading(true)
     setError(null)
-    setNeedsOpenAiKey(false)
     setStatus(`Running ${action}…`)
     try {
       let resultText = ''
@@ -274,9 +243,7 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
       }
       setStatus('Done')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'AI action failed'
-      if (isMissingOpenAiKeyError(msg)) setNeedsOpenAiKey(true)
-      else setError(msg)
+      setError(err instanceof Error ? err.message : 'AI action failed')
     } finally {
       setLoading(false)
     }
@@ -331,29 +298,6 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
         />
       </div>
 
-      <div
-        className="rounded-xl border p-4"
-        style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
-      >
-        <div className="mb-1.5 flex items-center justify-between">
-          <label htmlFor="social-post-title" className="block text-[11px] font-bold uppercase tracking-wide text-white/40">
-            Title <span className="font-normal normal-case text-white/30">(required for YouTube, used by TikTok and Pinterest)</span>
-          </label>
-          <span className="text-[10px] text-white/40" aria-live="polite">{(localCopy.title || '').length}/100</span>
-        </div>
-        <input
-          id="social-post-title"
-          value={localCopy.title || ''}
-          maxLength={150}
-          onChange={(e) => emit({ ...localCopy, title: e.target.value })}
-          placeholder="Give your post a title"
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/50"
-        />
-        {(localCopy.title || '').length > 100 && (
-          <p className="mt-1 text-[11px] text-amber-300">YouTube allows up to 100 characters; TikTok up to 150.</p>
-        )}
-      </div>
-
       <SocialCopyEditor
         text={currentText}
         onChange={(text) => {
@@ -384,20 +328,6 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
         onGenerate={handleGenerateVariants}
         loading={loading}
       />
-
-      {needsOpenAiKey && (
-        <div role="alert" data-testid="social-needs-openai-key" className="rounded-xl border p-3" style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)' }}>
-          <p className="text-sm font-bold text-white">Add your OpenAI key to use AI writing</p>
-          <p className="mt-1 text-xs text-white/50">
-            AI writing runs on your own OpenAI account. You can still write your post by hand and publish without it.
-          </p>
-          {onRequestApiKey && (
-            <button type="button" onClick={onRequestApiKey} className="mt-2 rounded-lg bg-[#22d3ee] px-3 py-1.5 text-xs font-bold text-black">
-              Open API keys
-            </button>
-          )}
-        </div>
-      )}
 
       {(status || error) && (
         <div

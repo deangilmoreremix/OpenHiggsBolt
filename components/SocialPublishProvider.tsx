@@ -66,12 +66,9 @@ export const SocialPublishContext = createContext<SocialPublishContextValue | nu
 export function SocialPublishProvider({
   apiKey,
   children,
-  onRequestApiKey,
 }: {
   apiKey: string | null;
   children: ReactNode;
-  /** Opens the API keys modal (AI writing needs the customer's OpenAI key). */
-  onRequestApiKey?: () => void;
 }) {
   const [state, setState] = useState<SocialPublishState>({
     open: false,
@@ -183,7 +180,6 @@ export function SocialPublishProvider({
         updateThumbnail={updateThumbnail}
         updateDestinations={updateDestinations}
         updatePublishResults={updatePublishResults}
-        onRequestApiKey={onRequestApiKey}
       />
     </SocialPublishContext.Provider>
   );

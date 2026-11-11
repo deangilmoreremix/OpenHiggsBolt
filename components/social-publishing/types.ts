@@ -74,16 +74,12 @@ export interface PublishResult {
   requestId?: string
   output?: any
   link?: string | null
-  /** Non-fatal follow-up result, e.g. the YouTube thumbnail could not be set. */
-  note?: string
 }
 
 export interface WriteStepProps {
   asset: Asset
   copy: CopyState
   onUpdateCopy: (copy: CopyState) => void
-  /** Opens the API keys modal (AI writing uses the customer's own OpenAI key). */
-  onRequestApiKey?: () => void
 }
 
 export interface ThumbnailStepProps {
@@ -99,10 +95,7 @@ export interface DestinationsStepProps {
   destinations: Destination[]
   onChange: (destinations: Destination[]) => void
   publishResults: PublishResult[]
-  /** Publish the selected destinations (already-published ones are skipped). */
-  onPublish: (destinations: Destination[]) => void | Promise<void>
-  /** Retry one failed destination only. */
-  onRetry?: (platform: string, accountId?: string) => void | Promise<void>
+  onPublish: (destinations: Destination[]) => void
   onUpdatePublishResults: (results: PublishResult[]) => void
   publishing: boolean
   apiKey: string
@@ -115,13 +108,9 @@ export interface ReviewPublishStepProps {
   thumbnail: ThumbnailState
   destinations: Destination[]
   publishResults: PublishResult[]
-  onConfirm: () => void | Promise<void>
-  /** Retry one failed destination only (never re-posts to the ones that succeeded). */
-  onRetry?: (platform: string, accountId?: string) => void | Promise<void>
+  onConfirm: () => void
   onBack: () => void
   publishing: boolean
-  /** Why publishing is blocked, if it is (shown instead of failing silently). */
-  blockers?: string[]
 }
 
 export const STEPS = [
