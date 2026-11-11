@@ -64,6 +64,7 @@ export default function ZackD({ apiKey, templateData }) {
   const proj = useRef(project);
   proj.current = project;
   const abort = useRef(null);
+  const alertRef = useRef(null);
   const jobs = useMemo(() => createJobs(muapi, apiKey), [apiKey]);
 
   // Load the saved project for this identity, and seed the topic from a template hand-off.
@@ -79,6 +80,8 @@ export default function ZackD({ apiKey, templateData }) {
   }, [project, storeKey]);
 
   useEffect(() => () => { abort.current?.abort(); }, []);
+  // A failure on a long step must not hide above the fold: bring a new error into view.
+  useEffect(() => { if (error) alertRef.current?.scrollIntoView?.({ block: 'nearest' }); }, [error]);
   useEffect(() => () => { if (final?.url) URL.revokeObjectURL(final.url); }, [final]);
 
   const set = useCallback((patch) => setProject((p) => ({ ...p, ...(typeof patch === 'function' ? patch(p) : patch) })), []);
@@ -98,7 +101,7 @@ export default function ZackD({ apiKey, templateData }) {
       try { return await fn(item); } finally { done += 1; setProgress(`${label}: ${done}/${items.length}`); }
     });
     const failed = results.filter((r) => !r.ok);
-    if (failed.length) setError(`${failed.length} of ${items.length} failed: ${failed[0].error?.message || 'error'}. Use Redo to retry them.`);
+    if (failed.length) setError(`${failed.length} of ${items.length} failed: ${String(failed[0].error?.message || 'error').replace(/[.\s]+$/, '')}. Use Redo to retry them.`);
     setBusy(false); setProgress('');
   }
 
@@ -201,7 +204,7 @@ export default function ZackD({ apiKey, templateData }) {
         </div>
       </Section>
       <Section title="Templates" hint={TEMPLATE_ATTRIBUTION}>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 items-start">
           {TEMPLATES.map((t) => (
             <div key={t.id} className="rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-colors p-3 space-y-2 flex flex-col">
               {t.demo && <video src={t.demo} poster={t.poster} controls preload="none" playsInline className="w-full rounded-md bg-black" style={{ aspectRatio: '9 / 16', maxHeight: 320 }} />}
@@ -410,7 +413,7 @@ export default function ZackD({ apiKey, templateData }) {
             ))}
           </nav>
           {!hasKey && <div className="rounded-xl p-3 flex items-center gap-2 text-sm" style={{ ...panels.glass, color: semantic.textSecondary }}><AlertCircle size={14} /> Add your MuAPI key in Settings to generate media.</div>}
-          {error && <div role="alert" className="rounded-xl p-4 flex items-start gap-2 text-sm border border-red-500/40 text-red-300" style={panels.glass}><AlertCircle size={14} className="mt-0.5 flex-shrink-0" />{error}</div>}
+          {error && <div role="alert" ref={alertRef} className="rounded-xl p-4 flex items-start gap-2 text-sm border border-red-500/40 text-red-300" style={panels.glass}><AlertCircle size={14} className="mt-0.5 flex-shrink-0" />{error}</div>}
           {VIEWS[stage]}
         </div>
       </div>

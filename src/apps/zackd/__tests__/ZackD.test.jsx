@@ -98,9 +98,12 @@ describe('ZackD studio', () => {
     render(<ZackD apiKey="mu_test_key_0123456789" />);
     fireEvent.change(screen.getByLabelText('TOPIC'), { target: { value: 'Gum' } });
     click(/Write starter script/); click('Approve script');
+    const scrollIntoView = vi.fn(); Element.prototype.scrollIntoView = scrollIntoView;
     click(/Generate 2 character sheet/);
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/placeholder/));
+    expect(scrollIntoView).toHaveBeenCalled(); // a new error is brought into view, not left above the fold
     expect(document.querySelector('img')).toBeNull();
+    expect(screen.getByRole('alert').textContent).not.toMatch(/\.\./); // no doubled period in the message
   });
 
   it('asks for a key when none is set and seeds the topic from a template hand-off', () => {
