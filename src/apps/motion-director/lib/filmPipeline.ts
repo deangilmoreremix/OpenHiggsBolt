@@ -41,6 +41,7 @@ import { fallbackTexts, neutralTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
+import { chooseLocalShots, localShotCount } from './localDirector';
 import { documentFromCapture, documentFromText, isDocumentUsable } from './documentContent';
 import { defaultTrackFor } from './defaultMusic';
 
@@ -59,7 +60,7 @@ export interface StoryboardResult {
   plan: DirectorPlan;
   capture: SiteCapture | null;
   /** Who wrote the storyboard. */
-  source: 'director' | 'inkpress';
+  source: 'director' | 'inkpress' | 'local';
   /** Why the director was not used, when it was asked and failed. */
   note?: string;
   /** Attached videos the film will play as their own scenes before the closing card. */
@@ -220,6 +221,34 @@ export async function storyboardFilm(
   if (req.single) {
     log(`Designing one ${req.single.nameEn} shot`, 'done');
     return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette, durationSec: req.durationSec }), capture, source: 'inkpress', brief, decisions };
+  }
+
+  // Create without AI: the program builds the storyboard from the captured material and the recipe contracts. No model call is made.
+  if (opts.template === 'local') {
+    const target = Math.max(PLAN_LIMITS.minFilmSec, planSec);
+    const { picks, skipped } = chooseLocalShots({ kind: brief.kind, material, count: req.recipes.length || localShotCount(target) });
+    const shots = req.recipes.length ? req.recipes : picks.map((p) => p.template);
+    log(`Without AI · chose ${shots.length} shots the contracts say show this business: ${shots.map((t) => t.nameEn).join(', ') || 'none'}`, 'done');
+    for (const sk of skipped.slice(0, 6)) log(`Without AI · not used: ${shotName(sk.stem)} (${sk.why})`, 'done');
+    for (const p of picks) log(`Without AI · ${p.template.nameEn}: ${p.why}`, 'done');
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: palette.accent });
+    const keep = new Set(shots.map((t) => t.id));
+    const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
+    const base = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: shots, productName, palette, content: capture?.content, siteScenes, pictures: pictureCount(capture) });
+    const sitePal = capture ? paletteFromBrand(capture.brand) : null;
+    const ground: 'dark' | 'light' | null = sitePal ? (luma(sitePal.page) < 0.5 ? 'dark' : 'light') : null;
+    const ruled = applyFilmRules(base, { keep, siteScenes, ground });
+    for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    const gate = gateStoryboard(ruled.plan, { brief, keep, durationSec: planSec, ground });
+    for (const f of gate.failed) log(`Storyboard gate: ${f}`, 'error');
+    const arced = arrangeArc(gate.plan, keep);
+    const fitted = fitNativeLengths(arced, planSec, keep, voice.holdGrowth);
+    const final = chooseSeams(applySiteContent(fitted, capture?.content), voice);
+    const release = releaseCheck(final, null, { keep, ground }).items;
+    log(releaseLine(release), 'done');
+    log(`Storyboard ready (built without AI) · ${final.scenes.length} scenes`, 'done');
+    const direction: NonNullable<StoryboardResult['direction']> = { chosen: { name: `${brief.kind.replace('-', ' ')} · ${voice.label}`, claim: `A ${brief.style} film for ${brief.audience}.`, keywords: brief.kindEvidence, look: `${palette.background} ground, ${palette.accent} accent`, motion: voice.label, why: 'derived from the site, no model', tradeoff: 'no creative variation from a language model' } as VisualDirection, others: [], source: 'derived' };
+    return { plan: final, capture, source: 'local', brief, decisions, direction, release: [...release, ...gate.items], gate: { items: gate.items, swaps: gate.swaps, failed: gate.failed } };
   }
 
   const required =
@@ -399,7 +428,7 @@ export function brandFor(plan: DirectorPlan, capture: SiteCapture | null, produc
  * template text from the site and the storyboard; with no key, or when it cannot be reached,
  * the site's own headline, headings and menu fill the same lines.
  */
-export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog, ctx: { pictures?: number } = {}): Promise<Record<number, Record<string, string>>> {
+export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog, ctx: { pictures?: number; noAi?: boolean } = {}): Promise<Record<number, Record<string, string>>> {
   const stringsOf = (recipeId: string) => {
     const t = recipeId ? resolveMotionTemplate(recipeId) : undefined;
     return t ? DEMO_TEXTS[t.componentName] ?? [] : [];
@@ -417,15 +446,16 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
     });
     return merged;
   };
-  log('Writing your words into the shots', 'running');
+  log(ctx.noAi ? 'Writing the site\'s own words into the shots (no AI)' : 'Writing your words into the shots', 'running');
   try {
+    if (ctx.noAi) throw new Error('without AI');
     const texts = await requestRetext({ plan, product, capture });
     if (Object.keys(texts).length) {
       log(sitePages ? 'Shots now say your words' : 'Shots now say your words where there were words to use', 'done');
       return withNeutral(texts);
     }
   } catch (error) {
-    log(`The director could not write the shots' words (${error instanceof Error ? error.message : 'error'}); using the site's own words instead`, 'done');
+    if (!ctx.noAi) log(`The director could not write the shots' words (${error instanceof Error ? error.message : 'error'}); using the site's own words instead`, 'done');
   }
   const out: Record<number, Record<string, string>> = {};
   const used = new Set<string>();
@@ -444,7 +474,7 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; /** Create without AI: no model call of any kind (no retext, no source adaptation). */ noAi?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -520,7 +550,7 @@ export async function buildFilmProject(
   }
   const brand = brandFor(plan, opts.capture, plan.title.split(/\s[—–-]\s/)[0]);
   const product = brand?.name ?? plan.title.split(/\s[—–-]\s/)[0];
-  const texts = await writeShotWords(plan, opts.capture, product, log, { pictures: opts.media.filter((m) => m.kind === 'image').length });
+  const texts = await writeShotWords(plan, opts.capture, product, log, { pictures: opts.media.filter((m) => m.kind === 'image').length, noAi: opts.noAi });
   log('Animating the shots and laying in sound design', 'running');
   const videos = opts.media.filter((m) => m.kind === 'video').map((m) => ({ url: m.url, name: m.name, durationSec: m.durationSec }));
   if (videos.length) log(`Cutting in ${videos.length} attached video${videos.length === 1 ? '' : 's'}`, 'done');
@@ -556,7 +586,8 @@ export async function buildFilmProject(
     opts.onAdaptation?.({ kind: 'skipped', reason });
   };
   const material = materialOf(opts.capture, opts.media, { brandLogo: Boolean(opts.logo) });
-  if (opts.adaptShots === false) skip('turned off');
+  if (opts.noAi) skip('created without AI: the original recipes are personalised through their own supported inputs, no source is rewritten');
+  else if (opts.adaptShots === false) skip('turned off');
   else if (!material.pages && !material.images) skip('no site page was captured and no images were supplied, so there is nothing to adapt the shots to');
   else {
     // Only recipes whose own input is in hand are adapted (a shot that needs a live page is not tried on uploads alone; a shot that

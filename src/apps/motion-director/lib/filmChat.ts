@@ -56,7 +56,7 @@ export const INK_PRESS_INTRO =
   '(e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product ' +
   'check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.';
 
-export type FilmTemplateChoice = 'inkpress' | 'director';
+export type FilmTemplateChoice = 'inkpress' | 'director' | 'local';
 
 export interface FilmRequest {
   /** The message as the user wrote it. */

@@ -16,7 +16,7 @@ export type StageId = 'brief' | 'direction' | 'mapping' | 'storyboard' | 'assets
 export const STAGE_ORDER: readonly StageId[] = ['brief', 'direction', 'mapping', 'storyboard', 'assets', 'build', 'sound', 'qa', 'review'];
 
 export type StageStatus = 'pending' | 'running' | 'completed' | 'partial' | 'needs-input' | 'failed' | 'needs-review' | 'skipped';
-export type CreationMode = 'inkpress' | 'autonomous' | 'cocreate' | 'single';
+export type CreationMode = 'inkpress' | 'autonomous' | 'cocreate' | 'single' | 'local';
 
 /** What the film is, from the person's point of view. */
 export type FinalStatus = 'building' | 'draft' | 'qa-running' | 'review-pending' | 'review-failed' | 'corrections-required' | 'ready';
@@ -136,7 +136,7 @@ export const failStage = (run: ProductionRun, id: StageId, why: string, now = Da
 export const needInput = (run: ProductionRun, id: StageId, what: string, now = Date.now()): ProductionRun => touch(run, id, { status: 'needs-input', note: what, endedAt: now }, now);
 /** Stages a mode may legitimately leave out: the Ink Press template and a single shot fix their own look and shots; sound only for a silent film. */
 export const waiverIsLegit = (run: ProductionRun, id: StageId): boolean => {
-  if (id === 'direction' || id === 'mapping') return run.mode === 'inkpress' || run.mode === 'single';
+  if (id === 'direction' || id === 'mapping') return run.mode === 'inkpress' || run.mode === 'single' || run.mode === 'local';
   if (id === 'sound') return Boolean(run.silent);
   return false;
 };

@@ -310,7 +310,8 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
       {stage === 'offer' && (
         <div className="flex flex-wrap gap-2" data-testid="inkpress-offer">
           <button type="button" onClick={() => director.chooseTemplate('inkpress')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)}>Use Ink Press</button>
-          <button type="button" onClick={() => director.chooseTemplate('director')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Let the director pick shots</button>
+          <button type="button" onClick={() => director.chooseTemplate('local')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(false)} data-testid="create-without-ai" title="No OpenAI key needed: the film is assembled from your site's real content and the ShotCraft recipes that can show it">Create without AI</button>
+          <button type="button" onClick={() => director.chooseTemplate('director')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} title="Create with AI: the director plans the film and adapts recipe source through your OpenAI key">Let the director pick shots (with AI)</button>
           <button type="button" onClick={director.coCreate} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="cocreate-start" title="The director proposes a product check, a look and a shot plan; you confirm each step">Work it out together</button>
           {onPickShots && <button type="button" onClick={onPickShots} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Choose shot cards…</button>}
         </div>

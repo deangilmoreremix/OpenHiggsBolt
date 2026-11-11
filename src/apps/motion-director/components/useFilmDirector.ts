@@ -272,7 +272,7 @@ export function useFilmDirector(opts: {
           ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`)
           : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
       setSteps(markStep(next, 'storyboard', 'active'));
-      const mode: CreationMode = template === 'inkpress' ? 'inkpress' : full.single ? 'single' : full.mapping?.length ? 'cocreate' : 'autonomous';
+      const mode: CreationMode = template === 'local' ? 'local' : template === 'inkpress' ? 'inkpress' : full.single ? 'single' : full.mapping?.length ? 'cocreate' : 'autonomous';
       runRef.current = { ...startStage(newRun(full.prompt, mode), 'brief'), ...(SILENT_RE.test(full.prompt) ? { silent: true } : {}) };
       setRun(runRef.current);
       if (!req.siteUrl && !media.some((m) => m.kind === 'image')) {
@@ -701,7 +701,7 @@ export function useFilmDirector(opts: {
       const req = offerReq.current;
       if (!req) return;
       offerReq.current = null;
-      say('user', choice === 'inkpress' ? 'Use Ink Press.' : 'Let the director pick the shots.');
+      say('user', choice === 'local' ? 'Create without AI.' : choice === 'inkpress' ? 'Use Ink Press.' : 'Let the director pick the shots.');
       void runStoryboard(req, choice);
     },
     [runStoryboard, say],
@@ -741,7 +741,7 @@ export function useFilmDirector(opts: {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
       let adaptation: AdaptationOutcome | null = null;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, onShot: (pr) => { adaptedRef.current = adaptedOf(pr); checkpointRef.current(); }, ...(resumeJob.current ? { reuse: { project: adaptedStub(resumeJob.current.adapted) as never, touchedStems: [] } } : {}), direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, noAi: pending.current?.template === 'local', onShot: (pr) => { adaptedRef.current = adaptedOf(pr); checkpointRef.current(); }, ...(resumeJob.current ? { reuse: { project: adaptedStub(resumeJob.current.adapted) as never, touchedStems: [] } } : {}), direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
       resumeJob.current = null;
       // Findings the program can repair safely are repaired once, and said.
       const fixedFilm = fixFilm(buildOut);
@@ -811,6 +811,12 @@ export function useFilmDirector(opts: {
       // its reference frames next to the film's, the seams and the two checklists; it arrives as a follow-up,
       // and a seam it fails goes back to a plain cut (stage 3).
       upd((r) => startStage(r, 'review'));
+      if (pending.current?.template === 'local') {
+        // Created without AI: no model is called, so there is no AI creative review. The technical checks above stand; the review is recorded as not performed.
+        upd((r) => completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [], note: 'AI creative review not performed (created without AI)' } }));
+        say('assistant', `AI creative review: not performed (this film was created without AI, no model was called). ${runRef.current ? finalStatusLine(runRef.current) : ''} It can still be previewed, edited in the Workbench and exported as an MP4.`);
+        return;
+      }
       void runFinalReview(project, {
         frame: async (p, f, signal) => stillToJpeg((await (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.25)).blob, 480),
         reference: fetchReferenceFrames,
@@ -892,7 +898,7 @@ export function useFilmDirector(opts: {
     upd((r) => startStage(r, 'build'));
     try {
       const touchedStems = touched.map((i) => resolveMotionTemplate(plan.scenes[i].recipeId)?.componentName).filter((x): x is string => Boolean(x));
-      const out = await buildFilmProject(plan, { ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
+      const out = await buildFilmProject(plan, { noAi: pending.current?.template === 'local', ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
       const { project } = fixFilm(out);
       const only = new Set(touchedStems);
       const checks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 45_000, signal: abort.signal, only }).catch(() => []);
