@@ -53,9 +53,11 @@ const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const EXPLICIT_MODEL = process.env.MOTION_STUDIO_DIRECTOR_MODEL
 const DIRECTOR_MODEL = EXPLICIT_MODEL || 'gpt-6-astra'
 const ALLOWED_MODELS = new Set(['gpt-6-astra', 'gpt-4o', 'gpt-4o-mini'])
-// The default id is a configuration choice that this code cannot prove exists for a given OpenAI account. With no explicit model set, an
-// unavailable model (HTTP 404 / model_not_found) falls through to the next allowed model, and the one that worked is remembered; an explicit
-// MOTION_STUDIO_DIRECTOR_MODEL is never replaced. The model actually used is returned in the `x-director-model` header.
+// `gpt-6-astra` is the configured model: OpenAI's documentation lists it as supporting the Responses API and Structured Outputs, so it is not
+// changed. What this code cannot prove is that a given user's BYOK key has ACCESS to it, or that live requests succeed: that is exercised only by
+// the live harness (e2e/live) with an authorized key. If OpenAI answers 404 / model_not_found for the account (a real problem, not a guess) and no
+// MOTION_STUDIO_DIRECTOR_MODEL is set, the next allowed model is tried and remembered; an explicit MOTION_STUDIO_DIRECTOR_MODEL is never replaced.
+// The model actually used is returned in the `x-director-model` header.
 const MODEL_ORDER = EXPLICIT_MODEL ? [DIRECTOR_MODEL] : [DIRECTOR_MODEL, ...['gpt-4o', 'gpt-4o-mini'].filter((m) => m !== DIRECTOR_MODEL)]
 let workingModel: string | null = null
 let lastModelUsed = ''
