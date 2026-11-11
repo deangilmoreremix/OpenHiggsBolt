@@ -67,22 +67,24 @@ describe('Learning Paths: a self-paced lesson', () => {
     render(<AcademyCourse tracks={tracks} />);
     expect(await screen.findByText(/Step 3 of 5/)).toBeTruthy();
     expect(screen.getByText('Do one.')).toBeTruthy();
-    expect(screen.queryByTestId('continue-card')).toBeNull(); // already there
   });
 
-  it('shows a Continue card to get back when the learner opened a different lesson', async () => {
-    const first = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
+  it('switching tabs and coming back returns to the same lesson and step', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
     await screen.findByText(/Step 1 of 5/);
     fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
-    await screen.findByText(/Step 2 of 5/);
-    first.unmount();
-    // a link to another lesson in the same track
-    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '02-next' }} />);
-    const card = await screen.findByTestId('continue-card');
-    expect(within(card).getByText('Intro')).toBeTruthy();
-    fireEvent.click(within(card).getByRole('button', { name: /Continue/ }));
-    expect(await screen.findByText(/Step 2 of 5/)).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Intro' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    await screen.findByText(/Step 3 of 5/);
+    fireEvent.click(screen.getByRole('tab', { name: 'Studio Reference' }));
+    await screen.findByPlaceholderText(/search/i).catch(() => null);
+    fireEvent.click(screen.getByRole('tab', { name: 'Learning Paths' }));
+    expect(await screen.findByText(/Step 3 of 5/)).toBeTruthy();
+    expect(screen.getByText('Do one.')).toBeTruthy();
+  });
+
+  it('shows where progress is saved', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
+    expect(await screen.findByText(/Saved in this browser/)).toBeTruthy();
   });
 
   it('Learning Paths and Build with AI each remember their own place', async () => {

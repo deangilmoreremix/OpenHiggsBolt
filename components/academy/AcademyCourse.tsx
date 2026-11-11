@@ -13,7 +13,7 @@ import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/sh
 import { academyStudioUrl, academyTrackUrl, getStudioGuide, BUILD_WITH_AI_TRACK } from '@/data/academyStudioGuides';
 import { LessonPlayer } from './player/LessonPlayer';
 import { useCourseProgress } from './useCourseProgress';
-import { courseContinueTarget, hasStarted, overallPercent, type CourseProgress } from '@/lib/academyCourseProgress';
+import { courseContinueTarget, hasStarted, overallPercent } from '@/lib/academyCourseProgress';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -271,43 +271,6 @@ function SyncNote({ sync }: { sync: Course['sync'] }) {
   return <span className="text-[11px]" style={{ color: semantic.textMuted }} aria-live="polite">{text}</span>;
 }
 
-/** "Continue where you left off", shown once the learner has started anything. */
-function ContinueCard({
-  progress,
-  lessonIds,
-  describe,
-  onContinue,
-  sync,
-  currentLessonId,
-}: {
-  progress: CourseProgress;
-  lessonIds: string[];
-  describe: (lessonId: string) => { track: string; lesson: string } | null;
-  onContinue: (lessonId: string, stepId: string | null) => void;
-  sync: Course['sync'];
-  /** The lesson already open; the card is only for getting back to somewhere else. */
-  currentLessonId?: string;
-}) {
-  const target = courseContinueTarget(progress, lessonIds);
-  if (!hasStarted(progress, lessonIds) || !target || target.lessonId === currentLessonId) return null;
-  const d = describe(target.lessonId);
-  if (!d) return null;
-  return (
-    <div data-testid="continue-card" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4" style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)' }}>
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: colors.primary }}>Continue where you left off</p>
-        <p className="text-sm font-bold text-white">{d.lesson}</p>
-        <p className="text-[11px]" style={{ color: semantic.textSecondary }}>
-          {d.track} · {overallPercent(progress, lessonIds)}% of the Academy complete · <SyncNote sync={sync} />
-        </p>
-      </div>
-      <button type="button" onClick={() => onContinue(target.lessonId, target.stepId)} className="rounded-lg px-5 py-2 text-xs font-bold text-black" style={{ background: colors.primary }}>
-        Continue →
-      </button>
-    </div>
-  );
-}
-
 function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]; initial?: AcademyInitialState; course: Course }) {
   const seedTrack = tracks.find((t) => t.slug === initial?.track) ?? tracks[0];
   const seedLesson = seedTrack?.lessons.find((l) => l.slug === initial?.lesson) ?? seedTrack?.lessons[0];
@@ -452,12 +415,12 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
 
       {/* Main */}
       <main className="min-w-0 p-4 md:p-6">
-        <ContinueCard progress={course.progress} lessonIds={lessonIds} describe={describe} onContinue={continueTo} sync={course.sync} currentLessonId={lessonKey(activeTrack.slug, activeLessonSlug)} />
         <div className="mb-4">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>{activeTrack.title}</p>
           <h2 className="text-xl font-extrabold">
             {activeTrack.lessons.find((l) => l.slug === activeLessonSlug)?.title ?? 'Lesson'}
           </h2>
+          <SyncNote sync={course.sync} />
         </div>
 
         {/* Step switcher */}
@@ -686,10 +649,10 @@ function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; init
           </div>
         ) : (
           <>
-            <ContinueCard progress={course.progress} lessonIds={ids} describe={describe} onContinue={continueTo} sync={course.sync} currentLessonId={lessonKey(track.slug, lessonSlug)} />
             <div className="mb-4">
               <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>Build with AI · lesson {idx} of {lessons.length - 1}</p>
               <h2 className="text-xl font-extrabold">{lessons[idx]?.title}</h2>
+              <SyncNote sync={course.sync} />
             </div>
             <LessonPlayer
               key={lessonKey(track.slug, lessonSlug)}

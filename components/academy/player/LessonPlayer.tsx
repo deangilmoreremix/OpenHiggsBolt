@@ -43,12 +43,18 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
   const [index, setIndex] = React.useState(0);
   // which lesson the step index has been positioned for (saved or deep-linked step applied)
   const [positioned, setPositioned] = React.useState<string | null>(null);
+  // set once the learner picks a step themselves, so the saved-position logic can never override their choice
+  const moved = React.useRef(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const focusOnChange = React.useRef(false);
 
   // open at the right step once the lesson and the saved progress are both known
   React.useEffect(() => {
     if (!parsed || !ready || positioned === lessonId) return;
+    if (moved.current) {
+      setPositioned(lessonId);
+      return;
+    }
     const ids = parsed.steps.map((s) => s.id);
     const wanted =
       (initialStepId && ids.includes(initialStepId) ? initialStepId : null) ??
@@ -86,6 +92,7 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
   const ticks = progress.checks[lessonId] ?? [];
 
   const go = (i: number) => {
+    moved.current = true;
     focusOnChange.current = true;
     setIndex(Math.min(Math.max(i, 0), steps.length - 1));
   };
@@ -110,7 +117,7 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
 
       <div className="mb-1 flex items-center justify-between text-[11px]" style={{ color: semantic.textSecondary }}>
         <span>Step {Math.min(index + 1, steps.length)} of {steps.length}</span>
-        <span>{percent}% of this lesson</span>
+        <span>{percent}% done</span>
       </div>
       <div
         role="progressbar"
@@ -143,7 +150,8 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
                     : { borderColor: 'var(--border-color)', color: isDone ? '#34d399' : semantic.textMuted }
                 }
               >
-                <span aria-hidden="true">{isDone ? '✓' : i + 1}</span>
+                {/* titles that already start with their own number ("1. Add Netlify") are not numbered twice */}
+                <span aria-hidden="true">{isDone ? '✓' : /^\d+\.\s/.test(s.title) ? '' : i + 1}</span>
                 <span className="max-w-[140px] truncate">{s.title}</span>
                 {isDone && <span className="sr-only">(done)</span>}
               </button>
