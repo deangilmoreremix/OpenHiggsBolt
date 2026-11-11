@@ -51,6 +51,8 @@ export interface CustomCapture {
   /** The layout as a capture reports it (lib/customerLayout turns it into the recipes' shape). `identity` uses the SAMPLE layout and no images. */
   captureLayout?: { pageH: number; sections: unknown[]; cards: Array<{ x: number; y: number; width: number; height: number }> };
   identity?: boolean;
+  /** A structured document for DocumentTypewriterReveal (lib/documentContent). */
+  document?: unknown;
   /** Which captured card is the hero (the recipe's anchor); the capture's own choice when absent. */
   main?: number;
 }
@@ -71,7 +73,7 @@ export function sweepProject(stem: string, opts: { withWords?: boolean; sample?:
   const customLayout = custom ? (custom.identity ? SAMPLE_LAYOUT : layoutFromCapture({ pages: [{ name: 'home', path: '/', url: '', width: 3840, height: 0, layout: custom.captureLayout as never }], page: { url: '', width: 0, height: 0 }, emptyPlate: custom.emptyPlate ?? null, brand: { background: '#eaeef2', text: null, accent: null, fontFamily: null } }).layout) : undefined;
   if (custom && customLayout && custom.main !== undefined) customLayout.projects.main = custom.main;
   const brand = { name: 'Acme', logo: null, accent: '#8b6bff', accent2: '#8b6bff', ink: '#ffffff', paper: '#101018', repo: '', taglines: [], features: [] };
-  const project = planToProject(plan, opts.brandOnly ? { aspectRatio: '16:9', brand } : custom ? { aspectRatio: '16:9', capture: { screens: custom.screens, crops: [], cardCrops: custom.cardCrops, emptyPlate: custom.emptyPlate ?? null, liveLayout: customLayout, title: 'Acme' } } : opts.sample ? { aspectRatio: '16:9' } : {
+  const project = planToProject(plan, opts.brandOnly ? { aspectRatio: '16:9', brand } : custom ? { aspectRatio: '16:9', capture: { ...(custom.document ? { document: custom.document } : {}), screens: custom.screens, crops: [], cardCrops: custom.cardCrops, emptyPlate: custom.emptyPlate ?? null, liveLayout: customLayout, title: 'Acme' } } : opts.sample ? { aspectRatio: '16:9' } : {
     aspectRatio: '16:9',
     capture: { screens: shots, crops: shots, title: 'Acme' },
     brand,

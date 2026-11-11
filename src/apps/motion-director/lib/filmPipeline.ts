@@ -41,6 +41,7 @@ import { fallbackTexts, neutralTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
+import { documentFromCapture, documentFromText, isDocumentUsable } from './documentContent';
 import { defaultTrackFor } from './defaultMusic';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
@@ -463,7 +464,7 @@ export async function buildFilmProject(
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
-  const film: FilmCapture | null = opts.capture
+  let film: FilmCapture | null = opts.capture
     ? {
         // Every captured route of the site, the page asked for first.
         screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images].filter(Boolean),
@@ -485,6 +486,13 @@ export async function buildFilmProject(
     : images.length
       ? { screens: images, crops: images }
       : null;
+  // DocumentTypewriterReveal types out a document: the site's words, else the person's own text; with too little text it is not fed one.
+  const wantsDocument = plan.scenes.some((sc) => sc.kind === 'shot' && /DocumentTypewriterReveal/.test(sc.recipeId));
+  if (wantsDocument) {
+    const brandName = plan.title.split(/\s[—–-]\s/)[0];
+    const doc = [documentFromCapture(opts.capture?.content, brandName), documentFromText(opts.prompt, brandName)].find((d) => isDocumentUsable(d)) ?? null;
+    if (doc) film = film ? { ...film, document: doc } : { screens: [], crops: [], document: doc };
+  }
   // Every picture the capture brought back, labelled, and the pictures each scene shows (upstream's feature -> shot map).
   if (film && opts.capture) {
     const catalogue = buildCatalogue(opts.capture);

@@ -3,6 +3,7 @@ import type { MediaAttachment } from './mediaUpload';
 import type { Material } from './productBrief';
 import { captureQuality } from './captureQuality';
 import { layoutFromCapture } from './customerLayout';
+import { documentBlockCount, documentFromCapture } from './documentContent';
 
 /** What material is actually in hand for a film: the site capture (only if it screenshotted pages), uploads, brand and words. */
 export function materialOf(capture: SiteCapture | null | undefined, media: readonly MediaAttachment[], opts: { brandLogo?: boolean } = {}): Material {
@@ -16,7 +17,7 @@ export function materialOf(capture: SiteCapture | null | undefined, media: reado
     videos: media.filter((m) => m.kind === 'video').length,
     logo: Boolean(capture?.logo || opts.brandLogo),
     textLines: [c?.headline, c?.description, ...(c?.headings ?? []), ...(c?.nav ?? []), ...(c?.ctas ?? [])].filter(Boolean).length,
-    documentBlocks: (c?.headings?.length ?? 0) + (c?.description ? 1 : 0) + (c?.headline ? 1 : 0),
+    documentBlocks: documentBlockCount(documentFromCapture(c) ?? { title: '', sections: [], sideLeft: [], sideRight: [], history: [], meta: {} }),
     music: media.some((m) => m.kind === 'audio'),
     parts: lay?.layout.source?.mapped ?? [],
   };

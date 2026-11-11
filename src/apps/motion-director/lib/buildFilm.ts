@@ -40,6 +40,8 @@ export interface FilmCapture {
   emptyPlate?: string | null;
   /** The customer's page geometry in the sample layout's shape (lib/customerLayout); only set when the page had enough real cards. */
   liveLayout?: unknown;
+  /** The structured document DocumentTypewriterReveal types out (lib/documentContent), from the site's words or the person's text. */
+  document?: unknown;
   /** Section headings, best effort in page order, used as the inset labels. */
   sectionNames?: string[];
   /** The site's menu entries and calls to action: the nodes of the hub and the closing line. */
@@ -94,7 +96,7 @@ export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NE
  *    of earlier issues). A capture has page rectangles, not that text structure, so the blocks cannot be mapped without inventing them.
  */
 export const GEOMETRY_UNMAPPED: Readonly<Record<string, string>> = {
-  DocumentTypewriterReveal: 'its document layout (text blocks, side rails, issue list) is not part of a page capture',
+  DocumentTypewriterReveal: 'its document layout (text blocks, side rails, issue list) is not part of a page capture: it is fed a structured document (lib/documentContent) made from the site\'s words or the person\'s text instead, and refused when there is too little text',
 };
 /** The layout is handed to a recipe only when the capture really contains what that recipe reads. */
 const layoutFits = (stem: string, layout: unknown) => {
@@ -435,11 +437,13 @@ const INSET_PAGE_H = 1200;
       const card = CARDS[cardId];
       if (!template || !card) return; // unreachable: undrawable scenes took the title-card branch above
       const usesCapture = isProductTextureShot(template.componentName) && !(template.componentName in GEOMETRY_UNMAPPED) && (screens.length > 0 || crops.length > 0 || Boolean(opts.capture?.liveLayout));
+      const documentProps = template.componentName === 'DocumentTypewriterReveal' && opts.capture?.document ? { documentContent: opts.capture.document } : {};
       shots.push(
         // Shots carry their own typography; the headline goes in the caption
         // strip rather than over the shot.
         clip(cardId, at, frames, {
           accent: palette.accent,
+          ...documentProps,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
           // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
           // Shots that read the page's geometry get the customer's own (the sample's boxes would put the pictures in the wrong places).

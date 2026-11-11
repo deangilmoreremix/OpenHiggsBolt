@@ -10,6 +10,8 @@ import { activePalette, setClipPalette } from "../demosrc/_fixtures/skin";
 import { applyPaint, makePainter } from "../lib/themePaint";
 import { SHOT_FACTS } from "../demosrc/_generated/shotFacts";
 import { TextMapContext } from "../demosrc/_fixtures/textMap";
+import { DocumentContentContext } from "../demosrc/_fixtures/documentContent";
+import type { DocumentContent } from "../lib/documentContent";
 
 /**
  * 动效库（demo 卡）的 props 包装层。
@@ -41,6 +43,8 @@ interface DemoOverlayProps {
   liveLayout?: unknown;
   /** Words the recipe draws -> the words to draw instead (see lib/textOverrides). */
   texts?: unknown;
+  /** The structured document a DocumentTypewriterReveal clip types out (lib/documentContent). */
+  documentContent?: unknown;
   /** The recipe's source as the shot-adapter agent rewrote it for this site (see lib/adaptLoop). */
   adaptedCode?: string;
   /** Which recipe the adapted source replaces (its exported name). */
@@ -100,6 +104,7 @@ export const withDemoProps = (
       emptyPlate,
       liveLayout,
       texts,
+      documentContent,
     } = props as DemoOverlayProps;
     const { __theme, __palette, palette } = props as DemoOverlayProps;
     // Re-render with the frame, so this always runs before the recipe re-renders (palette set first).
@@ -125,6 +130,7 @@ export const withDemoProps = (
       [screens, crops, emptyPlate, cardCrops],
     );
     const layoutValue = liveLayout && typeof liveLayout === "object" ? (liveLayout as LiveLayout) : null;
+    const documentValue = documentContent && typeof documentContent === "object" ? (documentContent as DocumentContent) : null;
     const size = Math.max(8, num(titleSize, 64));
     const wash = Math.min(1, Math.max(0, num(tintOpacity, 0)));
     const label = String(title ?? "").trim();
@@ -133,6 +139,7 @@ export const withDemoProps = (
       <AbsoluteFill>
         <TextMapContext.Provider value={textMap}>
         <LiveLayoutContext.Provider value={layoutValue}>
+        <DocumentContentContext.Provider value={documentValue}>
         <LiveTextureContext.Provider value={textures}>
           {hasTexts ? (
             <div ref={innerRef} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
@@ -144,6 +151,7 @@ export const withDemoProps = (
             <Inner />
           )}
         </LiveTextureContext.Provider>
+        </DocumentContentContext.Provider>
         </LiveLayoutContext.Provider>
         </TextMapContext.Provider>
         {wash > 0 ? (
