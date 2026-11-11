@@ -947,7 +947,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
-         {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} templateData={active ? templateData : null} />)}
+         {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
