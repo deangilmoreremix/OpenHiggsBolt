@@ -62,9 +62,10 @@ export async function* streamAnswer(opts: {
   });
   if (!res.ok || !res.body) {
     let code = '';
-    try { code = (await res.json())?.error?.code ?? ''; } catch { /* non-JSON error body */ }
+    let type = '';
+    try { const e = (await res.json())?.error; code = e?.code ?? ''; type = e?.type ?? ''; } catch { /* non-JSON error body */ }
     if (res.status === 401) throw new HelpLlmError('OPENAI_KEY_INVALID');
-    if (res.status === 429) throw new HelpLlmError(code === 'insufficient_quota' ? 'OPENAI_QUOTA' : 'OPENAI_RATE');
+    if (res.status === 429) throw new HelpLlmError(code === 'insufficient_quota' || code === 'credit_balance_exhausted' || type === 'insufficient_quota' ? 'OPENAI_QUOTA' : 'OPENAI_RATE');
     throw new HelpLlmError('OPENAI_ERROR');
   }
 

@@ -27,7 +27,7 @@ describe('OpenAI help provider (customer key)', () => {
     expect(await collect(streamAnswer({ apiKey: KEY, system: 's', messages: [] }))).toBe('ab');
   });
   it('maps 401, insufficient_quota, 429 and others to typed errors without the key', async () => {
-    const cases: [number, unknown, string][] = [[401, { error: { code: 'invalid_api_key' } }, 'OPENAI_KEY_INVALID'], [429, { error: { code: 'insufficient_quota' } }, 'OPENAI_QUOTA'], [429, { error: { code: 'rate_limit_exceeded' } }, 'OPENAI_RATE'], [500, {}, 'OPENAI_ERROR']];
+    const cases: [number, unknown, string][] = [[401, { error: { code: 'invalid_api_key' } }, 'OPENAI_KEY_INVALID'], [429, { error: { code: 'insufficient_quota' } }, 'OPENAI_QUOTA'], [429, { error: { code: 'credit_balance_exhausted', type: 'insufficient_quota' } }, 'OPENAI_QUOTA'], [429, { error: { code: 'rate_limit_exceeded' } }, 'OPENAI_RATE'], [500, {}, 'OPENAI_ERROR']];
     for (const [status, json, code] of cases) {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(json), { status })));
       const err = await collect(streamAnswer({ apiKey: KEY, system: 's', messages: [] })).catch((e) => e);
