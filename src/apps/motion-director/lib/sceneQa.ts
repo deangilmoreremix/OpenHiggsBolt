@@ -1,5 +1,6 @@
 import type { ClipData, ProjectData } from '../types';
 import type { SceneRecord } from './productionRun';
+import { MOTION_TEMPLATES } from '../../../data/motionRecipeCatalog';
 import { shotPersonalization } from './personalization';
 import { needsOf } from './recipeNeeds';
 import { checkShot, judgementItems, pictureColours, type Checkpoint, type Pixels, type PropertyCheck } from './sceneChecks';
@@ -16,6 +17,8 @@ import { clipFingerprint } from './filmFingerprint';
 export const CONTENT_PROPS = ['screens', 'crops', 'texts', 'adaptedCode', 'adaptedStem', 'liveLayout', 'cardCrops', 'emptyPlate', 'scenePictures', 'images', 'captions', 'logo', 'name', 'cta', 'url', 'file', 'label', 'text'];
 
 const stemOf = (c: ClipData) => (c.cardId.startsWith('demo:') ? c.cardId.slice(5) : '');
+/** Camera shots move INTO the picture: it fills the frame by design, so it is not "cut off" (judged visually instead). */
+const fillsFrameOf = (stem: string) => MOTION_TEMPLATES.find((t) => t.componentName === stem)?.category === 'camera';
 
 /** The clip alone, at the start of its own project (so a frame of it shows nothing else). */
 export function soloProject(project: ProjectData, clip: ClipData, plain: boolean): ProjectData {
@@ -93,7 +96,7 @@ export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps
       const read = deps.picture ?? readPicture;
       const pics = (await Promise.all(urls.map((u) => read(u)))).filter((p): p is Pixels => Boolean(p));
       const supplied = pics.length && pics.length === urls.length ? pics.flatMap((p) => pictureColours(p)) : null;
-      const checks = checkShot({ checkpoints, supplied });
+      const checks = checkShot({ checkpoints, supplied, fillsFrame: fillsFrameOf(stem) });
       const failed = checks.filter((c) => c.kind === 'mechanical' && !c.ok);
       out.push({ clipId: clip.id, stem, state: failed.length ? 'failed' : 'passed', frames: [frames.entering, frames.peak, frames.settled], note: failed.length ? `failed: ${failed.map((c) => `${c.property} (${c.frame}): ${c.detail}`).join('; ')}` : `${checks.filter((c) => c.kind === 'mechanical').length} mechanical checks held at entering, peak and settled`, checks, judgement: judgementItems(checks) });
     } catch (error) {
@@ -160,7 +163,7 @@ export async function verifyAdaptation(project: ProjectData, clip: ClipData, tri
   const read = deps.picture ?? readPicture;
   const pics = (await Promise.all(urls.map((u) => read(u)))).filter((p): p is Pixels => Boolean(p));
   const supplied = pics.length && pics.length === urls.length ? pics.flatMap((p) => pictureColours(p)) : null;
-  const problems = checkShot({ checkpoints: adapted, supplied }).filter((c) => c.kind === 'mechanical' && !c.ok).map((c) => `${c.property} (${c.frame}): ${c.detail}`);
+  const problems = checkShot({ checkpoints: adapted, supplied, fillsFrame: fillsFrameOf(stemOf(adaptedClip)) }).filter((c) => c.kind === 'mechanical' && !c.ok).map((c) => `${c.property} (${c.frame}): ${c.detail}`);
   const [a, r] = [motionProfile(adapted), motionProfile(reference)];
   const names = ['entering→peak', 'peak→settled', 'entering→settled'];
   a.forEach((v, i) => {

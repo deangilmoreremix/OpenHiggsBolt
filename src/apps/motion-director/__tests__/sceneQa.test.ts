@@ -50,6 +50,12 @@ describe('scene checkpoint properties', () => {
     const clipped = checkShot({ checkpoints: [edge('entering'), edge('peak'), edge('settled')], supplied: [PINK] });
     expect(clipped.find((c) => c.property === 'clipping')?.ok).toBe(false);
   });
+  it('a camera shot that moves into the picture is not "cut off" by filling the frame: that is judged visually', () => {
+    const edge = (n: 'entering' | 'peak' | 'settled') => ({ name: n, mine: frame(30, { box: [0, 0, 20, 14], rgb: PINK }), plain: frame(30) });
+    const c = checkShot({ checkpoints: [edge('entering'), edge('peak'), edge('settled')], supplied: [PINK], fillsFrame: true });
+    expect(c.find((x) => x.property === 'clipping')?.kind).toBe('needs-visual-judgement');
+    expect(c.filter((x) => x.kind === 'mechanical').every((x) => x.ok || x.property === 'motionProgression')).toBe(true);
+  });
   it('the plain recipe already showing the colour is not credit for the person\'s picture', () => {
     const p = (n: 'entering' | 'peak' | 'settled') => ({ name: n, mine: frame(30, { box: [2, 2, 12, 12], rgb: PINK }), plain: frame(30, { box: [2, 2, 12, 12], rgb: PINK }) });
     expect(checkShot({ checkpoints: [p('entering'), p('peak'), p('settled')], supplied: [PINK] }).find((c) => c.property === 'assetIdentity')?.ok).toBe(false);

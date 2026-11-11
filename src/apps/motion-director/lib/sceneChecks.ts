@@ -62,6 +62,8 @@ export interface CheckInput {
   supplied: Rgb[] | null;
   /** The recipe has nothing of the person's to show (a pure-motion recipe). */
   abstract?: boolean;
+  /** The recipe's technique is the camera moving INTO the picture, so the picture legitimately fills (and meets) the frame edge. */
+  fillsFrame?: boolean;
 }
 
 const FLAT = 6; // luminance spread below which a frame is "blank"
@@ -99,7 +101,8 @@ export function checkShot(input: CheckInput): PropertyCheck[] {
         }
       }
       out.push({ frame: where, property: 'assetIdentity', kind: 'mechanical', ok: best >= SEEN, detail: best >= SEEN ? `a colour of the supplied picture fills ${(best * 100).toFixed(1)}% of the ${where} frame beyond what the plain recipe shows` : 'no colour of the supplied pictures appears in any checked frame beyond the plain recipe' });
-      if (clip) out.push({ frame: clip.frame, property: 'clipping', kind: 'mechanical', ok: false, detail: `a supplied picture's colour fills ${(clip.mass * 100).toFixed(0)}% of the frame and touches its edge: it is cut off` });
+      if (clip && input.fillsFrame) out.push({ frame: clip.frame, property: 'clipping', kind: 'needs-visual-judgement', ok: true, detail: `the picture fills ${(clip.mass * 100).toFixed(0)}% of the frame: this is a camera shot that moves into it, so whether it is framed well is a visual call` });
+      else if (clip) out.push({ frame: clip.frame, property: 'clipping', kind: 'mechanical', ok: false, detail: `a supplied picture's colour fills ${(clip.mass * 100).toFixed(0)}% of the frame and touches its edge: it is cut off` });
       else out.push({ frame: 'settled', property: 'clipping', kind: 'mechanical', ok: true, detail: 'no supplied picture is pressed against the frame edge' });
     } else {
       out.push({ frame: 'peak', property: 'assetIdentity', kind: 'needs-visual-judgement', ok: true, detail: 'the supplied pictures\' pixels could not be read here (remote or protected), so it is only known that the shot differs from the plain recipe' });
