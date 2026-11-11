@@ -10,7 +10,8 @@
 import { MOTION_TEMPLATES, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import type { BusinessKind, Material } from './productBrief';
 import { recipeContract } from './recipeContract';
-import { drawsSampleScreen } from './productShots';
+import { drawsSampleScreen, isProductTextureShot } from './productShots';
+import recipeReads from './_generated/recipeReads.json';
 import { needsOf, suitableFor } from './recipeNeeds';
 import { rulesOf } from './shotRules';
 
@@ -50,6 +51,9 @@ export function chooseLocalShots(opts: { kind: BusinessKind; material: Material;
     if (!measured(stem)) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: `not measured to show the business's material (${recipeContract(stem).personalizable})` }); continue; }
     // A recipe that draws its own fake app screen (dashboard, charts, numbers) is never used: the film shows the business's real content only.
     if (drawsSampleScreen(t)) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: 'it draws a sample app screen' }); continue; }
+    // The shot must actually read the site's pictures (its textures): a recipe that does not draws its own content, which is never the business's.
+    const reads = (recipeReads as unknown as Record<string, { textures: boolean }>)[stem];
+    if (!(reads?.textures || isProductTextureShot(stem))) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: 'it does not read the site\'s pictures' }); continue; }
     const fit = suitableFor(stem, opts.kind, opts.material);
     if (!fit.ok) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: fit.why ?? 'material missing' }); continue; }
     if (opts.ground && rules.polarity && rules.polarity !== opts.ground) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: `a ${rules.polarity} look in a ${opts.ground} film` }); continue; }

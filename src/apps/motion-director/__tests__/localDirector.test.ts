@@ -14,7 +14,7 @@ describe('create without AI: shot choice', () => {
     expect(new Set(picks.map((p) => p.template.componentName)).size).toBe(picks.length);
   });
   it('picks fewer rather than a recipe the material cannot support', () => {
-    const none = chooseLocalShots({ kind: 'services', material: { ...material, pages: 0, cards: 0, images: 0, textLines: 0, parts: [] } as Material, count: 5, ground: null });
+    const none = chooseLocalShots({ kind: 'services', material: { ...material, pages: 0, cards: 0, images: 0, textLines: 0, documentBlocks: 0, parts: [] } as Material, count: 5, ground: null });
     // With no page, pictures or words, no shot that reads them is chosen.
     for (const p of none.picks) expect(['page', 'images', 'text', 'document']).not.toContain(needsOf(p.template.componentName).need);
   });
