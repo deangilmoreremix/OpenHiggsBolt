@@ -3172,8 +3172,15 @@ function ConfigurationView(props: any) {
                     onClick={() => setShownResultCount((count) => count + RESULTS_PAGE)}
                     style={{ minHeight: 34, borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan, fontSize: 11, fontWeight: 800 }}
                   >
-                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more of {businessSearchResults.length - shownResultCount}
+                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more
                   </button>
+                )}
+                {businessSearchResults.length > RESULTS_PAGE && (
+                  <p data-testid="pz-results-count" style={{ margin: 0, textAlign: 'center', color: C.muted2, fontSize: 10 }}>
+                    {businessSearchResults.length > shownResultCount
+                      ? `Showing ${shownResultCount} of ${businessSearchResults.length}`
+                      : `Showing all ${businessSearchResults.length}`}
+                  </p>
                 )}
               </div>
               )}
