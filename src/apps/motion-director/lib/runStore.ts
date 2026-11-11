@@ -90,9 +90,24 @@ export function decideResume(cp: RunCheckpoint | null, env: { hasKey?: boolean; 
   return { kind: 'resume', from, scenes: todo, kept: cp.adapted.length, notes: [] };
 }
 
-/** A project stub holding the adapted shots, in the shape `transplantAdaptation` reads, so a resumed build keeps them. */
+/**
+ * A project stub holding the adapted shots, in the shape `transplantAdaptation` reads (it matches the nth occurrence of a recipe),
+ * so a resumed build keeps them. Occurrences that were not adapted are kept as empty placeholders: an adapted LATER occurrence must not
+ * slide onto an earlier scene.
+ */
 export function adaptedStub(adapted: readonly AdaptedShot[]): { tracks: Array<{ clips: Array<{ id: string; cardId: string; start: number; props: Record<string, unknown> }> }> } {
-  return { tracks: [{ clips: adapted.map((a, i) => ({ id: `kept-${i}`, cardId: a.cardId, start: i, props: { adaptedCode: a.adaptedCode, ...(a.adaptedStem ? { adaptedStem: a.adaptedStem } : {}) } })) }] };
+  const clips: Array<{ id: string; cardId: string; start: number; props: Record<string, unknown> }> = [];
+  const byCard = new Map<string, AdaptedShot[]>();
+  for (const a of adapted) byCard.set(a.cardId, [...(byCard.get(a.cardId) ?? []), a]);
+  let n = 0;
+  for (const [cardId, list] of byCard) {
+    const top = Math.max(...list.map((a) => a.nth));
+    for (let k = 0; k <= top; k++) {
+      const a = list.find((x) => x.nth === k);
+      clips.push({ id: `kept-${n}`, cardId, start: n++, props: a ? { adaptedCode: a.adaptedCode, ...(a.adaptedStem ? { adaptedStem: a.adaptedStem } : {}) } : {} });
+    }
+  }
+  return { tracks: [{ clips }] };
 }
 
 /** Collect the adapted shots of a project (in film order, nth per recipe), for the checkpoint. */

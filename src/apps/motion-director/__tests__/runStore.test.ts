@@ -93,4 +93,10 @@ describe('adapted shots survive a resume', () => {
     expect(codes).toEqual(['CODE-A1', undefined, 'CODE-A2']);
     expect(t.kept).toBe(2);
   });
+  it('an adapted LATER occurrence stays on its own scene when an earlier one was not adapted', () => {
+    const fresh = project([clip('x', 'demo:A', 0), clip('y', 'demo:A', 30), clip('z', 'demo:A', 60)]);
+    const t = transplantAdaptation(adaptedStub([{ cardId: 'demo:A', nth: 2, adaptedCode: 'LATE' }]) as never, fresh, new Set());
+    expect(t.project.tracks[0].clips.map((c) => c.props?.adaptedCode)).toEqual([undefined, undefined, 'LATE']);
+    expect(t.kept).toBe(1);
+  });
 });
