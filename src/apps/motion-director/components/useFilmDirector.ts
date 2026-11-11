@@ -273,6 +273,9 @@ export function useFilmDirector(opts: {
           : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
       setSteps(markStep(next, 'storyboard', 'active'));
       const mode: CreationMode = template === 'local' ? 'local' : template === 'inkpress' ? 'inkpress' : full.single ? 'single' : full.mapping?.length ? 'cocreate' : 'autonomous';
+      // A new production starts with no adapted shots of an earlier film (they must never be checkpointed under the new run).
+      adaptedRef.current = [];
+      resumeJob.current = null;
       runRef.current = { ...startStage(newRun(full.prompt, mode), 'brief'), ...(SILENT_RE.test(full.prompt) ? { silent: true } : {}) };
       setRun(runRef.current);
       if (!req.siteUrl && !media.some((m) => m.kind === 'image')) {
@@ -650,11 +653,12 @@ export function useFilmDirector(opts: {
               durationSec: extra.durationSec ?? prev.req.durationSec,
               siteUrl: extra.siteUrl ?? prev.req.siteUrl,
             },
-            extra.template ?? (extra.recipes.length ? 'director' : prev.template),
+            // A "Create without AI" production stays without AI through revisions (naming a shot is not opting into AI).
+            extra.template ?? (prev.template === 'local' ? 'local' : extra.recipes.length ? 'director' : prev.template),
             true,
           );
         // A question about the storyboard gets an answer from the director; a request for a change revises it.
-        if (storyboard && !picks.length && isQuestion(text)) {
+        if (storyboard && !picks.length && isQuestion(text) && prev.template !== 'local') {
           const my = gen.current;
           void askDirector({ message: text, plan: storyboard.plan, capture: storyboard.capture ?? null })
             .then((answer) => {

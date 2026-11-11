@@ -67,7 +67,8 @@ export type ResumeAction =
   | { kind: 'restart'; why: string };
 
 /** Stages that are worth resuming: an interrupted run before the film is built. */
-const RESUMABLE = new Set<StageId>(STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('build') + 1));
+// Up to frame QA: the built film is only installed (and saved) after QA, so a reload before then leaves nothing but the checkpoint.
+const RESUMABLE = new Set<StageId>(STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('qa') + 1));
 
 /** What to do with a stored checkpoint, as a pure decision (the hook acts on it; tests pin the table). */
 export function decideResume(cp: RunCheckpoint | null, env: { hasKey?: boolean; now?: number } = {}): ResumeAction {
@@ -75,7 +76,7 @@ export function decideResume(cp: RunCheckpoint | null, env: { hasKey?: boolean; 
   const run = recoverRun(cp.run, env.now);
   const from = resumePoint(run);
   if (!from) return { kind: 'none', why: 'the run finished' };
-  if (!RESUMABLE.has(from)) return { kind: 'none', why: 'the film was built; its later stages run from the Workbench' };
+  if (!RESUMABLE.has(from)) return { kind: 'none', why: 'the film was built and installed; its review runs from the Workbench' };
   // Nothing was done yet: there is nothing to resume.
   if (STAGE_ORDER.every((id) => ['pending'].includes(run.stages[id].status))) return { kind: 'none', why: 'the run had not started' };
   const sb = cp.storyboard;

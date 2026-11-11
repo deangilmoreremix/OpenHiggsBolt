@@ -73,9 +73,16 @@ describe('what a reload does with a stored run', () => {
     expect(d.kind).toBe('needs-input');
     if (d.kind === 'needs-input') { expect(d.needs.join(' ')).toContain('kitchen.jpg'); expect(d.needs.join(' ')).toContain('too large'); expect(d.needs.join(' ')).toContain('OpenAI key'); }
   });
-  it('a built film is not "interrupted": its later stages belong to the Workbench', () => {
+  it('a reload during sound or frame QA is still resumable: the built film is only installed after QA', () => {
     let r = midBuild();
     r = completeStage(r, { stage: 'build', scenes: [scene(1)] });
+    expect(decideResume(cp({ run: r }), { hasKey: true })).toMatchObject({ kind: 'resume', from: 'sound' });
+  });
+  it('once QA is done the film is installed in the Workbench: nothing to resume', () => {
+    let r = midBuild();
+    r = completeStage(r, { stage: 'build', scenes: [scene(1)] });
+    r = completeStage(r, { stage: 'sound', cues: 3, track: null });
+    r = completeStage(startStage(r, 'qa'), { stage: 'qa', issues: [], framesChecked: 5, required: 5, done: 5 });
     expect(decideResume(cp({ run: r })).kind).toBe('none');
   });
 });
