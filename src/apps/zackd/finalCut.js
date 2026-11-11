@@ -71,6 +71,7 @@ export async function renderFinalCut({ shots, narrationUrl = null, musicUrl = nu
       mimeType: WEB_RENDER_MIME_TYPE[profile.container],
       extension: WEB_RENDER_EXTENSION[profile.container],
       durations: plan.clips.map((c) => c.frames / plan.fps), // real shot lengths, so the .srt follows the cut
+      hasAudio: hasAudio && !!audioCodec, // whether the output really has a sound track (an unsupported encoder renders it silent)
       warning: hasAudio && !audioCodec ? 'This browser cannot encode audio for the chosen format, so the video has no sound.' : null,
     };
   } catch (e) {

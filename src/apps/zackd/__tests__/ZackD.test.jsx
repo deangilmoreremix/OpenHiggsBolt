@@ -314,4 +314,25 @@ describe('ZackD studio (built like the video studios)', () => {
     const redo = within(card).getAllByRole('button').filter((b) => /^(Redo|Generate)\b/.test(b.getAttribute('aria-label') || ''));
     redo.forEach((b) => expect(b.disabled).toBe(false));
   });
+
+  it('locks the shown project only for recovered jobs that belong to it', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    const seed = (jobPid) => {
+      localStorage.clear();
+      localStorage.setItem(scopedPersistKey('zackd_project_v1', KEY), JSON.stringify({ pid: 'shown-project', topic: 'A topic' }));
+      localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), JSON.stringify([{ rid: 'req_x', slot: 'clip', id: 'beat_1_a', pid: jobPid, ts: Date.now() }]));
+      vi.mocked(muapi.resumeGeneration).mockImplementationOnce(() => new Promise(() => {}));
+    };
+    // the job belongs to the shown project: its action waits for it
+    seed('shown-project');
+    const first = render(<ZackD apiKey={KEY} />);
+    await waitFor(() => expect(first.container.querySelector('button[data-step]')).toBeTruthy());
+    await waitFor(() => expect(first.container.querySelector('button[data-step]').disabled).toBe(true));
+    first.unmount(); cleanup();
+    // the job belongs to another project: it keeps polling but does not lock this one
+    seed('another-project');
+    const second = render(<ZackD apiKey={KEY} />);
+    await step(second.container, 'Write script');
+    expect(second.container.querySelector('button[data-step]').disabled).toBe(false);
+  });
 });

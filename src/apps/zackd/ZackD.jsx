@@ -166,6 +166,8 @@ export default function ZackD({
   const storeKey = useMemo(() => scopedPersistKey(STORE_KEY, apiKey), [apiKey]);
   const historyKey = useMemo(() => scopedPersistKey(HISTORY_KEY, apiKey), [apiKey]);
   const pendingKey = useMemo(() => scopedPersistKey(PENDING_KEY, apiKey), [apiKey]);
+  // the id of the project that was saved last time, read before any effect can overwrite it
+  const storedPid = useMemo(() => { try { return JSON.parse(localStorage.getItem(scopedPersistKey(STORE_KEY, apiKey)) || '{}').pid || null; } catch { return null; } }, [apiKey]);
   const seedPrompt = templateData?.prompt || '';
   const [project, setProject] = useState(blank);
   const [history, setHistory] = useState([]);
@@ -233,8 +235,14 @@ export default function ZackD({
     const list = readPending();
     writePending(list);
     // resumed jobs show as in progress, and the action button waits for them, so a paid request is not submitted twice
-    if (list.length) setPending((p) => new Set([...p, ...list.map(pendingKeyOf)]));
-    list.forEach((j) => { if (j.pid) recoveryLocks.current.set(pendingKeyOf(j), j.pid); });
+    // Only the project that is shown now is locked. A recovered job of an older project keeps polling (its result is
+    // discarded), but it must not disable this project's actions. The shown project is read from storage, because the
+    // project state itself is hydrated by a separate effect, and the effect that saves the project overwrites the stored
+    // one on mount, so the id is read during render (see storedPid), before any effect runs.
+    const shownPid = storedPid;
+    const locking = list.filter((j) => !j.pid || !shownPid || j.pid === shownPid);
+    if (locking.length) setPending((p) => new Set([...p, ...locking.map(pendingKeyOf)]));
+    locking.forEach((j) => { if (j.pid) recoveryLocks.current.set(pendingKeyOf(j), j.pid); });
     const ctl = new AbortController();
     list.forEach(async (j) => {
       let settled = true; // false = the job may still be running: keep its record so a later visit can pick it up
@@ -365,7 +373,7 @@ export default function ZackD({
         const url = URL.createObjectURL(out.blob);
         finalRef.current = url;
         setCaptioned(null);
-        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations, hasNarration: !!(project.mixVoice && project.narration) }); // from the inputs this render was started with (project), not the live state, which can change while it encodes
+        setFinal({ url, blob: out.blob, ext: out.extension, warning: out.warning, saved: false, topic: proj.current.topic, durations: out.durations, hasNarration: !!(out.hasAudio !== false && project.mixVoice && project.narration) }); // from the inputs this render was started with (project), not the live state, which can change while it encodes
         toast.success('Final cut ready');
         onGenerationComplete?.({ url, model: 'zackd', prompt: project.topic, type: 'video' });
       } else if (out.reason !== 'cancelled') fail(out.error);
