@@ -34,6 +34,9 @@ const PENDING_KEY = 'zackd_pending_v1';
 const CONCURRENCY = 3;
 const MAX_PENDING_AGE_MS = 60 * 60 * 1000;
 
+// A request that timed out, lost the connection or was cancelled may still finish at the provider: keep its record so a
+// later visit can recover it. Only a success or a confirmed provider failure removes it.
+const isRecoverable = (e) => e?.name === 'AbortError' || /timed out|failed to fetch|network/i.test(String(e?.message));
 const newPid = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 const blank = () => ({
   pid: newPid(), topic: '', map: null, approved: false, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE,
@@ -234,7 +237,7 @@ export default function ZackD({
       try {
         const r = await muapi.resumeGeneration(apiKey, j.rid, { signal: ctl.signal }); // default 30 min, like a normal clip
         if (!j.pid || j.pid === proj.current.pid) { applyResult(j, r?.url); toast('Recovered a generation that was still running'); }
-      } catch (e) { if (e?.name === 'AbortError' || ctl.signal.aborted || /timed out|failed to fetch|network/i.test(String(e?.message))) settled = false; /* else a confirmed failure: drop it */ }
+      } catch (e) { if (ctl.signal.aborted || isRecoverable(e)) settled = false; /* else a confirmed failure: drop it */ }
       if (settled) writePending(readPending().filter((x) => x.rid !== j.rid)); // a local cancel keeps it for the next load
       setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
     });
@@ -245,12 +248,14 @@ export default function ZackD({
   async function tracked(slot, id, run) {
     const pid = proj.current.pid; // the project this job belongs to
     const rids = [];
+    let keep = false;
     const onRequestId = (r) => { rids.push(r); writePending([...readPending(), { rid: r, slot, id, pid, ts: Date.now() }]); };
     try {
       const out = await run(onRequestId);
       if (proj.current.pid === pid) applyResult({ slot, id }, out.url); // a new project/template started meanwhile: drop it
       return out;
-    } finally { if (rids.length) writePending(readPending().filter((x) => !rids.includes(x.rid))); }
+    } catch (e) { keep = isRecoverable(e); throw e; }
+    finally { if (rids.length && !keep) writePending(readPending().filter((x) => !rids.includes(x.rid))); }
   }
   const genSheet = (sh) => tracked('sheet', sh.id, (onRequestId) => jobs.image({ prompt: characterSheetPrompt(sh, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '16:9', onRequestId }));
   const genKeyframe = (shot) => tracked('keyframe', shot.shot_id, (onRequestId) => jobs.image({ prompt: keyframePrompt(shot, proj.current.map.character_sheets, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '9:16', onRequestId }));
@@ -264,6 +269,7 @@ export default function ZackD({
 
   // A batch of paid jobs with a cost confirmation, per-card pending state and the shell's generation callbacks.
   async function batch(label, items, keyOf, fn, confirmText) {
+    items = items.filter((i) => !pending.has(keyOf(i))); // never submit a second paid request for a slot that is still running
     if (busy || !items.length) return;
     if (confirmText && !window.confirm(confirmText)) return;
     setBusy(true); onGenerationStart?.();
@@ -482,7 +488,7 @@ export default function ZackD({
                     {sheets.map((x) => (
                       <MediaCard key={x.id} id={`sheet:${x.id}`} label={`${x.id.replace(/_/g, ' ')}: ${x.description}`} kind="image" aspect="aspect-video"
                         url={project.sheets[x.id]?.url} prompt={characterSheetPrompt(x, { look: project.look, boost: project.consistencyBoost })}
-                        pending={pending.has(`sheet:${x.id}`)} disabled={busy || !hasKey} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
+                        pending={pending.has(`sheet:${x.id}`)} disabled={busy || !hasKey || pending.has(`sheet:${x.id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                         onRedo={() => batch('Character sheet', [x], (i) => `sheet:${i.id}`, genSheet)} />
                     ))}
                   </div>
@@ -498,12 +504,12 @@ export default function ZackD({
                       const label = `${x.shot_id} · ${x.camera_move.replace(/_/g, ' ')}`;
                       return asClip ? (
                         <MediaCard key={x.shot_id} id={`clip:${x.shot_id}`} label={label} kind="video" url={e.clip} prompt={clipPrompt(x)}
-                          pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
+                          pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`clip:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                           onRedo={() => batch('Clip', [x], (i) => `clip:${i.shot_id}`, genClip, 'Generate this clip?')}
                           onRedoKeyframe={e.clip ? () => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe, 'Regenerate this keyframe? The current clip is discarded and must be animated again (paid).') : undefined} />
                       ) : (
                         <MediaCard key={x.shot_id} id={`kf:${x.shot_id}`} label={label} kind="image" url={e.keyframe} prompt={keyframePrompt(x, sheets, { look: project.look, boost: project.consistencyBoost })}
-                          pending={pending.has(`kf:${x.shot_id}`)} disabled={busy || !hasKey} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
+                          pending={pending.has(`kf:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`kf:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                           onRedo={() => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe)} />
                       );
                     })}
@@ -525,7 +531,7 @@ export default function ZackD({
                           {url && <audio src={url} controls className="w-full" />}
                           {pending.has(key) && <div className="text-[11px] text-white/40 animate-pulse">Generating…</div>}
                           <div>
-                            <button type="button" disabled={busy || !hasKey} className={promptControlClassName({ compact: true })}
+                            <button type="button" disabled={busy || !hasKey || pending.has(key)} className={promptControlClassName({ compact: true })}
                               onClick={() => batch(title, [1], () => key, gen, confirmText)}><span className={PROMPT_CONTROL_LABEL_CLASS}>{url ? `Regenerate ${title.toLowerCase()}` : genLabel}</span></button>
                           </div>
                         </div>

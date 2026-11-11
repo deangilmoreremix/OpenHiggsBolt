@@ -249,4 +249,20 @@ describe('ZackD studio (built like the video studios)', () => {
     await step(container, 'Approve script'); fireEvent.click(action(container));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Rewrite script' })).toBeNull()); // gone once approved
   });
+
+  it('keeps a timed-out request recoverable, and blocks a second request for a slot that is still recovering', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    const key = scopedPersistKey('zackd_pending_v1', KEY);
+    // a clip request from an earlier visit is still running at the provider
+    localStorage.setItem(key, JSON.stringify([{ rid: 'req_old', slot: 'clip', id: 'beat_1_a', ts: Date.now() }]));
+    vi.mocked(muapi.resumeGeneration).mockImplementationOnce(() => new Promise(() => {})); // never settles during the test
+    const { container } = render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await waitFor(() => expect(container.querySelector('[data-result-card="clip:beat_1_a"]')).toBeTruthy());
+    const card = container.querySelector('[data-result-card="clip:beat_1_a"]');
+    const redo = within(card).getAllByRole('button').filter((b) => /^(Redo|Generate)\b/.test(b.getAttribute('aria-label') || ''));
+    expect(redo.length).toBeGreaterThan(0);
+    redo.forEach((b) => expect(b.disabled).toBe(true));
+    expect(action(container).disabled).toBe(true);
+  });
 });
