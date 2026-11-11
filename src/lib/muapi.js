@@ -712,15 +712,16 @@ export async function listSocialAccounts(apiKey) {
   return res.data;
 }
 
-const SOCIAL_CONNECT_PATHS = {
-  youtube: '/api/v1/social/youtube/connect-url',
-  tiktok: '/api/v1/social/tiktok/connect-url',
-  instagram: '/api/v1/social/instagram/connect-url',
-  facebook: '/api/v1/social/facebook/connect-url',
-};
+const SOCIAL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'linkedin', 'pinterest', 'threads', 'x'];
+const SOCIAL_CONNECT_PATHS = Object.fromEntries(
+  SOCIAL_PLATFORMS.map((p) => [p, `/api/v1/social/${p}/connect-url`])
+);
 
 export async function connectSocialAccount(apiKey, externalUserId, redirectTo, platform = 'youtube') {
-  const path = SOCIAL_CONNECT_PATHS[platform] || SOCIAL_CONNECT_PATHS.youtube;
+  // Never fall back to another platform's connect URL: connecting "linkedin"
+  // must not silently authorize YouTube.
+  const path = SOCIAL_CONNECT_PATHS[platform];
+  if (!path) throw new Error(`Unsupported platform: ${platform}`);
   const userId = externalUserId || getStableUserId();
   const res = await axios.post(
     path,
@@ -744,6 +745,23 @@ export async function disconnectExternalSocialAccount(apiKey, id) {
     withKey({ method: 'DELETE' }, apiKey)
   );
   return res.data;
+}
+
+/**
+ * Upload a local/temporary file (blob:, data:) to MuAPI so social platforms can
+ * fetch it from a public URL. Returns the hosted https URL.
+ */
+export async function uploadPublishMedia(apiKey, file) {
+  if (!file) throw new Error('No file provided');
+  const isVideo = String(file.type || '').startsWith('video/');
+  const upload = isVideo ? uploadVideoToMuAPI : uploadImageToMuAPI;
+  try {
+    const result = await upload(file, { workspaceId: getStableUserId(), apiKey: cleanApiKey(apiKey) });
+    return result.url;
+  } catch (error) {
+    const info = handleMuAPIUploadError(error);
+    throw new Error(info.message);
+  }
 }
 
 export async function publishToYouTube(apiKey, payload) {
@@ -796,24 +814,31 @@ export async function publishToX(apiKey, payload) {
  * @returns {Promise<any>} Final result object from polling
  */
 export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, interval = 2000) {
+  let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, interval));
+    let data;
     try {
       const res = await axios.get(
         `/api/v1/predictions/${requestId}/result`,
         withKey({ method: 'GET' }, apiKey)
       );
-      const data = res.data || {};
-      const status = String(data.status || '').toLowerCase();
-      if (status === 'completed' || status === 'succeeded' || status === 'success') {
-        return data;
-      }
-      if (status === 'failed' || status === 'error') {
-        throw new Error(data.error || 'Publish failed');
-      }
+      data = res.data || {};
     } catch (err) {
-      if (attempt === maxAttempts) throw err;
+      // Retry only transient problems (network, 429, 5xx). A 4xx means the
+      // request itself is wrong, so fail now instead of polling for minutes.
+      const status = err?.response?.status;
+      if (status && status !== 429 && status < 500) throw err;
+      lastError = err;
+      continue;
+    }
+    const status = String(data.status || '').toLowerCase();
+    if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
+    if (status === 'failed' || status === 'error') {
+      const detail = typeof data.error === 'string' ? data.error : data.error?.message;
+      throw new Error(detail || 'The platform rejected the post.');
     }
   }
-  throw new Error('Publish timed out after polling.');
+  if (lastError) throw lastError;
+  throw new Error('Publishing is taking longer than expected. Check the platform before trying again.');
 }

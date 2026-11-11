@@ -17,6 +17,7 @@ import AssetPreviewCard from '../review/AssetPreviewCard'
 import CopyPreviewCard from '../review/CopyPreviewCard'
 import ThumbnailPreviewCard from '../review/ThumbnailPreviewCard'
 import DestinationsSummaryCard from '../review/DestinationsSummaryCard'
+import { PLATFORM_SPECS, estimateCostUsd, type PlatformId } from '@/shared/api/socialPayloads'
 
 const PLATFORMS: Record<string, { name: string; accent: string }> = {
   youtube: { name: 'YouTube', accent: '#ff0033' },
@@ -40,8 +41,10 @@ export default function ReviewPublishStep({
   destinations,
   publishResults,
   onConfirm,
+  onRetry,
   onBack,
   publishing,
+  blockers = [],
 }: ReviewPublishStepProps) {
   const [retrying, setRetrying] = useState<string | null>(null)
   const enabledDestinations = destinations.filter((d) => d.enabled && d.accountId)
@@ -55,14 +58,23 @@ export default function ReviewPublishStep({
   const failedCount = publishResults.filter((r) => r.status === 'failed').length
   const inProgressCount = publishResults.filter((r) => r.status === 'queued' || r.status === 'uploading' || r.status === 'processing').length
 
-  const handleRetry = async (platform: string) => {
-    setRetrying(platform)
+  // Retry ONE destination; never re-post to the ones that already succeeded.
+  const handleRetry = async (platform: string, accountId?: string) => {
+    const id = `${platform}:${accountId ?? ''}`
+    setRetrying(id)
     try {
-      await onConfirm()
+      await onRetry?.(platform, accountId)
     } finally {
       setRetrying(null)
     }
   }
+
+  const pendingToPublish = enabledDestinations.filter(
+    (d) => !publishResults.some((r) => r.platform === d.platform && r.accountId === d.accountId && r.status === 'published'),
+  )
+  const platformsToPublish = pendingToPublish.map((d) => d.platform as PlatformId)
+  const estimatedCost = estimateCostUsd(platformsToPublish)
+  const basicPlatforms = [...new Set(platformsToPublish.filter((p) => PLATFORM_SPECS[p]?.confidence === 'basic'))].map((p) => PLATFORM_SPECS[p].label)
 
   if (allPublished && !publishing) {
     return (
@@ -80,7 +92,7 @@ export default function ReviewPublishStep({
             const meta = PLATFORMS[r.platform] || { name: r.platform, accent: '#22d3ee' }
             return (
               <div
-                key={r.platform}
+                key={`${r.platform}:${r.accountId ?? ''}`}
                 className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
               >
@@ -167,14 +179,15 @@ export default function ReviewPublishStep({
           <div className="space-y-2">
             {publishResults.map((r) => {
               const meta = PLATFORMS[r.platform] || { name: r.platform, accent: '#22d3ee' }
+              const rid = `${r.platform}:${r.accountId ?? ''}`
               const isPublishing = publishing && (r.status === 'queued' || r.status === 'uploading' || r.status === 'processing')
               const isPublished = r.status === 'published'
               const isFailed = r.status === 'failed'
-              const isRetrying = retrying === r.platform
+              const isRetrying = retrying === rid
 
               return (
                 <div
-                  key={r.platform}
+                  key={rid}
                   className="flex items-center justify-between gap-3 p-2 rounded-lg"
                   style={{
                     background: 'rgba(255,255,255,0.03)',
@@ -193,7 +206,7 @@ export default function ReviewPublishStep({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {isFailed && r.error && (
-                      <span className="text-[10px] text-red-400/80 max-w-[120px] truncate" title={r.error}>
+                      <span className="text-[10px] text-red-400/80 max-w-[220px] truncate" title={r.error}>
                         {r.error}
                       </span>
                     )}
@@ -210,7 +223,7 @@ export default function ReviewPublishStep({
                     {isFailed && (
                       <button
                         type="button"
-                        onClick={() => handleRetry(r.platform)}
+                        onClick={() => handleRetry(r.platform, r.accountId)}
                         disabled={isRetrying}
                         className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
                       >
@@ -226,18 +239,37 @@ export default function ReviewPublishStep({
         </div>
       )}
 
-      {!publishing && !hasResults && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/15">
-          <span className="text-[11px] text-amber-300/80">
-            Ready to publish to {enabledDestinations.length} destination{enabledDestinations.length !== 1 ? 's' : ''}
-          </span>
+      {!publishing && pendingToPublish.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/15">
+            <span className="text-[11px] text-amber-300/80">
+              {hasResults ? 'Still to publish' : 'Ready to publish'}: {pendingToPublish.length} destination{pendingToPublish.length !== 1 ? 's' : ''}
+            </span>
+            <span className="text-[11px] text-white/50" title="Approximate MuAPI charge per publish. See MuAPI pricing for current rates.">
+              ≈ ${estimatedCost.toFixed(2)} MuAPI cost
+            </span>
+          </div>
+          {basicPlatforms.length > 0 && (
+            <p className="text-[11px] text-white/40">
+              {basicPlatforms.join(', ')}: MuAPI documents only the basics (account, media and text) for {basicPlatforms.length === 1 ? 'this platform' : 'these platforms'}, so only those are sent.
+            </p>
+          )}
+        </div>
+      )}
+
+      {blockers.length > 0 && (
+        <div role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+          <p className="mb-1 font-semibold">Fix this before publishing:</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {blockers.map((b) => <li key={b}>{b}</li>)}
+          </ul>
         </div>
       )}
 
       <button
         type="button"
         onClick={onConfirm}
-        disabled={!hasEnabledDestinations || publishing}
+        disabled={!hasEnabledDestinations || publishing || blockers.length > 0 || pendingToPublish.length === 0}
         className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-[#22d3ee] text-black font-semibold text-sm hover:bg-[#22d3ee]/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {publishing ? (
@@ -248,7 +280,7 @@ export default function ReviewPublishStep({
         ) : (
           <>
             <Send size={16} />
-            Publish to {enabledDestinations.length} platform{enabledDestinations.length !== 1 ? 's' : ''}
+            {hasResults ? 'Publish remaining' : 'Publish'} ({pendingToPublish.length})
           </>
         )}
       </button>

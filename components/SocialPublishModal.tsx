@@ -2,6 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { mergeCopy } from './social-publishing/mergeCopy';
+import { publishOrchestrator, publishOne } from '@/shared/api/publishOrchestrator';
+import { PLATFORM_ORDER, PLATFORM_SPECS, buildPublishPayload, isPublicMediaUrl, type PlatformId } from '@/shared/api/socialPayloads';
+import { uploadPublishMedia } from '@/lib/muapi';
 import SocialPublishStepper from './social-publishing/SocialPublishStepper';
 import { WriteStep } from './social-publishing/steps/WriteStep';
 import ThumbnailStep from './social-publishing/steps/ThumbnailStep';
@@ -33,6 +37,8 @@ interface SocialPublishModalProps {
   updateThumbnail: (state: ThumbnailState) => void;
   updateDestinations: (destinations: Destination[]) => void;
   updatePublishResults: (results: PublishResult[]) => void;
+  /** Opens the API keys modal (AI writing uses the customer's own OpenAI key). */
+  onRequestApiKey?: () => void;
 }
 
 const TOTAL_STEPS = 4;
@@ -54,8 +60,15 @@ export default function SocialPublishModal({
   updateThumbnail,
   updateDestinations,
   updatePublishResults,
+  onRequestApiKey,
 }: SocialPublishModalProps) {
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  // Local/temporary media (blob:, data:) is uploaded once and the hosted URL reused.
+  const [hostedUrl, setHostedUrl] = useState<{ from: string; url: string } | null>(null);
+
+  // The copy every step after Write (and publishing) uses: Write-step text wins.
+  const copy = useMemo(() => mergeCopy(writeCopy, socialCopy), [writeCopy, socialCopy]);
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -85,6 +98,7 @@ export default function SocialPublishModal({
     }
   }, [currentStep, setCurrentStep]);
 
+
   const handleBack = useCallback(() => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
@@ -93,25 +107,98 @@ export default function SocialPublishModal({
     }
   }, [currentStep, setCurrentStep, onClose]);
 
+  /** Make sure MuAPI can fetch the media: upload local/temporary files first. */
+  const resolveAsset = useCallback(async (a: Asset): Promise<Asset> => {
+    if (isPublicMediaUrl(a.url)) return a;
+    if (hostedUrl && hostedUrl.from === a.url) return { ...a, url: hostedUrl.url };
+    let blob: Blob;
+    try {
+      blob = await (await fetch(a.url)).blob();
+    } catch {
+      throw new Error('This file is only available on your device and could not be read. Download it and upload it, or regenerate it, then publish again.');
+    }
+    const type = blob.type || (a.type === 'video' ? 'video/mp4' : 'image/png');
+    const file = new File([blob], `publish-${Date.now()}.${type.split('/')[1]?.split(';')[0] || 'bin'}`, { type });
+    const url = await uploadPublishMedia(apiKey, file);
+    setHostedUrl({ from: a.url, url });
+    return { ...a, url };
+  }, [apiKey, hostedUrl]);
+
+  const key = (d: { platform: string; accountId?: string }) => `${d.platform}:${d.accountId ?? ''}`;
+
+  /**
+   * THE publish path (Destinations "Publish Now", Review "Publish", footer
+   * "Publish"). Skips destinations that already published, so a second click can
+   * never post twice; failed ones are retried.
+   */
   const handlePublish = useCallback(
-    async (dests: Destination[]) => {
+    async (dests: Destination[] = destinations) => {
+      if (!asset || publishing) return;
+      const already = new Set(publishResults.filter((r) => r.status === 'published').map(key));
+      const todo = dests.filter((d) => d.enabled && d.accountId && !already.has(key(d)));
+      if (todo.length === 0) return;
       setPublishing(true);
+      setPublishError(null);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        updateDestinations(dests);
+        const ready = await resolveAsset(asset);
+        const keep = publishResults.filter((r) => !todo.some((d) => key(d) === key(r)));
+        await publishOrchestrator({
+          destinations: todo,
+          asset: ready,
+          copy,
+          thumbnail,
+          apiKey,
+          onProgress: (r) => updatePublishResults([...keep, ...r]),
+        });
+      } catch (err) {
+        setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
       } finally {
         setPublishing(false);
       }
     },
-    [updateDestinations]
+    [asset, publishing, publishResults, destinations, resolveAsset, copy, thumbnail, apiKey, updatePublishResults],
   );
+
+  const handleRetry = useCallback(
+    async (platform: string, accountId?: string) => {
+      const dest = destinations.find((d) => d.platform === platform && d.accountId === accountId);
+      if (!dest || !asset || publishing) return;
+      setPublishing(true);
+      setPublishError(null);
+      try {
+        const ready = await resolveAsset(asset);
+        const others = publishResults.filter((r) => !(r.platform === platform && r.accountId === accountId));
+        updatePublishResults([...others, { platform, accountId, status: 'processing', requestId: '' }]);
+        const result = await publishOne(dest, ready, copy, thumbnail, apiKey);
+        updatePublishResults([...others, result]);
+      } catch (err) {
+        setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
+      } finally {
+        setPublishing(false);
+      }
+    },
+    [destinations, asset, publishing, publishResults, resolveAsset, copy, thumbnail, apiKey, updatePublishResults],
+  );
+
+  /** Why the selected destinations cannot be published right now (shown in the UI). */
+  const blockers = useMemo(() => {
+    const out: string[] = [];
+    if (!apiKey) out.push('Add your MuAPI key in the API keys settings first.');
+    for (const d of destinations.filter((x) => x.enabled && x.accountId)) {
+      const spec = PLATFORM_SPECS[d.platform as PlatformId];
+      const mediaUrlForCheck = isPublicMediaUrl(asset?.url) ? (asset?.url as string) : 'https://placeholder.invalid/media';
+      const built = buildPublishPayload({ platform: d.platform as PlatformId, accountId: d.accountId ?? '', mediaUrl: mediaUrlForCheck, mediaType: asset?.type || 'video', copy, settings: d.settings, thumbnailUrl: thumbnail?.imageUrl });
+      for (const e of built.errors) out.push(`${spec?.label ?? d.platform}: ${e}`);
+    }
+    return out;
+  }, [apiKey, destinations, asset, copy, thumbnail]);
 
   const canContinue = useMemo(() => {
     if (!asset) return false;
     if (currentStep === 0) return true;
     if (currentStep === 1) return true;
     if (currentStep === 2) return destinations.length > 0;
-    if (currentStep === 3) return true;
+    if (currentStep === 3) return destinations.some((d) => d.enabled && d.accountId);
     return false;
   }, [asset, currentStep, destinations]);
 
@@ -152,7 +239,7 @@ export default function SocialPublishModal({
                   Publish to social
                 </h2>
                 <p className="text-[11px] text-white/40 leading-tight">
-                  {safeAsset.type === 'image' ? 'Image' : 'Video'} · YouTube · Instagram · TikTok
+                  {safeAsset.type === 'image' ? 'Image' : 'Video'} · {PLATFORM_ORDER.filter((p) => PLATFORM_SPECS[p].media.includes(safeAsset.type)).map((p) => PLATFORM_SPECS[p].label).join(' · ')}
                 </p>
               </div>
             </div>
@@ -181,24 +268,25 @@ export default function SocialPublishModal({
             {/* Main editor */}
             <div className="flex-1 min-w-0">
               {currentStep === 0 && safeAsset && (
-                <WriteStep asset={safeAsset} copy={writeCopy} onUpdateCopy={updateWriteCopy} />
+                <WriteStep asset={safeAsset} copy={writeCopy} onUpdateCopy={updateWriteCopy} onRequestApiKey={onRequestApiKey ? () => { onClose(); onRequestApiKey(); } : undefined} />
               )}
               {currentStep === 1 && safeAsset && (
                 <ThumbnailStep
                   asset={safeAsset}
                   thumbnail={thumbnail}
                   onUpdateThumbnail={updateThumbnail}
-                  copy={socialCopy}
+                  copy={copy}
                 />
               )}
               {currentStep === 2 && safeAsset && (
                 <DestinationsStep
                   asset={safeAsset}
-                  copy={socialCopy}
+                  copy={copy}
                   destinations={destinations}
                   onChange={updateDestinations}
                   publishResults={publishResults}
-                  onPublish={updateDestinations}
+                  onPublish={handlePublish}
+                  onRetry={handleRetry}
                   onUpdatePublishResults={updatePublishResults}
                   publishing={publishing}
                   apiKey={apiKey}
@@ -208,13 +296,15 @@ export default function SocialPublishModal({
               {currentStep === 3 && (
                 <ReviewPublishStep
                   asset={safeAsset}
-                  copy={socialCopy}
+                  copy={copy}
                   thumbnail={thumbnail}
                   destinations={destinations}
                   publishResults={publishResults}
-                  onConfirm={() => { void handlePublish(destinations); }}
+                  onConfirm={() => handlePublish(destinations)}
+                  onRetry={handleRetry}
                   onBack={handleBack}
                   publishing={publishing}
+                  blockers={blockers}
                 />
               )}
             </div>
@@ -245,14 +335,14 @@ export default function SocialPublishModal({
                     <p className="text-xs text-white/50 truncate" title={safeAsset.url}>
                       {safeAsset.url}
                     </p>
-                    {socialCopy.title && (
+                    {copy.title && (
                       <p className="text-xs text-[var(--text-primary)] font-medium truncate">
-                        {socialCopy.title}
+                        {copy.title}
                       </p>
                     )}
-                    {socialCopy.caption && (
+                    {(copy.caption || copy.master) && (
                       <p className="text-xs text-white/60 line-clamp-2">
-                        {socialCopy.caption}
+                        {copy.caption || copy.master}
                       </p>
                     )}
                   </div>
@@ -261,6 +351,10 @@ export default function SocialPublishModal({
             )}
           </div>
         </div>
+
+        {publishError && (
+          <div role="alert" className="mx-5 mb-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">{publishError}</div>
+        )}
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-[var(--border-color)] flex items-center justify-between flex-shrink-0">
@@ -278,8 +372,8 @@ export default function SocialPublishModal({
             </span>
             <button
               type="button"
-              onClick={handleContinue}
-              disabled={!canContinue}
+              onClick={isLastStep ? () => { void handlePublish(); } : handleContinue}
+              disabled={!canContinue || (isLastStep && (publishing || blockers.length > 0))}
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#22d3ee] text-black font-semibold text-sm hover:bg-[#22d3ee]/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isLastStep ? 'Publish' : 'Continue'}
