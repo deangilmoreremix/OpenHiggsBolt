@@ -116,11 +116,22 @@ const trackTitle = (slug: string): string => {
   } catch { return slug; }
 };
 
+const lessonTitle = (track: string, lesson: string): string => {
+  try {
+    const md = fs.readFileSync(path.join(academyRootForTitles, track, 'lessons', `${lesson}.md`), 'utf8');
+    return (md.match(/^#\s+(.+)$/m)?.[1] ?? lesson).trim();
+  } catch { return lesson; }
+};
+
 for (const g of GUIDES) {
+  const lessonList = [
+    ...g.lessons.map((l) => `${lessonTitle(l.track, l.lesson)} — ${l.why} (${academyTrackUrl(l.track, l.lesson)})`),
+    ...(g.resellerLessons ?? []).map((l) => `Reseller Setup Walkthrough ${l.id} ${l.title} (/academy/reseller/launch?lesson=${l.id})`),
+  ].join('; ');
   const courses = g.tracks.map((t) => `${trackTitle(t)} (${academyTrackUrl(t)})`).join('; ');
   push({
     id: `studio:${g.id}:academy-guide`, kind: 'studio', studioId: g.id, title: `${g.label} — Academy guide`, url: g.route, guideUrl: academyStudioUrl(g.id),
-    text: `${g.label}: ${g.tagline} Open it at ${g.route}. Step-by-step "Create with ${g.label}" guide in the Academy: ${academyStudioUrl(g.id)}.${courses ? ` Related Academy courses: ${courses}.` : ''}`,
+    text: `${g.label}: ${g.tagline} Open it at ${g.route}. Step-by-step "Create with ${g.label}" guide in the Academy: ${academyStudioUrl(g.id)}.${courses ? ` Related Academy courses: ${courses}.` : ''}${lessonList ? ` Recommended Academy lessons for ${g.label}: ${lessonList}.` : ''}`,
   });
   if (!kbIds.has(g.id)) {
     push({

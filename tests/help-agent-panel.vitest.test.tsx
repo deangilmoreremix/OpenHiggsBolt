@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import HelpAgent, { citedSources, linkCitations } from '@/components/help/HelpAgent';
+import HelpAgent, { citedSources, linkCitations, STUDIO_SUGGESTIONS } from '@/components/help/HelpAgent';
+import { STUDIO_GUIDE_IDS } from '@/data/academyStudioGuides';
 
 const enc = new TextEncoder();
 function sseResponse(events: [string, unknown][]) {
@@ -18,6 +19,12 @@ const sources = [
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe('suggested questions', () => {
+  it('every studio has its own three suggestions', () => {
+    for (const id of STUDIO_GUIDE_IDS) expect(STUDIO_SUGGESTIONS[id]?.length, id).toBe(3);
+  });
+});
 
 describe('citation helpers', () => {
   it('turns [S1] into numbered links and lists cited sources once', () => {

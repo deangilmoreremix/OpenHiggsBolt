@@ -24,13 +24,33 @@ interface Msg {
 
 const ENDPOINT = '/api/help/chat';
 
-const STUDIO_SUGGESTIONS: Record<string, string[]> = {
+export const STUDIO_SUGGESTIONS: Record<string, string[]> = {
   apps: ['How do I connect Stripe to my app?', 'Why did a payment succeed but credits did not appear?', 'How do I connect my own domain?'],
-  image: ['How do I generate an image from a prompt?', 'How many reference images can I upload?'],
-  video: ['How do I create a video from an image?', 'What should I do if a generation fails?'],
-  lipsync: ['How do I lip sync a video to audio?'],
-  storyboard: ['How do I build a storyboard?'],
-  workflows: ['How do I build a workflow?'],
+  image: ['How do I generate an image from a prompt?', 'How many reference images can I upload?', 'Which lessons teach product photography?'],
+  'brand-studio': ['How do I set up a brand?', 'How do I generate on-brand campaign assets?', 'Which lessons help me sell brand work?'],
+  video: ['How do I create a video from an image?', 'What should I do if a generation fails?', 'Which lessons teach AI video ads?'],
+  edit: ['How do I edit and combine clips?', 'How do I export my edit?', 'Which lessons cover assembling a finished video?'],
+  audio: ['How do I make a voiceover?', 'How do I generate music or sound effects?', 'Which lessons cover voice cloning and dubbing?'],
+  clipping: ['How do I turn a long video into short clips?', 'How do I choose the best clips?', 'Which lessons cover Shorts and Reels?'],
+  'vibe-motion': ['How do I create a motion graphic?', 'What can I animate in Vibe Motion?', 'Which lessons cover short-form motion content?'],
+  'motion-control': ['How do I drive a character with a reference video?', 'What inputs does Motion Control need?', 'Which lessons cover camera and motion?'],
+  lipsync: ['How do I lip sync a video to audio?', 'What kind of portrait works best?', 'Which lessons cover voices and dialogue?'],
+  cinema: ['How do I control the camera in Cinema Studio?', 'How do I keep shots consistent?', 'Which lessons teach filmmaking?'],
+  storyboard: ['How do I build a storyboard?', 'How do I turn a storyboard into video?', 'Which lessons cover storyboarding?'],
+  zackd: ['How do I render a video from a template?', 'How do I change the text and media in a template?', 'Which lessons cover content production?'],
+  marketing: ['How do I make a product ad?', 'How do I create several ad variations?', 'Which lessons cover selling ads to clients?'],
+  'motion-director': ['How does the AI director build a film?', 'How do I use my own footage and brand?', 'Which lessons cover shots and editing?'],
+  recast: ['How do I swap a person in a video?', 'What do I need to upload for Body Swap?', 'Which lessons cover consistent characters?'],
+  layers: ['How do I separate or upscale image layers?', 'How do I extend an image?', 'Which lessons cover batch image workflows?'],
+  workflows: ['How do I build a workflow?', 'How do I run a workflow on many inputs?', 'Which lessons cover automation?'],
+  agents: ['How do I create an agent?', 'How do I chat with an agent?', 'Which lessons cover agents?'],
+  'design-agent': ['How do I design with the Design Agent?', 'How do I refine a design with follow-up messages?', 'Which lessons cover designs that sell?'],
+  'vfx-studio': ['How do I apply an effect to a video?', 'Which effects are available?', 'Which lessons cover motion and effects?'],
+  'thumbnail-studio': ['How do I design a thumbnail?', 'How do I make a thumbnail click-worthy?', 'Which lessons cover thumbnail design?'],
+  'ai-influencer': ['How do I create a consistent AI character?', 'How do I make content with my character?', 'Which lessons cover monetizing a character?'],
+  'go-ai-viral': ['How do I plan a viral short?', 'How do I produce a batch of shorts?', 'Which lessons cover short-form content?'],
+  'photo-studio': ['How do I make a product photo?', 'How do I make a portrait?', 'Which lessons cover product photography?'],
+  'social-publishing': ['How do I connect a social account?', 'How do I publish a video?', 'What should I do if a publish fails?'],
 };
 const GENERIC = ['What can I do in this studio?', 'Where do I start as a beginner?', 'How do I fix a failed generation?'];
 

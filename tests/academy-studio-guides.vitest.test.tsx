@@ -32,6 +32,20 @@ describe('Academy studio guide manifest', () => {
       expect((s?.howToSteps ?? []).length, `howToSteps for ${g.id}`).toBeGreaterThan(2);
     }
   });
+  it('every studio recommends 2-4 specific lessons that exist (apps uses the Reseller Walkthrough)', () => {
+    for (const g of ACADEMY_STUDIO_GUIDES) {
+      if (g.id === 'apps') {
+        expect((g.resellerLessons ?? []).length, 'apps reseller lessons').toBeGreaterThanOrEqual(2);
+        continue;
+      }
+      expect(g.lessons.length, `lessons for ${g.id}`).toBeGreaterThanOrEqual(2);
+      expect(g.lessons.length, `lessons for ${g.id}`).toBeLessThanOrEqual(4);
+      for (const l of g.lessons) {
+        expect(fs.existsSync(path.join(root, 'src/content/academy', l.track, 'lessons', `${l.lesson}.md`)), `${g.id}: ${l.track}/${l.lesson}`).toBe(true);
+        expect(l.why.length, `${g.id} why`).toBeGreaterThan(5);
+      }
+    }
+  });
   it('builds deep links', () => {
     expect(academyStudioUrl('image')).toBe('/academy?view=studio-reference&studio=image&tab=create');
     expect(academyTrackUrl('ugc', '01-how-ugc-works')).toBe('/academy?track=ugc&lesson=01-how-ugc-works');

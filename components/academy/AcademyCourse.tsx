@@ -704,6 +704,28 @@ function StudioDetailPanel({
                   </div>
                 </div>
               )}
+              {guide && (guide.lessons.length > 0 || (guide.resellerLessons?.length ?? 0) > 0) && (
+                <div className="mb-4" data-testid="studio-lessons">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Lessons to take for this studio</h4>
+                  <ul className="space-y-1.5">
+                    {guide.lessons.map((l) => {
+                      const title = tracks.find((t) => t.slug === l.track)?.lessons.find((x) => x.slug === l.lesson)?.title ?? l.lesson;
+                      return (
+                        <li key={`${l.track}/${l.lesson}`} className="text-sm">
+                          <a href={academyTrackUrl(l.track, l.lesson)} className="font-semibold underline" style={{ color: colors.primary }}>{title}</a>
+                          <span style={{ color: semantic.textSecondary }}> — {l.why}</span>
+                        </li>
+                      );
+                    })}
+                    {guide.resellerLessons?.map((l) => (
+                      <li key={`r${l.id}`} className="text-sm">
+                        <a href={`/academy/reseller/launch?lesson=${l.id}`} className="font-semibold underline" style={{ color: colors.primary }}>{l.id} {l.title}</a>
+                        <span style={{ color: semantic.textSecondary }}> — Reseller Setup Walkthrough</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {guide && guide.tracks.length > 0 && (
                 <div className="mb-2">
                   <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Related Academy courses</h4>
