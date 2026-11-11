@@ -306,10 +306,14 @@ export function useFilmDirector(opts: {
         if (!live()) return;
         upd((r) => {
           let x = r;
-          const why = mode === 'inkpress' ? 'the Ink Press template fixes its look' : mode === 'cocreate' ? 'chosen with you' : 'a single shot';
-          if (['pending', 'running'].includes(x.stages.direction.status)) x = skipStage(x, 'direction', result.direction ? 'recorded with the storyboard' : why);
+          const why = mode === 'inkpress' ? 'the Ink Press template fixes its look' : mode === 'single' ? 'a single shot' : 'the director did not produce a direction';
+          if (['pending', 'running'].includes(x.stages.direction.status)) {
+            // Co-creation: the direction was chosen WITH the person, so that stage happened (recorded as theirs); it is not a skipped operation.
+            if (mode === 'cocreate') x = startStage(completeStage(startStage(x, 'direction'), { stage: 'direction', chosen: result.direction?.chosen.name ?? null, userSupplied: true }, { source: 'person' }), 'mapping');
+            else x = skipStage(x, 'direction', result.direction ? 'recorded with the storyboard' : why);
+          }
           if (result.mapping?.length) x = completeStage(['pending', 'running'].includes(x.stages.mapping.status) ? startStage(x, 'mapping') : x, { stage: 'mapping', rows: result.mapping }, { rows: result.mapping.length });
-          else if (['pending', 'running'].includes(x.stages.mapping.status)) x = skipStage(x, 'mapping', mode === 'inkpress' ? 'the Ink Press scenes are the map' : mode === 'single' ? 'a single shot' : 'no map was requested');
+          else if (['pending', 'running'].includes(x.stages.mapping.status)) x = skipStage(x, 'mapping', mode === 'inkpress' ? 'the Ink Press scenes are the map' : mode === 'single' ? 'a single shot' : 'the director did not produce a feature map');
           // Failures the gate could not repair block the storyboard from being called clean; a pick of the person's own is reported, not blocking.
           x = completeStage(startStage(x, 'storyboard'), { stage: 'storyboard', scenes: result.plan.scenes.length, failedChecks: (result.gate?.failed ?? []).filter((f) => !/your pick/.test(f)) }, { release: result.release?.filter((i) => !i.ok).length ?? 0 });
           return completeStage(startStage(x, 'assets'), { stage: 'assets', scenes: sceneRecords(result.plan, materialOf(result.capture, media)) });

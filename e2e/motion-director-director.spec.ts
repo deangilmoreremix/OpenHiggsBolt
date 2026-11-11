@@ -624,6 +624,13 @@ test.describe('Motion Studio director', () => {
     await expect(plan).not.toContainText('Crash Impact Real');
     expect(calls.planPrompt).toContain('Bold launch');
     expect(calls.planPrompt).toContain('Plan in minutes');
+    // The run records what happened: direction and mapping were done WITH the person (completed, theirs), not skipped.
+    const run = await page.evaluate(() => JSON.parse(localStorage.getItem('motion-director:run-v1') ?? 'null')?.run);
+    expect(run.mode).toBe('cocreate');
+    expect(run.stages.direction.status).toBe('completed');
+    expect(run.stages.mapping.status).toBe('completed');
+    expect(run.stages.direction.waiver).toBeUndefined();
+    expect(run.stages.mapping.waiver).toBeUndefined();
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
