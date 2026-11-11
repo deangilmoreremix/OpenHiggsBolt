@@ -59,7 +59,7 @@ test.describe('Motion Director preview vs export', () => {
       const frame = Math.min(info.endFrame - 1, Math.round(info.endFrame * fraction));
       await page.evaluate((f) => (window as unknown as { __motionParity: { seek: (n: number) => void } }).__motionParity.seek(f), frame);
       // Let the Player paint the frame (and any images) before the screenshot.
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(4500); // the Player shows its controls briefly after a seek; they are not part of the composition
       await page.mouse.move(0, 0);
       const shot = (await player.screenshot()).toString('base64');
       const exported = await page.evaluate((f) => (window as unknown as { __motionParity: { exportStill: (n: number) => Promise<string> } }).__motionParity.exportStill(f), frame);
