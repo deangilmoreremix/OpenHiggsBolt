@@ -1,5 +1,6 @@
 'use client'
 
+import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -7,6 +8,8 @@ import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
+import { LayoutQualityPanel } from './LayoutQualityPanel'
+import { useLayoutQuality } from './useLayoutQuality'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
@@ -54,6 +57,12 @@ export function StepPreviewApprove(): React.JSX.Element {
   const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
+  const quality = useLayoutQuality(inputProps)
+  // Only a CONFIRMED critical rendering failure blocks the branded render; layout
+  // judgments (Needs adjustment / Review required) only warn.
+  const exportBlocked = quality.report.blocksExport
+  const [rightsConfirmed, setRightsConfirmed] = useState(false)
+  const rightsGate = quality.rightsNeedConfirmation && !rightsConfirmed
   // Overlay-only personalizations render locally; AI modes keep the generation
   // pipeline. The active path is the primary action; the other stays visible
   // (and disabled) so the two operations are never conflated.
@@ -143,21 +152,15 @@ export function StepPreviewApprove(): React.JSX.Element {
         </div>
         {remotionDesignTemplates.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ ...labelStyle, marginBottom: 6 }}>Designs</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {remotionDesignTemplates.map((design) => (
-                <button
-                  key={design.id}
-                  type="button"
-                  onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
-                  aria-pressed={activeRemotionDesignId === design.id}
-                  title={design.description}
-                  style={chipStyle(activeRemotionDesignId === design.id)}
-                >
-                  {design.name}
-                </button>
-              ))}
-            </div>
+            <DesignRecommendations
+              designs={remotionDesignTemplates}
+              aspectRatio={previewSettings.aspectRatio}
+              activeDesignId={activeRemotionDesignId}
+              available={{ logo: Boolean(assets?.primaryLogo), product: (assets?.products?.length || 0) > 0, service: (assets?.products?.length || 0) > 0 }}
+              onSelectDesign={setRemotionDesign}
+              onAddDesign={ctx.addRemotionDesign}
+              onSelectLayout={setPreviewLayout}
+            />
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
                 {fixedSvgIdWarning}
@@ -226,6 +229,9 @@ export function StepPreviewApprove(): React.JSX.Element {
       {/* ── Direct on-video overlay editing ─────────────────────────────── */}
       <OverlayEditor inputProps={inputProps} />
 
+      {/* ── Layout quality check ────────────────────────────────────────── */}
+      <LayoutQualityPanel quality={quality} layers={previewSettings.layers} />
+
       {/* ── Approve & create ────────────────────────────────────────────── */}
       <div style={{ ...panelStyle, border: `1px solid ${previewApproved ? 'rgba(40,201,139,.45)' : C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -265,8 +271,8 @@ export function StepPreviewApprove(): React.JSX.Element {
                   type="button"
                   onClick={handleCreate}
                   // The render uses exactly what was approved.
-                  disabled={generating || !isBrandedPath || !previewApproved}
-                  title={isBrandedPath && !previewApproved ? 'Approve the preview first' : undefined}
+                  disabled={generating || !isBrandedPath || !previewApproved || exportBlocked || rightsGate}
+                  title={isBrandedPath && !previewApproved ? 'Approve the preview first' : exportBlocked ? 'Fix the critical layout problem first' : rightsGate ? 'Confirm you may use this clip' : undefined}
                   aria-pressed={isBrandedPath}
                   style={{
                     ...(isBrandedPath ? primaryButtonStyle : secondaryButtonStyle),
@@ -284,7 +290,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={generating || isBrandedPath}
+                  disabled={generating || isBrandedPath || rightsGate}
                   aria-pressed={!isBrandedPath}
                   style={{
                     ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
@@ -300,6 +306,20 @@ export function StepPreviewApprove(): React.JSX.Element {
                     : 'Generate with AI'}
                 </button>
               </div>
+              {quality.rightsNeedConfirmation && (
+                <label data-testid="guided-rights-confirm" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: C.text, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} style={{ marginTop: 2 }} />
+                  <span>
+                    {quality.profile.rightsNote} I confirm I have the right to use this video commercially in my own
+                    personalized video.
+                  </span>
+                </label>
+              )}
+              {exportBlocked && (
+                <p data-testid="guided-export-blocked" style={{ ...hintStyle, color: C.danger }}>
+                  The render is blocked: {quality.report.issues.filter((i) => i.severity === 'critical').map((i) => i.message).join(' ')}
+                </p>
+              )}
               {isBrandedPath && !previewApproved && !generating && (
                 <p data-testid="guided-render-needs-approval" style={{ ...hintStyle, color: '#fcd34d' }}>
                   Approve the preview first — the render uses exactly what you approve.

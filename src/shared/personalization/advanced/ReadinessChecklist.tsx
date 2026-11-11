@@ -32,6 +32,8 @@ export function focusRequirementControl(name?: string) {
   if (!name || typeof document === 'undefined') return
   // The tab and pill switch render first; then the control is visible.
   window.setTimeout(() => {
+    // The page (or a test environment) may be gone by the time this fires.
+    if (typeof document === 'undefined') return
     const target = document.querySelector<HTMLElement>(`[data-pz-focus="${name}"]`)
     if (!target) return
     target.scrollIntoView?.({ block: 'center' })

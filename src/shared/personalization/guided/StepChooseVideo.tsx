@@ -16,6 +16,7 @@ import {
   tileStyle,
 } from './tokens'
 import { TemplateBrowser } from './TemplateBrowser'
+import { RecastOption } from './RecastOption'
 import {
   ALL_DEMOS_CATEGORY_ID,
   DEMO_CATEGORIES,
@@ -787,6 +788,9 @@ export function StepChooseVideo(): React.JSX.Element {
         )}
       </div>
       )}
+
+      {/* Optional AI recast: skipping keeps the original video (the default). */}
+      {Boolean(selectedUrl) && source?.mediaType === 'video' && <RecastOption />}
     </div>
   )
 }

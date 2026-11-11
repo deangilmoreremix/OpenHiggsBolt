@@ -1,5 +1,6 @@
 'use client'
 
+import { AssetUsagePanel } from './AssetUsagePanel'
 import { useEffect, useRef, useState } from 'react'
 import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -176,6 +177,8 @@ export function StepPersonalize({
           }}
         />
       </div>
+
+      <AssetUsagePanel />
 
       {/* ── Editable content ────────────────────────────────────────────── */}
       <div style={panelStyle}>

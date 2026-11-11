@@ -61,6 +61,8 @@ import type {
   PreviewAspectRatio,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
+import type { ProtectedZone } from './preview/types'
+import { measureImageHints } from './preview/imageHintsLoader'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
 import {
   loadClients,
@@ -105,10 +107,13 @@ import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
   applyDesignTemplate,
+  addDesignTemplate,
+  removeDesignLayer,
   resetLayoutToDefaults,
   resetPreviewDesign,
   normalizePreviewSettings,
   getCompositionDimensions,
+  reflowLayersForAspect,
 } from './preview/presets'
 import {
   applyResearchedBrandColors,
@@ -864,6 +869,13 @@ export type DemoPersonalizeContextValue = {
   setOutputType: (type: OutputType) => void
   mode: VideoPersonalizationMode | ImagePersonalizationMode | null
   setMode: (mode: VideoPersonalizationMode | ImagePersonalizationMode | null) => void
+  /**
+   * How the final video is made. `browser` = a local Remotion render of the approved overlays (no AI, no credits,
+   * no prompt personalization, no mode needed); `ai` = the existing generation pipeline, which needs a mode.
+   * Derived from the saved mode for old projects (an AI mode => `ai`, otherwise `browser`).
+   */
+  creationMethod: 'browser' | 'ai'
+  setCreationMethod: (method: 'browser' | 'ai') => void
   genOptions: GenerationOptions
   updateGenOptions: (patch: Partial<GenerationOptions>) => void
   consent: boolean
@@ -961,6 +973,16 @@ export type DemoPersonalizeContextValue = {
   setPreviewVideo: (video: PreviewVideoRef | null) => void
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  /** Locks/unlocks a layer: a locked layer is never moved by the editor, a reflow or the placement engine. */
+  setPreviewLayerLocked: (layerId: string, locked: boolean) => void
+  /** Regions of the footage the overlays must not cover (customer-marked subject areas). */
+  setPreviewProtectedZones: (zones: ProtectedZone[]) => void
+  /**
+   * Applies placement-engine results. Locked layers are skipped; the layers are
+   * marked `recommended` (not `manual`), so a later recommendation may move them again.
+   * With `overrideManual`, hand-placed layers are replaced too (Restore Recommended Placement).
+   */
+  applyPreviewPlacements: (items: { layerId: string; x: number; y: number; scale?: number }[], options?: { overrideManual?: boolean }) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
    resetPreviewLayout: () => void
@@ -973,13 +995,26 @@ export type DemoPersonalizeContextValue = {
    activeRemotionDesignId: string | null
    /** Applies a design, or clears the applied design when given null. */
    setRemotionDesign: (designId: string | null) => void
+  /** Adds a design on top of the current layout (every existing layer is kept), instead of replacing it. */
+  addRemotionDesign: (designId: string) => void
+  /** Takes one design layer off the video, leaving the other layers. */
+  removePreviewDesignLayer: (layerId: string) => void
+  /** Undo / redo of edits to the preview (layers, designs, layout). */
+  undoPreview: () => void
+  redoPreview: () => void
+  canUndoPreview: boolean
+  canRedoPreview: boolean
    /** Why the last `setRemotionDesign` call failed, or null. */
    remotionDesignError: string | null
    previewApproved: boolean
   /** The approval was cleared by a later change (approve again). */
   approvalStale?: boolean
    approvePersonalization: () => void
-   createFinalVideo: () => Promise<void>
+   /**
+    * Creates the final video. `approveNow` is the customer pressing the create button in Advanced Editing, where the live
+    * preview sits beside the controls and there is no separate approve step: that click approves what is on screen.
+    */
+   createFinalVideo: (options?: { approveNow?: boolean }) => Promise<void>
    cancelExport: () => void
    apiKey: string
    setPreviewAudio: (file: File) => Promise<void>
@@ -1567,6 +1602,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Output / mode / options
   const [outputType, setOutputType] = useState<OutputType>('prompt')
   const [mode, setMode] = useState<VideoPersonalizationMode | ImagePersonalizationMode | null>(null)
+  // The customer opened "Generate with AI" but has not picked a mode yet.
+  const [aiChosen, setAiChosen] = useState(false)
   const [genOptions, setGenOptions] = useState<GenerationOptions>({ ...EMPTY_GENERATION_OPTIONS })
   // Read when a recast is applied ("Keep the original video's sound").
   const preserveAudioRef = useRef(true)
@@ -1797,7 +1834,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const lastRunWasFinalVideoRef = useRef(false)
   /** Object URL of the last layered video, revoked when a newer one replaces it. */
   const lastLayeredVideoUrlRef = useRef<string | null>(null)
-  const createFinalVideoRef = useRef<(() => Promise<void>) | null>(null)
+  const createFinalVideoRef = useRef<((options?: { approveNow?: boolean }) => Promise<void>) | null>(null)
 
   // Guards async uploads against writing state (and revoking blobs) after the
   // provider has unmounted, which would double-revoke blobs released on unmount.
@@ -5321,7 +5358,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // A full presenter clip made silent for "Keep the original video's
           // sound" only gets that sound back in the layered render; without it
           // the clip is silent, so it isn't offered as the finished video.
-          publishUrl: soundMissing ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
+          // A clip that lacks the layers the customer approved is never offered for publishing.
+          publishUrl: soundMissing || (burnInLayers && !burned && genResult.type === 'video') ? '' : burned ? (layeredStored ? storedUrl : '') : finalUrl,
+          // Three independent outcomes, so one failing never reads as the others failing:
+          //  generation (the AI clip), render (the approved layers added in this browser), cloudSave (the stored copy).
+          exportStatus: {
+            generation: 'ok',
+            render: !burnInLayers || genResult.type !== 'video' ? 'not-needed' : burned ? 'ok' : 'failed',
+            cloudSave: !burned ? 'not-needed' : layeredStored ? 'saved' : 'failed',
+          },
           ...(soundMissing ? { soundMissing: true } : {}),
           ...(layersNote || soundMissing || exportWarning || savedCopyMissingLayers
             ? {
@@ -5518,15 +5563,155 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current))
   }, [])
 
+  const addRemotionDesign = useCallback((designId: string) => {
+    markSessionStarted()
+    if (!getRemotionDesignTemplate(designId)) {
+      remotionDesignErrorIdRef.current = designId
+      setRemotionDesignError(`That design is not available.`)
+      return
+    }
+    remotionDesignErrorIdRef.current = null
+    setRemotionDesignError(null)
+    setPreviewSettings((prev) => addDesignTemplate(prev, designId, previewSeedRef.current))
+  }, [])
+
+  const removePreviewDesignLayer = useCallback((layerId: string) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => removeDesignLayer(prev, layerId))
+  }, [])
+
+  // ── Undo / redo for edits to the preview ─────────────────────────────────
+  // Every change to the preview settings (a drag, a text edit, applying or replacing a design…) is one history
+  // step; rapid-fire changes (a drag, typing) within 600 ms coalesce so one Undo takes back the whole gesture.
+  const historyRef = useRef<{ past: PersonalizationPreviewSettings[]; future: PersonalizationPreviewSettings[]; last: PersonalizationPreviewSettings | null; applying: boolean; lastPush: number; sourceId: string | null }>(
+    { past: [], future: [], last: null, applying: false, lastPush: 0, sourceId: null },
+  )
+  const [, setHistoryTick] = useState(0)
+  useEffect(() => {
+    const h = historyRef.current
+    const sourceId = source?.id ?? null
+    if (h.sourceId !== sourceId) { h.past = []; h.future = []; h.last = previewSettings; h.sourceId = sourceId; setHistoryTick((t) => t + 1); return }
+    if (h.applying) { h.applying = false; h.last = previewSettings; return }
+    if (h.last === null || h.last === previewSettings) { h.last = previewSettings; return }
+    const now = Date.now()
+    if (now - h.lastPush > 600) {
+      h.past.push(h.last)
+      if (h.past.length > 50) h.past.shift()
+    }
+    h.lastPush = now
+    h.future = []
+    h.last = previewSettings
+    setHistoryTick((t) => t + 1)
+  }, [previewSettings, source?.id])
+  const undoPreview = useCallback(() => {
+    const h = historyRef.current
+    const prev = h.past.pop()
+    if (!prev || !h.last) return
+    h.future.push(h.last)
+    h.applying = true
+    h.lastPush = 0
+    setPreviewSettings(prev)
+    setHistoryTick((t) => t + 1)
+  }, [])
+  const redoPreview = useCallback(() => {
+    const h = historyRef.current
+    const next = h.future.pop()
+    if (!next || !h.last) return
+    h.past.push(h.last)
+    h.applying = true
+    h.lastPush = 0
+    setPreviewSettings(next)
+    setHistoryTick((t) => t + 1)
+  }, [])
+
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
+    markSessionStarted()
+    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
+    setPreviewSettings((prev) => ({
+      ...prev,
+      layers: prev.layers.map((layer) => {
+        if (layer.id !== layerId) return layer
+        // A locked layer does not move or resize until it is unlocked.
+        if (layer.locked && touchesGeometry && patch.locked !== false) return layer
+        // A geometry edit through here is the customer's own: the placement
+        // engine must never move the layer on its own afterwards.
+        const source = touchesGeometry && patch.placementSource === undefined ? { placementSource: 'manual' as const } : {}
+        return clampPreviewLayer({ ...layer, ...patch, ...source })
+      }),
+    }))
+  }, [])
+
+  // Measure each ASSIGNED image once (aspect ratio, transparent corners, an existing frame)
+  // and keep the result in the shared preview settings, so the gallery card, editor,
+  // preview and export all style the same image identically. Files are never modified.
+  const measuredImageUrlsRef = useRef<Set<string>>(new Set())
+  const assignedImageUrlsKey = [
+    assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url,
+    assets.products?.[0]?.uploadedUrl || assets.products?.[0]?.url,
+    assets.products?.[1]?.uploadedUrl || assets.products?.[1]?.url,
+    ...previewSettings.layers.map((l) => l.imageUrl),
+  ]
+    .filter((u): u is string => typeof u === 'string' && u.length > 0)
+    .join('|')
+  useEffect(() => {
+    const urls = (assignedImageUrlsKey ? assignedImageUrlsKey.split('|') : []).filter(
+      (u) => !measuredImageUrlsRef.current.has(u) && !previewSettings.imageHints?.[u],
+    )
+    if (!urls.length) return
+    urls.forEach((u) => measuredImageUrlsRef.current.add(u))
+    // No stale-result guard: the merge is idempotent, and a URL is only measured once.
+    void measureImageHints(urls).then((measured) => {
+      if (!Object.keys(measured).length) return
+      setPreviewSettings((prev) => ({ ...prev, imageHints: { ...(prev.imageHints ?? {}), ...measured } }))
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedImageUrlsKey])
+
+  const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
     markSessionStarted()
     setPreviewSettings((prev) => ({
       ...prev,
-      layers: prev.layers.map((layer) =>
-        layer.id === layerId ? clampPreviewLayer({ ...layer, ...patch }) : layer,
-      ),
+      layers: prev.layers.map((layer) => {
+        if (layer.id !== layerId) return layer
+        const next = { ...layer }
+        if (locked) next.locked = true
+        else delete next.locked
+        return next
+      }),
     }))
   }, [])
+
+  const setPreviewProtectedZones = useCallback((zones: ProtectedZone[]) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => {
+      const next = { ...prev }
+      if (zones.length) next.protectedZones = zones
+      else delete next.protectedZones
+      return next
+    })
+  }, [])
+
+  const applyPreviewPlacements = useCallback(
+    (items: { layerId: string; x: number; y: number; scale?: number }[], options?: { overrideManual?: boolean }) => {
+      markSessionStarted()
+      setPreviewSettings((prev) => ({
+        ...prev,
+        layers: prev.layers.map((layer) => {
+          const item = items.find((i) => i.layerId === layer.id)
+          if (!item || layer.locked) return layer
+          if (layer.placementSource === 'manual' && !options?.overrideManual) return layer
+          return clampPreviewLayer({
+            ...layer,
+            x: item.x,
+            y: item.y,
+            scale: item.scale ?? layer.scale,
+            placementSource: 'recommended',
+          })
+        }),
+      }))
+    },
+    [],
+  )
 
   const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
     markSessionStarted()
@@ -5540,11 +5725,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
       markSessionStarted()
       setPreviewSettings((prev) => {
-        const next = { ...prev, ...patch }
+        let next = { ...prev, ...patch }
         if (patch.aspectRatio) {
           const dimensions = getCompositionDimensions(patch.aspectRatio)
           next.width = dimensions.width
           next.height = dimensions.height
+          // Untouched layout layers follow the new shape's default geometry;
+          // anything the customer moved or resized is left exactly where it is.
+          next = reflowLayersForAspect(next, prev.aspectRatio, patch.aspectRatio)
         }
         return next
       })
@@ -5570,6 +5758,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const chooseMode = useCallback((next: VideoPersonalizationMode | ImagePersonalizationMode | null) => {
     markSessionStarted()
     setMode(next)
+  }, [markSessionStarted])
+
+  const creationMethod: 'browser' | 'ai' = aiChosen || chooseFinalOutputPath({ personalizationMode: mode || null }) === 'ai-generation' ? 'ai' : 'browser'
+  const setCreationMethod = useCallback((method: 'browser' | 'ai') => {
+    markSessionStarted()
+    if (method === 'browser') { setAiChosen(false); setMode(null) } else setAiChosen(true)
   }, [markSessionStarted])
 
   const updateGenOptions = useCallback((patch: Partial<GenerationOptions>) => {
@@ -5616,8 +5810,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [previewApproved, approvalSignature])
 
-  const createFinalVideo = useCallback(async () => {
+  const createFinalVideo = useCallback(async (options?: { approveNow?: boolean }) => {
     lastRunWasFinalVideoRef.current = true
+    const approved = previewApproved || options?.approveNow === true
     // Overlay-only personalizations (branding on the EXISTING selected video)
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
@@ -5678,7 +5873,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // @remotion/web-renderer — no server, no worker, no storage upload. The
     // flow requires an approved preview first, and the approved state is
     // snapshotted at call time so later edits cannot leak into the export.
-    if (!previewApproved) {
+    if (!approved) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
         status: 'error',
@@ -5686,6 +5881,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       })
       return
     }
+
+    if (options?.approveNow && !previewApproved) { setApprovalStale(false); setPreviewApproved(true) }
 
     // Snapshot the approved composition: the user may keep editing while the
     // render runs, and the export must stay the approved one.
@@ -6133,6 +6330,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setOutputType: chooseOutputType,
     mode,
     setMode: chooseMode,
+    creationMethod,
+    setCreationMethod,
     genOptions,
     updateGenOptions,
     consent,
@@ -6188,12 +6387,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo,
     setPreviewLayout,
     updatePreviewLayer,
+    setPreviewLayerLocked,
+    setPreviewProtectedZones,
+    applyPreviewPlacements,
     updatePreviewBrandColors,
     updatePreviewComposition,
     resetPreviewLayout,
     remotionDesignTemplates,
     activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
     setRemotionDesign,
+    addRemotionDesign,
+    removePreviewDesignLayer,
+    undoPreview,
+    redoPreview,
+    canUndoPreview: historyRef.current.past.length > 0,
+    canRedoPreview: historyRef.current.future.length > 0,
     remotionDesignError,
     previewApproved,
     approvalStale,

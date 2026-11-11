@@ -174,6 +174,9 @@ export function useRecastJob({
   }, [])
 
   const start = useCallback(async (input: StartRecastInput) => {
+    // A recast is a paid AI call: never start a second one while one is already running
+    // (a double click, or the same job started from Simple Mode and Advanced Editing).
+    if (jobRef.current?.status === 'running') return
     stop(jobRef.current?.id)
     const created = createRecastJob(input)
     const controller = controllerFor(created.id)
