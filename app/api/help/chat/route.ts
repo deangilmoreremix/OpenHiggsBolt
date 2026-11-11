@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   // retrieval: last question plus the previous user turn for follow-ups
   const prevUser = [...turns].slice(0, -1).reverse().find((t) => t.role === 'user');
   const hits = search(await getIndex(), `${last.content} ${prevUser && last.content.split(/\s+/).length < 6 ? prevUser.content : ''}`, { studioId, limit: 6 });
-  const sources = hits.map((h, i) => ({ id: `S${i + 1}`, title: h.chunk.title, url: h.chunk.url, kind: h.chunk.kind }));
+  const sources = hits.map((h, i) => ({ id: `S${i + 1}`, title: h.chunk.title, url: h.chunk.url, kind: h.chunk.kind, ...(h.chunk.guideUrl ? { guideUrl: h.chunk.guideUrl } : {}) }));
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({

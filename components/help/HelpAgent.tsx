@@ -8,6 +8,8 @@ export interface HelpSource {
   id: string;
   title: string;
   url: string;
+  /** Studio sources: the Academy step-by-step guide for that studio. */
+  guideUrl?: string;
   kind: 'studio' | 'academy' | 'reseller' | 'app';
 }
 interface Msg {
@@ -224,7 +226,12 @@ export default function HelpAgent({
                           <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>{cited.length ? 'Sources' : 'Related pages'}</p>
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {list.map((s) => (
-                              <a key={s.id} href={s.url} className="rounded-full border px-2.5 py-1 text-[11px] font-semibold" style={{ borderColor: 'rgba(34,211,238,0.3)', color: colors.primary }}>{s.title}</a>
+                              <React.Fragment key={s.id}>
+                                <a href={s.url} className="rounded-full border px-2.5 py-1 text-[11px] font-semibold" style={{ borderColor: 'rgba(34,211,238,0.3)', color: colors.primary }}>{s.kind === 'studio' ? `Open: ${s.title}` : s.title}</a>
+                                {s.guideUrl && (
+                                  <a href={s.guideUrl} className="rounded-full border px-2.5 py-1 text-[11px] font-semibold" style={{ borderColor: 'rgba(168,85,247,0.4)', color: '#c4b5fd' }}>Academy guide</a>
+                                )}
+                              </React.Fragment>
                             ))}
                           </div>
                         </div>

@@ -9,6 +9,8 @@ export interface HelpChunk {
   studioId: string | null;
   title: string;
   url: string;
+  /** Studio chunks: the Academy "Create with <studio>" guide. */
+  guideUrl?: string;
   text: string;
 }
 

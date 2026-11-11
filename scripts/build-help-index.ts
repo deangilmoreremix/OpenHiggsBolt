@@ -3,8 +3,8 @@
  * "Ask SmartVideo" help agent. Run: npx tsx scripts/build-help-index.ts
  *
  * Sources (all real content already in the repo; nothing is invented here):
- *   - src/data/studioKnowledgeBase.json       -> kind "studio"   (url = studio route)
- *   - src/content/academy/** /*.md            -> kind "academy"  (url = /academy)
+ *   - src/data/studioKnowledgeBase.json       -> kind "studio"   (url = real studio route, guideUrl = Academy "Create with" guide)
+ *   - src/content/academy/** /*.md            -> kind "academy"  (url = /academy?track=T&lesson=SLUG deep link)
  *   - src/content/resellerAcademy             -> kind "reseller" (url = /academy/reseller/launch?lesson=ID)
  *   - src/data/resellerAppFacts.json          -> kind "app"      (url = /academy/reseller/apps/ID)
  *   - studio tab directory                    -> kind "studio"   (so every studio can be pointed to)
@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MODULES } from '../src/content/resellerAcademy';
+import { ACADEMY_STUDIO_GUIDES, academyStudioUrl, academyTrackUrl, getStudioGuide } from '../src/data/academyStudioGuides';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rd = (p: string) => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -26,6 +27,8 @@ export interface HelpChunk {
   studioId: string | null;
   title: string;
   url: string;
+  /** For studio chunks: the Academy "Create with <studio>" guide. */
+  guideUrl?: string;
   text: string;
 }
 
@@ -75,36 +78,56 @@ const STUDIO_GROUPS: [string, string[]][] = [
   ['Workflows and use cases', ['exampleWorkflows', 'useCases', 'targetCustomers', 'contentTypes', 'relatedStudioGuidance', 'academyGuidance']],
 ];
 const kb = JSON.parse(rd('src/data/studioKnowledgeBase.json')).studios as Record<string, unknown>[];
+const GUIDES = ACADEMY_STUDIO_GUIDES;
 for (const s of kb) {
+  const g = getStudioGuide(String(s.id));
+  if (!g) continue; // not a studio the Academy teaches (e.g. an old KB id)
+  s.route = g.route; // the manifest holds the real, current route
+  s.name = g.label;
   for (const [group, fields] of STUDIO_GROUPS) {
     const body = fields.map((f) => render(s[f], f)).filter(Boolean).join('\n');
     split(body).forEach((t, i, arr) =>
       push({
         id: `studio:${s.id}:${group.toLowerCase().replace(/\W+/g, '-')}${arr.length > 1 ? `-${i + 1}` : ''}`,
         kind: 'studio', studioId: String(s.id),
-        title: `${s.name} — ${group}`, url: String(s.route),
+        title: `${s.name} — ${group}`, url: String(s.route), guideUrl: academyStudioUrl(String(s.id)),
         text: `${s.name} (${s.route}). ${group}.\n${t}`,
       }),
     );
   }
-  if (s.glossary) push({ id: `studio:${s.id}:glossary`, kind: 'studio', studioId: String(s.id), title: `${s.name} — Glossary`, url: String(s.route), text: render(s.glossary, 'Glossary') });
+  if (s.glossary) push({ id: `studio:${s.id}:glossary`, kind: 'studio', studioId: String(s.id), title: `${s.name} — Glossary`, url: String(s.route), guideUrl: academyStudioUrl(String(s.id)), text: render(s.glossary, 'Glossary') });
 }
 
-// Directory of every studio tab so the agent can always point somewhere real.
-const shell = rd('components/StandaloneShell.js');
-const tabs = [...shell.slice(shell.indexOf('const TABS'), shell.indexOf('function SignOutButton')).matchAll(/id: '([^']+)',\s*label: '([^']+)'/g)].map((m) => ({ id: m[1], label: m[2] }));
-const kbIds = new Set(kb.map((s) => String(s.id)));
-const routeOf = (id: string) => (id === 'apps' ? '/studio/apps' : id === 'brand-studio' ? '/brand-studio' : `/studio/${id}`);
+// Directory of every studio, plus per-studio "Academy guide" chunks, from the manifest.
+const kbIds = new Set(kb.map((x) => String(x.id)));
 push({
-  id: 'studio:directory', kind: 'studio', studioId: null, title: 'All studios in SmartVideo GO AI', url: '/studio',
-  text: 'Studios available in SmartVideo GO AI:\n' + tabs.map((t) => `- ${t.label}: ${routeOf(t.id)}`).join('\n'),
+  id: 'studio:directory', kind: 'studio', studioId: null, title: 'All studios in SmartVideo GO AI', url: '/studio', guideUrl: '/academy?view=studio-reference',
+  text: 'Studios available in SmartVideo GO AI (open the studio, or open its step-by-step Academy guide):\n' + GUIDES.map((g) => `- ${g.label}: ${g.route} (Academy guide: ${academyStudioUrl(g.id)})`).join('\n'),
 });
-for (const t of tabs) {
-  if (kbIds.has(t.id)) continue;
+
+/** Track titles come from each track's first lesson heading ("# Track 7 — Title"). */
+const academyRootForTitles = path.join(ROOT, 'src/content/academy');
+const trackTitle = (slug: string): string => {
+  try {
+    const dir = path.join(academyRootForTitles, slug, 'lessons');
+    const first = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort()[0];
+    const h1 = fs.readFileSync(path.join(dir, first), 'utf8').match(/^#\s+(.+)$/m)?.[1] ?? slug;
+    return h1.replace(/^Track\s+\d+\s*[:—-]\s*/i, '').trim();
+  } catch { return slug; }
+};
+
+for (const g of GUIDES) {
+  const courses = g.tracks.map((t) => `${trackTitle(t)} (${academyTrackUrl(t)})`).join('; ');
   push({
-    id: `studio:${t.id}:directory`, kind: 'studio', studioId: t.id, title: t.label, url: routeOf(t.id),
-    text: `${t.label} is a studio in SmartVideo GO AI, opened at ${routeOf(t.id)}. Detailed how-to documentation for this studio has not been written yet; open it from the studio list to explore.`,
+    id: `studio:${g.id}:academy-guide`, kind: 'studio', studioId: g.id, title: `${g.label} — Academy guide`, url: g.route, guideUrl: academyStudioUrl(g.id),
+    text: `${g.label}: ${g.tagline} Open it at ${g.route}. Step-by-step "Create with ${g.label}" guide in the Academy: ${academyStudioUrl(g.id)}.${courses ? ` Related Academy courses: ${courses}.` : ''}`,
   });
+  if (!kbIds.has(g.id)) {
+    push({
+      id: `studio:${g.id}:directory`, kind: 'studio', studioId: g.id, title: g.label, url: g.route, guideUrl: academyStudioUrl(g.id),
+      text: `${g.label} is a studio in SmartVideo GO AI, opened at ${g.route}. Detailed how-to documentation for this studio has not been written yet.`,
+    });
+  }
 }
 
 /* ------------------------------ academy ------------------------------ */
@@ -125,7 +148,8 @@ for (const track of fs.readdirSync(academyRoot).sort()) {
           push({
             id: `academy:${track}:${kind}:${file.replace(/\.md$/, '')}:${si}-${i}`,
             kind: 'academy', studioId: null,
-            title: `${h1}${heading ? ` — ${heading}` : ''}`, url: '/academy',
+            title: `${h1}${heading ? ` — ${heading}` : ''}`,
+            url: kind === 'lessons' ? academyTrackUrl(track, file.replace(/\.md$/, '')) : academyTrackUrl(track),
             text: `Academy ${kind === 'templates' ? 'template' : 'lesson'}: ${h1}${heading ? ` / ${heading}` : ''}.\n${t}`,
           }),
         );
