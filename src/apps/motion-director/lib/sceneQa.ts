@@ -18,7 +18,7 @@ export const CONTENT_PROPS = ['screens', 'crops', 'texts', 'adaptedCode', 'adapt
 
 const stemOf = (c: ClipData) => (c.cardId.startsWith('demo:') ? c.cardId.slice(5) : '');
 /** Camera shots move INTO the picture: it fills the frame by design, so it is not "cut off" (judged visually instead). */
-const fillsFrameOf = (stem: string) => MOTION_TEMPLATES.find((t) => t.componentName === stem)?.category === 'camera';
+const fillsFrameOf = (stem: string) => MOTION_TEMPLATES.find((t) => t.componentName === stem)?.category === 'camera' || stem === 'SpotlightHeroCard';
 
 /** The clip alone, at the start of its own project (so a frame of it shows nothing else). */
 export function soloProject(project: ProjectData, clip: ClipData, plain: boolean): ProjectData {

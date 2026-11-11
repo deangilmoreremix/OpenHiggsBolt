@@ -226,7 +226,9 @@ export async function storyboardFilm(
   // Create without AI: the program builds the storyboard from the captured material and the recipe contracts. No model call is made.
   if (opts.template === 'local') {
     const target = Math.max(PLAN_LIMITS.minFilmSec, planSec);
-    const { picks, skipped } = chooseLocalShots({ kind: brief.kind, material, count: req.recipes.length || localShotCount(target) });
+    const sitePal0 = capture ? paletteFromBrand(capture.brand) : null;
+    const ground0: 'dark' | 'light' | null = sitePal0 ? (luma(sitePal0.page) < 0.5 ? 'dark' : 'light') : null;
+    const { picks, skipped } = chooseLocalShots({ kind: brief.kind, material, count: req.recipes.length || localShotCount(target), ground: ground0 });
     const shots = req.recipes.length ? req.recipes : picks.map((p) => p.template);
     log(`Without AI · chose ${shots.length} shots the contracts say show this business: ${shots.map((t) => t.nameEn).join(', ') || 'none'}`, 'done');
     for (const sk of skipped.slice(0, 6)) log(`Without AI · not used: ${shotName(sk.stem)} (${sk.why})`, 'done');

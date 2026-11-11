@@ -34,7 +34,7 @@ const measured = (stem: string) => ['tested', 'not-applicable'].includes(recipeC
 export interface LocalPick { template: MotionTemplate; why: string }
 
 /** The shots a no-AI film uses, in film order, and why each qualified. Fewer than asked when the material does not support more. */
-export function chooseLocalShots(opts: { kind: BusinessKind; material: Material; count: number }): { picks: LocalPick[]; skipped: Array<{ stem: string; why: string }> } {
+export function chooseLocalShots(opts: { kind: BusinessKind; material: Material; count: number; /** The film's look family (the site's ground): a recipe designed for the other family is not chosen (shot-card rule: one look). */ ground?: 'dark' | 'light' | null }): { picks: LocalPick[]; skipped: Array<{ stem: string; why: string }> } {
   const picks: LocalPick[] = [];
   const skipped: Array<{ stem: string; why: string }> = [];
   const unique = MOTION_TEMPLATES.filter((m, k, all) => all.findIndex((x) => x.componentName === m.componentName) === k);
@@ -49,6 +49,7 @@ export function chooseLocalShots(opts: { kind: BusinessKind; material: Material;
     if (!measured(stem)) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: `not measured to show the business's material (${recipeContract(stem).personalizable})` }); continue; }
     const fit = suitableFor(stem, opts.kind, opts.material);
     if (!fit.ok) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: fit.why ?? 'material missing' }); continue; }
+    if (opts.ground && rules.polarity && rules.polarity !== opts.ground) { if (PREFERRED.includes(stem)) skipped.push({ stem, why: `a ${rules.polarity} look in a ${opts.ground} film` }); continue; }
     const { need } = needsOf(stem);
     // A shot with nothing of the person's to show (pure motion) is not a promo of the business.
     if (need === 'abstract' || need === 'none') continue;
