@@ -22,7 +22,7 @@ const PRESENTATIONS = [
   () => iris({ width: 720, height: 1280 }),
 ];
 
-export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = null, transitionFrames = 10, keepClipAudio = false, clipVolume = 1 }) {
+export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = null, transitions = [], keepClipAudio = false, clipVolume = 1 }) {
   const items = [];
   clips.forEach((clip, i) => {
     items.push(
@@ -38,6 +38,7 @@ export function ZackDComposition({ clips = [], narrationUrl = null, musicUrl = n
         </AbsoluteFill>
       </TransitionSeries.Sequence>,
     );
+    const transitionFrames = transitions[i] || 0;
     if (i < clips.length - 1 && transitionFrames > 0) {
       items.push(
         <TransitionSeries.Transition

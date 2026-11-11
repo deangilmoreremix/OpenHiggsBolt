@@ -37,7 +37,7 @@ describe('ZackD studio', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Approve keyframes' }).disabled).toBe(false));
     const kf = calls.filter(([k, p]) => k === 'image' && p.aspect_ratio === '9:16');
     expect(kf).toHaveLength(5);
-    expect(kf[0][1].prompt).toContain('Friendly stylized 3D character'); // character anchor reaches the keyframe prompt
+    expect(kf[0][1].prompt).toContain('Anchored on character sheet refs: main_character'); // upstream's anchor sentence
     click('Approve keyframes');
     click(/Generate 5 clip/);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Continue to audio' }).disabled).toBe(false));
@@ -53,7 +53,7 @@ describe('ZackD studio', () => {
     await waitFor(() => expect(renderFinalCut).toHaveBeenCalled());
     const arg = renderFinalCut.mock.calls[0][0];
     expect(arg.shots).toHaveLength(5);
-    expect(arg.shots[1]).toMatchObject({ duration: 3, zoom: true });
+    expect(arg.shots[1]).toMatchObject({ planned: 3, zoom: true });
     expect(arg.narrationUrl).toMatch(/aud-/);
     await waitFor(() => expect(screen.getByRole('button', { name: /Download video/ })).toBeTruthy());
   });

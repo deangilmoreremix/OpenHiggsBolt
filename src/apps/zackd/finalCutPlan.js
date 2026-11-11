@@ -9,17 +9,34 @@ export const CLIP_VOLUME_UNDER_NARRATION = 0.25; // about -12 dB: the Veo sound 
 /** Level for the clips' own audio: full when it is the only sound, ducked when narration is present. */
 export const clipVolumeFor = (hasNarration) => (hasNarration ? CLIP_VOLUME_UNDER_NARRATION : 1);
 
-/** @param {{ src: string, duration: number, zoom?: boolean }[]} shots */
-export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC, keepClipAudio = true, hasNarration = false } = {}) {
+/**
+ * Frame plan for the cut, following upstream assemble.py: every clip is used at its REAL length (`duration`) and its
+ * own audio is kept at full level; transitions overlap clips by min(transition, clip, timeline) like upstream's xfade.
+ * Our extensions: `trimToPlanned` cuts each clip to `planned`, `mixVoice` adds narration/music (clip sound ducked).
+ * @param {{ src: string, duration: number, planned?: number, zoom?: boolean }[]} shots
+ */
+export function planFinalCut(shots, { fps = FPS, transitionSec = TRANSITION_SEC, keepClipAudio = true, mixVoice = false, hasNarration = false, trimToPlanned = false } = {}) {
   if (!Array.isArray(shots) || !shots.length) throw new Error('No clips to assemble.');
-  const transitionFrames = shots.length > 1 ? Math.max(0, Math.round(transitionSec * fps)) : 0;
-  const clips = shots.map((s, i) => {
-    const frames = Math.round(s.duration * fps);
-    if (frames <= transitionFrames) throw new Error(`Clip ${i + 1} is too short for the transition.`);
-    return { src: s.src, frames, zoom: !!s.zoom };
+  const seconds = shots.map((s, i) => {
+    const real = Number(s.duration);
+    if (!(real > 0)) throw new Error(`Clip ${i + 1} has no usable duration.`);
+    return trimToPlanned && s.planned > 0 ? Math.min(real, s.planned) : real;
   });
-  const durationInFrames = clips.reduce((n, c) => n + c.frames, 0) - (clips.length - 1) * transitionFrames;
-  return { clips, transitionFrames, durationInFrames, fps, width: WIDTH, height: HEIGHT, keepClipAudio: !!keepClipAudio, clipVolume: clipVolumeFor(hasNarration) };
+  const clips = shots.map((s, i) => ({ src: s.src, frames: Math.max(1, Math.round(seconds[i] * fps)), zoom: !!s.zoom }));
+  const transitions = [];
+  let timeline = seconds[0];
+  for (let i = 1; i < clips.length; i += 1) {
+    const d = Math.min(transitionSec, seconds[i], timeline); // upstream's rule
+    // Remotion needs a transition shorter than both neighbouring sequences.
+    const frames = Math.max(0, Math.min(Math.round(d * fps), clips[i - 1].frames - 1, clips[i].frames - 1));
+    transitions.push(frames);
+    timeline += seconds[i] - d;
+  }
+  const durationInFrames = clips.reduce((n, c) => n + c.frames, 0) - transitions.reduce((n, t) => n + t, 0);
+  return {
+    clips, transitions, durationInFrames, fps, width: WIDTH, height: HEIGHT,
+    keepClipAudio: !!keepClipAudio, mixVoice: !!mixVoice, clipVolume: mixVoice ? clipVolumeFor(hasNarration) : 1,
+  };
 }
 
 /** SRT captions, 6 words per cue, spread across each beat's on-screen window (no overlapping cues). */

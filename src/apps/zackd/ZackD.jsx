@@ -12,7 +12,7 @@ import * as muapi from 'studio/src/muapi.js';
 import { createJobs, pool } from './jobs.js';
 import {
   SEED_TOPICS, LOOKS, DEFAULT_LOOK, TTS_VOICES, DEFAULT_VOICE, DEFAULT_TTS_SPEED,
-  CAPTION_LANGUAGES, CAPTION_THEMES, DEFAULT_CAPTION_LANGUAGE, DEFAULT_CAPTION_THEME,
+  CAPTION_LANGUAGES, CAPTION_THEMES, DEFAULT_CAPTION_LANGUAGE, DEFAULT_CAPTION_THEME, DEFAULT_EXTRAS,
   starterBeatMap, characterSheetPrompt, keyframePrompt, clipPrompt, narrationText, allShots, totalDuration,
 } from './zackdPrompts.js';
 import { buildSrt } from './finalCutPlan.js';
@@ -25,7 +25,7 @@ const STAGES = [
   ['clips', 'Motion clips'], ['audio', 'Voice & music'], ['final', 'Final cut'],
 ];
 
-const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME, keepClipAudio: true });
+const blank = () => ({ stage: 'topic', topic: '', map: null, look: DEFAULT_LOOK, sheets: {}, shots: {}, voice: DEFAULT_VOICE, narration: null, music: null, captionLang: DEFAULT_CAPTION_LANGUAGE, captionTheme: DEFAULT_CAPTION_THEME, ...DEFAULT_EXTRAS });
 
 const labelStyle = { color: semantic.textLabel };
 const inputStyle = { ...panels.card, color: 'white' };
@@ -106,11 +106,11 @@ export default function ZackD({ apiKey, templateData }) {
   }
 
   const genSheet = async (sh) => {
-    const { url } = await jobs.image({ prompt: characterSheetPrompt(sh, { look: proj.current.look }), aspect: '16:9' });
+    const { url } = await jobs.image({ prompt: characterSheetPrompt(sh, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '16:9' });
     set((p) => ({ sheets: { ...p.sheets, [sh.id]: { url } } }));
   };
   const genKeyframe = async (shot) => {
-    const { url } = await jobs.image({ prompt: keyframePrompt(shot, sheets, { look: proj.current.look }), aspect: '9:16' });
+    const { url } = await jobs.image({ prompt: keyframePrompt(shot, sheets, { look: proj.current.look, boost: proj.current.consistencyBoost }), aspect: '9:16' });
     set((p) => ({ shots: { ...p.shots, [shot.shot_id]: { keyframe: url, clip: null } } }));
   };
   const genClip = async (shot) => {
@@ -121,11 +121,11 @@ export default function ZackD({ apiKey, templateData }) {
   };
   const genNarration = async () => {
     const { url } = await jobs.narration({ text: narrationText(proj.current.map), voice: proj.current.voice, speed: DEFAULT_TTS_SPEED });
-    set({ narration: url });
+    set({ narration: url, mixVoice: true }); // a generated voice goes into the cut unless switched off
   };
   const genMusic = async () => {
     const { url } = await jobs.music({ prompt: `Underscore for a short about: ${proj.current.topic}`, duration: Math.ceil(totalDuration(proj.current.map)) + 5 });
-    set({ music: url });
+    set({ music: url, mixVoice: true });
   };
 
   async function assemble() {
@@ -137,8 +137,8 @@ export default function ZackD({ apiKey, templateData }) {
     try {
       const { renderFinalCut } = await import('./finalCut.js'); // loads the renderer only when needed
       const out = await renderFinalCut({
-        shots: shots.map((s) => ({ src: project.shots[s.shot_id].clip, duration: s.duration_sec, zoom: s.zoom_impact })),
-        narrationUrl: project.narration, musicUrl: project.music, keepClipAudio: project.keepClipAudio !== false, signal: abort.current.signal,
+        shots: shots.map((s) => ({ src: project.shots[s.shot_id].clip, planned: s.duration_sec, zoom: s.zoom_impact })),
+        narrationUrl: project.narration, musicUrl: project.music, keepClipAudio: project.keepClipAudio !== false, mixVoice: !!project.mixVoice, trimToPlanned: !!project.trimToPlanned, signal: abort.current.signal,
         onProgress: (p) => setProgress(`Rendering ${Math.round(p * 100)}%`),
       });
       if (out.ok) setCaptioned(null);
@@ -343,11 +343,18 @@ export default function ZackD({ apiKey, templateData }) {
   const viewFinal = (
     <>
       <Section title="Final cut" hint="Rendered in your browser: transitions between shots, impact zooms, narration with music ducked underneath. It can take a minute or two.">
-        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: semantic.textSecondary }}>
-          <input type="checkbox" id="zackd-keep-clip-audio" checked={project.keepClipAudio !== false} onChange={(e) => set({ keepClipAudio: e.target.checked })} />
-          <span>Keep the clips' own sound (Veo audio), quieter under narration</span>
-        </label>
-        {!project.narration && <p className="text-xs" style={{ color: semantic.textMuted }}>{project.keepClipAudio === false ? 'No narration and clip sound is off, so the video will be silent.' : "No narration yet. The cut will use the clips' own sound."}</p>}
+        {/* Upstream-faithful by default: each clip at its real length with its own sound, no narration/music mix. */}
+        {[
+          ['keepClipAudio', 'zackd-keep-clip-audio', "Keep the clips' own sound (Veo audio)", project.keepClipAudio !== false],
+          ['mixVoice', 'zackd-mix-voice', 'Mix in the narration and music I generated (extra, not in upstream)', !!project.mixVoice],
+          ['trimToPlanned', 'zackd-trim-planned', 'Trim each clip to its planned 2-4 s shot length (extra)', !!project.trimToPlanned],
+        ].map(([key, id, label, checked]) => (
+          <label key={id} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: semantic.textSecondary }}>
+            <input type="checkbox" id={id} checked={checked} onChange={(e) => set({ [key]: e.target.checked })} />
+            <span>{label}</span>
+          </label>
+        ))}
+        {!project.narration && <p className="text-xs" style={{ color: semantic.textMuted }}>{project.keepClipAudio === false ? 'Clip sound is off and nothing is mixed in, so the video will be silent.' : "The cut uses the clips' own sound, like upstream."}</p>}
         <div className="flex gap-2 flex-wrap">
           <button className={BTN_MAIN} style={buttons.primary} disabled={busy} onClick={assemble}>{final ? 'Re-render' : 'Render video'}</button>
           {busy && abort.current && <button className={BTN} style={buttons.ghost} onClick={() => abort.current?.abort()}>Cancel</button>}
