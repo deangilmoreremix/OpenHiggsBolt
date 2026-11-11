@@ -188,7 +188,7 @@ export default function ReviewPublishStep({
               return (
                 <div
                   key={rid}
-                  className="flex items-center justify-between gap-3 p-2 rounded-lg"
+                  className="flex flex-wrap items-center justify-between gap-3 p-2 rounded-lg"
                   style={{
                     background: 'rgba(255,255,255,0.03)',
                     border: '1px solid rgba(255,255,255,0.06)',
@@ -206,7 +206,7 @@ export default function ReviewPublishStep({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {isFailed && r.error && (
-                      <span className="text-[10px] text-red-400/80 max-w-[220px] truncate" title={r.error}>
+                      <span className="text-[10px] text-red-400/80 max-w-[340px] text-right leading-snug">
                         {r.error}
                       </span>
                     )}
@@ -237,6 +237,12 @@ export default function ReviewPublishStep({
             })}
           </div>
         </div>
+      )}
+
+      {publishResults.some((r) => r.status === 'failed' && /disconnected|not found/i.test(r.error || '')) && (
+        <p className="text-[11px] text-white/50">
+          To reconnect an account, go Back to Destinations, click Connect for that platform, finish signing in and click Refresh, then click Retry here.
+        </p>
       )}
 
       {!publishing && pendingToPublish.length > 0 && (
