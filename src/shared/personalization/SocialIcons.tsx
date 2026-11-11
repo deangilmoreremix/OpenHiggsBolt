@@ -38,29 +38,55 @@ const PATHS: Record<SocialNetwork, string> = {
   tiktok: 'M12.5 0h3.400c.2 1.800 1.200 3.500 2.700 4.600 1 .7 2.100 1.100 3.400 1.200v3.500c-1.600 0-3.100-.5-4.400-1.300v7.500c0 3.800-3 6.800-6.800 6.800S4 19.300 4 15.500s3-6.800 6.800-6.800c.4 0 .7 0 1.100.1v3.600a3.300 3.300 0 1 0 .6 6.400c1.800-.2 1.700-1.400 1.700-3.200L12.500 0z',
 }
 
+const BRAND: Record<SocialNetwork, string> = {
+  facebook: '#1877F2', instagram: 'url(#', linkedin: '#0A66C2', youtube: '#FF0000', tiktok: '#FFFFFF',
+}
+
 export interface SocialIconsProps {
   links: SocialLinks
-  color?: string
+  /** Glyph size in px. Default 14: small enough to sit beside the 9px uppercase chips. */
   size?: number
   /** Business name, used in the accessible label ("Instagram page for Joe's"). */
   name?: string
 }
 
-export function SocialIcons({ links, color = 'currentColor', size = 16, name }: SocialIconsProps) {
+let gradientSeq = 0
+
+export function SocialIcons({ links, size = 14, name }: SocialIconsProps) {
   const items = ORDER.map((n) => ({ n, href: socialHref(n, links[n]) })).filter((x): x is { n: SocialNetwork; href: string } => !!x.href)
+  const [gid] = React.useState(() => `ig-grad-${++gradientSeq}`)
   if (!items.length) return null
   return (
-    <span data-testid="social-icons" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      {items.map(({ n, href }) => (
-        <a
-          key={n} href={href} target="_blank" rel="noopener noreferrer"
-          aria-label={name ? `${LABEL[n]} page for ${name}` : `${LABEL[n]} page`} title={`${LABEL[n]} page`}
-          data-network={n} onClick={(e) => e.stopPropagation()}
-          style={{ display: 'inline-flex', width: size + 8, height: size + 8, alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: `1px solid ${color}55`, color, background: `${color}14` }}
-        >
-          <svg viewBox="0 0 24 24" width={size - 2} height={size - 2} fill="currentColor" aria-hidden="true"><path d={PATHS[n]} transform={n === 'linkedin' ? 'translate(2.4 2.4) scale(0.8)' : undefined} /></svg>
-        </a>
-      ))}
+    <span data-testid="social-icons" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      {items.map(({ n, href }) => {
+        const fill = n === 'instagram' ? `url(#${gid})` : BRAND[n]
+        return (
+          <a
+            key={n} href={href} target="_blank" rel="noopener noreferrer"
+            aria-label={name ? `${LABEL[n]} page for ${name}` : `${LABEL[n]} page`} title={`${LABEL[n]} page`}
+            data-network={n} onClick={(e) => e.stopPropagation()}
+            style={{ display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}
+          >
+            <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+              {n === 'instagram' && (
+                <defs>
+                  <linearGradient id={gid} x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0" stopColor="#FEDA75" /><stop offset="0.28" stopColor="#FA7E1E" /><stop offset="0.5" stopColor="#D62976" />
+                    <stop offset="0.75" stopColor="#962FBF" /><stop offset="1" stopColor="#4F5BD5" />
+                  </linearGradient>
+                </defs>
+              )}
+              {n === 'tiktok' && (
+                <>
+                  <path d={PATHS[n]} fill="#25F4EE" transform="translate(-0.9 -0.9)" />
+                  <path d={PATHS[n]} fill="#FE2C55" transform="translate(0.9 0.9)" />
+                </>
+              )}
+              <path d={PATHS[n]} fill={fill} transform={n === 'linkedin' ? 'translate(2.4 2.4) scale(0.8)' : undefined} />
+            </svg>
+          </a>
+        )
+      })}
     </span>
   )
 }

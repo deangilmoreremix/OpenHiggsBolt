@@ -3103,7 +3103,7 @@ function ConfigurationView(props: any) {
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
-                          <SocialIcons name={business.name} color={C.cyan} links={{ facebook: business.facebook, instagram: business.instagram, linkedin: business.linkedin, youtube: business.youtube, tiktok: business.tiktok }} />
+                          <SocialIcons name={business.name} links={{ facebook: business.facebook, instagram: business.instagram, linkedin: business.linkedin, youtube: business.youtube, tiktok: business.tiktok }} />
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>

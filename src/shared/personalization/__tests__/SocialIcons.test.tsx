@@ -34,4 +34,18 @@ describe('<SocialIcons />', () => {
     const { container } = render(<SocialIcons links={{ facebook: 'https://x.com/nope' }} />)
     expect(container.firstChild).toBeNull()
   })
+  it('uses each network\'s brand colour, and a gradient for Instagram', () => {
+    const { container } = render(<SocialIcons links={{ facebook: 'a1', linkedin: 'a1', youtube: 'a1', instagram: 'a1', tiktok: 'a1' }} />)
+    const fills = (n: string) => [...container.querySelectorAll(`a[data-network="${n}"] path`)].map((p) => p.getAttribute('fill'))
+    expect(fills('facebook')).toEqual(['#1877F2'])
+    expect(fills('linkedin')).toEqual(['#0A66C2'])
+    expect(fills('youtube')).toEqual(['#FF0000'])
+    expect(fills('instagram')[0]).toMatch(/^url\(#ig-grad-\d+\)$/)
+    expect(container.querySelector('linearGradient')).toBeTruthy()
+    expect(fills('tiktok')).toEqual(['#25F4EE', '#FE2C55', '#FFFFFF'])
+  })
+  it('is compact: 14px by default', () => {
+    render(<SocialIcons links={{ facebook: 'a1' }} />)
+    expect(document.querySelector('svg')!.getAttribute('width')).toBe('14')
+  })
 })
