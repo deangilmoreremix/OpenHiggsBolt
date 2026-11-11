@@ -332,6 +332,14 @@ async function handle(req: NextRequest): Promise<Response> {
             sections: (Array.isArray(layout.sections) ? layout.sections : []).slice(0, 12),
             cards: (Array.isArray(layout.cards) ? layout.cards : []).slice(0, 24),
           },
+          liveLayout: body.liveLayout && typeof body.liveLayout === 'object'
+            ? {
+                pageH: Number((body.liveLayout as any).projects?.pageH) || null,
+                cards: (Array.isArray((body.liveLayout as any).projects?.cards) ? (body.liveLayout as any).projects.cards : []).slice(0, 12).map((c: any) => ({ file: str(c?.file, 24), x: Number(c?.x) || 0, y: Number(c?.y) || 0, w: Number(c?.w) || 0, h: Number(c?.h) || 0 })),
+                main: Number((body.liveLayout as any).projects?.main) || 0,
+                rows: (Array.isArray((body.liveLayout as any).detail?.rows) ? (body.liveLayout as any).detail.rows : []).slice(0, 6).map((c: any) => ({ x: Number(c?.x) || 0, y: Number(c?.y) || 0, w: Number(c?.w) || 0, h: Number(c?.h) || 0 })),
+              }
+            : null,
           slots: { screens: Math.min(Number(body.screens) || 0, 8), crops: Math.min(Number(body.crops) || 0, 24) },
           brand: { name: str(brand.name, 80), accent: str(brand.accent, 20), background: str(brand.background, 20), text: str(brand.text, 20), font: str(brand.font, 80) },
           site: siteContent(body.content),
