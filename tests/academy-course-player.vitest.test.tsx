@@ -56,7 +56,7 @@ describe('Learning Paths: a self-paced lesson', () => {
     expect(screen.getByText('Step by step')).toBeTruthy(); // the section label stays visible
   });
 
-  it('remembers where the learner left off and resumes at the same step after a reload', async () => {
+  it('a fresh visit with no deep link opens straight at the exact step the learner left off', async () => {
     const first = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
     await screen.findByText(/Step 1 of 5/);
     fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
@@ -64,23 +64,67 @@ describe('Learning Paths: a self-paced lesson', () => {
     await screen.findByText(/Step 3 of 5/);
     first.unmount();
     window.history.replaceState(null, '', '/academy');
-    // a fresh visit with no deep link: the Continue card brings them back to the exact step
     render(<AcademyCourse tracks={tracks} />);
+    expect(await screen.findByText(/Step 3 of 5/)).toBeTruthy();
+    expect(screen.getByText('Do one.')).toBeTruthy();
+    expect(screen.queryByTestId('continue-card')).toBeNull(); // already there
+  });
+
+  it('shows a Continue card to get back when the learner opened a different lesson', async () => {
+    const first = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
+    await screen.findByText(/Step 1 of 5/);
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    await screen.findByText(/Step 2 of 5/);
+    first.unmount();
+    // a link to another lesson in the same track
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '02-next' }} />);
     const card = await screen.findByTestId('continue-card');
     expect(within(card).getByText('Intro')).toBeTruthy();
     fireEvent.click(within(card).getByRole('button', { name: /Continue/ }));
-    expect(await screen.findByText(/Step 3 of 5/)).toBeTruthy();
-    expect(screen.getByText('Do one.')).toBeTruthy();
+    expect(await screen.findByText(/Step 2 of 5/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Intro' })).toBeTruthy();
+  });
+
+  it('Learning Paths and Build with AI each remember their own place', async () => {
+    const first = render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai', lesson: '01-start-free-accounts', s: '2-two' }} />);
+    await screen.findByText(/Step 4 of 5/);
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('academy-course-progress:v1')!).last[BUILD_WITH_AI_TRACK].stepId).toBe('2-two'));
+    first.unmount();
+    // visit Learning Paths and read a step there
+    window.history.replaceState(null, '', '/academy');
+    const paths = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
+    await screen.findByText(/Step 1 of 5/);
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    await screen.findByText(/Step 2 of 5/);
+    paths.unmount();
+    // the Build with AI course still remembers its own step
+    const saved = JSON.parse(localStorage.getItem('academy-course-progress:v1')!);
+    expect(saved.last[BUILD_WITH_AI_TRACK]).toMatchObject({ lessonId: `${BUILD_WITH_AI_TRACK}/01-start-free-accounts`, stepId: '2-two' });
+    expect(saved.last.ugc).toMatchObject({ lessonId: 'ugc/01-intro' });
+    render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai' }} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Continue where you left off/ }));
+    expect(await screen.findByText(/Step 4 of 5/)).toBeTruthy();
+  });
+
+  it('opening Learning Paths while mid-way through Build with AI does not move the Build place', async () => {
+    const first = render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai', lesson: '01-start-free-accounts', s: 'check-yourself' }} />);
+    await screen.findByText(/Step 5 of 5/);
+    first.unmount();
+    render(<AcademyCourse tracks={tracks} />); // lands on Learning Paths' default lesson
+    await screen.findByText(/Step 1 of 5/);
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('academy-course-progress:v1')!).last.ugc).toBeTruthy());
+    const saved = JSON.parse(localStorage.getItem('academy-course-progress:v1')!);
+    expect(saved.last[BUILD_WITH_AI_TRACK].stepId).toBe('check-yourself');
   });
 
   it('opening a lesson never overwrites the saved step with step 1 on the way in', async () => {
     const first = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: '2-two' }} />);
     await screen.findByText(/Step 4 of 5/);
-    await waitFor(() => expect(JSON.parse(localStorage.getItem('academy-course-progress:v1')!).lastStepId).toBe('2-two'));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('academy-course-progress:v1')!).last.ugc.stepId).toBe('2-two'));
     first.unmount();
     const writes: string[] = [];
     const setItem = Storage.prototype.setItem;
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) { if (k === 'academy-course-progress:v1') writes.push(JSON.parse(v).lastStepId); return setItem.call(this, k, v); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) { if (k === 'academy-course-progress:v1') writes.push(JSON.parse(v).last?.ugc?.stepId); return setItem.call(this, k, v); });
     render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
     await screen.findByText(/Step 4 of 5/);
     expect(writes).not.toContain('overview');
@@ -114,6 +158,16 @@ describe('Learning Paths: a self-paced lesson', () => {
     render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: 'check-yourself' }} />);
     expect(((await screen.findByLabelText('ready')) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText('set') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('Mark lesson complete is offered at the checklist, not only after optional sections', async () => {
+    const withTail = [LESSON, '', '## Common mistakes', '* Skipping a step.'].join('\n');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => String(url).includes('/api/academy/progress') ? new Response('{}', { status: 401 }) : new Response(JSON.stringify({ markdown: withTail }), { status: 200 })));
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: 'check-yourself' }} />);
+    await screen.findByText(/Step 5 of 6/);
+    expect(screen.getByRole('button', { name: /Next step/ })).toBeTruthy(); // more to read
+    fireEvent.click(screen.getByRole('button', { name: /Mark lesson complete/ }));
+    expect(await screen.findByText('Lesson complete ✓')).toBeTruthy();
   });
 
   it('marking a lesson complete shows a tick, moves Continue on, and offers the next lesson', async () => {

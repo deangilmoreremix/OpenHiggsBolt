@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useCourseProgress } from '@/components/academy/useCourseProgress';
 import {
-  COURSE_OWNER_KEY, COURSE_STORAGE_KEY, courseContinueTarget, emptyCourseProgress, firstUndoneStep, lessonPercent, markStepDone,
+  COURSE_OWNER_KEY, COURSE_STORAGE_KEY, courseContinueTarget, hasStarted, emptyCourseProgress, firstUndoneStep, lessonPercent, markStepDone,
   mergeCourseProgress, overallPercent, sanitizeCourseProgress, setCourseCheck, setCourseLessonComplete, visitStep,
 } from '@/lib/academyCourseProgress';
 
@@ -12,10 +12,9 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 describe('course progress helpers', () => {
   it('sanitizes untrusted input and drops unknown lessons, bad indexes and oversized ids', () => {
-    const p = sanitizeCourseProgress({ updatedAt: 7.9, lastLessonId: 'nope', lastStepId: 'x', completedLessons: ['ugc/01-a', 'zzz', 'ugc/01-a'], stepsDone: { 'ugc/01-a': ['s1', 's1', 5, 'x'.repeat(200)], bad: ['s'] }, checks: { 'ugc/01-a': [2, 0, -1, 99, 'a', 2] } }, IDS);
+    const p = sanitizeCourseProgress({ updatedAt: 7.9, last: { ugc: { lessonId: 'nope/x', stepId: 'x', at: 1 }, '02-ai-filmmaking': { lessonId: 'ugc/01-a', stepId: 's', at: 1 }, bad: 5 }, completedLessons: ['ugc/01-a', 'zzz', 'ugc/01-a'], stepsDone: { 'ugc/01-a': ['s1', 's1', 5, 'x'.repeat(200)], bad: ['s'] }, checks: { 'ugc/01-a': [2, 0, -1, 99, 'a', 2] } }, IDS);
     expect(p.updatedAt).toBe(7);
-    expect(p.lastLessonId).toBeNull();
-    expect(p.lastStepId).toBeNull();
+    expect(p.last).toEqual({}); // unknown lessons and a lesson filed under the wrong track are dropped
     expect(p.completedLessons).toEqual(['ugc/01-a']);
     expect(p.stepsDone).toEqual({ 'ugc/01-a': ['s1'] });
     expect(p.checks).toEqual({ 'ugc/01-a': [0, 2] });
@@ -24,7 +23,7 @@ describe('course progress helpers', () => {
   it('visiting, finishing steps, ticking and completing are idempotent and move the clock forward', () => {
     let p = emptyCourseProgress();
     const v = visitStep(p, 'ugc/01-a', 'intro', 100);
-    expect(v.lastLessonId).toBe('ugc/01-a');
+    expect(v.last.ugc).toMatchObject({ lessonId: 'ugc/01-a', stepId: 'intro' });
     expect(visitStep(v, 'ugc/01-a', 'intro', 200)).toBe(v);
     p = markStepDone(v, 'ugc/01-a', 'intro', 100);
     expect(markStepDone(p, 'ugc/01-a', 'intro', 300)).toBe(p);
@@ -34,6 +33,17 @@ describe('course progress helpers', () => {
     p = setCourseLessonComplete(p, 'ugc/01-a', true, 100);
     expect(p.completedLessons).toEqual(['ugc/01-a']);
     expect(p.updatedAt).toBeGreaterThan(v.updatedAt);
+  });
+  it('each track remembers its own place: visiting one never overwrites another', () => {
+    let p = visitStep(emptyCourseProgress(), '02-ai-filmmaking/01-c', 'concept', 10);
+    p = visitStep(p, 'ugc/01-a', 'overview', 20);
+    expect(p.last['02-ai-filmmaking']).toMatchObject({ lessonId: '02-ai-filmmaking/01-c', stepId: 'concept' });
+    expect(p.last.ugc).toMatchObject({ lessonId: 'ugc/01-a' });
+    // continue within one area picks that area's most recent position
+    expect(courseContinueTarget(p, ['02-ai-filmmaking/01-c'])).toEqual({ lessonId: '02-ai-filmmaking/01-c', stepId: 'concept' });
+    expect(courseContinueTarget(p, IDS)?.lessonId).toBe('ugc/01-a');
+    expect(hasStarted(p, ['ugc/02-b'])).toBe(false);
+    expect(hasStarted(p, IDS)).toBe(true);
   });
   it('percentages and the continue target', () => {
     let p = emptyCourseProgress();
@@ -50,7 +60,7 @@ describe('course progress helpers', () => {
   });
   it('merge is last-write-wins and the account wins ties', () => {
     const a = { ...emptyCourseProgress(), updatedAt: 5 };
-    const b = { ...emptyCourseProgress(), updatedAt: 5, lastLessonId: 'ugc/01-a' };
+    const b = { ...emptyCourseProgress(), updatedAt: 5, last: { ugc: { lessonId: 'ugc/01-a', stepId: 's', at: 5 } } };
     expect(mergeCourseProgress(a, b)).toBe(b);
     expect(mergeCourseProgress({ ...a, updatedAt: 9 }, b).updatedAt).toBe(9);
     expect(mergeCourseProgress(a, null)).toBe(a);
@@ -68,12 +78,11 @@ describe('useCourseProgress', () => {
     const first = renderHook(() => useCourseProgress(IDS, true));
     await waitFor(() => expect(first.result.current.sync).toBe('local'));
     act(() => { first.result.current.visit('ugc/02-b', 'do-it'); first.result.current.stepDone('ugc/02-b', 'concept'); });
-    expect(JSON.parse(localStorage.getItem(COURSE_STORAGE_KEY)!).lastStepId).toBe('do-it');
+    expect(JSON.parse(localStorage.getItem(COURSE_STORAGE_KEY)!).last.ugc.stepId).toBe('do-it');
     first.unmount();
     const second = renderHook(() => useCourseProgress(IDS, true));
     await waitFor(() => expect(second.result.current.ready).toBe(true));
-    expect(second.result.current.progress.lastLessonId).toBe('ugc/02-b');
-    expect(second.result.current.progress.lastStepId).toBe('do-it');
+    expect(second.result.current.progress.last.ugc).toMatchObject({ lessonId: 'ugc/02-b', stepId: 'do-it' });
     expect(second.result.current.progress.stepsDone['ugc/02-b']).toEqual(['concept']);
   });
 
@@ -102,10 +111,10 @@ describe('useCourseProgress', () => {
     await act(async () => { release(json({ progress: saved, owner: 'userA' })); });
     await waitFor(() => expect(fetchMock.mock.calls.some(isPut)).toBe(true), { timeout: 3000 });
     expect(result.current.progress.completedLessons).toEqual(['ugc/01-a']);
-    expect(result.current.progress.lastLessonId).toBe('ugc/02-b');
+    expect(result.current.progress.last.ugc.lessonId).toBe('ugc/02-b');
     const sent = JSON.parse(((fetchMock.mock.calls.find(isPut)![1]) as RequestInit).body as string).progress;
     expect(sent.completedLessons).toEqual(['ugc/01-a']);
-    expect(sent.lastStepId).toBe('concept');
+    expect(sent.last.ugc.stepId).toBe('concept');
   });
 
   it('uploads newer browser progress when the account copy is missing', async () => {

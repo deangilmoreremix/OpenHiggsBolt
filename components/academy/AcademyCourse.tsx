@@ -13,7 +13,7 @@ import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/sh
 import { academyStudioUrl, academyTrackUrl, getStudioGuide, BUILD_WITH_AI_TRACK } from '@/data/academyStudioGuides';
 import { LessonPlayer } from './player/LessonPlayer';
 import { useCourseProgress } from './useCourseProgress';
-import { courseContinueTarget, overallPercent, type CourseProgress } from '@/lib/academyCourseProgress';
+import { courseContinueTarget, hasStarted, overallPercent, type CourseProgress } from '@/lib/academyCourseProgress';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -278,16 +278,18 @@ function ContinueCard({
   describe,
   onContinue,
   sync,
+  currentLessonId,
 }: {
   progress: CourseProgress;
   lessonIds: string[];
   describe: (lessonId: string) => { track: string; lesson: string } | null;
   onContinue: (lessonId: string, stepId: string | null) => void;
   sync: Course['sync'];
+  /** The lesson already open; the card is only for getting back to somewhere else. */
+  currentLessonId?: string;
 }) {
-  const started = !!progress.lastLessonId || progress.completedLessons.length > 0;
   const target = courseContinueTarget(progress, lessonIds);
-  if (!started || !target) return null;
+  if (!hasStarted(progress, lessonIds) || !target || target.lessonId === currentLessonId) return null;
   const d = describe(target.lessonId);
   if (!d) return null;
   return (
@@ -336,7 +338,8 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
   const selectTrack = (slug: string) => {
     const t = tracks.find((x) => x.slug === slug);
     // opening a track resumes the lesson the learner was last on in it, else its first lesson
-    const resume = course.progress.lastLessonId?.startsWith(`${slug}/`) ? course.progress.lastLessonId.slice(slug.length + 1) : null;
+    const last = course.progress.last[slug];
+    const resume = last ? last.lessonId.slice(slug.length + 1) : null;
     const lesson = (resume && t?.lessons.find((l) => l.slug === resume)?.slug) || t?.lessons[0]?.slug || '';
     openLesson(slug, lesson);
   };
@@ -359,6 +362,17 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
     const d = nextId ? describe(nextId) : null;
     return nextId && d ? { title: d.lesson, go: () => continueTo(nextId, null) } : null;
   })();
+
+  // Arriving with no deep link opens where the learner left off in Learning Paths (once their saved
+  // progress has loaded) instead of dropping them on the first lesson.
+  const resumed = React.useRef(!!initial?.track);
+  React.useEffect(() => {
+    if (resumed.current || !course.ready) return;
+    resumed.current = true;
+    const t = courseContinueTarget(course.progress, lessonIds);
+    if (t && hasStarted(course.progress, lessonIds)) continueTo(t.lessonId, t.stepId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.ready]);
 
   const ugcAssets: AcademyAsset[] = isUgc
     ? academyAssets
@@ -437,8 +451,8 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
       </aside>
 
       {/* Main */}
-      <main className="p-4 md:p-6">
-        <ContinueCard progress={course.progress} lessonIds={lessonIds} describe={describe} onContinue={continueTo} sync={course.sync} />
+      <main className="min-w-0 p-4 md:p-6">
+        <ContinueCard progress={course.progress} lessonIds={lessonIds} describe={describe} onContinue={continueTo} sync={course.sync} currentLessonId={lessonKey(activeTrack.slug, activeLessonSlug)} />
         <div className="mb-4">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>{activeTrack.title}</p>
           <h2 className="text-xl font-extrabold">
@@ -580,7 +594,7 @@ function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; init
   const nextL = idx >= 0 ? lessons[idx + 1] : undefined;
   const done = ids.filter((id) => course.progress.completedLessons.includes(id)).length;
   const percent = overallPercent(course.progress, ids);
-  const started = !!course.progress.lastLessonId && ids.includes(course.progress.lastLessonId) || done > 0;
+  const started = hasStarted(course.progress, ids);
   const target = courseContinueTarget(course.progress, ids);
 
   const nav = (
@@ -629,7 +643,7 @@ function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; init
         </div>
       </aside>
 
-      <main className="p-4 md:p-6">
+      <main className="min-w-0 p-4 md:p-6">
         {lessonSlug === null ? (
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: colors.primary }}>Self-paced course</p>
@@ -672,7 +686,7 @@ function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; init
           </div>
         ) : (
           <>
-            <ContinueCard progress={course.progress} lessonIds={ids} describe={describe} onContinue={continueTo} sync={course.sync} />
+            <ContinueCard progress={course.progress} lessonIds={ids} describe={describe} onContinue={continueTo} sync={course.sync} currentLessonId={lessonKey(track.slug, lessonSlug)} />
             <div className="mb-4">
               <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>Build with AI · lesson {idx} of {lessons.length - 1}</p>
               <h2 className="text-xl font-extrabold">{lessons[idx]?.title}</h2>

@@ -59,6 +59,23 @@ function titleFromFilename(file: string): string {
     .trim();
 }
 
+/**
+ * A lesson's display title: its own heading (for example "Screenplay & Story Generation"),
+ * "Overview" for the 00- file of a track, and the cleaned-up file name as a last resort.
+ */
+function lessonTitle(dir: string, file: string): string {
+  if (/^00-/.test(file)) return 'Overview';
+  try {
+    const head = fs.readFileSync(path.join(dir, file), 'utf8').slice(0, 800);
+    const h1 = head.match(/^#\s+(.+)$/m)?.[1];
+    const clean = h1?.replace(/[*_`]/g, '').replace(/^(Track|Lesson)\s+\d+\s*[:—-]\s*/i, '').trim();
+    if (clean) return clean;
+  } catch {
+    /* fall through to the file name */
+  }
+  return titleFromFilename(file);
+}
+
 function listMarkdown(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs
@@ -76,9 +93,10 @@ export function getAllTracks(): AcademyTrack[] {
     if (!entry.isDirectory()) continue;
     const trackSlug = entry.name;
     const trackDir = path.join(ACADEMY_DIR, trackSlug);
-    const lessons = listMarkdown(path.join(trackDir, 'lessons')).map((f, i) => ({
+    const lessonsDir = path.join(trackDir, 'lessons');
+    const lessons = listMarkdown(lessonsDir).map((f, i) => ({
       slug: f.replace(/\.md$/, ''),
-      title: titleFromFilename(f),
+      title: lessonTitle(lessonsDir, f),
       order: i,
     }));
     const templates = listMarkdown(path.join(trackDir, 'templates')).map((f, i) => ({

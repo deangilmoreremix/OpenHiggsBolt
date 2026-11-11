@@ -16,13 +16,23 @@ const MAX_STEP_ID = 80;
 const MAX_STEPS_PER_LESSON = 60;
 const MAX_CHECK_INDEX = 50;
 
+/** Where the learner last was inside one track (or the Build with AI course). */
+export interface LastPosition {
+  lessonId: string;
+  stepId: string;
+  /** Epoch ms; the most recent position wins when choosing where to continue. */
+  at: number;
+}
+
 export interface CourseProgress {
   v: 1;
   /** Epoch ms of the last change (last-write-wins clock). */
   updatedAt: number;
-  /** Resume pointer: the lesson and step the learner was last on. */
-  lastLessonId: string | null;
-  lastStepId: string | null;
+  /**
+   * Resume pointers, one per track. Per track on purpose: opening Learning Paths
+   * must never overwrite where the learner was in the Build with AI course (or another track).
+   */
+  last: Record<string, LastPosition>;
   completedLessons: string[];
   /** Steps the learner has gone through, per lesson. */
   stepsDone: Record<string, string[]>;
@@ -33,8 +43,7 @@ export interface CourseProgress {
 export const emptyCourseProgress = (now = 0): CourseProgress => ({
   v: COURSE_PROGRESS_VERSION,
   updatedAt: now,
-  lastLessonId: null,
-  lastStepId: null,
+  last: {},
   completedLessons: [],
   stepsDone: {},
   checks: {},
@@ -48,9 +57,17 @@ export function sanitizeCourseProgress(input: unknown, lessonIds: readonly strin
   const o = input as Record<string, unknown>;
   const t = Number(o.updatedAt);
   out.updatedAt = Number.isFinite(t) && t >= 0 ? Math.floor(t) : 0;
-  const lesson = typeof o.lastLessonId === 'string' && ok.has(o.lastLessonId) ? o.lastLessonId : null;
-  out.lastLessonId = lesson;
-  out.lastStepId = lesson && typeof o.lastStepId === 'string' && o.lastStepId.length <= MAX_STEP_ID ? o.lastStepId : null;
+  if (o.last && typeof o.last === 'object') {
+    for (const [track, v] of Object.entries(o.last as Record<string, unknown>)) {
+      if (!v || typeof v !== 'object') continue;
+      const pos = v as Record<string, unknown>;
+      const lessonId = typeof pos.lessonId === 'string' ? pos.lessonId : '';
+      const stepId = typeof pos.stepId === 'string' ? pos.stepId : '';
+      const at = Number(pos.at);
+      if (!ok.has(lessonId) || !lessonId.startsWith(`${track}/`) || !stepId || stepId.length > MAX_STEP_ID) continue;
+      out.last[track] = { lessonId, stepId, at: Number.isFinite(at) && at >= 0 ? Math.floor(at) : 0 };
+    }
+  }
   if (Array.isArray(o.completedLessons)) {
     out.completedLessons = [...new Set(o.completedLessons.filter((x): x is string => typeof x === 'string' && ok.has(x)))];
   }
@@ -75,10 +92,15 @@ export function sanitizeCourseProgress(input: unknown, lessonIds: readonly strin
 
 const touch = (p: CourseProgress, now: number): CourseProgress => ({ ...p, updatedAt: Math.max(now, p.updatedAt + 1) });
 
-/** Remember where the learner is. No-op (same reference) when nothing changed. */
+const trackOf = (lessonId: string) => lessonId.slice(0, lessonId.indexOf('/'));
+
+/** Remember where the learner is in this lesson's track. No-op (same reference) when nothing changed. */
 export function visitStep(p: CourseProgress, lessonId: string, stepId: string, now: number): CourseProgress {
-  if (p.lastLessonId === lessonId && p.lastStepId === stepId) return p;
-  return touch({ ...p, lastLessonId: lessonId, lastStepId: stepId }, now);
+  const track = trackOf(lessonId);
+  const cur = p.last[track];
+  if (cur && cur.lessonId === lessonId && cur.stepId === stepId) return p;
+  const next = touch(p, now);
+  return { ...next, last: { ...next.last, [track]: { lessonId, stepId, at: next.updatedAt } } };
 }
 
 export function markStepDone(p: CourseProgress, lessonId: string, stepId: string, now: number): CourseProgress {
@@ -116,11 +138,22 @@ export function lessonPercent(p: CourseProgress, lessonId: string, stepCount: nu
 export const overallPercent = (p: CourseProgress, lessonIds: readonly string[]): number =>
   lessonIds.length === 0 ? 0 : Math.round((lessonIds.filter((id) => p.completedLessons.includes(id)).length / lessonIds.length) * 100);
 
-/** "Continue where you left off": last visited lesson if unfinished, else the first unfinished one. */
+/** Has the learner done anything in these lessons yet? */
+export function hasStarted(p: CourseProgress, lessonIds: readonly string[]): boolean {
+  const ids = new Set(lessonIds);
+  return Object.values(p.last).some((l) => ids.has(l.lessonId)) || p.completedLessons.some((id) => ids.has(id));
+}
+
+/**
+ * "Continue where you left off" within these lessons: the most recent unfinished position,
+ * else the first unfinished lesson. Pass only the lessons of one area (Learning Paths, or Build with AI).
+ */
 export function courseContinueTarget(p: CourseProgress, lessonIds: readonly string[]): { lessonId: string; stepId: string | null } | null {
-  if (p.lastLessonId && lessonIds.includes(p.lastLessonId) && !p.completedLessons.includes(p.lastLessonId)) {
-    return { lessonId: p.lastLessonId, stepId: p.lastStepId };
-  }
+  const ids = new Set(lessonIds);
+  const recent = Object.values(p.last)
+    .filter((l) => ids.has(l.lessonId) && !p.completedLessons.includes(l.lessonId))
+    .sort((a, b) => b.at - a.at)[0];
+  if (recent) return { lessonId: recent.lessonId, stepId: recent.stepId };
   const next = lessonIds.find((id) => !p.completedLessons.includes(id));
   return next ? { lessonId: next, stepId: null } : null;
 }

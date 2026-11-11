@@ -27,7 +27,7 @@ describe('academy progress API', () => {
   });
   it('needs no paid entitlement: any signed-in learner can save', async () => {
     authMock.mockResolvedValue({ userId: 'u1' });
-    const res = await PUT(req({ progress: { updatedAt: 5, lastLessonId: LESSON, lastStepId: 'overview' } }));
+    const res = await PUT(req({ progress: { updatedAt: 5, last: { ugc: { lessonId: LESSON, stepId: 'overview', at: 5 } } } }));
     expect(res!.status).toBe(200);
     expect(upsert).toHaveBeenCalledTimes(1);
   });

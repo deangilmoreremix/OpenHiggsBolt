@@ -52,11 +52,11 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
     const ids = parsed.steps.map((s) => s.id);
     const wanted =
       (initialStepId && ids.includes(initialStepId) ? initialStepId : null) ??
-      (progress.lastLessonId === lessonId && progress.lastStepId && ids.includes(progress.lastStepId) ? progress.lastStepId : null) ??
+      (progress.last[track]?.lessonId === lessonId && ids.includes(progress.last[track].stepId) ? progress.last[track].stepId : null) ??
       firstUndoneStep(progress, lessonId, ids);
     setIndex(Math.max(0, wanted ? ids.indexOf(wanted) : 0));
     setPositioned(lessonId);
-  }, [parsed, ready, lessonId, initialStepId, progress, positioned]);
+  }, [parsed, ready, lessonId, track, initialStepId, progress, positioned]);
 
   const step = steps[Math.min(index, Math.max(steps.length - 1, 0))];
   // remember where the learner is whenever the open step changes
@@ -81,6 +81,8 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
   const complete = progress.completedLessons.includes(lessonId);
   const percent = lessonPercent(progress, lessonId, steps.length);
   const isLast = index >= steps.length - 1;
+  // finishing is allowed at the checklist too, so optional sections after it never block completion
+  const canFinish = isLast || step?.kind === 'checklist';
   const ticks = progress.checks[lessonId] ?? [];
 
   const go = (i: number) => {
@@ -206,12 +208,12 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
               Next step →
             </button>
           )}
-          {isLast && !complete && (
+          {canFinish && !complete && (
             <button type="button" onClick={onFinish} className="rounded-lg px-5 py-2 text-xs font-bold text-black" style={{ background: colors.primary }}>
               Mark lesson complete ✓
             </button>
           )}
-          {isLast && complete && next && (
+          {canFinish && complete && next && (
             <button type="button" onClick={next.go} className="rounded-lg px-5 py-2 text-xs font-bold text-black" style={{ background: colors.primary }}>
               Next lesson: {next.title} →
             </button>
