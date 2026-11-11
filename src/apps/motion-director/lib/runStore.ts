@@ -23,7 +23,7 @@ export interface RunCheckpoint {
   v: number;
   savedAt: number;
   run: ProductionRun;
-  request: { prompt: string; aspectRatio: string; template: 'inkpress' | 'director' };
+  request: { prompt: string; aspectRatio: string; template: 'inkpress' | 'director' | 'local' };
   storyboard?: Pick<StoryboardResult, 'plan' | 'capture' | 'source' | 'note' | 'videos' | 'media' | 'mapping' | 'release' | 'direction' | 'brief' | 'decisions' | 'gate'>;
   adapted: AdaptedShot[];
   /** True when the storyboard was too large for browser storage and was left out: a resume then re-plans. */

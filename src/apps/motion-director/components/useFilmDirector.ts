@@ -184,7 +184,7 @@ export function useFilmDirector(opts: {
     const sb = sbRef.current;
     saveCheckpoint({
       run: r,
-      request: { prompt: pending.current?.req.prompt ?? r.request, aspectRatio: String(pending.current?.req.aspectRatio ?? optsRef.current.settings().aspectRatio), template: pending.current?.template === 'inkpress' ? 'inkpress' : 'director' },
+      request: { prompt: pending.current?.req.prompt ?? r.request, aspectRatio: String(pending.current?.req.aspectRatio ?? optsRef.current.settings().aspectRatio), template: pending.current?.template === 'inkpress' ? 'inkpress' : pending.current?.template === 'local' ? 'local' : 'director' },
       ...(sb ? { storyboard: { plan: sb.plan, capture: sb.capture, source: sb.source, note: sb.note, videos: sb.videos, media: sb.media, mapping: sb.mapping, release: sb.release, direction: sb.direction, brief: sb.brief, decisions: sb.decisions, gate: sb.gate } } : {}),
       adapted: adaptedRef.current,
     });
@@ -899,7 +899,9 @@ export function useFilmDirector(opts: {
     try {
       const touchedStems = touched.map((i) => resolveMotionTemplate(plan.scenes[i].recipeId)?.componentName).filter((x): x is string => Boolean(x));
       const out = await buildFilmProject(plan, { noAi: pending.current?.template === 'local', ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
-      const { project } = fixFilm(out);
+      const fixed0 = fixFilm(out).project;
+      // A silent film stays silent when a scene is rebuilt (the same filtering as the first build).
+      const project = runRef.current?.silent ? { ...fixed0, tracks: fixed0.tracks.map((t) => ({ ...t, clips: t.clips.filter((c) => c.cardId !== 'audio-clip') })) } : fixed0;
       const only = new Set(touchedStems);
       const checks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 45_000, signal: abort.signal, only }).catch(() => []);
       if (!live()) return true;

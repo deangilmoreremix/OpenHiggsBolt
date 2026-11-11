@@ -45,6 +45,14 @@ describe('checkpoint storage', () => {
   });
 });
 
+describe('a no-AI production stays no-AI across a reload', () => {
+  it('the "local" template is stored and read back as local (never turned into the AI director)', () => {
+    const s = mem();
+    saveCheckpoint(cp({ request: { prompt: 'p', aspectRatio: '16:9', template: 'local' } }), s);
+    expect(loadCheckpoint(s)?.request.template).toBe('local');
+  });
+});
+
 describe('what a reload does with a stored run', () => {
   it('nothing stored, or a finished/never-started run: no offer', () => {
     expect(decideResume(null).kind).toBe('none');

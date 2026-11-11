@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
@@ -59,7 +60,9 @@ const ALLOWED_MODELS = new Set(['gpt-6-astra', 'gpt-4o', 'gpt-4o-mini'])
 // MOTION_STUDIO_DIRECTOR_MODEL is set, the next allowed model is tried and remembered; an explicit MOTION_STUDIO_DIRECTOR_MODEL is never replaced.
 // The model actually used is returned in the `x-director-model` header.
 const MODEL_ORDER = EXPLICIT_MODEL ? [DIRECTOR_MODEL] : [DIRECTOR_MODEL, ...['gpt-4o', 'gpt-4o-mini'].filter((m) => m !== DIRECTOR_MODEL)]
-let workingModel: string | null = null
+// Which model worked, per BYOK key (hashed, never the key itself): accounts differ in model access, so one account's choice must not become another's.
+const workingModels = new Map<string, string>()
+const keyId = (key: string) => createHash('sha256').update(key).digest('hex').slice(0, 16)
 let lastModelUsed = ''
 
 const CATALOG_BRIEF = buildCatalogBrief()
@@ -163,17 +166,21 @@ ${CATALOG_BRIEF}`
 const modelUnavailable = (status: number, payload: any) => status === 404 || payload?.error?.code === 'model_not_found'
 
 async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object, images: string[] = []) {
-  const candidates = workingModel ? [workingModel] : MODEL_ORDER
+  const id = keyId(key)
+  const known = workingModels.get(id)
+  const candidates = known ? [known] : MODEL_ORDER
   let lastError: Error | null = null
   for (const model of candidates) {
     try {
       const out = await callOnce(key, model, instructions, input, schemaName, schema, images)
-      workingModel = model
+      workingModels.set(id, model)
       lastModelUsed = model
       return out
     } catch (error) {
       lastError = error as Error
       const status = (error as { status?: number }).status
+      // A remembered model that stops working for this key is forgotten, so the next request tries the others.
+      if (known && status === 404) { workingModels.delete(id); if (EXPLICIT_MODEL === undefined) return callDirector(key, instructions, input, schemaName, schema, images) }
       // Only "this model does not exist for this key" moves on to the next model; every other failure is the answer.
       if (!(status === 404 && candidates.length > 1)) throw error
     }
