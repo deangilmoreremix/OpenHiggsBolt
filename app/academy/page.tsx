@@ -26,8 +26,8 @@ export default async function AcademyPage({ searchParams }: { searchParams?: Pro
   const sp = (await searchParams) ?? {};
   const pick = (k: string) => { const v = sp[k]; return typeof v === 'string' ? v.slice(0, 80) : undefined; };
   const initial = {
-    view: pick('view') === 'studio-reference' ? ('studio-reference' as const) : undefined,
-    studio: pick('studio'), tab: pick('tab'), track: pick('track'), lesson: pick('lesson'), step: pick('step'),
+    view: pick('view') === 'studio-reference' ? ('studio-reference' as const) : pick('view') === 'build-with-ai' ? ('build-with-ai' as const) : undefined,
+    studio: pick('studio'), tab: pick('tab'), track: pick('track'), lesson: pick('lesson'), step: pick('step'), s: pick('s'),
   };
 
   const manifestEntries = manifest as Array<{

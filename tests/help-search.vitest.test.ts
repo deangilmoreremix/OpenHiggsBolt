@@ -27,7 +27,8 @@ describe('help index integrity', () => {
         const id = c.url.replace(/^\/(studio\/)?/, '');
         const ok = c.url === '/studio' || c.url === '/photo-studio' || c.url === '/brand-studio' || c.url === '/studio/apps' || shell.includes(`id: '${id}'`) || fs.existsSync(path.join(process.cwd(), 'app/studio')) ;
         expect(ok, c.id).toBe(true);
-      } else if (c.kind === 'academy') expect(c.url).toMatch(/^\/academy\?track=[^&]+(&lesson=[^&]+)?$/);
+      } else if (c.kind === 'academy') // the Build with AI course has its own tab, so its lessons link to ?view=build-with-ai
+        expect(c.url).toMatch(/^\/academy\?(track=[^&]+|view=build-with-ai)(&lesson=[^&]+)?$/);
       else if (c.kind === 'reseller') expect(lessonIds.has(c.url.split('lesson=')[1]), c.id).toBe(true);
       else expect(WORKSHOP_APP_IDS.includes(c.url.split('/').pop()!), c.id).toBe(true);
     }

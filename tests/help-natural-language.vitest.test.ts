@@ -66,7 +66,7 @@ describe('every lesson can be found by asking for it in plain words', () => {
         const h1 = fs.readFileSync(path.join(dir, f), 'utf8').match(/^#\s+(.+)$/m)?.[1] ?? f;
         const title = h1.replace(/^(Track|Lesson)\s+\d+\s*[:—-]\s*/i, '').replace(/[*_`]/g, '').trim();
         const slug = f.replace(/\.md$/, '');
-        const hit = search(idx, `how do I ${title.toLowerCase()}`, { limit: 6 }).some((r) => r.chunk.kind === 'academy' && r.chunk.url.includes(`track=${track}`) && r.chunk.url.includes(`lesson=${slug}`));
+        const hit = search(idx, `how do I ${title.toLowerCase()}`, { limit: 6 }).some((r) => r.chunk.kind === 'academy' && (r.chunk.url.includes(`track=${track}`) || (track.startsWith('16-') && r.chunk.url.includes('view=build-with-ai'))) && r.chunk.url.includes(`lesson=${slug}`));
         if (!hit) misses.push(`${track}/${slug}`);
       }
     }
