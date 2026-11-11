@@ -14,7 +14,7 @@ import { clipFingerprint } from './filmFingerprint';
  */
 
 /** Props that carry the person's content into a recipe. */
-export const CONTENT_PROPS = ['screens', 'crops', 'texts', 'adaptedCode', 'adaptedStem', 'liveLayout', 'cardCrops', 'emptyPlate', 'scenePictures', 'images', 'captions', 'logo', 'name', 'cta', 'url', 'file', 'label', 'text'];
+export const CONTENT_PROPS = ['documentContent', 'screens', 'crops', 'texts', 'adaptedCode', 'adaptedStem', 'liveLayout', 'cardCrops', 'emptyPlate', 'scenePictures', 'images', 'captions', 'logo', 'name', 'cta', 'url', 'file', 'label', 'text'];
 
 const stemOf = (c: ClipData) => (c.cardId.startsWith('demo:') ? c.cardId.slice(5) : '');
 /** Camera shots move INTO the picture: it fills the frame by design, so it is not "cut off" (judged visually instead). */

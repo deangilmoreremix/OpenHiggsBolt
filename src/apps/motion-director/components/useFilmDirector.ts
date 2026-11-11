@@ -901,7 +901,10 @@ export function useFilmDirector(opts: {
     mark('animate', 'active', 'Rebuilding the changed scenes');
     upd((r) => startStage(r, 'build'));
     try {
-      const touchedStems = touched.map((i) => resolveMotionTemplate(plan.scenes[i].recipeId)?.componentName).filter((x): x is string => Boolean(x));
+      // The recipes of the scenes an edit touched, in the NEW plan and in the plan being replaced: a recipe that left (or came in) at a touched scene
+      // is re-adapted wherever it occurs, because occurrence numbers shift when a scene is replaced and an old scene's source must not land on another.
+      const stemOfScene = (sc: { recipeId: string } | undefined) => (sc?.recipeId ? resolveMotionTemplate(sc.recipeId)?.componentName : undefined);
+      const touchedStems = touched.flatMap((i) => [stemOfScene(plan.scenes[i]), stemOfScene(storyboard.plan.scenes[i])]).filter((x): x is string => Boolean(x));
       const out = await buildFilmProject(plan, { noAi: pending.current?.template === 'local', ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
       const fixed0 = fixFilm(out).project;
       // A silent film stays silent when a scene is rebuilt (the same filtering as the first build).
@@ -918,6 +921,8 @@ export function useFilmDirector(opts: {
       upd((r) => completeStage(r, { stage: 'build', scenes }, { edited: touched.length }));
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: plan, videos: media.filter((m) => m.kind === 'video').length });
       const fr = await checkFilmFrames(project, log, undefined, abort.signal);
+      // Stop or a session switch during frame QA: nothing of this rebuild may be installed.
+      if (!live()) return true;
       qa.issues.push(...fr.failed.map((f) => `Frame ${f}`));
       upd((r) => ({ ...completeStage(startStage(r, 'qa'), { stage: 'qa', issues: qa.issues, framesChecked: fr.checked, required: fr.total, done: fr.checked + fr.failed.length }), fingerprints: { build: filmFingerprint(project) } }));
       const built = { project: { ...project, run: runRef.current ?? undefined }, qa };
