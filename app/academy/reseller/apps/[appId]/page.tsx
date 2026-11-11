@@ -9,6 +9,7 @@ import {
 } from '@/lib/resellerAccess';
 import ResellerAcademyView from '@/components/reseller/ResellerAcademyView';
 import AppWorkshopView from '@/components/reseller/academy/AppWorkshopView';
+import HelpAgent from '@/components/help/HelpAgent';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,7 @@ export default async function AppWorkshopPage({ params }: { params: Promise<{ ap
   return (
     <div className="min-h-screen px-6 py-8" style={{ background: '#050505' }}>
       <AppWorkshopView appId={appId} />
+      <HelpAgent studioId="apps" studioLabel="this app workshop" />
     </div>
   );
 }

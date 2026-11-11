@@ -253,6 +253,13 @@ function Drawer({ open, onClose, side, title, children }: { open: boolean; onClo
 export default function ResellerAcademyShell({ syncRemote = true }: { syncRemote?: boolean }) {
   const p = useAcademyProgress(syncRemote);
   const [view, setView] = useState<View>({ kind: 'dashboard' });
+  // deep link from the help assistant: ?lesson=8.3 opens that lesson
+  useEffect(() => {
+    try {
+      const id = new URLSearchParams(window.location.search).get('lesson');
+      if (id && LESSON_IDS.includes(id)) { setView({ kind: 'lesson', id }); }
+    } catch { /* no window / blocked */ }
+  }, []);
   const [navOpen, setNavOpen] = useState(false);
   const [resOpen, setResOpen] = useState(false);
 

@@ -8,6 +8,7 @@ import {
 } from '@/lib/resellerAccess';
 import ResellerAcademyView from '@/components/reseller/ResellerAcademyView';
 import ResellerAcademyShell from '@/components/reseller/academy/ResellerAcademyShell';
+import HelpAgent from '@/components/help/HelpAgent';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,7 @@ export default async function LaunchCoursePage() {
       <div className="mx-auto max-w-7xl px-6 py-8">
         <ResellerAcademyShell />
       </div>
+      <HelpAgent studioId="apps" studioLabel="the Reseller Setup Walkthrough" />
     </div>
   );
 }

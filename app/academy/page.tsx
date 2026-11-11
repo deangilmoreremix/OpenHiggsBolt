@@ -1,4 +1,5 @@
 import AcademyCourse from '@/components/academy/AcademyCourse';
+import HelpAgent from '@/components/help/HelpAgent';
 import { getAllTracks } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
@@ -50,6 +51,7 @@ export default function AcademyPage() {
   return (
     <DemoPersonalizeProvider>
       <AcademyCourse tracks={tracks} />
+      <HelpAgent />
       {studioPersonalizeOptions && (
         <div className="fixed bottom-4 left-4 z-40">
           <PersonalizeVideoAction
