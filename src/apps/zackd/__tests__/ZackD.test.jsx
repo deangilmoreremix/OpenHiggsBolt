@@ -236,4 +236,17 @@ describe('ZackD studio (built like the video studios)', () => {
     type('What happens when you swallow gum?');
     await step(container, 'Write script'); // renders and is usable: the bad record did not break the resume effect
   });
+
+  it('lets you rewrite an unapproved script after changing the topic', async () => {
+    const { container } = render(<ZackD apiKey={KEY} />);
+    type('First question');
+    await step(container, 'Write script'); fireEvent.click(action(container));
+    await screen.findByLabelText('Narration, beat 1');
+    expect(screen.getByLabelText('Narration, beat 1').value).toMatch(/First question/);
+    type('A different question');
+    fireEvent.click(screen.getByRole('button', { name: 'Rewrite script' }));
+    await waitFor(() => expect(screen.getByLabelText('Narration, beat 1').value).toMatch(/A different question/));
+    await step(container, 'Approve script'); fireEvent.click(action(container));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Rewrite script' })).toBeNull()); // gone once approved
+  });
 });

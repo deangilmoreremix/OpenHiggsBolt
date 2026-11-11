@@ -230,11 +230,11 @@ export default function ZackD({
     if (list.length) setPending((p) => new Set([...p, ...list.map(pendingKeyOf)]));
     const ctl = new AbortController();
     list.forEach(async (j) => {
-      let settled = true;
+      let settled = true; // false = the job may still be running: keep its record so a later visit can pick it up
       try {
-        const r = await muapi.resumeGeneration(apiKey, j.rid, { maxAttempts: 120, signal: ctl.signal });
+        const r = await muapi.resumeGeneration(apiKey, j.rid, { signal: ctl.signal }); // default 30 min, like a normal clip
         if (!j.pid || j.pid === proj.current.pid) { applyResult(j, r?.url); toast('Recovered a generation that was still running'); }
-      } catch (e) { if (e?.name === 'AbortError' || ctl.signal.aborted) settled = false; /* else expired or failed: drop it */ }
+      } catch (e) { if (e?.name === 'AbortError' || ctl.signal.aborted || /timed out|failed to fetch|network/i.test(String(e?.message))) settled = false; /* else a confirmed failure: drop it */ }
       if (settled) writePending(readPending().filter((x) => x.rid !== j.rid)); // a local cancel keeps it for the next load
       setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
     });
@@ -441,7 +441,15 @@ export default function ZackD({
         {project.map ? (
           <div className="flex flex-col gap-10 pt-4">
             <section>
-              <h2 className={SECTION_LABEL}>Script</h2>
+              <div className="flex items-center gap-3">
+                <h2 className={SECTION_LABEL}>Script</h2>
+                {!project.approved && (
+                  <button type="button" disabled={busy || !project.topic.trim()} className={promptControlClassName({ compact: true })}
+                    onClick={() => { if (window.confirm('Write a new script from the topic? Your edits to this script are replaced.')) writeScript(); }}>
+                    <span className={PROMPT_CONTROL_LABEL_CLASS}>Rewrite script</span>
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-white/40 mt-1">
                 {project.approved
                   ? `${project.map.beats.length} beats · ${shots.length} shots · about ${Math.round(totalDuration(project.map))}s planned`
