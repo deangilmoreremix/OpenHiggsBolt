@@ -25,7 +25,7 @@ function solidPng(width: number, height: number, rgb: [number, number, number]):
 
 const PHOTO_COLORS: Array<[number, number, number]> = [[236, 0, 140], [110, 210, 0], [0, 175, 235]];
 
-async function mockDirector(page: Page, opts: { review: 'none' | 'pass' | 'fail-shot' }) {
+async function mockDirector(page: Page, opts: { review: 'none' | 'pass' | 'fail-shot' | 'one-item' }) {
   const seen: Record<string, number> = {};
   await page.route('**/api/motion-studio/director', async (route) => {
     const body = JSON.parse(route.request().postData() || '{}');
@@ -35,7 +35,10 @@ async function mockDirector(page: Page, opts: { review: 'none' | 'pass' | 'fail-
     if (body.mode === 'mapping') return ok({ mapping: [{ feature: 'The home', firstShot: 'camera/depth-layer-moves/MultiplaneReal', altShot: '', expresses: 'the property photos slide past in depth', pageState: '' }] });
     if (body.mode === 'final-review') {
       if (opts.review === 'none') return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) });
-      return ok({ items: [{ id: 'S1', ok: opts.review === 'pass', seconds: [4], text: opts.review === 'pass' ? 'shot matches its card' : 'the photo is not visible', stage: '5' }], summary: 'simulated reviewer' });
+      // 'pass' answers every required checklist group; 'one-item' is one generic positive statement; 'fail-shot' fails one shot.
+      if (opts.review === 'one-item') return ok({ items: [{ id: 'P1', ok: true, seconds: [], text: 'looks fine overall', stage: 'none' }], summary: 'simulated reviewer' });
+      const groups = ['P1', 'F1', 'V1', 'S1', 'B1', 'D1', 'Q1'];
+      return ok({ items: groups.map((g) => ({ id: g, ok: !(opts.review === 'fail-shot' && g === 'S1'), seconds: g === 'S1' ? [4] : [], text: g === 'S1' && opts.review === 'fail-shot' ? 'the photo is not visible' : 'holds (simulated reviewer)', stage: g === 'S1' ? '5' : 'none' })), summary: 'simulated reviewer' });
     }
     if (body.mode === 'adapt') return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'DIRECTOR_FAILED', message: 'no model in this test' }) });
     // The plan: a page-geometry shot (SpotlightHeroCard) the photos cannot support, an image shot, and framing titles.
@@ -49,7 +52,7 @@ async function mockDirector(page: Page, opts: { review: 'none' | 'pass' | 'fail-
   return seen;
 }
 
-async function runUploadFilm(page: Page, review: 'none' | 'pass' | 'fail-shot') {
+async function runUploadFilm(page: Page, review: 'none' | 'pass' | 'fail-shot' | 'one-item') {
   await installStudioSession(page);
   const seen = await mockDirector(page, { review });
   await page.goto(`${BASE_URL}/studio/motion-director/new`);
@@ -154,6 +157,19 @@ test.describe('film production workflow', () => {
     await expect(chat).toContainText('Ready for final export', { timeout: 60_000 });
     const ready = await projectOf(page);
     expect(ready.run.review).toMatchObject({ ran: true, state: 'passed' });
+  });
+
+  test('one generic positive review item cannot certify the film', async ({ page }) => {
+    test.setTimeout(15 * 60_000);
+    await runUploadFilm(page, 'one-item');
+    const chat = page.getByTestId('film-chat');
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 10 * 60_000 });
+    await expect(chat).toContainText('did not cover', { timeout: 180_000 });
+    await expect(chat).not.toContainText('Ready for final export');
+    const p = await projectOf(page);
+    expect(p.run.review.coversRequired).toBe(false);
+    expect(p.run.review.state).toBe('incomplete');
   });
 
   test('a failed shot finding triggers one correction pass; the corrected film needs a new review and is not ready', async ({ page }) => {
