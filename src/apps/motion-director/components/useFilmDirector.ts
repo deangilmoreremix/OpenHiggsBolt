@@ -865,7 +865,8 @@ export function useFilmDirector(opts: {
       const prior = runRef.current?.scenes ?? [];
       const fresh = recordScenes(sceneRecords(plan, materialOf(storyboard.capture, media)), project, checks);
       // Scenes the edit did not touch keep the record they had earned; only the touched ones are re-checked.
-      const scenes = fresh.map((rec, i) => (touched.includes(i) || !prior[i] ? rec : prior[i]));
+      // ...and only while the shot is byte-for-byte the shot that earned it (its fingerprint covers all its props, timing and source).
+      const scenes = fresh.map((rec, i) => (touched.includes(i) || !prior[i] || !prior[i].fingerprint || prior[i].fingerprint !== rec.fingerprint ? rec : prior[i]));
       upd((r) => ({ ...r, review: { ran: false, state: 'not-run', findings: [] }, stages: { ...r.stages, review: { status: 'pending', attempts: 0 } } }));
       upd((r) => completeStage(r, { stage: 'build', scenes }, { edited: touched.length }));
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: plan, videos: media.filter((m) => m.kind === 'video').length });

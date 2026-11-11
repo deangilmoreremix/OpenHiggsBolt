@@ -48,7 +48,11 @@ export interface SceneRecord {
   personalization: 'adapted' | 'parameterized' | 'unmodified' | 'pending';
   /** Scene QA: stills rendered at entry / peak / settled and the person's content seen (or not). */
   validation: { state: 'pending' | 'passed' | 'failed'; frames?: number[]; note?: string };
-  /** Hash of the adapted source or props that were validated, so a rebuild can tell what changed. */
+  /** The properties checked at entering / peak / settled, each tagged mechanical or needs-visual-judgement (lib/sceneChecks). */
+  checks?: Array<{ frame: string; property: string; kind: 'mechanical' | 'needs-visual-judgement'; ok: boolean; detail: string }>;
+  /** What a program cannot decide about this shot: left to a model-assisted review or a person, never counted as verified. */
+  judgement?: string[];
+  /** Fingerprint of the shot clip that was validated (all its props, timing and source): the approval is for exactly this shot. */
   fingerprint?: string;
 }
 

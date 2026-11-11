@@ -2,6 +2,8 @@ import type { ClipData, ProjectData } from '../types';
 import type { SceneRecord } from './productionRun';
 import { shotPersonalization } from './personalization';
 import { needsOf } from './recipeNeeds';
+import { checkShot, judgementItems, pictureColours, type Checkpoint, type Pixels, type PropertyCheck } from './sceneChecks';
+import { clipFingerprint } from './filmFingerprint';
 
 /**
  * Scene-level visual validation (upstream stage 5: "render at least entering / peak / settled stills of each shot and look").
@@ -41,9 +43,24 @@ export interface SceneQaDeps {
 /** The share of a frame that must differ from the plain recipe for the person's content to count as present. */
 export const CONTENT_VISIBLE = 0.01;
 
-export interface SceneQaResult { clipId: string; stem: string; state: 'passed' | 'failed' | 'pending'; frames: number[]; note: string }
+export interface SceneQaResult { clipId: string; stem: string; state: 'passed' | 'failed' | 'pending'; frames: number[]; note: string; checks?: PropertyCheck[]; judgement?: string[] }
 
-export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps, opts: { budgetMs?: number; signal?: AbortSignal; only?: ReadonlySet<string> } = {}): Promise<SceneQaResult[]> {
+/** Pixels of a supplied picture, when the browser lets us read them (data: and same-origin URLs); null otherwise. */
+export async function readPicture(url: string): Promise<Pixels | null> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => resolve(i); i.onerror = () => reject(new Error('load')); i.src = url; });
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0, 64, 64);
+    const d = ctx.getImageData(0, 0, 64, 64);
+    return { data: d.data, width: 64, height: 64 };
+  } catch { return null; }
+}
+
+export interface SceneQaDeps2 extends SceneQaDeps { picture?: (url: string) => Promise<Pixels | null> }
+
+export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps2, opts: { budgetMs?: number; signal?: AbortSignal; only?: ReadonlySet<string> } = {}): Promise<SceneQaResult[]> {
   const out: SceneQaResult[] = [];
   const started = Date.now();
   const clips = project.tracks.flatMap((t) => t.clips).filter((c) => stemOf(c)).sort((a, b) => a.start - b.start);
@@ -51,10 +68,9 @@ export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps
     if (opts.only && !opts.only.has(stemOf(clip))) continue;
     const stem = stemOf(clip);
     const { need } = needsOf(stem);
-    const peak = Math.floor(clip.duration * 0.5);
-    const settled = Math.max(0, clip.duration - 3);
+    const frames = { entering: Math.floor(clip.duration * 0.2), peak: Math.floor(clip.duration * 0.5), settled: Math.max(0, clip.duration - 3) };
     if (need === 'abstract' || need === 'none') {
-      out.push({ clipId: clip.id, stem, state: 'passed', frames: [], note: 'nothing of the person\'s is meant to appear in it' });
+      out.push({ clipId: clip.id, stem, state: 'passed', frames: [], note: 'nothing of the person\'s is meant to appear in it', checks: [], judgement: [] });
       continue;
     }
     if (opts.signal?.aborted || (opts.budgetMs && Date.now() - started > opts.budgetMs)) {
@@ -62,16 +78,20 @@ export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps
       continue;
     }
     try {
-      let best = 0;
-      for (const f of [peak, settled]) {
-        const [mine, plain] = [await deps.pixels(soloProject(project, clip, false), f, opts.signal), await deps.pixels(soloProject(project, clip, true), f, opts.signal)];
-        best = Math.max(best, diffShare(mine, plain));
+      const checkpoints: Checkpoint[] = [];
+      for (const name of ['entering', 'peak', 'settled'] as const) {
+        const f = frames[name];
+        checkpoints.push({ name, mine: await deps.pixels(soloProject(project, clip, false), f, opts.signal), plain: await deps.pixels(soloProject(project, clip, true), f, opts.signal) });
       }
-      out.push(best >= CONTENT_VISIBLE
-        ? { clipId: clip.id, stem, state: 'passed', frames: [peak, settled], note: `the person's content changes ${(best * 100).toFixed(1)}% of the shot's frame` }
-        : { clipId: clip.id, stem, state: 'failed', frames: [peak, settled], note: 'the shot looks the same as the sample recipe: the person\'s content did not reach it' });
+      const urls = [...(Array.isArray(clip.props?.screens) ? (clip.props!.screens as string[]) : []), ...(Array.isArray(clip.props?.crops) ? (clip.props!.crops as string[]) : [])].filter((u) => typeof u === 'string').slice(0, 4);
+      const read = deps.picture ?? readPicture;
+      const pics = (await Promise.all(urls.map((u) => read(u)))).filter((p): p is Pixels => Boolean(p));
+      const supplied = pics.length && pics.length === urls.length ? pics.flatMap((p) => pictureColours(p)) : null;
+      const checks = checkShot({ checkpoints, supplied });
+      const failed = checks.filter((c) => c.kind === 'mechanical' && !c.ok);
+      out.push({ clipId: clip.id, stem, state: failed.length ? 'failed' : 'passed', frames: [frames.entering, frames.peak, frames.settled], note: failed.length ? `failed: ${failed.map((c) => `${c.property} (${c.frame}): ${c.detail}`).join('; ')}` : `${checks.filter((c) => c.kind === 'mechanical').length} mechanical checks held at entering, peak and settled`, checks, judgement: judgementItems(checks) });
     } catch (error) {
-      out.push({ clipId: clip.id, stem, state: 'pending', frames: [peak, settled], note: `could not be rendered: ${error instanceof Error ? error.message : 'error'}` });
+      out.push({ clipId: clip.id, stem, state: 'pending', frames: [frames.entering, frames.peak, frames.settled], note: `could not be rendered: ${error instanceof Error ? error.message : 'error'}` });
     }
   }
   return out;
@@ -89,7 +109,7 @@ export function recordScenes(base: SceneRecord[], project: ProjectData, qa: Scen
     const p = shotPersonalization(clip);
     const v = qa.find((q) => q.clipId === clip.id);
     const personalization = rec.needs === 'abstract' || rec.needs === 'none' ? 'unmodified' : p?.state ?? rec.personalization;
-    return { ...rec, personalization, validation: v ? { state: v.state, frames: v.frames, note: v.note } : rec.validation, fingerprint: clip.props?.adaptedCode ? String((clip.props.adaptedCode as string).length) : undefined };
+    return { ...rec, personalization, validation: v ? { state: v.state, frames: v.frames, note: v.note } : rec.validation, fingerprint: clipFingerprint(clip), checks: v?.checks, judgement: v?.judgement };
   });
 }
 
