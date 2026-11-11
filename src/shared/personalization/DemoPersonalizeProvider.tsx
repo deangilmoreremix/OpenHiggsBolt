@@ -1010,7 +1010,11 @@ export type DemoPersonalizeContextValue = {
   /** The approval was cleared by a later change (approve again). */
   approvalStale?: boolean
    approvePersonalization: () => void
-   createFinalVideo: () => Promise<void>
+   /**
+    * Creates the final video. `approveNow` is the customer pressing the create button in Advanced Editing, where the live
+    * preview sits beside the controls and there is no separate approve step: that click approves what is on screen.
+    */
+   createFinalVideo: (options?: { approveNow?: boolean }) => Promise<void>
    cancelExport: () => void
    apiKey: string
    setPreviewAudio: (file: File) => Promise<void>
@@ -1830,7 +1834,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const lastRunWasFinalVideoRef = useRef(false)
   /** Object URL of the last layered video, revoked when a newer one replaces it. */
   const lastLayeredVideoUrlRef = useRef<string | null>(null)
-  const createFinalVideoRef = useRef<(() => Promise<void>) | null>(null)
+  const createFinalVideoRef = useRef<((options?: { approveNow?: boolean }) => Promise<void>) | null>(null)
 
   // Guards async uploads against writing state (and revoking blobs) after the
   // provider has unmounted, which would double-revoke blobs released on unmount.
@@ -5806,8 +5810,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [previewApproved, approvalSignature])
 
-  const createFinalVideo = useCallback(async () => {
+  const createFinalVideo = useCallback(async (options?: { approveNow?: boolean }) => {
     lastRunWasFinalVideoRef.current = true
+    const approved = previewApproved || options?.approveNow === true
     // Overlay-only personalizations (branding on the EXISTING selected video)
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
@@ -5868,7 +5873,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // @remotion/web-renderer — no server, no worker, no storage upload. The
     // flow requires an approved preview first, and the approved state is
     // snapshotted at call time so later edits cannot leak into the export.
-    if (!previewApproved) {
+    if (!approved) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
         status: 'error',
@@ -5876,6 +5881,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       })
       return
     }
+
+    if (options?.approveNow && !previewApproved) { setApprovalStale(false); setPreviewApproved(true) }
 
     // Snapshot the approved composition: the user may keep editing while the
     // render runs, and the export must stay the approved one.

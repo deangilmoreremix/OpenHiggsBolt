@@ -13,7 +13,7 @@ const LONG_NAME = 'Kreindler & Kreindler LLP';
 const AI_REQUEST = /muapi|openai|\/api\/personalization\/(personalize|generate|recast)|promptPersonaliz|generate-prompt/i;
 const RATIOS = (process.env.PHASE5_RATIOS ?? '16:9').split(',');
 
-async function seedBrand(page: Page) {
+async function seedBrand(page: Page, finish: 'simple' | 'advanced' = 'simple') {
   await page.addInitScript(() => {
     const original = URL.createObjectURL.bind(URL);
     const blobs: Blob[] = [];
@@ -84,7 +84,7 @@ async function seedBrand(page: Page) {
     await page.waitForTimeout(400);
   }
   await page.waitForTimeout(1500);
-  await page.getByRole('button', { name: /Simple Mode/i }).click();
+  if (finish === 'simple') await page.getByRole('button', { name: /Simple Mode/i }).click();
 }
 
 
@@ -155,4 +155,34 @@ test.describe('Phase 8 credit-free journey (real browser, real export)', () => {
       expect(ai, `AI requests: ${ai.join(', ')}`).toEqual([]);
     });
   }
+
+  test('Advanced Editing: Create without AI renders with no mode, no consent and no AI request', async ({ page }) => {
+    test.setTimeout(300_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    const requests: string[] = [];
+    page.on('request', (r) => requests.push(r.url()));
+    await seedBrand(page, 'advanced');
+    const dialog = page.getByRole('dialog');
+
+    // Output & engine: choose "Video" output (prompt-only needs no method).
+    await dialog.getByRole('tab', { name: /Overlays & Create/i }).click();
+    await dialog.getByRole('tab', { name: /Output & engine/i }).click();
+    await dialog.getByRole('button', { name: /^Video\b/ }).first().click();
+    const noAi = dialog.getByTestId('pz-method-browser');
+    await expect(noAi).toBeVisible();
+    await expect(noAi).toHaveAttribute('aria-pressed', 'true');
+    await expect(dialog.getByTestId('pz-mode-reason-full_body')).toHaveCount(0);
+    await dialog.getByTestId('pz-method-browser').screenshot({ path: path.join(OUT, 'advanced-1-method.png') });
+
+    // The footer button is enabled with no mode / consent and makes the video in the browser.
+    const footer = dialog.locator('footer').getByRole('button').last();
+    await expect(footer).toBeEnabled();
+    await footer.click();
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __a1Blobs: Blob[] }).__a1Blobs.filter((b) => /^video\//.test(b.type)).length), { timeout: 240_000, intervals: [500, 1000] })
+      .toBeGreaterThan(0);
+    const ai = requests.filter((u) => AI_REQUEST.test(u));
+    fs.writeFileSync(path.join(OUT, 'advanced-requests.json'), JSON.stringify({ total: requests.length, ai }, null, 2));
+    expect(ai, `AI requests: ${ai.join(', ')}`).toEqual([]);
+  });
 });

@@ -45,3 +45,19 @@ describe('browser render failure', () => {
     expect(runGeneration).not.toHaveBeenCalled()
   })
 })
+
+describe('Advanced Editing create button', () => {
+  it('approveNow approves what is on screen and renders (no separate approve step in Advanced); without it, an unapproved render still errors', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref)
+    await openSource(ref)
+    renderMediaOnWeb.mockImplementation(async () => ({ getBlob: async () => new Blob(['ok'], { type: 'video/mp4' }) }))
+    await act(async () => { await getCtx(ref).createFinalVideo() })
+    expect(getCtx(ref).generation.status).toBe('error')
+    expect(getCtx(ref).previewApproved).toBe(false)
+    await act(async () => { await getCtx(ref).createFinalVideo({ approveNow: true }) })
+    expect(getCtx(ref).generation.status).toBe('complete')
+    expect(getCtx(ref).previewApproved).toBe(true)
+    expect(runGeneration).not.toHaveBeenCalled()
+  })
+})
