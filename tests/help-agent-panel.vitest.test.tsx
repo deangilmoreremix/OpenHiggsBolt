@@ -35,31 +35,38 @@ describe('HelpAgent popup', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('asks the customer to add their OpenAI key and opens the API modal', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ available: true, hasKey: false }), { status: 200 }));
+  it('does NOT mention the key until the customer tries to ask; then shows the add-key message with a link to the modal', async () => {
+    fetchMock.mockImplementation(async (_u: string, init?: RequestInit) =>
+      !init || init.method !== 'POST' ? new Response(JSON.stringify({ available: true, hasKey: false }), { status: 200 }) : new Response('{"error":"OPENAI_KEY_REQUIRED"}', { status: 409 }));
     const onKey = vi.fn();
     render(<HelpAgent onRequestApiKey={onKey} />);
     fireEvent.click(await screen.findByRole('button', { name: /Ask SmartVideo/ }));
-    expect(screen.getByTestId('help-needs-key').textContent).toMatch(/Add your OpenAI key/);
-    expect(screen.queryByRole('button', { name: /How do I/ })).toBeNull();
-    expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true);
+    // before any question: normal suggestions, no key prompt, Send works
+    expect(screen.queryByTestId('help-needs-key')).toBeNull();
+    expect(screen.getByRole('button', { name: /What can I do in this studio/ })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Your question'), { target: { value: 'How do I generate an image?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect((await screen.findByTestId('help-needs-key')).textContent).toMatch(/Add your OpenAI key/);
+    expect(screen.getByText('How do I generate an image?')).toBeTruthy(); // the question is kept
     fireEvent.click(screen.getByRole('button', { name: 'Open API keys' }));
     expect(onKey).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
-  it('without a modal (academy pages) links to the studio instead', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ available: true, hasKey: false }), { status: 200 }));
-    render(<HelpAgent />);
-    fireEvent.click(await screen.findByRole('button', { name: /Ask SmartVideo/ }));
-    expect(screen.getByRole('link', { name: /add your key/ }).getAttribute('href')).toBe('/studio');
-  });
-  it('switches to the add-key prompt when the server answers 409', async () => {
+  it('without a modal (academy pages) the add-key message links to the studio', async () => {
     fetchMock.mockImplementation(async (_u: string, init?: RequestInit) =>
-      !init || init.method !== 'POST' ? new Response(JSON.stringify({ available: true, hasKey: true }), { status: 200 }) : new Response('{"error":"OPENAI_KEY_REQUIRED"}', { status: 409 }));
+      !init || init.method !== 'POST' ? new Response(JSON.stringify({ available: true, hasKey: false }), { status: 200 }) : new Response('{}', { status: 409 }));
     render(<HelpAgent />);
     fireEvent.click(await screen.findByRole('button', { name: /Ask SmartVideo/ }));
     fireEvent.click(screen.getByRole('button', { name: /What can I do in this studio/ }));
-    expect(await screen.findByTestId('help-needs-key')).toBeTruthy();
+    expect((await screen.findByRole('link', { name: /add your key/ })).getAttribute('href')).toBe('/studio');
+  });
+  it('a rejected key (error event) shows the update-your-key message', async () => {
+    fetchMock.mockImplementation(async (_u: string, init?: RequestInit) =>
+      !init || init.method !== 'POST' ? new Response(JSON.stringify({ available: true, hasKey: true }), { status: 200 }) : sseResponse([['sources', sources], ['error', { code: 'OPENAI_KEY_INVALID', message: 'x' }]]));
+    render(<HelpAgent onRequestApiKey={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Ask SmartVideo/ }));
+    fireEvent.click(screen.getByRole('button', { name: /What can I do in this studio/ }));
+    expect((await screen.findByTestId('help-needs-key')).textContent).toMatch(/rejected/);
   });
   it('opens, asks, streams an answer with source links, and sends studio context', async () => {
     fetchMock.mockImplementation(async (_u: string, init?: RequestInit) => {

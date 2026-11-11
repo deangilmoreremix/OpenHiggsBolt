@@ -16,6 +16,8 @@ interface Msg {
   sources?: HelpSource[];
   error?: string;
   pending?: boolean;
+  /** Shown when the customer tries to ask but has no (valid) OpenAI key. */
+  needsKey?: 'missing' | 'invalid';
 }
 
 const ENDPOINT = '/api/help/chat';
@@ -55,7 +57,6 @@ export default function HelpAgent({
   onRequestApiKey?: () => void;
 }) {
   const [available, setAvailable] = useState(false);
-  const [hasKey, setHasKey] = useState(true);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -68,7 +69,7 @@ export default function HelpAgent({
     let off = false;
     fetch(ENDPOINT, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((j) => { if (off) return; setAvailable(!!j.available); setHasKey(j.hasKey !== false); })
+      .then((j) => { if (!off) setAvailable(!!j.available); })
       .catch(() => !off && setAvailable(false));
     return () => { off = true; };
   }, []);
@@ -100,8 +101,7 @@ export default function HelpAgent({
         body: JSON.stringify({ messages: history.slice(-6).map(({ role, content }) => ({ role, content })), studioId }),
       });
       if (res.status === 409) {
-        setHasKey(false);
-        setMsgs((all) => all.slice(0, -2));
+        patch((m) => ({ ...m, pending: false, needsKey: 'missing' }));
         return;
       }
       if (!res.ok || !res.body) {
@@ -126,8 +126,8 @@ export default function HelpAgent({
           if (ev === 'sources') patch((m) => ({ ...m, sources: data }));
           else if (ev === 'delta') patch((m) => ({ ...m, content: m.content + data.text }));
           else if (ev === 'error') {
-            if (data.code === 'OPENAI_KEY_INVALID') setHasKey(false);
-            patch((m) => ({ ...m, error: data.message }));
+            if (data.code === 'OPENAI_KEY_INVALID') patch((m) => ({ ...m, pending: false, needsKey: 'invalid' }));
+            else patch((m) => ({ ...m, error: data.message }));
           }
           else if (ev === 'done') patch((m) => ({ ...m, pending: false }));
         }
@@ -175,20 +175,7 @@ export default function HelpAgent({
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite">
-            {!hasKey && (
-              <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)' }} data-testid="help-needs-key">
-                <p className="text-sm font-bold text-white">Add your OpenAI key to use Ask SmartVideo</p>
-                <p className="mt-1 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>
-                  The assistant runs on your own OpenAI account, so you stay in control of usage. Add your key in the API keys settings, then ask your question.
-                </p>
-                {onRequestApiKey ? (
-                  <button type="button" onClick={() => { setOpen(false); onRequestApiKey(); }} className="mt-3 rounded-lg px-4 py-2 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Open API keys</button>
-                ) : (
-                  <a href="/studio" className="mt-3 inline-block rounded-lg px-4 py-2 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Go to the studio to add your key</a>
-                )}
-              </div>
-            )}
-            {hasKey && msgs.length === 0 && (
+            {msgs.length === 0 && (
               <div>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>Ask how to do anything in SmartVideo GO AI. Answers come from our studio guides and courses, and link to the page they came from.</p>
                 <div className="mt-3 flex flex-col gap-2">
@@ -215,6 +202,19 @@ export default function HelpAgent({
                     ) : m.pending ? (
                       <span style={{ color: semantic.textSecondary }}>Thinking…</span>
                     ) : null}
+                    {m.needsKey && (
+                      <div className="rounded-xl border p-3" style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)' }} data-testid="help-needs-key">
+                        <p className="text-sm font-bold text-white">{m.needsKey === 'invalid' ? 'Your OpenAI key was rejected' : 'Add your OpenAI key to get an answer'}</p>
+                        <p className="mt-1 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>
+                          {m.needsKey === 'invalid' ? 'OpenAI did not accept the saved key. Update it in the API keys settings, then ask again.' : 'Ask SmartVideo runs on your own OpenAI account. Add your key in the API keys settings, then ask again.'}
+                        </p>
+                        {onRequestApiKey ? (
+                          <button type="button" onClick={() => { setOpen(false); onRequestApiKey(); }} className="mt-2 rounded-lg px-3 py-1.5 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Open API keys</button>
+                        ) : (
+                          <a href="/studio" className="mt-2 inline-block rounded-lg px-3 py-1.5 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Go to the studio to add your key</a>
+                        )}
+                      </div>
+                    )}
                     {m.error && <p role="alert" className="mt-1 text-xs" style={{ color: semantic.error }}>{m.error}</p>}
                     {!m.pending && !m.error && m.sources && m.sources.length > 0 && (() => {
                       const cited = citedSources(m.content, m.sources);
@@ -255,7 +255,7 @@ export default function HelpAgent({
               className="max-h-28 min-h-[40px] flex-1 resize-none rounded-lg border bg-black px-3 py-2 text-sm text-white focus:outline-none"
               style={{ borderColor: 'var(--glass-border)' }}
             />
-            <button type="submit" disabled={busy || !input.trim() || !hasKey} className="rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40" style={{ background: colors.primary, color: '#000' }}>Send</button>
+            <button type="submit" disabled={busy || !input.trim()} className="rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40" style={{ background: colors.primary, color: '#000' }}>Send</button>
           </form>
           <p className="px-3 pb-2 text-[10px]" style={{ color: semantic.textMuted }}>Uses your own OpenAI key — usage is billed to your OpenAI account. AI answers can be wrong; check the linked page. Never paste API keys here.</p>
         </section>
