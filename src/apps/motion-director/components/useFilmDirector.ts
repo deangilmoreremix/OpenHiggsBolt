@@ -42,7 +42,8 @@ import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
-import { completeStage, failStage, finalStatus, finalStatusLine, newRun, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
+import { completeStage, failStage, finalStatus, finalStatusLine, newRun, reviewCoverage, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
+import { filmFingerprint } from '../lib/filmFingerprint';
 import { materialOf } from '../lib/material';
 import { soundRecord } from '../lib/soundRecord';
 import { applyFilmEdits, parseFilmEdits } from '../lib/editFilm';
@@ -69,6 +70,9 @@ export interface FilmChatMessage {
 }
 
 /** `brief` → `direction` → `mapping` are the co-creation steps the person confirms before the storyboard. */
+/** The person asked for no sound at all: the film carries no sound clips and the sound stage is waived. */
+const SILENT_RE = /\b(?:silent (?:film|video|movie)|no (?:sound|audio|sfx|sound effects)(?: or music)?|without (?:any )?(?:sound|audio)|mute)\b/i;
+
 export type FilmStage = 'idle' | 'offer' | 'brief' | 'direction' | 'mapping' | 'storyboarding' | 'plan' | 'building' | 'film';
 
 /** What a co-creation conversation has settled so far. */
@@ -156,6 +160,11 @@ export function useFilmDirector(opts: {
     runRef.current = fn(runRef.current);
     setRun(runRef.current);
   }, []);
+  /** Fingerprint of the film as it is NOW (the Workbench's copy when the caller keeps one, else this hook's): approvals are tied to it. */
+  const curFp = useCallback((): string | undefined => {
+    const p = (optsRef.current.currentProject?.() ?? lastFilm.current?.project) as Parameters<typeof filmFingerprint>[0] | undefined;
+    return p && Array.isArray((p as { tracks?: unknown }).tracks) ? filmFingerprint(p) : undefined;
+  }, []);
   /** A stage that was running when something threw did not finish: say so on the record. */
   const failRunning = useCallback((why: string) => upd((r) => { const id = STAGE_ORDER.find((x) => r.stages[x].status === 'running'); return id ? failStage(r, id, why) : r; }), [upd]);
   const pending = useRef<{ req: FilmRequest; template: FilmTemplateChoice } | null>(null);
@@ -235,7 +244,7 @@ export function useFilmDirector(opts: {
           : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
       setSteps(markStep(next, 'storyboard', 'active'));
       const mode: CreationMode = template === 'inkpress' ? 'inkpress' : full.single ? 'single' : full.mapping?.length ? 'cocreate' : 'autonomous';
-      runRef.current = startStage(newRun(full.prompt, mode), 'brief');
+      runRef.current = { ...startStage(newRun(full.prompt, mode), 'brief'), ...(SILENT_RE.test(full.prompt) ? { silent: true } : {}) };
       setRun(runRef.current);
       if (!req.siteUrl && !media.some((m) => m.kind === 'image')) {
         say('assistant', 'No product URL or screenshots yet, so the product shots will use sample pages. Add your URL to the message (or attach screenshots) any time and I will re-capture.');
@@ -700,7 +709,10 @@ export function useFilmDirector(opts: {
       let adaptation: AdaptationOutcome | null = null;
       const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, onAdaptation: (o) => { adaptation = o; }, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, signal: buildAbort.signal }, glog);
       // Findings the program can repair safely are repaired once, and said.
-      const { project, fixed } = fixFilm(buildOut);
+      const fixedFilm = fixFilm(buildOut);
+      // A silent film carries no sound clips at all (no music, no effects).
+      const project = runRef.current?.silent ? { ...fixedFilm.project, tracks: fixedFilm.project.tracks.map((t) => ({ ...t, clips: t.clips.filter((c) => c.cardId !== 'audio-clip') })) } : fixedFilm.project;
+      const fixed = fixedFilm.fixed;
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: storyboard.plan, videos: media.filter((m) => m.kind === 'video').length });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const musicClip = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'audio-clip' && /bgmlib|^blob:/.test(String(c.props?.file ?? '')));
@@ -724,6 +736,7 @@ export function useFilmDirector(opts: {
       const scenes = recordScenes(sceneRecords(storyboard.plan, material), project, sceneChecks);
       upd((r) => completeStage(r, { stage: 'build', scenes }, { adapted: made.adapted, parameterized: made.parameterized, unmodified: made.unmodified }));
       const snd = soundRecord(project);
+      if (runRef.current?.silent) { upd((r) => startStage(skipStage(r, 'sound', 'the person asked for a silent film'), 'qa')); } else
       upd((r) => startStage(completeStage(startStage(r, 'sound'), { stage: 'sound', cues: cuts, track: music?.name ?? null, silentCuts: snd.silentCuts.length }, { cues: cuts, cuts: snd.cuts, cutsWithSound: snd.cutsWithSound, music: snd.music?.name ?? null, silentAt: snd.silentCuts }), 'qa'));
       const frames = await checkFilmFrames(project, glog, undefined, buildAbort.signal);
       if (!live()) return;
@@ -734,7 +747,8 @@ export function useFilmDirector(opts: {
       const planned = frames.total ?? frames.checked;
       const partial = planned > frames.checked + frames.failed.length;
       if (partial) qa.warnings.push(`Frame QA is incomplete: ${frames.checked + frames.failed.length} of ${planned} frames were checked.`);
-      upd((r) => completeStage(r, { stage: 'qa', issues: qa.issues, framesChecked: qa.framesChecked }, { warnings: qa.warnings.length }));
+      // Required = the frames the check planned; done = those really inspected (a check cut short by its budget, or that could not render, is partial).
+      upd((r) => ({ ...completeStage(r, { stage: 'qa', issues: qa.issues, framesChecked: qa.framesChecked, required: planned, done: frames.checked + frames.failed.length }, { warnings: qa.warnings.length, required: planned, done: frames.checked + frames.failed.length }), fingerprints: { build: filmFingerprint(project) } }));
       const built = { project: { ...project, run: runRef.current ?? undefined }, qa };
       setFilm(built);
       setStage('film');
@@ -777,7 +791,8 @@ export function useFilmDirector(opts: {
             return;
           }
           const fails = report.items.filter((i) => !i.ok);
-          const record: ReviewRecord = { ran: true, state: fails.length ? 'failed' : 'passed', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
+          const cover = reviewCoverage(report.items);
+          const record: ReviewRecord = { ran: true, schemaValid: true, criteria: report.items.map((i) => ({ id: i.id, ok: i.ok })), coversRequired: cover.coversRequired, missingGroups: cover.missingGroups, filmFingerprint: filmFingerprint(project), state: fails.length ? 'failed' : cover.coversRequired ? 'passed' : 'incomplete', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
           upd((r) => completeStage(r, { stage: 'review', review: record }, { fails: fails.length, checks: report.items.length }));
           const { project: repaired0, fixed } = applyReviewFixes(project, report.items);
           const repaired = { ...repaired0, run: runRef.current ?? undefined };
@@ -792,7 +807,7 @@ export function useFilmDirector(opts: {
             optsRef.current.onBuilt?.(next);
           }
           const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
-          say('assistant', [...finalReviewLines(report), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current)}.` : ''].filter(Boolean).join('\n'));
+          say('assistant', [...finalReviewLines(report), ...(cover.coversRequired ? [] : [`The review did not cover ${cover.missingGroups.join(', ')}, so it cannot certify the film.`]), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current, curFp())}.` : ''].filter(Boolean).join('\n'));
           // Correction loop: a shot the reviewer failed (stage 5) is rebuilt on its own with the reviewer's note as its starting problem;
           // the rest of the film is kept. One pass only; the film then needs a new review (status: review pending).
           const shotFails = report.items.filter((i) => !i.ok && i.stage === '5' && i.seconds.length);
@@ -854,7 +869,9 @@ export function useFilmDirector(opts: {
       upd((r) => ({ ...r, review: { ran: false, state: 'not-run', findings: [] }, stages: { ...r.stages, review: { status: 'pending', attempts: 0 } } }));
       upd((r) => completeStage(r, { stage: 'build', scenes }, { edited: touched.length }));
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: plan, videos: media.filter((m) => m.kind === 'video').length });
-      upd((r) => completeStage(startStage(r, 'qa'), { stage: 'qa', issues: qa.issues, framesChecked: 0 }));
+      const fr = await checkFilmFrames(project, log, undefined, abort.signal);
+      qa.issues.push(...fr.failed.map((f) => `Frame ${f}`));
+      upd((r) => ({ ...completeStage(startStage(r, 'qa'), { stage: 'qa', issues: qa.issues, framesChecked: fr.checked, required: fr.total, done: fr.checked + fr.failed.length }), fingerprints: { build: filmFingerprint(project) } }));
       const built = { project: { ...project, run: runRef.current ?? undefined }, qa };
       setStoryboard({ ...storyboard, plan: plan });
       setFilm(built);
@@ -951,7 +968,7 @@ export function useFilmDirector(opts: {
         return d && d.state !== 'todo' ? { ...st, state: d.state, detail: d.detail ?? st.detail } : st;
       })
     : steps;
-  return { messages, stage, activity, steps: shownSteps, run, status: run ? finalStatus(run) : null, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
+  return { messages, stage, activity, steps: shownSteps, run, status: run ? finalStatus(run, curFp()) : null, storyboard, film, styleframes, send, chooseTemplate, coCreate, approve, revise, markDelivered, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

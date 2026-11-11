@@ -15,7 +15,7 @@ import { FILM_STEPS } from './filmSteps';
 export type StageId = 'brief' | 'direction' | 'mapping' | 'storyboard' | 'assets' | 'build' | 'sound' | 'qa' | 'review';
 export const STAGE_ORDER: readonly StageId[] = ['brief', 'direction', 'mapping', 'storyboard', 'assets', 'build', 'sound', 'qa', 'review'];
 
-export type StageStatus = 'pending' | 'running' | 'completed' | 'needs-input' | 'failed' | 'needs-review' | 'skipped';
+export type StageStatus = 'pending' | 'running' | 'completed' | 'partial' | 'needs-input' | 'failed' | 'needs-review' | 'skipped';
 export type CreationMode = 'inkpress' | 'autonomous' | 'cocreate' | 'single';
 
 /** What the film is, from the person's point of view. */
@@ -30,6 +30,8 @@ export interface StageRecord {
   note?: string;
   /** Small summary of the stage's output (never the output itself). */
   summary?: Record<string, unknown>;
+  /** A skipped stage records why, and whether that waiver is legitimate for the mode (only legitimate waivers keep a film releasable). */
+  waiver?: { reason: string; legit: boolean };
 }
 
 /** What a scene needs and what it got (stage 4/5), the unit of resume. */
@@ -53,10 +55,32 @@ export interface SceneRecord {
 export interface ReviewRecord {
   /** Did an independent reviewer actually look at the film? */
   ran: boolean;
-  /** `unavailable`: no reviewer could be reached (no key, no answer). */
-  state: 'not-run' | 'running' | 'passed' | 'failed' | 'unavailable';
+  /** `unavailable`: no reviewer could be reached (no key, no answer). `incomplete`: it answered but did not cover what a review must. */
+  state: 'not-run' | 'running' | 'passed' | 'failed' | 'unavailable' | 'incomplete';
   findings: Array<{ scene?: number; frame?: number; text: string; severity: 'fix' | 'note'; resolved?: boolean }>;
   note?: string;
+  /** The answer was a well-formed structured response. */
+  schemaValid?: boolean;
+  /** Every check the reviewer answered (id of the checklist, and whether it held). */
+  criteria?: Array<{ id: string; ok: boolean }>;
+  /** The answers cover every required group of the checklists (see REQUIRED_REVIEW_GROUPS). */
+  coversRequired?: boolean;
+  missingGroups?: string[];
+  /** Fingerprint of the exact film the reviewer was shown (lib/filmFingerprint). */
+  filmFingerprint?: string;
+}
+
+/**
+ * The checklist groups a review must answer at least once each (final-review.md): product goals, features, visual direction,
+ * shot cards, storyboard, data safety and visual quality. Audio (A) is judged from the sound record and the rendered audio
+ * checks, not from stills, so a still-based reviewer is not required to answer it. One generic positive item cannot certify a film.
+ */
+export const REQUIRED_REVIEW_GROUPS = ['P', 'F', 'V', 'S', 'B', 'D', 'Q'] as const;
+
+export function reviewCoverage(items: ReadonlyArray<{ id: string; ok: boolean }>): { coversRequired: boolean; missingGroups: string[] } {
+  const answered = new Set(items.map((i) => i.id.trim().toUpperCase().charAt(0)));
+  const missingGroups = REQUIRED_REVIEW_GROUPS.filter((g) => !answered.has(g));
+  return { coversRequired: missingGroups.length === 0, missingGroups };
 }
 
 export interface ProductionRun {
@@ -72,6 +96,10 @@ export interface ProductionRun {
   review: ReviewRecord;
   /** Unresolved QA problems (a stage cannot complete while any is critical). */
   qaIssues: string[];
+  /** The person asked for a silent film (no music, no sound effects): the sound stage may then be waived. */
+  silent?: boolean;
+  /** Fingerprint of the film at its last build (lib/filmFingerprint); a later change is detected against it. */
+  fingerprints?: { build?: string };
 }
 
 const blank = (): StageRecord => ({ status: 'pending', attempts: 0 });
@@ -102,7 +130,13 @@ export const startStage = (run: ProductionRun, id: StageId, now = Date.now()): P
 
 export const failStage = (run: ProductionRun, id: StageId, why: string, now = Date.now()): ProductionRun => touch(run, id, { status: 'failed', note: why, endedAt: now }, now);
 export const needInput = (run: ProductionRun, id: StageId, what: string, now = Date.now()): ProductionRun => touch(run, id, { status: 'needs-input', note: what, endedAt: now }, now);
-export const skipStage = (run: ProductionRun, id: StageId, why: string, now = Date.now()): ProductionRun => touch(run, id, { status: 'skipped', note: why, endedAt: now }, now);
+/** Stages a mode may legitimately leave out: the Ink Press template and a single shot fix their own look and shots; sound only for a silent film. */
+export const waiverIsLegit = (run: ProductionRun, id: StageId): boolean => {
+  if (id === 'direction' || id === 'mapping') return run.mode === 'inkpress' || run.mode === 'single';
+  if (id === 'sound') return Boolean(run.silent);
+  return false;
+};
+export const skipStage = (run: ProductionRun, id: StageId, why: string, now = Date.now()): ProductionRun => touch(run, id, { status: 'skipped', note: why, waiver: { reason: why, legit: waiverIsLegit(run, id) }, endedAt: now }, now);
 
 /** What each stage must have produced before it may be called completed. Returns the reason it is not, or null. */
 export type Output =
@@ -113,7 +147,7 @@ export type Output =
   | { stage: 'assets'; scenes: SceneRecord[] }
   | { stage: 'build'; scenes: SceneRecord[] }
   | { stage: 'sound'; cues: number; track: string | null; /** Cuts between shots with no sound near them. */ silentCuts?: number }
-  | { stage: 'qa'; issues: string[]; framesChecked: number }
+  | { stage: 'qa'; issues: string[]; framesChecked: number; /** Checks the QA planned (frames to inspect) and how many were really done. */ required?: number; done?: number }
   | { stage: 'review'; review: ReviewRecord };
 
 export function missingOutput(o: Output): { reason: string; whoCanFix: 'program' | 'person' } | null {
@@ -144,10 +178,22 @@ export function missingOutput(o: Output): { reason: string; whoCanFix: 'program'
     case 'sound':
       if (!(o.cues > 0 || o.track)) return { reason: 'the film has no sound cues and no music', whoCanFix: 'program' };
       return o.silentCuts ? { reason: `${o.silentCuts} cut${o.silentCuts === 1 ? '' : 's'} between shots ha${o.silentCuts === 1 ? 's' : 've'} no sound`, whoCanFix: 'program' } : null;
-    case 'qa':
-      return o.issues.length ? { reason: `${o.issues.length} unresolved problem${o.issues.length === 1 ? '' : 's'}: ${o.issues.slice(0, 3).join('; ')}`, whoCanFix: 'program' } : null;
-    case 'review':
-      return o.review.ran ? null : { reason: 'the independent reviewer did not run', whoCanFix: 'program' };
+    case 'qa': {
+      if (o.issues.length) return { reason: `${o.issues.length} unresolved problem${o.issues.length === 1 ? '' : 's'}: ${o.issues.slice(0, 3).join('; ')}`, whoCanFix: 'program' };
+      const required = o.required ?? 0;
+      const done = o.done ?? o.framesChecked;
+      // No frame inspected, or fewer than planned: the check is partial, never a pass.
+      if (done <= 0 || (required > 0 && done < required)) return { reason: done <= 0 ? 'partial: no frame was inspected' : `partial: only ${done} of ${required} required frames were inspected`, whoCanFix: 'program' };
+      return null;
+    }
+    case 'review': {
+      const r = o.review;
+      if (!r.ran) return { reason: 'the independent reviewer did not run', whoCanFix: 'program' };
+      if (r.state === 'failed') return null; // it ran and its verdict (the findings) is recorded: an outcome, not a missing output
+      if (r.schemaValid === false) return { reason: 'the reviewer\'s answer was not a valid structured response', whoCanFix: 'program' };
+      if (r.coversRequired === false) return { reason: `the review did not cover ${(r.missingGroups ?? []).join(', ') || 'the required checks'}`, whoCanFix: 'program' };
+      return null;
+    }
   }
 }
 
@@ -165,27 +211,57 @@ export function completeStage(run: ProductionRun, output: Output, summary?: Reco
   if (!miss) return touch(next, id, { status: 'completed', note: undefined, summary, endedAt: now }, now);
   // Output exists but is not clean: it can be shown, it cannot be called done.
   const showable = id === 'build' || id === 'qa' || id === 'storyboard' || id === 'sound';
+  if (id === 'qa' && /^partial:/.test(miss.reason)) return touch(next, id, { status: 'partial', note: miss.reason, summary, endedAt: now }, now);
   if (showable && miss.whoCanFix === 'program') return touch(next, id, { status: 'needs-review', note: miss.reason, summary, endedAt: now }, now);
   return touch(next, id, { status: miss.whoCanFix === 'person' ? 'needs-input' : 'failed', note: miss.reason, summary, endedAt: now }, now);
 }
 
+/**
+ * Everything standing between this film and "ready for final export": every required stage completed (or legitimately waived
+ * for the mode), a passed review that covers what a review must, answered for THIS exact film (`currentFingerprint`).
+ */
+export function readinessBlockers(run: ProductionRun, currentFingerprint?: string): string[] {
+  const out: string[] = [];
+  for (const id of STAGE_ORDER) {
+    const st = run.stages[id];
+    if (st.status === 'completed') continue;
+    if (st.status === 'skipped' && (st.waiver?.legit ?? waiverIsLegit(run, id))) continue;
+    out.push(`${id}: ${st.status === 'skipped' ? `skipped without a legitimate waiver${st.note ? ` (${st.note})` : ''}` : st.note ?? st.status}`);
+  }
+  const r = run.review;
+  if (run.stages.review.status === 'completed') {
+    if (r.state !== 'passed') out.push(`review: its verdict is ${r.state}`);
+    if (r.schemaValid === false) out.push('review: not a valid structured response');
+    if (r.coversRequired !== true) out.push(`review: did not cover ${(r.missingGroups ?? ['the required checks']).join(', ')}`);
+    const open = r.findings.filter((f) => f.severity === 'fix' && !f.resolved);
+    if (open.length) out.push(`review: ${open.length} blocking finding${open.length === 1 ? '' : 's'} unresolved`);
+    if (!r.filmFingerprint) out.push('review: it is not tied to a film version');
+    else if (currentFingerprint && r.filmFingerprint !== currentFingerprint) out.push('review: the film changed after it was reviewed');
+  }
+  return out;
+}
+
 /** The state of the film as the person should be told it. Derived, never stored. */
-export function finalStatus(run: ProductionRun): FinalStatus {
+export function finalStatus(run: ProductionRun, currentFingerprint?: string): FinalStatus {
   const s = run.stages;
   if (s.build.status === 'running' || s.build.status === 'pending' || s.assets.status === 'running') return 'building';
   if (s.qa.status === 'running') return 'qa-running';
-  if (s.qa.status !== 'completed') return s.qa.status === 'pending' ? 'draft' : 'corrections-required';
-  if (run.review.state === 'failed' || run.review.findings.some((f) => f.severity === 'fix' && !f.resolved)) return run.review.state === 'failed' ? 'review-failed' : 'corrections-required';
-  if (s.review.status === 'completed' && run.review.ran) return 'ready';
+  if (s.qa.status === 'pending') return 'draft';
+  if (readinessBlockers(run, currentFingerprint).length === 0) return 'ready';
+  // Not ready: say which kind of not ready.
+  const early = (['brief', 'direction', 'mapping', 'storyboard', 'assets', 'build', 'sound', 'qa'] as const).some((id) => !['completed', 'skipped'].includes(s[id].status) || (s[id].status === 'skipped' && !(s[id].waiver?.legit ?? waiverIsLegit(run, id))));
+  if (early) return 'corrections-required';
+  if (run.review.state === 'failed') return 'review-failed';
+  if (run.review.findings.some((f) => f.severity === 'fix' && !f.resolved)) return 'corrections-required';
   return 'review-pending';
 }
 
-export const finalStatusLine = (run: ProductionRun): string => {
-  switch (finalStatus(run)) {
+export const finalStatusLine = (run: ProductionRun, currentFingerprint?: string): string => {
+  switch (finalStatus(run, currentFingerprint)) {
     case 'building': return 'Building the film';
     case 'draft': return 'Draft: assembled, checks not finished';
     case 'qa-running': return 'Draft ready to preview · technical checks running';
-    case 'review-pending': return run.review.state === 'unavailable' ? `Draft passed the technical checks · independent review unavailable${run.review.note ? ` (${run.review.note})` : ''}` : 'Draft passed the technical checks · independent review pending';
+    case 'review-pending': return run.review.state === 'incomplete' ? 'Draft passed the technical checks · the independent review was incomplete' : run.review.ran && currentFingerprint && run.review.filmFingerprint !== currentFingerprint ? 'The film changed after its review · independent review pending' : run.review.state === 'unavailable' ? `Draft passed the technical checks · independent review unavailable${run.review.note ? ` (${run.review.note})` : ''}` : 'Draft passed the technical checks · independent review pending';
     case 'review-failed': return 'The independent review found problems';
     case 'corrections-required': return 'Corrections are needed before this film is final';
     case 'ready': return 'Ready for final export';
@@ -215,7 +291,7 @@ const STEP_STAGES: Record<FilmStepId, StageId[]> = {
   qa: ['qa', 'review'],
   deliver: [],
 };
-const toStep = (s: StageStatus): FilmStepState => (s === 'completed' ? 'done' : s === 'running' ? 'active' : s === 'failed' ? 'error' : s === 'needs-input' || s === 'needs-review' ? 'warning' : s === 'skipped' ? 'skipped' : 'todo');
+const toStep = (s: StageStatus): FilmStepState => (s === 'completed' ? 'done' : s === 'running' ? 'active' : s === 'failed' ? 'error' : s === 'needs-input' || s === 'needs-review' || s === 'partial' ? 'warning' : s === 'skipped' ? 'skipped' : 'todo');
 const worst = (list: FilmStepState[]): FilmStepState => (['error', 'warning', 'active'] as FilmStepState[]).find((w) => list.includes(w)) ?? (list.every((x) => x === 'done' || x === 'skipped') && list.some((x) => x === 'done') ? 'done' : list.every((x) => x === 'skipped') && list.length ? 'skipped' : 'todo');
 
 export function stepsOf(run: ProductionRun, delivered = false): FilmStep[] {
