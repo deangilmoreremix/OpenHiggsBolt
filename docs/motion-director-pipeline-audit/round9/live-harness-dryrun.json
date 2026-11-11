@@ -1,0 +1,19 @@
+{
+  "status": "DRY-RUN (not live evidence)",
+  "generatedAt": "2026-11-11T01:13:24.270Z",
+  "note": "Stubbed route: proves the harness only.",
+  "operations": [
+    {
+      "operation": "1. product brief",
+      "status": "failed",
+      "model": null,
+      "httpStatus": null,
+      "schemaValid": false,
+      "behaviour": "the response did not cause the intended behaviour",
+      "error": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m2\u001b[39m\nReceived:   \u001b[31m1\u001b[39m",
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    }
+  ]
+}

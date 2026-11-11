@@ -187,7 +187,8 @@ export async function adaptFilm(project: ProjectData, ctx: AdaptContext, deps: A
           rateRetries++;
           queue.unshift(clip);
           log(`Rate limited · trying ${name} again shortly`, 'running');
-          await (deps.sleep ?? waitFor)(ADAPT_LIMITS.backoffMs, controller.signal);
+          // The server's own Retry-After wins over the fixed backoff (within a sane range), so the limit is respected, not guessed.
+          await (deps.sleep ?? waitFor)(Math.min(60_000, Math.max(ADAPT_LIMITS.backoffMs, error.retryAfterMs ?? 0)), controller.signal);
           continue;
         }
         // No key, a refusal or undeployed recipe sources: say so once and stop asking.

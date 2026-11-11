@@ -68,7 +68,7 @@ export interface CaptureLayout {
 }
 
 export class DirectorError extends Error {
-  constructor(message: string, readonly code: string, readonly status: number) {
+  constructor(message: string, readonly code: string, readonly status: number, /** What the server says to wait before trying again (a rate limit), in ms. */ readonly retryAfterMs?: number) {
     super(message);
   }
 }
@@ -94,7 +94,9 @@ async function post<T>(path: string, body: unknown, timeoutMs = 0): Promise<T> {
     if (timer) clearTimeout(timer);
   }
   if (!res.ok) {
-    throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status);
+    const hdr = Number(res.headers.get('retry-after'));
+    const wait = Number.isFinite(data?.retryAfterMs) ? Number(data.retryAfterMs) : Number.isFinite(hdr) && hdr > 0 ? hdr * 1000 : undefined;
+    throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status, wait);
   }
   return data as T;
 }

@@ -24,6 +24,8 @@ import { ADAPT_INSTRUCTIONS, ADAPT_JSON_SCHEMA, ADAPT_MAX_SOURCE, cleanAdaptedCo
 import { DEMO_TEXTS } from '@/apps/motion-director/demosrc/_generated/demoTexts'
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { AESTHETIC_RULES, FINAL_REVIEW } from '@/apps/motion-director/lib/_generated/reviewChecklists'
+import { FINAL_REVIEW_JSON_SCHEMA, REVIEW_JSON_SCHEMA, CHAT_JSON_SCHEMA } from '@/apps/motion-director/lib/directorSchemas'
+import { readModelOutput } from '@/apps/motion-director/lib/responsesApi'
 import { requireMotionStudioUser } from '../lib/auth'
 import { directorFailure } from '../lib/directorFailure'
 
@@ -48,8 +50,15 @@ export const maxDuration = 60
  * returned, and the browser validates again before applying it.
  */
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
-const DIRECTOR_MODEL = process.env.MOTION_STUDIO_DIRECTOR_MODEL || 'gpt-6-astra'
+const EXPLICIT_MODEL = process.env.MOTION_STUDIO_DIRECTOR_MODEL
+const DIRECTOR_MODEL = EXPLICIT_MODEL || 'gpt-6-astra'
 const ALLOWED_MODELS = new Set(['gpt-6-astra', 'gpt-4o', 'gpt-4o-mini'])
+// The default id is a configuration choice that this code cannot prove exists for a given OpenAI account. With no explicit model set, an
+// unavailable model (HTTP 404 / model_not_found) falls through to the next allowed model, and the one that worked is remembered; an explicit
+// MOTION_STUDIO_DIRECTOR_MODEL is never replaced. The model actually used is returned in the `x-director-model` header.
+const MODEL_ORDER = EXPLICIT_MODEL ? [DIRECTOR_MODEL] : [DIRECTOR_MODEL, ...['gpt-4o', 'gpt-4o-mini'].filter((m) => m !== DIRECTOR_MODEL)]
+let workingModel: string | null = null
+let lastModelUsed = ''
 
 const CATALOG_BRIEF = buildCatalogBrief()
 
@@ -123,43 +132,9 @@ ${FINAL_REVIEW}
 AESTHETIC RULES (aesthetic-rules.md)
 ${AESTHETIC_RULES}`
 
-const FINAL_REVIEW_JSON_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['items', 'summary'],
-  properties: {
-    items: {
-      type: 'array',
-      maxItems: 24,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['id', 'ok', 'seconds', 'text', 'stage'],
-        properties: { id: { type: 'string' }, ok: { type: 'boolean' }, seconds: { type: 'array', items: { type: 'number' } }, text: { type: 'string' }, stage: { type: 'string', enum: ['3', '5', '6', 'none'] } },
-      },
-    },
-    summary: { type: 'string' },
-  },
-} as const
 
-const REVIEW_JSON_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['findings', 'summary'],
-  properties: {
-    findings: {
-      type: 'array',
-      maxItems: 6,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['second', 'severity', 'text'],
-        properties: { second: { type: 'number' }, severity: { type: 'string', enum: ['fix', 'check'] }, text: { type: 'string' } },
-      },
-    },
-    summary: { type: 'string' },
-  },
-} as const
+
+
 
 const CHAT_INSTRUCTIONS = `You are the director of a cinematic product video, talking with the person who asked for it.
 You receive their message, the storyboard on the table (title, summary, scenes) and what the product's site says (productCapture.content, when present).
@@ -167,12 +142,7 @@ Return JSON {reply, revise}.
 - reply: one to three friendly sentences, in plain words. Answer their question or explain why the shots, order and copy were chosen, using the site's own words when you have them. Never invent features the site does not mention.
 - revise: true only when the message asks you to CHANGE the film (different shots, copy, length, colours, order). Then reply says in one sentence what you will change. For a question or comment, revise is false.`
 
-const CHAT_JSON_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['reply', 'revise'],
-  properties: { reply: { type: 'string' }, revise: { type: 'boolean' } },
-} as const
+
 
 const EDIT_INSTRUCTIONS = `You edit a Motion Studio film. You receive the instruction and the current clips.
 Return JSON {reply, ops}. Each op has every field; fill unused ones with "" or 0.
@@ -188,22 +158,33 @@ Use only clip ids from the list and recipe ids from the catalog. Keep the film's
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
 
-function extractOutputText(payload: any): string {
-  if (typeof payload?.output_text === 'string') return payload.output_text
-  for (const item of Array.isArray(payload?.output) ? payload.output : []) {
-    for (const content of Array.isArray(item?.content) ? item.content : []) {
-      if (content?.type === 'output_text' && typeof content?.text === 'string') return content.text
-    }
-  }
-  return ''
-}
+const modelUnavailable = (status: number, payload: any) => status === 404 || payload?.error?.code === 'model_not_found'
 
 async function callDirector(key: string, instructions: string, input: string, schemaName: string, schema: object, images: string[] = []) {
+  const candidates = workingModel ? [workingModel] : MODEL_ORDER
+  let lastError: Error | null = null
+  for (const model of candidates) {
+    try {
+      const out = await callOnce(key, model, instructions, input, schemaName, schema, images)
+      workingModel = model
+      lastModelUsed = model
+      return out
+    } catch (error) {
+      lastError = error as Error
+      const status = (error as { status?: number }).status
+      // Only "this model does not exist for this key" moves on to the next model; every other failure is the answer.
+      if (!(status === 404 && candidates.length > 1)) throw error
+    }
+  }
+  throw lastError ?? new Error('No director model is available')
+}
+
+async function callOnce(key: string, model: string, instructions: string, input: string, schemaName: string, schema: object, images: string[]) {
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: DIRECTOR_MODEL,
+      model,
       instructions,
       input: [{ role: 'user', content: [{ type: 'input_text', text: input }, ...images.map((image_url) => ({ type: 'input_image', image_url }))] }],
       text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
@@ -212,11 +193,13 @@ async function callDirector(key: string, instructions: string, input: string, sc
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const error = new Error(String(payload?.error?.message || `OpenAI request failed (HTTP ${response.status})`)) as Error & { status?: number }
-    error.status = response.status
+    const error = new Error(String(payload?.error?.message || `OpenAI request failed (HTTP ${response.status})`)) as Error & { status?: number; retryAfterMs?: number }
+    error.status = modelUnavailable(response.status, payload) ? 404 : response.status
+    const wait = Number(response.headers.get('retry-after'))
+    if (Number.isFinite(wait) && wait > 0) error.retryAfterMs = wait * 1000
     throw error
   }
-  return JSON.parse(extractOutputText(payload) || '{}')
+  return readModelOutput(payload)
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -236,6 +219,12 @@ function siteContent(value: unknown) {
 }
 
 export async function POST(req: NextRequest) {
+  const res = await handle(req)
+  if (lastModelUsed) res.headers.set('x-director-model', lastModelUsed)
+  return res
+}
+
+async function handle(req: NextRequest): Promise<Response> {
   const user = await requireMotionStudioUser(req)
   if (!user.ok) return user.response
 
@@ -246,7 +235,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Director model is not allowed', code: 'MODEL_NOT_ALLOWED' }, { status: 500 })
   }
   // BYOK only: the dev-only bypass has no stored key and so gets OPENAI_KEY_REQUIRED.
-  const key = user.bypass ? null : await getOpenAiKeyForUser()
+  // Live verification (development only): the e2e bypass user has no stored key, so a developer's own key may be supplied through the
+  // server's environment (MS_LIVE_OPENAI_KEY). It is never read in production, never logged and never sent to the browser.
+  const devLiveKey = process.env.NODE_ENV !== 'production' && user.bypass ? process.env.MS_LIVE_OPENAI_KEY || null : null
+  const key = user.bypass ? devLiveKey : await getOpenAiKeyForUser()
   if (!key) {
     return NextResponse.json(
       { error: 'OPENAI_KEY_REQUIRED', message: 'Add your OpenAI API key in SmartVideo GO Settings to use the Motion Studio director.' },

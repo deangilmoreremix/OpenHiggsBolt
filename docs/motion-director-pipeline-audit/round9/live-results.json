@@ -1,0 +1,18 @@
+{
+  "status": "BLOCKED — NO AUTHORIZED KEY",
+  "generatedAt": "2026-11-11T01:13:07.378Z",
+  "note": "No key in this environment: nothing was run against OpenAI.",
+  "operations": [
+    {
+      "operation": "all",
+      "status": "blocked",
+      "live": false,
+      "dryRun": false,
+      "model": null,
+      "httpStatus": null,
+      "schemaValid": null,
+      "behaviour": "BLOCKED — NO AUTHORIZED KEY",
+      "keyHint": null
+    }
+  ]
+}
