@@ -47,12 +47,12 @@ async function stubRoute(page: Page) {
   await page.route('**/api/motion-studio/director', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
     const ok = (json: unknown) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'x-director-model': 'dry-run-stub' }, body: JSON.stringify(json) });
-    if (b.mode === 'brief') return ok({ brief: { rows: [{ item: 'Product', judgment: 'luxury real estate', evidence: 'prompt' }], questions: [] } });
+    if (b.mode === 'brief') return ok({ brief: { rows: [{ item: 'Product', judgment: 'luxury real estate properties', evidence: 'prompt' }, { item: 'Audience', judgment: 'prospective buyers', evidence: 'prompt' }, { item: 'Call to action', judgment: 'end on the logo and a call to action', evidence: 'prompt' }], questions: [] } });
     if (b.mode === 'direction') return ok({ options: { directions: [{ name: 'Quiet luxury', claim: 'c', keywords: ['calm'], look: 'l', motion: 'm', why: 'w', tradeoff: 't' }], recommended: 0 } });
     if (b.mode === 'mapping') return ok({ mapping: [{ feature: 'The home', firstShot: [...IDS][0], altShot: '', expresses: 'x', pageState: '' }] });
     if (b.mode === 'review') return ok({ findings: [], summary: 'dry run' });
     if (b.mode === 'final-review') return ok({ items: ['P1', 'F1', 'V1', 'S1', 'B1', 'D1', 'Q1'].map((id) => ({ id, ok: true, seconds: [], text: 'dry run', stage: 'none' })), summary: 'dry run' });
-    return ok({ plan: { title: 't', summary: 's', palette: { background: '#f4efe6', text: '#1b1712', accent: '#b5651d' }, scenes: [{ kind: 'title', recipeId: '', durationSec: 3, headline: 'a', caption: '', transition: 'cut' }, { kind: 'shot', recipeId: [...IDS][0], durationSec: 5, headline: 'b', caption: '', transition: 'cut' }, { kind: 'title', recipeId: '', durationSec: 3, headline: 'c', caption: '', transition: 'cut' }] } });
+    return ok({ plan: { title: 't', summary: 's', palette: { background: '#f4efe6', text: '#1b1712', accent: '#b5651d' }, scenes: [{ kind: 'title', recipeId: '', durationSec: 8, headline: 'a', caption: '', transition: 'cut' }, { kind: 'shot', recipeId: [...IDS][0], durationSec: 7, headline: 'b', caption: '', transition: 'cut' }, { kind: 'shot', recipeId: [...IDS][1], durationSec: 7, headline: 'b', caption: '', transition: 'cut' }, { kind: 'title', recipeId: '', durationSec: 8, headline: 'c', caption: '', transition: 'cut' }] } });
   });
 }
 
