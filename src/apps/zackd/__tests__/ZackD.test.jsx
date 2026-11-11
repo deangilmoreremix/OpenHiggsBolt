@@ -265,4 +265,15 @@ describe('ZackD studio (built like the video studios)', () => {
     redo.forEach((b) => expect(b.disabled).toBe(true));
     expect(action(container).disabled).toBe(true);
   });
+
+  it('drops a generated voice-over when the narration text it was made from is edited', async () => {
+    const { container } = render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await screen.findByLabelText('Narration, beat 1');
+    fireEvent.click(screen.getByRole('button', { name: 'Generate narration' }));
+    await waitFor(() => expect(container.querySelector('audio')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Narration, beat 1'), { target: { value: 'A corrected sentence.' } });
+    await waitFor(() => expect(container.querySelector('audio')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Generate narration' })).toBeTruthy(); // regenerate offered again
+  });
 });

@@ -466,7 +466,12 @@ export default function ZackD({
                   <div key={b.beat_id} className={`${CARD} p-3 gap-2`}>
                     <div className="text-[10px] font-bold text-white/30 uppercase tracking-wider">Beat {bi + 1}{b.hook ? ' · Hook' : ''} · {b.title_en}</div>
                     <textarea className={`${FIELD} text-sm`} rows={3} maxLength={400} disabled={busy} aria-label={`Narration, beat ${bi + 1}`} value={b.narration}
-                      onChange={(e) => set((p) => ({ map: { ...p.map, beats: p.map.beats.map((x) => (x.beat_id === b.beat_id ? { ...x, narration: e.target.value } : x)) } }))} />
+                      onChange={(e) => {
+                        const text = e.target.value;
+                        // the generated voice-over now speaks the old text: drop it (and a cut that mixed it in) so it must be regenerated
+                        if (project.narration && final?.hasNarration) setFinal(null);
+                        set((p) => ({ narration: null, map: { ...p.map, beats: p.map.beats.map((x) => (x.beat_id === b.beat_id ? { ...x, narration: text } : x)) } }));
+                      }} />
                     {b.shots.map((sh) => (
                       <div key={sh.shot_id} className="flex flex-col gap-1">
                         <span className="text-[10px] text-white/40">{sh.shot_id} · {sh.duration_sec}s planned{sh.zoom_impact ? ' · zoom' : ''}</span>
