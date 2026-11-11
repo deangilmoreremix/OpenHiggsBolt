@@ -38,6 +38,9 @@ export function useAcademyProgress(syncRemote = true) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(progress);
   latest.current = progress;
+  // Edits made before the account copy has loaded are replayed on top of it, never merged over it.
+  const hydrated = useRef(!syncRemote);
+  const pending = useRef<Array<(p: AcademyProgress, now: number) => AcademyProgress>>([]);
 
   const push = useCallback(
     (p: AcademyProgress) => {
@@ -79,15 +82,25 @@ export function useAcademyProgress(syncRemote = true) {
         // Browser progress saved by a different account must never reach this one.
         const storedOwner = loadOwner();
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
-        // Merge against the CURRENT state, so work done while this request was pending is kept.
-        const merged = mergeProgress(foreign ? emptyProgress() : latest.current, remote);
+        // Merge the browser copy as it was on load (not the edited state), then replay edits the
+        // learner made while this request was pending on top, so neither side loses work.
+        const base = mergeProgress(foreign ? emptyProgress() : local, remote);
+        const edits = pending.current;
+        pending.current = [];
+        hydrated.current = true;
+        const merged = edits.reduce((p, fn) => fn(p, Date.now()), base);
         if (owner) saveOwner(owner);
         setProgress(merged);
         saveLocal(merged);
-        if (merged !== remote && merged.updatedAt > 0) push(merged); // newer browser progress goes up now
+        if (edits.length > 0 || (base !== remote && base.updatedAt > 0)) push(merged); // newer browser progress goes up now
         else setSync('saved');
       } catch {
-        if (!cancelled) setSync('offline');
+        if (cancelled) return;
+        // account copy unreachable: keep working from the browser copy, edits included
+        hydrated.current = true;
+        pending.current = [];
+        saveLocal(latest.current);
+        setSync('offline');
       }
     })();
     return () => {
@@ -101,6 +114,12 @@ export function useAcademyProgress(syncRemote = true) {
 
   const apply = useCallback(
     (fn: (p: AcademyProgress, now: number) => AcademyProgress) => {
+      if (!hydrated.current) {
+        // show the edit now, but do not save or upload until the account copy has loaded
+        pending.current.push(fn);
+        setProgress((cur) => fn(cur, Date.now()));
+        return;
+      }
       setProgress((cur) => {
         const next = fn(cur, Date.now());
         if (next !== cur) push(next);

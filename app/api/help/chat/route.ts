@@ -5,6 +5,7 @@ import { entitlementForbiddenResponse, requireApiEntitlement } from '@/access/ap
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit';
 import { getIndex, search } from '@/lib/helpSearch';
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
+import { canAccessTraining, resolveResellerEntitlements } from '@/lib/resellerAccess';
 import { HELP_SYSTEM_PROMPT, HelpLlmError, buildSourcesBlock, streamAnswer, type ChatTurn } from '@/lib/helpLlm';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,8 @@ export const runtime = 'nodejs';
  * Runs on the CUSTOMER'S OWN OpenAI key (read server-side with
  * getOpenAiKeyForUser; never returned, logged or sent to the browser).
  * The route only READS the existing access helpers; it never touches
- * entitlements. Retrieved text is sent to the model as delimited data.
+ * entitlements. Paid reseller training (walkthrough lessons, app workshops) is only
+ * retrieved for learners who pass the existing canAccessTraining gate. Retrieved text is sent to the model as delimited data.
  */
 
 const MAX_TURNS = 6;
@@ -71,9 +73,19 @@ export async function POST(req: NextRequest) {
   if (!last || last.role !== 'user' || !last.content.trim()) return NextResponse.json({ error: 'NO_QUESTION' }, { status: 400 });
   const studioId = typeof body.studioId === 'string' && body.studioId.length <= 60 ? body.studioId : null;
 
+  // The reseller walkthrough and app workshops are paid training. The pages enforce that with
+  // canAccessTraining, so the assistant must not hand the same content to anyone without it.
+  // Anything unclear (lookup failed) counts as not entitled.
+  let hasTraining = false;
+  try {
+    hasTraining = canAccessTraining(await resolveResellerEntitlements(userId));
+  } catch {
+    hasTraining = false;
+  }
+
   // retrieval: last question plus the previous user turn for follow-ups
   const prevUser = [...turns].slice(0, -1).reverse().find((t) => t.role === 'user');
-  const hits = search(await getIndex(), `${last.content} ${prevUser && last.content.split(/\s+/).length < 6 ? prevUser.content : ''}`, { studioId, limit: 6 });
+  const hits = search(await getIndex(), `${last.content} ${prevUser && last.content.split(/\s+/).length < 6 ? prevUser.content : ''}`, { studioId, limit: 6, excludeKinds: hasTraining ? [] : ['reseller', 'app'] });
   const sources = hits.map((h, i) => ({ id: `S${i + 1}`, title: h.chunk.title, url: h.chunk.url, kind: h.chunk.kind, ...(h.chunk.guideUrl ? { guideUrl: h.chunk.guideUrl } : {}) }));
 
   const encoder = new TextEncoder();

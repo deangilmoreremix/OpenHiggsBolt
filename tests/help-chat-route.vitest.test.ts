@@ -4,11 +4,17 @@ const authMock = vi.fn();
 const gateMock = vi.fn();
 const streamMock = vi.fn();
 const keyMock = vi.fn();
+const trainingMock = vi.fn();
 const USER_KEY = 'sk-test-' + 'Z'.repeat(40);
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/access/apiRequireEntitlement', () => ({
   requireApiEntitlement: (...a: unknown[]) => gateMock(...a),
   entitlementForbiddenResponse: (e: string) => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED', entitlement: e }), { status: 403 }),
+}));
+vi.mock('@/lib/resellerAccess', async (orig) => ({
+  ...(await orig<object>()),
+  resolveResellerEntitlements: async () => ({}),
+  canAccessTraining: () => trainingMock(),
 }));
 vi.mock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: () => keyMock() }));
 vi.mock('@/lib/helpLlm', async (orig) => ({
@@ -29,9 +35,34 @@ async function events(res: Response) {
 async function* fake(parts: string[]) { for (const p of parts) yield p; }
 
 beforeEach(() => {
-  authMock.mockReset(); gateMock.mockReset(); streamMock.mockReset(); keyMock.mockReset(); keyMock.mockResolvedValue(USER_KEY);
+  authMock.mockReset(); gateMock.mockReset(); streamMock.mockReset(); keyMock.mockReset(); keyMock.mockResolvedValue(USER_KEY); trainingMock.mockReset(); trainingMock.mockReturnValue(true);
   authMock.mockResolvedValue({ userId: `u-${Math.random()}` });
   gateMock.mockResolvedValue({ allowed: true });
+});
+
+describe('paid training stays behind the training entitlement', () => {
+  const ask = async (q: string) => {
+    streamMock.mockImplementation(() => fake(['ok']));
+    const res = await POST(req({ messages: [{ role: 'user', content: q }] }));
+    const evs = await events(res);
+    return (evs.find((e) => e.event === 'sources')?.data ?? []) as { kind: string }[];
+  };
+  it('learners WITHOUT training never get reseller lessons or app workshops as sources', async () => {
+    trainingMock.mockReturnValue(false);
+    const sources = await ask('How do I set up the Stripe webhook and deploy my app on Netlify with Clerk?');
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.some((s) => s.kind === 'reseller' || s.kind === 'app')).toBe(false);
+  });
+  it('learners WITH training do get them', async () => {
+    trainingMock.mockReturnValue(true);
+    const sources = await ask('How do I set up the Stripe webhook and deploy my app on Netlify with Clerk?');
+    expect(sources.some((s) => s.kind === 'reseller')).toBe(true);
+  });
+  it('fails closed when the entitlement lookup throws', async () => {
+    trainingMock.mockImplementation(() => { throw new Error('down'); });
+    const sources = await ask('How do I set up the Stripe webhook?');
+    expect(sources.some((s) => s.kind === 'reseller' || s.kind === 'app')).toBe(false);
+  });
 });
 
 describe('POST /api/help/chat', () => {

@@ -48,4 +48,21 @@ describe('academy progress sync (review fixes)', () => {
     expect(localStorage.getItem(OWNER_KEY)).toBe('userB');
     expect(fetchMock.mock.calls.every((c) => (c[1] as RequestInit | undefined)?.method !== 'PUT')).toBe(true);
   });
+
+  it('a first edit on a new browser does not wipe the account\'s saved progress', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.resolve(json({ ok: true })) : new Promise<Response>((res) => { release = res; })));
+    const { result } = renderHook(() => useAcademyProgress(true));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    act(() => result.current.visit('1.2')); // edit before the account copy has arrived
+    const saved = setLessonComplete(emptyProgress(), '1.1', true, 4000);
+    await act(async () => { release(json({ progress: saved, owner: 'userA' })); });
+    await waitFor(() => expect(fetchMock.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'PUT')).toBe(true), { timeout: 3000 });
+    expect(result.current.progress.completedLessons).toEqual(['1.1']);
+    expect(result.current.progress.lastLessonId).toBe('1.2');
+    const put = fetchMock.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'PUT')!;
+    const sent = JSON.parse((put[1] as RequestInit).body as string).progress;
+    expect(sent.completedLessons).toEqual(['1.1']);
+    expect(sent.lastLessonId).toBe('1.2');
+  });
 });

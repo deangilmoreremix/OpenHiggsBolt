@@ -21,6 +21,8 @@ export interface SearchOptions {
   /** Studio id the user is currently in (boosts that studio's chunks). */
   studioId?: string | null;
   limit?: number;
+  /** Kinds of content the caller may not see (e.g. paid training for learners without it). */
+  excludeKinds?: HelpChunk['kind'][];
 }
 
 const STOP = new Set('a an the and or of to in on for with is are was were be been it its this that these those how do does did i you my me we our your can could should would will what when where why which who whom from at by as if then than so not no yes into out up about into over under again just also have has had'.split(' '));
@@ -94,6 +96,7 @@ export function search(index: Index, query: string, opts: SearchOptions = {}): {
   const N = index.docs.length;
   const scored: { chunk: HelpChunk; score: number }[] = [];
   for (const d of index.docs) {
+    if (opts.excludeKinds?.includes(d.chunk.kind)) continue;
     let score = 0;
     let matched = 0;
     for (const [t, w] of weights) {
