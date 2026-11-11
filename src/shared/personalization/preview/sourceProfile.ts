@@ -84,6 +84,7 @@ export function profileForSource(args: {
   const w = args.width && args.width > 0 ? args.width : null
   const h = args.height && args.height > 0 ? args.height : null
   const thirdParty = namesThirdPartyBrand(videoSrc) || namesThirdPartyBrand(args.title)
+  const inRegistry = familyFromSrc(videoSrc) !== 'unknown'
   const zones: ProtectedZone[] = [
     ...(verified?.zones ?? []).map((z) => ({ ...z, source: 'template' as const })),
     ...(args.customerZones ?? []),
@@ -100,10 +101,15 @@ export function profileForSource(args: {
       status: verified ? 'known' : 'unknown',
       regions: (verified?.baked ?? []).map((z) => ({ ...z, source: 'template' as const })),
     },
-    rights: thirdParty ? 'third-party-reference' : 'unverified',
-    rightsNote: thirdParty
-      ? 'This clip is built around a real third-party brand. It is a reference clip, not something you are licensed to publish as your own ad.'
-      : 'No licence or ownership record exists for this clip, so commercial use is not verified.',
+    // The owner confirmed (2026-11) that ALL 123 registry demo clips may be used with no restrictions, so every clip served
+    // from a registry family is `verified-owned` — including those that mention a brand. Any other clip (an upload, an
+    // unknown URL) is still unverified, and a third-party-brand one stays a reference clip.
+    rights: inRegistry ? 'verified-owned' : thirdParty ? 'third-party-reference' : 'unverified',
+    rightsNote: inRegistry
+      ? 'Rights confirmed by the owner for this registry demo clip: no usage restrictions.'
+      : thirdParty
+        ? 'This clip is built around a real third-party brand. It is a reference clip, not something you are licensed to publish as your own ad.'
+        : 'No licence or ownership record exists for this clip, so commercial use is not verified.',
     verifiedBy: verified ? 'manual-review' : null,
   }
 }

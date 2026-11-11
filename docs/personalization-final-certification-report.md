@@ -38,6 +38,6 @@ Reusable, pure modules (no provider imports): `preview/placement/*`, `preview/im
 
 ## Open owner decisions
 
-1. Rights gate: confirmation (current) vs hard block for unverified clips (all 123 demos are `unverified`).
-2. Storefront/office images treated as "property" (wide rounded card).
+1. ~~Rights gate~~ RESOLVED: the owner confirmed all 123 registry demo clips are usable with no restrictions; they are `verified-owned` (no Review item, no export confirmation). Uploaded / non-registry clips remain unverified and keep the confirmation gate.
+2. ~~Storefront/office as "property"~~ CONFIRMED by the owner.
 3. RemotionUI licence is MIT (no attribution required); integrating any of its 217 components is a separate, un-started piece of work.

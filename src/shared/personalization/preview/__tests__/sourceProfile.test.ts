@@ -38,12 +38,16 @@ describe('source profile', () => {
     }
   })
 
-  it('never treats a clip as authorized: unverified by default, third-party brands flagged', () => {
-    expect(profileForSource({ videoSrc: PERFUME }).rights).toBe('unverified')
-    const tre = profileForSource({ videoSrc: '/media/promptfeed/videos/2082_tresemm-luxury-haircare-commercial.mp4' })
-    expect(tre.rights).toBe('third-party-reference')
-    expect(profileForSource({ videoSrc: '/media/promptfeed/videos/3052_kitkat-break-focus-commercial.mp4' }).rights).toBe('third-party-reference')
-    expect(profileForSource({ videoSrc: '/media/seedance-1/videos/muji-brand-promotional-video.mp4' }).rights).toBe('third-party-reference')
+  it('registry demo clips are verified-owned (owner confirmation); everything else is never treated as authorized', () => {
+    expect(profileForSource({ videoSrc: PERFUME }).rights).toBe('verified-owned')
+    // even clips that mention a brand: the owner confirmed all 123 registry clips
+    expect(profileForSource({ videoSrc: '/media/promptfeed/videos/2082_tresemm-luxury-haircare-commercial.mp4' }).rights).toBe('verified-owned')
+    expect(profileForSource({ videoSrc: '/media/seedance-1/videos/muji-brand-promotional-video.mp4' }).rights).toBe('verified-owned')
+    expect(profileForSource({ videoSrc: PERFUME }).rightsNote).toMatch(/owner/i)
+    // anything outside the registry stays unverified; a third-party brand stays a reference clip
+    expect(profileForSource({ videoSrc: 'blob:http://localhost/upload' }).rights).toBe('unverified')
+    expect(profileForSource({ videoSrc: 'https://cdn.example.com/x.mp4' }).rights).toBe('unverified')
+    expect(profileForSource({ videoSrc: 'https://cdn.example.com/kitkat-ad.mp4' }).rights).toBe('third-party-reference')
     expect(namesThirdPartyBrand('Muji Brand Promotional Video')).toBe(true)
     expect(rightsNeedConfirmation({ rights: 'unverified' })).toBe(true)
     expect(rightsNeedConfirmation({ rights: 'third-party-reference' })).toBe(true)
