@@ -964,7 +964,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </AiAssistantProvider>
 
       {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
-      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} />
+      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => setShowApiKeyPopup(true)} />
 
       {/* Global generation activity and notification stack */}
       {(activeGenerations.length > 0 || notifications.length > 0) && (

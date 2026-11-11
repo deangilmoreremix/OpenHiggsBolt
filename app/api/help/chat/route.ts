@@ -4,7 +4,8 @@ import { ENTITLEMENTS } from '@/access/entitlements';
 import { entitlementForbiddenResponse, requireApiEntitlement } from '@/access/apiRequireEntitlement';
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit';
 import { getIndex, search } from '@/lib/helpSearch';
-import { HELP_SYSTEM_PROMPT, buildSourcesBlock, isHelpLlmConfigured, streamAnswer, type ChatTurn } from '@/lib/helpLlm';
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
+import { HELP_SYSTEM_PROMPT, HelpLlmError, buildSourcesBlock, streamAnswer, type ChatTurn } from '@/lib/helpLlm';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,9 +14,11 @@ export const runtime = 'nodejs';
  * POST /api/help/chat — "Ask SmartVideo" help agent (streaming, grounded).
  *
  *   401 UNAUTHENTICATED · 403 PAYMENT_REQUIRED (existing SMARTVIDEO_GO gate)
- *   429 rate limited · 400 bad input · 503 HELP_AGENT_NOT_CONFIGURED
+ *   409 OPENAI_KEY_REQUIRED (customer has not added their OpenAI key) · 429 rate limited · 400 bad input
  *   200 text/event-stream: `sources` → `delta`* → `done`  (or `error`)
  *
+ * Runs on the CUSTOMER'S OWN OpenAI key (read server-side with
+ * getOpenAiKeyForUser; never returned, logged or sent to the browser).
  * The route only READS the existing access helpers; it never touches
  * entitlements. Retrieved text is sent to the model as delimited data.
  */
@@ -26,8 +29,12 @@ const SECRET = /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{10,}|\bwhsec_[A-Za-z0-9]{1
 
 const sse = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 
+/** Tells the popup whether the signed-in customer has an OpenAI key saved (never the key itself). */
 export async function GET() {
-  return NextResponse.json({ available: isHelpLlmConfigured() }, { headers: { 'Cache-Control': 'no-store' } });
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ available: false, hasKey: false }, { status: 401 });
+  const hasKey = !!(await getOpenAiKeyForUser());
+  return NextResponse.json({ available: true, hasKey }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {
@@ -39,7 +46,8 @@ export async function POST(req: NextRequest) {
       ? NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
       : entitlementForbiddenResponse(gate.entitlement);
   }
-  if (!isHelpLlmConfigured()) return NextResponse.json({ error: 'HELP_AGENT_NOT_CONFIGURED' }, { status: 503 });
+  const apiKey = await getOpenAiKeyForUser();
+  if (!apiKey) return NextResponse.json({ error: 'OPENAI_KEY_REQUIRED' }, { status: 409 });
 
   const minute = rateLimit(`help:min:${userId}`, { windowMs: 60_000, max: 10 });
   if (!minute.allowed) return rateLimit429(minute.retryAfterMs);
@@ -83,10 +91,16 @@ export async function POST(req: NextRequest) {
       const timer = setTimeout(() => ctl.abort(), 45_000);
       try {
         const system = `${HELP_SYSTEM_PROMPT}\n\nSOURCES:\n${buildSourcesBlock(hits.map((h) => h.chunk))}`;
-        for await (const text of streamAnswer({ system, messages: turns, signal: ctl.signal })) send('delta', { text });
+        for await (const text of streamAnswer({ apiKey, system, messages: turns, signal: ctl.signal })) send('delta', { text });
         send('done', { grounded: true });
-      } catch {
-        send('error', { message: 'The assistant is unavailable right now. Please try again in a moment.' });
+      } catch (e) {
+        const code = e instanceof HelpLlmError ? e.code : 'ERROR';
+        const message =
+          code === 'OPENAI_KEY_INVALID' ? 'Your OpenAI key was rejected. Check it in the API keys settings.'
+          : code === 'OPENAI_QUOTA' ? 'Your OpenAI account is out of credit. Add billing credit at OpenAI, then try again.'
+          : code === 'OPENAI_RATE' ? 'OpenAI is rate limiting your key. Please wait a moment and try again.'
+          : 'The assistant is unavailable right now. Please try again in a moment.';
+        send('error', { code, message });
       } finally {
         clearTimeout(timer);
         controller.close();

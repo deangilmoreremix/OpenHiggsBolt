@@ -1,26 +1,27 @@
 /**
- * Model provider for the "Ask SmartVideo" help agent. Isolated here so the
- * provider can be swapped (BYOK OpenAI, MuAPI) without touching the route.
+ * Model provider for the "Ask SmartVideo" help agent.
  *
- * Default: Anthropic Messages API with a SERVER-SIDE key (HELP_AGENT_API_KEY or
- * ANTHROPIC_API_KEY). Users never see or supply a key. If no key is configured
- * the agent reports itself unavailable and the UI hides the launcher.
+ * BYOK: it runs on the CUSTOMER'S OWN OpenAI key (the one they add in the API
+ * keys modal, stored encrypted server-side and read with getOpenAiKeyForUser).
+ * The key is only ever used inside this server module; it is never returned to
+ * the browser, logged, or put in a response. Usage is billed to the customer's
+ * OpenAI account. The provider is isolated here so it can be swapped.
  */
 import type { HelpChunk } from '@/lib/helpSearch';
 
-export const HELP_DEFAULT_MODEL = 'claude-haiku-5-5';
-const API_URL = 'https://api.anthropic.com/v1/messages';
+export const HELP_DEFAULT_MODEL = 'gpt-4o-mini';
+const API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export function helpApiKey(): string | null {
-  return process.env.HELP_AGENT_API_KEY || process.env.ANTHROPIC_API_KEY || null;
-}
-export function isHelpLlmConfigured(): boolean {
-  return !!helpApiKey();
+/** Errors the route maps to friendly, key-safe responses. */
+export class HelpLlmError extends Error {
+  constructor(public code: 'OPENAI_KEY_INVALID' | 'OPENAI_QUOTA' | 'OPENAI_RATE' | 'OPENAI_ERROR') {
+    super(code);
+  }
 }
 
 export const HELP_SYSTEM_PROMPT = `You are "Ask SmartVideo", the in-app help assistant for SmartVideo GO AI (its studios, the Academy, and the Reseller Setup Walkthrough).
@@ -40,28 +41,32 @@ export function buildSourcesBlock(chunks: HelpChunk[]): string {
     .join('\n\n');
 }
 
-/** Streams text deltas from the model. Throws on transport/API errors. */
+/** Streams text deltas from OpenAI using the caller's own key. */
 export async function* streamAnswer(opts: {
+  apiKey: string;
   system: string;
   messages: ChatTurn[];
   signal?: AbortSignal;
 }): AsyncGenerator<string> {
-  const key = helpApiKey();
-  if (!key) throw new Error('HELP_AGENT_NOT_CONFIGURED');
   const res = await fetch(API_URL, {
     method: 'POST',
     signal: opts.signal,
-    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${opts.apiKey}` },
     body: JSON.stringify({
       model: process.env.HELP_AGENT_MODEL || HELP_DEFAULT_MODEL,
       max_tokens: 700,
       temperature: 0.2,
       stream: true,
-      system: opts.system,
-      messages: opts.messages,
+      messages: [{ role: 'system', content: opts.system }, ...opts.messages],
     }),
   });
-  if (!res.ok || !res.body) throw new Error(`HELP_LLM_HTTP_${res.status}`);
+  if (!res.ok || !res.body) {
+    let code = '';
+    try { code = (await res.json())?.error?.code ?? ''; } catch { /* non-JSON error body */ }
+    if (res.status === 401) throw new HelpLlmError('OPENAI_KEY_INVALID');
+    if (res.status === 429) throw new HelpLlmError(code === 'insufficient_quota' ? 'OPENAI_QUOTA' : 'OPENAI_RATE');
+    throw new HelpLlmError('OPENAI_ERROR');
+  }
 
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -78,8 +83,8 @@ export async function* streamAnswer(opts: {
       const data = line.slice(5).trim();
       if (!data || data === '[DONE]') continue;
       try {
-        const ev = JSON.parse(data);
-        if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && typeof ev.delta.text === 'string') yield ev.delta.text;
+        const text = JSON.parse(data).choices?.[0]?.delta?.content;
+        if (typeof text === 'string' && text) yield text;
       } catch {
         /* ignore keep-alives / partial lines */
       }

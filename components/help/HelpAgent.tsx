@@ -44,8 +44,18 @@ export function citedSources(text: string, sources: HelpSource[] = []): HelpSour
   return uniq.filter((s) => (urls.has(s.url) ? false : (urls.add(s.url), true)));
 }
 
-export default function HelpAgent({ studioId = null, studioLabel = null }: { studioId?: string | null; studioLabel?: string | null }) {
+export default function HelpAgent({
+  studioId = null,
+  studioLabel = null,
+  onRequestApiKey,
+}: {
+  studioId?: string | null;
+  studioLabel?: string | null;
+  /** Opens the API keys modal (available inside the studio shell). */
+  onRequestApiKey?: () => void;
+}) {
   const [available, setAvailable] = useState(false);
+  const [hasKey, setHasKey] = useState(true);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -58,7 +68,7 @@ export default function HelpAgent({ studioId = null, studioLabel = null }: { stu
     let off = false;
     fetch(ENDPOINT, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((j) => !off && setAvailable(!!j.available))
+      .then((j) => { if (off) return; setAvailable(!!j.available); setHasKey(j.hasKey !== false); })
       .catch(() => !off && setAvailable(false));
     return () => { off = true; };
   }, []);
@@ -89,6 +99,11 @@ export default function HelpAgent({ studioId = null, studioLabel = null }: { stu
         method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ messages: history.slice(-6).map(({ role, content }) => ({ role, content })), studioId }),
       });
+      if (res.status === 409) {
+        setHasKey(false);
+        setMsgs((all) => all.slice(0, -2));
+        return;
+      }
       if (!res.ok || !res.body) {
         const msg = res.status === 429 ? 'You are asking quickly — please wait a moment and try again.' : res.status === 401 ? 'Please sign in to use the assistant.' : res.status === 403 ? 'The assistant is not included in your plan.' : 'The assistant is unavailable right now.';
         patch((m) => ({ ...m, pending: false, error: msg }));
@@ -110,7 +125,10 @@ export default function HelpAgent({ studioId = null, studioLabel = null }: { stu
           const data = JSON.parse(raw);
           if (ev === 'sources') patch((m) => ({ ...m, sources: data }));
           else if (ev === 'delta') patch((m) => ({ ...m, content: m.content + data.text }));
-          else if (ev === 'error') patch((m) => ({ ...m, error: data.message }));
+          else if (ev === 'error') {
+            if (data.code === 'OPENAI_KEY_INVALID') setHasKey(false);
+            patch((m) => ({ ...m, error: data.message }));
+          }
           else if (ev === 'done') patch((m) => ({ ...m, pending: false }));
         }
       }
@@ -157,7 +175,20 @@ export default function HelpAgent({ studioId = null, studioLabel = null }: { stu
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite">
-            {msgs.length === 0 && (
+            {!hasKey && (
+              <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)' }} data-testid="help-needs-key">
+                <p className="text-sm font-bold text-white">Add your OpenAI key to use Ask SmartVideo</p>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>
+                  The assistant runs on your own OpenAI account, so you stay in control of usage. Add your key in the API keys settings, then ask your question.
+                </p>
+                {onRequestApiKey ? (
+                  <button type="button" onClick={() => { setOpen(false); onRequestApiKey(); }} className="mt-3 rounded-lg px-4 py-2 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Open API keys</button>
+                ) : (
+                  <a href="/studio" className="mt-3 inline-block rounded-lg px-4 py-2 text-xs font-bold" style={{ background: colors.primary, color: '#000' }}>Go to the studio to add your key</a>
+                )}
+              </div>
+            )}
+            {hasKey && msgs.length === 0 && (
               <div>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>Ask how to do anything in SmartVideo GO AI. Answers come from our studio guides and courses, and link to the page they came from.</p>
                 <div className="mt-3 flex flex-col gap-2">
@@ -224,9 +255,9 @@ export default function HelpAgent({ studioId = null, studioLabel = null }: { stu
               className="max-h-28 min-h-[40px] flex-1 resize-none rounded-lg border bg-black px-3 py-2 text-sm text-white focus:outline-none"
               style={{ borderColor: 'var(--glass-border)' }}
             />
-            <button type="submit" disabled={busy || !input.trim()} className="rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40" style={{ background: colors.primary, color: '#000' }}>Send</button>
+            <button type="submit" disabled={busy || !input.trim() || !hasKey} className="rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40" style={{ background: colors.primary, color: '#000' }}>Send</button>
           </form>
-          <p className="px-3 pb-2 text-[10px]" style={{ color: semantic.textMuted }}>AI answers can be wrong — check the linked page. Never paste API keys here.</p>
+          <p className="px-3 pb-2 text-[10px]" style={{ color: semantic.textMuted }}>Uses your own OpenAI key — usage is billed to your OpenAI account. AI answers can be wrong; check the linked page. Never paste API keys here.</p>
         </section>
       )}
     </>

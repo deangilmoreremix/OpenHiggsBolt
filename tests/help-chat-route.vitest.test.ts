@@ -3,15 +3,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const authMock = vi.fn();
 const gateMock = vi.fn();
 const streamMock = vi.fn();
-const configured = vi.fn(() => true);
+const keyMock = vi.fn();
+const USER_KEY = 'sk-test-' + 'Z'.repeat(40);
 vi.mock('@clerk/nextjs/server', () => ({ auth: () => authMock() }));
 vi.mock('@/access/apiRequireEntitlement', () => ({
   requireApiEntitlement: (...a: unknown[]) => gateMock(...a),
   entitlementForbiddenResponse: (e: string) => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED', entitlement: e }), { status: 403 }),
 }));
+vi.mock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: () => keyMock() }));
 vi.mock('@/lib/helpLlm', async (orig) => ({
   ...(await orig<object>()),
-  isHelpLlmConfigured: () => configured(),
   streamAnswer: (o: unknown) => streamMock(o),
 }));
 
@@ -28,7 +29,7 @@ async function events(res: Response) {
 async function* fake(parts: string[]) { for (const p of parts) yield p; }
 
 beforeEach(() => {
-  authMock.mockReset(); gateMock.mockReset(); streamMock.mockReset(); configured.mockReturnValue(true);
+  authMock.mockReset(); gateMock.mockReset(); streamMock.mockReset(); keyMock.mockReset(); keyMock.mockResolvedValue(USER_KEY);
   authMock.mockResolvedValue({ userId: `u-${Math.random()}` });
   gateMock.mockResolvedValue({ allowed: true });
 });
@@ -40,10 +41,19 @@ describe('POST /api/help/chat', () => {
     authMock.mockResolvedValue({ userId: 'u1' });
     gateMock.mockResolvedValue({ allowed: false, status: 403, entitlement: 'smartvideo_go' });
     expect((await POST(req({ messages: [] }))).status).toBe(403);
-    gateMock.mockResolvedValue({ allowed: true });
-    configured.mockReturnValue(false);
-    expect((await POST(req({ messages: [{ role: 'user', content: 'hi' }] }))).status).toBe(503);
-    expect((await (await GET()).json()).available).toBe(false);
+  });
+  it('409 OPENAI_KEY_REQUIRED when the customer has no OpenAI key (no model call); GET reports hasKey only', async () => {
+    authMock.mockResolvedValue({ userId: 'u9' });
+    keyMock.mockResolvedValue(null);
+    const res = await POST(req({ messages: [{ role: 'user', content: 'How do I generate an image' }] }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('OPENAI_KEY_REQUIRED');
+    expect(streamMock).not.toHaveBeenCalled();
+    expect(await (await GET()).json()).toEqual({ available: true, hasKey: false });
+    keyMock.mockResolvedValue(USER_KEY);
+    const ok = await (await GET()).json();
+    expect(ok).toEqual({ available: true, hasKey: true });
+    expect(JSON.stringify(ok)).not.toContain(USER_KEY);
   });
   it('400 on bad json / no question', async () => {
     expect((await POST(req('{nope'))).status).toBe(400);
@@ -61,7 +71,8 @@ describe('POST /api/help/chat', () => {
     expect(ev[0].data[0]).toMatchObject({ id: 'S1', url: expect.stringMatching(/^\//) });
     expect(ev.filter((e) => e.event === 'delta').map((e) => e.data.text).join('')).toBe('Register the webhook [S1].');
     expect(ev[ev.length - 1]).toEqual({ event: 'done', data: { grounded: true } });
-    const arg = streamMock.mock.calls[0][0] as { system: string };
+    const arg = streamMock.mock.calls[0][0] as { system: string; apiKey: string };
+    expect(arg.apiKey).toBe(USER_KEY); // the customer's own key is what the model call uses
     expect(arg.system).toContain('SOURCES:');
     expect(arg.system).toContain('<source id="S1"');
   });
@@ -77,6 +88,26 @@ describe('POST /api/help/chat', () => {
     const sent = JSON.stringify(streamMock.mock.calls[0][0]);
     expect(sent).not.toContain('sk_live_' + 'a'.repeat(30));
     expect(sent).toContain('[redacted secret]');
+  });
+  it('never leaks the key into the response stream, system prompt or messages', async () => {
+    streamMock.mockImplementation(() => fake(['ok [S1]']));
+    const res = await POST(req({ messages: [{ role: 'user', content: 'How do I generate an image' }] }));
+    expect(await res.text()).not.toContain(USER_KEY);
+    const a = streamMock.mock.calls[0][0] as { system: string; messages: unknown };
+    expect(a.system).not.toContain(USER_KEY);
+    expect(JSON.stringify(a.messages)).not.toContain(USER_KEY);
+  });
+  it('maps OpenAI key/quota errors to friendly, key-free messages', async () => {
+    const { HelpLlmError } = await import('@/lib/helpLlm');
+    for (const [code, re] of [['OPENAI_KEY_INVALID', /rejected/], ['OPENAI_QUOTA', /out of credit/], ['OPENAI_RATE', /rate limiting/]] as const) {
+      streamMock.mockImplementation(async function* () { throw new HelpLlmError(code); });
+      authMock.mockResolvedValue({ userId: `u-${code}` });
+      const ev = await events(await POST(req({ messages: [{ role: 'user', content: 'How do I generate an image' }] })));
+      const err = ev.find((e) => e.event === 'error')!;
+      expect(err.data.code).toBe(code);
+      expect(err.data.message).toMatch(re);
+      expect(JSON.stringify(ev)).not.toContain(USER_KEY);
+    }
   });
   it('turns model failures into an error event', async () => {
     streamMock.mockImplementation(async function* () { throw new Error('boom'); });
