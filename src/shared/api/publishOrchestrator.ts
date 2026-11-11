@@ -127,6 +127,23 @@ export async function publishOne(
   })
   if (!built.payload) return fail(built.errors.join(' '))
 
+  // One completion path for both an immediate and a polled result, so the YouTube
+  // thumbnail follow-up (and its note) can never be skipped.
+  const finish = async (out: any, reqId: string): Promise<PublishResult> => {
+    const result: PublishResult = {
+      platform: destination.platform,
+      status: 'published',
+      url: resultUrl(out),
+      accountId: destination.accountId,
+      requestId: reqId,
+      output: out,
+    }
+    if (platform === 'youtube' && thumbnail?.imageUrl) {
+      result.note = await applyYouTubeThumbnail(deps, apiKey, destination.accountId, out, thumbnail.imageUrl)
+    }
+    return result
+  }
+
   let requestId = ''
   try {
     const submit = await deps.publish[platform](apiKey, built.payload)
@@ -135,26 +152,13 @@ export async function publishOne(
       // Some responses complete immediately with an output; anything else is unexpected.
       const done = String(submit?.status || '').toLowerCase() === 'completed'
       const out = submit?.output ?? submit?.data?.output
-      if (done && out) {
-        return { platform: destination.platform, status: 'published', url: resultUrl(out), accountId: destination.accountId, requestId: '', output: out }
-      }
+      if (done && out) return await finish(out, '')
       return fail(`${label} did not accept the post (unexpected response from MuAPI). Nothing was published.`)
     }
     onSubmitted?.(requestId)
     const final = await deps.poll(apiKey, requestId)
     const out = final?.output ?? final?.data?.output ?? final
-    const result: PublishResult = {
-      platform: destination.platform,
-      status: 'published',
-      url: resultUrl(out),
-      accountId: destination.accountId,
-      requestId,
-      output: out,
-    }
-    if (platform === 'youtube' && thumbnail?.imageUrl) {
-      result.note = await applyYouTubeThumbnail(deps, apiKey, destination.accountId, out, thumbnail.imageUrl)
-    }
-    return result
+    return await finish(out, requestId)
   } catch (err) {
     return fail(describePublishError(err, label), requestId)
   }

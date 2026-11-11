@@ -937,7 +937,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
       {/* Studio Content */}
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
-      <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)}>
+      <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))}>
       <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
@@ -974,7 +974,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </AiAssistantProvider>
 
       {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
-      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => setShowApiKeyPopup(true)} />
+      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))} />
 
       {/* Global generation activity and notification stack */}
       {(activeGenerations.length > 0 || notifications.length > 0) && (

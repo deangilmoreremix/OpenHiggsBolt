@@ -712,12 +712,22 @@ export async function listSocialAccounts(apiKey) {
   return res.data;
 }
 
-const SOCIAL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'linkedin', 'pinterest', 'threads', 'x'];
+// MuAPI only has a connect-url route for these four (checked against its OpenAPI schema).
+// LinkedIn, Pinterest, Threads and X connect through a different, redirect-based flow
+// (GET /social/{platform}/connect at the API root) that this app does not call yet.
+const SOCIAL_CONNECT_URL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook'];
+export const SOCIAL_CONNECT_UNAVAILABLE = ['linkedin', 'pinterest', 'threads', 'x'];
 const SOCIAL_CONNECT_PATHS = Object.fromEntries(
-  SOCIAL_PLATFORMS.map((p) => [p, `/api/v1/social/${p}/connect-url`])
+  SOCIAL_CONNECT_URL_PLATFORMS.map((p) => [p, `/api/v1/social/${p}/connect-url`])
 );
 
 export async function connectSocialAccount(apiKey, externalUserId, redirectTo, platform = 'youtube') {
+  if (SOCIAL_CONNECT_UNAVAILABLE.includes(platform)) {
+    throw new Error(
+      `Connecting ${platform === 'x' ? 'X' : platform[0].toUpperCase() + platform.slice(1)} from here is not available yet. ` +
+        'Connect it in your MuAPI dashboard, then add its account ID below with "Add account manually".'
+    );
+  }
   // Never fall back to another platform's connect URL: connecting "linkedin"
   // must not silently authorize YouTube.
   const path = SOCIAL_CONNECT_PATHS[platform];
@@ -830,6 +840,7 @@ export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, int
         withKey({ method: 'GET' }, apiKey)
       );
       data = res.data || {};
+      lastError = null; // a later good response means the earlier hiccup was transient
     } catch (err) {
       // Retry only transient problems (network, 429, 5xx). A 4xx means the
       // request itself is wrong, so fail now instead of polling for minutes.

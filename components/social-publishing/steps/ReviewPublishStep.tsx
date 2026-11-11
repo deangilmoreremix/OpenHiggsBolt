@@ -101,7 +101,11 @@ export default function ReviewPublishStep({
                     className="w-2 h-2 rounded-full"
                     style={{ background: r.status === 'published' ? '#10b981' : '#ef4444' }}
                   />
-                  <span className="text-xs text-white/80">{meta.name}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-white/80">{meta.name}</span>
+                    {/* follow-up notes (for example a YouTube thumbnail that could not be applied) */}
+                    {r.note && <span className="mt-0.5 max-w-[240px] text-left text-[10px] leading-snug text-white/50">{r.note}</span>}
+                  </div>
                 </div>
                 {r.url && (
                   <a

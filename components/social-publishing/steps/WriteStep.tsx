@@ -114,6 +114,8 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
 
   const currentText = useMemo(() => {
     if (activePlatform === 'master') return localCopy.master
+    // YouTube's body is its description (that is what publishing sends); other platforms use the caption
+    if (activePlatform === 'youtube') return localCopy.platforms.youtube?.description || localCopy.platforms.youtube?.caption || ''
     return localCopy.platforms[activePlatform]?.caption || ''
   }, [activePlatform, localCopy])
 
@@ -138,8 +140,13 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
   }, [activePlatform, counts])
 
   function emit(copyState: CopyState) {
-    setLocalCopy(copyState)
-    onUpdateCopy(copyState)
+    // remember what the learner touched, so an edit (even clearing a field) beats studio-supplied values later
+    const edited = { ...(localCopy.edited || {}), ...(copyState.edited || {}) }
+    if (copyState.master !== localCopy.master) edited.master = true
+    if ((copyState.title ?? '') !== (localCopy.title ?? '')) edited.title = true
+    const next = { ...copyState, edited }
+    setLocalCopy(next)
+    onUpdateCopy(next)
   }
 
   function updateMaster(text: string) {
@@ -147,13 +154,15 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
   }
 
   function updatePlatformText(platformId: string, text: string) {
+    // YouTube publishes `description`; keep the generated and the edited text in the same field
+    const field = platformId === 'youtube' ? 'description' : 'caption'
     const next = {
       ...localCopy,
       platforms: {
         ...localCopy.platforms,
         [platformId]: {
           ...localCopy.platforms[platformId],
-          caption: text,
+          [field]: text,
         },
       },
     }
@@ -345,7 +354,10 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
           id="social-post-title"
           value={localCopy.title || ''}
           maxLength={150}
-          onChange={(e) => emit({ ...localCopy, title: e.target.value })}
+          onChange={(e) =>
+            // the visible Title is the one title: keep YouTube's own title (generated or not) in step with it
+            emit({ ...localCopy, title: e.target.value, platforms: { ...localCopy.platforms, youtube: { ...localCopy.platforms.youtube, title: e.target.value } } })
+          }
           placeholder="Give your post a title"
           className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/50"
         />

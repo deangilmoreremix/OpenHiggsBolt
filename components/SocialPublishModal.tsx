@@ -36,7 +36,9 @@ interface SocialPublishModalProps {
   updateSocialCopy: (copy: CopyState) => void;
   updateThumbnail: (state: ThumbnailState) => void;
   updateDestinations: (destinations: Destination[]) => void;
-  updatePublishResults: (results: PublishResult[]) => void;
+  /** Identifies the publishing session; results for an older session are ignored. */
+  sessionId?: number;
+  updatePublishResults: (results: PublishResult[], forSession?: number) => void;
   /** Opens the API keys modal (AI writing uses the customer's own OpenAI key). */
   onRequestApiKey?: () => void;
 }
@@ -59,6 +61,7 @@ export default function SocialPublishModal({
   updateSocialCopy,
   updateThumbnail,
   updateDestinations,
+  sessionId,
   updatePublishResults,
   onRequestApiKey,
 }: SocialPublishModalProps) {
@@ -69,6 +72,15 @@ export default function SocialPublishModal({
 
   // The copy every step after Write (and publishing) uses: Write-step text wins.
   const copy = useMemo(() => mergeCopy(writeCopy, socialCopy), [writeCopy, socialCopy]);
+  // Publishing for one asset can still be running when the modal is reopened for another.
+  // Handlers remember the session they started in and stop touching state once it has changed.
+  const sessionRef = useRef(sessionId);
+  sessionRef.current = sessionId;
+  useEffect(() => {
+    setPublishing(false);
+    setPublishError(null);
+  }, [sessionId]);
+
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -137,6 +149,7 @@ export default function SocialPublishModal({
       const already = new Set(publishResults.filter((r) => r.status === 'published').map(key));
       const todo = dests.filter((d) => d.enabled && d.accountId && !already.has(key(d)));
       if (todo.length === 0) return;
+      const session = sessionId;
       setPublishing(true);
       setPublishError(null);
       try {
@@ -148,36 +161,37 @@ export default function SocialPublishModal({
           copy,
           thumbnail,
           apiKey,
-          onProgress: (r) => updatePublishResults([...keep, ...r]),
+          onProgress: (r) => updatePublishResults([...keep, ...r], session),
         });
       } catch (err) {
-        setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
+        if (sessionRef.current === session) setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
       } finally {
-        setPublishing(false);
+        if (sessionRef.current === session) setPublishing(false);
       }
     },
-    [asset, publishing, publishResults, destinations, resolveAsset, copy, thumbnail, apiKey, updatePublishResults],
+    [asset, publishing, publishResults, destinations, resolveAsset, copy, thumbnail, apiKey, updatePublishResults, sessionId],
   );
 
   const handleRetry = useCallback(
     async (platform: string, accountId?: string) => {
       const dest = destinations.find((d) => d.platform === platform && d.accountId === accountId);
       if (!dest || !asset || publishing) return;
+      const session = sessionId;
       setPublishing(true);
       setPublishError(null);
       try {
         const ready = await resolveAsset(asset);
         const others = publishResults.filter((r) => !(r.platform === platform && r.accountId === accountId));
-        updatePublishResults([...others, { platform, accountId, status: 'processing', requestId: '' }]);
+        updatePublishResults([...others, { platform, accountId, status: 'processing', requestId: '' }], session);
         const result = await publishOne(dest, ready, copy, thumbnail, apiKey);
-        updatePublishResults([...others, result]);
+        updatePublishResults([...others, result], session);
       } catch (err) {
-        setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
+        if (sessionRef.current === session) setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
       } finally {
-        setPublishing(false);
+        if (sessionRef.current === session) setPublishing(false);
       }
     },
-    [destinations, asset, publishing, publishResults, resolveAsset, copy, thumbnail, apiKey, updatePublishResults],
+    [destinations, asset, publishing, publishResults, resolveAsset, copy, thumbnail, apiKey, updatePublishResults, sessionId],
   );
 
   /** Why the selected destinations cannot be published right now (shown in the UI). */

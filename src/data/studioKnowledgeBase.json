@@ -8715,7 +8715,7 @@
         {
           "problem": "My text did not appear on the platform",
           "whyItHappens": "Each platform uses its own tab on the Write step; if that tab is empty the Master text is used.",
-          "howToFix": "Check the platform's tab on Write, then publish again after clicking Retry on that destination."
+          "howToFix": "Check the platform's tab on Write before you publish. If the post is already live with the wrong text, edit it on the platform itself, or start a new publishing session; Retry only applies to destinations that failed."
         },
         {
           "problem": "A platform I want is missing",

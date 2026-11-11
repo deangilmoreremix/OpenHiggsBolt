@@ -40,6 +40,8 @@ export interface CopyState {
   tags?: string
   caption?: string
   tiktokTitle?: string
+  /** Fields the learner has edited in the Write step (even if cleared); these beat studio-supplied fallbacks. */
+  edited?: { master?: boolean; title?: boolean }
 }
 
 export type WriteCopyState = CopyState
