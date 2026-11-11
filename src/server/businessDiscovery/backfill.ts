@@ -15,21 +15,21 @@ import type { BusinessDiscoveryRecord } from './types'
 export const BACKFILL_TARGET = 30
 export const RADIUS_LADDER_MILES = [15, 25, 35, 50] as const
 
-/** Related niches to try after the plain niche is exhausted (keys of NICHE_MAPPINGS). */
+/**
+ * Related niches to try after the plain niche is exhausted (keys of NICHE_MAPPINGS). Only genuinely
+ * adjacent businesses are listed: a niche with no honest neighbour (restaurants, home contractors,
+ * real estate, pet services, ecommerce) has none, because padding the list with unrelated businesses
+ * would hit the count at the cost of relevance — the result is reported as short instead.
+ */
 export const NICHE_SYNONYMS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  'home-contractors': ['auto-detailing'] as const,
-  'restaurants-food': ['travel-hospitality'] as const,
   'beauty': ['wellness-fitness'] as const,
   'wellness-fitness': ['beauty', 'sports-outdoors'] as const,
   'healthcare-medical': ['wellness-fitness'] as const,
   'professional-services': ['finance', 'general-business'] as const,
   'finance': ['professional-services'] as const,
-  'real-estate': ['professional-services'] as const,
   'automotive': ['auto-detailing'] as const,
   'auto-detailing': ['automotive'] as const,
-  'pet-services': ['general-business'] as const,
-  'sports-outdoors': ['wellness-fitness', 'entertainment-media'] as const,
-  'ecommerce': ['general-business'] as const,
+  'sports-outdoors': ['wellness-fitness'] as const,
 })
 
 export interface BackfillStage {

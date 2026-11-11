@@ -119,7 +119,13 @@ export function extractFromHtml(html: string, pageUrl: string): PageExtraction {
   })
   for (const node of jsonLd) {
     const types = typeOf(node)
-    const isOrg = types.some((t) => /Organization|LocalBusiness|Store|Restaurant|Service|Professional|Dentist|Physician|Attorney|AutoRepair|Salon|Gym|Hotel/i.test(t))
+    // schema.org has hundreds of LocalBusiness subtypes (Plumber, Electrician, RoofingContractor, ...).
+    // Rather than enumerate them, accept any node that carries business-contact fields, minus types
+    // that describe something else (people, content, events, products).
+    const notBusiness = types.some((t) => /^(Person|Product|Event|Article|BlogPosting|NewsArticle|WebSite|WebPage|BreadcrumbList|ImageObject|VideoObject|Review|Offer|FAQPage|ListItem|SearchAction)$/i.test(t))
+    const isOrg = !notBusiness && (
+      types.some((t) => /Organization|Business|Store|Restaurant|Service|Professional|Dentist|Physician|Attorney|Repair|Salon|Gym|Hotel|Plumber|Electrician|Contractor|Clinic|Spa/i.test(t))
+      || ['telephone', 'email', 'address'].some((k) => node[k] != null))
     if (isOrg) {
       for (const e of asArray(node.email as string)) if (typeof e === 'string') addEmail(e, 'json-ld', 0.9)
       for (const t of asArray(node.telephone as string)) if (typeof t === 'string') addPhone(t, 'json-ld', 0.9)

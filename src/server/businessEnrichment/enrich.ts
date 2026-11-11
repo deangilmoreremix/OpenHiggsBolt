@@ -136,13 +136,15 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
   }
 
   // 3) candidate pages: homepage link scoring + sitemap URLs scored by the same rules
-  const fromLinks = pickContactPages(home.anchors, base.toString(), maxPages)
+  const linked = pickContactPages(home.anchors, base.toString(), maxPages)
+  for (const url of linked) if (!allowed(url)) out.pagesSkipped.push({ url, reason: 'robots' })
+  const fromLinks = linked.filter(allowed)
   let fromSitemap: string[] = []
   if (fromLinks.length < 2) {
     try {
       const roots = [...new Set([...rules.sitemaps, `${origin}/sitemap.xml`])].slice(0, 3)
       const { urls } = await crawlSitemaps(roots, { fetchBytes: (u) => fetchBytes(u, deps.signal), sameSite: (u) => host(u) === domain, maxSitemaps: 4, maxUrls: 300 })
-      fromSitemap = urls.map((u) => [u, scoreContactLink(u, '')] as const).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).map(([u]) => u).slice(0, maxPages)
+      fromSitemap = urls.filter(allowed).map((u) => [u, scoreContactLink(u, '')] as const).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).map(([u]) => u).slice(0, maxPages)
     } catch { out.notes.push('sitemap could not be read') }
   }
   for (const url of [...new Set([...fromLinks, ...fromSitemap])]) {

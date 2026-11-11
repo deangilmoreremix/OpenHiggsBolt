@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from 'next/server'
+import pLimit from 'p-limit'
+import { createCorrelationId, logPersonalization } from '@/server/personalizationLog'
+import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
+import { createStageDeadline, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
+import { enrichBusinessWebsite } from '@/server/businessEnrichment/enrich'
+import { DomainThrottle } from '@/server/businessEnrichment/throttle'
+import { CircuitBreaker } from '@/server/businessEnrichment/retry'
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+/**
+ * Contact/website enrichment for businesses already found by the Business Finder.
+ *
+ * Techniques reimplemented in TypeScript, inspired by Scrapling (this route does NOT use the
+ * Scrapling library). Each business is crawled politely (robots.txt, adaptive per-domain
+ * throttle, SSRF-safe fetch on every hop). Every returned value carries sourceUrl, method and
+ * confidence; nothing is inferred. Requests are chunked (MAX_BATCH) so each stays inside the
+ * Netlify budget — the client enriches the rest with follow-up calls, no extra backend.
+ */
+const MAX_BATCH = 5
+const BATCH_CONCURRENCY = 3
+const MAX_URL_LENGTH = 2048
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = 10
+const ANON_RATE_LIMIT_MAX = 100
+
+function clientIpOf(req: NextRequest): string | undefined {
+  const realIp = req.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
+  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',').map((h) => h.trim()).filter(Boolean)
+  return hops.length ? hops[hops.length - 1] : undefined
+}
+
+export async function POST(req: NextRequest) {
+  const correlationId = createCorrelationId(req)
+  const startedAt = Date.now()
+  const key = resolveRateLimitKey(undefined, clientIpOf(req))
+  const limited = rateLimit(`enrich-business:${key}`, { windowMs: RATE_LIMIT_WINDOW_MS, max: key === 'anon' ? ANON_RATE_LIMIT_MAX : RATE_LIMIT_MAX })
+  if (!limited.allowed) return rateLimit429(limited.retryAfterMs)
+
+  const body = await req.json().catch(() => ({}))
+  const raw: Array<{ id?: string; website?: string }> = Array.isArray(body?.businesses)
+    ? body.businesses
+    : typeof body?.websiteUrl === 'string' ? [{ website: body.websiteUrl }] : []
+  const items = raw
+    .map((b) => ({ id: typeof b?.id === 'string' ? b.id.slice(0, 120) : undefined, website: typeof b?.website === 'string' ? b.website.trim() : '' }))
+    .filter((b) => b.website)
+
+  if (!items.length) return NextResponse.json({ error: 'websiteUrl or businesses[].website is required' }, { status: 400 })
+  if (items.some((b) => b.website.length > MAX_URL_LENGTH)) return NextResponse.json({ error: `website must be at most ${MAX_URL_LENGTH} characters` }, { status: 400 })
+
+  const batch = items.slice(0, MAX_BATCH)
+  const deferred = items.slice(MAX_BATCH).map((b) => b.id ?? b.website)
+  const deadline = createStageDeadline('enrich-business', ROUTE_DEADLINE_MS - 2_000)
+  const throttle = new DomainThrottle() // shared: two businesses on one host are paced together
+  const breaker = new CircuitBreaker()
+  const gate = pLimit(BATCH_CONCURRENCY)
+
+  const results = await Promise.all(batch.map((b) => gate(async () => {
+    try {
+      const enrichment = await enrichBusinessWebsite(b.website, { throttle, breaker, signal: deadline.signal, maxPages: 4 })
+      return { id: b.id, website: b.website, ok: true as const, enrichment }
+    } catch (err) {
+      // SSRF rejections and other failures are reported per business, without internals.
+      const msg = err instanceof Error ? err.message : 'failed'
+      return { id: b.id, website: b.website, ok: false as const, error: /not allowed|Private|blocked/i.test(msg) ? 'website not allowed' : 'could not be enriched' }
+    }
+  })))
+
+  logPersonalization({ route: '/api/personalization/enrich-business', stage: 'enrich', httpStatus: 200, correlationId, durationMs: Date.now() - startedAt })
+  return NextResponse.json(
+    {
+      ok: true,
+      results,
+      ...(deferred.length ? { deferred, message: `Only ${MAX_BATCH} businesses are enriched per request; send the deferred ones in a follow-up request.` } : {}),
+      timedOut: deadline.expired(),
+      durationMs: Date.now() - startedAt,
+      correlationId,
+    },
+    { headers: { 'x-correlation-id': correlationId } },
+  )
+}

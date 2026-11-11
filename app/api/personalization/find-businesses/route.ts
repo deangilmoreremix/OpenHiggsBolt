@@ -3,7 +3,7 @@ import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, dedu
 import type { BusinessDiscoveryRecord, OwnershipType } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { createStageDeadline, withDeadline, DeadlineExceededError, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
-import { runBackfill, planBackfillStages, BACKFILL_TARGET } from '@/server/businessDiscovery/backfill'
+import { runBackfill, planBackfillStages, mergeDuplicates, BACKFILL_TARGET } from '@/server/businessDiscovery/backfill'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 
@@ -153,7 +153,9 @@ function processDiscoveryBatch(
   results: BusinessDiscoveryRecord[],
   includeChains: boolean,
 ): { enriched: BusinessDiscoveryRecord[]; stats: DiscoveryStats } {
-  const classified = classifyRecords(deduplicateBusinesses(results))
+  // Merge records of one business first (same website domain / phone / normalized name+address), so a
+  // business with several OSM nodes is counted once toward the target.
+  const classified = classifyRecords(deduplicateBusinesses(mergeDuplicates(results)))
   const { kept, excluded } = excludeNationalChains(classified)
   const pool = includeChains ? classified : kept
   // scoreAndSort assigns every score field itself; enriching again would just
