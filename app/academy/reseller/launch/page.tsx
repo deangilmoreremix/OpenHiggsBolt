@@ -12,7 +12,7 @@ import ResellerAcademyShell from '@/components/reseller/academy/ResellerAcademyS
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Guided Launch Course — Reseller Academy · SmartVideo GO AI',
+  title: 'Reseller Setup Walkthrough — Reseller Academy · SmartVideo GO AI',
   description: '12-module guided course: choose an app, deploy it, connect Stripe, and start selling.',
 };
 
@@ -45,7 +45,7 @@ export default async function LaunchCoursePage() {
     <div className="min-h-screen" style={{ background: '#050505' }}>
       <header className="mx-auto max-w-7xl px-6 pt-8">
         <a href="/academy/reseller" className="text-xs underline" style={{ color: 'var(--color-primary)' }}>← Reseller Training Academy</a>
-        <h1 className="mt-2 text-2xl font-extrabold text-white">Guided Launch Course</h1>
+        <h1 className="mt-2 text-2xl font-extrabold text-white">Reseller Setup Walkthrough</h1>
       </header>
       <div className="mx-auto max-w-7xl px-6 py-8">
         <ResellerAcademyShell />

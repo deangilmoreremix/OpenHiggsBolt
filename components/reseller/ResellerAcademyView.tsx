@@ -165,7 +165,7 @@ export default function ResellerAcademyView({
               className="mb-6 block rounded-2xl border px-5 py-4 text-sm font-semibold"
               style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.08)', color: colors.primary }}
             >
-              New: Guided launch course — 12 modules from choosing an app to your first customers →
+              Reseller Setup Walkthrough — 12 guided modules from choosing an app to your first customers →
             </a>
             {/* Reuse the existing Academy course UI and primitives. The
                 course view needs at least one track; an entitled caller

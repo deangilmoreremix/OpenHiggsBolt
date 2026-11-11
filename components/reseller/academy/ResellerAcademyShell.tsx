@@ -135,7 +135,7 @@ function Dashboard({ p, onGo, onSelect }: { p: ReturnType<typeof useAcademyProgr
     <div className="space-y-5">
       <AcademyCard>
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: colors.primary }}>Start here</p>
-        <h2 className="mt-1 text-2xl font-extrabold text-white">Launch your own AI application business</h2>
+        <h2 className="mt-1 text-2xl font-extrabold text-white">Reseller Setup Walkthrough</h2>
         <p className="mt-2 max-w-[68ch] text-sm leading-relaxed" style={{ color: semantic.textSecondary }}>
           Follow 12 short modules from choosing one of the 38 apps to taking real customers. Each lesson has four steps — Learn, Follow along, Complete, Verify — and always tells you what to do next. No programming needed.
         </p>
@@ -158,7 +158,7 @@ function Dashboard({ p, onGo, onSelect }: { p: ReturnType<typeof useAcademyProgr
         {curModule && <p className="mt-2 text-xs" style={{ color: semantic.textSecondary }}>Current module: <span className="font-semibold text-white">Module {curModule.id} — {curModule.title}</span></p>}
       </AcademyCard>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid items-start gap-5 md:grid-cols-2">
         <AcademyCard>
           <SectionTitle hint="saved">Your application</SectionTitle>
           <label className="block text-xs font-semibold text-white" htmlFor="app-select">Selected application</label>

@@ -1,4 +1,4 @@
-# Reseller Academy — Guided Launch Course (summary)
+# Reseller Academy — Reseller Setup Walkthrough (summary)
 
 **Nothing existing was removed.** The existing `/academy/reseller` page (locked / access-pending / content-pending panels, AcademyCourse tracks) and the Reseller Studio keep all content and behaviour. Additions only:
 
@@ -6,7 +6,7 @@
 |---|---|
 | Separate guided course page (same dark/cyan design, same gate) | `/academy/reseller/launch` (`app/academy/reseller/launch/page.tsx`) |
 | Per-app workshop for all 38 apps | `/academy/reseller/apps/[appId]` |
-| 12-module / 35-lesson curriculum (LEARN → FOLLOW → COMPLETE → VERIFY) | `src/content/resellerAcademy/` |
+| 12-module / 39-lesson curriculum (LEARN → FOLLOW → COMPLETE → VERIFY) | `src/content/resellerAcademy/` |
 | Facts read from real app source (names only) + extractor | `src/data/resellerAppFacts.json`, `scripts/build-reseller-app-facts.mjs` |
 | Educational progress (localStorage + API), **migration NOT applied** | `src/lib/resellerAcademyProgress.ts`, `app/api/reseller/academy/progress/route.ts`, `supabase/migrations/20261111000000_reseller_academy_progress.sql` |
 | One link on the existing Academy page (8 added lines) and one "Learn How to Launch This App" link + card anchor on each Studio card (all 4 original buttons unchanged) | `ResellerAcademyView.tsx`, `AppsStudio.jsx`, `messages/{en,zh}/appsStudio.json` |
