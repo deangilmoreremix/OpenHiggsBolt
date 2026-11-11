@@ -170,6 +170,7 @@ export default function ZackD({
   const [project, setProject] = useState(blank);
   const [history, setHistory] = useState([]);
   const [pending, setPending] = useState(() => new Set());
+  const recoveryLocks = useRef(new Map()); // pending key -> id of the project whose recovered job holds it
   const pendingRef = useRef(pending); // current pending keys, for guards that run inside async work
   pendingRef.current = pending;
   const [busy, setBusy] = useState(false);
@@ -233,6 +234,7 @@ export default function ZackD({
     writePending(list);
     // resumed jobs show as in progress, and the action button waits for them, so a paid request is not submitted twice
     if (list.length) setPending((p) => new Set([...p, ...list.map(pendingKeyOf)]));
+    list.forEach((j) => { if (j.pid) recoveryLocks.current.set(pendingKeyOf(j), j.pid); });
     const ctl = new AbortController();
     list.forEach(async (j) => {
       let settled = true; // false = the job may still be running: keep its record so a later visit can pick it up
@@ -241,6 +243,7 @@ export default function ZackD({
         if (!j.pid || j.pid === proj.current.pid) { applyResult(j, r?.url); toast('Recovered a generation that was still running'); }
       } catch (e) { if (ctl.signal.aborted || isRecoverable(e)) settled = false; /* else a confirmed failure: drop it */ }
       if (settled) writePending(readPending().filter((x) => x.rid !== j.rid)); // a local cancel keeps it for the next load
+      if (recoveryLocks.current.get(pendingKeyOf(j)) === j.pid) recoveryLocks.current.delete(pendingKeyOf(j));
       setPending((p) => { const n = new Set(p); n.delete(pendingKeyOf(j)); return n; });
     });
     return () => ctl.abort();
@@ -312,10 +315,20 @@ export default function ZackD({
   const runKeyframes = () => batch('Keyframes', kfTodo, (x) => `kf:${x.shot_id}`, genKeyframe, `Generate ${kfTodo.length} keyframe image(s)?`);
   const runClips = () => batch('Clips', clipTodo, (x) => `clip:${x.shot_id}`, genClip, `Generate ${clipTodo.length} video clip(s) with Veo 3.1? This is the most expensive step.`);
 
+  // A new project/template/script replaces the old one: its recovered jobs keep polling but their results are discarded,
+  // so they must stop locking the new project's cards and pipeline.
+  const releaseRecoveryLocks = () => {
+    if (!recoveryLocks.current.size) return;
+    const held = new Set(recoveryLocks.current.keys());
+    recoveryLocks.current.clear();
+    setPending((p) => new Set([...p].filter((k) => !held.has(k))));
+  };
+
   function writeScript() {
     if (busy || !project.topic.trim()) return;
     // MuAPI has no text endpoint, so the script is an editable starter beat map (the upstream scripts' own default
     // is also a fixed skeleton); nothing is generated or charged until the script is approved.
+    releaseRecoveryLocks();
     set({ pid: newPid(), map: starterBeatMap(project.topic), approved: false, sheets: {}, shots: {}, narration: null, music: null, templateId: null });
     setFinal(null); setCaptioned(null);
   }
@@ -323,11 +336,13 @@ export default function ZackD({
   function loadTemplate(t) {
     if (busy) return;
     if (project.map && !window.confirm('Replace the current project with this template?')) return;
+    releaseRecoveryLocks();
     setProject({ ...blank(), ...templateToProject(t, window.location.origin), look: project.look, voice: project.voice, approved: t.kind === 'finished', templateId: t.id });
     setFinal(null); setCaptioned(null); setOpenDropdown(null);
   }
   const newProject = () => {
     if (!window.confirm('Start a new project? The current one will be cleared from this browser.')) return;
+    releaseRecoveryLocks();
     setProject(blank()); setFinal(null); setCaptioned(null);
   };
 

@@ -299,4 +299,19 @@ describe('ZackD studio (built like the video studios)', () => {
     expect(redo.length).toBeGreaterThan(0);
     redo.forEach((b) => expect(b.disabled).toBe(true));
   });
+
+  it('a recovered job from an earlier project stops locking the pipeline once another template replaces that project', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    // a job recorded for a project that is not the one that will be shown
+    localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), JSON.stringify([{ rid: 'req_old', slot: 'clip', id: 'beat_1_a', pid: 'an-older-project', ts: Date.now() }]));
+    vi.mocked(muapi.resumeGeneration).mockImplementationOnce(() => new Promise(() => {}));
+    const { container } = render(<ZackD apiKey={KEY} />);
+    expect(action(container).disabled).toBe(true); // locked while the recovery is pending
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    await waitFor(() => expect(container.querySelector('[data-result-card="clip:beat_1_a"]')).toBeTruthy());
+    await waitFor(() => expect(action(container).disabled).toBe(false)); // the new project is free to continue
+    const card = container.querySelector('[data-result-card="clip:beat_1_a"]');
+    const redo = within(card).getAllByRole('button').filter((b) => /^(Redo|Generate)\b/.test(b.getAttribute('aria-label') || ''));
+    redo.forEach((b) => expect(b.disabled).toBe(false));
+  });
 });
