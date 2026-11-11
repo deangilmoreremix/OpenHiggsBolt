@@ -43,6 +43,7 @@ import {
   Share2,
   SlidersHorizontal,
 } from 'lucide-react'
+import { SocialIcons } from './SocialIcons'
 import { DEFAULT_ADVANCED_SECTIONS, useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { AutoFillKey } from './businessContentFromResearch'
 import type { AdvancedEditingSections, AdvancedEditingTab } from './types'
@@ -3102,12 +3103,7 @@ function ConfigurationView(props: any) {
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
-                          {business.instagram && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Instagram</span>
-                          )}
-                          {business.facebook && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Facebook</span>
-                          )}
+                          <SocialIcons name={business.name} color={C.cyan} links={{ facebook: business.facebook, instagram: business.instagram, linkedin: business.linkedin, youtube: business.youtube, tiktok: business.tiktok }} />
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
