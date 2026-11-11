@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   poll: vi.fn(),
   upload: vi.fn(),
   list: vi.fn(),
+  thumb: vi.fn(),
 }));
 vi.mock('@/lib/muapi', () => {
   const p = (platform: string) => (key: string, payload: any) => mocks.pub(platform, key, payload);
@@ -20,6 +21,7 @@ vi.mock('@/lib/muapi', () => {
     publishToThreads: p('threads'), publishToX: p('x'),
     pollSocialResult: (...a: unknown[]) => mocks.poll(...a),
     uploadPublishMedia: (...a: unknown[]) => mocks.upload(...a),
+    setYouTubeThumbnail: (...a: unknown[]) => mocks.thumb(...a),
   };
 });
 
@@ -51,7 +53,7 @@ function Harness({ initial = {} as any, asset = { type: 'video', url: 'https://c
 }
 
 beforeEach(() => {
-  mocks.pub.mockReset(); mocks.poll.mockReset(); mocks.upload.mockReset(); mocks.list.mockReset();
+  mocks.pub.mockReset(); mocks.poll.mockReset(); mocks.upload.mockReset(); mocks.list.mockReset(); mocks.thumb.mockReset();
   mocks.pub.mockImplementation(async (platform: string) => ({ request_id: `req-${platform}` }));
   mocks.poll.mockResolvedValue({ status: 'completed', output: { url: 'https://example.com/post/1' } });
   mocks.list.mockResolvedValue([]);
@@ -141,6 +143,27 @@ describe('Review & Publish', () => {
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     for (const c of mocks.pub.mock.calls) expect(c[2].media_url).toBe('https://cdn.muapi.ai/uploaded.mp4');
     vi.unstubAllGlobals();
+  });
+
+  it('sets the generated thumbnail on the YouTube video after publishing and shows the result', async () => {
+    mocks.poll.mockResolvedValue({ status: 'completed', output: { platform: 'youtube', url: 'https://www.youtube.com/watch?v=vid12345678' } });
+    mocks.thumb.mockResolvedValue({ request_id: 'th' });
+    function WithThumb() {
+      const [step, setStep] = React.useState(3);
+      const [results, setResults] = React.useState<any[]>([]);
+      const [dests, setDests] = React.useState<any[]>([{ id: 'youtube:1', platform: 'youtube', accountId: '1', accountName: 'Ch', enabled: true, settings: {} }]);
+      return (
+        <SocialPublishModal open onClose={() => {}} apiKey={KEY} currentStep={step} setCurrentStep={setStep}
+          asset={{ type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any} writeCopy={{ ...emptyCopy, master: 'Hi', title: 'T' }} socialCopy={emptyCopy}
+          thumbnail={{ imageUrl: 'https://cdn.muapi.ai/thumb.png' }} destinations={dests} publishResults={results}
+          updateWriteCopy={() => {}} updateSocialCopy={() => {}} updateThumbnail={() => {}} updateDestinations={setDests} updatePublishResults={setResults} />
+      );
+    }
+    render(<WithThumb />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(1\)/ }));
+    await waitFor(() => expect(mocks.thumb).toHaveBeenCalledTimes(1));
+    expect(mocks.thumb.mock.calls[0][1]).toEqual({ account_id: 1, video_id: 'vid12345678', thumbnail_url: 'https://cdn.muapi.ai/thumb.png' });
+    await screen.findByText('Published successfully');
   });
 
   it('shows all platforms that accept the media type in the header', () => {

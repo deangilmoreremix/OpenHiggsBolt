@@ -74,6 +74,8 @@ export interface PublishResult {
   requestId?: string
   output?: any
   link?: string | null
+  /** Non-fatal follow-up result, e.g. the YouTube thumbnail could not be set. */
+  note?: string
 }
 
 export interface WriteStepProps {

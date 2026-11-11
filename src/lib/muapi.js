@@ -769,6 +769,12 @@ export async function publishToYouTube(apiKey, payload) {
   return res.data;
 }
 
+export async function setYouTubeThumbnail(apiKey, payload) {
+  // MuAPI: POST /api/v1/youtube-set-thumbnail { account_id, video_id, thumbnail_url }
+  const res = await axios.post('/api/v1/youtube-set-thumbnail', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
 export async function publishToInstagram(apiKey, payload) {
   const res = await axios.post('/api/v1/instagram-publish', payload, withKey({ method: 'POST' }, apiKey));
   return res.data;

@@ -151,3 +151,51 @@ describe('publishing orchestrator', () => {
     expect((d.publish.instagram as any).mock.calls[0][1].cover_url).toBe('https://cdn.muapi.ai/thumb.png');
   });
 });
+
+describe('YouTube thumbnail (MuAPI youtube-set-thumbnail)', () => {
+  const thumb = { imageUrl: 'https://cdn.muapi.ai/thumb.jpg' };
+  const withThumb = (set: any, out: any = { url: 'https://www.youtube.com/watch?v=abc123XYZ_-' }) => {
+    const d = deps({ poll: async () => ({ status: 'completed', output: out }) });
+    d.setYouTubeThumbnail = set;
+    return d;
+  };
+  it('sets the thumbnail on the published video using account_id, video_id, thumbnail_url', async () => {
+    const set = vi.fn().mockResolvedValue({ request_id: 'th-1' });
+    const r = await publishOne(dest('youtube', '12') as any, asset, copy as any, thumb, KEY, withThumb(set));
+    expect(r.status).toBe('published');
+    expect(set).toHaveBeenCalledWith(KEY, { account_id: 12, video_id: 'abc123XYZ_-', thumbnail_url: 'https://cdn.muapi.ai/thumb.jpg' });
+    expect(r.note).toBe('Thumbnail set on YouTube.');
+  });
+  it('a thumbnail failure never fails the publish; it becomes a note', async () => {
+    const set = vi.fn().mockRejectedValue({ response: { status: 403 } });
+    const r = await publishOne(dest('youtube') as any, asset, copy as any, thumb, KEY, withThumb(set));
+    expect(r.status).toBe('published');
+    expect(r.note).toMatch(/thumbnail could not be set/);
+  });
+  it('explains when the video id is unknown or the image is not public, without calling MuAPI', async () => {
+    const set = vi.fn();
+    const noId = await publishOne(dest('youtube') as any, asset, copy as any, thumb, KEY, withThumb(set, { platform: 'youtube' }));
+    expect(noId.note).toMatch(/video ID/);
+    const local = await publishOne(dest('youtube') as any, asset, copy as any, { imageUrl: 'blob:http://x/1' }, KEY, withThumb(set));
+    expect(local.note).toMatch(/not a public image link/);
+    expect(set).not.toHaveBeenCalled();
+  });
+  it('does nothing for other platforms or when no thumbnail was made', async () => {
+    const set = vi.fn();
+    await publishOne(dest('x') as any, asset, copy as any, thumb, KEY, withThumb(set));
+    await publishOne(dest('youtube') as any, asset, copy as any, undefined, KEY, withThumb(set));
+    expect(set).not.toHaveBeenCalled();
+  });
+});
+
+import { extractYouTubeVideoId } from '@/shared/api/publishOrchestrator';
+describe('extractYouTubeVideoId', () => {
+  it('reads watch, youtu.be, shorts urls and explicit ids', () => {
+    expect(extractYouTubeVideoId({ url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })).toBe('dQw4w9WgXcQ');
+    expect(extractYouTubeVideoId({ url: 'https://youtu.be/dQw4w9WgXcQ' })).toBe('dQw4w9WgXcQ');
+    expect(extractYouTubeVideoId({ url: 'https://www.youtube.com/shorts/dQw4w9WgXcQ' })).toBe('dQw4w9WgXcQ');
+    expect(extractYouTubeVideoId({ video_id: 'abc' })).toBe('abc');
+    expect(extractYouTubeVideoId({ url: 'https://example.com/post/1' })).toBeNull();
+    expect(extractYouTubeVideoId(null)).toBeNull();
+  });
+});

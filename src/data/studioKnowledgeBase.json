@@ -8491,14 +8491,14 @@
         "AI writing runs on your own OpenAI key; you can always write by hand",
         "Destinations: connect accounts for eight platforms and set the options each platform supports",
         "One Publish button posts to every selected account, shows status for each, and Retry re-sends only the one that failed",
-        "Your Write-step text and Title are what get published; a thumbnail is sent as the Instagram cover",
+        "Your Write-step text and Title are what get published; a thumbnail is sent as the Instagram cover and set as the YouTube thumbnail",
         "Review shows an approximate MuAPI cost and tells you what to fix before publishing"
       ],
       "howToUse": "Social Publishing is not a studio. It is a window titled Publish to social that opens on top of whatever studio you are in when you click Post to social next to a finished image or video (there is no separate page; the address you are on stays the studio's, for example /studio/image). Move through Write (write or generate the post, add a Title), Thumbnail (optional), Destinations (connect and choose accounts, set per-platform options) and Review & Publish, then click Publish.",
       "howToSteps": [
         "Make an image or video in a studio, then click Post to social next to the finished result. The Publish to social window opens on Write.",
         "Write step: type what the post is about in Post topic (What is this post about?), then click Write Post to generate copy, or write your own. Fill in Title (required for YouTube, up to 100 characters; TikTok allows 150). Use the Master tab for the main text and the YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X tabs to tailor it. Use Improve, Tone, Length and Platform Optimize to refine. If you click an AI action without an OpenAI key you will see Add your OpenAI key to use AI writing with an Open API keys button; you can still write by hand.",
-        "Click Continue. Thumbnail step (optional): generate a thumbnail, or click Continue to skip. For Instagram videos the thumbnail is sent as the cover.",
+        "Click Continue. Thumbnail step (optional): generate a thumbnail, or click Continue to skip. For Instagram videos the thumbnail is sent as the cover, and for YouTube it is set on the video after it is published (JPEG or PNG under 2MB).",
         "Destinations step: click a platform, click Connect, finish the sign-in on the platform in the new tab, then click Refresh. Tick each account to post to. Open an account to set its options (YouTube: Privacy, Category, Tags, Made for kids; Instagram: Placement, Also share to feed; TikTok: Who can view and Turn off comments, duet or stitch; Facebook and Threads: Placement; Pinterest: Board ID and Destination link; X: Who can reply).",
         "Click Continue to reach Review & Publish. Check the text, the destinations and the estimated MuAPI cost. If something blocks publishing, a Fix this before publishing: box lists it.",
         "Click Publish. Each destination shows its own status. If one fails, read its message and click Retry (only that one is re-sent), or click Reconnect if the account was disconnected.",
@@ -8825,7 +8825,7 @@
         },
         {
           "question": "Do I have to make a thumbnail?",
-          "answer": "No. For Instagram videos a thumbnail is sent as the cover; other platforms do not use it."
+          "answer": "No. If you make one, it is sent as the cover for Instagram videos and set as the thumbnail of your YouTube video after it is published (JPEG or PNG under 2MB; custom YouTube thumbnails also need a verified channel). Other platforms do not use it."
         },
         {
           "question": "Can I schedule a post?",
@@ -8965,7 +8965,8 @@
         "Instagram posting needs an Instagram Business account",
         "MuAPI does not offer scheduling, so posts are published immediately",
         "The media must be reachable by MuAPI: files stored only on your device are uploaded automatically when you publish",
-        "Text limits: YouTube title 100, TikTok title 150, X post 280 characters"
+        "Text limits: YouTube title 100, TikTok title 150, X post 280 characters",
+        "YouTube custom thumbnails need a verified YouTube channel; if setting the thumbnail fails, the video is still published and you will see a note"
       ],
       "description": "A Publish to social window that opens on top of any studio after you create an image or video: it helps you write the post, then publishes it to your connected YouTube, Instagram, TikTok, Facebook, LinkedIn, Pinterest, Threads and X accounts.",
       "verification": {
