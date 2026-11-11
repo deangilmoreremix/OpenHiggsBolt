@@ -251,9 +251,11 @@ test.describe('Motion Studio director', () => {
     await expect(chat).toContainText('The draft:');
     // The first six workflow steps ran. Deliver waits for an MP4: a built film is not a delivered one.
     const steps = page.getByTestId('film-steps');
-    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa']) {
+    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat']) {
       await expect(steps.locator(`[data-step="${id}"]`)).toHaveAttribute('data-state', 'done');
     }
+    // This test's director has no reviewer (no key): the QA step is a warning (technical checks passed, film not independently reviewed), never done.
+    await expect(steps.locator('[data-step="qa"]')).toHaveAttribute('data-state', 'warning');
     await expect(steps.locator('[data-step="deliver"]')).toHaveAttribute('data-state', 'todo');
     await expect(steps.locator('[data-step="capture"]')).toContainText('1 card crops · logo · 1 site image');
     await expect(page.getByTestId('film-render')).toBeVisible();

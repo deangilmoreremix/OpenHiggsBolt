@@ -56,9 +56,9 @@ describe('a stage completes only with its mandatory output', () => {
     expect(some.stages.qa.note).toMatch(/5 of 8/);
     expect(completeStage(newRun('x', 'autonomous'), { stage: 'qa', issues: [], framesChecked: 8, required: 8, done: 8 }).stages.qa.status).toBe('completed');
   });
-  it('review is completed only if the reviewer ran', () => {
+  it('review is completed only if the reviewer ran (an unavailable reviewer is a warning, never a pass and never a crash)', () => {
     const r = newRun('x', 'autonomous');
-    expect(completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [] } }).stages.review.status).toBe('failed');
+    expect(completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [] } }).stages.review.status).toBe('needs-review');
     expect(completeStage(r, { stage: 'review', review: goodReview() }).stages.review.status).toBe('completed');
   });
 });

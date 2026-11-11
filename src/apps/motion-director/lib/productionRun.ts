@@ -216,6 +216,8 @@ export function completeStage(run: ProductionRun, output: Output, summary?: Reco
   // Output exists but is not clean: it can be shown, it cannot be called done.
   const showable = id === 'build' || id === 'qa' || id === 'storyboard' || id === 'sound';
   if (id === 'qa' && /^partial:/.test(miss.reason)) return touch(next, id, { status: 'partial', note: miss.reason, summary, endedAt: now }, now);
+  // A reviewer that was unavailable did not fail anything: the film simply has not been reviewed yet (shown as a warning, never as passed).
+  if (output.stage === 'review' && !output.review.ran) return touch(next, id, { status: 'needs-review', note: miss.reason, summary, endedAt: now }, now);
   if (showable && miss.whoCanFix === 'program') return touch(next, id, { status: 'needs-review', note: miss.reason, summary, endedAt: now }, now);
   return touch(next, id, { status: miss.whoCanFix === 'person' ? 'needs-input' : 'failed', note: miss.reason, summary, endedAt: now }, now);
 }
