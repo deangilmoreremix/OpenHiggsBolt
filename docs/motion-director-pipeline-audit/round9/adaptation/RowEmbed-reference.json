@@ -1,0 +1,46 @@
+{
+  "stem": "RowEmbed",
+  "source": "reference",
+  "modelUsed": false,
+  "requests": 1,
+  "notes": "reference source (not a model)",
+  "adaptedCodeBytes": 10535,
+  "gateProblemsSeen": [],
+  "checks": {
+    "assetIdentity": {
+      "adaptedHeroShare": [
+        0,
+        0.0687,
+        0.0683
+      ],
+      "parameterisedHeroShare": [
+        0,
+        0.0687,
+        0.0683
+      ]
+    },
+    "motionProfile": {
+      "adapted": [
+        0.346,
+        0.381,
+        0.499
+      ],
+      "originalSample": [
+        0.199,
+        0.204,
+        0.154
+      ],
+      "parameterised": [
+        0.346,
+        0.381,
+        0.499
+      ]
+    },
+    "reopenDiff": 0
+  },
+  "frames": [
+    13,
+    34,
+    65
+  ]
+}

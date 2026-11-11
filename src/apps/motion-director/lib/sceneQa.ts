@@ -58,6 +58,12 @@ export async function readPicture(url: string): Promise<Pixels | null> {
   } catch { return null; }
 }
 
+/** The person's pictures a clip carries: page screens, crops and per-card crops (a grid recipe shows the cards, not the page). */
+export function suppliedUrls(props: Record<string, unknown> | undefined): string[] {
+  const list = (k: string) => (Array.isArray(props?.[k]) ? (props![k] as unknown[]) : []);
+  return [...list('screens'), ...list('crops'), ...list('cardCrops')].filter((u): u is string => typeof u === 'string').slice(0, 10);
+}
+
 export interface SceneQaDeps2 extends SceneQaDeps { picture?: (url: string) => Promise<Pixels | null> }
 
 export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps2, opts: { budgetMs?: number; signal?: AbortSignal; only?: ReadonlySet<string> } = {}): Promise<SceneQaResult[]> {
@@ -83,7 +89,7 @@ export async function validateShotScenes(project: ProjectData, deps: SceneQaDeps
         const f = frames[name];
         checkpoints.push({ name, mine: await deps.pixels(soloProject(project, clip, false), f, opts.signal), plain: await deps.pixels(soloProject(project, clip, true), f, opts.signal) });
       }
-      const urls = [...(Array.isArray(clip.props?.screens) ? (clip.props!.screens as string[]) : []), ...(Array.isArray(clip.props?.crops) ? (clip.props!.crops as string[]) : [])].filter((u) => typeof u === 'string').slice(0, 4);
+      const urls = suppliedUrls(clip.props);
       const read = deps.picture ?? readPicture;
       const pics = (await Promise.all(urls.map((u) => read(u)))).filter((p): p is Pixels => Boolean(p));
       const supplied = pics.length && pics.length === urls.length ? pics.flatMap((p) => pictureColours(p)) : null;
@@ -126,3 +132,40 @@ export const browserPixels: SceneQaDeps['pixels'] = async (project, frame, signa
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
   return { data: img.data, width: img.width, height: img.height };
 };
+
+/** The change between the three checkpoints of a shot: its motion in miniature (entering→peak, peak→settled, entering→settled). */
+export const motionProfile = (c: Checkpoint[]): [number, number, number] => [diffShare(c[0].mine, c[1].mine), diffShare(c[1].mine, c[2].mine), diffShare(c[0].mine, c[2].mine)];
+
+/**
+ * Accept or refuse an ADAPTED shot (upstream: the agent compares its render with the reference and fixes what differs). The adapted
+ * trial must (1) pass the mechanical checkpoint checks with the person's pictures, and (2) keep the recipe's motion: where the shot as
+ * it was (the same clip without the adapted source: the repaired, parameterised recipe) changes noticeably between checkpoints, the
+ * adapted one must too, and it may not be frozen or wildly busier. Returns the problems for the model; empty = accepted.
+ */
+export async function verifyAdaptation(project: ProjectData, clip: ClipData, trial: ProjectData, deps: SceneQaDeps2, signal?: AbortSignal): Promise<string[]> {
+  const adaptedClip = trial.tracks.flatMap((t) => t.clips).find((c) => c.id === clip.id)!;
+  const frames = { entering: Math.floor(clip.duration * 0.2), peak: Math.floor(clip.duration * 0.5), settled: Math.max(0, clip.duration - 3) };
+  const grab = async (p: ProjectData, c: ClipData, plain: boolean) => {
+    const out: Checkpoint[] = [];
+    for (const name of ['entering', 'peak', 'settled'] as const) {
+      const f = frames[name];
+      const mine = await deps.pixels(soloProject(p, c, false), f, signal);
+      out.push({ name, mine, plain: plain ? mine : await deps.pixels(soloProject(p, c, true), f, signal) });
+    }
+    return out;
+  };
+  const adapted = await grab(trial, adaptedClip, false);
+  const reference = await grab(project, { ...clip, props: Object.fromEntries(Object.entries(clip.props ?? {}).filter(([k]) => k !== 'adaptedCode' && k !== 'adaptedStem')) } as ClipData, true);
+  const urls = suppliedUrls(clip.props);
+  const read = deps.picture ?? readPicture;
+  const pics = (await Promise.all(urls.map((u) => read(u)))).filter((p): p is Pixels => Boolean(p));
+  const supplied = pics.length && pics.length === urls.length ? pics.flatMap((p) => pictureColours(p)) : null;
+  const problems = checkShot({ checkpoints: adapted, supplied }).filter((c) => c.kind === 'mechanical' && !c.ok).map((c) => `${c.property} (${c.frame}): ${c.detail}`);
+  const [a, r] = [motionProfile(adapted), motionProfile(reference)];
+  const names = ['entering→peak', 'peak→settled', 'entering→settled'];
+  a.forEach((v, i) => {
+    if (r[i] > 0.04 && v < r[i] * 0.2) problems.push(`motion lost: ${names[i]} changes ${(v * 100).toFixed(1)}% of the frame, the original recipe changes ${(r[i] * 100).toFixed(1)}%`);
+    if (r[i] < 0.01 && v > 0.15) problems.push(`motion added: ${names[i]} changes ${(v * 100).toFixed(1)}% where the original recipe is still`);
+  });
+  return problems;
+}

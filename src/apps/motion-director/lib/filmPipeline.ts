@@ -564,6 +564,10 @@ export async function buildFilmProject(
     const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content, ...(opts.hints ? { hints: opts.hints } : {}) };
     const deps = {
       render: async (p: ProjectData, f: number, signal: AbortSignal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+      verify: async (trial: ProjectData, clip: ClipData, signal: AbortSignal) => {
+        const { verifyAdaptation, browserPixels } = await import('./sceneQa');
+        return verifyAdaptation(built, clip, trial, { pixels: browserPixels }, signal);
+      },
       snapshot: async (r: unknown) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
       review: async (p: ProjectData, frames: number[], signal: AbortSignal) => {
         const render = (await import('../webRenderer')).renderStillOnWebExport;

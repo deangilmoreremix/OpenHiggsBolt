@@ -141,5 +141,37 @@ export function registerSweepHook(): void {
       return { frames: [], durationFrames: 0, error: error instanceof Error ? error.message : String(error) };
     }
   };
+  const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => reject(r.error); r.readAsDataURL(blob); });
+  /** Render frames of ANY project JSON (a saved film reopened) through the export renderer. */
+  (hook as Record<string, unknown>).renderProject = async (projectJson: ProjectData, frames: number[], scale = 0.5): Promise<string[]> => {
+    const { renderStillOnWebExport } = await import('../webRenderer');
+    const out: string[] = [];
+    for (const f of frames) out.push(await toDataUrl((await renderStillOnWebExport(projectJson, f, undefined, scale, true)).blob));
+    return out;
+  };
+  /**
+   * Adapt ONE shot the way the film pipeline does (exact recipe source + card, the adaptation loop, the sandbox, the acceptance gate), then render
+   * its entering/peak/settled frames. `code` stands in for the model (a REFERENCE source, labelled so by the caller); without it the real model is asked.
+   */
+  (hook as Record<string, unknown>).adaptProof = async (stem: string, args: { custom: CustomCapture; code?: string; scale?: number }) => {
+    const [{ adaptShot }, { verifyAdaptation, browserPixels }, directorClient, { renderStillOnWebExport }] = await Promise.all([import('./adaptLoop'), import('./sceneQa'), import('./directorClient'), import('../webRenderer')]);
+    const { project } = sweepProject(stem, { custom: args.custom });
+    const clip = project.tracks.flatMap((t) => t.clips).find((c) => c.cardId === `demo:${stem}`);
+    if (!clip) return { error: `no ${stem} clip` };
+    const problems: string[] = [];
+    const requests: number[] = [];
+    const ctx = { layout: args.custom.captureLayout ?? null, screens: args.custom.screens, crops: args.custom.cardCrops, brand: { name: 'Acme' } };
+    const out = await adaptShot(project, clip, ctx, {
+      render: async (p, f, signal) => renderStillOnWebExport(p, f, signal, 0.5),
+      request: args.code ? async () => { requests.push(1); return { code: args.code as string, notes: 'reference source (not a model)' }; } : async (b) => { requests.push(1); return directorClient.requestAdapt(b); },
+      verify: async (trial, c, signal) => { const found = await verifyAdaptation(project, c, trial, { pixels: browserPixels }, signal); problems.push(...found); return found; },
+    }, new AbortController().signal).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+    if (!out || 'error' in out) return { adapted: false, requests: requests.length, problems, error: out && 'error' in out ? out.error : undefined };
+    const trial: ProjectData = { ...project, tracks: project.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (c.id === clip.id ? { ...c, props: { ...c.props, ...out.props } } : c)) })) };
+    const f = [Math.floor(clip.duration * 0.2), Math.floor(clip.duration * 0.5), Math.max(0, clip.duration - 3)].map((n) => clip.start + n);
+    const frames: string[] = [];
+    for (const n of f) frames.push(await toDataUrl((await renderStillOnWebExport(trial, n, undefined, args.scale ?? 0.5, true)).blob));
+    return { adapted: true, requests: requests.length, problems, notes: out.notes, adaptedCode: out.props.adaptedCode as string, project: trial, frames, frameNumbers: f };
+  };
   (window as unknown as { __recipeSweep?: typeof hook }).__recipeSweep = hook;
 }

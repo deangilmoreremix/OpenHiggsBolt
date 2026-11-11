@@ -33,6 +33,11 @@ export interface AdaptDeps {
   reference?: (stem: string) => Promise<string[]>;
   /** Turn what `render` returned into an image (data URL) to show the model; omitted = no pictures. */
   snapshot?: (rendered: unknown) => Promise<string | null>;
+  /**
+   * The acceptance gate beyond "it rendered": the adapted shot must show the person's content, keep the recipe's motion, and stay in frame
+   * (lib/sceneQa `verifyAdaptation`). Returns the problems; an empty list accepts the adaptation. Without it only render + review decide.
+   */
+  verify?: (trial: ProjectData, clip: ClipData, signal: AbortSignal) => Promise<string[]>;
   /** Wait between rate-limit retries (tests pass an instant one). */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
@@ -105,7 +110,7 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
     let reply: { code: string; notes: string };
     try {
       reply = await request({
-        recipe: stem, source, layout: ctx.layout, screens: ctx.screens.length, crops: ctx.crops.length, brand: ctx.brand, content: ctx.content, problems,
+        recipe: stem, source, layout: ctx.layout, ...(clip.props?.liveLayout ? { liveLayout: clip.props.liveLayout } : {}), screens: ctx.screens.length, crops: ctx.crops.length, brand: ctx.brand, content: ctx.content, problems,
         ...(card ? { card } : {}), ...(reference.length ? { reference } : {}), ...(stills.length ? { stills } : {}),
       });
     } catch (error) {
@@ -137,6 +142,7 @@ export async function adaptShot(project: ProjectData, clip: ClipData, ctx: Adapt
         failed.push(`frame ${frame - clip.start} of the shot failed to render: ${error instanceof Error ? error.message : 'error'}`);
       }
     }
+    if (!failed.length && deps.verify) failed.push(...(await deps.verify(trial, clip, signal).catch((e) => [`the adaptation could not be verified: ${e instanceof Error ? e.message : 'error'}`])));
     if (!failed.length && deps.review) failed.push(...(await deps.review(trial, stillFrames(clip), signal).catch(() => [])));
     if (!failed.length) return { props, notes: reply.notes };
     problems = failed.slice(0, 6);

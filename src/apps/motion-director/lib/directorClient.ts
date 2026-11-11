@@ -278,6 +278,8 @@ export interface AdaptRequest {
   recipe: string;
   source: string;
   layout?: unknown;
+  /** The page's geometry in the shape the repaired recipes read (cards, rows, main): lib/customerLayout. */
+  liveLayout?: unknown;
   screens?: number;
   crops?: number;
   brand?: { name?: string; accent?: string; background?: string; text?: string; font?: string };
