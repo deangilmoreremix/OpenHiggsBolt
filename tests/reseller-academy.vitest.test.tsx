@@ -138,4 +138,28 @@ describe('academy shell journey', () => {
     expect(btn.textContent).toContain('1.2');
     expect(within(screen.getByRole('progressbar')).queryByText(/x/)).toBeNull();
   });
+  it('ticks, unticks, completes and un-completes with every change saved', () => {
+    const read = () => JSON.parse(window.localStorage.getItem(PROGRESS_STORAGE_KEY)!);
+    render(<ResellerAcademyShell syncRemote={false} />);
+    fireEvent.click(screen.getByRole('button', { name: /Start Module 1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Next:/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Next:/ }));
+    const boxes = screen.getAllByRole('checkbox');
+    fireEvent.click(boxes[0]);
+    fireEvent.click(boxes[1]);
+    expect(read().checks['1.1']).toEqual([0, 1]);
+    fireEvent.click(boxes[0]);
+    expect(read().checks['1.1']).toEqual([1]);
+    fireEvent.click(boxes[1]);
+    expect(read().checks['1.1']).toBeUndefined();
+    fireEvent.click(boxes[0]);
+    fireEvent.click(screen.getByRole('button', { name: /^Next:/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Mark complete/ }));
+    expect(read().completedLessons).toEqual(['1.1']);
+    fireEvent.click(screen.getByRole('button', { name: /1\.1 What you are launching/ }));
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: /^Next:/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Mark as not complete/ }));
+    expect(read().completedLessons).toEqual([]);
+    expect(read().checks['1.1']).toEqual([0]);
+  });
 });
