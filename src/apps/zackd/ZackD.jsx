@@ -465,7 +465,7 @@ export default function ZackD({
                 {project.map.beats.map((b, bi) => (
                   <div key={b.beat_id} className={`${CARD} p-3 gap-2`}>
                     <div className="text-[10px] font-bold text-white/30 uppercase tracking-wider">Beat {bi + 1}{b.hook ? ' · Hook' : ''} · {b.title_en}</div>
-                    <textarea className={`${FIELD} text-sm`} rows={3} maxLength={400} disabled={busy} aria-label={`Narration, beat ${bi + 1}`} value={b.narration}
+                    <textarea className={`${FIELD} text-sm`} rows={3} maxLength={400} disabled={busy || pending.has('narration')} aria-label={`Narration, beat ${bi + 1}`} value={b.narration}
                       onChange={(e) => {
                         const text = e.target.value;
                         // the generated voice-over now speaks the old text: drop it (and a cut that mixed it in) so it must be regenerated

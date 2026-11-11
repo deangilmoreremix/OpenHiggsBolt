@@ -276,4 +276,14 @@ describe('ZackD studio (built like the video studios)', () => {
     await waitFor(() => expect(container.querySelector('audio')).toBeNull());
     expect(screen.getByRole('button', { name: 'Generate narration' })).toBeTruthy(); // regenerate offered again
   });
+
+  it('locks the narration text while its voice-over is still being recovered, so old audio cannot land under new text', async () => {
+    const { scopedPersistKey } = await import('studio/src/persistKey.js');
+    localStorage.setItem(scopedPersistKey('zackd_pending_v1', KEY), JSON.stringify([{ rid: 'req_nar', slot: 'narration', id: 'narration', ts: Date.now() }]));
+    vi.mocked(muapi.resumeGeneration).mockImplementationOnce(() => new Promise(() => {}));
+    render(<ZackD apiKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Try the demo project' }));
+    const nar = await screen.findByLabelText('Narration, beat 1');
+    await waitFor(() => expect(nar.disabled).toBe(true));
+  });
 });
