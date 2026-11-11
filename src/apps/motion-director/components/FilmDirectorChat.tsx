@@ -189,11 +189,8 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         {onOpenWorkbench && (
           <button
             type="button"
-            onClick={() => {
-              // Leaving this view unmounts the card and stops its render: ask first.
-              if (render.status === 'running' && !window.confirm('The MP4 is still rendering and leaving will cancel it. Open the workbench anyway?')) return;
-              onOpenWorkbench();
-            }}
+            // Leaving this view unmounts the card and stops a running render: the caller (editInWorkbench) asks before cancelling it, once.
+            onClick={() => onOpenWorkbench()}
             className="px-4 py-2 rounded-lg text-xs font-semibold"
             style={choiceStyle(false)}
             data-testid="film-open-workbench"

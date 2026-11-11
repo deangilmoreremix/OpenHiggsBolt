@@ -293,7 +293,8 @@ test.describe('Motion Studio director', () => {
   });
 
   test('chat: Render MP4 encodes the film in the browser with the Remotion web renderer', async ({ page }) => {
-    test.setTimeout(15 * 60 * 1000);
+    // Measured in this sandbox (Round 9): the in-browser render of this 22 s film takes 15.9 min, so the caps leave room for it.
+    test.setTimeout(40 * 60 * 1000);
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>
       route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
@@ -310,7 +311,7 @@ test.describe('Motion Studio director', () => {
     await page.getByTestId('film-render').click();
     await expect(page.getByTestId('film-render-status')).toContainText('keep it open');
     const link = page.getByTestId('film-download');
-    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(link).toBeVisible({ timeout: 35 * 60 * 1000 });
     const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
     expect(download.suggestedFilename()).toMatch(/\.mp4$/);
     // The MP4 exists now, so the Deliver step is done.
@@ -337,7 +338,7 @@ test.describe('Motion Studio director', () => {
     await agentInput.fill('render the MP4');
     await agentInput.press('Enter');
     await expect(page.getByText(/Rendering the MP4 with Remotion/)).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 35 * 60 * 1000 });
   });
 
   test('chat: an attached video is cut into the film, and Fast draft renders a 720p MP4', async ({ page }) => {
