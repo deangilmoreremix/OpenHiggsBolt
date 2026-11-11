@@ -1,0 +1,163 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n5 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\nPersonalised 2 of 3 shots: 0 adapted, 2 parameterised, 1 unmodified\n05\n✓\nBeat sync\nSound design\n8 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n17 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nUse the page-waterfall-wall, list-stack-press and hit-counter shot cards for Acme\n04:54 PM\nBuilding the film around Page Waterfall Wall, List Stack Press, Hit Counter.\n04:54 PM\nNo key. I used the Ink Press template instead.\n\nStoryboard “Acme — shot film” — 5 scenes, 20s:\n1. 0:00–0:02 · Title card · on screen: “Meet Acme.”\n2. 0:02–0:08 · Page Waterfall Wall · on screen: “Every page, live.” · caption: Real screens, not mock-ups · bottom-push cut\n3. 0:08–0:11 · List Stack Press · caption: Acme · bottom-push cut\n4. 0:11–0:17 · Hit Counter · on screen: “A little magic.” · caption: Polish where it counts\n5. 0:17–0:20 · Title card · on screen: “Try Acme today.”\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n04:54 PM\nYour film is ready: 20s at 1920×1080, 30 fps, Transitions / Captions / Site / Shots / Background / SFX / Music tracks.\nPersonalised 2 of 3 shots: 0 adapted, 2 parameterised, 1 unmodified.\nHit Counter is unmodified: it draws its own sample content and only 0 of its 14 lines of text could be replaced\nShot adaptation did not run: no site was captured, so there is no page to adapt the shots to.\nFrame QA passed (17 frames rendered).\nReview against the shot cards' checklist: 15 passed.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n04:54 PM\n↺ New film\n✓ Storyboard ready from the Ink Press template · 5 scenes\n✓ Cuts snapped to the beat of house-vibez\n✓ The director could not write the shots' words (No key.); using the site's own words instead\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 3 of 4 cuts within 3 frames of a beat (worst 6 frames), 4 on a kick or a downbeat\n✓ Shot adaptation skipped: no site was captured, so there is no page to adapt the shots to\n✓ Film built · 7 tracks\n✓ Frame QA · 17 frames render cleanly\nFINAL FILM\nAcme — shot film\n1920×1080 · 30 fps · h264\nMeet\nAcme.\n0:00 / 0:21\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~2 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n5 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\nPersonalised 2 of 3 shots: 0 adapted, 2 parameterised, 1 unmodified\n05\n✓\nBeat sync\nSound design\n8 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n17 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "shots": [
+  {
+   "cardId": "inkpress-title-card",
+   "start": 0,
+   "duration": 90,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "inkpress-title-card"
+  },
+  {
+   "cardId": "demo:PageWaterfallWall",
+   "start": 90,
+   "duration": 148,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 0
+   },
+   "label": "demo:PageWaterfallWall"
+  },
+  {
+   "cardId": "demo:ListStackPress",
+   "start": 238,
+   "duration": 89,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 1
+   },
+   "label": "demo:ListStackPress"
+  },
+  {
+   "cardId": "demo:HitCounter",
+   "start": 327,
+   "duration": 185,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "demo:HitCounter"
+  },
+  {
+   "cardId": "brand-logo-reveal",
+   "start": 512,
+   "duration": 89,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "brand-logo-reveal"
+  }
+ ],
+ "ev": [
+  {
+   "card": "demo:PageWaterfallWall",
+   "frame": 157,
+   "suppliedShare": {
+    "magenta": 0.0129,
+    "lime": 0.2635,
+    "orange": 0.0999,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 3888.3
+  },
+  {
+   "card": "demo:PageWaterfallWall",
+   "frame": 216,
+   "suppliedShare": {
+    "magenta": 0.0697,
+    "lime": 0.0162,
+    "orange": 0.1767,
+    "cyan": 0.126
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 2929.7
+  },
+  {
+   "card": "demo:ListStackPress",
+   "frame": 278,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0.4114,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 2102.5
+  },
+  {
+   "card": "demo:ListStackPress",
+   "frame": 314,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0.3985,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 2108.2
+  },
+  {
+   "card": "demo:HitCounter",
+   "frame": 410,
+   "suppliedShare": {
+    "magenta": 0.1094,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [
+    "Shot recipes",
+    "Beat-synced",
+    "2.5D camera",
+    "Pick a move"
+   ],
+   "variance": 5529.3
+  },
+  {
+   "card": "demo:HitCounter",
+   "frame": 484,
+   "suppliedShare": {
+    "magenta": 0.1094,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [
+    "Shot recipes",
+    "Beat-synced",
+    "2.5D camera",
+    "Pick a move"
+   ],
+   "variance": 5627.2
+  }
+ ]
+}

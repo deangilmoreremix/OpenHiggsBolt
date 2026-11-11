@@ -74,7 +74,7 @@ const usable = (value: unknown): value is string =>
  * crops fill the card slots the same way, and `card4-hires.png` — the close-up
  * several shots zoom into — follows `card4.png`.
  */
-export function textureOverrides(screens: readonly unknown[] = [], crops: readonly unknown[] = []): TextureOverrides {
+export function textureOverrides(screens: readonly unknown[] = [], crops: readonly unknown[] = [], extra: { emptyPlate?: unknown; cardCrops?: readonly unknown[] } = {}): TextureOverrides {
   const pages = screens.filter(usable);
   const cards = crops.filter(usable);
   const out: Record<string, string> = {};
@@ -86,6 +86,10 @@ export function textureOverrides(screens: readonly unknown[] = [], crops: readon
     cards.forEach((url, i) => { out[`card:${i}`] = url; });
     out['card:count'] = String(cards.length);
   }
+  // The page with its cards hidden: what fly-in shots show beneath the cards. Never a cycled page screenshot (that still has the cards on it).
+  if (usable(extra.emptyPlate)) out['projects-empty.png'] = extra.emptyPlate;
+  // The exact crop of each captured card (crop i is the picture of layout card i): what a layout-mapped shot lands on its card.
+  (extra.cardCrops ?? []).forEach((url, i) => { if (usable(url)) out[`crop:${i}`] = url; });
   return out;
 }
 
@@ -102,6 +106,16 @@ export function liveCard(index: number, sampleFile: string): string {
   const overrides = use(LiveTextureContext);
   const n = Number(overrides['card:count'] ?? 0);
   return n > 0 ? overrides[`card:${((index % n) + n) % n}`] : liveTexture(sampleFile);
+}
+
+/**
+ * A card of a layout-mapped shot: when the card is one of the customer page's own (`crop:<n>`, the exact picture of that
+ * card) it is that picture; otherwise it is `liveCard`, as before. Call during render.
+ */
+export function layoutCard(index: number, file: string): string {
+  const overrides = use(LiveTextureContext);
+  if (file.startsWith('crop:')) return overrides[file] ?? overrides['card:0'] ?? staticFile(`${LIVE_DIR}card1.png`);
+  return liveCard(index, file);
 }
 
 /**

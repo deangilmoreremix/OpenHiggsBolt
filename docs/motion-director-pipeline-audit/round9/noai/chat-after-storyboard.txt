@@ -1,0 +1,90 @@
+01
+✓
+Product
+Your web page
+https://www.connections.com/
+02
+✓
+Capture
+Real page assets
+1 page (/) · 4 card crops · logo · 2 site images
+03
+✓
+Storyboard
+Shot recipe cards
+recorded with the storyboard
+04
+Animate
+Remotion code
+Waiting
+05
+Beat sync
+Sound design
+Waiting
+06
+Frame QA
+Render + inspect
+Waiting
+07
+Deliver
+Editable outputs
+Waiting
+Create a cinematic 25-second promotional video for https://www.connections.com/ using its actual website, images, branding, and services.
+05:24 AM
+I can build this with the Ink Press template — a validated launch film: a bold paper-and-ink title card, your real pages in product shots (spotlight-hero-card → deck-deal-flyin → row-embed → crash-zoom → page-waterfall-wall), caption strips, flash cuts on the beat, whoosh and impact sound design, and a launch outro. It is the fastest path: your screenshots, copy and logo dropped into a template that is already tuned.
+
+Use Ink Press? Or I can let the director pick shots from the whole library — or name the shot cards you want (e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.
+05:24 AM
+Create without AI.
+05:24 AM
+I read South Florida’s Premier Managed IT | Connections for Business — it says “Finally, a Cure for Your IT Headaches”, with calls to action “FREE RISK ASSESSMENT”, “SCHEDULE YOUR FREE AUDIT”, “VIEW MORE TESTIMONIALS”. I captured 1 page, 4 card crops, 2 site images, the logo to use in the film.
+05:24 AM
+Product brief: Connections for Business · services (from: services, managed it) · aim: promote the business · for businesses that need the service · Features to show: Identify & Secure; Initiate & Relieve; Assess & Lead; Plan & Resolve; Align & Realign · Material: 1 site page, logo, 20 text lines
+
+Visual direction: services · Steady and trustworthy — A confident, clear, trustworthy film for businesses that need the service. Why: derived from the site, no model. Trade-off: no creative variation from a language model.
+
+Release check: 7/7 ✓
+05:24 AM
+Storyboard “Connections for Business — shot film” — 6 scenes, 25s, using your captured pages:
+1. 0:00–0:02 · Title card · on screen: “Meet Connections for Business.” · caption: Finally, a Cure for Your IT Headaches
+2. 0:02–0:05 · People & pictures · message: The people and pictures · on screen: “Identify & Secure” · motion: the site's own pictures, one after another · shows: your images · caption: Identify & Secure · bottom-push cut
+3. 0:05–0:11 · Multiplane · on screen: “Up close on the details.” · caption: Identify & Secure · bottom-push cut
+4. 0:11–0:17 · Freeze Annotate · on screen: “On the beat.” · caption: Initiate & Relieve · wipe cut
+5. 0:17–0:22 · Page Waterfall Wall · on screen: “Every page, live.” · caption: Assess & Lead
+6. 0:22–0:25 · Title card · on screen: “Try Connections for Business today.” · caption: FREE RISK ASSESSMENT
+
+Approve to build the film, ask me why I chose something, or tell me what to change.
+05:24 AM
+↺ New film
+✓ Without AI · not used: Crash Zoom Punch · Crash Zoom Real (a dark look in a light film)
+✓ Without AI · not used: Crash Zoom Punch · Crash Impact Real (a dark look in a light film)
+✓ Without AI · not used: Type And Filter (a dark look in a light film)
+✓ Without AI · multiplane: reads the site pictures; measured personalizable: tested
+✓ Without AI · freeze-annotate: reads the site pictures; measured personalizable: tested
+✓ Without AI · page-waterfall-wall: reads the site pictures; measured personalizable: tested
+✓ Release check: 4/4 ✓
+✓ Storyboard ready (built without AI) · 6 scenes
+From South Florida’s Premier Managed IT | Connections for Business:
+INK PRESS STORYBOARD
+Connections for Business — shot film
+6 scenes · 25s · uses your site
+Meet Connections for Business.
+1. Title card
+0:00–0:02 · on screen: “Meet Connections for Business.” · caption: Finally, a Cure for Your IT Headaches
+Identify & Secure
+2. People & pictures
+0:02–0:05 · message: The people and pictures · on screen: “Identify & Secure” · motion: the site's own pictures, one after another · shows: your images · caption: Identify & Secure · bottom-push cut
+▶ 5.5s
+3. Multiplane
+0:05–0:11 · on screen: “Up close on the details.” · caption: Identify & Secure · bottom-push cut · shows your site
+▶ 5.267s
+4. Freeze Annotate
+0:11–0:17 · on screen: “On the beat.” · caption: Initiate & Relieve · wipe cut · shows your site
+▶ 5s
+5. Page Waterfall Wall
+0:17–0:22 · on screen: “Every page, live.” · caption: Assess & Lead · shows your site
+Try Connections for Business today.
+6. Title card
+0:22–0:25 · on screen: “Try Connections for Business today.” · caption: FREE RISK ASSESSMENT
+Revise
+Approve & build film

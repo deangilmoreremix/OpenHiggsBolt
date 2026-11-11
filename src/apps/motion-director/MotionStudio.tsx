@@ -7,6 +7,7 @@ import { MemoryRouter, Routes, Route, Navigate, useNavigate, useParams, useLocat
 import { applyLocaleToDocument, localeTitle, useLocale } from './i18n';
 import { applySession } from './lib/sessionAdapter';
 import { useStore } from './store';
+import { registerSweepHook } from './lib/recipeSweep';
 import './styles.css';
 
 /**
@@ -94,6 +95,8 @@ const MotionStudioSession = () => {
 };
 
 export default function MotionStudio() {
+  // Dev / e2e only: lets the recipe sweep render any recipe with supplied pictures (see lib/recipeSweep.ts).
+  useEffect(() => registerSweepHook(), []);
   const locale = useLocale((s) => s.locale);
 
   useEffect(() => {

@@ -1,0 +1,74 @@
+{
+ "CrashImpactReal": {
+  "entry": 0.0,
+  "peak": 0.0,
+  "scan": 0.0,
+  "settled": 0.0
+ },
+ "CrashZoomReal": {
+  "entry": 0.0,
+  "lock": 0.0,
+  "peak": 0.0,
+  "settled": 0.0
+ },
+ "DeckDealFlyin": {
+  "deal": 0.3348,
+  "entry": 0.372,
+  "peak": 0.3631,
+  "settled": 0.355
+ },
+ "FreezeAnnotateReal": {
+  "entry": 0.0,
+  "freeze": 0.0,
+  "peak": 0.0,
+  "settled": 0.0
+ },
+ "JumpCutPunchIn": {
+  "entry": 0.0,
+  "jump1": 0.0,
+  "jump2": 0.0,
+  "settled": 0.0
+ },
+ "ListStackPress": {
+  "entry": 0.0,
+  "mid": 0.0,
+  "peak": 0.0,
+  "settled": 0.0
+ },
+ "MultiplaneReal": {
+  "entry": 0.0,
+  "peak": 0.0,
+  "settled": 0.0,
+  "slide": 0.0
+ },
+ "OutroGroupPhotoLaunch": {
+  "entry": 0.0,
+  "gather": 0.0024,
+  "peak": 0.0041,
+  "settled": 0.0045
+ },
+ "RowEmbed": {
+  "entry": 0.0,
+  "mid": 0.0998,
+  "peak": 0.122,
+  "settled": 0.0
+ },
+ "SpotlightHeroCard": {
+  "entry": 0.0,
+  "peak": 0.0445,
+  "rise": 0.0,
+  "settled": 0.0448
+ },
+ "TypeAndFilter": {
+  "entry": 0.0,
+  "full": 0.0522,
+  "peak": 0.1585,
+  "settled": 0.2446
+ },
+ "WhipBrakeReal": {
+  "entry": 0.2966,
+  "peak": 0.3132,
+  "settled": 0.3492,
+  "whip": 0.3498
+ }
+}

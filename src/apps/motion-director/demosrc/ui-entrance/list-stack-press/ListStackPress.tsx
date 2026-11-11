@@ -16,13 +16,15 @@ import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { FONT, SpeedBlur, bezier, softShadow, velocity } from '../../_fixtures/Polish';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity, unionRect } from '../../_textures/retarget';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { BRAND } from '../../_fixtures/Brand';
 
 export const LIST_STACK_PRESS_DURATION = 88; // 18–88f 落在 shot 内 offset 0
 
-const cards = layout.papers.cards;
-const PAGE_H = layout.papers.pageH;
+const SAMPLE_CARDS = SAMPLE_LAYOUT.papers.cards;
+const SAMPLE_UNION = unionRect(SAMPLE_CARDS);
 const MONO = FONT.mono;
 const AMBER = 'oklch(52% 0.115 65)';
 const FILES = ['paper1.png', 'paper2.png', 'paper3.png', 'paper4.png', 'paper5.png'];
@@ -44,12 +46,33 @@ const ANTICIPATE_END = 6;
 const CAM_END = 82;
 const CY_EASE = bezier(0.42, 0, 0.2, 1);
 const Z_EASE = bezier(0.3, 0, 0.18, 1);
-const camAt = (f: number) => {
+const sampleCamAt = (f: number) => {
   const u = Math.min(1, Math.max(0, f / CAM_END));
   return { cx: 960, cy: 270 + (815 - 270) * CY_EASE(u), zoom: 1.35 + (0.86 - 1.35) * Z_EASE(u) };
 };
-// 逐帧关键帧 + 线性插值 = 把连续曲线原样交给 PageCam2D（它的分段缓动会在关键帧处停顿）
-const CAM_KEYS: CamKey2D[] = Array.from({ length: LIST_STACK_PRESS_DURATION }, (_, f) => ({ frame: f, ...camAt(f) }));
+
+/**
+ * The page the stack is built on: the five rows (a customer's own, with the pictures of those rows cut from their page) and
+ * the camera over them. The camera was authored around the sample's five rows, so on another page the same move follows the
+ * rows through a similarity from the sample's rows to the page's (identity for the sample), kept inside the page.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('papers.cards5'));
+  const cards = layout.papers.cards;
+  const PAGE_H = layout.papers.pageH;
+  const sim = similarity(SAMPLE_UNION, unionRect(cards));
+  const camAt = (f: number) => {
+    const c = sampleCamAt(f);
+    if (!customer) return c;
+    const zoom = sim.zoom(c.zoom);
+    const p = sim.point(c.cx, c.cy);
+    const halfW = 960 / zoom, halfH = 540 / zoom;
+    return { cx: halfW * 2 >= 1920 ? 960 : Math.min(1920 - halfW, Math.max(halfW, p.x)), cy: halfH * 2 >= PAGE_H ? PAGE_H / 2 : Math.min(PAGE_H - halfH, Math.max(halfH, p.y)), zoom };
+  };
+  // 逐帧关键帧 + 线性插值 = 把连续曲线原样交给 PageCam2D（它的分段缓动会在关键帧处停顿）
+  const CAM_KEYS: CamKey2D[] = Array.from({ length: LIST_STACK_PRESS_DURATION }, (_, f) => ({ frame: f, ...camAt(f) }));
+  return { customer, cards, PAGE_H, CAM_KEYS, k: customer ? cards[0].w / SAMPLE_CARDS[0].w : 1 };
+};
 const LINEAR = (t: number) => t;
 
 // odometer digit column —— 连续里程计，不重挂：`pos` 是数字带上的连续位置
@@ -95,6 +118,9 @@ const flyY = (i: number, f: number) => 600 * (1 - flyT(i, f));
 
 export const ListStackPress: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const { customer, cards, PAGE_H, CAM_KEYS, k } = React.useMemo(() => geometryOf(layout), [layout]);
+  const slotBg = customer ? layout.projects.bg ?? '#faf7f2' : '#faf7f2';
   // 计数器连续位置：每张卡落地（cue+DUR）时向前滚一格，8f 滚定。
   // 最后一张 f76 落地、f84 滚定，早于 f88 镜头结束。
   const rollPos = rollAt(frame);
@@ -138,7 +164,7 @@ export const ListStackPress: React.FC = () => {
             key={`slot-${i}`}
             style={{
               position: 'absolute', left: c.x - 12, top: c.y - 10,
-              width: c.w + 24, height: c.h + 20, background: '#faf7f2',
+              width: c.w + 24, height: c.h + 20, background: slotBg,
               opacity: frame >= CUES[i] + DUR - 2 ? 0 : 1,
             }}
           />
@@ -177,13 +203,18 @@ export const ListStackPress: React.FC = () => {
               }}
             >
               <div style={{ position: 'absolute', inset: 0, borderRadius: 12, overflow: 'hidden' }}>
-                <Img src={liveTexture(FILES[i])} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+                {customer ? (
+                  // The card is the row of the customer's page it stands for: a region of their captured page (scaled to the card).
+                  <Img src={liveTexture('papers-full.png')} style={{ position: 'absolute', left: -c.x, top: -c.y, width: 1920, height: PAGE_H, maxWidth: 'none', display: 'block' }} />
+                ) : (
+                  <Img src={liveTexture(FILES[i])} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+                )}
                 {hlGrow > 0 && hlFade > 0 ? (
                   // 荧光笔：multiply 叠在字下，字保持原深度
                   <div
                     style={{
-                      position: 'absolute', left: HL_LEFT, top: HL_TOP, height: HL_H,
-                      width: HL_W[i] * hlGrow, borderRadius: 3,
+                      position: 'absolute', left: HL_LEFT * k, top: HL_TOP * (customer ? c.h / SAMPLE_CARDS[i].h : 1), height: HL_H * k,
+                      width: HL_W[i] * k * hlGrow, borderRadius: 3,
                       background: 'oklch(90% 0.075 82)', mixBlendMode: 'multiply', opacity: 0.85 * hlFade,
                       pointerEvents: 'none',
                     }}
@@ -224,14 +255,14 @@ export const ListStackPress: React.FC = () => {
         }}
       >
         <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 500, letterSpacing: '0.18em', color: 'oklch(48% 0.008 82)', textTransform: 'uppercase' }}>
-          Paper Radar
+          {customer && BRAND.name !== 'SmartVideo GO' ? BRAND.name : customer ? 'Your page' : 'Paper Radar'}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
           <DigitRoll pos={rollPos} lineH={104 * 1.12} color={AMBER} blur={Math.min(6, rollV * 30)} />
         </div>
         <div style={{ height: 1, background: 'oklch(80% 0.01 82)', margin: '8px 0 10px auto', width: 220 }} />
         <div style={{ fontFamily: MONO, fontSize: 19, letterSpacing: '0.14em', color: 'oklch(52% 0.008 82)', textTransform: 'uppercase' }}>
-          Of 31 Fetched Today
+          {customer ? 'Stacked from your page' : 'Of 31 Fetched Today'}
         </div>
       </div>
     </AbsoluteFill>

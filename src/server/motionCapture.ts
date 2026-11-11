@@ -134,10 +134,17 @@ export async function writeCaptureJob(storage: CaptureStorage, userId: string, j
   if (error) throw new Error(`could not save the capture job: ${error.message}`)
 }
 
-/** The job's record, or null when this user has no such job. */
+/** The storage itself failed (not a missing record): callers answer "try again", not "no such capture". */
+export class CaptureStorageError extends Error {}
+
+/** A download error that just means the record is not there. */
+const isMissing = (message: string) => /not.?found|does not exist|no such|404/i.test(message)
+
+/** The job's record, or null when this user has no such job. Throws CaptureStorageError when storage itself is down. */
 export async function readCaptureJob(storage: CaptureStorage, userId: string, jobId: string): Promise<CaptureJob | null> {
   if (!CAPTURE_JOB_ID.test(jobId)) return null
   const { data, error } = await storage.download(jobPath(userId, jobId))
+  if (error && !isMissing(error.message)) throw new CaptureStorageError(`could not read the capture job: ${error.message}`)
   if (error || !data) return null
   try {
     const job = JSON.parse(await data.text()) as CaptureJob

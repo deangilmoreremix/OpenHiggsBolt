@@ -11,14 +11,23 @@ import { buildCatalogue, catalogueSummary } from './pictureCatalogue';
 import { assignPictures, picturesShown } from './assignPictures';
 import { AS_DESIGNED, SITE_THEME, luma, paletteFromBrand } from './palette';
 import { CARDS } from '../cards/registry';
-import { projectEndFrame, type ProjectData } from '../types';
+import { projectEndFrame, type ClipData, type ProjectData } from '../types';
 import type { AspectRatio } from '../projectContract';
 import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats, syncReport, type DrumMap } from './beatSync';
 import { t } from '../i18n';
-import { planToProject, type FilmCapture } from './buildFilm';
+import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
+import { personalisesWithSite, captureQuality } from './captureQuality';
+import { layoutFromCapture } from './customerLayout';
+import { checkAssembly } from './filmAssembly';
+import type { AdaptationOutcome } from './personalization';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
+import { buildProductBrief, briefLines, decisionTable, type ProductBrief, type DecisionRow } from './productBrief';
+import { materialOf } from './material';
+import { gateStoryboard } from './storyboardGate';
+import { needsOf, satisfies } from './recipeNeeds';
+import { transplantAdaptation } from './editFilm';
 import { mergeCaptures, neededPages } from './targetedCapture';
 import { PLAN_LIMITS, isBrandScene, type DirectorPalette, type DirectorPlan, type MappingRow, type VisualDirection } from './directorPlan';
 import { buildDesignSpec } from './designSpec';
@@ -28,10 +37,12 @@ import { isProductTextureShot } from './productShots';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
-import { fallbackTexts } from './retext';
+import { fallbackTexts, neutralTexts } from './retext';
 import { rulesOfScene } from './shotRules';
 import { reviewFilm, type ReviewItem } from './filmReview';
 import { adaptFilm } from './adaptLoop';
+import { chooseLocalShots, localShotCount } from './localDirector';
+import { documentFromCapture, documentFromText, isDocumentUsable } from './documentContent';
 import { defaultTrackFor } from './defaultMusic';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
@@ -49,7 +60,7 @@ export interface StoryboardResult {
   plan: DirectorPlan;
   capture: SiteCapture | null;
   /** Who wrote the storyboard. */
-  source: 'director' | 'inkpress';
+  source: 'director' | 'inkpress' | 'local';
   /** Why the director was not used, when it was asked and failed. */
   note?: string;
   /** Attached videos the film will play as their own scenes before the closing card. */
@@ -61,7 +72,12 @@ export interface StoryboardResult {
   /** Stage 3: the release check run before the storyboard was shown. */
   release?: ReleaseItem[];
   /** Stage 1: the visual direction the director chose for an autonomous film, and the ones it weighed. */
-  direction?: { chosen: VisualDirection; others: string[] };
+  direction?: { chosen: VisualDirection; others: string[]; /** 'director': a model weighed options; 'derived': the program derived it from the product (the model could not be reached). */ source?: 'director' | 'derived' };
+  /** Stage 0: the structured product brief and the requirements → decisions table the film was planned from. */
+  brief?: ProductBrief;
+  decisions?: DecisionRow[];
+  /** Stage 3: the storyboard gate: what it swapped and what it could not repair. */
+  gate?: { items: ReleaseItem[]; swaps: string[]; failed: string[] };
 }
 
 /**
@@ -154,6 +170,11 @@ export async function storyboardFilm(
     reservedSec?: number;
     /** Returns true once the person has stopped this storyboard (a capture in progress stops waiting). */
     cancelled?: () => boolean;
+    /** Attached images, videos, music: part of the material the brief and the gate reason about. */
+    media?: MediaAttachment[];
+    /** Called the moment the brief exists (stage 0) and the moment a direction is chosen (stage 1), so later stages can use them at once (styleframes render here, before shots are chosen). */
+    onBrief?: (brief: ProductBrief, decisions: DecisionRow[]) => void;
+    onDirection?: (direction: NonNullable<StoryboardResult['direction']>) => void;
   },
   log: ActivityLog,
 ): Promise<StoryboardResult> {
@@ -170,7 +191,7 @@ export async function storyboardFilm(
       const pulled = [capture.logo ? 'logo' : '', capture.assets?.length ? `${capture.assets.length} found pictures (${[...new Set(capture.assets.map((a) => a.category.replace(/_/g, ' ')))].slice(0, 4).join(', ')})` : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
       log(
         capture.partial
-          ? `Captured ${capture.title || req.siteUrl} · its words only (no screenshots in time)`
+          ? `Partial capture of ${capture.title || req.siteUrl} · its words only (no screenshots in time), so the film cannot show the site's own pages`
           : `Captured ${capture.title || req.siteUrl} · ${pages} page${pages === 1 ? '' : 's'} (${(capture.pages ?? []).map((p) => p.path).join(', ') || '/'}) · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`,
         'done',
       );
@@ -189,9 +210,47 @@ export async function storyboardFilm(
   const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, siteUrl: capture?.url, businessName: hasSite ? null : opts.brandKit?.businessName });
   const palette = brandPalette(capture, opts.brandKit);
 
+  // Stage 0: the product brief and the requirements → decisions table. Every later stage reads them (the business kind
+  // decides which recipes may be chosen, the feature list is what the map must cover).
+  const material = materialOf(capture, opts.media ?? [], { brandLogo: Boolean(opts.brandKit?.logo) });
+  const brief = buildProductBrief({ prompt: req.prompt, productName, content: capture?.content, siteTitle: capture?.title, durationSec: opts.durationSec, aspectRatio: opts.aspectRatio, material, brandKitName: opts.brandKit?.businessName, hasSite });
+  const decisions = decisionTable(brief);
+  for (const line of briefLines(brief)) log(`Product brief · ${line}`, 'done');
+  opts.onBrief?.(brief, decisions);
+
   if (req.single) {
     log(`Designing one ${req.single.nameEn} shot`, 'done');
-    return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette, durationSec: req.durationSec }), capture, source: 'inkpress' };
+    return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette, durationSec: req.durationSec }), capture, source: 'inkpress', brief, decisions };
+  }
+
+  // Create without AI: the program builds the storyboard from the captured material and the recipe contracts. No model call is made.
+  if (opts.template === 'local') {
+    const target = Math.max(PLAN_LIMITS.minFilmSec, planSec);
+    const sitePal0 = capture ? paletteFromBrand(capture.brand) : null;
+    const ground0: 'dark' | 'light' | null = sitePal0 ? (luma(sitePal0.page) < 0.5 ? 'dark' : 'light') : null;
+    const { picks, skipped } = chooseLocalShots({ kind: brief.kind, material, count: req.recipes.length || Math.max(3, localShotCount(target) - (pictureCount(capture) >= 2 ? 1 : 0)), ground: ground0 });
+    const shots = req.recipes.length ? req.recipes : picks.map((p) => p.template);
+    log(`Without AI · chose ${shots.length} shots the contracts say show this business: ${shots.map((t) => t.nameEn).join(', ') || 'none'}`, 'done');
+    for (const sk of skipped.slice(0, 6)) log(`Without AI · not used: ${shotName(sk.stem)} (${sk.why})`, 'done');
+    for (const p of picks) log(`Without AI · ${p.template.nameEn}: ${p.why}`, 'done');
+    const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: palette.accent });
+    const keep = new Set(shots.map((t) => t.id));
+    const siteScenes = Boolean(capture && !capture.partial && capture.page?.url);
+    const base = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: shots, productName, palette, content: capture?.content, siteScenes, pictures: pictureCount(capture) });
+    const sitePal = capture ? paletteFromBrand(capture.brand) : null;
+    const ground: 'dark' | 'light' | null = sitePal ? (luma(sitePal.page) < 0.5 ? 'dark' : 'light') : null;
+    const ruled = applyFilmRules(base, { keep, siteScenes, ground });
+    for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    const gate = gateStoryboard(ruled.plan, { brief, keep, durationSec: planSec, ground });
+    for (const f of gate.failed) log(`Storyboard gate: ${f}`, 'error');
+    const arced = arrangeArc(gate.plan, keep);
+    const fitted = fitNativeLengths(arced, planSec, keep, voice.holdGrowth);
+    const final = chooseSeams(applySiteContent(fitted, capture?.content), voice);
+    const release = releaseCheck(final, null, { keep, ground }).items;
+    log(releaseLine(release), 'done');
+    log(`Storyboard ready (built without AI) · ${final.scenes.length} scenes`, 'done');
+    const direction: NonNullable<StoryboardResult['direction']> = { chosen: { name: `${brief.kind.replace('-', ' ')} · ${voice.label}`, claim: `A ${brief.style} film for ${brief.audience}.`, keywords: brief.kindEvidence, look: `${palette.background} ground, ${palette.accent} accent`, motion: voice.label, why: 'derived from the site, no model', tradeoff: 'no creative variation from a language model' } as VisualDirection, others: [], source: 'derived' };
+    return { plan: final, capture, source: 'local', brief, decisions, direction, release: [...release, ...gate.items], gate: { items: gate.items, swaps: gate.swaps, failed: gate.failed } };
   }
 
   const required =
@@ -217,23 +276,46 @@ export async function storyboardFilm(
   let direction: StoryboardResult['direction'];
   if (autonomous) {
     log('Weighing visual directions for the product', 'running');
-    const options = await requestDirections(guidedAsk).catch(() => null);
+    const ask = () => requestDirections({ ...guidedAsk, prompt: `${req.prompt}\n\nBusiness: ${brief.kind.replace('-', ' ')}; style: ${brief.style}.`.slice(0, 3900) });
+    // One more try; a missing key or a refusal is final (and the film's own planning will say so).
+    let options = await ask().catch(async (error) => {
+      if (error instanceof DirectorError && (error.status === 401 || error.status === 403)) return null;
+      log('Visual directions: the director did not answer; trying once more', 'running');
+      return ask().catch(() => null);
+    });
     const chosen = options?.directions[options.recommended] ?? options?.directions[0];
     if (options && chosen) {
-      direction = { chosen, others: options.directions.filter((d) => d !== chosen).map((d) => d.name) };
+      direction = { chosen, others: options.directions.filter((d) => d !== chosen).map((d) => d.name), source: 'director' };
       log(`Visual direction: ${chosen.name} — ${chosen.claim}${chosen.why ? ` · why: ${chosen.why}` : ''}${chosen.tradeoff ? ` · trade-off: ${chosen.tradeoff}` : ''}${direction.others.length ? ` (weighed against ${direction.others.join(', ')})` : ''}`, 'done');
+    } else {
+      // Documented, not silent: a direction derived from the product itself (its kind, palette and motion voice), recorded as derived.
+      const preset = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: palette.accent });
+      const derived: VisualDirection = { name: `${brief.kind.replace('-', ' ')} · ${preset.label}`, claim: `A ${brief.style} film for ${brief.audience}.`, keywords: brief.kindEvidence, look: `${palette.background} ground, ${palette.accent} accent, ${capture?.brand?.fontFamily ?? 'the site\'s type'}`, motion: preset.label, why: 'the director could not weigh directions, so this one follows from the product\'s own kind, colours and motion voice', tradeoff: 'not compared against alternatives' };
+      direction = { chosen: derived, others: [], source: 'derived' };
+      log(`Visual direction (derived from the product, the director's options were unavailable): ${derived.name}`, 'done');
     }
+    options = null;
+    if (direction) opts.onDirection?.(direction);
   }
   const directionNote = direction ? `Direction: ${direction.chosen.name}: ${direction.chosen.claim} Look: ${direction.chosen.look}. Motion: ${direction.chosen.motion}.` : '';
   // Stage 2: the feature → shot map. Co-creation brings the confirmed map; an autonomous film has the director write one too.
   let mapping: MappingRow[] | null = req.mapping?.length ? req.mapping : null;
+  // True when the director refuses for want of a key (a setting, not a failure of the map).
+  let noKey = false;
+  const keyMissing = async () => noKey;
   if (autonomous) {
     log('Mapping each feature to a first-choice and a fallback shot card', 'running');
-    mapping = await requestMapping({ ...guidedAsk, direction: directionNote }).catch(() => null);
-    if (mapping?.length) {
-      log(`Feature → shot map · ${mapping.length} features`, 'done');
-      for (const r of mapping) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
-    }
+    const askMap = () => requestMapping({ ...guidedAsk, direction: directionNote });
+    mapping = await askMap().catch(async (error) => {
+      // No key: the plan request below reports it (and the template stands in only then, said plainly).
+      if (error instanceof DirectorError && (error.status === 401 || error.status === 403)) { noKey = true; return null; }
+      log('Feature → shot map: the director did not answer; trying once more', 'running');
+      return askMap();
+    });
+    // A map with no usable row is not a map: stop here rather than plan arbitrary shots (unless the cause is a missing key).
+    if (!mapping?.length && !(await keyMissing())) throw new StoryboardError(new DirectorError('The director returned no feature → shot map, so the shots cannot be chosen for your features.', 'MAPPING_EMPTY', 502));
+    if (mapping?.length) log(`Feature → shot map · ${mapping.length} features`, 'done');
+    for (const r of mapping ?? []) log(`${r.feature} → ${shotName(r.firstShot)}${r.altShot ? ` (fallback ${shotName(r.altShot)})` : ''}${r.pageState ? ` · page state: ${r.pageState}` : ''}`, 'done');
   }
   const cards = await chosenCards(required.length ? required.map((r) => r.id) : (mapping ?? []).flatMap((r) => [r.firstShot]));
   if (cards.length) log(`Read ${cards.length} shot card${cards.length === 1 ? '' : 's'} in full: ${cards.map((c) => shotName(c.id)).join(', ')}`, 'done');
@@ -267,8 +349,14 @@ export async function storyboardFilm(
     const keep = new Set(req.recipes.map((r) => r.id));
     const ruled = applyFilmRules(shaped, { keep, siteScenes, ground });
     for (const note of ruled.notes) log(`Shot-card rule: ${note}`, 'done');
+    // The storyboard gate: every recipe exists, suits the business and the material in hand, and is not a sample-only stand-in.
+    // The person's picks (and the Ink Press scenes when that template was asked for) are never swapped; a mismatch is reported.
+    const gateKeep = opts.template === 'inkpress' ? new Set([...keep, ...required.map((r) => r.id)]) : keep;
+    const gate = gateStoryboard(ruled.plan, { brief, keep: gateKeep, mapping, durationSec: planSec, ground });
+    for (const sw of gate.swaps) log(`Storyboard gate: ${sw}`, 'done');
+    for (const f of gate.failed) log(`Storyboard gate: ${f}`, 'error');
     // A feature whose first-choice card a rule ruled out gets its fallback card.
-    const covered = releaseCheck(ruled.plan, mapping, { keep, ground });
+    const covered = releaseCheck(gate.plan, mapping, { keep, ground });
     for (const s of covered.swapped) log(`Feature map: ${s}`, 'done');
     // One motion voice for the film, from the site's words and accent: it sets how long holds may grow and which seams fit.
     const voice = pickMotionPreset({ text: presetText(capture ?? { title: productName }), accent: ruled.plan.palette?.accent ?? palette.accent });
@@ -282,8 +370,13 @@ export async function storyboardFilm(
     const release = releaseCheck(final, mapping, { keep, ground }).items;
     log(releaseLine(release), 'done');
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
-    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release, direction };
+    return { plan: final, capture, source: 'director', mapping: mapping ?? undefined, release: [...release, ...gate.items.filter((g) => !release.some((r) => r.code === g.code))], direction, brief, decisions, gate: { items: gate.items, swaps: gate.swaps, failed: gate.failed } };
   } catch (error) {
+    // The AI director failed for a reason of its own (an outage, a rate limit, a bad answer): say what it was and stop,
+    // instead of handing back an unrelated template film. The template stands in only when the person asked for it, or
+    // when there is no usable key (a setting, said plainly, not a failure).
+    const keyProblem = error instanceof DirectorError && (error.status === 401 || error.status === 403);
+    if (!keyProblem && opts.template !== 'inkpress' && !(error instanceof DirectorError && error.code === 'CANCELLED')) throw new StoryboardError(error);
     const note =
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
@@ -297,7 +390,7 @@ export async function storyboardFilm(
       voice.holdGrowth,
     );
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
-    return { plan: chooseSeams(plan, voice), capture, source: 'inkpress', note };
+    return { plan: chooseSeams(plan, voice), capture, source: 'inkpress', note, brief, decisions };
   }
 }
 
@@ -306,9 +399,15 @@ export async function storyboardFilm(
  * (so the studio's own demos keep SmartVideo GO); the plan's palette and the site's own
  * words and font replace the demo's.
  */
-export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): BrandInput | undefined {
+export function brandFor(plan: DirectorPlan, capture: SiteCapture | null, productName?: string | null): BrandInput | undefined {
   const name = capture ? siteNameOf(capture.title || '', capture.url) : '';
-  if (!capture || !name) return undefined;
+  if (!capture || !name) {
+    // No site: a film still speaks as the person's product when it has a name, so the studio's own brand (SmartVideo GO)
+    // never shows in it. Nothing else is invented about the product.
+    const own = (productName ?? '').trim();
+    if (!own || /^(?:your product|product)$/i.test(own)) return undefined;
+    return { name: own, logo: null, accent: plan.palette.accent, accent2: plan.palette.accent, ink: plan.palette.text, paper: plan.palette.background, repo: '', taglines: [], features: [] };
+  }
   const content = capture.content;
   const taglines = [content?.headline, content?.description, ...(content?.headings ?? [])].filter((v): v is string => Boolean(v)).map((v) => v.trim().slice(0, 80));
   return {
@@ -331,22 +430,34 @@ export function brandFor(plan: DirectorPlan, capture: SiteCapture | null): Brand
  * template text from the site and the storyboard; with no key, or when it cannot be reached,
  * the site's own headline, headings and menu fill the same lines.
  */
-export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog): Promise<Record<number, Record<string, string>>> {
+export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | null, product: string, log: ActivityLog, ctx: { pictures?: number; noAi?: boolean } = {}): Promise<Record<number, Record<string, string>>> {
   const stringsOf = (recipeId: string) => {
     const t = recipeId ? resolveMotionTemplate(recipeId) : undefined;
     return t ? DEMO_TEXTS[t.componentName] ?? [] : [];
   };
   const hasWords = plan.scenes.some((sc) => sc.kind === 'shot' && stringsOf(sc.recipeId).length > 0);
   if (!hasWords) return {};
-  log('Writing your words into the shots', 'running');
+  const sitePages = personalisesWithSite(capture);
+  // The demo's own names and claims, made the person's own (the product's name, true labels): applies with or without a site.
+  const neutral = (i: number, sc: DirectorPlan['scenes'][number]) => (sc.kind === 'shot' ? neutralTexts(stringsOf(sc.recipeId), product, { sitePages, hasPictures: (ctx.pictures ?? 0) > 0 }) : {});
+  const withNeutral = (map: Record<number, Record<string, string>>) => {
+    const merged: Record<number, Record<string, string>> = { ...map };
+    plan.scenes.forEach((sc, i) => {
+      const n = neutral(i, sc);
+      if (Object.keys(n).length) merged[i] = { ...n, ...(map[i] ?? {}) };
+    });
+    return merged;
+  };
+  log(ctx.noAi ? 'Writing the site\'s own words into the shots (no AI)' : 'Writing your words into the shots', 'running');
   try {
+    if (ctx.noAi) throw new Error('without AI');
     const texts = await requestRetext({ plan, product, capture });
     if (Object.keys(texts).length) {
-      log('Shots now say your words', 'done');
-      return texts;
+      log(sitePages ? 'Shots now say your words' : 'Shots now say your words where there were words to use', 'done');
+      return withNeutral(texts);
     }
-  } catch {
-    /* fall through to the site's own words */
+  } catch (error) {
+    if (!ctx.noAi) log(`The director could not write the shots' words (${error instanceof Error ? error.message : 'error'}); using the site's own words instead`, 'done');
   }
   const out: Record<number, Record<string, string>> = {};
   const used = new Set<string>();
@@ -357,14 +468,15 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
     const map = fallbackTexts(stringsOf(sc.recipeId), capture?.content, product, { index: i, headline: sc.headline, caption: sc.caption }, used, rules?.text === 'structural');
     if (Object.keys(map).length) out[i] = map;
   });
-  log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : 'Kept the template words (no site words to use)', 'done');
-  return out;
+  const merged = withNeutral(out);
+  log(Object.keys(out).length ? 'Filled the shots with your site’s own words' : Object.keys(merged).length ? 'Replaced the demo names and claims in the shots with yours (no site words to use)' : 'Kept the template words (no site words to use)', 'done');
+  return merged;
 }
 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; /** Create without AI: no model call of any kind (no retext, no source adaptation). */ noAi?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
@@ -384,7 +496,7 @@ export async function buildFilmProject(
   opts = { ...opts, capture: withoutPeopleLines(opts.capture) };
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
-  const film: FilmCapture | null = opts.capture
+  let film: FilmCapture | null = opts.capture
     ? {
         // Every captured route of the site, the page asked for first.
         screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images].filter(Boolean),
@@ -395,6 +507,9 @@ export async function buildFilmProject(
         // Where each section of the home page starts, so the insets can show them one at a time.
         sections: (opts.capture.pages?.[0]?.layout?.sections ?? []).map((r) => r.y),
         pageH: opts.capture.pages?.[0]?.layout?.pageH ?? opts.capture.page.height,
+        cardCrops: opts.capture.crops,
+        emptyPlate: opts.capture.emptyPlate ?? null,
+        ...(captureQuality(opts.capture) === 'complete' && (layoutFromCapture(opts.capture).usable || layoutFromCapture(opts.capture).rowsUsable) ? { liveLayout: layoutFromCapture(opts.capture).layout } : {}),
         sectionNames: opts.capture.content?.headings ?? [],
         nav: opts.capture.content?.nav ?? [],
         ctas: opts.capture.content?.ctas ?? [],
@@ -403,6 +518,13 @@ export async function buildFilmProject(
     : images.length
       ? { screens: images, crops: images }
       : null;
+  // DocumentTypewriterReveal types out a document: the site's words, else the person's own text; with too little text it is not fed one.
+  const wantsDocument = plan.scenes.some((sc) => sc.kind === 'shot' && /DocumentTypewriterReveal/.test(sc.recipeId));
+  if (wantsDocument) {
+    const brandName = plan.title.split(/\s[—–-]\s/)[0];
+    const doc = [documentFromCapture(opts.capture?.content, brandName), documentFromText(opts.prompt, brandName)].find((d) => isDocumentUsable(d)) ?? null;
+    if (doc) film = film ? { ...film, document: doc } : { screens: [], crops: [], document: doc };
+  }
   // Every picture the capture brought back, labelled, and the pictures each scene shows (upstream's feature -> shot map).
   if (film && opts.capture) {
     const catalogue = buildCatalogue(opts.capture);
@@ -428,9 +550,9 @@ export async function buildFilmProject(
     if (map) drums = map;
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
   }
-  const brand = brandFor(plan, opts.capture);
+  const brand = brandFor(plan, opts.capture, plan.title.split(/\s[—–-]\s/)[0]);
   const product = brand?.name ?? plan.title.split(/\s[—–-]\s/)[0];
-  const texts = await writeShotWords(plan, opts.capture, product, log);
+  const texts = await writeShotWords(plan, opts.capture, product, log, { pictures: opts.media.filter((m) => m.kind === 'image').length, noAi: opts.noAi });
   log('Animating the shots and laying in sound design', 'running');
   const videos = opts.media.filter((m) => m.kind === 'video').map((m) => ({ url: m.url, name: m.name, durationSec: m.durationSec }));
   if (videos.length) log(`Cutting in ${videos.length} attached video${videos.length === 1 ? '' : 's'}`, 'done');
@@ -445,6 +567,8 @@ export async function buildFilmProject(
     texts,
     theme: filmTheme(opts.capture),
   });
+  const missing = unresolvedScenes(plan);
+  if (missing.length) log(`${missing.length} scene${missing.length === 1 ? '' : 's'} could not be drawn and ${missing.length === 1 ? 'was' : 'were'} shown as title cards: ${missing.map((m) => `#${m.index + 1} ${m.recipeId}`).join(', ')}`, 'error');
   if (beats.length) {
     const cuts = (project.tracks.find((tr) => tr.name === t('track.shots'))?.clips ?? []).slice(1).map((c) => c.start / project.fps);
     const sync = syncReport(cuts, beats, project.fps);
@@ -453,28 +577,84 @@ export async function buildFilmProject(
   }
   const spec = { ...buildDesignSpec(plan, opts.capture, opts.prompt), ...(opts.mapping?.length ? { mapping: opts.mapping } : {}), ...(opts.release?.length ? { release: opts.release } : {}), ...(opts.direction ? { direction: opts.direction } : {}) };
   let built: ProjectData = { ...project, spec };
+  if (opts.reuse) {
+    const t = transplantAdaptation(opts.reuse.project, built, new Set(opts.reuse.touchedStems));
+    built = t.project;
+    if (t.kept) log(`Kept the adapted source of ${t.kept} untouched shot${t.kept === 1 ? '' : 's'}`, 'done');
+  }
   // Upstream's coding agent edits each shot's source for the product; here the model does, behind the sandbox, one shot at a time.
-  if (opts.capture && !opts.capture.partial && opts.adaptShots !== false) {
-    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture.brand?.fontFamily ?? undefined };
-    built = await adaptFilm(
-      built,
-      { layout: opts.capture.pages?.[0]?.layout ?? null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture.content },
-      {
-        render: async (p, f, signal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
-        snapshot: async (r) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
-        review: async (p, frames, signal) => {
-          const render = (await import('../webRenderer')).renderStillOnWebExport;
-          const images: Array<{ second: number; image: string }> = [];
-          for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
-          const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
-          return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
-        },
+  const skip = (reason: string) => {
+    log(`Shot adaptation skipped: ${reason}`, 'done');
+    opts.onAdaptation?.({ kind: 'skipped', reason });
+  };
+  const material = materialOf(opts.capture, opts.media, { brandLogo: Boolean(opts.logo) });
+  if (opts.noAi) skip('created without AI: the original recipes are personalised through their own supported inputs, no source is rewritten');
+  else if (opts.adaptShots === false) skip('turned off');
+  else if (!material.pages && !material.images) skip('no site page was captured and no images were supplied, so there is nothing to adapt the shots to');
+  else {
+    // Only recipes whose own input is in hand are adapted (a shot that needs a live page is not tried on uploads alone; a shot that
+    // reads pictures IS tried on uploaded images, with no website).
+    const eligible = (clip: ClipData) => {
+      const stem = clip.cardId.startsWith('demo:') ? clip.cardId.slice(5) : '';
+      // Adaptation rewrites a shot's source for the page it was given, so it can handle geometry the stock props cannot: a page-geometry
+      // shot is eligible whenever there is a captured page at all (the geometry part is only required for the unadapted props path).
+      const { need } = needsOf(stem);
+      return need !== 'abstract' && need !== 'none' && satisfies(need, material).ok;
+    };
+    const brandTokens = { name: brand?.name, accent: plan.palette?.accent, background: plan.palette?.background, text: plan.palette?.text, font: opts.capture?.brand?.fontFamily ?? undefined };
+    const ctx = { layout: material.pages ? opts.capture?.pages?.[0]?.layout ?? null : null, screens: film?.screens ?? [], crops: film?.crops ?? [], brand: brandTokens, content: opts.capture?.content, ...(opts.hints ? { hints: opts.hints } : {}) };
+    const deps = {
+      render: async (p: ProjectData, f: number, signal: AbortSignal) => (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.5),
+      verify: async (trial: ProjectData, clip: ClipData, signal: AbortSignal) => {
+        const { verifyAdaptation, browserPixels } = await import('./sceneQa');
+        return verifyAdaptation(built, clip, trial, { pixels: browserPixels }, signal);
       },
-      log,
-    ).catch(() => built);
+      snapshot: async (r: unknown) => (r && typeof r === 'object' && 'blob' in r ? stillToJpeg((r as { blob: Blob }).blob) : null),
+      review: async (p: ProjectData, frames: number[], signal: AbortSignal) => {
+        const render = (await import('../webRenderer')).renderStillOnWebExport;
+        const images: Array<{ second: number; image: string }> = [];
+        for (const f of frames) images.push({ second: Math.round((f / p.fps) * 10) / 10, image: await stillToJpeg((await render(p, f, signal, 0.5)).blob) });
+        const { findings } = await requestFrameReview({ frames: images, spec: p.spec });
+        return findings.filter((x) => x.severity === 'fix').map((x) => `${x.text} (seen in the still at ${x.second.toFixed(1)}s)`);
+      },
+    };
+    let first = null as AdaptationOutcome | null;
+    const failedOut = (error: unknown) => {
+      opts.onAdaptation?.({ kind: 'stopped', adapted: 0, attempted: 0, reason: error instanceof Error ? error.message : 'error' });
+      if (!opts.signal?.aborted) log(`Shot adaptation failed: ${error instanceof Error ? error.message : 'error'}; the film keeps its plain recipes`, 'error');
+    };
+    try {
+      built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { first = o; if (!(('pending' in o) && o.pending?.length)) opts.onAdaptation?.(o); }, { eligible, ...(opts.onShot ? { onShot: opts.onShot } : {}) });
+      // Continuation: the shots the first pass did not reach (its time budget, its per-pass limit) get their own pass, once,
+      // instead of being left plain without a word.
+      const pending = first && 'pending' in first ? (first as { pending?: string[] }).pending : undefined;
+      if (pending?.length && !opts.signal?.aborted && first && (first as AdaptationOutcome).kind !== 'stopped') {
+        log(`${pending.length} more shot${pending.length === 1 ? '' : 's'} to adapt: continuing`, 'running');
+        let second = null as AdaptationOutcome | null;
+        built = await adaptFilm(built, ctx, deps, log, opts.signal, (o) => { second = o; }, { eligible, only: new Set(pending), ...(opts.onShot ? { onShot: opts.onShot } : {}) });
+        const a1 = first as { adapted: number; attempted: number };
+        const a2 = (second ?? { adapted: 0, attempted: 0 }) as { adapted: number; attempted: number; pending?: string[] };
+        opts.onAdaptation?.({ kind: 'ran', adapted: a1.adapted + a2.adapted, attempted: a1.attempted + a2.attempted, ...(a2.pending?.length ? { pending: a2.pending } : {}) });
+      } else if (first && pending?.length) opts.onAdaptation?.(first);
+    } catch (error) {
+      failedOut(error);
+    }
   }
   log(`Film built · ${built.tracks.length} tracks`, 'done');
   return built;
+}
+
+/** The AI director could not plan the film. Carries the real code and message; nothing was substituted. */
+export class StoryboardError extends Error {
+  readonly code: string;
+  readonly status: number;
+  constructor(cause: unknown) {
+    const e = cause instanceof DirectorError ? cause : null;
+    super(e ? `${e.message}${e.code ? ` (${e.code}${e.status ? `, HTTP ${e.status}` : ''})` : ''}` : cause instanceof Error ? cause.message : 'The director failed');
+    this.name = 'StoryboardError';
+    this.code = e?.code ?? 'DIRECTOR_FAILED';
+    this.status = e?.status ?? 0;
+  }
 }
 
 export interface FilmQaReport {
@@ -488,9 +668,15 @@ export interface FilmQaReport {
 }
 
 /** Structural check of a built film: every clip resolves, shots run back to back, nothing runs past the end. */
-export function checkFilmStructure(project: ProjectData, opts: { hasProductImages: boolean } = { hasProductImages: false }): FilmQaReport {
+export function checkFilmStructure(project: ProjectData, opts: { hasProductImages: boolean; plan?: DirectorPlan; videos?: number } = { hasProductImages: false }): FilmQaReport {
   const issues: string[] = [];
   const warnings: string[] = [];
+  // The film must be the storyboard that was approved.
+  if (opts.plan) {
+    const made = checkAssembly(project, opts.plan, { videos: opts.videos });
+    issues.push(...made.issues);
+    warnings.push(...made.warnings);
+  }
   const end = projectEndFrame(project);
   if (end <= 0) issues.push('The film is empty.');
   for (const track of project.tracks) {
@@ -519,12 +705,12 @@ export function checkFilmStructure(project: ProjectData, opts: { hasProductImage
  * last frame (in the browser, with the same composition the export uses) and
  * report the ones that fail. Skipped when the browser cannot render stills; bounded by `budgetMs`.
  */
-export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000): Promise<{ checked: number; failed: string[] }> {
+export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 30_000, signal?: AbortSignal): Promise<{ checked: number; failed: string[]; total: number }> {
   let render: typeof import('../webRenderer').renderStillOnWebExport;
   try {
     render = (await import('../webRenderer')).renderStillOnWebExport;
   } catch {
-    return { checked: 0, failed: [] };
+    return { checked: 0, failed: [], total: 0 };
   }
   const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
   const frames = new Set<number>();
@@ -538,7 +724,9 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
   frames.add(Math.max(0, projectEndFrame(project) - 1));
   const list = [...frames].sort((a, b) => a - b);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), budgetMs);
+  let budgetHit = false;
+  const timer = setTimeout(() => { budgetHit = true; controller.abort(); }, budgetMs);
+  signal?.addEventListener('abort', () => controller.abort(), { once: true });
   const failed: string[] = [];
   let checked = 0;
   log(`Frame QA · checking ${list.length} frames`, 'running');
@@ -546,7 +734,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
     for (const f of list) {
       if (controller.signal.aborted) break;
       try {
-        await render(project, f, controller.signal, 0.5);
+        await render(project, f, controller.signal, 0.5, true);
         checked++;
       } catch (error) {
         if (controller.signal.aborted) break;
@@ -561,10 +749,14 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
       ? `Frame QA · ${failed.length} of ${checked + failed.length} frames failed`
       : checked
         ? `Frame QA · ${checked} frames render cleanly${checked < list.length ? ` (time budget reached at ${checked}/${list.length})` : ''}`
-        : 'Frame QA · skipped (this browser cannot render stills)',
-    failed.length ? 'error' : 'done',
+        : budgetHit
+          ? 'Frame QA · the time budget ran out before any frame rendered'
+          : signal?.aborted
+            ? 'Frame QA · stopped'
+            : 'Frame QA · skipped (this browser cannot render stills)',
+    failed.length || (budgetHit && !checked) ? 'error' : 'done',
   );
-  return { checked, failed };
+  return { checked, failed, total: list.length };
 }
 
 /** A frame as a small JPEG data URL (the reviewer sees 640 px wide, enough for layout and legibility). */

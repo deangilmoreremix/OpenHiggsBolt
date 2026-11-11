@@ -22,7 +22,8 @@
 //   84–125 hold 42f：极缓推近 1→1.012，尾帧干净落定
 import React from 'react';
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity } from '../../_textures/retarget';
 import { EASE, Grain, Vignette, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { liveTexture } from '../../_fixtures/liveTexture';
@@ -33,22 +34,58 @@ export const CRASHIMPACT_DUR = 126;
 // lime 的主光换成偏冷的灰绿：舞台光不抢荧光强调色（荧光只给取景框 / 冲击 / P0）
 const L = { ...LOOKS.lime, light: '#9aa58a' };
 const LIME = L.accent;
-const CARDS = layout.projects.cards;
-const CARD = CARDS[3];
-const TARGET = { cx: CARD.x + CARD.w / 2, cy: CARD.y + CARD.h / 2 }; // ≈ (960, 772) 页面坐标
-const CARD_R = 8.5; // 截图里卡片圆角（页面 px）
-// 监视屏取景（页面坐标）：以 card4 为中心裁一块，全景里看得到三排卡
-const CROP = { x: 395, y: 222, w: 1130, h: 1100 };
-const CROP_C = { x: CROP.x + CROP.w / 2, y: CROP.y + CROP.h / 2 };
+const SAMPLE_CARD = SAMPLE_LAYOUT.projects.cards[3];
+const SAMPLE_CROP = { x: 395, y: 222, w: 1130, h: 1100 };
 const SCREEN_R = 22; // 监视屏圆角（页面 px）
+
+/**
+ * The page this shot plays on: the cards the reticle visits (first, fifth, target), the target card, the monitor's crop of
+ * the page around it, and the zooms that frame them as authored. With the sample's layout every number is the original;
+ * on another page the composition follows the target card (a similarity from the sample's card to the customer's).
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const CARDS = layout.projects.cards;
+  const main = customer ? layout.projects.main ?? 0 : 3;
+  const CARD = CARDS[main];
+  const sim = similarity(SAMPLE_CARD, CARD);
+  const PAGE_H = layout.projects.pageH;
+  // The monitor shows the page around the target card at the sample's proportions; on a real page it stays on the page.
+  let CROP = SAMPLE_CROP;
+  if (customer) {
+    const w = Math.min(1920, sim.len(SAMPLE_CROP.w));
+    const h = Math.min(PAGE_H, sim.len(SAMPLE_CROP.h));
+    const c = sim.point(SAMPLE_CROP.x + SAMPLE_CROP.w / 2, SAMPLE_CROP.y + SAMPLE_CROP.h / 2);
+    CROP = { x: Math.max(0, Math.min(1920 - w, c.x - w / 2)), y: Math.max(0, Math.min(PAGE_H - h, c.y - h / 2)), w, h };
+  }
+  const idx = [0, Math.min(4, CARDS.length - 1), main];
+  return {
+    customer,
+    CARDS,
+    CARD,
+    PAGE_H,
+    TARGET: { cx: CARD.x + CARD.w / 2, cy: CARD.y + CARD.h / 2 },
+    CARD_R: sim.len(8.5),
+    CROP,
+    CROP_C: { x: CROP.x + CROP.w / 2, y: CROP.y + CROP.h / 2 },
+    Z_WIDE: sim.zoom(0.78),
+    Z_HIT: sim.zoom(2.35),
+    HOPS: [
+      { at: 4, c: CARDS[idx[0]] },
+      { at: 10, c: CARDS[idx[1]] },
+      { at: 20, c: CARD },
+    ],
+    hopLabels: idx.map((i) => String(i + 1).padStart(2, '0')),
+  };
+};
+type Geo = ReturnType<typeof geometryOf>;
 
 const PUSH = 40;
 const HIT = 46;
-const Z_WIDE = 0.78;
-const Z_HIT = 2.35; // 落定倍率：卡片 ≈ 840×733，占画高 68%，左右各留 ~540px 给 HUD 读数
 
 // 相机：zoom + 目标卡中心的屏幕位置（插值"目标位置"而不是相机中心：急推时目标单调收向画面中心）
-const camAt = (f: number) => {
+const camAt = (f: number, g: Geo) => {
+  const { TARGET, CROP_C, Z_WIDE, Z_HIT } = g;
   const creep = mix(Z_WIDE, Z_WIDE * 1.02, ramp(f, 0, 32, EASE.smooth));
   const wind = creep * mix(1, 0.97, ramp(f, 32, 8, EASE.smooth));
   const wideSx = 960 + (TARGET.cx - CROP_C.x) * wind;
@@ -70,13 +107,8 @@ const shakeAt = (f: number) => {
 };
 
 // 扫描取景框：依次落在 card1 → card5 → card4（页面坐标的中心与尺寸），snappy 跳格
-const HOPS = [
-  { at: 4, c: CARDS[0] },
-  { at: 10, c: CARDS[4] },
-  { at: 20, c: CARD },
-];
-const reticleAt = (f: number) => {
-  const box = (c: typeof CARD) => ({ x: c.x + c.w / 2, y: c.y + c.h / 2, w: c.w, h: c.h });
+const reticleAt = (f: number, HOPS: Geo['HOPS']) => {
+  const box = (c: Geo['CARD']) => ({ x: c.x + c.w / 2, y: c.y + c.h / 2, w: c.w, h: c.h });
   let r = box(HOPS[0].c);
   for (let i = 1; i < HOPS.length; i++) {
     const u = ramp(f, HOPS[i].at, 8, EASE.snappy);
@@ -87,13 +119,14 @@ const reticleAt = (f: number) => {
 };
 
 // 一个相机姿态下的整个世界（监视屏 + 页面 + 取景框 + 冲击波），给运动模糊子帧复用
-const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
-  const { zoom, sx, sy } = camAt(f);
+const World: React.FC<{ f: number; frame: number; g: Geo }> = ({ f, frame, g }) => {
+  const { CARD, TARGET, CARD_R, CROP, PAGE_H } = g;
+  const { zoom, sx, sy } = camAt(f, g);
   const tx = sx - TARGET.cx * zoom;
   const ty = sy - TARGET.cy * zoom;
   const px = (n: number) => n / zoom; // 屏幕 px → 页面 px（线宽恒定）
   // 取景框
-  const r = reticleAt(frame);
+  const r = reticleAt(frame, g.HOPS);
   const show = ramp(frame, 3, 6, EASE.out);
   const lock = ramp(frame, 28, 8, EASE.snappy);
   const breath = ramp(frame, 32, 8, EASE.smooth) * (1 - ramp(frame, PUSH, 5, EASE.exit));
@@ -106,14 +139,14 @@ const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
   const impact = t < 0 ? 0 : t < 1 ? 0.8 : t < 2 ? 0.22 : 0; // 冲击帧：1f 荧光 → 1f 余辉 → 近黑
   const scrimColor = `rgba(${Math.round(mix(11, 198, impact))},${Math.round(mix(12, 244, impact))},${Math.round(mix(9, 50, impact))},${(t < 0 ? 0 : 1).toFixed(3)})`;
   return (
-    <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: layout.projects.pageH, transformOrigin: '0 0', transform: `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${zoom.toFixed(5)})` }}>
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: PAGE_H, transformOrigin: '0 0', transform: `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${zoom.toFixed(5)})` }}>
       {/* 监视屏：裁出 CROP 那一块页面；屏外是舞台 */}
       <div style={{
         position: 'absolute', left: CROP.x, top: CROP.y, width: CROP.w, height: CROP.h, borderRadius: SCREEN_R, overflow: 'hidden',
         background: '#f9f6f1',
         boxShadow: `0 0 0 ${px(1.5)}px ${alpha(LIME, 0.35)}, 0 ${px(40)}px ${px(110)}px ${px(-10)}px rgba(0,0,0,0.85)`,
       }}>
-        <div style={{ position: 'absolute', left: -CROP.x, top: -CROP.y, width: 1920, height: layout.projects.pageH }}>
+        <div style={{ position: 'absolute', left: -CROP.x, top: -CROP.y, width: 1920, height: PAGE_H }}>
           <Img src={liveTexture('projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
           {/* 全景时页面略压一档，和暗场舞台不打架 */}
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(12,14,10,0.1)' }} />
@@ -134,7 +167,7 @@ const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
         }} />
       )}
       {/* 高清目标卡覆盖原位（Q2） */}
-      <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
+      <Img src={liveTexture(g.customer ? CARD.file : 'card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
       {/* 扫描线：落定后自上而下扫过卡面一次，裁进圆角（Q4） */}
       {frame >= 52 && frame <= 70 && (
         <div style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R, overflow: 'hidden', pointerEvents: 'none' }}>
@@ -188,8 +221,8 @@ const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
 
 // 快门窗口内等权叠加：第 i 层不透明度 1/(i+1)，逐层 over 合成后恰为算术平均；子帧间距 ≤8px，封顶 36
 const SHUTTER = 0.55;
-const edgeAt = (f: number) => {
-  const a = camAt(f), b = camAt(f - SHUTTER);
+const edgeAt = (f: number, g: Geo) => {
+  const a = camAt(f, g), b = camAt(f - SHUTTER, g);
   return Math.abs(a.zoom - b.zoom) * 1100 + Math.hypot(a.sx - b.sx, a.sy - b.sy);
 };
 
@@ -209,18 +242,21 @@ const Readout: React.FC<{ frame: number; at: number; label: string; children: Re
 
 export const CrashImpactReal: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const g = React.useMemo(() => geometryOf(layout), [layout]);
+  const { TARGET, CROP, Z_WIDE } = g;
   const { sx, sy, rot } = shakeAt(frame);
-  const n = frame >= PUSH && frame <= HIT ? blurSamples(Math.max(1, Math.min(36, Math.ceil(edgeAt(frame) / 8)))) : 1;
-  const smear = n > 1 ? Math.min(4, (edgeAt(frame) / n) * 0.5 * Math.min(1, Math.max(0, (edgeAt(frame) - 60) / 200))) : 0;
+  const n = frame >= PUSH && frame <= HIT ? blurSamples(Math.max(1, Math.min(36, Math.ceil(edgeAt(frame, g) / 8)))) : 1;
+  const smear = n > 1 ? Math.min(4, (edgeAt(frame, g) / n) * 0.5 * Math.min(1, Math.max(0, (edgeAt(frame, g) - 60) / 200))) : 0;
   const wide = 1 - ramp(frame, PUSH, HIT - PUSH, EASE.exit);
   const vig = frame < HIT ? 0.35 + 0.25 * ramp(frame, PUSH, HIT - PUSH, EASE.exit) : mix(0.75, 0.4, ramp(frame, HIT, 16, EASE.out));
   // 取景框标签（屏幕空间，跟着全景里的取景框走；急推开始即收起）
-  const cam = camAt(frame);
-  const r = reticleAt(frame);
+  const cam = camAt(frame, g);
+  const r = reticleAt(frame, g.HOPS);
   const lock = ramp(frame, 28, 8, EASE.snappy);
   const tagX = cam.sx + (r.x - r.w / 2 - TARGET.cx) * cam.zoom - 12;
   const tagY = cam.sy + (r.y + r.h / 2 - TARGET.cy) * cam.zoom + 22; // 标签挂在取景框左下（首格 card1 在顶排，挂上沿会压到屏幕标题）
-  const hop = frame < 10 ? '01' : frame < 20 ? '05' : '04';
+  const hop = frame < 10 ? g.hopLabels[0] : frame < 20 ? g.hopLabels[1] : g.hopLabels[2];
   return (
     <AbsoluteFill style={{ background: L.bg[2], overflow: 'hidden' }}>
       <Stage look={L} keyLight={{ x: 0.5, y: -0.1 }} fill={{ x: 0.5, y: 1.1 }} intensity={0.6} breathe={0.4} vignette={0.2}>
@@ -239,11 +275,11 @@ export const CrashImpactReal: React.FC = () => {
         {n > 1 ? (
           Array.from({ length: n }, (_, i) => (
             <AbsoluteFill key={i} style={{ opacity: 1 / (i + 1), filter: smear > 0.3 ? `blur(${smear.toFixed(2)}px)` : undefined }}>
-              <World f={frame - (SHUTTER * i) / (n - 1)} frame={frame} />
+              <World f={frame - (SHUTTER * i) / (n - 1)} frame={frame} g={g} />
             </AbsoluteFill>
           ))
         ) : (
-          <World f={frame} frame={frame} />
+          <World f={frame} frame={frame} g={g} />
         )}
       </AbsoluteFill>
 

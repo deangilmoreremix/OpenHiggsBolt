@@ -1,0 +1,316 @@
+{
+ "run": {
+  "version": 1,
+  "id": "run_mwbks9lp",
+  "mode": "autonomous",
+  "request": "Make a 20-second luxury real estate video with these three photos of a beachfront home for Seaside Homes. Cinematic camera movement, end with a call to book a tour.",
+  "createdAt": 1794368683933,
+  "updatedAt": 1794368690528,
+  "stages": {
+   "brief": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368683933,
+    "endedAt": 1794368683935,
+    "summary": {
+     "kind": "real-estate",
+     "features": 0,
+     "missing": []
+    }
+   },
+   "direction": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368683935,
+    "endedAt": 1794368684009,
+    "summary": {
+     "source": "director"
+    }
+   },
+   "mapping": {
+    "status": "completed",
+    "attempts": 2,
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684105,
+    "summary": {
+     "rows": 1
+    }
+   },
+   "storyboard": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684105,
+    "summary": {
+     "release": 0
+    }
+   },
+   "assets": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368684105,
+    "endedAt": 1794368684106
+   },
+   "build": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368684415,
+    "endedAt": 1794368688034,
+    "summary": {
+     "adapted": 0,
+     "parameterized": 2,
+     "unmodified": 0
+    }
+   },
+   "sound": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368688035,
+    "endedAt": 1794368688035,
+    "summary": {
+     "cues": 7,
+     "planned": 1,
+     "satisfied": 1,
+     "optionalSounded": 2,
+     "musicOnly": 0,
+     "silentTransitions": 0,
+     "music": "house-vibez",
+     "missingAt": [],
+     "mistimed": 0
+    }
+   },
+   "qa": {
+    "status": "completed",
+    "attempts": 1,
+    "startedAt": 1794368688035,
+    "endedAt": 1794368690528,
+    "summary": {
+     "warnings": 0,
+     "required": 14,
+     "done": 14
+    }
+   },
+   "review": {
+    "status": "pending",
+    "attempts": 0
+   }
+  },
+  "scenes": [
+   {
+    "n": 1,
+    "recipeId": "",
+    "component": "",
+    "needs": "text",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "title text"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "note": "title or brand scene"
+    }
+   },
+   {
+    "n": 2,
+    "recipeId": "ui-entrance/product-card-progressive-assemble/ProductCardProgressiveAssemble",
+    "component": "ProductCardProgressiveAssemble",
+    "needs": "images",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "3 image(s)"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "frames": [
+      41,
+      103,
+      204
+     ],
+     "note": "6 mechanical checks held at entering, peak and settled"
+    },
+    "fingerprint": "d8d616f17dafb9b0e04f8d144058c772",
+    "checks": [
+     {
+      "frame": "entering",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 63.6"
+     },
+     {
+      "frame": "peak",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 66.3"
+     },
+     {
+      "frame": "settled",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 71.3"
+     },
+     {
+      "frame": "peak",
+      "property": "motionProgression",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "changes between checkpoints: entering→peak 9.3%, peak→settled 5.5%, entering→settled 11.7%"
+     },
+     {
+      "frame": "settled",
+      "property": "assetIdentity",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "a colour of the supplied picture fills 11.5% of the settled frame beyond what the plain recipe shows"
+     },
+     {
+      "frame": "settled",
+      "property": "clipping",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "no supplied picture is pressed against the frame edge"
+     },
+     {
+      "frame": "settled",
+      "property": "subjectLocation / destination / cameraTarget",
+      "kind": "needs-visual-judgement",
+      "ok": true,
+      "detail": "whether the subject sits where the recipe's card puts it is checked on the fidelity fixtures (e2e/motion-director-fidelity), not from arbitrary pictures"
+     },
+     {
+      "frame": "settled",
+      "property": "textReadable",
+      "kind": "needs-visual-judgement",
+      "ok": true,
+      "detail": "readability of words needs a visual review"
+     }
+    ],
+    "judgement": [
+     "subjectLocation / destination / cameraTarget (settled): whether the subject sits where the recipe's card puts it is checked on the fidelity fixtures (e2e/motion-director-fidelity), not from arbitrary pictures",
+     "textReadable (settled): readability of words needs a visual review"
+    ]
+   },
+   {
+    "n": 3,
+    "recipeId": "camera/depth-layer-moves/MultiplaneReal",
+    "component": "MultiplaneReal",
+    "needs": "images",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "3 image(s)"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "frames": [
+      39,
+      99,
+      195
+     ],
+     "note": "6 mechanical checks held at entering, peak and settled"
+    },
+    "fingerprint": "9231c26cb3c1a5e11af63df444e22efa",
+    "checks": [
+     {
+      "frame": "entering",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 63.8"
+     },
+     {
+      "frame": "peak",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 63.0"
+     },
+     {
+      "frame": "settled",
+      "property": "visibility",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "luminance spread 63.5"
+     },
+     {
+      "frame": "peak",
+      "property": "motionProgression",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "changes between checkpoints: entering→peak 32.5%, peak→settled 3.7%, entering→settled 33.9%"
+     },
+     {
+      "frame": "settled",
+      "property": "assetIdentity",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "a colour of the supplied picture fills 16.9% of the settled frame beyond what the plain recipe shows"
+     },
+     {
+      "frame": "settled",
+      "property": "clipping",
+      "kind": "mechanical",
+      "ok": true,
+      "detail": "no supplied picture is pressed against the frame edge"
+     },
+     {
+      "frame": "settled",
+      "property": "subjectLocation / destination / cameraTarget",
+      "kind": "needs-visual-judgement",
+      "ok": true,
+      "detail": "whether the subject sits where the recipe's card puts it is checked on the fidelity fixtures (e2e/motion-director-fidelity), not from arbitrary pictures"
+     },
+     {
+      "frame": "settled",
+      "property": "textReadable",
+      "kind": "needs-visual-judgement",
+      "ok": true,
+      "detail": "readability of words needs a visual review"
+     }
+    ],
+    "judgement": [
+     "subjectLocation / destination / cameraTarget (settled): whether the subject sits where the recipe's card puts it is checked on the fidelity fixtures (e2e/motion-director-fidelity), not from arbitrary pictures",
+     "textReadable (settled): readability of words needs a visual review"
+    ]
+   },
+   {
+    "n": 4,
+    "recipeId": "",
+    "component": "",
+    "needs": "text",
+    "assets": {
+     "state": "satisfied",
+     "refs": [
+      "title text"
+     ]
+    },
+    "personalization": "parameterized",
+    "validation": {
+     "state": "passed",
+     "note": "title or brand scene"
+    }
+   }
+  ],
+  "review": {
+   "ran": false,
+   "state": "not-run",
+   "findings": []
+  },
+  "qaIssues": [],
+  "fingerprints": {
+   "build": "085a1f7bd37980d183f4f34465712db2"
+  }
+ },
+ "frame": 415,
+ "photosSeen": 3
+}

@@ -12,6 +12,7 @@ import React from 'react';
 import { AbsoluteFill, Freeze, useCurrentFrame } from 'remotion';
 import { G, FakeDashboard } from '../../_fixtures/Fixtures';
 import { EASE, Grain, Vignette, mix, ramp } from '../../_fixtures/Polish';
+import { useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 
 export const JUMP_CUT_PUNCH_IN_DURATION = 135; // 35f 全景 + 35f 中景 + 65f 末挡（含 49f 真静止）
 
@@ -21,15 +22,29 @@ const CARD_L = 220 + 36 + 524.67 + 28; // ≈808.67
 const CARD_T = 72 + 36 + 454 + 28; // 590
 const CARD_W = 524.67;
 const CARD_H = 454;
-const ORIGIN_X = CARD_L + CARD_W / 2; // ≈1071
-const ORIGIN_Y = CARD_T + CARD_H / 2; // 817
 
-const JUMP_1 = 35;
-const JUMP_2 = 70;
-const STEPS = [1.0, 1.6, 2.6]; // 挡差 ≥1.5×，否则读作画面抖了一下
+/**
+ * The card the zoom lands on. The sample's is the dashboard's second-row middle card. On a customer's page the screen is
+ * their captured page (FakeDashboard draws its first 1080px at 1:1), so the shot targets one of THEIR cards that is fully
+ * on that first screen (the hero when it is, else the biggest that is), with the selection ring drawn around it.
+ * With the sample's layout (or a page with no card on the first screen) it is the original card.
+ */
+const targetOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const sample = { l: CARD_L, t: CARD_T, w: CARD_W, h: CARD_H };
+  if (!customer) return sample;
+  const onScreen = layout.projects.cards.filter((c) => c.y >= 0 && c.y + c.h <= 1060 && c.x >= 0 && c.x + c.w <= 1920);
+  const main = layout.projects.cards[layout.projects.main ?? 0];
+  const c = onScreen.includes(main) ? main : [...onScreen].sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  return c ? { l: c.x, t: c.y, w: c.w, h: c.h } : sample;
+};
+
+export const JUMP_1 = 35;
+export const JUMP_2 = 70;
+export const STEPS = [1.0, 1.6, 2.6]; // 挡差 ≥1.5×，否则读作画面抖了一下
 
 // 三级硬切挡位（零补间）
-const stepAt = (f: number): number => (f < JUMP_1 ? 0 : f < JUMP_2 ? 1 : 2);
+export const stepAt = (f: number): number => (f < JUMP_1 ? 0 : f < JUMP_2 ? 1 : 2);
 
 // 挡内漂移：前两挡 35f 内 in-out 推 0.8%（活镜头），末挡 16f ease-out 推 0.8% 后静止
 const driftAt = (f: number): number => {
@@ -45,6 +60,10 @@ const pulseAt = (f: number): number =>
 
 export const JumpCutPunchIn: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const T = React.useMemo(() => targetOf(layout), [layout]);
+  const ORIGIN_X = T.l + T.w / 2;
+  const ORIGIN_Y = T.t + T.h / 2;
   const st = stepAt(frame);
   const s = STEPS[st]; // 挡位倍率：走 CSS zoom（布局级、每挡只变一次）
   const drift = driftAt(frame); // 挡内漂移：走 transform（亚像素平滑，不触发重排）
@@ -82,10 +101,10 @@ export const JumpCutPunchIn: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              left: CARD_L - 5,
-              top: CARD_T - 5,
-              width: CARD_W + 10,
-              height: CARD_H + 10,
+              left: T.l - 5,
+              top: T.t - 5,
+              width: T.w + 10,
+              height: T.h + 10,
               borderRadius: 19,
               border: `1.5px solid rgba(91,99,211,${ringA.toFixed(3)})`,
               boxShadow: `0 0 0 5px rgba(91,99,211,${haloA.toFixed(3)}), 0 18px 48px -18px rgba(91,99,211,${(haloA * 1.6).toFixed(3)})`,

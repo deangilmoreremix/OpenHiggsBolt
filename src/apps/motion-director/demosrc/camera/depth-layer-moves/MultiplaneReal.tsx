@@ -21,7 +21,7 @@
 //   144–164 hold 20f：远景极缓漂移 4px，画面活着
 import React from 'react';
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
-import layout from '../../_textures/live-layout.json';
+import { useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 import { EASE, SpeedBlur, bezier, mix, ramp, softShadow, velocity } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
@@ -30,17 +30,27 @@ import { liveTexture } from '../../_fixtures/liveTexture';
 export const MULTIPLANE_DUR = 165;
 
 const L = LOOKS.sand;
-const CARDS = layout.projects.cards;
 const DRIVE_EASE = bezier(0.45, 0, 0.18, 1);
-const HERO = 3; // card4
 const MID_W = 440;
 const GAP = 500; // 中景卡步距
 const ROW_X = 260; // 第 0 张卡左缘（中景层坐标）
 const ROW_Y = 410;
-// drive 总量：中景（0.7x）落定时 card4 中心恰在屏心
-const MID_END = 960 - (ROW_X + HERO * GAP + MID_W / 2);
-const DRIVE = -MID_END / 0.7;
-const driveAt = (f: number) => DRIVE * ramp(f, 6, 130, DRIVE_EASE) + 4 * ramp(f, 136, 29, EASE.smooth);
+
+/**
+ * The rail's cards and which one the slide ends on. The shot lays its own rail (it does not place cards at their page
+ * coordinates), so what it takes from the page is each card's PICTURE and PROPORTIONS: a customer's cards keep theirs
+ * (never the sample's aspect), and the slide ends on the customer's hero card. The sample's layout gives card 4 as authored.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const cards = layout.projects.cards;
+  const hero = customer ? Math.min(layout.projects.main ?? 0, cards.length - 1) : 3;
+  const bandH = customer ? Math.max(...cards.map((c) => (c.h * MID_W) / c.w)) : 312;
+  // drive 总量：中景（0.7x）落定时 card4 中心恰在屏心
+  const midEnd = 960 - (ROW_X + hero * GAP + MID_W / 2);
+  return { customer, cards, hero, bandH, drive: -midEnd / 0.7 };
+};
+const driveAt = (f: number, drive: number) => drive * ramp(f, 6, 130, DRIVE_EASE) + 4 * ramp(f, 136, 29, EASE.smooth);
 
 // 近景胶囊：标签取自卡片上的真实 tag；x 为近景层坐标，y 为屏幕坐标。
 // 落定时（近景位移 −2040）只剩 EdgeAI / ASR 两枚压在画框下沿做前景框边，其余已滑出画外
@@ -54,8 +64,10 @@ const PILLS = [
 
 export const MultiplaneReal: React.FC = () => {
   const frame = useCurrentFrame();
-  const drive = driveAt(frame);
-  const vFg = -1.4 * velocity(driveAt, frame); // 近景屏幕速度（px/帧）
+  const layout = useLiveLayout();
+  const { customer, cards: CARDS, hero: HERO, bandH, drive: DRIVE } = React.useMemo(() => geometryOf(layout), [layout]);
+  const drive = driveAt(frame, DRIVE);
+  const vFg = -1.4 * velocity((f: number) => driveAt(f, DRIVE), frame); // 近景屏幕速度（px/帧）
   const lift = ramp(frame, 122, 22, EASE.out);
   const ring = ramp(frame, 128, 16, EASE.snappy);
   const kick = ramp(frame, 4, 20, EASE.snappy);
@@ -82,11 +94,11 @@ export const MultiplaneReal: React.FC = () => {
           const e = hero ? mix(6, 26, lift) : 6;
           return (
             <div key={c.file} style={{
-              position: 'absolute', left: ROW_X + k * GAP, top: (312 - c.h) * (MID_W / c.w) * 0.5, width: MID_W, height: h, borderRadius: 12, overflow: 'hidden',
+              position: 'absolute', left: ROW_X + k * GAP, top: customer ? (bandH - h) / 2 : (312 - c.h) * (MID_W / c.w) * 0.5, width: MID_W, height: h, borderRadius: 12, overflow: 'hidden',
               transform: hero ? `translateY(${(-14 * lift).toFixed(2)}px) scale(${(1 + 0.035 * lift).toFixed(4)})` : undefined,
               boxShadow: `0 0 0 ${hero ? (2.5 * ring).toFixed(2) : 0}px ${alpha(L.accent, 0.9)}, ${softShadow(e, { color: L.shadow, strength: 1.2 })}`,
             }}>
-              <Img src={liveTexture(hero ? 'card4-hires.png' : c.file)} style={{ width: '100%', height: '100%' }} />
+              <Img src={liveTexture(customer ? c.file : hero ? 'card4-hires.png' : c.file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           );
         })}

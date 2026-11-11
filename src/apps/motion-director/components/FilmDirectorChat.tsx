@@ -2,16 +2,17 @@
 
 import { audioReport, measureRenderedAudio } from '../lib/renderedAudio';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Player } from '@remotion/player';
+import { Player, type PlayerRef } from '@remotion/player';
 import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { sceneDetail } from '../lib/coCreate';
 import { motionTemplateTitle, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import { BRAND_SCENES, isBrandScene } from '../lib/directorPlan';
 import { MainComposition } from '../preview/Composition';
-import { projectDuration, projectEndFrame, type ProjectData } from '../types';
+import { explainExportProblem } from '../lib/exportErrors';
+import { isMusicTrack, projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { specMarkdown } from '../lib/designSpec';
-import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, supportsHtmlInCanvas } from '../webRenderer';
+import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering, isChromiumBrowser, registerParityHook, supportsHtmlInCanvas } from '../webRenderer';
 import { t } from '../i18n';
 import { estimateExportSec } from '../lib/exportCost';
 import { drawsSampleScreen, isProductTextureShot } from '../lib/productShots';
@@ -21,6 +22,7 @@ import { buildCatalogue } from '../lib/pictureCatalogue';
 import { assignPictures } from '../lib/assignPictures';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
 import type { FilmStep, FilmStepState } from '../lib/filmSteps';
+import { personalisesWithSite } from '../lib/captureQuality';
 
 /**
  * The film conversation as it appears in chat: messages, the Ink Press
@@ -60,11 +62,14 @@ const SpecLink: React.FC<{ spec: NonNullable<ProjectData['spec']> }> = ({ spec }
 };
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
-export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
+export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string; onRendered?: () => void }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench', onRendered }) => {
   const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean; noMusic?: boolean }>({ status: 'idle', progress: 0 });
   const [fasterExportHint] = useState(() => isChromiumBrowser() && !supportsHtmlInCanvas());
   const abort = useRef<AbortController | null>(null);
+  const playerRef = useRef<PlayerRef>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
+  // Dev / e2e only: lets the preview-vs-export parity spec seek this player and render the same frame as the export does.
+  useEffect(() => registerParityHook(project, (frame) => playerRef.current?.seekTo(frame)), [project]);
   useEffect(() => () => {
     abort.current?.abort();
   }, []);
@@ -83,24 +88,25 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     try {
       const result = await exportMp4({
         // Without music: the film keeps its sound effects (a second version for the person's own music).
-        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
+        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => !isMusicTrack(track)) } : project,
         scale: draft ? 2 / 3 : 1,
         signal: abort.current.signal,
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
       setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
+      onRendered?.();
       // Measure the sound of the file that was just made (the preview cannot show clipping).
       void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
-      setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
+      setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : explainExportProblem(error) });
     } finally {
       releaseGuard();
     }
   };
 
   const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${render.draft ? '-draft-720p' : ''}${render.noMusic ? '-nobgm' : ''}.mp4`;
-  const hasMusic = project.tracks.some((track) => track.name === t('track.music') && track.clips.length > 0);
+  const hasMusic = project.tracks.some((track) => isMusicTrack(track) && track.clips.length > 0);
   const filmSec = projectEndFrame(project) / project.fps;
   const draftSize = `${Math.round((project.width * 2) / 3)}×${Math.round((project.height * 2) / 3)}`;
 
@@ -117,6 +123,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
       </div>
       <div className="overflow-hidden rounded-xl" style={{ aspectRatio: `${project.width} / ${project.height}`, maxHeight: 420, background: '#000' }}>
         <Player
+          ref={playerRef}
           component={MainComposition}
           inputProps={inputProps}
           durationInFrames={projectDuration(project)}
@@ -182,11 +189,8 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         {onOpenWorkbench && (
           <button
             type="button"
-            onClick={() => {
-              // Leaving this view unmounts the card and stops its render: ask first.
-              if (render.status === 'running' && !window.confirm('The MP4 is still rendering and leaving will cancel it. Open the workbench anyway?')) return;
-              onOpenWorkbench();
-            }}
+            // Leaving this view unmounts the card and stops a running render: the caller (editInWorkbench) asks before cancelling it, once.
+            onClick={() => onOpenWorkbench()}
             className="px-4 py-2 rounded-lg text-xs font-semibold"
             style={choiceStyle(false)}
             data-testid="film-open-workbench"
@@ -209,6 +213,7 @@ const STEP_COLORS: Record<FilmStepState, { border: string; num: string; label: s
   todo: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Waiting' },
   active: { border: 'rgba(232,176,92,0.7)', num: '#e8b05c', label: 'Working…' },
   done: { border: 'rgba(34,197,94,0.45)', num: '#86efac', label: 'Done' },
+  warning: { border: 'rgba(232,176,92,0.7)', num: '#e8b05c', label: 'Partly done' },
   skipped: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Skipped' },
   error: { border: 'rgba(248,113,113,0.6)', num: '#fca5a5', label: 'Problem' },
 };
@@ -278,10 +283,35 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         </div>
       )}
       {shown.map((m, i) => <FilmMessage key={`${m.ts}-${i}`} message={m} />)}
+      {director.resumeOffer && (
+        <div className="rounded-xl px-3 py-3 text-xs" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-default, rgba(255,255,255,0.12))' }} data-testid="resume-offer">
+          {(() => {
+            const o = director.resumeOffer.action;
+            const run = director.resumeOffer.cp.run;
+            const title = `A film was interrupted: “${run.request.slice(0, 80)}”`;
+            if (o.kind === 'resume') return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">It stopped at the {o.from} stage. {o.kept} shot{o.kept === 1 ? ' is' : 's are'} already adapted and kept; {o.scenes || 'the remaining'} scene{o.scenes === 1 ? '' : 's'} still to build.</p>
+              <div className="flex gap-2"><button type="button" onClick={director.resumeRun} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="resume-run">Resume</button><button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Start over</button></div>
+            </>;
+            if (o.kind === 'needs-input') return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">It cannot be resumed as it is: {o.needs.join('; ')}.</p>
+              <button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Start over</button>
+            </>;
+            return <>
+              <p className="mb-2 font-semibold">{title}</p>
+              <p className="mb-2 opacity-80">Nothing to continue from: {o.kind === 'restart' ? o.why : o.why}. Send the request again.</p>
+              <button type="button" onClick={director.discardRun} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="discard-run">Dismiss</button>
+            </>;
+          })()}
+        </div>
+      )}
       {stage === 'offer' && (
         <div className="flex flex-wrap gap-2" data-testid="inkpress-offer">
           <button type="button" onClick={() => director.chooseTemplate('inkpress')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)}>Use Ink Press</button>
-          <button type="button" onClick={() => director.chooseTemplate('director')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Let the director pick shots</button>
+          <button type="button" onClick={() => director.chooseTemplate('local')} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(false)} data-testid="create-without-ai" title="No OpenAI key needed: the film is assembled from your site's real content and the ShotCraft recipes that can show it">Create without AI</button>
+          <button type="button" onClick={() => director.chooseTemplate('director')} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} title="Create with AI: the director plans the film and adapts recipe source through your OpenAI key">Let the director pick shots (with AI)</button>
           <button type="button" onClick={director.coCreate} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="cocreate-start" title="The director proposes a product check, a look and a shot plan; you confirm each step">Work it out together</button>
           {onPickShots && <button type="button" onClick={onPickShots} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Choose shot cards…</button>}
         </div>
@@ -352,7 +382,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           testId="director-plan"
           eyebrow={storyboard?.source === 'director' ? 'MOTION DIRECTOR STORYBOARD' : 'INK PRESS STORYBOARD'}
           title={plan.title}
-          meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${storyboard?.capture ? ' · uses your site' : ''}`}
+          meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${personalisesWithSite(storyboard?.capture) ? ' · uses your site' : storyboard?.capture ? ' · uses your site\'s words only' : ''}`}
           steps={withVideos(plan.scenes.map((scene, i) => {
             const startSec = plan.scenes.slice(0, i).reduce((sum, sc) => sum + sc.durationSec, 0);
             const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
@@ -381,7 +411,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           rejectLabel="Revise"
         />
       )}
-      {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} />}
+      {showFilm && film && stage === 'film' && <FilmResultCard project={film.project} onOpenWorkbench={onOpenWorkbench} openLabel={openLabel} onRendered={director.markDelivered} />}
     </div>
   );
 };

@@ -27,6 +27,8 @@ type RenderOptions = {
   transparent?: boolean;
   scale?: number;
   licenseKey?: string;
+  /** Give up when the render reports no progress for this long (ms); default STALL_MS. */
+  stallMs?: number;
   /** Speed knobs of the web renderer (see the experiments in the export notes). */
   tuning?: Partial<Pick<RenderMediaOnWebOptions<any, any>, 'hardwareAcceleration' | 'pageResponsiveness' | 'keyframeIntervalInSeconds' | 'videoBitrate' | 'mediaCacheSizeInBytes'>>;
 };
@@ -106,17 +108,52 @@ export const pickEncoderTuning = (size: { width: number; height: number }): Prom
   return encoderTuning;
 };
 
+/** A render that reports no progress for this long is stuck (an encoder or a card waiting for something that never comes). */
+export const STALL_MS = 120_000;
+
+/**
+ * An abort signal that also fires when `ping()` has not been called for `stallMs`, so a hung export fails with
+ * a clear error instead of sitting on "running". A user cancel passes through unchanged (`stalled()` stays false).
+ */
+export const createStallGuard = (outer: AbortSignal | undefined, stallMs: number = STALL_MS) => {
+  const controller = new AbortController();
+  let stalled = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const ping = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stalled = true;
+      controller.abort();
+    }, stallMs);
+  };
+  const onOuter = () => controller.abort();
+  if (outer?.aborted) controller.abort();
+  else outer?.addEventListener('abort', onOuter, { once: true });
+  ping();
+  return {
+    signal: controller.signal,
+    ping,
+    stalled: () => stalled,
+    done: () => {
+      clearTimeout(timer);
+      outer?.removeEventListener('abort', onOuter);
+    },
+  };
+};
+
 /**
  * Render a Motion Studio composition to an MP4 Blob entirely in the browser.
  * Uses the Remotion Web Renderer — no server-side rendering required.
  */
 export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResult> => {
-  const { project, onProgress, signal, muted = false, transparent = false } = opts;
+  const { project, onProgress, muted = false, transparent = false } = opts;
+  const guard = createStallGuard(opts.signal, opts.stallMs);
+  const signal = guard.signal;
   const { width, height, fps } = project;
 
-  // MainComposition is the React component used by the Remotion Player preview.
-  // We wrap it to inject renderExact=true so the web renderer gets the full
-  // project duration (matching the server-side export behavior).
+  // MainComposition is the same React component the Remotion Player preview draws. The export's length is the
+  // content's exact end (`projectEndFrame`); the preview adds one second of margin (`projectDuration`).
+  // `renderExact` is read only by remotion/Root.tsx (Remotion Studio); MainComposition ignores it.
   const Component = MainComposition;
   const inputProps = { project, renderExact: true };
   const durationInFrames = Math.max(2, projectEndFrame(project));
@@ -181,6 +218,7 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
         }),
       );
       const eta = progress.renderEstimatedTime > 0 && progress.doneIn === null ? progress.renderEstimatedTime : null;
+      guard.ping();
       onProgress?.(progress.progress, { etaMs: eta });
     },
   };
@@ -203,17 +241,28 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
   // Motion-blur recipes draw their world many times a frame; while exporting they draw far fewer.
   setExportMode(true);
   setWebRendering(true);
-  let result;
+  let blob: Blob;
   try {
-    result = await renderMediaOnWeb(renderOpts);
+    const result = await renderMediaOnWeb(renderOpts);
+    console.log('[motion-studio:export] encoding finished, awaiting blob');
+    guard.ping();
+    // getBlob() cannot be aborted itself: race it with the signal so a cancel or a stall ends the wait.
+    blob = await Promise.race([
+      result.getBlob(),
+      new Promise<never>((_, reject) => {
+        const fail = () => reject(new Error('The export was stopped before the file was ready.'));
+        if (signal.aborted) fail();
+        else signal.addEventListener('abort', fail, { once: true });
+      }),
+    ]);
+  } catch (error) {
+    if (guard.stalled()) throw new Error(`The export stopped making progress for ${Math.round((opts.stallMs ?? STALL_MS) / 1000)} seconds and was ended. Try again, or use Draft for a lighter render.`);
+    throw error;
   } finally {
+    guard.done();
     setExportMode(false);
     setWebRendering(false);
   }
-
-  console.log('[motion-studio:export] encoding finished, awaiting blob');
-
-  const blob = await result.getBlob();
 
   console.log(
     '[motion-studio:export] complete',
@@ -310,6 +359,8 @@ export const renderStillOnWebExport = async (
   signal?: AbortSignal,
   /** Output size factor; the frame checks and the frame review do not need full size (a half-size still is ~3× quicker). */
   scale = 1,
+  /** Draw as the MP4 export draws (motion blur at export quality). Frame QA sets it so it checks what the export will show. */
+  asExport = false,
 ): Promise<StillResult> => {
   const { width, height, fps } = project;
   const inputProps = { project, renderExact: true };
@@ -334,11 +385,13 @@ export const renderStillOnWebExport = async (
   };
 
   setWebRendering(true);
+  if (asExport) setExportMode(true);
   let result;
   try {
     result = await renderStillOnWeb(renderOpts);
   } finally {
     setWebRendering(false);
+    if (asExport) setExportMode(false);
   }
 
   const blob = await result.blob();
@@ -352,4 +405,33 @@ export const renderStillOnWebExport = async (
  */
 export const createDownloadUrl = (blob: Blob): string => {
   return URL.createObjectURL(blob);
+};
+
+/**
+ * Test hook for e2e/motion-director-parity.spec.ts: `window.__motionParity` seeks the preview player and renders a
+ * frame the way the MP4 export draws it. Registered only outside production (same rule as the `__e2e_auth_bypass`
+ * cookie) and removed again when the film changes. Returns the cleanup function.
+ */
+export const registerParityHook = (project: ProjectData, seek: (frame: number) => void): (() => void) => {
+  if (process.env.NODE_ENV === 'production' || typeof window === 'undefined') return () => {};
+  const hook = {
+    project: { width: project.width, height: project.height, fps: project.fps, endFrame: projectEndFrame(project) },
+    seek,
+    /** The film being previewed (read-only, for the acceptance specs to find each shot's frames). */
+    getProject: (): ProjectData => project,
+    /** The export's frame as a PNG data URL. */
+    exportStill: async (frame: number): Promise<string> => {
+      const { blob } = await renderStillOnWebExport(project, frame, undefined, 1, true);
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    },
+  };
+  (window as unknown as { __motionParity?: typeof hook }).__motionParity = hook;
+  return () => {
+    if ((window as unknown as { __motionParity?: unknown }).__motionParity === hook) delete (window as unknown as { __motionParity?: unknown }).__motionParity;
+  };
 };

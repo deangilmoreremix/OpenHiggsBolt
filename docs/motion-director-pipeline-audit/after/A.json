@@ -1,0 +1,153 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n3 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n1 scene · 6s · Ink Press\n04\n✓\nAnimate\nRemotion code\nPersonalised 1 of 1 shot: 0 adapted, 1 parameterised, 0 unmodified\n05\n✓\nBeat sync\nSound design\n0 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n5 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nUse the spotlight-hero-card shot as a close-up for Acme\n04:51 PM\nDesigning one Spotlight Hero Card shot, adapted to your product.\n04:51 PM\nStoryboard “Acme — Spotlight Hero Card” — 1 scene, 6s:\n1. 0:00–0:05 · Spotlight Hero Card · on screen: “Acme” · caption: Your product, the way customers see it\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n04:51 PM\nYour film is ready: 6s at 1920×1080, 30 fps, Captions / Shots / Background / Music tracks.\nPersonalised 1 of 1 shot: 0 adapted, 1 parameterised, 0 unmodified.\nShot adaptation did not run: no site was captured, so there is no page to adapt the shots to.\nFrame QA passed (5 frames rendered).\nReview against the shot cards' checklist: 15 passed.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n04:51 PM\n↺ New film\n✓ Designing one spotlight-hero-card shot\n✓ Cuts snapped to the beat of house-vibez\n✓ The director could not write the shots' words (No key.); using the site's own words instead\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 0 of 0 cuts within 3 frames of a beat (worst 0 frames), 0 on a kick or a downbeat\n✓ Shot adaptation skipped: no site was captured, so there is no page to adapt the shots to\n✓ Film built · 4 tracks\n✓ Frame QA · 5 frames render cleanly\nFINAL FILM\nAcme — Spotlight Hero Card\n1920×1080 · 30 fps · h264\nYOUR PRODUCT, THE WAY CUSTOMERS SEE IT\n0:00 / 0:06\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~1 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n3 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n1 scene · 6s · Ink Press\n04\n✓\nAnimate\nRemotion code\nPersonalised 1 of 1 shot: 0 adapted, 1 parameterised, 0 unmodified\n05\n✓\nBeat sync\nSound design\n0 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n5 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "shots": [
+  {
+   "cardId": "demo:SpotlightHeroCard",
+   "start": 0,
+   "duration": 172,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 3,
+    "crops": 3,
+    "texts": 1
+   },
+   "label": "demo:SpotlightHeroCard"
+  }
+ ],
+ "ev": [
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 17,
+   "suppliedShare": {
+    "magenta": 0.6679,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 1151.6
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 34,
+   "suppliedShare": {
+    "magenta": 0.6295,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 1218.5
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 52,
+   "suppliedShare": {
+    "magenta": 0.0276,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 334.6
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 69,
+   "suppliedShare": {
+    "magenta": 0.0046,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 351.6
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 86,
+   "suppliedShare": {
+    "magenta": 0.0046,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 348
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 103,
+   "suppliedShare": {
+    "magenta": 0.0046,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 348.9
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 120,
+   "suppliedShare": {
+    "magenta": 0.0046,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 347.1
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 138,
+   "suppliedShare": {
+    "magenta": 0.0057,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 342.2
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 155,
+   "suppliedShare": {
+    "magenta": 0.0053,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 344.4
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 167,
+   "suppliedShare": {
+    "magenta": 0.0051,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "branding": [],
+   "sampleUi": [],
+   "variance": 272.6
+  }
+ ]
+}

@@ -68,7 +68,7 @@ export interface CaptureLayout {
 }
 
 export class DirectorError extends Error {
-  constructor(message: string, readonly code: string, readonly status: number) {
+  constructor(message: string, readonly code: string, readonly status: number, /** What the server says to wait before trying again (a rate limit), in ms. */ readonly retryAfterMs?: number) {
     super(message);
   }
 }
@@ -94,7 +94,9 @@ async function post<T>(path: string, body: unknown, timeoutMs = 0): Promise<T> {
     if (timer) clearTimeout(timer);
   }
   if (!res.ok) {
-    throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status);
+    const hdr = Number(res.headers.get('retry-after'));
+    const wait = Number.isFinite(data?.retryAfterMs) ? Number(data.retryAfterMs) : Number.isFinite(hdr) && hdr > 0 ? hdr * 1000 : undefined;
+    throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status, wait);
   }
   return data as T;
 }
@@ -139,7 +141,7 @@ export async function captureSite(
       if (++failures > 5) throw error;
     }
   }
-  throw new DirectorError('it took longer than 2½ minutes', 'TIMEOUT', 408);
+  throw new DirectorError(`it took longer than ${Math.round(maxWait / 60_000 * 2) / 2} minutes`, 'TIMEOUT', 408);
 }
 
 export async function requestPlan(body: {
@@ -276,6 +278,8 @@ export interface AdaptRequest {
   recipe: string;
   source: string;
   layout?: unknown;
+  /** The page's geometry in the shape the repaired recipes read (cards, rows, main): lib/customerLayout. */
+  liveLayout?: unknown;
   screens?: number;
   crops?: number;
   brand?: { name?: string; accent?: string; background?: string; text?: string; font?: string };
@@ -332,9 +336,21 @@ export async function fetchReferenceFrames(stem: string): Promise<string[]> {
 export async function fetchRecipeSource(stem: string): Promise<string | null> {
   try {
     const res = await fetch(`/motion-studio/sources/${encodeURIComponent(stem)}.tsx.txt`);
+    if (res.status === 404) throw new SourcesUnavailableError(stem);
     return res.ok ? await res.text() : null;
-  } catch {
+  } catch (error) {
+    if (error instanceof SourcesUnavailableError) throw error;
     return null;
+  }
+}
+
+/**
+ * The recipe sources the adapter reads (public/motion-studio/sources, written by scripts/gen-demo-sources.mjs during the
+ * build) are not served. That is a deployment problem, not the model's: say so instead of "did not pass its checks".
+ */
+export class SourcesUnavailableError extends Error {
+  constructor(readonly stem: string) {
+    super(`The recipe sources are not deployed (/motion-studio/sources/${stem}.tsx.txt returned 404). Shots keep their plain recipes; this is a build problem, not a model failure.`);
   }
 }
 
