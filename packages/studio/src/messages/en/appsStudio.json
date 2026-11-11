@@ -59,6 +59,7 @@
       "description": "Follow the launch resources to prepare your product, configure payments, and market your service."
     }
   },
+  "walkthroughLink": "Reseller Setup Walkthrough",
   "card": {
     "github": "GitHub",
     "demo": "Try Live Demo",

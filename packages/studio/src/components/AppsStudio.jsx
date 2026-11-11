@@ -734,6 +734,17 @@ export default function AppsStudio({ locale = "en" }) {
           </div>
         </section>
 
+        {/* Additive link to the Reseller Setup Walkthrough (access is decided there by the existing gate). */}
+        <div className="w-full max-w-5xl mx-auto pt-6 flex justify-center">
+          <a
+            href="/academy/reseller/launch"
+            className="inline-flex items-center gap-2 rounded-full bg-[#22d3ee]/10 px-5 py-2 text-xs font-bold text-[#22d3ee] border border-[#22d3ee]/30 transition-all hover:bg-[#22d3ee]/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+          >
+            <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
+            {copy.walkthroughLink}
+          </a>
+        </div>
+
         {/* ── Search + filters ─────────────────────────────────────────── */}
         <nav aria-label={copy.filter.label} className="w-full max-w-3xl mx-auto pt-10 md:pt-14 space-y-4">
           <div className="relative">

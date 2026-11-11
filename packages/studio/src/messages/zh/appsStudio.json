@@ -59,6 +59,7 @@
       "description": "按照上线资源准备你的产品、配置支付方式并推广你的服务。"
     }
   },
+  "walkthroughLink": "Reseller Setup Walkthrough",
   "card": {
     "github": "GitHub",
     "demo": "在线试用",
