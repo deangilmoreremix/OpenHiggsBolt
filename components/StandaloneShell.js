@@ -10,6 +10,8 @@ import { useClerk, useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
+import HelpAgent from '@/components/help/HelpAgent';
+import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
@@ -886,6 +888,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
                  )}
                </Link>
+               {getStudioGuide(activeTab) && (
+                 <Link
+                   href={academyStudioUrl(activeTab)}
+                   title={`Step-by-step guide for ${getStudioGuide(activeTab).label}`}
+                   className="relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full text-[#22d3ee]/80 hover:text-[#22d3ee]"
+                 >
+                   <span className="relative z-10">{getStudioGuide(activeTab).label} guide</span>
+                 </Link>
+               )}
              </nav>
             
             {/* Fade Right Overlay */}
@@ -961,6 +972,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
+
+      {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
+      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => setShowApiKeyPopup(true)} />
 
       {/* Global generation activity and notification stack */}
       {(activeGenerations.length > 0 || notifications.length > 0) && (

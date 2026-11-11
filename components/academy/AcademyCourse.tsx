@@ -10,6 +10,7 @@ import type { AcademyTrack } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
 import studioKnowledgeBase from '@/data/studioKnowledgeBase.json';
 import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/shared/styles/designTokens';
+import { academyStudioUrl, academyTrackUrl, getStudioGuide } from '@/data/academyStudioGuides';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -18,6 +19,7 @@ import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/sh
 type Step = 'learn' | 'see' | 'create';
 
 type StudioTab =
+  | 'create'
   | 'overview'
   | 'getting-started'
   | 'inputs-models'
@@ -138,6 +140,7 @@ interface StudioKnowledgeBase {
 const STUDIOS: Studio[] = (studioKnowledgeBase as any as StudioKnowledgeBase).studios;
 
 const STUDIO_TABS: { id: StudioTab; label: string }[] = [
+  { id: 'create', label: 'Create with this studio' },
   { id: 'overview', label: 'Overview' },
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'inputs-models', label: 'Inputs & Models' },
@@ -252,10 +255,18 @@ function TemplateModal({
   );
 }
 
-function LearningPathsView({ tracks }: { tracks: AcademyTrack[] }) {
-  const [activeTrackSlug, setActiveTrackSlug] = React.useState(tracks[0]?.slug ?? '');
-  const [activeLessonSlug, setActiveLessonSlug] = React.useState(tracks[0]?.lessons[0]?.slug ?? '');
-  const [step, setStep] = React.useState<Step>('learn');
+function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initial?: AcademyInitialState }) {
+  const seedTrack = tracks.find((t) => t.slug === initial?.track) ?? tracks[0];
+  const seedLesson = seedTrack?.lessons.find((l) => l.slug === initial?.lesson) ?? seedTrack?.lessons[0];
+  const [activeTrackSlug, setActiveTrackSlug] = React.useState(seedTrack?.slug ?? '');
+  const [activeLessonSlug, setActiveLessonSlug] = React.useState(seedLesson?.slug ?? '');
+  const [step, setStep] = React.useState<Step>(initial?.step === 'see' || initial?.step === 'create' ? initial.step : 'learn');
+  // keep the address bar in step with the open lesson (only after the learner navigates or arrived by a deep link)
+  const touched = React.useRef(!!initial?.track);
+  React.useEffect(() => {
+    if (touched.current) syncUrl({ track: activeTrackSlug, lesson: activeLessonSlug, step: step === 'learn' ? null : step });
+  }, [activeTrackSlug, activeLessonSlug, step]);
+  React.useEffect(() => { touched.current = true; }, [activeTrackSlug, activeLessonSlug, step]);
   const [modalTemplate, setModalTemplate] = React.useState<{ slug: string; title: string } | null>(null);
 
   const activeTrack = tracks.find((t) => t.slug === activeTrackSlug) ?? tracks[0];
@@ -450,6 +461,30 @@ function LearningPathsView({ tracks }: { tracks: AcademyTrack[] }) {
 /*  Sub-component: Studio Reference View                              */
 /* ------------------------------------------------------------------ */
 
+/** Initial navigation state, parsed from the URL by app/academy/page.tsx (deep links). */
+export interface AcademyInitialState {
+  view?: 'learning-paths' | 'studio-reference';
+  studio?: string;
+  tab?: string;
+  track?: string;
+  lesson?: string;
+  step?: string;
+}
+
+const VALID_TABS = new Set(['create', 'overview', 'getting-started', 'inputs-models', 'best-practices', 'use-cases', 'troubleshooting', 'business-related', 'glossary', 'academy-guidance']);
+
+/** Keep the address bar in step with what the learner is looking at, so reload and sharing work. */
+function syncUrl(params: Record<string, string | null | undefined>) {
+  try {
+    const u = new URL(window.location.href);
+    for (const k of ['view', 'studio', 'tab', 'track', 'lesson', 'step']) u.searchParams.delete(k);
+    for (const [k, v] of Object.entries(params)) if (v) u.searchParams.set(k, v);
+    window.history.replaceState(null, '', `${u.pathname}${u.search}`);
+  } catch {
+    /* no window / blocked: deep links are a convenience only */
+  }
+}
+
 function StudioCard({ studio, onClick }: { studio: Studio; onClick: () => void }) {
   return (
     <button
@@ -482,8 +517,26 @@ function StudioCard({ studio, onClick }: { studio: Studio; onClick: () => void }
   );
 }
 
-function StudioDetailPanel({ studio, onClose }: { studio: Studio; onClose: () => void }) {
-  const [activeTab, setActiveTab] = React.useState<StudioTab>('overview');
+function StudioDetailPanel({
+  studio,
+  onClose,
+  tracks = [],
+  initialTab = 'create',
+  onTabChange,
+}: {
+  studio: Studio;
+  onClose: () => void;
+  tracks?: AcademyTrack[];
+  initialTab?: StudioTab;
+  onTabChange?: (t: StudioTab) => void;
+}) {
+  const [activeTab, setActiveTabState] = React.useState<StudioTab>(initialTab);
+  const setActiveTab = (t: StudioTab) => {
+    setActiveTabState(t);
+    onTabChange?.(t);
+  };
+  const guide = getStudioGuide(studio.id);
+  const studioRoute = guide?.route ?? studio.route;
 
   const renderField = (label: string, value: React.ReactNode) => (
     <div className="mb-4">
@@ -610,6 +663,87 @@ function StudioDetailPanel({ studio, onClose }: { studio: Studio; onClose: () =>
 
         {/* Tab Content */}
         <div className="p-5">
+          {activeTab === 'create' && (
+            <div data-testid="studio-create-guide">
+              {guide?.tagline && <p className="mb-4 text-sm" style={{ color: semantic.textSecondary }}>{guide.tagline}</p>}
+              <a
+                href={studioRoute}
+                className="mb-6 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+                style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: colors.primary }}
+              >
+                <SparkIcon /> Open {guide?.label ?? studio.name}
+              </a>
+              {(() => {
+                const steps = studio.howToSteps && studio.howToSteps.length ? studio.howToSteps : studio.gettingStarted ?? [];
+                return steps.length ? (
+                  <div className="mb-6">
+                    <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Step by step</h4>
+                    <ol className="space-y-3">
+                      {steps.map((step, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-bold" style={{ background: 'rgba(34,211,238,0.15)', color: colors.primary }}>{i + 1}</span>
+                          <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.88)' }}>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null;
+              })()}
+              {(studio as any).exampleWorkflows?.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Example workflows</h4>
+                  <div className="space-y-3">
+                    {((studio as any).exampleWorkflows as Array<{ title: string; steps: string[] }>).map((w, i) => (
+                      <details key={i} className="rounded-xl border px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}>
+                        <summary className="cursor-pointer text-sm font-semibold text-white">{w.title}</summary>
+                        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm" style={{ color: semantic.textSecondary }}>
+                          {w.steps.map((st, j) => <li key={j}>{st}</li>)}
+                        </ol>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {guide && (guide.lessons.length > 0 || (guide.resellerLessons?.length ?? 0) > 0) && (
+                <div className="mb-4" data-testid="studio-lessons">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Lessons to take for this studio</h4>
+                  <ul className="space-y-1.5">
+                    {guide.lessons.map((l) => {
+                      const title = tracks.find((t) => t.slug === l.track)?.lessons.find((x) => x.slug === l.lesson)?.title ?? l.lesson;
+                      return (
+                        <li key={`${l.track}/${l.lesson}`} className="text-sm">
+                          <a href={academyTrackUrl(l.track, l.lesson)} className="font-semibold underline" style={{ color: colors.primary }}>{title}</a>
+                          <span style={{ color: semantic.textSecondary }}> — {l.why}</span>
+                        </li>
+                      );
+                    })}
+                    {guide.resellerLessons?.map((l) => (
+                      <li key={`r${l.id}`} className="text-sm">
+                        <a href={`/academy/reseller/launch?lesson=${l.id}`} className="font-semibold underline" style={{ color: colors.primary }}>{l.id} {l.title}</a>
+                        <span style={{ color: semantic.textSecondary }}> — Reseller Setup Walkthrough</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {guide && guide.tracks.length > 0 && (
+                <div className="mb-2">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Related Academy courses</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {guide.tracks.map((slug) => (
+                      <a key={slug} href={academyTrackUrl(slug)} className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: 'rgba(34,211,238,0.3)', color: colors.primary }}>
+                        {tracks.find((t) => t.slug === slug)?.title ?? slug}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studio.id === 'apps' && (
+                <p className="mt-4 text-sm"><a className="underline" style={{ color: colors.primary }} href="/academy/reseller/launch">Reseller Setup Walkthrough →</a></p>
+              )}
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <div>
               {renderField('Description', <p className="whitespace-pre-line">{studio.description}</p>)}
@@ -888,9 +1022,19 @@ function StudioDetailPanel({ studio, onClose }: { studio: Studio; onClose: () =>
   );
 }
 
-function StudioReferenceView({ onBack }: { onBack: () => void }) {
+function StudioReferenceView({ onBack, tracks = [], initial }: { onBack: () => void; tracks?: AcademyTrack[]; initial?: AcademyInitialState }) {
   const [search, setSearch] = React.useState('');
-  const [selectedStudio, setSelectedStudio] = React.useState<Studio | null>(null);
+  const [selectedStudio, setSelectedStudioState] = React.useState<Studio | null>(
+    () => STUDIOS.find((x) => x.id === initial?.studio) ?? null,
+  );
+  const [studioTab, setStudioTab] = React.useState<StudioTab>(
+    initial?.tab && VALID_TABS.has(initial.tab) ? (initial.tab as StudioTab) : 'create',
+  );
+  const setSelectedStudio = (st: Studio | null) => {
+    setSelectedStudioState(st);
+    if (st) { setStudioTab('create'); syncUrl({ view: 'studio-reference', studio: st.id, tab: 'create' }); }
+    else syncUrl({ view: 'studio-reference' });
+  };
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return STUDIOS;
@@ -898,6 +1042,8 @@ function StudioReferenceView({ onBack }: { onBack: () => void }) {
     return STUDIOS.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        (getStudioGuide(s.id)?.label ?? '').toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
         s.shortDescription.toLowerCase().includes(q) ||
         s.keyFeatures.some((f) => f.toLowerCase().includes(q))
@@ -943,7 +1089,14 @@ function StudioReferenceView({ onBack }: { onBack: () => void }) {
       )}
 
       {selectedStudio && (
-        <StudioDetailPanel studio={selectedStudio} onClose={() => setSelectedStudio(null)} />
+        <StudioDetailPanel
+          key={selectedStudio.id}
+          studio={selectedStudio}
+          tracks={tracks}
+          initialTab={studioTab}
+          onTabChange={(t) => { setStudioTab(t); syncUrl({ view: 'studio-reference', studio: selectedStudio.id, tab: t }); }}
+          onClose={() => setSelectedStudio(null)}
+        />
       )}
     </div>
   );
@@ -965,8 +1118,14 @@ function EmptyState({ text }: { text: string }) {
 /*  Top-level AcademyCourse                                            */
 /* ------------------------------------------------------------------ */
 
-export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
-  const [view, setView] = React.useState<'learning-paths' | 'studio-reference'>('learning-paths');
+export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrack[]; initial?: AcademyInitialState }) {
+  const [view, setViewState] = React.useState<'learning-paths' | 'studio-reference'>(
+    initial?.view === 'studio-reference' || (initial?.studio && !initial?.track) ? 'studio-reference' : 'learning-paths',
+  );
+  const setView = (v: 'learning-paths' | 'studio-reference') => {
+    setViewState(v);
+    syncUrl(v === 'studio-reference' ? { view: 'studio-reference' } : {});
+  };
 
   return (
     <div className="min-h-screen" style={appWrapper}>
@@ -1015,7 +1174,7 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
           </div>
 
           <a
-            href="/studio/video"
+            href={getStudioGuide(initial?.studio)?.route ?? '/studio'}
             className="rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-white/10 hover:text-white"
             style={buttons.ghost}
           >
@@ -1026,9 +1185,9 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         {view === 'learning-paths' ? (
-          <LearningPathsView tracks={tracks} />
+          <LearningPathsView tracks={tracks} initial={initial} />
         ) : (
-          <StudioReferenceView onBack={() => setView('learning-paths')} />
+          <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={initial} />
         )}
       </div>
     </div>

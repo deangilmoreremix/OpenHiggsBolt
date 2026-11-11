@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck, FaBook, FaCode, FaRocket } from "react-icons/fa";
+import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck, FaBook, FaCode, FaRocket, FaGraduationCap } from "react-icons/fa";
 import en from "../messages/en/appsStudio.json";
 import zh from "../messages/zh/appsStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -734,6 +734,17 @@ export default function AppsStudio({ locale = "en" }) {
           </div>
         </section>
 
+        {/* Additive link to the Reseller Setup Walkthrough (access is decided there by the existing gate). */}
+        <div className="w-full max-w-5xl mx-auto pt-6 flex justify-center">
+          <a
+            href="/academy/reseller/launch"
+            className="inline-flex items-center gap-2 rounded-full bg-[#22d3ee]/10 px-5 py-2 text-xs font-bold text-[#22d3ee] border border-[#22d3ee]/30 transition-all hover:bg-[#22d3ee]/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+          >
+            <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
+            {copy.walkthroughLink}
+          </a>
+        </div>
+
         {/* ── Search + filters ─────────────────────────────────────────── */}
         <nav aria-label={copy.filter.label} className="w-full max-w-3xl mx-auto pt-10 md:pt-14 space-y-4">
           <div className="relative">
@@ -793,6 +804,7 @@ export default function AppsStudio({ locale = "en" }) {
             {filteredApps.map(app => (
               <article
                 key={app.id}
+                id={`app-card-${app.id}`}
                 className="group bg-[#0a0a0a] border border-white/10 rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:border-[#22d3ee]/40 hover:shadow-xl hover:shadow-[#22d3ee]/10 hover:-translate-y-1"
               >
                 {/* Thumbnail — consistent 16:10 aspect at every breakpoint */}
@@ -963,6 +975,16 @@ export default function AppsStudio({ locale = "en" }) {
                         {copy.card.vercelDeploy}
                       </span>
                     )}
+                    {/* Opens this app's guided launch workshop in the Reseller
+                        Academy (access is decided there by the existing gate). */}
+                    <a
+                      href={`/academy/reseller/apps/${app.id}`}
+                      aria-label={copy.card.learnToLaunchLabel.replace('{app}', app.name)}
+                      className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee]/10 px-4 py-2 text-xs font-bold text-[#22d3ee] border border-[#22d3ee]/30 transition-all hover:bg-[#22d3ee]/20 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                    >
+                      <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
+                      {copy.card.learnToLaunch}
+                    </a>
                   </div>
                 </div>
 

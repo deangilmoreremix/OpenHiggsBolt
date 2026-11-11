@@ -40,6 +40,7 @@ const TRACK_TITLES: Record<string, string> = {
   '13-ai-tools-mastery': 'AI Tools Mastery',
   '14-ai-freelancing-and-agency-business': 'AI Freelancing & Agency Business',
   '15-ai-agents-and-vibe-coding': 'AI Agents & Vibe Coding',
+  '16-build-and-launch-apps-with-ai-assistants': 'Build & Launch Apps with AI Assistants',
 };
 
 /* Track order: 01 (content folder "ugc") first, then the rest by number. */
