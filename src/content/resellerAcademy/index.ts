@@ -3,11 +3,12 @@ import { MODULES_1_4 } from './modules-1-4';
 import { MODULES_5_6 } from './modules-5-6';
 import { MODULES_7_9 } from './modules-7-9';
 import { MODULES_10_12 } from './modules-10-12';
+import { MODULES_13 } from './modules-13';
 
 export type { Lesson, Module, FollowStep, ResourceLink, AppPanelKind } from './types';
 export { GLOSSARY } from './glossary';
 
-export const MODULES: Module[] = [...MODULES_1_4, ...MODULES_5_6, ...MODULES_7_9, ...MODULES_10_12];
+export const MODULES: Module[] = [...MODULES_1_4, ...MODULES_5_6, ...MODULES_7_9, ...MODULES_10_12, ...MODULES_13];
 
 export const ALL_LESSONS: Lesson[] = MODULES.flatMap((m) => m.lessons);
 

@@ -25,7 +25,7 @@ interface Msg {
 const ENDPOINT = '/api/help/chat';
 
 export const STUDIO_SUGGESTIONS: Record<string, string[]> = {
-  apps: ['How do I connect Stripe to my app?', 'Why did a payment succeed but credits did not appear?', 'How do I connect my own domain?'],
+  apps: ['How do I connect Stripe to my app?', 'How do I connect Claude or ChatGPT to Netlify, Clerk and Stripe?', 'How do I connect my own domain?'],
   image: ['How do I generate an image from a prompt?', 'How many reference images can I upload?', 'Which lessons teach product photography?'],
   'brand-studio': ['How do I set up a brand?', 'How do I generate on-brand campaign assets?', 'Which lessons help me sell brand work?'],
   video: ['How do I create a video from an image?', 'What should I do if a generation fails?', 'Which lessons teach AI video ads?'],

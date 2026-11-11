@@ -31,6 +31,16 @@ export const LINKS = {
   stripeDashboardPayments: L('Stripe Dashboard: payments', 'https://dashboard.stripe.com/payments', 'tool'),
   stripeDashboardKeys: L('Stripe Dashboard: API keys', 'https://dashboard.stripe.com/apikeys', 'tool'),
   stripeDashboardWebhooks: L('Stripe Dashboard: webhooks', 'https://dashboard.stripe.com/webhooks', 'tool'),
+  netlifySignup: L('Create a Netlify account', 'https://app.netlify.com/signup', 'account'),
+  netlifyPricing: L('Netlify pricing (current free plan limits)', 'https://www.netlify.com/pricing/', 'docs'),
+  netlifyDocs: L('Netlify docs', 'https://docs.netlify.com', 'docs'),
+  clerkSignup: L('Create a Clerk account', 'https://dashboard.clerk.com/sign-up', 'account'),
+  clerkPricing: L('Clerk pricing (current free plan limits)', 'https://clerk.com/pricing', 'docs'),
+  clerkDocs: L('Clerk docs', 'https://clerk.com/docs', 'docs'),
+  stripeMcp: L('Stripe docs: Model Context Protocol (MCP)', 'https://docs.stripe.com/mcp', 'docs'),
+  claudeSite: L('Claude', 'https://claude.ai', 'account'),
+  chatgptSite: L('ChatGPT', 'https://chatgpt.com', 'account'),
+  mcpSite: L('Model Context Protocol (what connectors are built on)', 'https://modelcontextprotocol.io', 'docs'),
   nextAuthUrl: L('NextAuth docs: NEXTAUTH_URL', 'https://next-auth.js.org/configuration/options#nextauth_url', 'docs'),
 };
 

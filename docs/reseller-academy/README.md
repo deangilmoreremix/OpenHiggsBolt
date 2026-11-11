@@ -15,7 +15,7 @@
 `git diff 5513772 -- src/lib/resellerAccess.ts src/lib/reseller src/access app/api/reseller/{checkout,upgrade,download} app/api/webhooks` is empty. `resellerAppBundles.json`, `resellerDestinations.json` and `resellerTrainingCurriculum.json` are unchanged. New routes call the existing `auth()` / `resolveResellerEntitlements` / `canAccessTraining` and show the existing locked / access-pending panels. Progress code does not import any access module (tested); the API returns 403 and writes nothing for non-entitled users.
 
 ## Test results (Vitest, jsdom)
-- New `tests/reseller-academy.vitest.test.tsx` (15) and `app/api/reseller/academy/progress.test.ts` (3): 12 modules, lessons 7.1–7.5, no secrets/fake media in content, progress sanitising/merge/resume, all 38 workshops render, CopyBlock secret redaction, end-to-end journey (select app → complete lesson → reload → Continue Learning resumes at 1.2), API 401/403/200.
+- New `tests/reseller-academy.vitest.test.tsx` (15) and `app/api/reseller/academy/progress.test.ts` (3): 13 modules, lessons 7.1–7.5, no secrets/fake media in content, progress sanitising/merge/resume, all 38 workshops render, CopyBlock secret redaction, end-to-end journey (select app → complete lesson → reload → Continue Learning resumes at 1.2), API 401/403/200.
 - Existing suites re-run unmodified: AppsStudio (66), ResellerPages, reseller-access, download route, checkout/upgrade — **177 tests passed**.
 - `tsc --noEmit`: no errors in new/changed files.
 - Not run here: Playwright browser/mobile e2e and live link-checking of the external docs links (no Clerk session/entitled test user available in this environment). Mobile drawers are implemented but only jsdom-tested.

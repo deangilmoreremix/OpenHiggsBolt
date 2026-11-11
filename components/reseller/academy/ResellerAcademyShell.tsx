@@ -137,7 +137,7 @@ function Dashboard({ p, onGo, onSelect }: { p: ReturnType<typeof useAcademyProgr
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: colors.primary }}>Start here</p>
         <h2 className="mt-1 text-2xl font-extrabold text-white">Reseller Setup Walkthrough</h2>
         <p className="mt-2 max-w-[68ch] text-sm leading-relaxed" style={{ color: semantic.textSecondary }}>
-          Follow 12 short modules from choosing one of the 38 apps to taking real customers. Each lesson has four steps — Learn, Follow along, Complete, Verify — and always tells you what to do next. No programming needed.
+          Follow 13 short modules from choosing one of the 38 apps to taking real customers. Each lesson has four steps — Learn, Follow along, Complete, Verify — and always tells you what to do next. No programming needed.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {target && (
@@ -197,7 +197,7 @@ function Dashboard({ p, onGo, onSelect }: { p: ReturnType<typeof useAcademyProgr
       </div>
 
       <AcademyCard>
-        <SectionTitle hint="12 modules">Course roadmap</SectionTitle>
+        <SectionTitle hint="13 modules">Course roadmap</SectionTitle>
         <ol className="grid gap-2 sm:grid-cols-2">
           {MODULES.map((m) => {
             const d = m.lessons.filter((l) => progress.completedLessons.includes(l.id)).length;

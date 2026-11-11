@@ -1,4 +1,17 @@
 export const GLOSSARY: Record<string, { term: string; plain: string }> = {
+  connector: {
+    term: 'Connector (plugin)',
+    plain:
+      'A switch inside Claude or ChatGPT that lets the chat use another service for you — for example Netlify, Clerk or Stripe — after you sign in to that service and approve access. Under the hood most are built on the Model Context Protocol (MCP). Menu names change, so follow the official page.',
+  },
+  netlify: {
+    term: 'Netlify',
+    plain: 'A hosting service that builds your app from GitHub and puts it on the internet. It has a free plan; check its pricing page for the current limits. Settings like environment variables are added in its dashboard.',
+  },
+  clerk: {
+    term: 'Clerk',
+    plain: 'A service that handles sign-up and sign-in for your app (email, Google and more). It has a free plan; check its pricing page for the current limits. Its publishable key is public, its secret key is not.',
+  },
   'api-key': {
     term: 'API key',
     plain:

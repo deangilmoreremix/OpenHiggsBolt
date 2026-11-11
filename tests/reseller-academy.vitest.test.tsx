@@ -18,8 +18,8 @@ import facts from '@/data/resellerAppFacts.json';
 const SECRET = /(sk|rk)_(live|test)_[A-Za-z0-9]{10,}|whsec_[A-Za-z0-9]{10,}|eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{10,}/;
 
 describe('curriculum', () => {
-  it('has 12 modules in order with unique lesson ids', () => {
-    expect(MODULES.map((m) => m.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  it('has 13 modules in order with unique lesson ids', () => {
+    expect(MODULES.map((m) => m.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(new Set(LESSON_IDS).size).toBe(LESSON_IDS.length);
   });
   it('Stripe module has lessons 7.1-7.5', () => {
