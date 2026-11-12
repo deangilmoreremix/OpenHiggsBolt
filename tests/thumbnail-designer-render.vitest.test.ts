@@ -177,6 +177,33 @@ describe('renderProject: layers', () => {
     }
   })
 
+  it('composes an overlapping shape (badge, or fill plus stroke) on a surface and applies its opacity once', () => {
+    const P = createProject(1000, 500)
+    const cases = [
+      { ...makeShapeLayer(P, 'badge'), stroke: '#ffffff', strokeWidth: 6, label: 'NEW' },
+      { ...makeShapeLayer(P, 'rect'), fill: '#ef4444', stroke: '#ffffff', strokeWidth: 8 },
+      { ...makeShapeLayer(P, 'circle'), fill: '#ef4444', stroke: '#ffffff', strokeWidth: 8 },
+    ]
+    for (const shape of cases) {
+      const main = recorder()
+      const surface = recorder()
+      renderProject(main.ctx, addLayer(P, { ...shape, opacity: 0.5 }), {}, { createSurface: () => ({ canvas: {} as any, ctx: surface.ctx }) })
+      expect(surface.calls.filter((c) => c.fn === 'fill' || c.fn === 'stroke').length).toBeGreaterThanOrEqual(2)
+      expect(surface.calls.every((c) => c.state.globalAlpha === undefined || c.state.globalAlpha === 1)).toBe(true)
+      expect(main.calls.filter((c) => c.fn === 'fill' || c.fn === 'stroke' || c.fn === 'fillText')).toHaveLength(0)
+      const onMain = main.calls.filter((c) => c.fn === 'drawImage')
+      expect(onMain).toHaveLength(1)
+      expect(onMain[0].state.globalAlpha).toBe(0.5)
+    }
+  })
+
+  it('keeps a single-op translucent shape on the main canvas', () => {
+    const P = createProject(1000, 500)
+    const main = recorder()
+    renderProject(main.ctx, addLayer(P, { ...makeShapeLayer(P, 'rect'), opacity: 0.5 }), {}, { createSurface: () => { throw new Error('no surface needed') } })
+    expect(main.calls.filter((c) => c.fn === 'fill')).toHaveLength(1)
+  })
+
   it('keeps plain text on the main canvas', () => {
     const P = createProject(1000, 500)
     const t: TextLayer = { ...makeTextLayer(P), w: 300, h: 100, text: 'hi', opacity: 0.5, box: null, strokeWidth: 0, shadow: null }

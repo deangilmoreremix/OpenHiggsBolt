@@ -265,8 +265,24 @@ function drawLayer(ctx: CanvasRenderingContext2D, l: Layer, assets: RenderAssets
       surface.ctx.restore()
       ctx.drawImage(surface.canvas, -sw / 2, -sh / 2)
     } else drawImageLayer(ctx, l, assets)
-  } else if (l.kind === 'shape') drawShapeLayer(ctx, l)
-  else {
+  } else if (l.kind === 'shape') {
+    const alpha = Math.max(0, Math.min(1, l.opacity))
+    const hasStroke = l.strokeWidth > 0 && l.stroke !== 'rgba(0,0,0,0)'
+    const hasFill = l.fill !== 'rgba(0,0,0,0)'
+    // A badge label, or a fill plus a stroke, overlap each other; compose at full opacity, then apply the opacity once.
+    const overlaps = (l.shape === 'badge' && (!!l.label || hasStroke)) || ((l.shape === 'rect' || l.shape === 'circle') && hasFill && hasStroke)
+    const reach = Math.ceil(l.strokeWidth) + 24
+    const sw = Math.ceil(l.w + reach * 2)
+    const shh = Math.ceil(l.h + reach * 2)
+    const surface = alpha < 1 && overlaps ? createSurface(sw, shh) : null
+    if (surface) {
+      surface.ctx.save()
+      surface.ctx.translate(sw / 2, shh / 2)
+      drawShapeLayer(surface.ctx, l)
+      surface.ctx.restore()
+      ctx.drawImage(surface.canvas, -sw / 2, -shh / 2)
+    } else drawShapeLayer(ctx, l)
+  } else {
     const alpha = Math.max(0, Math.min(1, l.opacity))
     // A box or outline overlaps the text; compose at full opacity, then apply the layer opacity once.
     const sh = l.shadow
