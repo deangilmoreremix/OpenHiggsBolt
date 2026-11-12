@@ -11,6 +11,7 @@ import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
 import ThumbnailEditor from '../thumbnail/ThumbnailEditor';
+import ThumbnailConceptPanel from '../thumbnail/ThumbnailConceptPanel';
 
 const ASPECT_PRESETS = [
   { value: '16:9', label: 'YouTube 16:9', platforms: ['YouTube'] },
@@ -129,6 +130,7 @@ export default function ThumbnailStep({
   const [assetReference, setAssetReference] = useState<string | null>(null)
   const [assetReferenceState, setAssetReferenceState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showConcepts, setShowConcepts] = useState(false)
 
   const [headline, setHeadline] = useState(copy.headline || '')
   const [subheadline, setSubheadline] = useState(copy.subheadline || '')
@@ -333,6 +335,22 @@ export default function ThumbnailStep({
     onUpdateThumbnail({ imageUrl: next.url, responseId: next.responseId })
   }, [selectedIndex, onUpdateThumbnail])
 
+  /** Concepts made by the concept panel replace the current results, like a normal generation. */
+  const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
+    setError(null)
+    setResults(conceptResults)
+    setSelectedIndex(conceptResults.length > 0 ? 0 : null)
+    if (conceptResults.length > 0) {
+      onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio })
+    }
+  }, [onUpdateThumbnail])
+
+  const handleConceptGenerating = useCallback((pending: number) => {
+    setGenerating(pending > 0)
+    setGeneratingCount(pending)
+    if (pending > 0) { setResults([]); setSelectedIndex(null) }
+  }, [])
+
   const handleAutoFillFromWrite = useCallback(() => {
     const sourceHeadline = copy.headline || copy.title || ''
     const sourceSubject = copy.subject || ''
@@ -417,6 +435,23 @@ export default function ThumbnailStep({
           <span className="text-[10px] text-white/50">Use</span>
         </label>
       </div>
+
+      <button type="button" onClick={() => setShowConcepts(!showConcepts)} aria-expanded={showConcepts} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold transition-all hover:bg-white/[0.04]" style={{ border: '1px solid rgba(34,211,238,0.25)', background: 'rgba(34,211,238,0.04)', color: '#22d3ee' }}>
+        <span className="flex items-center gap-2"><Wand2 size={13} />Generate concepts</span>
+        {showConcepts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {showConcepts && (
+        <ThumbnailConceptPanel
+          assetType={asset.type === 'video' ? 'video' : 'image'}
+          frameUrl={assetReferenceState === 'ready' ? assetReference : null}
+          existingThumbnailUrl={thumbnail.imageUrl}
+          defaults={{ title: copy.title || copy.headline || '', topic: copy.subject || '' }}
+          disabled={false}
+          onGeneratingChange={handleConceptGenerating}
+          onResults={handleConceptResults}
+          onError={setError}
+        />
+      )}
 
       <div className="space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Aspect Ratio</p>
