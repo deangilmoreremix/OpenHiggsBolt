@@ -144,11 +144,19 @@ describe('publishing orchestrator', () => {
     expect(r).toMatchObject({ status: 'failed', requestId: 'req-1' });
     expect(r.error).toMatch(/already sent/);
   });
-  it('keeps the accepted request id when the resumed attempt fails validation or has no key', async () => {
+  it('re-checks an accepted post without re-validating the copy, so invalid edits cannot cause a second post', async () => {
+    const d = deps({ poll: async () => ({ status: 'completed', output: { url: 'https://youtube.com/watch?v=abc12345678' } }) });
+    const r = await publishOne(dest('youtube') as any, asset, { master: 'no title' } as any, undefined, KEY, d, undefined, 'req-9');
+    expect(r).toMatchObject({ status: 'published', requestId: 'req-9' });
+    expect((d.publish as any).youtube).not.toHaveBeenCalled(); // never submitted again
+  });
+  it('keeps the accepted request id when a resumed check has no API key', async () => {
     const noKey = await publishOne(dest('youtube') as any, asset, copy as any, undefined, '', deps(), undefined, 'req-9');
     expect(noKey).toMatchObject({ status: 'failed', requestId: 'req-9' });
-    const badCopy = await publishOne(dest('youtube') as any, asset, { master: 'no title' } as any, undefined, KEY, deps(), undefined, 'req-9');
-    expect(badCopy).toMatchObject({ status: 'failed', requestId: 'req-9' });
+  });
+  it('a first attempt with invalid copy fails without a request id (nothing was sent)', async () => {
+    const r = await publishOne(dest('youtube') as any, asset, { master: 'no title' } as any, undefined, KEY, deps());
+    expect(r).toMatchObject({ status: 'failed', requestId: '' });
   });
   it('publishes sequentially, reports progress, and keeps going after a failure', async () => {
     let n = 0;

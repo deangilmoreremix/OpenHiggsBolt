@@ -120,16 +120,22 @@ export async function publishOne(
   })
 
   if (!apiKey) return fail('Add your MuAPI key in the API keys settings first.', resumeRequestId)
-  const built = buildPublishPayload({
-    platform,
-    accountId: destination.accountId ?? '',
-    mediaUrl: asset.url,
-    mediaType: asset.type,
-    copy,
-    settings: destination.settings,
-    thumbnailUrl: thumbnail?.imageUrl,
-  })
-  if (!built.payload) return fail(built.errors.join(' '), resumeRequestId)
+  // A post MuAPI already accepted is only re-checked: its payload is not rebuilt or re-validated, so
+  // later edits (even invalid ones) can neither block the check nor cause a second submission.
+  let payload: Record<string, any> | null = null
+  if (!resumeRequestId) {
+    const built = buildPublishPayload({
+      platform,
+      accountId: destination.accountId ?? '',
+      mediaUrl: asset.url,
+      mediaType: asset.type,
+      copy,
+      settings: destination.settings,
+      thumbnailUrl: thumbnail?.imageUrl,
+    })
+    if (!built.payload) return fail(built.errors.join(' '))
+    payload = built.payload
+  }
 
   // One completion path for both an immediate and a polled result, so the YouTube
   // thumbnail follow-up (and its note) can never be skipped.
@@ -154,7 +160,7 @@ export async function publishOne(
       const again = await deps.poll(apiKey, resumeRequestId)
       return await finish(again?.output ?? again?.data?.output ?? again, resumeRequestId)
     }
-    const submit = await deps.publish[platform](apiKey, built.payload)
+    const submit = await deps.publish[platform](apiKey, payload!)
     requestId = String(submit?.request_id || submit?.id || '')
     if (!requestId) {
       // Some responses complete immediately with an output; anything else is unexpected.
