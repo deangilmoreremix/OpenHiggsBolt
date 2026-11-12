@@ -305,6 +305,7 @@ export default function SocialPublishModal({
                   thumbnail={thumbnail}
                   onUpdateThumbnail={updateThumbnail}
                   copy={copy}
+                  onRequestApiKey={onRequestApiKey ? () => { onClose(); onRequestApiKey(); } : undefined}
                 />
               )}
               {currentStep === 2 && safeAsset && (

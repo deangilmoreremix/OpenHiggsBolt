@@ -47,6 +47,8 @@ export interface ThumbnailGenerateResult {
   revisedPrompt?: string
   templateId?: string
   aspectRatio?: string
+  model?: string
+  fallbackFrom?: string
 }
 
 export interface ThumbnailRefineParams {
@@ -56,12 +58,19 @@ export interface ThumbnailRefineParams {
   aspectRatio?: string
   n?: number
   strength?: number
+  quality?: 'low' | 'medium' | 'high'
+  /** PNG data URL; transparent pixels mark the region to repaint (inpainting). */
+  maskUrl?: string
 }
 
 export interface ThumbnailRefineResult {
   url: string
   responseId?: string
   revisedPrompt?: string
+  /** Model that actually produced the image (may differ from the one asked for). */
+  model?: string
+  /** Set when the requested model was unavailable and GPT Image 2 was used instead. */
+  fallbackFrom?: string
 }
 
 /**
@@ -102,6 +111,8 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
         revisedPrompt: typeof data.revised_prompt === 'string' ? data.revised_prompt : undefined,
         templateId: params.templateId,
         aspectRatio: params.aspectRatio,
+        model: typeof data.model === 'string' ? data.model : undefined,
+        fallbackFrom: typeof data.fallback_from === 'string' ? data.fallback_from : undefined,
       })
     } else if (u && typeof u === 'object' && 'url' in u && typeof (u as { url?: unknown }).url === 'string') {
       results.push({
@@ -129,6 +140,8 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
     aspect_ratio: params.aspectRatio || '16:9',
     n: Math.min(Math.max(params.n || 1, 1), 4),
     strength: params.strength ?? 0.5,
+    ...(params.quality ? { quality: params.quality } : {}),
+    ...(params.maskUrl ? { mask_url: params.maskUrl } : {}),
   }
 
   const data = await postToEdgeFunction('/api/proxy/thumbnail-generate', body)
@@ -143,6 +156,8 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
         url: u,
         responseId: typeof data.request_id === 'string' ? `${data.request_id}-${i}` : undefined,
         revisedPrompt: typeof data.revised_prompt === 'string' ? data.revised_prompt : undefined,
+        model: typeof data.model === 'string' ? data.model : undefined,
+        fallbackFrom: typeof data.fallback_from === 'string' ? data.fallback_from : undefined,
       })
     } else if (u && typeof u === 'object' && 'url' in u && typeof (u as { url?: unknown }).url === 'string') {
       results.push({

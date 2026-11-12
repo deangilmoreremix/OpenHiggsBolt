@@ -93,6 +93,8 @@ export interface ThumbnailStepProps {
   thumbnail: ThumbnailState
   onUpdateThumbnail: (t: ThumbnailState) => void
   copy: CopyState
+  /** Opens Settings so the user can add their OpenAI key. */
+  onRequestApiKey?: () => void
 }
 
 export interface DestinationsStepProps {

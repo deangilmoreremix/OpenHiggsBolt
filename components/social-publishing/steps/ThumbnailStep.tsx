@@ -10,6 +10,7 @@ import ExploreIdeas from '../thumbnail/ExploreIdeas';
 import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
+import ThumbnailEditor from '../thumbnail/ThumbnailEditor';
 
 const ASPECT_PRESETS = [
   { value: '16:9', label: 'YouTube 16:9', platforms: ['YouTube'] },
@@ -20,6 +21,8 @@ const ASPECT_PRESETS = [
 
 const MODEL_OPTIONS = [
   { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Best quality, recommended' },
+  { value: 'gpt-image-2.6-sunburst', label: 'Images 2.6 (Sunburst)', description: 'Newest OpenAI image model; falls back to GPT Image 2 if your key cannot use it yet' },
+  { value: 'gpt-image-2.6-flare', label: 'Images 2.6 (Flare)', description: 'Smaller and faster 2.6 model' },
   { value: 'gpt-image-1', label: 'GPT Image 1', description: 'Faster, good quality' },
   { value: 'dall-e-3', label: 'DALL·E 3', description: 'Text only — no reference images' },
 ] as const;
@@ -102,6 +105,7 @@ export default function ThumbnailStep({
   thumbnail,
   onUpdateThumbnail,
   copy,
+  onRequestApiKey,
 }: ThumbnailStepProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(thumbnail.templateId)
   const [viewMode, setViewMode] = useState<'recommended' | 'explore'>('recommended')
@@ -320,6 +324,12 @@ export default function ThumbnailStep({
     }
   }, [onUpdateThumbnail])
 
+  /** The editor produced (or restored) a version of the selected thumbnail. */
+  const handleEditorApply = useCallback((next: { url: string; responseId?: string; revisedPrompt?: string }) => {
+    setResults((prev) => prev.map((r, i) => (i === (selectedIndex ?? 0) ? { ...r, url: next.url, responseId: next.responseId ?? r.responseId, revisedPrompt: next.revisedPrompt ?? r.revisedPrompt } : r)))
+    onUpdateThumbnail({ imageUrl: next.url, responseId: next.responseId })
+  }, [selectedIndex, onUpdateThumbnail])
+
   const handleAutoFillFromWrite = useCallback(() => {
     const sourceHeadline = copy.headline || copy.title || ''
     const sourceSubject = copy.subject || ''
@@ -537,9 +547,22 @@ export default function ThumbnailStep({
         </div>
       )}
 
+      {error && /openai api key/i.test(error) && onRequestApiKey && (
+        <div data-testid="thumbnail-needs-openai-key" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200" role="alert">
+          Add your OpenAI key to create thumbnails with AI.
+          <button type="button" onClick={onRequestApiKey} className="ml-2 rounded-lg bg-[#22d3ee] px-3 py-1 font-bold text-black">Add OpenAI key</button>
+        </div>
+      )}
+      {results[0]?.fallbackFrom && (
+        <p className="text-[11px] text-amber-300/80" role="status">
+          {results[0].fallbackFrom} is not available to your OpenAI key yet, so GPT Image 2 made these.
+        </p>
+      )}
+
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
       <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailEditor sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
