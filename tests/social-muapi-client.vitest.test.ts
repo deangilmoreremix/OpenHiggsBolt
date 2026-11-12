@@ -5,6 +5,7 @@ const get = vi.fn();
 vi.mock('axios', () => ({ default: { post: (...a: unknown[]) => post(...a), get: (...a: unknown[]) => get(...a), delete: vi.fn() } }));
 
 import { connectSocialAccount, pollSocialResult } from '@/lib/muapi';
+import { publishOne } from '@/shared/api/publishOrchestrator';
 
 beforeEach(() => { post.mockReset(); get.mockReset(); vi.useRealTimers(); });
 
@@ -72,5 +73,28 @@ describe('polling', () => {
   it('times out with a clear message', async () => {
     get.mockResolvedValue({ data: { status: 'processing' } });
     await expect(pollSocialResult('k', 'r1', 3, 1)).rejects.toThrow(/taking longer than expected/);
+  });
+});
+
+describe('publishOne through the real poller', () => {
+  const dest = { id: 'instagram:5', platform: 'instagram', accountId: '5', enabled: true, settings: {} } as any;
+  const asset = { type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any;
+  const copy = { master: 'Hello', title: 'T', platforms: {} } as any;
+  const deps = () => ({
+    publish: { instagram: async () => ({ request_id: 'req-1' }) } as any,
+    poll: (k: string, id: string) => pollSocialResult(k, id, 3, 1), // the real poller
+  });
+
+  it('a platform rejection drops the request id (so it can be posted again)', async () => {
+    get.mockResolvedValue({ data: { status: 'failed', error: 'Video too long' } });
+    const r = await publishOne(dest, asset, copy, undefined, 'k', deps());
+    expect(r).toMatchObject({ status: 'failed', requestId: '' });
+    expect(r.error).not.toMatch(/already sent/);
+  });
+  it('a poll that never finishes keeps the request id (the post may still go live)', async () => {
+    get.mockResolvedValue({ data: { status: 'processing' } });
+    const r = await publishOne(dest, asset, copy, undefined, 'k', deps());
+    expect(r).toMatchObject({ status: 'failed', requestId: 'req-1' });
+    expect(r.error).toMatch(/already sent/);
   });
 });
