@@ -127,6 +127,18 @@ describe('ThumbnailConceptPanel', () => {
     expect(mocks.generate.mock.calls[0][0].referenceUrls).toHaveLength(4);
   });
 
+  it('stores no more extras than can be sent, also when the extras came before the source image', async () => {
+    const onResults = vi.fn();
+    const view = render(<ThumbnailConceptPanel assetType="video" onResults={onResults} onGeneratingChange={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Video title'), { target: { value: 'T' } });
+    await addPhotos(4);
+    await waitFor(() => expect(preview()).toContain('Reference image 4'));
+    view.rerender(<ThumbnailConceptPanel assetType="video" frameUrl={FRAME} onResults={onResults} onGeneratingChange={vi.fn()} />);
+    await waitFor(() => expect(preview()).toContain('Reference image 4'));
+    expect(preview()).not.toContain('Reference image 5');
+    expect(document.querySelectorAll('select[aria-label^="Role for reference"]').length).toBeLessThanOrEqual(3);
+  });
+
   it('use original photo needs a photo with the matching role, not just any reference', async () => {
     setup();
     await addPhotos(1); // a style reference only

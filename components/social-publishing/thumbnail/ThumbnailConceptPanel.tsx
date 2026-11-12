@@ -277,10 +277,13 @@ export default function ThumbnailConceptPanel({
   const addExtraReference = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
     const urls = await Promise.all(Array.from(files).filter((f) => f.type.startsWith('image/')).map(readFile));
-    setExtraRefs((prev) => [...prev, ...urls.map<ExtraReference>((url) => ({ url, role: 'style' }))].slice(0, MAX_REFERENCES_TOTAL));
-  }, []);
+    // Same source-aware cap as the picker: with a source image only 3 extras can be sent, so never store a 4th.
+    setExtraRefs((prev) => [...prev, ...urls.map<ExtraReference>((url) => ({ url, role: 'style' }))].slice(0, MAX_REFERENCES_TOTAL - (sourceUrl ? 1 : 0)));
+  }, [sourceUrl]);
 
   const maxExtra = MAX_REFERENCES_TOTAL - (sourceUrl ? 1 : 0);
+  // A source image appearing after extras were added shrinks the room: drop what the route could not use anyway.
+  useEffect(() => { setExtraRefs((prev) => (prev.length > maxExtra ? prev.slice(0, maxExtra) : prev)); }, [maxExtra]);
   const off = disabled || generating;
   const preset = getConceptPreset(presetId);
   const buttonLabel = runMode === 'concepts' ? 'Generate 3 distinct concepts' : `Generate ${count} concept${count > 1 ? 's' : ''}`;

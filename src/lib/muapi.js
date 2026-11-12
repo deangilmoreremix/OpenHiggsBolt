@@ -224,10 +224,7 @@ export class MuapiClient {
                 }
 
                 if (status === 'failed' || status === 'error') {
-                    // The platform rejected the post: it did not go live, so a retry may submit it again.
-                    const rejected = fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
-                    rejected.isRejected = true;
-                    throw rejected;
+                    throw fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
                 }
 
                 // Otherwise (processing, pending, etc.) keep polling
@@ -856,7 +853,10 @@ export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, int
     if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
     if (status === 'failed' || status === 'error') {
       const detail = typeof data.error === 'string' ? data.error : data.error?.message;
-      throw new Error(detail || 'The platform rejected the post.');
+      // The platform rejected the post: it did not go live, so it may be submitted again.
+      const rejected = new Error(detail || 'The platform rejected the post.');
+      rejected.isRejected = true;
+      throw rejected;
     }
   }
   if (lastError) throw lastError;

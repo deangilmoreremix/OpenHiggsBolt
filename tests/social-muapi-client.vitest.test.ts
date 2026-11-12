@@ -35,6 +35,16 @@ describe('polling', () => {
     get.mockResolvedValueOnce({ data: { status: 'processing' } }).mockResolvedValueOnce({ data: { status: 'completed', output: { url: 'u' } } });
     expect((await pollSocialResult('k', 'r1', 5, 1)).output.url).toBe('u');
   });
+  it('marks a platform rejection as terminal (isRejected) so the post can be submitted again, but not a timeout or a 404', async () => {
+    get.mockResolvedValue({ data: { status: 'failed', error: 'Video too long' } });
+    await expect(pollSocialResult('k', 'r1', 50, 1)).rejects.toMatchObject({ isRejected: true, message: 'Video too long' });
+    get.mockReset();
+    get.mockRejectedValue({ response: { status: 404 } });
+    await expect(pollSocialResult('k', 'r1', 5, 1)).rejects.not.toHaveProperty('isRejected');
+    get.mockReset();
+    get.mockResolvedValue({ data: { status: 'processing' } });
+    await expect(pollSocialResult('k', 'r1', 2, 1)).rejects.not.toHaveProperty('isRejected');
+  });
   it('fails immediately when the platform reports failure (no more retry-until-timeout)', async () => {
     get.mockResolvedValue({ data: { status: 'failed', error: 'Video too long' } });
     await expect(pollSocialResult('k', 'r1', 50, 1)).rejects.toThrow('Video too long');
