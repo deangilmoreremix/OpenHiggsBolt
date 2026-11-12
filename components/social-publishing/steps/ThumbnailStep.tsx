@@ -440,18 +440,19 @@ export default function ThumbnailStep({
         <span className="flex items-center gap-2"><Wand2 size={13} />Generate concepts</span>
         {showConcepts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
-      {showConcepts && (
+      {/* Kept mounted while collapsed: unmounting during a run would drop its results and leave generation locked. */}
+      <div hidden={!showConcepts}>
         <ThumbnailConceptPanel
           assetType={asset.type === 'video' ? 'video' : 'image'}
           frameUrl={assetReferenceState === 'ready' ? assetReference : null}
           existingThumbnailUrl={thumbnail.imageUrl}
           defaults={{ title: copy.title || copy.headline || '', topic: copy.subject || '' }}
-          disabled={false}
+          disabled={generating}
           onGeneratingChange={handleConceptGenerating}
           onResults={handleConceptResults}
           onError={setError}
         />
-      )}
+      </div>
 
       <div className="space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Aspect Ratio</p>

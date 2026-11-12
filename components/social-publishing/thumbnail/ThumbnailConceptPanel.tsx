@@ -40,7 +40,8 @@ const ENGINE_MODEL: Record<Engine, string> = {
 };
 
 const QUALITIES: ThumbnailQuality[] = ['auto', 'low', 'medium', 'high', 'xhigh', 'max'];
-const MAX_EXTRA_REFERENCES = 4;
+/** The route accepts at most 4 reference images in total, the source image included. */
+const MAX_REFERENCES_TOTAL = 4;
 
 const fieldStyle: React.CSSProperties = { background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' };
 const sectionStyle: React.CSSProperties = { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)' };
@@ -182,7 +183,8 @@ export default function ThumbnailConceptPanel({
       const label = source === 'frame' ? (assetType === 'video' ? 'video frame' : 'studio image') : source === 'existing' ? 'current thumbnail' : 'uploaded photo';
       list.push({ url: sourceUrl, role, label });
     }
-    extraRefs.forEach((r, i) => list.push({ url: r.url, role: r.role, label: `upload ${i + 1}` }));
+    // Only as many extra photos as the route will actually use, so every labelled reference is really sent.
+    extraRefs.slice(0, MAX_REFERENCES_TOTAL - (sourceUrl ? 1 : 0)).forEach((r, i) => list.push({ url: r.url, role: r.role, label: `upload ${i + 1}` }));
     return list;
   }, [sourceUrl, source, assetType, subject.useOriginal, subjectRole, extraRefs]);
 
@@ -215,7 +217,7 @@ export default function ThumbnailConceptPanel({
   const transparentJpeg = imageBackground === 'transparent' && outputFormat === 'jpeg';
   const formError = !sizeCheck.ok ? sizeCheck.error ?? null
     : transparentJpeg ? 'Transparent output needs PNG or WebP.'
-    : subject.useOriginal && subjectRole && references.length === 0 ? `Add a ${subjectRole} photo to use the original.`
+    : subject.useOriginal && subjectRole && !references.some((r) => r.role === subjectRole) ? `Add a ${subjectRole} photo to use the original.`
     : null;
   const shownError = formError || localError;
 
@@ -275,9 +277,10 @@ export default function ThumbnailConceptPanel({
   const addExtraReference = useCallback(async (files: FileList | null) => {
     if (!files?.length) return;
     const urls = await Promise.all(Array.from(files).filter((f) => f.type.startsWith('image/')).map(readFile));
-    setExtraRefs((prev) => [...prev, ...urls.map<ExtraReference>((url) => ({ url, role: 'style' }))].slice(0, MAX_EXTRA_REFERENCES));
+    setExtraRefs((prev) => [...prev, ...urls.map<ExtraReference>((url) => ({ url, role: 'style' }))].slice(0, MAX_REFERENCES_TOTAL));
   }, []);
 
+  const maxExtra = MAX_REFERENCES_TOTAL - (sourceUrl ? 1 : 0);
   const off = disabled || generating;
   const preset = getConceptPreset(presetId);
   const buttonLabel = runMode === 'concepts' ? 'Generate 3 distinct concepts' : `Generate ${count} concept${count > 1 ? 's' : ''}`;
@@ -354,7 +357,7 @@ export default function ThumbnailConceptPanel({
             <Field label="To"><input type="color" aria-label="Gradient to" value={background.gradientTo} onChange={(e) => setBackgroundField('gradientTo', e.target.value)} disabled={off} className="w-full h-8 rounded-lg" /></Field>
           </div>
         )}
-        {background.mode !== 'scene' && <p className="text-[10px] text-white/30">Exact colour is applied in the canvas, not by the AI; the AI only sees an approximate backdrop.</p>}
+        {background.mode !== 'scene' && <p className="text-[10px] text-white/30">The AI only sees an approximate backdrop for this colour. Pixel-exact colours come with the layer editor and are not applied yet.</p>}
         <div className="grid grid-cols-2 gap-2">
           <Field label="Palette"><input aria-label="Palette" value={background.palette} onChange={(e) => setBackgroundField('palette', e.target.value)} disabled={off} placeholder="e.g. teal and orange" className="w-full px-2.5 py-1.5 rounded-lg text-[11px] outline-none disabled:opacity-50" style={fieldStyle} /></Field>
           <Select label="Lighting" value={background.lighting} disabled={off} onChange={(v) => setBackgroundField('lighting', v)} options={['natural', 'studio', 'dramatic', 'neon', 'golden-hour', 'soft']} />
@@ -376,7 +379,7 @@ export default function ThumbnailConceptPanel({
             <button type="button" aria-label={`Remove reference ${i + 1}`} disabled={off} onClick={() => setExtraRefs((prev) => prev.filter((_, j) => j !== i))} className="p-1 text-white/40 hover:text-red-400"><X size={12} /></button>
           </div>
         ))}
-        <button type="button" disabled={off || extraRefs.length >= MAX_EXTRA_REFERENCES} onClick={() => extraRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium disabled:opacity-40" style={pillStyle(false)}>
+        <button type="button" disabled={off || extraRefs.length >= maxExtra} onClick={() => extraRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-medium disabled:opacity-40" style={pillStyle(false)}>
           <Upload size={11} /> Add reference image
         </button>
         <input ref={extraRef} type="file" accept="image/*" multiple aria-label="Add reference image" className="hidden" onChange={(e) => { void addExtraReference(e.target.files); e.target.value = ''; }} />

@@ -132,6 +132,24 @@ describe('publishing orchestrator', () => {
     expect(rFail).toMatchObject({ status: 'failed', requestId: 'req-1' });
     expect(JSON.stringify([r409, rFail])).not.toContain(KEY);
   });
+  it('a post the platform rejected (terminal failure) drops the request id so it can be submitted again', async () => {
+    const rejected = Object.assign(new Error('Generation failed: rejected by the platform'), { isFatal: true, isRejected: true });
+    const r = await publishOne(dest('instagram') as any, asset, copy as any, undefined, KEY, deps({ poll: async () => { throw rejected; } }));
+    expect(r.status).toBe('failed');
+    expect(r.requestId).toBe('');
+    expect(r.error).not.toMatch(/already sent/);
+  });
+  it('an inconclusive poll keeps the request id and says the post may still go live', async () => {
+    const r = await publishOne(dest('instagram') as any, asset, copy as any, undefined, KEY, deps({ poll: async () => { throw new Error('network down'); } }));
+    expect(r).toMatchObject({ status: 'failed', requestId: 'req-1' });
+    expect(r.error).toMatch(/already sent/);
+  });
+  it('keeps the accepted request id when the resumed attempt fails validation or has no key', async () => {
+    const noKey = await publishOne(dest('youtube') as any, asset, copy as any, undefined, '', deps(), undefined, 'req-9');
+    expect(noKey).toMatchObject({ status: 'failed', requestId: 'req-9' });
+    const badCopy = await publishOne(dest('youtube') as any, asset, { master: 'no title' } as any, undefined, KEY, deps(), undefined, 'req-9');
+    expect(badCopy).toMatchObject({ status: 'failed', requestId: 'req-9' });
+  });
   it('publishes sequentially, reports progress, and keeps going after a failure', async () => {
     let n = 0;
     const d = deps({ submit: async () => { n++; if (n === 2) throw { response: { status: 409 } }; return { request_id: `r${n}` }; } });

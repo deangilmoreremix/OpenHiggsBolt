@@ -77,8 +77,10 @@ describe('ImageEditorModal', () => {
     expect(Array.from(detail.options).map((o) => o.value)).toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max'])
     const complexity = screen.getByLabelText('Composition complexity') as HTMLSelectElement
     expect(complexity.disabled).toBe(true)
+    expect(screen.queryByTestId('smart-edit-engine-note')).toBeNull()
     fireEvent.change(engine, { target: { value: 'detail' } })
     expect(complexity.disabled).toBe(false)
+    expect(screen.getByTestId('smart-edit-engine-note').textContent).toMatch(/Smart Edit.*2\.5/)
     expect(Array.from(complexity.options).map((o) => o.value)).toEqual(['', 'low', 'medium', 'high'])
   })
 

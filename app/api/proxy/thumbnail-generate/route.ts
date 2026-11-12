@@ -45,6 +45,11 @@ const DEFAULT_MODEL = 'gpt-image-2';
 
 type Action = 'generate' | 'refine';
 
+/** GPT Image 2 has no xhigh/max: map them to the best level it supports when falling back from Images 2.6. */
+function fallbackQuality(q: string): string {
+  return q === 'xhigh' || q === 'max' ? 'high' : q;
+}
+
 /** True when OpenAI says the requested model does not exist / is not available to this key. */
 async function isModelUnavailable(res: NextResponse): Promise<boolean> {
   if (res.status === 404) return true;
@@ -175,7 +180,7 @@ export async function POST(req: NextRequest) {
     outputFormat: parsed.options.outputFormat,
     outputCompression: parsed.options.outputCompression,
   };
-  const quality = normalizeQuality(body.quality);
+  let quality = normalizeQuality(body.quality);
   const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
 
   const prompt = action === 'refine'
@@ -228,6 +233,7 @@ export async function POST(req: NextRequest) {
       if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
         fellBackFrom = model;
         model = DEFAULT_MODEL;
+        quality = fallbackQuality(quality);
         result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask, extra);
       }
     } else {
@@ -235,6 +241,7 @@ export async function POST(req: NextRequest) {
       if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
         fellBackFrom = model;
         model = DEFAULT_MODEL;
+        quality = fallbackQuality(quality);
         result = await generations(key, model, prompt, aspectRatio, n, quality, extra);
       }
     }

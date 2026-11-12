@@ -163,4 +163,17 @@ describe('thumbnail-generate route', () => {
     expect(res.status).toBe(200)
     expect((fetchMock.mock.calls[0][1].body as FormData).get('size')).toBe('1536x864')
   })
+
+  it('falls back with a quality GPT Image 2 supports (xhigh and max become high)', async () => {
+    for (const q of ['xhigh', 'max']) {
+      fetchMock.mockReset()
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'The model `gpt-image-2.6-sunburst` does not exist' } }), { status: 404 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ b64_json: 'QUJD' }] }), { status: 200 }))
+      const res = await POST(request({ action: 'generate', prompt: 'x', model: 'gpt-image-2.6-sunburst', quality: q }))
+      expect(res.status).toBe(200)
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).quality).toBe(q)
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ model: 'gpt-image-2', quality: 'high' })
+    }
+  })
 })

@@ -109,4 +109,38 @@ describe('ThumbnailConceptPanel', () => {
     await waitFor(() => expect(onError).toHaveBeenCalledWith('OpenAI API key missing'));
     expect(screen.getByTestId('concept-panel-error').textContent).toContain('OpenAI API key missing');
   });
+
+  const addPhotos = async (n: number) => {
+    if (!document.querySelector('input[type=file][aria-label="Add reference image"]')) fireEvent.click(screen.getByRole('button', { name: /Reference images/ }));
+    const input = document.querySelector('input[type=file][aria-label="Add reference image"]') as HTMLInputElement;
+    const files = Array.from({ length: n }, (_, i) => new File([`img${i}`], `p${i}.png`, { type: 'image/png' }));
+    fireEvent.change(input, { target: { files } });
+  };
+
+  it('never labels more references than the route will use (source image plus 3 extras)', async () => {
+    const { onResults } = setup({ frameUrl: FRAME });
+    await addPhotos(4);
+    await waitFor(() => expect(preview()).toContain('Reference image 4'));
+    expect(preview()).not.toContain('Reference image 5');
+    fireEvent.click(generateButton(/Generate 1 concept/));
+    await waitFor(() => expect(onResults).toHaveBeenCalled());
+    expect(mocks.generate.mock.calls[0][0].referenceUrls).toHaveLength(4);
+  });
+
+  it('use original photo needs a photo with the matching role, not just any reference', async () => {
+    setup();
+    await addPhotos(1); // a style reference only
+    fireEvent.click(screen.getByRole('button', { name: /Subject/ }));
+    fireEvent.click(screen.getByLabelText('Use original photo'));
+    await waitFor(() => expect(screen.getByTestId('concept-panel-error').textContent).toMatch(/person photo/));
+    expect(generateButton(/Generate 1 concept/).disabled).toBe(true);
+  });
+
+  it('does not promise pixel-exact colours that are not applied yet', () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /Background and style/ }));
+    fireEvent.change(screen.getByLabelText('Background type'), { target: { value: 'solid' } });
+    expect(document.body.textContent).toMatch(/not applied yet/);
+    expect(document.body.textContent).not.toMatch(/Exact colour is applied in the canvas/);
+  });
 });

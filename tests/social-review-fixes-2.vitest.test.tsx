@@ -69,4 +69,14 @@ describe('Thumbnail step after Back/Next', () => {
     expect(screen.getByTestId('thumbnail-editor')).toBeTruthy();
     expect(screen.queryByText(/Generate or pick a thumbnail/)).toBeNull();
   });
+
+  it('keeps the concept panel mounted (hidden) while collapsed so a running generation is not dropped', async () => {
+    const { default: ThumbnailStep } = await import('@/components/social-publishing/steps/ThumbnailStep');
+    render(<ThumbnailStep asset={{ type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any} thumbnail={{}} onUpdateThumbnail={() => {}} copy={empty} />);
+    const panel = document.querySelector('[aria-label="Thumbnail concept generator"]') as HTMLElement | null;
+    expect(panel).toBeTruthy(); // mounted although "Generate concepts" is collapsed
+    expect(panel!.closest('[hidden]')).toBeTruthy(); // but not visible
+    fireEvent.click(screen.getByRole('button', { name: /Generate concepts/ }));
+    expect(panel!.closest('[hidden]')).toBeNull();
+  });
 });

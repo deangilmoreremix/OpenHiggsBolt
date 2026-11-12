@@ -138,6 +138,8 @@ type Version = {
   operation: string
   prompt: string
   model: ImageEditorApplyResult['model']
+  /** Quality this version was generated with (not the current selector value). */
+  quality?: ImageQuality
   transparent: boolean
   videoReady: boolean
   responseId?: string | null
@@ -547,6 +549,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
       operation: operationId,
       prompt,
       model,
+      quality,
       transparent,
       videoReady: operationId === 'video_ready',
     } satisfies Omit<Version, 'id'>
@@ -624,6 +627,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         operation: 'custom',
         prompt: customPrompt.trim(),
         model: result.model,
+        quality: resolveQuality(chosenModel),
         transparent: false,
         videoReady: false,
         responseId: result.responseId,
@@ -946,7 +950,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
         operation: currentVersion.operation,
         prompt: currentVersion.prompt,
         model: currentVersion.model,
-        quality: currentVersion.model === 'local' ? 'local' : qualityChoice !== 'default' ? qualityChoice : isSunburst(currentVersion.model) ? 'high' : 'medium',
+        quality: currentVersion.model === 'local' ? 'local' : currentVersion.quality ?? (qualityChoice !== 'default' ? qualityChoice : isSunburst(currentVersion.model) ? 'high' : 'medium'),
         transparent: currentVersion.transparent,
         videoReady: currentVersion.videoReady,
         visionAnalysis,
@@ -1385,6 +1389,11 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
                     <select aria-label="Composition complexity" value={complexity} onChange={(e) => setComplexity(e.target.value as ComplexityChoice)} disabled={engine === 'standard'} title={engine === 'standard' ? 'Available with the Images 2.6 engines' : undefined} className="w-full rounded-lg bg-black/30 px-2 py-2 text-[10px] text-white outline-none disabled:opacity-40" style={{ border: '1px solid rgba(255,255,255,.1)' }}>
                       {COMPLEXITY_CHOICES.map((c) => <option key={c || 'unset'} value={c}>{c || 'Default'}</option>)}
                     </select>
+                    {engine !== 'standard' && (
+                      <p data-testid="smart-edit-engine-note" className="mt-1 text-[9px] text-white/40">
+                        Quick actions and masked edits use this engine. "Ask SmartVideo GO AI" (Smart Edit) runs on the matching 2.5 model and does not use complexity.
+                      </p>
+                    )}
                   </ControlLabel>
 
                   <ControlLabel label="Aspect Ratio">

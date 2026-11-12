@@ -224,7 +224,10 @@ export class MuapiClient {
                 }
 
                 if (status === 'failed' || status === 'error') {
-                    throw fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
+                    // The platform rejected the post: it did not go live, so a retry may submit it again.
+                    const rejected = fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
+                    rejected.isRejected = true;
+                    throw rejected;
                 }
 
                 // Otherwise (processing, pending, etc.) keep polling
