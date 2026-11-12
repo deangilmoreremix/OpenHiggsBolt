@@ -149,8 +149,8 @@ export default function SocialPublishModal({
     return { ...t, imageUrl: url };
   }, [apiKey, hostedThumb]);
 
-  // Only YouTube (thumbnail) and Instagram video (cover) use the thumbnail; others never need it uploaded.
-  const usesThumbnail = (platforms: string[]) => platforms.some((p) => p === 'youtube' || p === 'instagram');
+  // Only YouTube (thumbnail) and Instagram *videos* (cover) use the thumbnail; images and other platforms never need it uploaded.
+  const usesThumbnail = (platforms: string[]) => platforms.some((p) => p === 'youtube' || (p === 'instagram' && asset?.type === 'video'));
 
   const key = (d: { platform: string; accountId?: string }) => `${d.platform}:${d.accountId ?? ''}`;
 
