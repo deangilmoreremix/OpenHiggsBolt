@@ -10,7 +10,7 @@ import ExploreIdeas from '../thumbnail/ExploreIdeas';
 import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
-import ThumbnailEditor from '../thumbnail/ThumbnailEditor';
+import ThumbnailPlatformPreview from '../thumbnail/ThumbnailPlatformPreview';
 import ThumbnailConceptPanel from '../thumbnail/ThumbnailConceptPanel';
 import ThumbnailDesigner, { type DesignerResult } from '../thumbnail/designer/ThumbnailDesigner';
 import type { CanvasAdjustments } from '../thumbnail/thumbnailPrompt';
@@ -134,6 +134,8 @@ export default function ThumbnailStep({
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showConcepts, setShowConcepts] = useState(false)
   const [designing, setDesigning] = useState(false)
+  /** Open the designer straight on its "Edit a region" panel. */
+  const [designerEditRegion, setDesignerEditRegion] = useState(false)
   const [canvasAdjustments, setCanvasAdjustments] = useState<CanvasAdjustments | null>(null)
 
   const [headline, setHeadline] = useState(copy.headline || '')
@@ -336,12 +338,6 @@ export default function ThumbnailStep({
   // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
   const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
 
-  /** The editor produced (or restored) a version of the selected thumbnail. */
-  const handleEditorApply = useCallback((next: { url: string; responseId?: string; revisedPrompt?: string }) => {
-    setResults((prev) => prev.map((r, i) => (i === (selectedIndex ?? 0) ? { ...r, url: next.url, responseId: next.responseId ?? r.responseId, revisedPrompt: next.revisedPrompt ?? r.revisedPrompt } : r)))
-    onUpdateThumbnail({ imageUrl: next.url, responseId: next.responseId, design: undefined })
-  }, [selectedIndex, onUpdateThumbnail])
-
   /** Concepts made by the concept panel replace the current results, like a normal generation. */
   const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
     setError(null)
@@ -362,6 +358,7 @@ export default function ThumbnailStep({
   const handleDesignDone = useCallback((result: DesignerResult) => {
     onUpdateThumbnail({ imageUrl: result.dataUrl, responseId: undefined, design: result.project })
     setDesigning(false)
+    setDesignerEditRegion(false)
   }, [onUpdateThumbnail])
 
   /** Back to the concept picture the design was built on. */
@@ -392,8 +389,10 @@ export default function ThumbnailStep({
           aspectRatio={aspectRatio}
           headline={headline || copy.headline || ''}
           adjustments={canvasAdjustments}
+          model={selectedModel}
+          openEditRegion={designerEditRegion}
           onDone={handleDesignDone}
-          onCancel={() => setDesigning(false)}
+          onCancel={() => { setDesigning(false); setDesignerEditRegion(false) }}
         />
       )}
       <div className="space-y-4" hidden={designing}>
@@ -639,13 +638,21 @@ export default function ThumbnailStep({
           <p className="text-[10px] text-white/40">{thumbnail.design ? 'Edit the text and layers again, or go back to the picture.' : activeImageUrl ? 'Add your headline, logo, subject and arrows on top of this picture.' : 'Generate or pick a thumbnail first, then design it here.'}</p>
         </div>
         {thumbnail.design && <button type="button" onClick={handleRemoveDesign} disabled={generating} className="shrink-0 text-[10px] text-white/40 transition-colors hover:text-red-400 disabled:opacity-50">Remove design</button>}
-        <button type="button" onClick={() => setDesigning(true)} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-all disabled:opacity-50" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }}>
+        <button type="button" onClick={() => { setDesignerEditRegion(true); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+          <Wand2 size={13} />Edit a region
+        </button>
+        <button type="button" onClick={() => { setDesignerEditRegion(false); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-all disabled:opacity-50" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }}>
           <Paintbrush size={13} />{thumbnail.design ? 'Edit design' : 'Design this thumbnail'}
         </button>
       </div>
 
       <ThumbnailRefinement sourceImageUrl={activeImageUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
-      <ThumbnailEditor sourceImageUrl={activeImageUrl} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
+      {(thumbnail.design || activeImageUrl) && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30">How it will look</p>
+          <ThumbnailPlatformPreview imageUrl={thumbnail.imageUrl ?? activeImageUrl} project={thumbnail.design ?? null} />
+        </div>
+      )}
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>

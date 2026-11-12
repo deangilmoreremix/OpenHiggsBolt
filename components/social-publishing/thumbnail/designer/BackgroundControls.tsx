@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Wand2 } from 'lucide-react';
 import type { CanvasAdjustments } from '../thumbnailPrompt';
 import type { DesignBackground } from './model';
 import { ColorField, SliderField, ToggleGroup } from './designerUi';
@@ -13,9 +13,15 @@ export interface BackgroundControlsProps {
   /** Values planned in the concept panel (exact colour, blur, contrast, saturation). */
   planned?: CanvasAdjustments | null;
   onUploadBackground: (file: File) => void;
+  /** Open the "Edit a region" panel for the background picture. */
+  onEditRegion?: () => void;
+  /** Saved background versions, and saving / switching between them. */
+  variants?: string[];
+  onSaveVariant?: () => void;
+  onPickVariant?: (src: string) => void;
 }
 
-export default function BackgroundControls({ background: b, onChange, planned, onUploadBackground }: BackgroundControlsProps) {
+export default function BackgroundControls({ background: b, onChange, planned, onUploadBackground, onEditRegion, variants = [], onSaveVariant, onPickVariant }: BackgroundControlsProps) {
   const backdrop = plannedBackdrop(planned);
   const adjusted = b.blur !== 0 || b.brightness !== 100 || b.contrast !== 100 || b.saturation !== 100;
   return (
@@ -31,6 +37,31 @@ export default function BackgroundControls({ background: b, onChange, planned, o
         Upload a background picture
         <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload background picture" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadBackground(f); e.target.value = ''; }} />
       </label>
+
+      {b.mode === 'image' && b.imageSrc && (
+        <div className="space-y-2" data-testid="background-variants">
+          {onEditRegion && (
+            <button type="button" onClick={onEditRegion} className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[11px] font-semibold transition-colors hover:bg-white/5" style={{ border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+              <Wand2 size={13} />Edit a region of the picture
+            </button>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-medium text-white/40">Background versions</p>
+            {onSaveVariant && (
+              <button type="button" onClick={onSaveVariant} disabled={variants.includes(b.imageSrc)} className="rounded-lg px-2.5 py-1 text-[10px] text-white/60 transition-colors hover:bg-white/5 disabled:opacity-40" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>Save as variant</button>
+            )}
+          </div>
+          {variants.length > 0 && (
+            <div className="flex flex-wrap gap-2" role="list" aria-label="Saved background versions">
+              {variants.map((v, i) => (
+                <button key={v} type="button" role="listitem" onClick={() => onPickVariant?.(v)} aria-label={`Use background version ${i + 1}`} aria-current={v === b.imageSrc} className="h-10 w-16 overflow-hidden rounded-md" style={{ border: `2px solid ${v === b.imageSrc ? '#22d3ee' : 'rgba(255,255,255,0.12)'}` }}>
+                  <img src={v} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {b.mode === 'solid' && <ColorField label="Background colour" value={b.color} onChange={(color) => onChange({ color })} />}
       {b.mode === 'gradient' && (

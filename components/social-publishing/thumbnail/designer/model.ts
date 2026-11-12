@@ -97,7 +97,11 @@ export interface DesignProject {
   height: number
   background: DesignBackground
   layers: Layer[]
+  /** Saved background pictures (edited versions of the background) to switch between. */
+  variants?: string[]
 }
+
+export const MAX_VARIANTS = 12
 
 export const DEFAULT_FONTS = ['Inter, system-ui, sans-serif', 'Impact, Haettenschweiler, sans-serif', 'Georgia, serif', 'Arial Black, Arial, sans-serif', 'Courier New, monospace'] as const
 
@@ -121,7 +125,23 @@ export function sanitizeProject(value: unknown): DesignProject | null {
   if (!v || v.version !== 1 || !Number.isFinite(v.width) || !Number.isFinite(v.height) || !v.background || !Array.isArray(v.layers)) return null
   if ((v.width as number) < 16 || (v.height as number) < 16 || (v.width as number) > 8192 || (v.height as number) > 8192) return null
   const layers = v.layers.filter((l) => l && typeof l.id === 'string' && ['image', 'text', 'shape'].includes((l as Layer).kind) && [l.x, l.y, l.w, l.h].every(Number.isFinite)) as Layer[]
-  return { version: 1, width: v.width as number, height: v.height as number, background: { ...defaultBackground(), ...v.background }, layers }
+  const variants = Array.isArray(v.variants)
+    ? Array.from(new Set(v.variants.filter((u): u is string => typeof u === 'string' && /^(data:image\/|https?:\/\/)/.test(u)))).slice(0, MAX_VARIANTS)
+    : []
+  return { version: 1, width: v.width as number, height: v.height as number, background: { ...defaultBackground(), ...v.background }, layers, ...(variants.length ? { variants } : {}) }
+}
+
+/** Remember the current background picture as a variant (no duplicates, newest last, capped). */
+export function saveVariant(p: DesignProject, src: string | undefined = p.background.imageSrc): DesignProject {
+  if (!src) return p
+  const list = p.variants ?? []
+  if (list.includes(src)) return p
+  return { ...p, variants: [...list, src].slice(-MAX_VARIANTS) }
+}
+
+/** Swap only the background picture: layers and every adjustment stay exactly as they are. */
+export function swapBackgroundImage(p: DesignProject, src: string): DesignProject {
+  return { ...p, background: { ...p.background, mode: 'image', imageSrc: src } }
 }
 
 const base = (kind: LayerKind, name: string, x: number, y: number, w: number, h: number): LayerBase => ({
@@ -324,7 +344,7 @@ export function isHighlighted(l: TextLayer, word: string): boolean {
 // ---------------------------------------------------------------- quality checks
 
 export interface DesignWarning {
-  id: 'clipped-text' | 'low-contrast' | 'crowded' | 'outside-safe-area'
+  id: 'clipped-text' | 'low-contrast' | 'crowded' | 'outside-safe-area' | 'covered-by-badge' | 'cropped-out'
   layerId?: string
   message: string
 }
@@ -357,7 +377,92 @@ function backgroundSamples(p: DesignProject, l: TextLayer): string[] {
   return []
 }
 
-export function designChecks(p: DesignProject, measure: Measure, opts: { safeMargin?: number } = {}): DesignWarning[] {
+// ---------------------------------------------------------------- platform safe zones
+
+export type PlatformId = 'youtube' | 'reels' | 'portrait' | 'square'
+
+/** A rectangle as fractions of the thumbnail as the viewer sees it (0..1). */
+export interface ZoneRect { x: number; y: number; w: number; h: number }
+
+export interface PlatformZones {
+  id: PlatformId
+  label: string
+  /** Width / height of the shape the platform shows. */
+  ratio: number
+  /** Parts the platform's own interface draws over the picture. */
+  covered: Array<ZoneRect & { label: string }>
+}
+
+export const PLATFORM_ZONES: Record<PlatformId, PlatformZones> = {
+  youtube: { id: 'youtube', label: 'YouTube', ratio: 16 / 9, covered: [{ x: 0.82, y: 0.84, w: 0.18, h: 0.16, label: 'Duration badge' }] },
+  reels: {
+    id: 'reels', label: 'Reels / TikTok', ratio: 9 / 16,
+    covered: [{ x: 0, y: 0.76, w: 1, h: 0.24, label: 'Caption and buttons' }, { x: 0.84, y: 0.42, w: 0.16, h: 0.34, label: 'Like and share buttons' }],
+  },
+  portrait: { id: 'portrait', label: 'IG/FB 4:5', ratio: 4 / 5, covered: [] },
+  square: { id: 'square', label: 'Instagram 1:1', ratio: 1, covered: [] },
+}
+
+/** Which platform a canvas shape is made for. */
+export function platformsForCanvas(width: number, height: number): PlatformId[] {
+  const r = width / height
+  if (r > 1.4) return ['youtube']
+  if (r < 0.6) return ['reels']
+  if (r < 0.9) return ['portrait']
+  return ['square']
+}
+
+/** The part of the canvas a platform shows when the picture is centre-cropped (cover) to its shape, as canvas pixels. */
+export function visibleCrop(p: Pick<DesignProject, 'width' | 'height'>, ratio: number): { x: number; y: number; w: number; h: number } {
+  const canvasRatio = p.width / p.height
+  if (canvasRatio > ratio) { const w = p.height * ratio; return { x: (p.width - w) / 2, y: 0, w, h: p.height } }
+  const h = p.width / ratio
+  return { x: 0, y: (p.height - h) / 2, w: p.width, h }
+}
+
+/** The area a layer visibly fills (text: its lines, not the whole box), as an unrotated canvas rectangle. */
+function contentRect(l: Layer, measure: Measure): { x: number; y: number; w: number; h: number } {
+  if (l.kind !== 'text') return { x: l.x, y: l.y, w: l.w, h: l.h }
+  const lay = textLayout(l, measure)
+  const pad = l.box ? l.box.padding : 0
+  const w = l.box ? l.w : Math.min(l.w, lay.widest + pad * 2)
+  const h = l.box ? l.h : Math.min(l.h, lay.height)
+  const x = l.align === 'center' ? l.x + (l.w - w) / 2 : l.align === 'right' ? l.x + l.w - w : l.x
+  return { x, y: l.y, w, h }
+}
+
+const overlapArea = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+  Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
+
+function platformChecks(p: DesignProject, measure: Measure, platforms: PlatformId[]): DesignWarning[] {
+  const out: DesignWarning[] = []
+  const important = p.layers.filter((l) => !l.hidden && (l.kind === 'text' ? l.text.trim().length > 0 : l.kind === 'image' && (l.role === 'logo' || l.role === 'subject')))
+  for (const id of platforms) {
+    const zones = PLATFORM_ZONES[id]
+    const crop = visibleCrop(p, zones.ratio)
+    for (const l of important) {
+      const r = contentRect(l, measure)
+      const area = r.w * r.h
+      if (area <= 0) continue
+      const visible = overlapArea(r, crop)
+      if (visible < area * 0.98 && l.kind !== 'image') {
+        out.push({ id: 'cropped-out', layerId: l.id, message: `"${l.name}" is cut off on ${zones.label}, which crops this picture to its own shape.` })
+        continue
+      }
+      for (const z of zones.covered) {
+        const zr = { x: crop.x + z.x * crop.w, y: crop.y + z.y * crop.h, w: z.w * crop.w, h: z.h * crop.h }
+        const hit = overlapArea(r, zr)
+        if (hit > 0 && hit >= Math.min(area, zr.w * zr.h) * 0.15) {
+          out.push({ id: 'covered-by-badge', layerId: l.id, message: `"${l.name}" sits under the ${z.label.toLowerCase()} on ${zones.label}. Move it away from that corner.` })
+          break
+        }
+      }
+    }
+  }
+  return out
+}
+
+export function designChecks(p: DesignProject, measure: Measure, opts: { safeMargin?: number; platforms?: PlatformId[] } = {}): DesignWarning[] {
   const warnings: DesignWarning[] = []
   const margin = opts.safeMargin ?? 0.04
   const texts = p.layers.filter((l): l is TextLayer => l.kind === 'text' && !l.hidden && l.text.trim().length > 0)
@@ -385,5 +490,6 @@ export function designChecks(p: DesignProject, measure: Measure, opts: { safeMar
   if (textArea / (p.width * p.height) > 0.45 || overlapping) {
     warnings.push({ id: 'crowded', message: overlapping ? 'Two text layers overlap.' : 'There is a lot of text; thumbnails read best with a few big words.' })
   }
+  if (opts.platforms?.length) warnings.push(...platformChecks(p, measure, opts.platforms))
   return warnings
 }

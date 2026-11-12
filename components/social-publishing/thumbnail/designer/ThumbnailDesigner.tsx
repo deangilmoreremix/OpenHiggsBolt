@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, Download, Loader2, Redo2, Square, Type, Undo2, Upload } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Download, Loader2, Redo2, Square, Type, Undo2, Upload, Wand2 } from 'lucide-react';
 import type { CanvasAdjustments } from '../thumbnailPrompt';
 import { THUMBNAIL_MAX_BYTES } from '@/lib/thumbnailUpload';
 import {
-  addLayer, createProject, designChecks, duplicateLayer, makeImageLayer, makeShapeLayer, makeTextLayer, moveLayer, removeLayer, sanitizeProject, updateLayer,
+  addLayer, createProject, designChecks, duplicateLayer, makeImageLayer, makeShapeLayer, makeTextLayer, moveLayer, platformsForCanvas, removeLayer, sanitizeProject, saveVariant, swapBackgroundImage, updateLayer,
   type DesignBackground, type DesignProject, type ImageLayer, type ImageRole, type Layer, type MoveDirection, type ShapeType,
 } from './model';
 import { exportProject, type ExportFormat } from './exportImage';
@@ -16,6 +16,8 @@ import DesignerStage from './DesignerStage';
 import LayerPanel from './LayerPanel';
 import Inspector from './Inspector';
 import BackgroundControls from './BackgroundControls';
+import EditRegionPanel from './EditRegionPanel';
+import ThumbnailPlatformPreview from '../ThumbnailPlatformPreview';
 
 export interface DesignerResult {
   file: File;
@@ -38,6 +40,10 @@ export interface ThumbnailDesignerProps {
   headline?: string;
   /** Exact blur / contrast / saturation (and planned colour) from the concept panel. */
   adjustments?: CanvasAdjustments | null;
+  /** Image model picked in the Thumbnail step, used by "Edit a region". */
+  model?: string;
+  /** Open on the "Edit a region" panel. */
+  openEditRegion?: boolean;
   onDone: (result: DesignerResult) => void;
   onCancel?: () => void;
 }
@@ -84,7 +90,7 @@ function PhonePreview({ project, assets }: { project: DesignProject; assets: Ren
   );
 }
 
-export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, aspectRatio, headline, adjustments, onDone, onCancel }: ThumbnailDesignerProps) {
+export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, aspectRatio, headline, adjustments, model, openEditRegion, onDone, onCancel }: ThumbnailDesignerProps) {
   const [project, setProject] = useState<DesignProject>(() => {
     const saved = sanitizeProject(initialProject);
     if (saved) return saved;
@@ -104,6 +110,8 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
   const [assets, setAssets] = useState<RenderAssets>({});
   const [loadErrors, setLoadErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editNote, setEditNote] = useState<string | null>(null);
   const [cutOutBusy, setCutOutBusy] = useState(false);
   const [format, setFormat] = useState<ExportFormat>('image/png');
   const [exporting, setExporting] = useState(false);
@@ -208,6 +216,19 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     commit({ ...p, background: { ...p.background, ...patch } }, `bg:${Object.keys(patch).join(',')}`);
   }, [commit]);
 
+  const canEditRegion = project.background.mode === 'image' && !!project.background.imageSrc;
+  useEffect(() => { if (openEditRegion && canEditRegion) setEditing(true); }, [openEditRegion, canEditRegion]);
+  // Leave the panel when the picture it edits goes away (undo to a solid background).
+  useEffect(() => { if (editing && !canEditRegion) setEditing(false); }, [editing, canEditRegion]);
+
+  /** An edited background replaces ONLY the background picture, through the undo history; layers are untouched. */
+  const acceptRegionEdit = useCallback((result: { url: string }) => {
+    commit(swapBackgroundImage(projectRef.current, result.url));
+    setEditNote('Background updated. Your layers were not touched. Undo brings the old background back.');
+  }, [commit]);
+  const onSaveVariant = useCallback(() => commit(saveVariant(projectRef.current)), [commit]);
+  const onPickVariant = useCallback((src: string) => commit(swapBackgroundImage(projectRef.current, src)), [commit]);
+
   const readImageFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) throw new Error('Choose a PNG, JPEG or WebP picture.');
     if (file.size > MAX_UPLOAD_BYTES) throw new Error('That picture is larger than 20 MB. Choose a smaller one.');
@@ -260,7 +281,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
   }, [assets, edit, selected]);
 
   // ---- checks and export
-  const warnings = useMemo(() => designChecks(project, measure), [project, measure]);
+  const warnings = useMemo(() => designChecks(project, measure, { platforms: platformsForCanvas(project.width, project.height) }), [project, measure, project.width, project.height]);
   const brokenPictures = Object.values(loadErrors);
 
   const doExport = useCallback(async () => {
@@ -309,6 +330,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
         <UploadButton label="Logo" onFile={(f) => addImage(f, 'logo')} />
         <UploadButton label="Photo" onFile={(f) => addImage(f, 'photo')} />
         <UploadButton label="Subject" onFile={(f) => addImage(f, 'subject')} />
+        <button type="button" className={addBtn} style={{ ...addStyle, opacity: canEditRegion ? 1 : 0.4 }} disabled={!canEditRegion} onClick={() => { setEditNote(null); setEditing(true); }}><Wand2 size={12} />Edit a region</button>
         {SHAPES.map((s) => (
           <button key={s.shape} type="button" className={addBtn} style={addStyle} onClick={() => addNew(makeShapeLayer(projectRef.current, s.shape))}><Square size={11} />{s.label}</button>
         ))}
@@ -318,6 +340,22 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
         <p role="alert" className="flex items-start gap-2 rounded-lg p-2.5 text-[11px] text-amber-200" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}><AlertCircle size={13} className="mt-0.5 shrink-0" />{message}</p>
       )}
 
+      {editing && canEditRegion && (
+        <div className="space-y-2">
+          <EditRegionPanel
+            sourceUrl={project.background.imageSrc as string}
+            boxWidth={project.width}
+            boxHeight={project.height}
+            model={model}
+            aspectRatio={aspectRatio}
+            onAccept={acceptRegionEdit}
+            onClose={() => setEditing(false)}
+          />
+          {editNote && <p role="status" className="text-[11px] text-emerald-300">{editNote}</p>}
+        </div>
+      )}
+
+      <div hidden={editing && canEditRegion}>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-2">
           <DesignerStage project={project} assets={assets} selectedId={selectedId} onSelect={setSelectedId} onGestureStart={pushHistory} onChange={apply} onDelete={onDelete} onUndo={undo} onRedo={redo} />
@@ -344,7 +382,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
           )}
           {tab === 'background' && (
             <div role="tabpanel" id="designer-panel-background" aria-labelledby="designer-tab-background">
-              <BackgroundControls background={project.background} onChange={editBackground} planned={adjustments} onUploadBackground={uploadBackground} />
+              <BackgroundControls background={project.background} onChange={editBackground} planned={adjustments} onUploadBackground={uploadBackground} onEditRegion={() => { setEditNote(null); setEditing(true); }} variants={project.variants} onSaveVariant={onSaveVariant} onPickVariant={onPickVariant} />
             </div>
           )}
           {tab === 'checks' && (
@@ -364,6 +402,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
           )}
         </div>
       </div>
+      </div>
 
       <div className="flex flex-wrap items-end gap-4 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }} data-testid="designer-export">
         <PhonePreview project={project} assets={assets} />
@@ -381,6 +420,10 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
           </button>
           {exported && <p role="status" className="flex items-center gap-1.5 text-[11px] text-emerald-300"><CheckCircle2 size={12} />Saved as the thumbnail: {exported}</p>}
         </div>
+      </div>
+      <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/30">How it will look</p>
+        <ThumbnailPlatformPreview project={project} assets={assets} />
       </div>
     </div>
   );
