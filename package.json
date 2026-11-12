@@ -144,6 +144,7 @@
     }
   },
   "dependencies": {
+    "@bg0/browser": "0.1.1",
     "@clerk/backend": "3.23.0",
     "@clerk/nextjs": "^7.5.13",
     "@crawlee/cheerio": "^3.18.1",
