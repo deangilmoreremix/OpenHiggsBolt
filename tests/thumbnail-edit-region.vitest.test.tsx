@@ -298,4 +298,23 @@ describe('Edit a region: natural size survives accepting a previewed edit', () =
     await waitFor(() => expect((globalThis as any).__maskArgs).toBeDefined());
     expect((globalThis as any).__maskArgs.slice(0, 2)).toEqual([1000, 720]);
   });
+
+  it('after discarding a loaded preview, drawing waits until the original has loaded again', async () => {
+    mocks.refine.mockResolvedValue([{ url: NEW }]);
+    setup();
+    sized(screen.getByAltText('Current background preview'), 1000, 720);
+    describeIt('darker sky');
+    fireEvent.click(applyBtn());
+    await screen.findByTestId('thumbnail-edit-result');
+    sized(screen.getByAltText('Edited background preview'), 1000, 720);
+    fireEvent.click(screen.getByRole('button', { name: /Discard/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Draw on it/ }));
+    draw();
+    describeIt('move the text here');
+    // the <img> is switching back to the original but has not reloaded: markup must not read it
+    expect(applyBtn().disabled).toBe(true);
+    sized(screen.getByAltText('Current background preview'), 1000, 720);
+    draw();
+    expect(applyBtn().disabled).toBe(false);
+  });
 });

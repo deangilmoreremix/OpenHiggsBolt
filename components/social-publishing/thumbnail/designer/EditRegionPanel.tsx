@@ -41,6 +41,8 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
   const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState<ThumbnailRefineResult | null>(null);
   const [showBefore, setShowBefore] = useState(false);
+  // The picture the <img> element has actually finished loading (it can lag behind sourceUrl after a Discard).
+  const [readyFor, setReadyFor] = useState<string | null>(null);
   const [dims, setDims] = useState<Record<string, { w: number; h: number }>>({});
 
   const imgRef = useRef<HTMLImageElement>(null);
@@ -67,7 +69,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
   const natW = nat?.w || boxWidth;
   const natH = nat?.h || boxHeight;
   // Mask and markup edits work in the picture's own pixels, so they wait until the current picture has reported its size.
-  const loaded = !!nat;
+  const loaded = !!nat && readyFor === sourceUrl;
   const fit = coverFit(natW, natH, boxWidth, boxHeight);
 
   const paint = useCallback(
@@ -198,7 +200,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
           ref={imgRef}
           src={shown}
           alt={pending && !showBefore ? 'Edited background preview' : 'Current background preview'}
-          onLoad={(e) => { const { naturalWidth: w, naturalHeight: h } = e.currentTarget; if (w && h) setDims((d) => ({ ...d, [shown]: { w, h } })); }}
+          onLoad={(e) => { const { naturalWidth: w, naturalHeight: h } = e.currentTarget; if (w && h) { setDims((d) => ({ ...d, [shown]: { w, h } })); setReadyFor(shown); } }}
           className="absolute inset-0 block h-full w-full object-cover"
         />
         {mode !== 'prompt' && !pending && (
