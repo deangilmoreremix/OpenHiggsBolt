@@ -103,6 +103,8 @@ export async function publishOne(
   apiKey: string,
   deps: PublishDeps = defaultDeps,
   onSubmitted?: (requestId: string) => void,
+  /** The post was already accepted by MuAPI: only check its result again, never submit it a second time. */
+  resumeRequestId?: string,
 ): Promise<PublishResult> {
   const platform = destination.platform as PlatformId
   const spec = PLATFORM_SPECS[platform]
@@ -144,8 +146,12 @@ export async function publishOne(
     return result
   }
 
-  let requestId = ''
+  let requestId = resumeRequestId || ''
   try {
+    if (resumeRequestId) {
+      const again = await deps.poll(apiKey, resumeRequestId)
+      return await finish(again?.output ?? again?.data?.output ?? again, resumeRequestId)
+    }
     const submit = await deps.publish[platform](apiKey, built.payload)
     requestId = String(submit?.request_id || submit?.id || '')
     if (!requestId) {
@@ -160,6 +166,10 @@ export async function publishOne(
     const out = final?.output ?? final?.data?.output ?? final
     return await finish(out, requestId)
   } catch (err) {
+    // Once MuAPI has accepted the post (we hold a request id) a polling failure does not mean it did not post.
+    if (requestId) {
+      return fail(`${describePublishError(err, label)} The post was already sent to ${label}, so it may still go live. Use "Check again" instead of posting it a second time.`, requestId)
+    }
     return fail(describePublishError(err, label), requestId)
   }
 }

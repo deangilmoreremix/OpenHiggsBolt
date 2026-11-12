@@ -235,7 +235,7 @@ export default function ReviewPublishStep({
                         className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-40"
                       >
                         {isRetrying ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                        Retry
+                        {r.requestId ? 'Check again' : 'Retry'}
                       </button>
                     )}
                   </div>

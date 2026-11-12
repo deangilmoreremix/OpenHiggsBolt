@@ -149,6 +149,9 @@ export default function SocialPublishModal({
     return { ...t, imageUrl: url };
   }, [apiKey, hostedThumb]);
 
+  // Only YouTube (thumbnail) and Instagram video (cover) use the thumbnail; others never need it uploaded.
+  const usesThumbnail = (platforms: string[]) => platforms.some((p) => p === 'youtube' || p === 'instagram');
+
   const key = (d: { platform: string; accountId?: string }) => `${d.platform}:${d.accountId ?? ''}`;
 
   /**
@@ -167,7 +170,7 @@ export default function SocialPublishModal({
       setPublishError(null);
       try {
         const ready = await resolveAsset(asset);
-        const readyThumb = await resolveThumbnail(thumbnail);
+        const readyThumb = usesThumbnail(todo.map((d) => d.platform)) ? await resolveThumbnail(thumbnail) : thumbnail;
         const keep = publishResults.filter((r) => !todo.some((d) => key(d) === key(r)));
         await publishOrchestrator({
           destinations: todo,
@@ -195,10 +198,12 @@ export default function SocialPublishModal({
       setPublishError(null);
       try {
         const ready = await resolveAsset(asset);
-        const readyThumb = await resolveThumbnail(thumbnail);
+        const readyThumb = usesThumbnail([dest.platform]) ? await resolveThumbnail(thumbnail) : thumbnail;
         const others = publishResults.filter((r) => !(r.platform === platform && r.accountId === accountId));
         updatePublishResults([...others, { platform, accountId, status: 'processing', requestId: '' }], session);
-        const result = await publishOne(dest, ready, copy, readyThumb, apiKey);
+        // An already-accepted post is only re-checked, never submitted again.
+        const earlier = publishResults.find((r) => r.platform === platform && r.accountId === accountId && r.status === 'failed' && r.requestId);
+        const result = await publishOne(dest, ready, copy, readyThumb, apiKey, undefined, undefined, earlier?.requestId);
         updatePublishResults([...others, result], session);
       } catch (err) {
         if (sessionRef.current === session) setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
@@ -297,7 +302,7 @@ export default function SocialPublishModal({
             {/* Main editor */}
             <div className="flex-1 min-w-0">
               {currentStep === 0 && safeAsset && (
-                <WriteStep asset={safeAsset} copy={writeCopy} onUpdateCopy={updateWriteCopy} onRequestApiKey={onRequestApiKey ? () => { onClose(); onRequestApiKey(); } : undefined} />
+                <WriteStep asset={safeAsset} copy={writeCopy} onUpdateCopy={updateWriteCopy} sessionId={sessionId} onRequestApiKey={onRequestApiKey ? () => { onClose(); onRequestApiKey(); } : undefined} />
               )}
               {currentStep === 1 && safeAsset && (
                 <ThumbnailStep

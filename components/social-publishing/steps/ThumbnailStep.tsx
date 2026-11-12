@@ -324,6 +324,9 @@ export default function ThumbnailStep({
     }
   }, [onUpdateThumbnail])
 
+  // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
+  const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
+
   /** The editor produced (or restored) a version of the selected thumbnail. */
   const handleEditorApply = useCallback((next: { url: string; responseId?: string; revisedPrompt?: string }) => {
     setResults((prev) => prev.map((r, i) => (i === (selectedIndex ?? 0) ? { ...r, url: next.url, responseId: next.responseId ?? r.responseId, revisedPrompt: next.revisedPrompt ?? r.revisedPrompt } : r)))
@@ -561,8 +564,8 @@ export default function ThumbnailStep({
 
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
-      <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
-      <ThumbnailEditor sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
+      <ThumbnailRefinement sourceImageUrl={activeImageUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailEditor sourceImageUrl={activeImageUrl} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>

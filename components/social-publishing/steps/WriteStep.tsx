@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Copy as CopyIcon,
   Loader2,
@@ -97,7 +97,17 @@ function getPrefillTopic(asset: WriteStepProps['asset']): string {
   )
 }
 
-export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteStepProps) {
+export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey, sessionId }: WriteStepProps) {
+  // AI writing can still be running when the modal is reopened for another asset: its answer must not land there.
+  const sessionRef = useRef(sessionId)
+  sessionRef.current = sessionId
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+  const isStale = (startedIn: number | undefined) => !mountedRef.current || sessionRef.current !== startedIn
+
   const [topic, setTopic] = useState(getPrefillTopic(asset))
   const [activePlatform, setActivePlatform] = useState('master')
   const [loading, setLoading] = useState(false)
@@ -156,8 +166,11 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
   function updatePlatformText(platformId: string, text: string) {
     // YouTube publishes `description`; keep the generated and the edited text in the same field
     const field = platformId === 'youtube' ? 'description' : 'caption'
-    const next = {
+    const prevEdited = localCopy.edited || {}
+    const next: CopyState = {
       ...localCopy,
+      // remember the touch (even a cleared field) so the studio's value cannot come back for this platform
+      edited: { ...prevEdited, platforms: { ...(prevEdited.platforms || {}), [platformId]: { ...(prevEdited.platforms?.[platformId] || {}), [field]: true } } },
       platforms: {
         ...localCopy.platforms,
         [platformId]: {
@@ -174,12 +187,14 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
       setError('Enter a post topic first')
       return
     }
+    const startedIn = sessionRef.current
     setLoading(true)
     setError(null)
     setNeedsOpenAiKey(false)
     setStatus('Generating copy variants…')
     try {
       const result = await generateCopy(topic, asset)
+      if (isStale(startedIn)) return
       const master = result.masterPost || ''
       const variants = localCopy.variants.map((v, idx) => ({
         ...v,
@@ -228,6 +243,7 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
       setError('Add some copy first')
       return
     }
+    const startedIn = sessionRef.current
     setLoading(true)
     setError(null)
     setNeedsOpenAiKey(false)
@@ -276,6 +292,7 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey }: WriteS
         default:
           throw new Error('Unknown action')
       }
+      if (isStale(startedIn)) return
       if (activePlatform === 'master') {
         updateMaster(resultText)
       } else {

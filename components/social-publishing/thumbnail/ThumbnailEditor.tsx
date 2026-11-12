@@ -41,14 +41,26 @@ export default function ThumbnailEditor({ sourceImageUrl, model, aspectRatio = '
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef<Stroke | null>(null);
+  // Identifies the edit request in flight; bumped whenever the thumbnail changes so a late answer is dropped.
+  const requestId = useRef(0);
+  // The URL this editor just handed to onApply (accepted edit or undo): that change keeps the history.
+  const selfChange = useRef<string | null>(null);
 
-  // A different thumbnail was picked: start clean.
+  // The source changed: drop anything tied to the old image.
   useEffect(() => {
+    requestId.current += 1;
+    setBusy(false);
     setStrokes([]);
     setPending(null);
     setShowBefore(false);
     setError(null);
     setNote(null);
+    if (selfChange.current === sourceImageUrl) {
+      selfChange.current = null; // our own accept/undo: keep the undo history
+    } else {
+      selfChange.current = null;
+      setHistory([]); // a different thumbnail was picked: its edits are not ours to undo
+    }
   }, [sourceImageUrl]);
 
   const paint = useCallback(
@@ -97,11 +109,13 @@ export default function ThumbnailEditor({ sourceImageUrl, model, aspectRatio = '
   };
 
   const hasDrawing = strokes.some((s) => !s.erase);
-  const canApply = !!sourceImageUrl && !busy && !disabled && prompt.trim().length > 0 && (mode === 'prompt' || hasDrawing);
+  // Describe needs an instruction; paint needs a painted area and what to put there; markup only needs the drawing (the note is optional).
+  const canApply = !!sourceImageUrl && !busy && !disabled && (mode === 'markup' ? hasDrawing : prompt.trim().length > 0 && (mode === 'prompt' || hasDrawing));
 
   const apply = useCallback(async () => {
     const img = imgRef.current;
     if (!sourceImageUrl || !img || !canApply) return;
+    const id = ++requestId.current;
     setBusy(true);
     setError(null);
     setNote(null);
@@ -120,6 +134,7 @@ export default function ThumbnailEditor({ sourceImageUrl, model, aspectRatio = '
         text = `${MARKUP_INSTRUCTION} ${text}`;
       }
       const [first] = await refineThumbnail({ imageUrl, prompt: text, aspectRatio, n: 1, quality, model, maskUrl });
+      if (id !== requestId.current) return; // the user moved to another thumbnail meanwhile
       if (!first) throw new Error('No image came back. Try again.');
       setPending(first);
       setShowBefore(false);
@@ -127,15 +142,16 @@ export default function ThumbnailEditor({ sourceImageUrl, model, aspectRatio = '
         setNote(`Your key cannot use ${first.fallbackFrom} yet, so GPT Image 2 made this edit.`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The edit failed. Try again.');
+      if (id === requestId.current) setError(err instanceof Error ? err.message : 'The edit failed. Try again.');
     } finally {
-      setBusy(false);
+      if (id === requestId.current) setBusy(false);
     }
   }, [sourceImageUrl, canApply, prompt, mode, strokes, aspectRatio, quality, model]);
 
   const accept = () => {
     if (!pending || !sourceImageUrl) return;
     setHistory((h) => [...h, sourceImageUrl].slice(-10));
+    selfChange.current = pending.url;
     onApply({ url: pending.url, responseId: pending.responseId, revisedPrompt: pending.revisedPrompt });
     setPending(null);
     setStrokes([]);
@@ -146,6 +162,7 @@ export default function ThumbnailEditor({ sourceImageUrl, model, aspectRatio = '
     const prev = history[history.length - 1];
     if (!prev) return;
     setHistory((h) => h.slice(0, -1));
+    selfChange.current = prev;
     onApply({ url: prev });
     setPending(null);
   };

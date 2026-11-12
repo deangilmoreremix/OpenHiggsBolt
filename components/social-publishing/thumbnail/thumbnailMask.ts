@@ -61,7 +61,14 @@ export function composeMarkup(img: HTMLImageElement, strokes: Stroke[]): string 
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Drawing is not supported in this browser.')
   ctx.drawImage(img, 0, 0)
-  drawStrokes(ctx, strokes, '#ff2d2d')
+  // Strokes go on their own transparent layer first, so the eraser removes only markup (never the picture).
+  const overlay = document.createElement('canvas')
+  overlay.width = img.naturalWidth
+  overlay.height = img.naturalHeight
+  const octx = overlay.getContext('2d')
+  if (!octx) throw new Error('Drawing is not supported in this browser.')
+  drawStrokes(octx, strokes, '#ff2d2d')
+  ctx.drawImage(overlay, 0, 0)
   return canvas.toDataURL('image/png')
 }
 

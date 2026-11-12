@@ -118,6 +118,46 @@ describe('ThumbnailEditor', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Add your OpenAI key in Settings, then try again/));
   });
 
+  it('draw mode needs only the drawing; the note is optional', async () => {
+    mocks.refine.mockResolvedValue([{ url: NEW }]);
+    setup();
+    fireEvent.click(screen.getByRole('tab', { name: 'Draw on it' }));
+    expect((screen.getByRole('button', { name: /Apply edit/ }) as HTMLButtonElement).disabled).toBe(true);
+    draw();
+    const apply = screen.getByRole('button', { name: /Apply edit/ }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(apply);
+    await waitFor(() => expect(mocks.refine).toHaveBeenCalled());
+    expect(mocks.refine.mock.calls[0][0].prompt).toMatch(/^The image has red markup/);
+  });
+
+  it('drops an edit result that finishes after another thumbnail was selected', async () => {
+    let resolve!: (v: any) => void;
+    mocks.refine.mockImplementation(() => new Promise((r) => { resolve = r; }));
+    const onApply = vi.fn();
+    const { rerender } = render(<ThumbnailEditor sourceImageUrl={SRC} onApply={onApply} />);
+    describeIt('x');
+    fireEvent.click(screen.getByRole('button', { name: /Apply edit/ }));
+    rerender(<ThumbnailEditor sourceImageUrl="data:image/png;base64,Qg==" onApply={onApply} />);
+    resolve([{ url: NEW }]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId('thumbnail-edit-result')).toBeNull();
+  });
+
+  it('keeps undo history across its own accepted edit but not across a different thumbnail', async () => {
+    mocks.refine.mockResolvedValue([{ url: NEW }]);
+    const onApply = vi.fn();
+    const { rerender } = render(<ThumbnailEditor sourceImageUrl={SRC} onApply={onApply} />);
+    describeIt('x');
+    fireEvent.click(screen.getByRole('button', { name: /Apply edit/ }));
+    await screen.findByTestId('thumbnail-edit-result');
+    fireEvent.click(screen.getByRole('button', { name: /Use this version/ }));
+    rerender(<ThumbnailEditor sourceImageUrl={NEW} onApply={onApply} />); // the parent shows the accepted version
+    expect((screen.getByRole('button', { name: 'Undo last edit' }) as HTMLButtonElement).disabled).toBe(false);
+    rerender(<ThumbnailEditor sourceImageUrl="data:image/png;base64,Qg==" onApply={onApply} />); // a different thumbnail
+    expect((screen.getByRole('button', { name: 'Undo last edit' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('shows how the image crops on each platform', () => {
     render(<ThumbnailPlatformPreview imageUrl={SRC} />);
     for (const label of ['YouTube', 'Instagram 1:1', 'IG/FB 4:5', 'Reels / TikTok']) expect(screen.getByAltText(`${label} crop preview`)).toBeTruthy();

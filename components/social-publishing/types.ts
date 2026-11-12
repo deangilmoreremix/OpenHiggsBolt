@@ -41,7 +41,7 @@ export interface CopyState {
   caption?: string
   tiktokTitle?: string
   /** Fields the learner has edited in the Write step (even if cleared); these beat studio-supplied fallbacks. */
-  edited?: { master?: boolean; title?: boolean }
+  edited?: { master?: boolean; title?: boolean; platforms?: Record<string, { caption?: boolean; description?: boolean; title?: boolean }> }
 }
 
 export type WriteCopyState = CopyState
@@ -86,6 +86,8 @@ export interface WriteStepProps {
   onUpdateCopy: (copy: CopyState) => void
   /** Opens the API keys modal (AI writing uses the customer's own OpenAI key). */
   onRequestApiKey?: () => void
+  /** Publishing session this step belongs to; AI results from an older session are dropped. */
+  sessionId?: number
 }
 
 export interface ThumbnailStepProps {

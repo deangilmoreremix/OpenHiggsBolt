@@ -18,12 +18,17 @@ export function mergeCopy(write: CopyState, social: CopyState): CopyState {
   const platforms: CopyState['platforms'] = { ...(social.platforms || {}) }
   for (const [id, w] of Object.entries(write.platforms || {})) {
     const s = platforms[id] || {}
+    const pe = ed.platforms?.[id] || {}
     platforms[id] = {
-      title: ed.title ? w?.title ?? '' : pick(w?.title, s.title),
-      description: pick(w?.description, s.description),
-      caption: pick(w?.caption, s.caption),
+      title: ed.title || pe.title ? w?.title ?? '' : pick(w?.title, s.title),
+      // an edited (even cleared) platform field is authoritative; otherwise fall back to the studio's value
+      description: pe.description ? w?.description ?? '' : pick(w?.description, s.description),
+      caption: pe.caption ? w?.caption ?? '' : pick(w?.caption, s.caption),
     }
   }
+  // Once the learner touched any caption, the studio's separate caption must not come back (not even as a fallback
+  // for a platform whose caption they cleared); publishing then falls back to their own master text.
+  const touchedCaption = !!ed.master || Object.values(ed.platforms || {}).some((p) => p?.caption)
   return {
     ...social,
     ...write,
@@ -31,7 +36,7 @@ export function mergeCopy(write: CopyState, social: CopyState): CopyState {
     title: ed.title ? write.title ?? '' : pick(write.title, social.title),
     description: pick(write.description, social.description),
     tags: pick(write.tags, social.tags),
-    caption: pick(write.caption, ed.master ? '' : social.caption),
+    caption: pick(write.caption, touchedCaption ? '' : social.caption),
     tiktokTitle: pick(write.tiktokTitle, ed.title ? '' : social.tiktokTitle),
     platforms,
     variants: write.variants?.length ? write.variants : social.variants || [],

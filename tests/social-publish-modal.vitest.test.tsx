@@ -190,8 +190,41 @@ describe('Review & Publish', () => {
     await waitFor(() => expect(mocks.thumb).toHaveBeenCalledTimes(1));
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(mocks.thumb.mock.calls[0][1].thumbnail_url).toBe('https://cdn.muapi.ai/uploaded-thumb.png');
+    await waitFor(() => expect(mocks.pub.mock.calls.some((c) => c[0] === 'instagram')).toBe(true));
     const ig = mocks.pub.mock.calls.find((c) => c[0] === 'instagram')!;
     expect(JSON.stringify(ig[2])).toContain('https://cdn.muapi.ai/uploaded-thumb.png');
+  });
+
+  it('does not upload the thumbnail when no selected destination uses it (X only)', async () => {
+    mocks.upload.mockResolvedValue('https://cdn.muapi.ai/never-used.png');
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    function XOnly() {
+      const [step, setStep] = React.useState(3);
+      const [results, setResults] = React.useState<any[]>([]);
+      const [dests, setDests] = React.useState<any[]>([{ id: 'x:2', platform: 'x', accountId: '2', accountName: '@me', enabled: true, settings: {} }]);
+      return (
+        <SocialPublishModal open onClose={() => {}} apiKey={KEY} currentStep={step} setCurrentStep={setStep}
+          asset={{ type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any} writeCopy={{ ...emptyCopy, master: 'Hi', title: 'T' }} socialCopy={emptyCopy}
+          thumbnail={{ imageUrl: png }} destinations={dests} publishResults={results}
+          updateWriteCopy={() => {}} updateSocialCopy={() => {}} updateThumbnail={() => {}} updateDestinations={setDests} updatePublishResults={setResults} />
+      );
+    }
+    render(<XOnly />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(1\)/ }));
+    await waitFor(() => expect(mocks.pub).toHaveBeenCalledTimes(1));
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it('after MuAPI accepted a post, a polling failure is not a reason to post it again', async () => {
+    mocks.poll.mockRejectedValueOnce(new Error('network down'));
+    render(<Harness initial={{ dests: [{ id: 'x:2', platform: 'x', accountId: '2', accountName: '@me', enabled: true, settings: {} }] }} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(1\)/ }));
+    await waitFor(() => expect(mocks.pub).toHaveBeenCalledTimes(1));
+    await screen.findByText(/already sent to X/);
+    mocks.poll.mockResolvedValue({ status: 'completed', output: { url: 'https://example.com/post/1' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Check again/ }));
+    await screen.findByText('Published successfully');
+    expect(mocks.pub).toHaveBeenCalledTimes(1); // never submitted twice
   });
 
   it('shows all platforms that accept the media type in the header', () => {
