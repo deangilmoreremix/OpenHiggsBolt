@@ -146,6 +146,21 @@ describe('renderProject: layers', () => {
     expect(draws[8].state.shadowColor).toBe('rgba(0,0,0,0)')
   })
 
+  it('applies a layer opacity once to the composed outline, not to each outline copy', () => {
+    const P = createProject(1000, 500)
+    const img = { naturalWidth: 200, naturalHeight: 100 } as any
+    const l = { ...makeImageLayer(P, 'p', 200, 100, 'subject'), w: 400, h: 400, outline: 'white' as const, opacity: 0.5 }
+    const main = recorder()
+    const surface = recorder()
+    renderProject(main.ctx, addLayer(P, l), { p: img }, { createSurface: () => ({ canvas: {} as any, ctx: surface.ctx }) })
+    const onSurface = surface.calls.filter((c) => c.fn === 'drawImage')
+    expect(onSurface).toHaveLength(9) // outline copies and picture are composed on the surface...
+    expect(onSurface.every((c) => c.state.globalAlpha === undefined || c.state.globalAlpha === 1)).toBe(true) // ...at full opacity
+    const onMain = main.calls.filter((c) => c.fn === 'drawImage')
+    expect(onMain).toHaveLength(1) // and drawn once
+    expect(onMain[0].state.globalAlpha).toBe(0.5)
+  })
+
   it('guides and selection are drawn only when asked for', () => {
     const P = addLayer(createProject(1000, 500), { ...makeShapeLayer(createProject(1000, 500), 'rect'), id: 'sel' })
     const plain = recorder()

@@ -8,7 +8,22 @@ export type DrawableImage = CanvasImageSource & { width?: number; height?: numbe
 /** Loaded pictures keyed by their `src` (layer image or background image). */
 export type RenderAssets = Record<string, DrawableImage | undefined>
 
+/** An offscreen drawing surface; used to compose an outlined picture before its opacity is applied once. */
+export interface Surface { canvas: CanvasImageSource; ctx: CanvasRenderingContext2D }
+export type SurfaceFactory = (width: number, height: number) => Surface | null
+
+function defaultSurface(width: number, height: number): Surface | null {
+  if (typeof document === 'undefined') return null
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  return ctx ? { canvas, ctx } : null
+}
+
 export interface RenderOptions {
+  /** Offscreen surface factory (defaults to a DOM canvas); tests pass a recording one. */
+  createSurface?: SurfaceFactory
   /** Safe-area guide and selection outline; never part of an export. */
   guides?: boolean
   selectedId?: string | null
@@ -231,13 +246,26 @@ function drawTextLayer(ctx: CanvasRenderingContext2D, l: TextLayer) {
   })
 }
 
-function drawLayer(ctx: CanvasRenderingContext2D, l: Layer, assets: RenderAssets) {
+function drawLayer(ctx: CanvasRenderingContext2D, l: Layer, assets: RenderAssets, createSurface: SurfaceFactory) {
   ctx.save()
   ctx.translate(l.x + l.w / 2, l.y + l.h / 2)
   ctx.rotate(toRad(l.rotation))
   ctx.globalAlpha = Math.max(0, Math.min(1, l.opacity))
-  if (l.kind === 'image') drawImageLayer(ctx, l, assets)
-  else if (l.kind === 'shape') drawShapeLayer(ctx, l)
+  if (l.kind === 'image') {
+    const alpha = Math.max(0, Math.min(1, l.opacity))
+    const margin = Math.ceil(Math.min(l.w, l.h) * 0.1) + 24
+    const sw = Math.ceil(l.w + margin * 2)
+    const sh = Math.ceil(l.h + margin * 2)
+    // An outline is several copies of the picture; apply the opacity once to the finished result instead.
+    const surface = l.outline && l.outline !== 'none' && alpha < 1 ? createSurface(sw, sh) : null
+    if (surface) {
+      surface.ctx.save()
+      surface.ctx.translate(sw / 2, sh / 2)
+      drawImageLayer(surface.ctx, l, assets)
+      surface.ctx.restore()
+      ctx.drawImage(surface.canvas, -sw / 2, -sh / 2)
+    } else drawImageLayer(ctx, l, assets)
+  } else if (l.kind === 'shape') drawShapeLayer(ctx, l)
   else drawTextLayer(ctx, l)
   ctx.restore()
 }
@@ -245,7 +273,8 @@ function drawLayer(ctx: CanvasRenderingContext2D, l: Layer, assets: RenderAssets
 export function renderProject(ctx: CanvasRenderingContext2D, p: DesignProject, assets: RenderAssets, opts: RenderOptions = {}) {
   ctx.clearRect(0, 0, p.width, p.height)
   drawBackground(ctx, p, assets)
-  for (const l of p.layers) if (!l.hidden) drawLayer(ctx, l, assets)
+  const createSurface = opts.createSurface ?? defaultSurface
+  for (const l of p.layers) if (!l.hidden) drawLayer(ctx, l, assets, createSurface)
   if (opts.guides) {
     ctx.save()
     ctx.setLineDash([8, 6])
