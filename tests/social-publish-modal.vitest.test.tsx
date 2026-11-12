@@ -235,6 +235,29 @@ describe('Review & Publish', () => {
     expect(mocks.upload).not.toHaveBeenCalled();
   });
 
+  it('retrying an Instagram image post does not upload the thumbnail either', async () => {
+    mocks.upload.mockRejectedValue(new Error('upload failed'));
+    mocks.pub.mockRejectedValueOnce(new Error('network down')); // first attempt fails before MuAPI accepts it
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    function IgImageRetry() {
+      const [step, setStep] = React.useState(3);
+      const [results, setResults] = React.useState<any[]>([]);
+      const [dests, setDests] = React.useState<any[]>([{ id: 'instagram:3', platform: 'instagram', accountId: '3', accountName: 'ig', enabled: true, settings: {} }]);
+      return (
+        <SocialPublishModal open onClose={() => {}} apiKey={KEY} currentStep={step} setCurrentStep={setStep}
+          asset={{ type: 'image', url: 'https://cdn.muapi.ai/i.png' } as any} writeCopy={{ ...emptyCopy, master: 'Hi', title: 'T' }} socialCopy={emptyCopy}
+          thumbnail={{ imageUrl: png }} destinations={dests} publishResults={results}
+          updateWriteCopy={() => {}} updateSocialCopy={() => {}} updateThumbnail={() => {}} updateDestinations={setDests} updatePublishResults={setResults} />
+      );
+    }
+    render(<IgImageRetry />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(1\)/ }));
+    await waitFor(() => expect(mocks.pub).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByRole('button', { name: /^Retry/ }));
+    await waitFor(() => expect(mocks.pub).toHaveBeenCalledTimes(2)); // the retry went out although a thumbnail upload would fail
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
   it('after MuAPI accepted a post, a polling failure is not a reason to post it again', async () => {
     mocks.poll.mockRejectedValueOnce(new Error('network down'));
     render(<Harness initial={{ dests: [{ id: 'x:2', platform: 'x', accountId: '2', accountName: '@me', enabled: true, settings: {} }] }} />);
