@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2, Scissors } from 'lucide-react';
 import { DEFAULT_FONTS, type ImageLayer, type Layer, type ShapeLayer, type TextLayer } from './model';
 import { CheckField, ColorField, Field, Section, SliderField, ToggleGroup, TRANSPARENT, inputStyle, isTransparent, withAlpha } from './designerUi';
@@ -17,6 +17,12 @@ const fontName = (f: string) => f.split(',')[0].trim();
 function TextInspector({ layer, onChange }: { layer: TextLayer; onChange: (patch: Partial<TextLayer>) => void }) {
   // The raw text of the highlight field, so typing a comma or a space is not eaten by the word list round trip.
   const [wordsText, setWordsText] = useState(layer.highlight.words.join(', '));
+  const words = layer.highlight.words;
+  const parseWords = (t: string) => t.split(/[,\n]/).map((w) => w.trim()).filter(Boolean);
+  // Undo/redo can change the words from outside: show them, unless the field already stands for them.
+  useEffect(() => {
+    setWordsText((cur) => { const parsed = parseWords(cur); return parsed.length === words.length && parsed.every((w, i) => w === words[i]) ? cur : words.join(', '); });
+  }, [words]);
   const set = onChange;
   const shadow = layer.shadow;
   const box = layer.box;
@@ -76,7 +82,7 @@ function TextInspector({ layer, onChange }: { layer: TextLayer; onChange: (patch
 
       <Section title="Highlight words">
         <Field label="Words to highlight">
-          <input type="text" value={wordsText} placeholder="e.g. FREE, new" onChange={(e) => { setWordsText(e.target.value); set({ highlight: { ...layer.highlight, words: e.target.value.split(/[,\n]/).map((w) => w.trim()).filter(Boolean) } }); }} className="w-full rounded-lg px-2.5 py-1.5 text-[11px] outline-none" style={inputStyle} />
+          <input type="text" value={wordsText} placeholder="e.g. FREE, new" onChange={(e) => { setWordsText(e.target.value); set({ highlight: { ...layer.highlight, words: parseWords(e.target.value) } }); }} className="w-full rounded-lg px-2.5 py-1.5 text-[11px] outline-none" style={inputStyle} />
         </Field>
         <ColorField label="Highlight colour" value={layer.highlight.color} onChange={(color) => set({ highlight: { ...layer.highlight, color } })} />
       </Section>
@@ -108,7 +114,7 @@ function ImageInspector({ layer, onChange, onCutOut, cutOutBusy }: { layer: Imag
 }
 
 function ShapeInspector({ layer, onChange }: { layer: ShapeLayer; onChange: (patch: Partial<ShapeLayer>) => void }) {
-  const filled = layer.shape !== 'arrow' && layer.shape !== 'circle' ? true : !isTransparent(layer.fill);
+  const filled = !isTransparent(layer.fill);
   const hasStroke = !isTransparent(layer.stroke);
   const canFill = layer.shape !== 'arrow';
   const canStroke = layer.shape !== 'divider';

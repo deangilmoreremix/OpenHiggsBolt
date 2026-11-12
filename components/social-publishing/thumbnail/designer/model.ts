@@ -119,12 +119,30 @@ export function createProject(width: number, height: number, background?: Partia
   return { version: 1, width, height, background: { ...defaultBackground(), ...background }, layers: [] }
 }
 
+const SHAPES: string[] = ['arrow', 'circle', 'rect', 'badge', 'divider']
+const isNum = (n: unknown) => typeof n === 'number' && Number.isFinite(n)
+const isStr = (s: unknown) => typeof s === 'string'
+
+/** True when a stored layer has every field its kind needs, so the renderer cannot throw on it. */
+function isRenderableLayer(value: unknown): boolean {
+  const l = value as Record<string, any> | null
+  if (!l || typeof l !== 'object' || !isStr(l.id) || !['image', 'text', 'shape'].includes(l.kind) || ![l.x, l.y, l.w, l.h].every(isNum)) return false
+  if (l.kind === 'image') return isStr(l.src) && isNum(l.naturalW) && isNum(l.naturalH)
+  if (l.kind === 'shape') return SHAPES.includes(l.shape) && isStr(l.fill) && isStr(l.stroke) && isNum(l.strokeWidth)
+  const hl = l.highlight
+  return isStr(l.text) && isStr(l.fontFamily) && isStr(l.color) && [l.fontSize, l.fontWeight, l.letterSpacing, l.lineHeight, l.strokeWidth].every(isNum) &&
+    isStr(l.strokeColor) && isStr(l.align) &&
+    !!hl && Array.isArray(hl.words) && hl.words.every(isStr) && isStr(hl.color) &&
+    (l.shadow == null || (typeof l.shadow === 'object' && isNum(l.shadow.blur) && isNum(l.shadow.offsetX) && isNum(l.shadow.offsetY) && isStr(l.shadow.color))) &&
+    (l.box == null || (typeof l.box === 'object' && isStr(l.box.color) && isNum(l.box.padding) && isNum(l.box.radius)))
+}
+
 /** Accepts only a structurally valid saved project (it comes from storage or a draft). */
 export function sanitizeProject(value: unknown): DesignProject | null {
   const v = value as Partial<DesignProject> | null
   if (!v || v.version !== 1 || !Number.isFinite(v.width) || !Number.isFinite(v.height) || !v.background || !Array.isArray(v.layers)) return null
   if ((v.width as number) < 16 || (v.height as number) < 16 || (v.width as number) > 8192 || (v.height as number) > 8192) return null
-  const layers = v.layers.filter((l) => l && typeof l.id === 'string' && ['image', 'text', 'shape'].includes((l as Layer).kind) && [l.x, l.y, l.w, l.h].every(Number.isFinite)) as Layer[]
+  const layers = v.layers.filter(isRenderableLayer) as Layer[]
   const variants = Array.isArray(v.variants)
     ? Array.from(new Set(v.variants.filter((u): u is string => typeof u === 'string' && /^(data:image\/|https?:\/\/)/.test(u)))).slice(0, MAX_VARIANTS)
     : []
@@ -282,6 +300,12 @@ export function resizeLayer(layer: Layer, handle: Handle, dx: number, dy: number
       else w = h * ratio
     } else if (west || east) h = w / ratio
     else w = h * ratio
+  }
+  if (opts.keepAspect && layer.w > 0 && layer.h > 0) {
+    // Scale both sides together so the minimum size never distorts the aspect ratio.
+    const up = Math.max(1, min / Math.max(w, 1e-6), min / Math.max(h, 1e-6))
+    w *= up
+    h *= up
   }
   w = Math.max(min, w)
   h = Math.max(min, h)
@@ -445,8 +469,9 @@ function platformChecks(p: DesignProject, measure: Measure, platforms: PlatformI
       const area = r.w * r.h
       if (area <= 0) continue
       const visible = overlapArea(r, crop)
-      if (visible < area * 0.98 && l.kind !== 'image') {
-        out.push({ id: 'cropped-out', layerId: l.id, message: `"${l.name}" is cut off on ${zones.label}, which crops this picture to its own shape.` })
+      // Pictures may bleed past the edge on purpose, but one that is entirely outside the crop is lost.
+      if (l.kind === 'image' ? visible <= 0 : visible < area * 0.98) {
+        out.push({ id: 'cropped-out', layerId: l.id, message: l.kind === 'image' ? `"${l.name}" is outside the visible area on ${zones.label}, which crops this picture to its own shape.` : `"${l.name}" is cut off on ${zones.label}, which crops this picture to its own shape.` })
         continue
       }
       for (const z of zones.covered) {

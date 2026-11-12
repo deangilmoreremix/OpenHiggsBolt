@@ -118,7 +118,10 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
   const [exported, setExported] = useState<string | null>(null);
   const pending = useRef(new Set<string>());
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const measure = useMemo(() => makeMeasure(), []);
 
@@ -264,6 +267,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     const img = assets[selected.src];
     if (!img) { setMessage('Wait for the picture to finish loading, then try again.'); return; }
     const id = selected.id;
+    const startSrc = selected.src;
     setMessage(null);
     setCutOutBusy(true);
     try {
@@ -272,7 +276,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
       if (!mounted.current) return;
       setAssets((prev) => ({ ...prev, [dataUrl]: cut }));
       const { w, h } = naturalSize(cut);
-      if (projectRef.current.layers.some((l) => l.id === id)) edit(id, { src: dataUrl, naturalW: w, naturalH: h, role: 'subject', outline: 'white', name: 'Subject', fit: 'contain' } as Partial<ImageLayer>);
+      if (projectRef.current.layers.some((l) => l.id === id && l.kind === 'image' && l.src === startSrc)) edit(id, { src: dataUrl, naturalW: w, naturalH: h, role: 'subject', outline: 'white', name: 'Subject', fit: 'contain' } as Partial<ImageLayer>);
     } catch (err) {
       if (mounted.current) setMessage(err instanceof Error ? err.message : 'The cut-out failed. Try again.');
     } finally {
@@ -282,7 +286,12 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
 
   // ---- checks and export
   const warnings = useMemo(() => designChecks(project, measure, { platforms: platformsForCanvas(project.width, project.height) }), [project, measure, project.width, project.height]);
-  const brokenPictures = Object.values(loadErrors);
+  // Only pictures the design still uses count: an error for a removed layer or replaced background is stale.
+  const neededSources = useMemo(
+    () => [project.background.mode === 'image' ? project.background.imageSrc : undefined, ...project.layers.filter((l) => l.kind === 'image' && !l.hidden).map((l) => (l as ImageLayer).src)].filter((x): x is string => !!x),
+    [project.background.mode, project.background.imageSrc, project.layers],
+  );
+  const brokenPictures = Array.from(new Set(neededSources.filter((s) => loadErrors[s]).map((s) => loadErrors[s])));
 
   const doExport = useCallback(async () => {
     setMessage(null);
@@ -290,7 +299,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     try {
       try { await document.fonts?.ready; } catch { /* fonts API unavailable */ }
       const p = projectRef.current;
-      const needed = [p.background.mode === 'image' ? p.background.imageSrc : undefined, ...p.layers.filter((l) => l.kind === 'image' && !l.hidden).map((l) => (l as ImageLayer).src)].filter((x): x is string => !!x);
+      const needed = neededSources;
       if (needed.some((src) => loadErrors[src])) { setMessage('A picture in this design failed to load. Replace it or upload it as a photo, then export.'); return; }
       if (needed.some((src) => !assets[src])) { setMessage('Wait for the pictures to finish loading, then export again.'); return; }
       const result = await exportProject(p, assets, { format, maxBytes: THUMBNAIL_MAX_BYTES });
@@ -303,7 +312,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     } finally {
       if (mounted.current) setExporting(false);
     }
-  }, [assets, loadErrors, format, onDone]);
+  }, [assets, loadErrors, format, onDone, neededSources]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'layers', label: 'Layers' },

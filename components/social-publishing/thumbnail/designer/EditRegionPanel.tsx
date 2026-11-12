@@ -66,6 +66,8 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
   const nat = dims[sourceUrl];
   const natW = nat?.w || boxWidth;
   const natH = nat?.h || boxHeight;
+  // Mask and markup edits work in the picture's own pixels, so they wait until the current picture has reported its size.
+  const loaded = !!nat;
   const fit = coverFit(natW, natH, boxWidth, boxHeight);
 
   const paint = useCallback(
@@ -93,7 +95,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (mode === 'prompt' || busy || disabled) return;
+    if (mode === 'prompt' || busy || disabled || !loaded) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     // The brush size is on screen (canvas pixels); the stroke is stored in picture pixels.
     drawing.current = { points: [toImagePoint(e)], size: brush / fit.scale, erase: tool === 'eraser' };
@@ -113,7 +115,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
 
   const hasDrawing = strokes.some((s) => !s.erase);
   // Describe needs an instruction; paint needs a painted area and what to put there; markup only needs the drawing (the note is optional).
-  const canApply = !busy && !disabled && (mode === 'markup' ? hasDrawing : prompt.trim().length > 0 && (mode === 'prompt' || hasDrawing));
+  const canApply = !busy && !disabled && (mode === 'prompt' || loaded) && (mode === 'markup' ? hasDrawing : prompt.trim().length > 0 && (mode === 'prompt' || hasDrawing));
 
   const apply = useCallback(async () => {
     const img = imgRef.current;

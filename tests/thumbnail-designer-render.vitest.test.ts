@@ -57,6 +57,14 @@ describe('renderProject: background', () => {
     const d = calls.find((c) => c.fn === 'drawImage')!
     expect(d.args.slice(1)).toEqual([0, -200, 800, 800])
   })
+  it('keeps the cover placement of a blurred picture background (edge mask maths depends on it)', () => {
+    const { ctx, calls } = recorder()
+    const img = { naturalWidth: 400, naturalHeight: 400 } as any
+    renderProject(ctx, createProject(800, 400, { mode: 'image', imageSrc: 'bg', blur: 20 }), { bg: img })
+    const main = calls.filter((c) => c.fn === 'drawImage' && c.args.length === 5)
+    expect(main).toHaveLength(1)
+    expect(main[0].args.slice(1)).toEqual([0, -200, 800, 800])
+  })
   it('skips a missing picture instead of failing', () => {
     const { ctx, calls } = recorder()
     expect(() => renderProject(ctx, createProject(800, 400, { mode: 'image', imageSrc: 'missing' }), {})).not.toThrow()

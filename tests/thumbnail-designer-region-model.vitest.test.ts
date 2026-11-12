@@ -87,6 +87,10 @@ describe('platform safe zones', () => {
     const logo = { ...makeImageLayer(canvas, 'x', 100, 100, 'logo'), x: 1100, y: 600, w: 150, h: 100 }
     expect(ids(addLayer(canvas, logo))).toContain('covered-by-badge')
   })
+  it('warns about a logo or subject that lies entirely outside a platform crop', () => {
+    const logo = { ...makeImageLayer(canvas, 'x', 100, 100, 'logo'), x: 1100, y: 100, w: 100, h: 100 }
+    expect(designChecks(addLayer(canvas, logo), measure, { platforms: ['reels'] }).map((x) => x.id)).toContain('cropped-out')
+  })
   it('ignores hidden layers', () => {
     const p = text({ x: 1000, y: 630, w: 250, h: 60, align: 'right' })
     const hidden = updateLayer(p, p.layers[0].id, { hidden: true })

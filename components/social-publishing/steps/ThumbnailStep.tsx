@@ -338,12 +338,18 @@ export default function ThumbnailStep({
   // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
   const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
 
+  /** With a saved design, refinement must start from the exported picture (the layers), not the original. */
+  const refineSourceUrl = thumbnail.design && thumbnail.imageUrl ? thumbnail.imageUrl : activeImageUrl
+  /** The designer can only edit a region of a picture background. */
+  const canEditRegion = thumbnail.design ? thumbnail.design.background.mode === 'image' && !!thumbnail.design.background.imageSrc : !!activeImageUrl
+
   /** Concepts made by the concept panel replace the current results, like a normal generation. */
   const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
     setError(null)
     setResults(conceptResults)
     setSelectedIndex(conceptResults.length > 0 ? 0 : null)
     if (conceptResults.length > 0) {
+      setAspectRatio(context.aspectRatio)
       onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio, design: undefined })
     }
   }, [onUpdateThumbnail])
@@ -363,7 +369,7 @@ export default function ThumbnailStep({
 
   /** Back to the concept picture the design was built on. */
   const handleRemoveDesign = useCallback(() => {
-    const original = (selectedIndex !== null && results[selectedIndex]?.url) || (thumbnail.design?.background.mode === 'image' ? thumbnail.design.background.imageSrc : undefined)
+    const original = (selectedIndex !== null && results[selectedIndex]?.url) || thumbnail.design?.background.imageSrc
     onUpdateThumbnail({ imageUrl: original, design: undefined })
   }, [selectedIndex, results, thumbnail.design, onUpdateThumbnail])
 
@@ -638,7 +644,7 @@ export default function ThumbnailStep({
           <p className="text-[10px] text-white/40">{thumbnail.design ? 'Edit the text and layers again, or go back to the picture.' : activeImageUrl ? 'Add your headline, logo, subject and arrows on top of this picture.' : 'Generate or pick a thumbnail first, then design it here.'}</p>
         </div>
         {thumbnail.design && <button type="button" onClick={handleRemoveDesign} disabled={generating} className="shrink-0 text-[10px] text-white/40 transition-colors hover:text-red-400 disabled:opacity-50">Remove design</button>}
-        <button type="button" onClick={() => { setDesignerEditRegion(true); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+        <button type="button" onClick={() => { setDesignerEditRegion(true); setDesigning(true) }} disabled={generating || !canEditRegion} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
           <Wand2 size={13} />Edit a region
         </button>
         <button type="button" onClick={() => { setDesignerEditRegion(false); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-all disabled:opacity-50" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }}>
@@ -646,7 +652,7 @@ export default function ThumbnailStep({
         </button>
       </div>
 
-      <ThumbnailRefinement sourceImageUrl={activeImageUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailRefinement sourceImageUrl={refineSourceUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
       {(thumbnail.design || activeImageUrl) && (
         <div>
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30">How it will look</p>

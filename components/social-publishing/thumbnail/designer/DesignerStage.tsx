@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { clampLayer, hitTest, resizeLayer, rotationFromPointer, updateLayer, type DesignProject, type Handle, type Layer } from './model';
 import { renderProject, type RenderAssets } from './render';
 
@@ -37,7 +37,7 @@ export default function DesignerStage({ project, assets, selectedId, onSelect, o
   const gesture = useRef<Gesture | null>(null);
   // Pointer handlers read the latest project without being re-created on every drag step.
   const projectRef = useRef(project);
-  projectRef.current = project;
+  useLayoutEffect(() => { projectRef.current = project; }, [project]);
 
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d');

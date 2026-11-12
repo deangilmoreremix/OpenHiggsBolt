@@ -60,3 +60,24 @@ describe('export waits for the pictures it needs', () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 });
+
+describe('designer lifecycle and stale state', () => {
+  it('still loads pictures and exports under React StrictMode (effects run, clean up and run again)', async () => {
+    const onDone = vi.fn();
+    render(<React.StrictMode><ThumbnailDesigner backgroundImageUrl="data:image/png;base64,GOOD" aspectRatio="16:9" onDone={onDone} /></React.StrictMode>);
+    await new Promise((r) => setTimeout(r, 20));
+    fireEvent.click(exportBtn());
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+
+  it('forgets a load error once its picture is no longer part of the design', async () => {
+    render(<ThumbnailDesigner backgroundImageUrl="data:image/png;base64,BAD" aspectRatio="16:9" onDone={vi.fn()} />);
+    await new Promise((r) => setTimeout(r, 20));
+    fireEvent.click(screen.getByRole('tab', { name: /Checks/ }));
+    await screen.findByText('Could not load that picture.');
+    fireEvent.click(screen.getByRole('tab', { name: /Background/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Solid' }));
+    fireEvent.click(screen.getByRole('tab', { name: /Checks/ }));
+    expect(screen.queryByText('Could not load that picture.')).toBeNull();
+  });
+});

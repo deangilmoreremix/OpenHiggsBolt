@@ -280,6 +280,27 @@ describe('ThumbnailDesigner cut out and export', () => {
     expect(l.role).toBe('subject');
   });
 
+  it('drops a cut-out result when the picture was changed (undo) while it was running', async () => {
+    let release!: (v: string) => void;
+    mocks.cutOut.mockResolvedValueOnce('data:image/png;base64,Q1VU').mockImplementationOnce(() => new Promise((res) => { release = res; }));
+    setup();
+    fireEvent.change(screen.getByLabelText('Upload subject'), { target: { files: [new File(['x'], 's.jpg', { type: 'image/jpeg' })] } });
+    await screen.findByRole('button', { name: 'Select Subject' });
+    const cutBtn = () => screen.getByRole('button', { name: /Cut out subject|Cutting out/ });
+    await waitFor(() => expect(cutBtn()).toBeTruthy());
+    fireEvent.click(cutBtn());
+    await waitFor(() => expect((screen.getByLabelText('Outline') as HTMLSelectElement).value).toBe('white'));
+    fireEvent.click(cutBtn()); // second cut-out starts from the first result
+    await waitFor(() => expect(mocks.cutOut).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' })); // back to the original picture
+    await waitFor(() => expect((screen.getByLabelText('Outline') as HTMLSelectElement).value).toBe('none'));
+    release('data:image/png;base64,U0VDT05E');
+    await new Promise((r) => setTimeout(r, 10));
+    const l = layerOf<ImageLayer>(await exportNow(), 'Subject');
+    expect(l.src).not.toBe('data:image/png;base64,U0VDT05E');
+    expect((screen.getByLabelText('Outline') as HTMLSelectElement).value).toBe('none');
+  });
+
   it('shows a message when the cut-out fails and keeps the layer', async () => {
     mocks.cutOut.mockRejectedValue(new Error('Add your OpenAI key'));
     setup();

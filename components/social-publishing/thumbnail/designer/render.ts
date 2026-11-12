@@ -36,11 +36,28 @@ function drawBackground(ctx: CanvasRenderingContext2D, p: DesignProject, assets:
     const img = assets[b.imageSrc] as DrawableImage
     const { w, h } = sizeOf(img)
     if (w > 0 && h > 0) {
-      const bleed = Math.ceil(b.blur * 2)
-      const scale = Math.max((p.width + bleed * 2) / w, (p.height + bleed * 2) / h)
+      // Base placement is exactly the cover fit (EditRegionPanel maps masks through the same maths).
+      const scale = Math.max(p.width / w, p.height / h)
       const dw = w * scale
       const dh = h * scale
-      ctx.drawImage(img, (p.width - dw) / 2, (p.height - dh) / 2, dw, dh)
+      const dx = (p.width - dw) / 2
+      const dy = (p.height - dh) / 2
+      ctx.drawImage(img, dx, dy, dw, dh)
+      // Blur would fade the picture's own edges into transparency; stretch its edge pixels outwards instead.
+      const bleed = b.blur > 0 ? Math.ceil(b.blur * 2) : 0
+      if (bleed > 0) {
+        const xs = [{ d0: -bleed, d1: dx, s0: 0, s1: 1 }, { d0: dx + dw, d1: p.width + bleed, s0: w - 1, s1: w }]
+        const ys = [{ d0: -bleed, d1: dy, s0: 0, s1: 1 }, { d0: dy + dh, d1: p.height + bleed, s0: h - 1, s1: h }]
+        const mid = { d0: dx, d1: dx + dw, s0: 0, s1: w }
+        const midY = { d0: dy, d1: dy + dh, s0: 0, s1: h }
+        for (const X of [...xs, mid]) {
+          for (const Y of [...ys, midY]) {
+            if (X === mid && Y === midY) continue
+            if (X.d1 - X.d0 <= 0 || Y.d1 - Y.d0 <= 0) continue
+            ctx.drawImage(img, X.s0, Y.s0, X.s1 - X.s0, Y.s1 - Y.s0, X.d0, Y.d0, X.d1 - X.d0, Y.d1 - Y.d0)
+          }
+        }
+      }
     }
   } else if (b.mode === 'gradient') {
     const a = toRad(b.angle)

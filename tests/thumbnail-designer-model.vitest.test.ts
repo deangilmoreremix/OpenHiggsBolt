@@ -93,6 +93,12 @@ describe('geometry', () => {
     expect(r.w / r.h).toBeCloseTo(2, 1)
     expect(resizeLayer(l, 'e', -1000, 0).w).toBe(16)
   })
+  it('keeps the aspect ratio when the minimum size clamps a keepAspect drag', () => {
+    const l = { ...box(), w: 200, h: 100 }
+    const r = resizeLayer(l, 'se', -190, 0, { keepAspect: true })
+    expect(r.w / r.h).toBeCloseTo(2, 1)
+    expect(Math.min(r.w, r.h)).toBeGreaterThanOrEqual(16)
+  })
 
   it('resizing a rotated layer keeps the opposite corner fixed on screen', () => {
     const l = box({ rotation: 90 })
@@ -184,7 +190,22 @@ describe('sanitizeProject', () => {
     expect(sanitizeProject(null)).toBeNull()
     expect(sanitizeProject({ version: 2, width: 100, height: 100, background: {}, layers: [] })).toBeNull()
     expect(sanitizeProject({ version: 1, width: 99999, height: 100, background: {}, layers: [] })).toBeNull()
-    const p = sanitizeProject({ version: 1, width: 1280, height: 720, background: {}, layers: [{ id: 'a', kind: 'text', x: 1, y: 1, w: 1, h: 1 }, { id: 'b', kind: 'bogus' }, { kind: 'text' }] })
-    expect(p?.layers.map((l) => l.id)).toEqual(['a'])
+    const good = makeTextLayer(P, 'ok')
+    const p = sanitizeProject({ version: 1, width: 1280, height: 720, background: {}, layers: [good, { id: 'b', kind: 'bogus' }, { kind: 'text' }] })
+    expect(p?.layers.map((l) => l.id)).toEqual([good.id])
+  })
+  it('drops layers that lack the fields their kind needs (they would crash the renderer)', () => {
+    const geo = { x: 1, y: 1, w: 1, h: 1 }
+    const img = makeImageLayer(P, 'data:image/png;base64,AA==', 100, 100)
+    const shape = makeShapeLayer(P, 'arrow')
+    const text = makeTextLayer(P, 'hi')
+    const bad = [
+      { id: 'a', kind: 'text', ...geo },
+      { ...text, id: 'a2', highlight: undefined },
+      { ...img, id: 'b', src: undefined },
+      { ...shape, id: 'c', shape: undefined },
+    ]
+    const p = sanitizeProject({ version: 1, width: 1280, height: 720, background: {}, layers: [...bad, text, img, shape] })
+    expect(p?.layers.map((l) => l.id)).toEqual([text.id, img.id, shape.id])
   })
 })

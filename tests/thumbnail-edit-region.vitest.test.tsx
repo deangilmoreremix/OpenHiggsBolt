@@ -51,6 +51,12 @@ const draw = () => {
   fireEvent.pointerMove(layer, { clientX: 30, clientY: 20, pointerId: 1 });
   fireEvent.pointerUp(layer, { pointerId: 1 });
 };
+const loadCurrent = (w = 1280, h = 720) => {
+  const img = screen.getByAltText('Current background preview');
+  Object.defineProperty(img, 'naturalWidth', { value: w, configurable: true });
+  Object.defineProperty(img, 'naturalHeight', { value: h, configurable: true });
+  fireEvent.load(img);
+};
 const applyBtn = () => screen.getByRole('button', { name: /Apply edit/ }) as HTMLButtonElement;
 
 beforeEach(() => {
@@ -95,6 +101,7 @@ describe('EditRegionPanel', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Paint an area' }));
     describeIt('a city skyline');
     expect(applyBtn().disabled).toBe(true);
+    loadCurrent();
     draw();
     fireEvent.click(applyBtn());
     await waitFor(() => expect(mocks.refine).toHaveBeenCalled());
@@ -103,6 +110,17 @@ describe('EditRegionPanel', () => {
     const [w, h, strokes] = (globalThis as any).__maskArgs;
     expect([w, h]).toEqual([1280, 720]); // jsdom reports no natural size, so the box size is used
     expect(strokes).toHaveLength(1);
+  });
+
+  it('ignores drawing until the current picture has loaded (its size is unknown before that)', () => {
+    setup();
+    fireEvent.click(screen.getByRole('tab', { name: 'Paint an area' }));
+    describeIt('x');
+    draw();
+    expect(applyBtn().disabled).toBe(true);
+    loadCurrent();
+    draw();
+    expect(applyBtn().disabled).toBe(false);
   });
 
   it('maps the pointer through the cover crop into the picture pixels', async () => {
@@ -128,6 +146,7 @@ describe('EditRegionPanel', () => {
     setup();
     fireEvent.click(screen.getByRole('tab', { name: 'Draw on it' }));
     expect(applyBtn().disabled).toBe(true);
+    loadCurrent();
     draw();
     expect(applyBtn().disabled).toBe(false);
     describeIt('move the logo here');

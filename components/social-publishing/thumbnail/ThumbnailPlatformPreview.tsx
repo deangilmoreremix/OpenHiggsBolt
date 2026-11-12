@@ -53,7 +53,7 @@ function Overlays({ id }: { id: PlatformId }) {
 export default function ThumbnailPlatformPreview({ imageUrl, project, assets }: { imageUrl?: string | null; project?: DesignProject | null; assets?: RenderAssets }) {
   const [safe, setSafe] = useState(true);
   const [own, setOwn] = useState<RenderAssets>({});
-  const useProject = !!project;
+  const [failed, setFailed] = useState<Record<string, true>>({});
 
   // Without ready-made pictures (the step, not the designer) load what the design references.
   useEffect(() => {
@@ -63,11 +63,14 @@ export default function ThumbnailPlatformPreview({ imageUrl, project, assets }: 
     if (project.background.imageSrc) srcs.add(project.background.imageSrc);
     for (const l of project.layers) if (l.kind === 'image') srcs.add(l.src);
     srcs.forEach((src) => {
-      loadImage(src).then((img) => { if (live) setOwn((prev) => (prev[src] ? prev : { ...prev, [src]: img })); }).catch(() => {});
+      loadImage(src).then((img) => { if (live) setOwn((prev) => (prev[src] ? prev : { ...prev, [src]: img })); }).catch(() => { if (live) setFailed((prev) => ({ ...prev, [src]: true })); });
     });
     return () => { live = false; };
   }, [project, assets]);
 
+  // A design with a missing picture would show an incomplete thumbnail; the exported picture is what is attached.
+  const incomplete = !!project && !!imageUrl && !assets && (project.background.mode === 'image' && !!project.background.imageSrc && !!failed[project.background.imageSrc] || project.layers.some((l) => l.kind === 'image' && !l.hidden && failed[l.src]));
+  const useProject = !!project && !incomplete;
   if (!useProject && !imageUrl) return null;
   const pics = assets ?? own;
 
