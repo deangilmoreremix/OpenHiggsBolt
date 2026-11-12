@@ -5,7 +5,8 @@ import React from 'react';
 import { mergeCopy } from '@/components/social-publishing/mergeCopy';
 import { buildPublishPayload } from '@/src/shared/api/socialPayloads';
 
-const mocks = vi.hoisted(() => ({ gen: vi.fn() }));
+const mocks = vi.hoisted(() => ({ gen: vi.fn(), thumbGen: vi.fn() }));
+vi.mock('@/shared/api/thumbnailService', async (orig) => ({ ...(await orig<any>()), generateThumbnail: (...a: unknown[]) => mocks.thumbGen(...a) }));
 vi.mock('@/shared/api/socialCopyService', async (orig) => ({ ...(await orig<any>()), generateCopy: (...a: unknown[]) => mocks.gen(...a) }));
 
 import { WriteStep } from '@/components/social-publishing/steps/WriteStep';
@@ -78,5 +79,19 @@ describe('Thumbnail step after Back/Next', () => {
     expect(panel!.closest('[hidden]')).toBeTruthy(); // but not visible
     fireEvent.click(screen.getByRole('button', { name: /Generate concepts/ }));
     expect(panel!.closest('[hidden]')).toBeNull();
+  });
+
+  it('while a normal generation runs, the concept panel is disabled (no overlapping generations)', async () => {
+    let finish!: (v: any) => void;
+    mocks.thumbGen.mockImplementation(() => new Promise((r) => { finish = r; }));
+    const { default: ThumbnailStep } = await import('@/components/social-publishing/steps/ThumbnailStep');
+    render(<ThumbnailStep asset={{ type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any} thumbnail={{}} onUpdateThumbnail={() => {}} copy={empty} />);
+    const title = () => document.querySelector('input[aria-label="Video title"]') as HTMLInputElement;
+    expect(title().disabled).toBe(false);
+    fireEvent.change(screen.getByLabelText('Thumbnail generation prompt'), { target: { value: 'A bold thumbnail' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Generate \d thumbnail/ }));
+    await vi.waitFor(() => expect(title().disabled).toBe(true)); // the concept panel cannot start a second run
+    finish([{ url: 'https://cdn.example/a.png' }]);
+    await vi.waitFor(() => expect(title().disabled).toBe(false));
   });
 });
