@@ -46,6 +46,7 @@ function setup(props: Partial<React.ComponentProps<typeof ThumbnailDesigner>> = 
 const add = (name: RegExp | string) => fireEvent.click(within(screen.getByRole('toolbar', { name: 'Add to thumbnail' })).getByRole('button', { name }));
 const rows = () => screen.queryAllByTestId('layer-row').map((r) => r.querySelector('button')!.textContent);
 async function exportNow() {
+  await new Promise((r) => setTimeout(r, 0)); // let the pictures finish loading; export waits for them
   fireEvent.click(screen.getByRole('button', { name: /Use this thumbnail/ }));
   await waitFor(() => expect(done).toHaveBeenCalled());
   return done.mock.calls[done.mock.calls.length - 1][0] as DesignerResult;
@@ -316,6 +317,7 @@ describe('ThumbnailDesigner cut out and export', () => {
   it('reports an export failure instead of calling onDone', async () => {
     mocks.exportProject.mockRejectedValue(new Error('The thumbnail could not be made small enough.'));
     setup();
+    await new Promise((r) => setTimeout(r, 0));
     fireEvent.click(screen.getByRole('button', { name: /Use this thumbnail/ }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/small enough/);
     expect(done).not.toHaveBeenCalled();

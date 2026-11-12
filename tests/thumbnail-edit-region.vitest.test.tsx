@@ -252,3 +252,31 @@ describe('ThumbnailPlatformPreview', () => {
     expect(screen.queryByAltText('YouTube crop preview')).toBeNull();
   });
 });
+
+describe('Edit a region: natural size survives accepting a previewed edit', () => {
+  const sized = (img: HTMLElement, w: number, h: number) => {
+    Object.defineProperty(img, 'naturalWidth', { value: w, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: h, configurable: true });
+    fireEvent.load(img);
+  };
+
+  it('uses the edited picture’s real size for the next mask even though no second load fires', async () => {
+    mocks.refine.mockResolvedValue([{ url: NEW }]);
+    const onAccept = vi.fn();
+    const { rerender } = render(<EditRegionPanel sourceUrl={SRC} boxWidth={1280} boxHeight={720} model="gpt-image-2.6-sunburst" onAccept={onAccept} />);
+    sized(screen.getByAltText('Current background preview'), 1000, 720);
+    describeIt('darker sky');
+    fireEvent.click(applyBtn());
+    await screen.findByTestId('thumbnail-edit-result');
+    sized(screen.getByAltText('Edited background preview'), 1000, 720); // the After preview loads
+    fireEvent.click(screen.getByRole('button', { name: /Use this version/ }));
+    // the parent adopts the new picture; the <img> already shows it, so the browser fires no new load
+    rerender(<EditRegionPanel sourceUrl={NEW} boxWidth={1280} boxHeight={720} model="gpt-image-2.6-sunburst" onAccept={onAccept} />);
+    fireEvent.click(screen.getByRole('tab', { name: /Paint an area/ }));
+    draw();
+    describeIt('a skyline');
+    fireEvent.click(applyBtn());
+    await waitFor(() => expect((globalThis as any).__maskArgs).toBeDefined());
+    expect((globalThis as any).__maskArgs.slice(0, 2)).toEqual([1000, 720]);
+  });
+});

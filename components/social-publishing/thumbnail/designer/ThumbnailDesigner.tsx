@@ -290,6 +290,9 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     try {
       try { await document.fonts?.ready; } catch { /* fonts API unavailable */ }
       const p = projectRef.current;
+      const needed = [p.background.mode === 'image' ? p.background.imageSrc : undefined, ...p.layers.filter((l) => l.kind === 'image' && !l.hidden).map((l) => (l as ImageLayer).src)].filter((x): x is string => !!x);
+      if (needed.some((src) => loadErrors[src])) { setMessage('A picture in this design failed to load. Replace it or upload it as a photo, then export.'); return; }
+      if (needed.some((src) => !assets[src])) { setMessage('Wait for the pictures to finish loading, then export again.'); return; }
       const result = await exportProject(p, assets, { format, maxBytes: THUMBNAIL_MAX_BYTES });
       const file = new File([result.blob], `thumbnail-${Date.now()}.${result.type === 'image/png' ? 'png' : result.type === 'image/webp' ? 'webp' : 'jpg'}`, { type: result.type });
       const mb = (file.size / (1024 * 1024)).toFixed(2);
@@ -300,7 +303,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
     } finally {
       if (mounted.current) setExporting(false);
     }
-  }, [assets, format, onDone]);
+  }, [assets, loadErrors, format, onDone]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'layers', label: 'Layers' },

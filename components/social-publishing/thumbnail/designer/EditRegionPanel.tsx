@@ -41,7 +41,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
   const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState<ThumbnailRefineResult | null>(null);
   const [showBefore, setShowBefore] = useState(false);
-  const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
+  const [dims, setDims] = useState<Record<string, { w: number; h: number }>>({});
 
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -59,10 +59,11 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
     setShowBefore(false);
     setError(null);
     setNote(null);
-    setNat(null);
   }, [sourceUrl]);
   useEffect(() => () => { requestId.current += 1; }, []);
 
+  // Natural size is remembered per picture, so accepting a previewed edit keeps the size it already loaded with.
+  const nat = dims[sourceUrl];
   const natW = nat?.w || boxWidth;
   const natH = nat?.h || boxHeight;
   const fit = coverFit(natW, natH, boxWidth, boxHeight);
@@ -195,7 +196,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
           ref={imgRef}
           src={shown}
           alt={pending && !showBefore ? 'Edited background preview' : 'Current background preview'}
-          onLoad={(e) => { if (!pending) setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }); }}
+          onLoad={(e) => { const { naturalWidth: w, naturalHeight: h } = e.currentTarget; if (w && h) setDims((d) => ({ ...d, [shown]: { w, h } })); }}
           className="absolute inset-0 block h-full w-full object-cover"
         />
         {mode !== 'prompt' && !pending && (
