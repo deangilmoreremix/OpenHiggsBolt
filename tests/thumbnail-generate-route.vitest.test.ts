@@ -135,4 +135,32 @@ describe('thumbnail-generate route', () => {
     expect(res.status).toBe(400)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('passes quality xhigh, a custom size and complexity (Images 2.6 only) to OpenAI', async () => {
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2.6-sunburst', quality: 'xhigh', complexity: 'medium', size: '1536x864', background: 'opaque', output_format: 'webp', output_compression: 80 }))
+    expect(res.status).toBe(200)
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body).toMatchObject({ model: 'gpt-image-2.6-sunburst', quality: 'xhigh', complexity: 'medium', size: '1536x864', background: 'opaque', output_format: 'webp', output_compression: 80 })
+  })
+
+  it('does not send complexity to models that do not have it', async () => {
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2', complexity: 'high' }))
+    expect(res.status).toBe(200)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).complexity).toBeUndefined()
+  })
+
+  it('rejects bad size, complexity and compression values before calling OpenAI', async () => {
+    for (const extra of [{ size: '1000x1000' }, { size: '3840x640' }, { complexity: 'extreme' }, { output_compression: 50 }, { background: 'transparent', output_format: 'jpeg' }]) {
+      fetchMock.mockClear()
+      const res = await POST(request({ action: 'generate', prompt: 'x', ...extra }))
+      expect(res.status, JSON.stringify(extra)).toBe(400)
+      expect(fetchMock).not.toHaveBeenCalled()
+    }
+  })
+
+  it('uses the custom size for edits too', async () => {
+    const res = await POST(request({ action: 'refine', prompt: 'x', image_url: PNG_DATA_URL, size: '1536x864' }))
+    expect(res.status).toBe(200)
+    expect((fetchMock.mock.calls[0][1].body as FormData).get('size')).toBe('1536x864')
+  })
 })

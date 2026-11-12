@@ -13,8 +13,11 @@ import {
   toUrls,
   upstreamError,
   edits,
+  extraFields,
+  type ExtraImageOptions,
   type ImagePart,
 } from '@/src/lib/openaiImageApi';
+import { parseImageOptions } from '@/src/lib/openaiImageOptions';
 
 /**
  * Thumbnail generation for the Social Publish modal (opened from every studio).
@@ -75,8 +78,9 @@ function clampCount(n: unknown): number {
   return Math.min(Math.max(Math.round(value), 1), 4);
 }
 
-function normalizeQuality(q: unknown): 'low' | 'medium' | 'high' {
-  return q === 'low' || q === 'high' ? q : 'medium';
+/** Draft/standard/high map to the classic levels; xhigh, max and auto pass through for gpt-image models. */
+function normalizeQuality(q: unknown): string {
+  return q === 'low' || q === 'high' || q === 'xhigh' || q === 'max' || q === 'auto' ? q : 'medium';
 }
 
 function buildPrompt(body: Record<string, any>, aspectRatio: string): string {
@@ -95,7 +99,7 @@ function buildPrompt(body: Record<string, any>, aspectRatio: string): string {
   return parts.join(' ').slice(0, 30_000);
 }
 
-async function generations(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string) {
+async function generations(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, extra?: ExtraImageOptions) {
   if (model === 'dall-e-3') {
     // dall-e-3 only returns one image per request.
     const calls = Array.from({ length: n }, () =>
@@ -107,7 +111,7 @@ async function generations(key: string, model: string, prompt: string, aspectRat
           prompt: prompt.slice(0, 4000),
           n: 1,
           size: dalle3Size(aspectRatio),
-          quality: quality === 'high' ? 'hd' : 'standard',
+          quality: ['high', 'xhigh', 'max'].includes(quality) ? 'hd' : 'standard',
           response_format: 'b64_json',
         }),
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -129,7 +133,7 @@ async function generations(key: string, model: string, prompt: string, aspectRat
   const res = await fetch(`${OPENAI_BASE}/images/generations`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt, n, size: gptImageSize(aspectRatio), quality }),
+    body: JSON.stringify({ model, prompt, n, size: extra?.size || gptImageSize(aspectRatio), quality, ...extraFields(model, extra) }),
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
   const payload = await readUpstream(res);
@@ -162,6 +166,15 @@ export async function POST(req: NextRequest) {
   const action: Action = body.action === 'refine' ? 'refine' : 'generate';
   const aspectRatio = typeof body.aspect_ratio === 'string' ? body.aspect_ratio : '16:9';
   const n = clampCount(body.n);
+  const parsed = parseImageOptions(body);
+  if (parsed.error) return errorJson(parsed.error, 400);
+  const extra: ExtraImageOptions = {
+    size: parsed.options.size,
+    complexity: parsed.options.complexity,
+    background: parsed.options.background,
+    outputFormat: parsed.options.outputFormat,
+    outputCompression: parsed.options.outputCompression,
+  };
   const quality = normalizeQuality(body.quality);
   const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
 
@@ -211,18 +224,18 @@ export async function POST(req: NextRequest) {
           return errorJson(err?.message || 'Could not read the edit mask', 400);
         }
       }
-      result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask);
+      result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask, extra);
       if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
         fellBackFrom = model;
         model = DEFAULT_MODEL;
-        result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask);
+        result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask, extra);
       }
     } else {
-      result = await generations(key, model, prompt, aspectRatio, n, quality);
+      result = await generations(key, model, prompt, aspectRatio, n, quality, extra);
       if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
         fellBackFrom = model;
         model = DEFAULT_MODEL;
-        result = await generations(key, model, prompt, aspectRatio, n, quality);
+        result = await generations(key, model, prompt, aspectRatio, n, quality, extra);
       }
     }
 
