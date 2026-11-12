@@ -166,6 +166,34 @@ describe('Review & Publish', () => {
     await screen.findByText('Published successfully');
   });
 
+  it('uploads a generated (data:) thumbnail and sends the public link to YouTube and Instagram', async () => {
+    mocks.poll.mockResolvedValue({ status: 'completed', output: { platform: 'youtube', url: 'https://www.youtube.com/watch?v=vid12345678' } });
+    mocks.thumb.mockResolvedValue({ request_id: 'th' });
+    mocks.upload.mockResolvedValue('https://cdn.muapi.ai/uploaded-thumb.png');
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    function WithData() {
+      const [step, setStep] = React.useState(3);
+      const [results, setResults] = React.useState<any[]>([]);
+      const [dests, setDests] = React.useState<any[]>([
+        { id: 'youtube:1', platform: 'youtube', accountId: '1', accountName: 'Ch', enabled: true, settings: {} },
+        { id: 'instagram:3', platform: 'instagram', accountId: '3', accountName: 'ig', enabled: true, settings: {} },
+      ]);
+      return (
+        <SocialPublishModal open onClose={() => {}} apiKey={KEY} currentStep={step} setCurrentStep={setStep}
+          asset={{ type: 'video', url: 'https://cdn.muapi.ai/v.mp4' } as any} writeCopy={{ ...emptyCopy, master: 'Hi', title: 'T' }} socialCopy={emptyCopy}
+          thumbnail={{ imageUrl: png }} destinations={dests} publishResults={results}
+          updateWriteCopy={() => {}} updateSocialCopy={() => {}} updateThumbnail={() => {}} updateDestinations={setDests} updatePublishResults={setResults} />
+      );
+    }
+    render(<WithData />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(2\)/ }));
+    await waitFor(() => expect(mocks.thumb).toHaveBeenCalledTimes(1));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.thumb.mock.calls[0][1].thumbnail_url).toBe('https://cdn.muapi.ai/uploaded-thumb.png');
+    const ig = mocks.pub.mock.calls.find((c) => c[0] === 'instagram')!;
+    expect(JSON.stringify(ig[2])).toContain('https://cdn.muapi.ai/uploaded-thumb.png');
+  });
+
   it('shows all platforms that accept the media type in the header', () => {
     render(<Harness />);
     expect(screen.getByText(/YouTube · Instagram · TikTok · Facebook · LinkedIn · Pinterest · Threads · X/)).toBeTruthy();

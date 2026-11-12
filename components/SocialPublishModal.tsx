@@ -6,6 +6,7 @@ import { mergeCopy } from './social-publishing/mergeCopy';
 import { publishOrchestrator, publishOne } from '@/shared/api/publishOrchestrator';
 import { PLATFORM_ORDER, PLATFORM_SPECS, buildPublishPayload, isPublicMediaUrl, type PlatformId } from '@/shared/api/socialPayloads';
 import { uploadPublishMedia } from '@/lib/muapi';
+import { prepareThumbnailFile } from '@/lib/thumbnailUpload';
 import SocialPublishStepper from './social-publishing/SocialPublishStepper';
 import { WriteStep } from './social-publishing/steps/WriteStep';
 import ThumbnailStep from './social-publishing/steps/ThumbnailStep';
@@ -69,6 +70,8 @@ export default function SocialPublishModal({
   const [publishError, setPublishError] = useState<string | null>(null);
   // Local/temporary media (blob:, data:) is uploaded once and the hosted URL reused.
   const [hostedUrl, setHostedUrl] = useState<{ from: string; url: string } | null>(null);
+  // Generated thumbnails are data: URLs; they are uploaded once so the platforms get a public link.
+  const [hostedThumb, setHostedThumb] = useState<{ from: string; url: string } | null>(null);
 
   // The copy every step after Write (and publishing) uses: Write-step text wins.
   const copy = useMemo(() => mergeCopy(writeCopy, socialCopy), [writeCopy, socialCopy]);
@@ -136,6 +139,16 @@ export default function SocialPublishModal({
     return { ...a, url };
   }, [apiKey, hostedUrl]);
 
+  /** Same idea for the thumbnail: upload generated/edited images and use the hosted link. */
+  const resolveThumbnail = useCallback(async (t: typeof thumbnail): Promise<typeof thumbnail> => {
+    const src = t?.imageUrl;
+    if (!src || isPublicMediaUrl(src)) return t;
+    if (hostedThumb && hostedThumb.from === src) return { ...t, imageUrl: hostedThumb.url };
+    const url = await uploadPublishMedia(apiKey, await prepareThumbnailFile(src));
+    setHostedThumb({ from: src, url });
+    return { ...t, imageUrl: url };
+  }, [apiKey, hostedThumb]);
+
   const key = (d: { platform: string; accountId?: string }) => `${d.platform}:${d.accountId ?? ''}`;
 
   /**
@@ -154,12 +167,13 @@ export default function SocialPublishModal({
       setPublishError(null);
       try {
         const ready = await resolveAsset(asset);
+        const readyThumb = await resolveThumbnail(thumbnail);
         const keep = publishResults.filter((r) => !todo.some((d) => key(d) === key(r)));
         await publishOrchestrator({
           destinations: todo,
           asset: ready,
           copy,
-          thumbnail,
+          thumbnail: readyThumb,
           apiKey,
           onProgress: (r) => updatePublishResults([...keep, ...r], session),
         });
@@ -169,7 +183,7 @@ export default function SocialPublishModal({
         if (sessionRef.current === session) setPublishing(false);
       }
     },
-    [asset, publishing, publishResults, destinations, resolveAsset, copy, thumbnail, apiKey, updatePublishResults, sessionId],
+    [asset, publishing, publishResults, destinations, resolveAsset, resolveThumbnail, copy, thumbnail, apiKey, updatePublishResults, sessionId],
   );
 
   const handleRetry = useCallback(
@@ -181,9 +195,10 @@ export default function SocialPublishModal({
       setPublishError(null);
       try {
         const ready = await resolveAsset(asset);
+        const readyThumb = await resolveThumbnail(thumbnail);
         const others = publishResults.filter((r) => !(r.platform === platform && r.accountId === accountId));
         updatePublishResults([...others, { platform, accountId, status: 'processing', requestId: '' }], session);
-        const result = await publishOne(dest, ready, copy, thumbnail, apiKey);
+        const result = await publishOne(dest, ready, copy, readyThumb, apiKey);
         updatePublishResults([...others, result], session);
       } catch (err) {
         if (sessionRef.current === session) setPublishError(err instanceof Error ? err.message : 'Publishing failed.');
@@ -191,7 +206,7 @@ export default function SocialPublishModal({
         if (sessionRef.current === session) setPublishing(false);
       }
     },
-    [destinations, asset, publishing, publishResults, resolveAsset, copy, thumbnail, apiKey, updatePublishResults, sessionId],
+    [destinations, asset, publishing, publishResults, resolveAsset, resolveThumbnail, copy, thumbnail, apiKey, updatePublishResults, sessionId],
   );
 
   /** Why the selected destinations cannot be published right now (shown in the UI). */
