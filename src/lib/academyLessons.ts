@@ -81,7 +81,12 @@ function listMarkdown(dir: string): string[] {
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
-    .sort();
+    // Sort on the slug (without ".md"): "01-foo" must come before "01-foo-part-2".
+    .sort((a, b) => {
+      const x = a.replace(/\.md$/, '');
+      const y = b.replace(/\.md$/, '');
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
 }
 
 let cache: AcademyTrack[] | null = null;

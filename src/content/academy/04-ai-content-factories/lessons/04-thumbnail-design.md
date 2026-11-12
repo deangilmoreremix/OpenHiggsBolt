@@ -1,150 +1,92 @@
 # AI Thumbnail Design
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 15 minutes. **You will finish with:** a 1280 x 720 thumbnail that stays readable at coin size.
 
+---
 
+## Before you start
 
-> The title gets them to think; the thumbnail gets them to click.
+You can spend 20 hours on a video, but a weak thumbnail kills it. Platforms measure **Click-Through Rate (CTR)**, and under **3%** they stop showing the video to new audiences. Good thumbnails follow three rules: one clear subject with at most **3 words** of text (understood in 3 seconds); high contrast against the feed; and the subject on one third of the frame with text on the opposite third, keeping the bottom-right corner clean for the duration stamp.
 
-**Track:** AI Content Factories  
-**Time:** ~40 minutes  
-**Prerequisites:** The Multi-Step Production Pipeline  
+You will need an image editor (Canva or Photoshop) and the SmartVideo GO AI **Image Studio**, using `nano-banana-2`. Finish lesson 1 first.
 
-## The Problem
+## Step by step
 
-You can spend 20 hours scripting, voice-acting, and editing a long-form video, but if your thumbnail fails to attract clicks, your video is dead on arrival. The recommendation algorithms measure **Click-Through Rate (CTR)**. If your CTR is under **3%**, the platforms assume the video is uninteresting and stop showing it to new audiences.
+### 1. Generate the background
 
-Most beginners design cluttered thumbnails: they pack in 10 words of text, use low-contrast background images, or overlay multiple logos. On a mobile phone screen, these thumbnails look like an unreadable blur.
+Pick a prompt pattern from [`templates/thumbnail-prompt-library.md`](templates/thumbnail-prompt-library.md). In Image Studio run `nano-banana-2` with aspect ratio `16:9` (use `1:1` for square feeds). Example prompt:
 
-To scale your factory's views, you need a repeatable process to generate high-contrast, high-concept visual assets that stand out on mobile screens.
-
-## The Concept
-
-High-CTR thumbnails rely on three psychological and visual principles:
-
-### 1. The 3-Second Rule:
-A viewer scrolling past a thumbnail must understand the video's topic and emotional hook in under 3 seconds. The design must have **one clear subject** and a maximum of **3 words** of text. Do not repeat the video title in the thumbnail text.
-
-### 2. High Visual Contrast:
-Most social media feeds use white or dark backgrounds. To stand out, your thumbnail must use contrasting color palettes (e.g. glowing neon blues, bright golds, or vibrant greens set against dark, minimalist backgrounds). 
-
-```
-[Sub-subject / Text] ─── (Rule of Thirds) ─── [Glowing focal subject]
+```text
+A modern glowing green digital bar chart floating in a minimalist luxury office.
 ```
 
-### 3. Focal Subject Placement:
-Place your primary visual subject (a face, an object, a chart) on the left or right third of the frame. Place your bold text overlay on the opposite third. Avoid placing important elements in the bottom-right corner, where the platform overlays the video duration timestamp.
+**You should see:** a widescreen image with one clear glowing subject.
 
----
+**If not:** if it is cluttered, add "minimalist" or simplify the scene and regenerate.
 
-## Do It
+### 2. Set up the canvas
 
-### Step 1: Generate the Background Asset
-Select a prompt pattern from the [`templates/thumbnail-prompt-library.md`](templates/thumbnail-prompt-library.md). Run `nano-banana-2` (setting aspect ratio to `16:9` for widescreen or `1:1` for square feeds). 
-* *Example prompt:* A modern glowing green digital bar chart floating in a minimalist luxury office.
+Open your editor, set the canvas to `1280 x 720` pixels, and drop in the image.
 
-### Step 2: Import into Your Composition Tool
-Open your image editor (e.g. Canva or Photoshop). Set your canvas resolution to `1280 x 720` pixels. Drop in the generated image.
+**You should see:** the image filling the canvas.
 
-### Step 3: Saturation & Contrast Boost
-Faceless graphics can look flat. Apply these adjustments:
-* Increase **Contrast** by **+15%** to darken shadows and pop highlights.
-* Increase **Saturation** by **+12%** to make the colors vibrant.
-* Apply a slight **blur** (Gaussian blur, size: 5) to the background to separate the subject.
+**If not:** scale it up until there are no empty edges.
 
-### Step 4: Add Text Overlay
-Write a short, high-value phrase (maximum 3 words):
-* **Font:** Use an ultra-bold sans-serif font (e.g. Archivo Black).
-* **Color:** White (`#FFFFFF`) or Yellow (`#FFD700`).
-* **Outline:** Add a thick black drop shadow or stroke (width: 12) to ensure readability against any background element.
+### 3. Boost contrast and saturation
 
-### Step 5: Mobile Preview Audit
-Zoom out your editor screen until the thumbnail is the size of a coin (approx. 10% scale). If you cannot read the text or recognize the main subject, strip out background details and enlarge the subject.
+Apply: **Contrast +15%**, **Saturation +12%**, and a slight Gaussian blur (size 5) on the background to separate the subject.
 
----
+**You should see:** deeper shadows, brighter colors, and a subject that pops.
 
-## Worked Example
+**If not:** if the blur softens the subject too, apply it to the background layer only.
 
-<p align="center">
-<img src="templates/examples/get-rich-automated-thumbnail.jpg" alt="Thumbnail Design" width="280">
-<img src="templates/examples/thumbnail-motion-clip.gif" alt="Glowing Thumbnail Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>High-CTR Thumbnail Image (Left) ──► Image-to-Video Motion (Right) · Video File: <a href="templates/examples/thumbnail-motion-clip.mp4">templates/examples/thumbnail-motion-clip.mp4</a></sub></p>
+### 4. Place the subject and text
 
-**Thumbnail Design: "Get Rich Automated"**
+Put the main subject on the left or right third and the text on the opposite third. Write at most 3 words (do not repeat your video title). Use an ultra-bold sans-serif such as Archivo Black, in White (`#FFFFFF`) or Yellow (`#FFD700`), with a thick black stroke or drop shadow (width: 12).
 
+**You should see:** a clearly readable phrase facing the subject, with the bottom-right corner empty.
 
+**If not:** if text blends in, thicken the stroke.
 
-* **Asset Generation:**
-  * Model: `nano-banana-2` via muapi.
-  * Prompt: A shining silver key glowing with blue light, unlocking a physical lock.
-* **Text Overlay:**
-  * Text choice: *"AUTOMATE THIS"*
-  * Styling: Montserrat Extra-Bold, Yellow font with a thick black outline.
-* **Layout Composition:**
-  * The glowing blue lock is positioned on the right third of the canvas.
-  * The bold text is placed on the left third.
-  * The bottom-right corner is kept completely clean of important details.
+### 5. Run the coin-size audit
 
-**The Result:** The high contrast between the glowing blue light and the dark background instantly catches the eye. The text is bold and readable even at tiny mobile screen sizes.
+Zoom the editor out until the thumbnail is about 10% scale, the size of a coin.
 
-**The thumbnail below is real, not a mockup** — generated via `nano-banana-2` (16:9 widescreen aspect ratio) with the text overlay added programmatically, so you can see what a final high-CTR composition actually looks like:
+**You should see:** you can still read the words and recognize the subject.
 
-<p align="center"><img src="templates/examples/get-rich-automated-thumbnail.jpg" alt="Generated high-CTR thumbnail example" width="280"></p>
+**If not:** remove background detail and enlarge the subject, then check again.
 
-*How this was actually produced, end to end, via the muapi API & script:*
-1. Generated the base background scene with **`nano-banana-2`** (text-to-image, $0.06/image) with a widescreen `16:9` aspect ratio.
-2. Downloaded the image and used Python's `Pillow` library to overlay the yellow text **"AUTOMATE THIS"** on the left third with a thick black shadow stroke.
+### 6. Export
 
----
+Export the image at 1280 x 720.
 
-## Compare Tools
+**You should see:** a finished thumbnail file.
 
-| Generation Path | Quality | Speed | Customization |
-|---|---|---|---|
-| **`nano-banana-2`** (via muapi) | High | Fast (Generates in under 15 seconds) | Good (Quickly matches prompts) |
-| **Midjourney v6** | Ultra-High | Slow (Requires Discord interface and slow generation runs) | High |
-| **Stable Diffusion Local** | High | Medium (Requires powerful GPU setup) | Very High (Supports ControlNet) |
+**If not:** if the file is rejected for size, export at a slightly lower quality setting.
 
-For a volume content factory, using `nano-banana-2` via muapi is the fastest path. It allows you to automate thumbnail generation directly inside your scripting tools, exporting matching visual assets alongside your script runs.
+## Check yourself
 
----
+* [ ] One clear subject, 3 words or fewer.
+* [ ] Contrast +15% and saturation +12% applied.
+* [ ] Subject and text on opposite thirds, bottom-right clear.
+* [ ] Readable at coin size.
 
-## Launch It
+## Common mistakes
 
-**How to manage CTR in production:**
-* **The 24-Hour Swap:** If you upload a video and its CTR is below **3%** after 24 hours, do not delete the video. Simply generate a new thumbnail with a different color scheme and swap it. This can instantly rescue a video's distribution.
-* **Keep text files clean:** Keep a template folder of "high-CTR text layouts" in Canva so you can drag-and-drop your generated images behind pre-styled text boxes, reducing design times to under 3 minutes.
+* Packing in 10 words, several logos, or low-contrast backgrounds.
+* Repeating the video title as thumbnail text.
+* Putting key details in the bottom-right corner.
 
----
+## Go further
 
-## Exercises
+**Worked example, "Get Rich Automated":** `nano-banana-2` via muapi, prompt "A shining silver key glowing with blue light, unlocking a physical lock." Text "AUTOMATE THIS" in Montserrat Extra-Bold yellow with a thick black outline on the left third; glowing blue lock on the right third; bottom-right left clear. Made with a `16:9` `nano-banana-2` image ($0.06/image), then Python `Pillow` overlaid the text with a black shadow stroke.
 
-1. **Easy:** Generate a conceptual image using `nano-banana-2`. Boost its contrast by 15% and saturation by 10%.
-2. **Medium:** Design a 1280x720 thumbnail layout. Place a subject on the right third, and write a 2-word text overlay on the left third. Apply a thick black drop shadow to the text.
-3. **Hard:** Perform a "mobile preview audit" on three of your competitor's thumbnails. Map out their text sizes and focal subjects, and write down two changes you would make to improve their readability at a small scale.
+**Compare tools:** `nano-banana-2` via muapi is high quality and fast (under 15 seconds) and can be scripted alongside your runs; Midjourney v6 is ultra-high quality but slower, via Discord; local Stable Diffusion needs a strong GPU but is very customizable (ControlNet).
 
----
+**Launch tips:** The 24-Hour Swap: if CTR is below **3%** after 24 hours, swap in a new thumbnail with a different color scheme instead of deleting the video. Keep a Canva template folder of styled text boxes so designs take under 3 minutes.
 
-## Templates
+**Exercises:** Easy: generate an image and boost contrast 15% and saturation 10%. Medium: design a 1280x720 layout with a subject on the right third and a 2-word text overlay on the left with a thick drop shadow. Hard: audit three competitor thumbnails at small scale and write two readability changes for each.
 
-* [`templates/thumbnail-prompt-library.md`](templates/thumbnail-prompt-library.md) — tested image prompts for high-CTR backgrounds.
+**Template:** [`templates/thumbnail-prompt-library.md`](templates/thumbnail-prompt-library.md).
 
----
-
-[← Building a YouTube Shorts Factory](03-youtube-shorts-factory.md) · Next: [Batching & Scheduling at Volume →](05-batching-and-scheduling.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Batching & Scheduling at Volume.

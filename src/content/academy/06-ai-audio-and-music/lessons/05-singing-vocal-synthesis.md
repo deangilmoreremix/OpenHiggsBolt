@@ -1,131 +1,108 @@
 # Singing Voice Conversion & Vocal Synthesis
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Synthesize the melody, clone the artist.
-
-**Track:** AI Audio & Music  
-**Time:** ~30 minutes  
-**Prerequisites:** Voice Cloning & TTS Basics  
-
-## The Problem
-
-You want to produce a custom theme song, a musical ad, or a parody intro track for a client, but you cannot sing. Hiring professional studio vocalists for one-off projects is expensive, and trying to sing the vocals yourself results in pitch errors or ranges your voice cannot hit.
-
-Standard Text-to-Speech (TTS) models cannot sing. If you feed them lyrics, they will read them like a boring lecture, with zero rhythm, melody, or timing.
-
-To produce musical content without singing, you need to implement a **Singing Voice Conversion (SVC)** pipeline — a tool that takes your voice as input and outputs the same melody sung in a completely different vocal timbre (voice quality). This technology allows you to record a basic "guide vocal" (even if you sing poorly or speak in rhythm) and convert the vocal timbre into the singing voice of a professional model, preserving the original pitch, timing, and melody.
-
-## The Concept
-
-The vocal synthesis pipeline relies on **Retrieval-based Voice Conversion (RVC)** — a technique that looks up a target singer's voice characteristics from a trained model and projects them onto your guide vocal — combined with **Timbre Transfer** (swapping the unique "colour" of a voice while keeping its pitch and timing intact):
-
-```
-Source Guide Vocal  ──►  Pitch Correction (Auto-Tune)  ──►  RVC Timbre Transfer  ──►  Target Singing Master
-```
-
-* **Voice-to-Voice Conversion:** Unlike text-to-speech, voice-to-voice takes an audio input. It ignores the *text* of the words and analyzes the *pitch* (fundamental frequency) and *volume* envelope. It then swaps the vocal cords (timbre signature) of the source speaker with the target model.
-* **Acapella Extraction:** The source guide vocal must be dry and isolated — meaning just your voice with no background music playing. For example, if you record yourself singing while a piano track is playing in the room, the converter will try to convert those piano notes into singing voices too, creating jarring digital screeches. Record your guide vocal in silence, then layer the music back in afterwards.
-* **Transposition (Pitch Shift):** If you are a male editor recording a guide vocal for a female avatar, you must transpose the pitch up by **+12 semitones** (one full octave) so the model can process the vocals inside the target singer's natural pitch range. Configure these parameters inside the [`templates/vocal-conversion-brief.md`](templates/vocal-conversion-brief.md).
+> **Time:** about 16 minutes. **You will finish with:** a converted singing vocal mixed over an instrumental, with the conversion settings logged in a brief.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Prep Your Guide Vocal
-Record a dry vocal track singing the lyrics. Don't worry if your voice sounds flat. Import the track into your editor. Apply a pitch correction tool (such as GSnap or Auto-Tune) to snap the vocal notes to the correct musical key. Save the clean track as `guide_vocal.wav`.
+You want a theme song or musical ad but cannot sing, and text-to-speech reads lyrics like a lecture. **Singing Voice Conversion (SVC)** takes your guide vocal and outputs the same melody in another voice. It uses **Retrieval-based Voice Conversion (RVC)**, which looks up a target singer's characteristics from a trained model, to do timbre transfer: swap the voice's colour while keeping pitch and timing. The guide must be dry and isolated; background music in the recording gets converted into screeches. Crossing male to female needs a transpose of **+12 semitones** (one octave).
 
-### Step 2: Configure the Conversion Model
-Open your RVC interface (or call the `/voice-to-voice` API). Upload `guide_vocal.wav`.
-* **Select Target Model:** Choose the vocal model corresponding to your character (e.g. `emma_singing_v2`).
-* **Transpose:** Set pitch shift. If male guide -> female target: set to **+12 semitones**. If female guide -> male target: set to **-12 semitones**.
+You will need: a microphone, an audio editor with a pitch-correction tool (GSnap or Auto-Tune), an RVC interface (or ElevenLabs Voice-to-Voice), a target voice model you have the rights to use, an instrumental track, and [`templates/vocal-conversion-brief.md`](templates/vocal-conversion-brief.md). Prerequisite: lesson 1. SmartVideo GO AI's Lip-Sync Studio and AI Influencer Studio can give the voice a face (see Go further).
 
-### Step 3: Configure Retrieval Settings
-Experiment with these parameters:
-* **Feature Retrieval Index Rate (Target: 0.65 - 0.70):** Controls how much of the target model's character is projected. If set too high (e.g. 0.90), it will sound robotic; if set too low (e.g. 0.40), it will retain too much of the original guide singer's tone.
-* **Consonant Protection (Target: 0.33):** Protects the voiceless consonants ("s", "t", "sh") to prevent them from sounding like digital static.
+## Step by step
 
-### Step 4: Run the Timbre Transfer
-Click convert to compile the track. Download the output `.wav` file.
+### 1. Record a dry guide vocal
 
-### Step 5: Clean and Mix the Final Vocal
-Import the converted singing track back into your audio editor. Add a subtle plate reverb and a stereo delay to make the vocals blend into the instrumental background music track. Limit the vocal peak level to -3dB.
+In silence, with no music playing, record yourself singing the lyrics. Do not worry if you sound flat.
 
----
+**You should see:** a vocal-only recording.
 
-## Worked Example
+**If not:** if music bleeds into it, rerecord with headphones and silence the room.
 
-<p align="center">
-<img src="templates/examples/singing-vocal-studio.jpg" alt="Singing Vocal Studio" width="280">
-<img src="templates/examples/singing-vocal-studio-clip.gif" alt="Vocal Studio Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Singing Studio Image (Left) ──► Image-to-Video Studio Bokeh Motion (Right) · Video File: <a href="templates/examples/singing-vocal-studio-clip.mp4">templates/examples/singing-vocal-studio-clip.mp4</a></sub></p>
+### 2. Snap the pitch
 
-**Creating a Theme Song Vocal (Male Guide to Emma Avatar)**
+Import the track into your editor and apply a pitch-correction tool (GSnap or Auto-Tune) to snap notes to the key. Save it as `guide_vocal.wav`.
 
+**You should see:** notes sitting in the chosen key.
 
+**If not:** check the key setting matches your melody (the worked example used C-Major).
 
-* **Guide Recording:** A male editor recorded a basic guide vocal singing: *"Automate your SaaS..."* in key. Pitch correction snapped the notes to C-Major.
-* **RVC Setup:**
-  * Target Model: `emma_singing_v2` (female).
-  * Pitch Shift: **+12 semitones** (to shift male range to female octave).
-  * Index Rate: **0.68**.
-* **Audio Synthesis:** Converted file outputted a clean, on-pitch female vocal singing the melody with Emma's voice timbre.
-* **Mixing Station:** Vocal track mixed with lofi backing track, reverb set to 15% wet, mastered to -16 LUFS.
+### 3. Upload and choose the target model
 
-**The Result:** The avatar has a custom theme song. The singing voice is on-pitch, natural, and matches the visual character profile perfectly.
+Open your RVC interface (or call the `/voice-to-voice` API) and upload `guide_vocal.wav`. Choose the target model, for example `emma_singing_v2`.
 
----
+**You should see:** the file and model both selected.
 
-## Compare Tools
+**If not:** confirm the model is installed or available to your account.
 
-| Platform / Tool | Conversion Quality | Payout / Credit Cost | Setup Effort |
+### 4. Set the transpose
+
+Male guide to female target: **+12 semitones**. Female guide to male target: **-12 semitones**. Record this in [`templates/vocal-conversion-brief.md`](templates/vocal-conversion-brief.md).
+
+**You should see:** the pitch shift value in the settings.
+
+**If not:** if the output is strained, check you did not apply the wrong direction.
+
+### 5. Set the retrieval parameters
+
+1. **Feature Retrieval Index Rate:** target **0.65 to 0.70**. Too high (0.90) sounds robotic; too low (0.40) keeps too much of the guide singer's tone.
+2. **Consonant Protection:** target **0.33**, to stop "s", "t" and "sh" sounding like static.
+
+**You should see:** both values set in range.
+
+**If not:** adjust in small steps and re-run.
+
+### 6. Convert and download
+
+Click convert and download the output `.wav`.
+
+**You should see:** the melody sung in the target voice.
+
+**If not:** if it screeches, return to step 1 and check the guide is dry.
+
+### 7. Mix the final vocal
+
+Import the converted vocal into your editor with the instrumental. Add a subtle plate reverb and a stereo delay, and limit the vocal peak to -3dB.
+
+**You should see:** a vocal that blends with the music without peaking.
+
+**If not:** lower the reverb wet level (the worked example used 15% wet).
+
+## Check yourself
+
+* [ ] My guide vocal was dry, with no backing music.
+* [ ] Transpose matches the guide and target voices (+12 or -12 semitones).
+* [ ] Index rate is about 0.65 to 0.70 and consonant protection 0.33.
+* [ ] The final vocal peaks at -3dB and sits over the instrumental.
+
+## Common mistakes
+
+* Recording the guide with music playing.
+* Index rate set too high or too low.
+* Using models trained on famous pop stars for commercial work; platforms remove these tracks and legal risk is real.
+* Forgetting to transpose across male and female ranges.
+
+## Go further
+
+**Worked example (theme song, male guide to Emma avatar):** guide sung "Automate your SaaS...", snapped to C-Major. Target `emma_singing_v2`, pitch +12, index rate 0.68. Output: on-pitch female vocal with Emma's timbre, mixed with a lofi backing, reverb 15% wet, mastered to -16 LUFS.
+
+**Compare tools:**
+
+| Tool | Quality | Cost | Setup |
 |---|---|---|---|
-| **Retrieval-based Voice Conversion (RVC)** | High (Excellent for stylized singing and quick conversions) | **Free** (runs locally on GPU) | Medium (Requires running WebUI script) |
-| **ElevenLabs Voice-to-Voice** | Ultra-High (Preserves complex vocal inflections and breaths) | High (Billed per character generated) | Low (Simple web dashboard) |
-| **So-Vits-SVC 4.0** | Ultra-High | Free | High (Complex Python training pipeline) |
+| RVC | High | Free (local GPU) | Medium (WebUI script) |
+| ElevenLabs Voice-to-Voice | Ultra-high, keeps breaths | High (per character) | Low (web dashboard) |
+| So-Vits-SVC 4.0 | Ultra-high | Free | High (Python training) |
 
-For fast, cost-effective content creation, running RVC v2 on a local GPU is the standard method. It allows you to convert multiple tracks with zero API credit costs. For maximum vocal realism and breathing integration, ElevenLabs Voice-to-Voice provides the highest fidelity.
+**Copyright:** train a custom singing model, for example from 20 minutes of scales and songs by a local singer, and lock the IP ownership.
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: record a 10-second rhythmic sing-song guide.
+2. Medium: convert it with +12 semitones and analyze the octave shift.
+3. Hard: make a 15-second loop: acapella guide, auto-tune, RVC convert, delay and reverb, mix over an instrumental.
 
-**How to manage copyrights:**
-* **Use open voice models:** Never use RVC models trained on famous pop stars (like Drake or Ariana Grande) for commercial client projects or monetized channels. Platforms are actively removing these tracks, and you can face copyright lawsuits.
-* **Train custom singing models:** Have a local singer record 20 minutes of scales and songs, train a custom model, and lock the IP ownership of that voice for your agency.
+**Templates:** [`templates/vocal-conversion-brief.md`](templates/vocal-conversion-brief.md).
 
----
-
-## Exercises
-
-1. **Easy:** Record a 10-second guide track of yourself speaking in a rhythmic, sing-song voice.
-2. **Medium:** Submit your guide track to a voice-to-voice converter with a pitch shift of +12 semitones. Analyze the octave shift.
-3. **Hard:** Produce a complete 15-second vocal loop. Extract the acapella guide, run auto-tune, convert the timbre using RVC, apply delay and reverb, and mix it back over an instrumental loop.
-
----
-
-## Templates
-
-* [`templates/vocal-conversion-brief.md`](templates/vocal-conversion-brief.md) — acapella preparation checklists, transposition charts, and retrieval logs.
-
----
-
-[← AI Music & Sound Effects](04-music-sfx-generation.md) · [Track overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Produce this in SmartVideo GO AI:** **Lip-Sync Studio** (voice plus mouth-sync), **AI Influencer Studio** (a recurring character), **Image Studio** and **Video Studio** for visuals.

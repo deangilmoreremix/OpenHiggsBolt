@@ -1,136 +1,108 @@
 # Product Shots Without a Photographer
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 14 minutes. **You will finish with:** a transparent product cutout and a studio backdrop, composited together and ready for shadows.
 
+---
 
+## Before you start
 
-> A premium backdrop shifts your product from cheap to premium.
+A premium backdrop shifts your product from cheap to premium. A studio shoot costs thousands of dollars and weeks of coordination, while a phone photo on a cheap background makes customers assume the product is cheap too. The fix is to photograph the real product once, isolate it as a transparent PNG, and build the environment *around* it, because image generators (like Stable Diffusion or FLUX) cannot render existing labels or logos accurately. The pipeline is: raw photo, background removal, AI backdrop, composite and shadows. This lesson covers the first three parts and the composite; lesson 1, part 2 adds shadows and colour.
 
-**Track:** AI Product Photography & E-commerce  
-**Time:** ~45 minutes  
-**Prerequisites:** None  
+You will need: a phone, one product with a clean label, a background remover (Photoroom, Clipdrop or a `/remove-background` API), an image generator (for example **Image Studio** in SmartVideo GO AI), a photo editor (Photoshop, Photopea, or a Python Pillow script), and [`templates/photography-brief-template.md`](templates/photography-brief-template.md).
 
-## The Problem
+## Step by step
 
-E-commerce brands live or die by their product photography. Hiring a studio photographer, renting cameras and lighting rigs, sourcing props, and hiring editors to clean up reflections costs thousands of dollars per product and takes weeks of coordination.
+### 1. Photograph the product
 
-If you try to take the photos yourself on a mobile phone against a cheap background, the listing looks unprofessional. Customers equate poor-quality images with poor-quality products, causing conversion rates to plummet.
+Use diffused daylight from a window. Do not mix warm yellow house lamps with cool daylight: it creates mixed reflections on the packaging that AI cannot fix later. Make sure the label is clean, in focus and free of extreme glare.
 
-To launch products rapidly and test catalog variations, you need to generate high-end, studio-grade product photos in minutes at zero physical setup cost.
+**You should see:** a sharp photo where every word on the label is readable.
 
-## The Concept
+**If not:** move away from the lamp, turn off overhead lights, and shoot again with the product facing the window.
 
-The pipeline for AI product photography relies on **Product Isolation**, **Backdrop Generation**, and **Composite Relighting**:
+### 2. Isolate the product
 
+Upload the photo to Photoroom, Clipdrop, or call the `/remove-background` API. Download the result as a transparent PNG named `product_mask.png`.
+
+**You should see:** the product on a checkerboard (transparent) background with clean edges and an intact label.
+
+**If not:** if edges are ragged, retake the photo against a plain, contrasting surface and run the remover again.
+
+### 3. Open your photography brief
+
+Open [`templates/photography-brief-template.md`](templates/photography-brief-template.md) and fill in the backdrop environment and composition fields before you generate anything.
+
+**You should see:** a brief that names the surface, light direction and mood you want.
+
+**If not:** copy the prompt from the next step as your starting backdrop description.
+
+### 4. Generate the studio backdrop
+
+In your image generator, run this prompt:
+
+```text
+An elegant studio product backdrop. A single rectangular travertine stone slab on a beige concrete surface, soft side golden sunlight, warm shadows, minimalist aesthetic, commercial product setup, high resolution, f/4 lens, depth of field.
 ```
-Raw Product Photo ──► Background Mask Removal ──► AI Backdrop Generation ──► Layer Composite & Shadow Casting
+
+Save the best result as `backdrop.jpg`.
+
+**You should see:** an empty stone slab with warm side light and no product on it.
+
+**If not:** if a product or text appears, regenerate. Keep the slab as the only subject.
+
+### 5. Composite the layers
+
+In your photo editor, place `backdrop.jpg` as the bottom layer and `product_mask.png` as the top layer. Scale the product to sit naturally on the slab. Hold `Shift` while scaling so the aspect ratio never stretches or warps.
+
+**You should see:** the product standing on the slab at a believable size, still looking a bit "pasted" (no shadows yet).
+
+**If not:** if it looks squashed, undo and rescale holding `Shift`. Save the layered file, since part 2 continues from it.
+
+## Check yourself
+
+* [ ] My product photo used diffused daylight with no mixed lamps.
+* [ ] `product_mask.png` has a transparent background and a readable label.
+* [ ] `backdrop.jpg` contains only the empty stone slab scene.
+* [ ] I scaled the product proportionally onto the backdrop.
+
+## Common mistakes
+
+* Mixing warm house lamps and cool daylight when photographing.
+* Stretching or warping the product PNG to fit the background.
+* Asking the generator to draw the product itself, which ruins labels and logos.
+
+## Go further
+
+**Worked example: backdrop shift for an organic aloe vera gel tube.** Source: a green plastic bottle on a white desk under office lighting. Background removed, keeping only the container. Backdrop prompt:
+
+```text
+Minimalist bathroom counter, white marble surface, warm sunbeams passing through a window, soft shadows, green eucalyptus leaf casting shadows, high-end organic cosmetic background, 85mm, photorealistic.
 ```
 
-* **Label Preservation:** Standard image generators (like Stable Diffusion or FLUX) cannot render existing product labels or logos accurately. Instead of generating the product from scratch, you must photograph the physical product once, isolate it as a transparent PNG, and build the environment *around* it.
-* **Ambient Lighting Sync:** Simply pasting a product onto an AI background looks fake because the lighting colors do not match. You must adjust the color curves of the product layer to match the ambient tone of the background (e.g., warming the product colors if it is placed in a sunset backdrop).
-* **Double Shadow Technique:** To make the composite look real, you must cast two types of shadows:
-  1. **Contact Shadow (Ambient Occlusion):** A very thin, dark, highly-softened shadow directly underneath the product base where it touches the surface.
-  2. **Directional Shadow:** A larger, lighter shadow that stretches away from the product, matching the angle of the light sources in the background.
+The tube was scaled to occupy 70% of the vertical frame. Result: it looks shot in a high-end luxury spa, raising perceived value.
 
----
+**Exercises.** Easy: photograph a coffee mug and isolate it as a transparent PNG with a free remover. Medium: generate a wooden-block backdrop with a soft sunset shadow and composite your object onto it. Hard: continue in part 2 with the two-part shadow and colour balance.
 
-## Do It
+**Compare tools.**
 
-### Step 1: Capture and Isolate Your Product
-Take a clear, well-lit photo of your product with your phone. Ensure the label is clean, in focus, and has no extreme glare. Submit the photo to an AI background remover (such as Photoroom, Clipdrop, or call the `/remove-background` API). Download the output as a transparent `product_mask.png`.
-
-### Step 2: Generate the Studio Backdrop
-Open your photography brief in [`templates/photography-brief-template.md`](templates/photography-brief-template.md). Generate a background environment using an image generator:
-* *Prompt:* `"An elegant studio product backdrop. A single rectangular travertine stone slab on a beige concrete surface, soft side golden sunlight, warm shadows, minimalist aesthetic, commercial product setup, high resolution, f/4 lens, depth of field."`
-Run the model and save the generated image as `backdrop.jpg`.
-
-### Step 3: Composite the Layers
-Open a photo editor (like Photoshop, Photopea, or run a Python Pillow composting script). Place the `backdrop.jpg` as the bottom layer and import `product_mask.png` as the top layer. Scale the product to sit naturally on the travertine stone slab surface.
-
-### Step 4: Cast Real Shadows
-Create a new transparent layer between the product and the backdrop. Set the brush tool to black, opacity to 40%, hardness to 0%:
-* Paint a tight contact shadow right beneath the bottom edge of the product.
-* Paint a soft, elongated shadow stretching to the left, matching the angle of the sunlight in the backdrop. Set the layer blend mode to **Multiply**.
-
-### Step 5: Adjust Color Harmony
-Apply a color balance adjustment layer clipped to the product layer:
-* If the backdrop is a warm golden hour scene, add a slight yellow and red highlight shift to the product.
-* If the backdrop is an overcast beach scene, add a subtle blue/cyan midtone shift.
-
----
-
-## Worked Example
-
-<p align="center">
-<img src="templates/examples/perfume-before-after.jpg" alt="Perfume Bottle Before and After AI Studio Backdrop" width="560">
-<br>
-<img src="templates/examples/perfume-motion.gif" alt="Perfume Bottle Motion Loop (I2V)" width="320">
-</p>
-<p align="center"><sub>Raw Photo vs. AI Studio Backdrop (Top) ──► Image-to-Video Reflection Loop (Bottom) · Video File: <a href="templates/examples/perfume-motion.mp4">templates/examples/perfume-motion.mp4</a></sub></p>
-
-**Backdrop Shift for an Organic Aloe Vera Gel Tube**
-
-
-
-* **Source File:** A raw photo of a green plastic bottle shot on a white desk under office lighting.
-* **Isolator:** Background removed, saving only the clean green plastic container.
-* **Backdrop prompt:** `"Minimalist bathroom counter, white marble surface, warm sunbeams passing through a window, soft shadows, green eucalyptus leaf casting shadows, high-end organic cosmetic background, 85mm, photorealistic."`
-* **Compositing:** Tube scaled to occupy 70% of the vertical frame. A soft contact shadow painted at the base. Color temperature warmed by +10 to match the golden window sunbeams.
-
-**The Result:** The product looks like it was shot in a high-end luxury spa, instantly raising its perceived value.
-
-> [!NOTE]
-> You can view a high-end product photography backdrop example here: [perfume-bottle-studio.jpg](templates/examples/perfume-bottle-studio.jpg) and its corresponding silent animation loop here: [perfume-motion.gif](templates/examples/perfume-motion.gif).
-
----
-
-## Compare Tools
-
-| Platform / Tool | Generation Purpose | Control Customization | Best for |
+| Tool | Purpose | Control | Best for |
 |---|---|---|---|
-| **FLUX Dev / Schnell** | Environment backdrop generation | High (Extremely responsive to prop and lighting prompts) | Generating complex, stylized studio settings. |
-| **Photoroom / Clipdrop** | Fast background replacement and auto shadow casting | Instant (Template-driven auto-shadows) | Fast, automated batch rendering of basic Amazon listings. |
-| **Magnific AI / Relight** | High-resolution image detailing and color matching | High | Mastering premium hero images for luxury websites and landing pages. |
+| FLUX Dev / Schnell | Backdrop generation | High (responds well to prop and lighting prompts) | Complex, stylized studio settings |
+| Photoroom / Clipdrop | Fast background replacement and auto shadows | Instant (template-driven) | Fast batch rendering of basic Amazon listings |
+| Magnific AI / Relight | High-resolution detailing and colour matching | High | Premium hero images for luxury sites |
 
-For standard e-commerce listings, Photoroom's web app allows you to drag-and-drop a product shot and output a clean white-background listing with auto-shadows in 5 seconds. For creative banner campaigns, generating custom backdrops with FLUX and manually compositing them provides the highest quality results.
+For standard listings, Photoroom gives a clean white-background shot with auto-shadows in about 5 seconds. For creative banners, FLUX backdrops with manual compositing give the highest quality.
 
----
+**Template:** [`templates/photography-brief-template.md`](templates/photography-brief-template.md) covers backdrop environments, composition structures and prompt logs.
 
-## Launch It
+**SmartVideo GO AI studios** (generic list, same for every lesson):
 
-**How to set up your directory:**
-* **Keep lighting consistent:** When taking your raw product photo, use diffused daylight from a window. Avoid mixing warm yellow house lamps with cool white daylight, as this creates mixed reflections on the packaging that are impossible to correct with AI.
-* **Scale product layers correctly:** Never stretch or warp the aspect ratio of your product PNG when scaling it to fit the background. Always hold `Shift` in your editor to scale proportionally.
+* **Image Studio**: anchors, character sheets, product and brand shots
+* **Video Studio**: UGC ads, talking-head clips, image-to-video motion
+* **AI Influencer Studio**: consistent recurring on-brand characters
+* **Storyboard / Campaign Planner**: batch matrices, ad briefs and test plans
+* **Lip-Sync Studio**: voice + mouth-sync for avatar performances
 
----
+The workflow is the same everywhere in SmartVideo GO AI: **Learn, See Example, Use Template, Generate.**
 
-## Exercises
-
-1. **Easy:** Photograph a household object (like a coffee mug). Use a free online background remover to isolate it as a transparent PNG.
-2. **Medium:** Generate a studio setting backdrop containing a wooden block surface with a soft sunset shadow. Composite your isolated object onto it.
-3. **Hard:** Paint a realistic two-part shadow (contact shadow + directional shadow) under your composited object. Apply a color balance filter to make the object's highlight colors match the background light source.
-
----
-
-## Templates
-
-* [`templates/photography-brief-template.md`](templates/photography-brief-template.md) — backdrop environments, composition structures, and prompt assembly logs.
-
----
-
-[Track overview](README.md) · Next: [Before/After Conversion Case Studies →](02-conversion-case-studies.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Product Shots Without a Photographer, part 2.

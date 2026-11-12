@@ -1,45 +1,54 @@
-# Module 3: Finding & Closing Clients
+# Finding and Closing Clients
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> High-converting outbound cold email frameworks, LinkedIn B2B social selling, discovery call structure, and objection-handling playbooks for commercial AI agencies.
+> **Time:** about 17 minutes. **You will finish with:** a target segment, a 100-name prospect list plan, one personalised cold email, a discovery call plan and three objection replies.
 
 ---
 
-## 🎯 Target Market Identification: Who Buys AI Services?
+## Before you start
 
-The biggest mistake new AI creators make is pitching local consumer businesses (restaurants, hair salons, local gyms) that have zero budget ($200–$500 max). 
+The biggest early mistake is pitching local consumer businesses (restaurants, salons, gyms) with budgets of roughly $200 to $500. The lesson's advice is to target high-LTV B2B clients, meaning clients with high lifetime value (total revenue across the whole relationship, not just one project), who already spend $20,000+ per quarter on traditional media production.
 
-To build a high-margin $20k+/month agency, you must target **high-LTV B2B clients** (LTV = Lifetime Value — the total revenue a client generates across their entire relationship with you, not just one project) who already spend $20,000+ per quarter on traditional media production:
+Cold emails that work are under **100 words**, personalised, and ask for one low-friction next step. Budget ranges below are the lesson's examples, not guarantees.
 
-```
-                                  HIGH-VALUE CLIENT TARGET MATRIX
-                                                 │
-     ┌───────────────────────────────────────────┼───────────────────────────────────────────┐
-     ▼                                           ▼                                           ▼
-Realtors & Brokerages                   Remote SaaS & Tech Teams                     E-Commerce Apparel Brands
-• Target: Top 5% Producing Agents       • Target: VP of People / HR                 • Target: Head of E-Commerce
-• Need: Virtual Staging & Promo Videos  • Need: Automated Team Headshots            • Need: Merch Mockups & Ad Content
-• Budget: $2,500 – $5,000 / month       • Budget: $3,000 – $7,500 / project         • Budget: $4,000 – $10,000 / month
-```
+You will need:
 
----
+* Access to LinkedIn Sales Navigator or Apollo.io (the lesson's tools) or another way to find prospects.
+* `templates/outreach-and-discovery-script.md` from this track.
+* About 17 minutes.
 
-## 📧 Outbound Cold Email Architecture: The 4-Sentence Pitch
+## Step by step
 
-Cold emails fail when they look like long, formal sales pitches. High-converting B2B emails are under **100 words**, hyper-personalized, and focus on a single low-friction call-to-action (CTA).
+### 1. Pick one target segment
 
-### The 4-Sentence Framework Structure:
-1. **Sentence 1 (Trigger Hook):** Mention a recent specific event (hiring surge, new listing, new product drop).
-2. **Sentence 2 (Value Proposition):** Explain the core business outcome (replace $25k traditional shoot with 24-hr 8k AI pipeline).
-3. **Sentence 3 (Social Proof):** Cite a similar client result.
-4. **Sentence 4 (Low-Friction CTA):** Ask permission to send a 30-second personalized sample demo.
+Choose one from the lesson's matrix:
 
----
+1. Realtors and brokerages: top 5% producing agents; need virtual staging and promo videos; budget $2,500 to $5,000 a month.
+2. Remote SaaS and tech teams: VP of People or HR; need automated team headshots; budget $3,000 to $7,500 a project.
+3. E-commerce apparel brands: Head of E-Commerce; need merch mockups and ad content; budget $4,000 to $10,000 a month.
 
-### Cold Email Template — B2B Corporate Headshots:
+**You should see:** one segment, one buyer title and one need written down.
+
+**If not:** choose the segment where you already have a sample or case study.
+
+### 2. Build your prospect list
+
+Use LinkedIn Sales Navigator or Apollo.io to compile **100 targeted leads** in that segment. Note for each one a recent trigger event (hiring surge, new listing, product drop).
+
+**You should see:** a list with name, company, title and one trigger per row.
+
+**If not:** narrow the filters (company size, role) until the results match your buyer.
+
+### 3. Learn the 4-sentence structure
+
+Every cold email has four sentences: (1) a trigger hook about a recent specific event, (2) the business outcome you deliver, (3) social proof from a similar client, (4) a low-friction ask to send a 30-second personalised sample.
+
+**You should see:** you can name the four sentences from memory.
+
+**If not:** reread the headshot template in the next step and label each sentence.
+
+### 4. Write your first email
+
+Use the template for your segment. Headshots version:
 
 ```text
 SUBJECT: Quick question re: [Company Name] team headshots
@@ -59,16 +68,14 @@ Best,
 Managing Director | [Your Agency Name]
 ```
 
----
-
-### Cold Email Template — E-Commerce Apparel Renders:
+Apparel version:
 
 ```text
 SUBJECT: New asset pipeline for [Brand Name]'s Q3 catalog
 
 Hi [First Name],
 
-Loved your recent summer collection launch on Instagram—the color palette is incredible.
+Loved your recent summer collection launch on Instagram - the color palette is incredible.
 
 We help growing apparel brands turn flat vector art into 8k lifestyle model mockups and video ads without booking $15k model shoots or renting studio space.
 
@@ -81,70 +88,78 @@ Best,
 [Your Agency Name]
 ```
 
----
+Only use social proof you can truthfully claim; replace the example results with your own real ones.
 
-## 📞 The 20-Minute Discovery Call Structure
+**You should see:** an email under 100 words with the placeholders filled in.
 
-When a prospect agrees to a call, structure the 20 minutes to maintain authority and diagnose business pain rather than pitching features:
+**If not:** cut any sentence that is not one of the four.
 
+### 5. Record a personalised prototype
+
+Create a personalised 60-second Loom video walkthrough showing a prototype asset built for one high-value prospect.
+
+**You should see:** a short video you can link in a follow-up.
+
+**If not:** start with one prospect and one asset; keep it under a minute.
+
+### 6. Plan the 20-minute discovery call
+
+Use this frame: 0 to 3 min frame and agenda; 3 to 10 min discovery and pain (past production costs and bottlenecks); 10 to 15 min custom solution (show a live before/after demo); 15 to 20 min proposal lock (present 3 tiers and secure a deposit commitment).
+
+**You should see:** a four-row agenda with minutes.
+
+**If not:** write the minute marks on a sticky note beside your screen.
+
+### 7. Prepare your discovery questions
+
+```text
+What was your total expenditure on traditional photo and video shoots over the past 12 months?
+How long did it take from booking a photographer to getting final retouched files back for your last campaign?
+If we could deliver 8k studio-grade assets in 24 hours at 30% of your traditional shoot cost, what impact would that have on your Q3 roadmap?
 ```
-+-----------------------------------------------------------------------------+
-|                      THE 20-MINUTE SALES DISCOVERY FRAME                    |
-+-----------------------------------------------------------------------------+
-| 0 – 3 Min  | Frame & Agenda   | Set expectations and maintain control.      |
-| 3 – 10 Min | Discovery & Pain | Uncover past production costs & bottlenecks.|
-| 10 – 15 Min| Custom Solution  | Show live 8k before/after demo portal.       |
-| 15 – 20 Min| Proposal Lock    | Present 3 tiers & secure deposit commitment. |
-+-----------------------------------------------------------------------------+
+
+**You should see:** three questions that uncover cost and delay.
+
+**If not:** swap in your segment's terms (for example listings instead of shoots).
+
+### 8. Save your objection replies
+
+```text
+"Isn't AI media recognizable and cheap-looking?" - You are 100% right - public consumer tools create glossy, fake-looking images. That's why we don't use public tools. We build custom identity locks, Rembrandt lighting control rigs, and 300 DPI print upscaling. Here is a side-by-side comparison of a traditional $5,000 photographer shoot vs. our AI pipeline. Can you tell which one is AI?
 ```
 
-### Discovery Call Script Questions:
-- *"What was your total expenditure on traditional photo and video shoots over the past 12 months?"*
-- *"How long did it take from booking a photographer to getting final retouched files back for your last campaign?"*
-- *"If we could deliver 8k studio-grade assets in 24 hours at 30% of your traditional shoot cost, what impact would that have on your Q3 roadmap?"*
+```text
+"Why pay $5,000 when our intern can use Midjourney?" - Midjourney is just software - like Figma or Photoshop. Having Figma doesn't make someone a professional UI designer. You aren't paying for a software subscription; you are paying for our identity consistency pipelines, enterprise commercial IP indemnification, 4500px DPI scaling, and guaranteed 24-hour SLA delivery.
+```
 
----
+```text
+"We don't have the budget right now." - I completely understand! The main reason companies hire us is actually to save budget. If you have any upcoming content shoots or branding updates planned over the next 6 months, our pipeline typically cuts those planned line-item expenses by 60% to 70%. Should we touch base 30 days before your next planned shoot?
+```
 
-## 💬 Master Objection-Handling Playbook
+Only keep claims (such as indemnification or savings percentages) that are true for your business.
 
-### Objection 1: *"Isn't AI media recognizable and cheap-looking?"*
-* **The Frame:** Educate them on consumer AI vs. Enterprise Custom Pipelines.
-* **Script Response:** *"You are 100% right—public consumer tools create glossy, fake-looking images. That's why we don't use public tools. We build custom identity locks, Rembrandt lighting control rigs, and 300 DPI print upscaling. Here is a side-by-side comparison of a traditional $5,000 photographer shoot vs. our AI pipeline. Can you tell which one is AI?"*
+**You should see:** three replies saved where you can paste them in a call.
 
-### Objection 2: *"Why pay $5,000 when our intern can use Midjourney?"*
-* **The Frame:** Software ownership vs. Engineering & Commercial Compliance.
-* **Script Response:** *"Midjourney is just software—like Figma or Photoshop. Having Figma doesn't make someone a professional UI designer. You aren't paying for a software subscription; you are paying for our identity consistency pipelines, enterprise commercial IP indemnification, 4500px DPI scaling, and guaranteed 24-hour SLA delivery."*
+**If not:** edit them into your own voice.
 
-### Objection 3: *"We don't have the budget right now."*
-* **The Frame:** Cost savings vs. Expense.
-* **Script Response:** *"I completely understand! The main reason companies hire us is actually to save budget. If you have any upcoming content shoots or branding updates planned over the next 6 months, our pipeline typically cuts those planned line-item expenses by 60% to 70%. Should we touch base 30 days before your next planned shoot?"*
+## Check yourself
 
----
+* [ ] I chose one B2B segment with existing production budgets.
+* [ ] My cold email is under 100 words with one low-friction ask.
+* [ ] I have a 20-minute call agenda and three discovery questions.
+* [ ] I have replies for the three objections.
 
-## 🛠️ Step-by-Step Action Plan
+## Common mistakes
 
-1. **Build a Targeted Prospect List:** Use LinkedIn Sales Navigator or Apollo.io to compile 100 targeted B2B leads.
-2. **Use Outreach Templates:** Access complete email and call scripts in [`templates/outreach-and-discovery-script.md`](templates/outreach-and-discovery-script.md).
-3. **Record Loom Video Prototypes:** Create personalized 60-second video walkthroughs showcasing prototype assets built for high-value prospects.
+* **Pitching tiny local businesses.** Budgets of $200 to $500 will not sustain an agency.
+* **Long, formal emails.** Keep to four sentences and under 100 words.
+* **Selling prompt typing.** Position yourself as enterprise pipeline engineering.
+* **Borrowed proof.** Do not copy example client results as if they were yours.
 
----
+## Go further
 
-## 💡 Key Takeaways
-- Target B2B clients with existing production budgets (remote tech companies, real estate brokerages, e-commerce brands).
-- Keep cold emails under 100 words with a low-friction call-to-action ("Open to seeing a 30-sec demo?").
-- Position AI expertise as enterprise pipeline engineering rather than simple prompt typing.
+**Exercise.** Send five personalised emails this week using your prospect list, each with its own trigger sentence, and track replies.
 
+**Template.** `templates/outreach-and-discovery-script.md` holds the full email sequences, call framework and objection scripts.
 
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Scaling from freelancer to small agency.
