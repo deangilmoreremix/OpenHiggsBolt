@@ -107,7 +107,7 @@ export function upstreamError(res: Response, payload: OpenAiImageResponse) {
   return errorJson(res.status === 401 ? 'Your OpenAI API key was rejected. Update it in Settings.' : message, status);
 }
 
-export async function edits(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, images: ImagePart[]) {
+export async function edits(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, images: ImagePart[], mask?: ImagePart) {
   const form = new FormData();
   form.append('model', model);
   form.append('prompt', prompt);
@@ -115,6 +115,8 @@ export async function edits(key: string, model: string, prompt: string, aspectRa
   form.append('size', gptImageSize(aspectRatio));
   form.append('quality', quality);
   for (const image of images) form.append('image[]', image.blob, image.filename);
+  // Transparent pixels in the mask mark the region to repaint.
+  if (mask) form.append('mask', mask.blob, mask.filename);
 
   const res = await fetch(`${OPENAI_BASE}/images/edits`, {
     method: 'POST',

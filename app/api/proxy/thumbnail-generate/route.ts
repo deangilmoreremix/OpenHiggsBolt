@@ -36,10 +36,22 @@ export const dynamic = 'force-dynamic';
 
 const MAX_REFERENCES = 4;
 
-const GPT_IMAGE_MODELS = new Set(['gpt-image-2', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini']);
+// Images 2.6 ships as two models: sunburst (base) and flare (smaller, faster).
+const GPT_IMAGE_MODELS = new Set(['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare', 'gpt-image-2', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini']);
 const DEFAULT_MODEL = 'gpt-image-2';
 
 type Action = 'generate' | 'refine';
+
+/** True when OpenAI says the requested model does not exist / is not available to this key. */
+async function isModelUnavailable(res: NextResponse): Promise<boolean> {
+  if (res.status === 404) return true;
+  try {
+    const body = (await res.clone().json()) as { error?: string };
+    return /model/i.test(body.error || '') && /(not exist|not found|not available|access|invalid|unsupported)/i.test(body.error || '');
+  } catch {
+    return false;
+  }
+}
 
 function dalle3Size(aspectRatio: string): string {
   switch (aspectRatio) {
@@ -173,11 +185,15 @@ export async function POST(req: NextRequest) {
     }
   }
   const uniqueSources = Array.from(new Set(sources)).slice(0, MAX_REFERENCES);
+  // Optional mask for inpainting (refine only): a PNG data URL, transparent where the edit applies.
+  const maskSource = action === 'refine' && typeof body.mask_url === 'string' && body.mask_url ? body.mask_url : '';
+  if (maskSource && !maskSource.startsWith('data:image/png')) return errorJson('The edit mask must be a PNG image', 400);
 
   // Image editing needs a gpt-image model; dall-e-3 can only generate from text.
   let model = requestedModel === 'dall-e-3' || GPT_IMAGE_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
   if (uniqueSources.length > 0 && model === 'dall-e-3') model = DEFAULT_MODEL;
 
+  let fellBackFrom: string | undefined;
   try {
     let result: { urls?: string[]; revised?: string; error?: NextResponse };
     if (uniqueSources.length > 0) {
@@ -187,9 +203,27 @@ export async function POST(req: NextRequest) {
       } catch (err: any) {
         return errorJson(err?.message || 'Could not read a reference image', 400);
       }
-      result = await edits(key, model, prompt, aspectRatio, n, quality, images);
+      let mask: ImagePart | undefined;
+      if (maskSource) {
+        try {
+          mask = await loadImage(maskSource, 99);
+        } catch (err: any) {
+          return errorJson(err?.message || 'Could not read the edit mask', 400);
+        }
+      }
+      result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask);
+      if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
+        fellBackFrom = model;
+        model = DEFAULT_MODEL;
+        result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask);
+      }
     } else {
       result = await generations(key, model, prompt, aspectRatio, n, quality);
+      if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
+        fellBackFrom = model;
+        model = DEFAULT_MODEL;
+        result = await generations(key, model, prompt, aspectRatio, n, quality);
+      }
     }
 
     if (result.error) return result.error;
@@ -202,6 +236,7 @@ export async function POST(req: NextRequest) {
       request_id: `thumb_${Date.now().toString(36)}`,
       revised_prompt: result.revised,
       model,
+      ...(fellBackFrom ? { fallback_from: fellBackFrom } : {}),
     });
   } catch (err: any) {
     const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError';
