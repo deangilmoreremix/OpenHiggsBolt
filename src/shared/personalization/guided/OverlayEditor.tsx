@@ -200,6 +200,8 @@ interface DragState {
 
 export interface OverlayEditorProps {
   inputProps: PreviewInputProps
+  /** Rendered directly under the video stage (sticky with it), e.g. the layout quality bar. */
+  belowStage?: React.ReactNode
 }
 
 /**
@@ -222,7 +224,7 @@ export interface OverlayEditorProps {
 export const framesToSeconds = (frames: number, fps: number) => Math.round((frames / Math.max(1, fps)) * 100) / 100
 export const secondsToFrames = (seconds: number, fps: number) => Math.max(0, Math.round((Number.isFinite(seconds) ? seconds : 0) * Math.max(1, fps)))
 
-export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Element {
+export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     previewSettings,
@@ -451,7 +453,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
-        {/* ── Stage ─────────────────────────────────────────────────────── */}
+        {/* ── Stage column: stage + anything pinned directly under it ───── */}
+        <div style={{ minWidth: 0, position: 'sticky', top: 8, alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="overlay-stage-column">
         <div
           ref={stageRef}
           role="group"
@@ -633,6 +636,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 </div>
               )
             })}
+        </div>
+        {belowStage}
         </div>
 
         {/* ── Layer list + controls ─────────────────────────────────────── */}

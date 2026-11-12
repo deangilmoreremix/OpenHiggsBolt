@@ -227,10 +227,11 @@ export function StepPreviewApprove(): React.JSX.Element {
       </div>
 
       {/* ── Direct on-video overlay editing ─────────────────────────────── */}
-      <OverlayEditor inputProps={inputProps} />
-
-      {/* ── Layout quality check ────────────────────────────────────────── */}
-      <LayoutQualityPanel quality={quality} layers={previewSettings.layers} />
+      {/* The layout quality check sits directly under the video (no scrolling). */}
+      <OverlayEditor
+        inputProps={inputProps}
+        belowStage={<LayoutQualityPanel compact quality={quality} layers={previewSettings.layers} />}
+      />
 
       {/* ── Approve & create ────────────────────────────────────────────── */}
       <div style={{ ...panelStyle, border: `1px solid ${previewApproved ? 'rgba(40,201,139,.45)' : C.border}` }}>
