@@ -258,6 +258,22 @@ describe('Review & Publish', () => {
     expect(mocks.upload).not.toHaveBeenCalled();
   });
 
+  it('Publish remaining after an inconclusive poll re-checks the accepted post instead of posting it again', async () => {
+    mocks.poll.mockRejectedValueOnce(new Error('network down'));
+    render(<Harness initial={{ dests: [
+      { id: 'x:2', platform: 'x', accountId: '2', accountName: '@me', enabled: true, settings: {} },
+      { id: 'youtube:1', platform: 'youtube', accountId: '1', accountName: 'Ch', enabled: true, settings: {} },
+    ] }} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Publish \(2\)/ }));
+    await screen.findByText(/already sent to X/);
+    expect(mocks.pub.mock.calls.filter((c) => c[0] === 'x')).toHaveLength(1);
+    mocks.poll.mockResolvedValue({ status: 'completed', output: { url: 'https://example.com/post/1' } });
+    // the bulk "publish remaining" path, not the per-row button
+    fireEvent.click(await screen.findByRole('button', { name: /Publish remaining|^Publish \(/ }));
+    await waitFor(() => expect(mocks.poll.mock.calls.length).toBeGreaterThan(2));
+    expect(mocks.pub.mock.calls.filter((c) => c[0] === 'x')).toHaveLength(1); // X was never submitted twice
+  });
+
   it('after MuAPI accepted a post, a polling failure is not a reason to post it again', async () => {
     mocks.poll.mockRejectedValueOnce(new Error('network down'));
     render(<Harness initial={{ dests: [{ id: 'x:2', platform: 'x', accountId: '2', accountName: '@me', enabled: true, settings: {} }] }} />);

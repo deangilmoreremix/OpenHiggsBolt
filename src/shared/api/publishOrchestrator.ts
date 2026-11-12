@@ -46,6 +46,8 @@ export interface PublishOrchestratorOptions {
   /** Called after every state change with the full, ordered result list. */
   onProgress?: (results: PublishResult[]) => void
   deps?: PublishDeps
+  /** `platform:accountId` -> MuAPI request id of a post that was already accepted; those are re-checked, not re-posted. */
+  resumeRequestIds?: Record<string, string>
 }
 
 /** The YouTube video id from a publish result (watch / youtu.be / shorts URL, or an explicit id). */
@@ -187,6 +189,7 @@ export async function publishOrchestrator({
   apiKey,
   onProgress,
   deps = defaultDeps,
+  resumeRequestIds,
 }: PublishOrchestratorOptions): Promise<PublishResult[]> {
   const enabled = destinations.filter((d) => d.enabled && d.accountId)
   if (enabled.length === 0) return []
@@ -202,10 +205,12 @@ export async function publishOrchestrator({
   for (let i = 0; i < enabled.length; i++) {
     results[i] = { ...results[i], status: 'processing' }
     onProgress?.([...results])
+    // A destination whose post MuAPI already accepted is only re-checked, never submitted a second time.
+    const resumeId = resumeRequestIds?.[`${enabled[i].platform}:${enabled[i].accountId ?? ''}`]
     results[i] = await publishOne(enabled[i], asset, copy, thumbnail, apiKey, deps, (requestId) => {
       results[i] = { ...results[i], status: 'processing', requestId }
       onProgress?.([...results])
-    })
+    }, resumeId)
     onProgress?.([...results])
   }
   return results

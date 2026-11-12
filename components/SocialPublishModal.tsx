@@ -172,7 +172,11 @@ export default function SocialPublishModal({
         const ready = await resolveAsset(asset);
         const readyThumb = usesThumbnail(todo.map((d) => d.platform)) ? await resolveThumbnail(thumbnail) : thumbnail;
         const keep = publishResults.filter((r) => !todo.some((d) => key(d) === key(r)));
+        // Destinations whose post MuAPI already accepted (a failed poll kept the request id) are re-checked, not re-posted.
+        const resumeRequestIds: Record<string, string> = {};
+        for (const r of publishResults) if (r.status === 'failed' && r.requestId) resumeRequestIds[key(r)] = r.requestId;
         await publishOrchestrator({
+          resumeRequestIds,
           destinations: todo,
           asset: ready,
           copy,
