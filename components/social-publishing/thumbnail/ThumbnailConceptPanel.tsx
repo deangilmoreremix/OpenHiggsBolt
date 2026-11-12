@@ -360,7 +360,7 @@ export default function ThumbnailConceptPanel({
             <Field label="To"><input type="color" aria-label="Gradient to" value={background.gradientTo} onChange={(e) => setBackgroundField('gradientTo', e.target.value)} disabled={off} className="w-full h-8 rounded-lg" /></Field>
           </div>
         )}
-        {background.mode !== 'scene' && <p className="text-[10px] text-white/30">The AI only sees an approximate backdrop for this colour. Pixel-exact colours come with the layer editor and are not applied yet.</p>}
+        {background.mode !== 'scene' && <p className="text-[10px] text-white/30">The AI only sees an approximate backdrop for this colour. The exact colour, blur and contrast are applied in the thumbnail designer (Design this thumbnail), not by the AI.</p>}
         <div className="grid grid-cols-2 gap-2">
           <Field label="Palette"><input aria-label="Palette" value={background.palette} onChange={(e) => setBackgroundField('palette', e.target.value)} disabled={off} placeholder="e.g. teal and orange" className="w-full px-2.5 py-1.5 rounded-lg text-[11px] outline-none disabled:opacity-50" style={fieldStyle} /></Field>
           <Select label="Lighting" value={background.lighting} disabled={off} onChange={(v) => setBackgroundField('lighting', v)} options={['natural', 'studio', 'dramatic', 'neon', 'golden-hour', 'soft']} />
