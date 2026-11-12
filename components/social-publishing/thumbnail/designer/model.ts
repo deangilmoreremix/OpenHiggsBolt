@@ -126,7 +126,8 @@ const isStr = (s: unknown) => typeof s === 'string'
 /** True when a stored layer has every field its kind needs, so the renderer cannot throw on it. */
 function isRenderableLayer(value: unknown): boolean {
   const l = value as Record<string, any> | null
-  if (!l || typeof l !== 'object' || !isStr(l.id) || !['image', 'text', 'shape'].includes(l.kind) || ![l.x, l.y, l.w, l.h].every(isNum)) return false
+  if (!l || typeof l !== 'object' || !isStr(l.id) || !isStr(l.name) || !['image', 'text', 'shape'].includes(l.kind) || ![l.x, l.y, l.w, l.h, l.rotation, l.opacity].every(isNum) ||
+    typeof l.locked !== 'boolean' || typeof l.hidden !== 'boolean') return false
   if (l.kind === 'image') return isStr(l.src) && isNum(l.naturalW) && isNum(l.naturalH)
   if (l.kind === 'shape') return SHAPES.includes(l.shape) && isStr(l.fill) && isStr(l.stroke) && isNum(l.strokeWidth)
   const hl = l.highlight

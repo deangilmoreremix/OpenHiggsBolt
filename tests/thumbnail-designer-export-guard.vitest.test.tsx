@@ -70,6 +70,21 @@ describe('designer lifecycle and stale state', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
 
+  it('discards an export that finishes after the designer unmounted (no onDone)', async () => {
+    const onDone = vi.fn();
+    let finish!: () => void;
+    const result = { blob: new Blob(['x'], { type: 'image/png' }), type: 'image/png', width: 1280, height: 720, dataUrl: 'data:image/png;base64,eA==', scaledDown: false };
+    mocks.exportProject.mockImplementation(() => new Promise((res) => { finish = () => res(result); }));
+    const { unmount } = render(<ThumbnailDesigner backgroundImageUrl="data:image/png;base64,GOOD" aspectRatio="16:9" onDone={onDone} />);
+    await new Promise((r) => setTimeout(r, 20));
+    fireEvent.click(exportBtn());
+    await waitFor(() => expect(mocks.exportProject).toHaveBeenCalled());
+    unmount();
+    finish();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
   it('forgets a load error once its picture is no longer part of the design', async () => {
     render(<ThumbnailDesigner backgroundImageUrl="data:image/png;base64,BAD" aspectRatio="16:9" onDone={vi.fn()} />);
     await new Promise((r) => setTimeout(r, 20));

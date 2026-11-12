@@ -208,4 +208,20 @@ describe('sanitizeProject', () => {
     const p = sanitizeProject({ version: 1, width: 1280, height: 720, background: {}, layers: [...bad, text, img, shape] })
     expect(p?.layers.map((l) => l.id)).toEqual([text.id, img.id, shape.id])
   })
+  it('drops layers with malformed base fields (name object, missing rotation, non-boolean locked, NaN geometry)', () => {
+    const text = makeTextLayer(P, 'hi')
+    const img = makeImageLayer(P, 'data:image/png;base64,AA==', 100, 100)
+    const { rotation: _r, ...noRotation } = makeShapeLayer(P, 'rect')
+    const bad = [
+      { ...text, id: 'n', name: {} },
+      { ...noRotation, id: 'r' },
+      { ...text, id: 'l', locked: 'no' },
+      { ...text, id: 'h', hidden: 1 },
+      { ...img, id: 'g', x: NaN },
+      { ...img, id: 'o', opacity: 'x' },
+      { ...img, id: 'k', kind: 'bogus' },
+    ]
+    const p = sanitizeProject({ version: 1, width: 1280, height: 720, background: {}, layers: [...bad, text, img] })
+    expect(p?.layers.map((l) => l.id)).toEqual([text.id, img.id])
+  })
 })

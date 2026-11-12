@@ -266,7 +266,22 @@ function drawLayer(ctx: CanvasRenderingContext2D, l: Layer, assets: RenderAssets
       ctx.drawImage(surface.canvas, -sw / 2, -sh / 2)
     } else drawImageLayer(ctx, l, assets)
   } else if (l.kind === 'shape') drawShapeLayer(ctx, l)
-  else drawTextLayer(ctx, l)
+  else {
+    const alpha = Math.max(0, Math.min(1, l.opacity))
+    // A box or outline overlaps the text; compose at full opacity, then apply the layer opacity once.
+    const sh = l.shadow
+    const reach = Math.ceil(l.strokeWidth * 2 + (sh ? sh.blur * 2 + Math.max(Math.abs(sh.offsetX), Math.abs(sh.offsetY)) : 0)) + 24
+    const sw = Math.ceil(l.w + reach * 2)
+    const shh = Math.ceil(l.h + reach * 2)
+    const surface = alpha < 1 && (l.box || l.strokeWidth > 0) ? createSurface(sw, shh) : null
+    if (surface) {
+      surface.ctx.save()
+      surface.ctx.translate(sw / 2, shh / 2)
+      drawTextLayer(surface.ctx, l)
+      surface.ctx.restore()
+      ctx.drawImage(surface.canvas, -sw / 2, -shh / 2)
+    } else drawTextLayer(ctx, l)
+  }
   ctx.restore()
 }
 

@@ -161,6 +161,30 @@ describe('renderProject: layers', () => {
     expect(onMain[0].state.globalAlpha).toBe(0.5)
   })
 
+  it('composes a boxed or outlined text layer on a surface and applies its opacity once', () => {
+    const P = createProject(1000, 500)
+    for (const extra of [{ box: { color: '#000000', padding: 10, radius: 4 }, strokeWidth: 0 }, { box: null, strokeWidth: 3 }]) {
+      const t: TextLayer = { ...makeTextLayer(P), x: 100, y: 50, w: 300, h: 100, text: 'hi', opacity: 0.5, shadow: null, ...extra }
+      const main = recorder()
+      const surface = recorder()
+      renderProject(main.ctx, addLayer(P, t), {}, { createSurface: () => ({ canvas: {} as any, ctx: surface.ctx }) })
+      expect(surface.calls.filter((c) => c.fn === 'fillText').length).toBeGreaterThan(0)
+      expect(surface.calls.every((c) => c.state.globalAlpha === undefined || c.state.globalAlpha === 1)).toBe(true)
+      expect(main.calls.filter((c) => c.fn === 'fillText' || c.fn === 'strokeText')).toHaveLength(0)
+      const onMain = main.calls.filter((c) => c.fn === 'drawImage')
+      expect(onMain).toHaveLength(1)
+      expect(onMain[0].state.globalAlpha).toBe(0.5)
+    }
+  })
+
+  it('keeps plain text on the main canvas', () => {
+    const P = createProject(1000, 500)
+    const t: TextLayer = { ...makeTextLayer(P), w: 300, h: 100, text: 'hi', opacity: 0.5, box: null, strokeWidth: 0, shadow: null }
+    const main = recorder()
+    renderProject(main.ctx, addLayer(P, t), {}, { createSurface: () => { throw new Error('no surface needed') } })
+    expect(main.calls.filter((c) => c.fn === 'fillText')).toHaveLength(1)
+  })
+
   it('guides and selection are drawn only when asked for', () => {
     const P = addLayer(createProject(1000, 500), { ...makeShapeLayer(createProject(1000, 500), 'rect'), id: 'sel' })
     const plain = recorder()

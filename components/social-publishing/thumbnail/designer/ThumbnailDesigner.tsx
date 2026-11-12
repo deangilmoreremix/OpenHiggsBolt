@@ -303,6 +303,7 @@ export default function ThumbnailDesigner({ initialProject, backgroundImageUrl, 
       if (needed.some((src) => loadErrors[src])) { setMessage('A picture in this design failed to load. Replace it or upload it as a photo, then export.'); return; }
       if (needed.some((src) => !assets[src])) { setMessage('Wait for the pictures to finish loading, then export again.'); return; }
       const result = await exportProject(p, assets, { format, maxBytes: THUMBNAIL_MAX_BYTES });
+      if (!mounted.current) return; // left the designer mid-export: discard the result
       const file = new File([result.blob], `thumbnail-${Date.now()}.${result.type === 'image/png' ? 'png' : result.type === 'image/webp' ? 'webp' : 'jpg'}`, { type: result.type });
       const mb = (file.size / (1024 * 1024)).toFixed(2);
       if (mounted.current) setExported(`${result.width} × ${result.height}, ${result.type === 'image/png' ? 'PNG' : 'JPEG'}, ${mb} MB${result.scaledDown ? ' (made smaller to fit 2 MB)' : ''}`);
