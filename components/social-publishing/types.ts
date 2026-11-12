@@ -1,5 +1,7 @@
 'use client';
 
+import type { DesignProject } from './thumbnail/designer/model';
+
 export interface Asset {
   id?: string;
   type: 'video' | 'image';
@@ -20,6 +22,8 @@ export interface ThumbnailState {
   imageUrl?: string;
   responseId?: string;
   aspectRatio?: string;
+  /** The layered design behind the exported thumbnail (kept so it can be edited again). */
+  design?: DesignProject;
 }
 
 export interface CopyState {
@@ -53,6 +57,8 @@ export interface ThumbnailState {
   imageUrl?: string
   responseId?: string
   aspectRatio?: string
+  /** The layered design behind the exported thumbnail (kept so it can be edited again). */
+  design?: DesignProject
 }
 
 export interface Destination {

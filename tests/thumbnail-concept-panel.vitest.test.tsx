@@ -148,11 +148,13 @@ describe('ThumbnailConceptPanel', () => {
     expect(generateButton(/Generate 1 concept/).disabled).toBe(true);
   });
 
-  it('does not promise pixel-exact colours that are not applied yet', () => {
+  it('says exact colours are applied in the designer', () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: /Background and style/ }));
     fireEvent.change(screen.getByLabelText('Background type'), { target: { value: 'solid' } });
-    expect(document.body.textContent).toMatch(/not applied yet/);
+    expect(document.body.textContent).toMatch(/applied in the thumbnail designer/);
+    expect(document.body.textContent).toMatch(/Solid or Gradient background/);
+    expect(document.body.textContent).not.toMatch(/not applied yet/);
     expect(document.body.textContent).not.toMatch(/Exact colour is applied in the canvas/);
   });
 });
