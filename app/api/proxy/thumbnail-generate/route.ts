@@ -13,8 +13,11 @@ import {
   toUrls,
   upstreamError,
   edits,
+  extraFields,
+  type ExtraImageOptions,
   type ImagePart,
 } from '@/src/lib/openaiImageApi';
+import { parseImageOptions } from '@/src/lib/openaiImageOptions';
 
 /**
  * Thumbnail generation for the Social Publish modal (opened from every studio).
@@ -36,10 +39,27 @@ export const dynamic = 'force-dynamic';
 
 const MAX_REFERENCES = 4;
 
-const GPT_IMAGE_MODELS = new Set(['gpt-image-2', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini']);
+// Images 2.6 ships as two models: sunburst (base) and flare (smaller, faster).
+const GPT_IMAGE_MODELS = new Set(['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare', 'gpt-image-2', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini']);
 const DEFAULT_MODEL = 'gpt-image-2';
 
 type Action = 'generate' | 'refine';
+
+/** GPT Image 2 has no xhigh/max: map them to the best level it supports when falling back from Images 2.6. */
+function fallbackQuality(q: string): string {
+  return q === 'xhigh' || q === 'max' ? 'high' : q;
+}
+
+/** True when OpenAI says the requested model does not exist / is not available to this key. */
+async function isModelUnavailable(res: NextResponse): Promise<boolean> {
+  if (res.status === 404) return true;
+  try {
+    const body = (await res.clone().json()) as { error?: string };
+    return /model/i.test(body.error || '') && /(not exist|not found|not available|access|invalid|unsupported)/i.test(body.error || '');
+  } catch {
+    return false;
+  }
+}
 
 function dalle3Size(aspectRatio: string): string {
   switch (aspectRatio) {
@@ -63,8 +83,9 @@ function clampCount(n: unknown): number {
   return Math.min(Math.max(Math.round(value), 1), 4);
 }
 
-function normalizeQuality(q: unknown): 'low' | 'medium' | 'high' {
-  return q === 'low' || q === 'high' ? q : 'medium';
+/** Draft/standard/high map to the classic levels; xhigh, max and auto pass through for gpt-image models. */
+function normalizeQuality(q: unknown): string {
+  return q === 'low' || q === 'high' || q === 'xhigh' || q === 'max' || q === 'auto' ? q : 'medium';
 }
 
 function buildPrompt(body: Record<string, any>, aspectRatio: string): string {
@@ -83,7 +104,7 @@ function buildPrompt(body: Record<string, any>, aspectRatio: string): string {
   return parts.join(' ').slice(0, 30_000);
 }
 
-async function generations(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string) {
+async function generations(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, extra?: ExtraImageOptions) {
   if (model === 'dall-e-3') {
     // dall-e-3 only returns one image per request.
     const calls = Array.from({ length: n }, () =>
@@ -95,7 +116,7 @@ async function generations(key: string, model: string, prompt: string, aspectRat
           prompt: prompt.slice(0, 4000),
           n: 1,
           size: dalle3Size(aspectRatio),
-          quality: quality === 'high' ? 'hd' : 'standard',
+          quality: ['high', 'xhigh', 'max'].includes(quality) ? 'hd' : 'standard',
           response_format: 'b64_json',
         }),
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -117,7 +138,7 @@ async function generations(key: string, model: string, prompt: string, aspectRat
   const res = await fetch(`${OPENAI_BASE}/images/generations`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt, n, size: gptImageSize(aspectRatio), quality }),
+    body: JSON.stringify({ model, prompt, n, size: extra?.size || gptImageSize(aspectRatio), quality, ...extraFields(model, extra) }),
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   });
   const payload = await readUpstream(res);
@@ -150,7 +171,16 @@ export async function POST(req: NextRequest) {
   const action: Action = body.action === 'refine' ? 'refine' : 'generate';
   const aspectRatio = typeof body.aspect_ratio === 'string' ? body.aspect_ratio : '16:9';
   const n = clampCount(body.n);
-  const quality = normalizeQuality(body.quality);
+  const parsed = parseImageOptions(body);
+  if (parsed.error) return errorJson(parsed.error, 400);
+  const extra: ExtraImageOptions = {
+    size: parsed.options.size,
+    complexity: parsed.options.complexity,
+    background: parsed.options.background,
+    outputFormat: parsed.options.outputFormat,
+    outputCompression: parsed.options.outputCompression,
+  };
+  let quality = normalizeQuality(body.quality);
   const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
 
   const prompt = action === 'refine'
@@ -173,11 +203,15 @@ export async function POST(req: NextRequest) {
     }
   }
   const uniqueSources = Array.from(new Set(sources)).slice(0, MAX_REFERENCES);
+  // Optional mask for inpainting (refine only): a PNG data URL, transparent where the edit applies.
+  const maskSource = action === 'refine' && typeof body.mask_url === 'string' && body.mask_url ? body.mask_url : '';
+  if (maskSource && !maskSource.startsWith('data:image/png')) return errorJson('The edit mask must be a PNG image', 400);
 
   // Image editing needs a gpt-image model; dall-e-3 can only generate from text.
   let model = requestedModel === 'dall-e-3' || GPT_IMAGE_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
   if (uniqueSources.length > 0 && model === 'dall-e-3') model = DEFAULT_MODEL;
 
+  let fellBackFrom: string | undefined;
   try {
     let result: { urls?: string[]; revised?: string; error?: NextResponse };
     if (uniqueSources.length > 0) {
@@ -187,9 +221,29 @@ export async function POST(req: NextRequest) {
       } catch (err: any) {
         return errorJson(err?.message || 'Could not read a reference image', 400);
       }
-      result = await edits(key, model, prompt, aspectRatio, n, quality, images);
+      let mask: ImagePart | undefined;
+      if (maskSource) {
+        try {
+          mask = await loadImage(maskSource, 99);
+        } catch (err: any) {
+          return errorJson(err?.message || 'Could not read the edit mask', 400);
+        }
+      }
+      result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask, extra);
+      if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
+        fellBackFrom = model;
+        model = DEFAULT_MODEL;
+        quality = fallbackQuality(quality);
+        result = await edits(key, model, prompt, aspectRatio, n, quality, images, mask, extra);
+      }
     } else {
-      result = await generations(key, model, prompt, aspectRatio, n, quality);
+      result = await generations(key, model, prompt, aspectRatio, n, quality, extra);
+      if (result.error && model !== DEFAULT_MODEL && (await isModelUnavailable(result.error))) {
+        fellBackFrom = model;
+        model = DEFAULT_MODEL;
+        quality = fallbackQuality(quality);
+        result = await generations(key, model, prompt, aspectRatio, n, quality, extra);
+      }
     }
 
     if (result.error) return result.error;
@@ -202,6 +256,7 @@ export async function POST(req: NextRequest) {
       request_id: `thumb_${Date.now().toString(36)}`,
       revised_prompt: result.revised,
       model,
+      ...(fellBackFrom ? { fallback_from: fellBackFrom } : {}),
     });
   } catch (err: any) {
     const timedOut = err?.name === 'TimeoutError' || err?.name === 'AbortError';

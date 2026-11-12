@@ -10,6 +10,8 @@ import ExploreIdeas from '../thumbnail/ExploreIdeas';
 import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
+import ThumbnailEditor from '../thumbnail/ThumbnailEditor';
+import ThumbnailConceptPanel from '../thumbnail/ThumbnailConceptPanel';
 
 const ASPECT_PRESETS = [
   { value: '16:9', label: 'YouTube 16:9', platforms: ['YouTube'] },
@@ -20,6 +22,8 @@ const ASPECT_PRESETS = [
 
 const MODEL_OPTIONS = [
   { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Best quality, recommended' },
+  { value: 'gpt-image-2.6-sunburst', label: 'Images 2.6 (Sunburst)', description: 'Newest OpenAI image model; falls back to GPT Image 2 if your key cannot use it yet' },
+  { value: 'gpt-image-2.6-flare', label: 'Images 2.6 (Flare)', description: 'Smaller and faster 2.6 model' },
   { value: 'gpt-image-1', label: 'GPT Image 1', description: 'Faster, good quality' },
   { value: 'dall-e-3', label: 'DALL·E 3', description: 'Text only — no reference images' },
 ] as const;
@@ -102,6 +106,7 @@ export default function ThumbnailStep({
   thumbnail,
   onUpdateThumbnail,
   copy,
+  onRequestApiKey,
 }: ThumbnailStepProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(thumbnail.templateId)
   const [viewMode, setViewMode] = useState<'recommended' | 'explore'>('recommended')
@@ -125,6 +130,7 @@ export default function ThumbnailStep({
   const [assetReference, setAssetReference] = useState<string | null>(null)
   const [assetReferenceState, setAssetReferenceState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showConcepts, setShowConcepts] = useState(false)
 
   const [headline, setHeadline] = useState(copy.headline || '')
   const [subheadline, setSubheadline] = useState(copy.subheadline || '')
@@ -320,6 +326,31 @@ export default function ThumbnailStep({
     }
   }, [onUpdateThumbnail])
 
+  // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
+  const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
+
+  /** The editor produced (or restored) a version of the selected thumbnail. */
+  const handleEditorApply = useCallback((next: { url: string; responseId?: string; revisedPrompt?: string }) => {
+    setResults((prev) => prev.map((r, i) => (i === (selectedIndex ?? 0) ? { ...r, url: next.url, responseId: next.responseId ?? r.responseId, revisedPrompt: next.revisedPrompt ?? r.revisedPrompt } : r)))
+    onUpdateThumbnail({ imageUrl: next.url, responseId: next.responseId })
+  }, [selectedIndex, onUpdateThumbnail])
+
+  /** Concepts made by the concept panel replace the current results, like a normal generation. */
+  const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
+    setError(null)
+    setResults(conceptResults)
+    setSelectedIndex(conceptResults.length > 0 ? 0 : null)
+    if (conceptResults.length > 0) {
+      onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio })
+    }
+  }, [onUpdateThumbnail])
+
+  const handleConceptGenerating = useCallback((pending: number) => {
+    setGenerating(pending > 0)
+    setGeneratingCount(pending)
+    if (pending > 0) { setResults([]); setSelectedIndex(null) }
+  }, [])
+
   const handleAutoFillFromWrite = useCallback(() => {
     const sourceHeadline = copy.headline || copy.title || ''
     const sourceSubject = copy.subject || ''
@@ -403,6 +434,24 @@ export default function ThumbnailStep({
           <input type="checkbox" checked={useAssetReference} onChange={(e) => setUseAssetReference(e.target.checked)} disabled={generating || assetReferenceState !== 'ready'} className="accent-[#22d3ee] disabled:opacity-50" aria-label="Use studio output as thumbnail reference" />
           <span className="text-[10px] text-white/50">Use</span>
         </label>
+      </div>
+
+      <button type="button" onClick={() => setShowConcepts(!showConcepts)} aria-expanded={showConcepts} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold transition-all hover:bg-white/[0.04]" style={{ border: '1px solid rgba(34,211,238,0.25)', background: 'rgba(34,211,238,0.04)', color: '#22d3ee' }}>
+        <span className="flex items-center gap-2"><Wand2 size={13} />Generate concepts</span>
+        {showConcepts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {/* Kept mounted while collapsed: unmounting during a run would drop its results and leave generation locked. */}
+      <div hidden={!showConcepts}>
+        <ThumbnailConceptPanel
+          assetType={asset.type === 'video' ? 'video' : 'image'}
+          frameUrl={assetReferenceState === 'ready' ? assetReference : null}
+          existingThumbnailUrl={thumbnail.imageUrl}
+          defaults={{ title: copy.title || copy.headline || '', topic: copy.subject || '' }}
+          disabled={generating}
+          onGeneratingChange={handleConceptGenerating}
+          onResults={handleConceptResults}
+          onError={setError}
+        />
       </div>
 
       <div className="space-y-2">
@@ -537,9 +586,22 @@ export default function ThumbnailStep({
         </div>
       )}
 
+      {error && /openai api key/i.test(error) && onRequestApiKey && (
+        <div data-testid="thumbnail-needs-openai-key" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200" role="alert">
+          Add your OpenAI key to create thumbnails with AI.
+          <button type="button" onClick={onRequestApiKey} className="ml-2 rounded-lg bg-[#22d3ee] px-3 py-1 font-bold text-black">Add OpenAI key</button>
+        </div>
+      )}
+      {results[0]?.fallbackFrom && (
+        <p className="text-[11px] text-amber-300/80" role="status">
+          {results[0].fallbackFrom} is not available to your OpenAI key yet, so GPT Image 2 made these.
+        </p>
+      )}
+
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
-      <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailRefinement sourceImageUrl={activeImageUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailEditor sourceImageUrl={activeImageUrl} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
