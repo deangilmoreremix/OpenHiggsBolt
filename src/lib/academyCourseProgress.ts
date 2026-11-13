@@ -229,6 +229,29 @@ export function saveCourseLocal(p: CourseProgress): void {
   }
 }
 
+/** A signed-out visitor takes over the shared browser copy; the account's own copy is parked here until that account signs in again. */
+const stashKey = (owner: string) => `${COURSE_STORAGE_KEY}:account:${owner}`;
+
+export function stashAccountCopy(owner: string, p: CourseProgress): void {
+  try {
+    if (typeof window !== 'undefined' && p.updatedAt > 0) window.localStorage.setItem(stashKey(owner), JSON.stringify(p));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function takeAccountStash(owner: string, lessonIds: readonly string[]): CourseProgress | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = window.localStorage.getItem(stashKey(owner));
+    if (!raw) return null;
+    window.localStorage.removeItem(stashKey(owner));
+    return sanitizeCourseProgress(JSON.parse(raw), lessonIds);
+  } catch {
+    return null;
+  }
+}
+
 export function clearCourseOwner(): void {
   try {
     if (typeof window !== 'undefined') window.localStorage.removeItem(COURSE_OWNER_KEY);

@@ -7,6 +7,8 @@ import {
   clearCourseOwner,
   loadCourseOwner,
   sameCourseProgress,
+  stashAccountCopy,
+  takeAccountStash,
   markStepDone,
   mergeCourseProgress,
   sanitizeCourseProgress,
@@ -254,8 +256,15 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           const shown = all.reduce((p, e) => editFn(e)(p, Date.now()), local);
           latest.current = shown;
           setProgress(shown);
+          if (tagged && taggedOwner) {
+            // The shared browser copy is handed to this signed-out visitor right away: A's copy is parked for A
+            // (never shown to the guest, restored when A signs in) and the tag is cleared, so everything the
+            // guest does from here on is saved as guest progress and survives a refresh.
+            stashAccountCopy(taggedOwner, fullLocal);
+            clearCourseOwner();
+            saveCourseLocal(shown);
+          }
           if (all.length) {
-            if (tagged) clearCourseOwner(); // the shared copy no longer belongs to that account
             saveCourseLocal(shown);
             if (guest || res.status !== 401) savePending(key, []);
           }
@@ -270,7 +279,9 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         if (cancelled) return;
         const storedOwner = loadCourseOwner();
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
-        const base = mergeCourseProgress(foreign ? emptyCourseProgress() : key ? local : fullLocal, remote);
+        const parked = owner ? takeAccountStash(owner, idsRef.current) : null; // this account's copy, parked while a guest used the browser
+        const own = foreign ? emptyCourseProgress() : key ? local : fullLocal;
+        const base = mergeCourseProgress(parked ? unionCourseProgress(own, parked) : own, remote);
         // edits kept from an earlier visit only count when this really is the same account
         const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
         const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);

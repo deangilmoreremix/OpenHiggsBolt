@@ -462,6 +462,27 @@ describe('useCourseProgress', () => {
     expect(guest.result.current.progress.completedLessons).toEqual(['ugc/01-a']);
   });
 
+  it('signed out with a copy tagged as account A\'s: the 401 hands the shared copy to the guest, so the guest\'s work survives a refresh and A\'s own copy is kept for A', async () => {
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 9000)));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    fetchMock.mockResolvedValue(json({ error: 'UNAUTHENTICATED' }, 401));
+    const first = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(first.result.current.sync).toBe('local'));
+    expect(first.result.current.progress.completedLessons).toEqual([]);
+    expect(localStorage.getItem(COURSE_OWNER_KEY)).toBeNull(); // no edits yet, and the tag is already no longer A's
+    act(() => first.result.current.complete('ugc/02-b', true));
+    first.unmount();
+    const second = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(second.result.current.sync).toBe('local'));
+    expect(second.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+    second.unmount();
+    // A signs in again: A's own browser copy comes back (it is not shown to the guest, nor lost)
+    fetchMock.mockResolvedValue(json({ progress: null, owner: 'userA' }));
+    const a = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(a.result.current.ready).toBe(true));
+    expect(a.result.current.progress.completedLessons).toContain('ugc/01-a');
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
