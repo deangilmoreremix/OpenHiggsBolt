@@ -39,10 +39,26 @@ export function isTextStyleKind(kind: PreviewLayer['kind']): kind is TextStyleKi
   return kind in ROLE_STYLE
 }
 
+export type TextAlign = 'left' | 'center'
+
+/**
+ * Text is centered in its box, but a box the safe-area clamp pushed against the
+ * left margin (a left-column layout) would then leave every line starting at a
+ * different x. Such text is left-aligned so the column shares one edge.
+ */
+export function textAlignFor(
+  layer: { x: number },
+  box: { leftPx: number; widthPx: number },
+  compW: number,
+): TextAlign {
+  const unclampedLeft = Math.round(layer.x * compW - box.widthPx / 2)
+  return box.leftPx > unclampedLeft ? 'left' : 'center'
+}
+
 /** Style for a plain text layer (headline, tagline, business name, offer). */
 export function layerTextStyle(
   kind: TextStyleKind,
-  opts: { fontSizePx: number; color: string; fontFamily?: string },
+  opts: { fontSizePx: number; color: string; fontFamily?: string; align?: TextAlign },
 ): React.CSSProperties {
   const role = ROLE_STYLE[kind]
   return {
@@ -52,7 +68,7 @@ export function layerTextStyle(
     fontWeight: role.fontWeight,
     lineHeight: role.lineHeight,
     letterSpacing: role.letterSpacing,
-    textAlign: 'center',
+    textAlign: opts.align ?? 'center',
     width: '100%',
     // Only break a word that cannot fit on a line by itself.
     overflowWrap: 'break-word',
@@ -84,6 +100,7 @@ export function accentRuleStyle(
   compW: number,
   compH: number,
   color: string,
+  align: TextAlign = 'center',
 ): React.CSSProperties | null {
   if (kind !== 'headline' || box.widthPx <= 0 || box.heightPx <= 0) return null
   const thickness = Math.max(3, Math.round(compH * 0.006))
@@ -101,7 +118,7 @@ export function accentRuleStyle(
   const width = Math.round(Math.min(box.widthPx * 0.35, compW * 0.12))
   return {
     ...base,
-    left: Math.round(box.leftPx + box.widthPx / 2 - width / 2),
+    left: align === 'left' ? Math.round(box.leftPx) : Math.round(box.leftPx + box.widthPx / 2 - width / 2),
     top: Math.round(box.topPx + box.heightPx + compH * 0.012),
     width,
     height: thickness,

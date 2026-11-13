@@ -15,8 +15,8 @@ import {
   PREVIEW_POSITIONS,
   isImageLayerKind,
 } from '../preview/presets'
-import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle } from '../preview/textStyle'
-import { hasTextScrim, scrimBackground, scrimForBox } from '../preview/scrim'
+import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, textAlignFor } from '../preview/textStyle'
+import { hasTextScrim, scrimForBox, scrimStyle } from '../preview/scrim'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
   RemotionDesignTextSlot,
@@ -540,18 +540,22 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                     compH * factor,
                   )
                 : null
+              const textMetrics = isTextStyleKind(layer.kind) && layer.kind !== 'cta' ? layerBoxMetrics(layer, compW, compH, text) : null
+              const stageAlign = textMetrics ? textAlignFor(layer, textMetrics, compW) : 'center'
               const stageRule = scrimMetrics
                 ? accentRuleStyle(
                     layer.kind, layer.animation,
                     { leftPx: scrimMetrics.leftPx * factor, topPx: scrimMetrics.topPx * factor, widthPx: scrimMetrics.widthPx * factor, heightPx: scrimMetrics.heightPx * factor },
-                    compW * factor, compH * factor, settings.brandColors.accent,
+                    compW * factor, compH * factor, settings.brandColors.accent, stageAlign,
                   )
                 : null
 
               return (
                 <Fragment key={layer.id}>
                 {stageScrim ? (
-                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, background: scrimBackground(stageScrim), opacity: layer.opacity, pointerEvents: 'none' }} />
+                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, opacity: layer.opacity, pointerEvents: 'none' }}>
+                    <div style={scrimStyle(stageScrim)} />
+                  </div>
                 ) : null}
                 {stageRule ? <div aria-hidden data-testid="stage-headline-rule" style={{ ...stageRule, opacity: layer.opacity }} /> : null}
                 <div
@@ -622,6 +626,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                           fontSizePx: box.fontSize,
                           color,
                           fontFamily: layer.fontFamily,
+                          align: stageAlign,
                         }),
                         pointerEvents: 'none',
                         ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, PILL_SHADOW, TEXT_SHADOW } from '../textStyle'
+import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -80,5 +80,21 @@ describe('accentRuleStyle', () => {
     const r = accentRuleStyle('headline', 'lower-third', { ...box, leftPx: 2 }, 1920, 1080, '#0f0')!
     expect(r.left as number).toBeGreaterThanOrEqual(0)
     expect(accentRuleStyle('headline', 'fade', { ...box, widthPx: 0 }, 1920, 1080, '#0f0')).toBeNull()
+  })
+})
+
+describe('textAlignFor', () => {
+  it('left-aligns text whose box the safe-area clamp pushed against the margin', () => {
+    // x=.08 on 1920: unclamped left = 154 - 400 = -246, clamped to 38
+    expect(textAlignFor({ x: 0.08 }, { leftPx: 38, widthPx: 800 }, 1920)).toBe('left')
+  })
+  it('keeps centered text centered when nothing was clamped', () => {
+    expect(textAlignFor({ x: 0.5 }, { leftPx: 560, widthPx: 800 }, 1920)).toBe('center')
+  })
+  it('layerTextStyle and the rule follow the alignment', () => {
+    expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff', align: 'left' }).textAlign).toBe('left')
+    expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff' }).textAlign).toBe('center')
+    const box = { leftPx: 38, topPx: 400, widthPx: 800, heightPx: 60 }
+    expect(accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00', 'left')!.left).toBe(38)
   })
 })

@@ -18,8 +18,8 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
-import { accentRuleStyle, ctaPillStyle, layerTextStyle, type TextStyleKind } from './textStyle'
-import { hasTextScrim, scrimBackground, scrimForBox } from './scrim'
+import { accentRuleStyle, ctaPillStyle, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
+import { hasTextScrim, scrimForBox, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
 import { toPlayablePreviewMediaUrl } from './remoteMedia'
@@ -656,11 +656,12 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           const scrim = metrics
             ? scrimForBox({ left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }, compW, compH)
             : null
+          const align = textAlignFor(layer, box, compW)
           const ruleStyle = metrics
             ? accentRuleStyle(
                 layer.kind, layer.animation,
                 { leftPx: metrics.leftPx, topPx: metrics.topPx, widthPx: metrics.widthPx, heightPx: metrics.heightPx },
-                compW, compH, settings.brandColors.accent,
+                compW, compH, settings.brandColors.accent, align,
               )
             : null
           return (
@@ -671,10 +672,11 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                   style={{
                     zIndex: layerStyle.zIndex,
                     opacity: layer.opacity * entrance.opacity,
-                    background: scrimBackground(scrim),
                     pointerEvents: 'none',
                   }}
-                />
+                >
+                  <div style={scrimStyle(scrim)} />
+                </AbsoluteFill>
               ) : null}
               <AbsoluteFill style={layerStyle}>
                 <div
@@ -682,6 +684,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     fontSizePx: box.fontSizePx,
                     color: textColor,
                     fontFamily: layer.fontFamily,
+                    align,
                   })}
                 >
                   {text}
