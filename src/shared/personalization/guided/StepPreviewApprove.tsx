@@ -9,6 +9,8 @@ import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
 import { Tip } from './editor/Tip'
+import { RemoveBrandingControl } from './RemoveBrandingControl'
+import { videoBeforeRecast } from '../DemoPersonalizeProvider'
 import { LayoutQualityPanel } from './LayoutQualityPanel'
 import { useLayoutQuality } from './useLayoutQuality'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
@@ -26,6 +28,9 @@ import { chooseFinalOutputPath } from '../finalOutput'
  * The branded render and AI generation are separate operations and the UI never
  * implies otherwise. Nothing in the preview itself calls MuAPI or OpenAI.
  */
+/** Title of the preview video produced by "Remove branding", so the original can be offered back. */
+const BRANDING_REMOVED_TITLE = 'Branding removed'
+
 export function StepPreviewApprove(): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
@@ -35,6 +40,8 @@ export function StepPreviewApprove(): React.JSX.Element {
     assets,
     previewSettings,
     previewVideo,
+    setPreviewVideo,
+    restoreOriginalVideo,
     updatePreviewComposition,
     setPreviewLayout,
     remotionDesignTemplates = [],
@@ -312,6 +319,14 @@ export function StepPreviewApprove(): React.JSX.Element {
                 </button>
                 </Tip>
               </div>
+              <RemoveBrandingControl
+                apiKey={apiKey}
+                videoUrl={inputProps.videoUrl}
+                blocked={rightsGate}
+                canRestore={previewVideo?.kind === 'recast' && previewVideo.title === BRANDING_REMOVED_TITLE}
+                onApply={(url) => setPreviewVideo?.({ url, poster: null, title: BRANDING_REMOVED_TITLE, kind: 'recast', beforeRecast: videoBeforeRecast(previewVideo) })}
+                onRestore={() => restoreOriginalVideo?.()}
+              />
               {quality.rightsNeedConfirmation && (
                 <label data-testid="guided-rights-confirm" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: C.text, cursor: 'pointer' }}>
                   <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} style={{ marginTop: 2 }} />

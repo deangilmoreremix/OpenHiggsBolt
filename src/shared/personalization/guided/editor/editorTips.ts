@@ -41,6 +41,7 @@ export const EDITOR_TIPS = {
 
   // ── making the video ─────────────────────────────────────────────────
   renderBranded: { text: 'Burns your approved overlays (logo, text, call to action, end card) onto the selected video in your browser.', free: true },
+  removeBranding: { text: 'Uses AI to erase logos, watermarks and captions that are already part of the video. It asks you to confirm the cost first and keeps your original video.', paid: true },
   generateAi: { text: 'Uses AI to create new imagery or footage for changes overlays cannot do. Uses your account credits.', paid: true },
 } as const satisfies Record<string, EditorTip>
 
