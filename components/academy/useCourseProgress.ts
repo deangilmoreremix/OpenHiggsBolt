@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   emptyCourseProgress,
   loadCourseLocal,
+  clearCourseOwner,
   loadCourseOwner,
+  sameCourseProgress,
   markStepDone,
   mergeCourseProgress,
   sanitizeCourseProgress,
@@ -51,30 +53,44 @@ const editFn = (e: Edit) => (p: CourseProgress, now: number): CourseProgress =>
   : e.k === 'check' ? setCourseCheck(p, e.l, e.i, e.c, now)
   : setCourseLessonComplete(p, e.l, e.d, now);
 
-/** Per-user key: edits made before the account answered, never shared with another account. */
-const pendingKey = (userId: string) => `academy-course-pending:v1:${userId}`;
-const MAX_PENDING = 500;
+/** Per-user key: edits made before the account answered, never shared with another account. Signed-out visitors use the guest key. */
+const pendingKey = (userId: string | null | undefined) => `academy-course-pending:v1:${userId || 'guest'}`;
+const MAX_PENDING = 5000; // only a guard against corrupt storage: compaction below keeps real queues far smaller
+
+/**
+ * Shrink an action list without changing what replaying it produces: only the last `visit` per track
+ * matters, repeated step marks collapse, and each checkbox / lesson completion keeps its last value.
+ * Completions, ticks and finished steps are never dropped, however long the outage.
+ */
+function compactEdits(edits: readonly Edit[]): Edit[] {
+  const out = new Map<string, Edit>();
+  for (const e of edits) {
+    const key = e.k === 'visit' ? `v:${e.l.slice(0, e.l.indexOf('/'))}` : e.k === 'step' ? `s:${e.l}|${e.s}` : e.k === 'check' ? `c:${e.l}|${e.i}` : `d:${e.l}`;
+    if (e.k === 'step' && out.has(key)) continue;
+    out.delete(key);
+    out.set(key, e);
+  }
+  return [...out.values()];
+}
 
 function loadPending(userId: string | null | undefined, ids: readonly string[]): Edit[] {
-  if (!userId) return [];
   try {
     const raw = window.localStorage.getItem(pendingKey(userId));
     const arr = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(arr)) return [];
     const ok = new Set(ids);
-    return arr.filter((e): e is Edit => !!e && typeof e === 'object' && ok.has((e as Edit).l) && (
+    return compactEdits(arr.slice(-MAX_PENDING).filter((e): e is Edit => !!e && typeof e === 'object' && ok.has((e as Edit).l) && (
       ((e.k === 'visit' || e.k === 'step') && typeof e.s === 'string' && e.s.length > 0 && e.s.length <= 80)
       || (e.k === 'check' && Number.isInteger(e.i) && typeof e.c === 'boolean')
       || (e.k === 'complete' && typeof e.d === 'boolean')
-    )).slice(-MAX_PENDING);
+    )));
   } catch {
     return [];
   }
 }
 function savePending(userId: string | null | undefined, edits: readonly Edit[]) {
-  if (!userId) return;
   try {
-    if (edits.length) window.localStorage.setItem(pendingKey(userId), JSON.stringify(edits.slice(-MAX_PENDING)));
+    if (edits.length) window.localStorage.setItem(pendingKey(userId), JSON.stringify(compactEdits(edits).slice(-MAX_PENDING)));
     else window.localStorage.removeItem(pendingKey(userId));
   } catch {
     /* storage unavailable: edits stay in memory */
@@ -107,6 +123,8 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   const hydrated = useRef(!syncRemote);
   // edits made before the account answered; `saved` ones were loaded from this browser's per-user copy
   const pending = useRef<Edit[]>([]);
+  // edits loaded from this browser's per-user (or guest) copy at mount, kept apart from `pending` so compaction can merge both
+  const persisted = useRef<Edit[]>([]);
   // signed out, or the account store is not available: stay browser-only without error noise
   const remoteOff = useRef(!syncRemote);
 
@@ -142,24 +160,32 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         }, inflight.current);
         if (disposed.current) return;
         ok = res.ok;
+        let parseFailed = false;
         if (ok) {
           // the account already holds newer progress (another device saved meanwhile): adopt it
           // without losing what this device did, and send the combined copy back
-          const body = (await res.json().catch(() => null)) as { stale?: boolean; progress?: unknown } | null;
+          type StaleBody = { stale?: boolean; progress?: unknown };
+          let body = null as StaleBody | null;
+          try {
+            body = (await res.json()) as StaleBody;
+          } catch {
+            parseFailed = true; // a 200 we cannot read is not a confirmed save: retry
+          }
           if (disposed.current) return;
           if (body?.stale && body.progress) {
             const theirs = sanitizeCourseProgress(body.progress, idsRef.current);
             const merged = unionCourseProgress(latest.current, theirs);
-            if (JSON.stringify(merged) !== JSON.stringify(latest.current)) {
+            if (!sameCourseProgress(merged, latest.current)) {
               latest.current = merged;
               setProgress(merged);
               saveCourseLocal(merged);
-              if (JSON.stringify(merged) !== JSON.stringify(theirs)) again.current = true;
+              if (!sameCourseProgress(merged, theirs)) again.current = true;
             }
           }
         }
+        if (parseFailed) ok = false;
         // 4xx other than timeout / rate limit will not succeed by repeating the same request
-        retryable = !ok && (res.status >= 500 || res.status === 408 || res.status === 429);
+        retryable = parseFailed || (!ok && (res.status >= 500 || res.status === 408 || res.status === 429));
       } while (again.current && !disposed.current);
       if (disposed.current) return;
       dirty.current = !ok;
@@ -196,13 +222,16 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | null = null;
     let attempt = 0;
-    // a browser copy that belongs to another account is not even shown to this one
-    const storedOwner0 = loadCourseOwner();
-    const local = userRef.current && storedOwner0 && storedOwner0 !== userRef.current ? emptyCourseProgress() : loadCourseLocal(idsRef.current);
-    const saved = syncRemote ? loadPending(userRef.current, idsRef.current) : [];
-    const savedCount = saved.length; // `saved` itself is the queue and grows as the learner acts
-    pending.current = saved;
-    setProgress(saved.reduce((p, e) => editFn(e)(p, Date.now()), local));
+    // A browser copy tagged as another account's is not shown to this visitor, signed-out visitors
+    // included (an untagged copy is the guest copy).
+    const taggedOwner = loadCourseOwner();
+    const tagged = !!taggedOwner && taggedOwner !== userRef.current;
+    const fullLocal = loadCourseLocal(idsRef.current);
+    const local = tagged ? emptyCourseProgress() : fullLocal;
+    const key = userRef.current;
+    persisted.current = syncRemote ? loadPending(key, idsRef.current) : [];
+    pending.current = [];
+    setProgress(persisted.current.reduce((p, e) => editFn(e)(p, Date.now()), local));
     // browser-only: local progress is the whole truth. Signed in: `ready` waits until the account
     // copy has settled, so resume/visit never run against empty local state and clobber the saved place.
     if (!syncRemote) {
@@ -217,16 +246,18 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           if (cancelled) return;
           remoteOff.current = true;
           hydrated.current = true;
-          const edits = pending.current;
+          // Signed out: kept guest edits join the browser copy. A signed-in user who lost the session (401)
+          // keeps their own kept edits in storage; only edits made this visit are merged.
+          const guest = !key;
+          const all = res.status === 401 && !guest ? pending.current : [...persisted.current, ...pending.current];
           pending.current = [];
-          if (res.status !== 401 && edits.length) saveCourseLocal(latest.current);
-          // 401: the learner is signed out, so edits kept for a signed-in user are not theirs to merge into the shared browser copy
-          if (res.status === 401 && savedCount) {
-            const rest = edits.slice(savedCount);
-            const shown = rest.reduce((p, e) => editFn(e)(p, Date.now()), local);
-            latest.current = shown;
-            setProgress(shown);
-            if (rest.length) saveCourseLocal(shown);
+          const shown = all.reduce((p, e) => editFn(e)(p, Date.now()), local);
+          latest.current = shown;
+          setProgress(shown);
+          if (all.length) {
+            if (tagged) clearCourseOwner(); // the shared copy no longer belongs to that account
+            saveCourseLocal(shown);
+            if (guest || res.status !== 401) savePending(key, []);
           }
           setSync('local');
           setReady(true);
@@ -239,10 +270,10 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         if (cancelled) return;
         const storedOwner = loadCourseOwner();
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
-        const base = mergeCourseProgress(foreign ? emptyCourseProgress() : local, remote);
+        const base = mergeCourseProgress(foreign ? emptyCourseProgress() : key ? local : fullLocal, remote);
         // edits kept from an earlier visit only count when this really is the same account
-        const mismatch = savedCount > 0 && !!owner && owner !== userRef.current;
-        const edits = mismatch ? pending.current.slice(savedCount) : pending.current;
+        const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
+        const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);
         pending.current = [];
         hydrated.current = true;
         const merged = edits.reduce((p, e) => editFn(e)(p, Date.now()), base);
@@ -250,7 +281,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         latest.current = merged; // a save queued right now must read this, not the previous render's state
         setProgress(merged);
         saveCourseLocal(merged); // now in the owner-tagged browser copy, so the per-user pending copy can go
-        if (!mismatch) savePending(userRef.current, []);
+        if (!mismatch) savePending(key, []);
         setReady(true);
         if (edits.length > 0 || (base !== remote && base.updatedAt > 0)) push(merged);
         else setSync('saved');
@@ -306,8 +337,8 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     (edit: Edit) => {
       const fn = editFn(edit);
       if (!hydrated.current) {
-        pending.current.push(edit);
-        savePending(userRef.current, pending.current);
+        pending.current = compactEdits([...pending.current, edit]);
+        savePending(userRef.current, [...persisted.current, ...pending.current]);
         setProgress((cur) => fn(cur, Date.now()));
         return;
       }

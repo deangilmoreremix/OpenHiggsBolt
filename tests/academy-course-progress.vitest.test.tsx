@@ -4,7 +4,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useCourseProgress } from '@/components/academy/useCourseProgress';
 import {
   COURSE_OWNER_KEY, COURSE_STORAGE_KEY, courseContinueTarget, hasStarted, emptyCourseProgress, firstUndoneStep, lessonPercent, markStepDone,
-  mergeCourseProgress, overallPercent, sanitizeCourseProgress, setCourseCheck, setCourseLessonComplete, visitStep,
+  mergeCourseProgress, sameCourseProgress, overallPercent, sanitizeCourseProgress, setCourseCheck, setCourseLessonComplete, visitStep,
 } from '@/lib/academyCourseProgress';
 
 const IDS = ['ugc/01-a', 'ugc/02-b', '02-ai-filmmaking/01-c'];
@@ -64,6 +64,15 @@ describe('course progress helpers', () => {
     expect(mergeCourseProgress(a, b)).toBe(b);
     expect(mergeCourseProgress({ ...a, updatedAt: 9 }, b).updatedAt).toBe(9);
     expect(mergeCourseProgress(a, null)).toBe(a);
+  });
+});
+
+describe('sameCourseProgress', () => {
+  it('compares structurally, ignoring key order', () => {
+    const a = { ...emptyCourseProgress(), checks: { x: [1], y: [2] }, stepsDone: { p: ['a'], q: ['b'] } };
+    const b = { ...emptyCourseProgress(), stepsDone: { q: ['b'], p: ['a'] }, checks: { y: [2], x: [1] } };
+    expect(sameCourseProgress(a, b)).toBe(true);
+    expect(sameCourseProgress(a, { ...b, checks: { y: [2], x: [1, 3] } })).toBe(false);
   });
 });
 
@@ -375,6 +384,82 @@ describe('useCourseProgress', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('a long outage keeps every completion, tick and finished step across a reload (the queue is compacted, not truncated)', async () => {
+    const MANY = Array.from({ length: 200 }, (_, i) => `ugc/l${String(i).padStart(3, '0')}`);
+    fetchMock.mockResolvedValue(json({ error: 'x' }, 500));
+    const first = renderHook(() => useCourseProgress(MANY, true, 'userB'));
+    await waitFor(() => expect(first.result.current.sync).toBe('offline'));
+    act(() => {
+      MANY.forEach((id) => {
+        first.result.current.visit(id, 'a');
+        first.result.current.stepDone(id, 'a');
+        first.result.current.stepDone(id, 'b');
+        first.result.current.stepDone(id, 'c');
+        first.result.current.check(id, 0);
+        first.result.current.complete(id, true);
+      });
+      // repeated automatic step visits must not crowd anything out
+      for (let n = 0; n < 300; n++) first.result.current.visit(MANY[n % 200], `s${n}`);
+      MANY.slice(0, 3).forEach((id) => first.result.current.check(id, 1));
+    });
+    first.unmount();
+    const second = renderHook(() => useCourseProgress(MANY, true, 'userB'));
+    await waitFor(() => expect(second.result.current.sync).toBe('offline'));
+    expect(second.result.current.progress.completedLessons.length).toBe(200);
+    expect(second.result.current.progress.checks[MANY[0]]).toEqual([0, 1]);
+    expect(second.result.current.progress.checks[MANY[199]]).toEqual([0]);
+  });
+
+  it('a malformed 200 body to a save is a retryable failure, not a silent success', async () => {
+    let puts = 0;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      puts++;
+      return Promise.resolve(puts === 1 ? new Response('<html>oops', { status: 200 }) : json({ ok: true }));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      await waitFor(() => expect(result.current.sync).toBe('offline'));
+      await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      expect(puts).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('signed out: edits made before the first answer survive a reload and land in the browser copy on 401', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockImplementation(() => new Promise<Response>((res) => { release = res; }));
+    const first = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    act(() => first.result.current.complete('ugc/01-a', true));
+    first.unmount();
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(json({ error: 'UNAUTHENTICATED' }, 401));
+    const second = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(second.result.current.sync).toBe('local'));
+    expect(second.result.current.progress.completedLessons).toEqual(['ugc/01-a']);
+    expect(JSON.parse(localStorage.getItem(COURSE_STORAGE_KEY)!).completedLessons).toEqual(['ugc/01-a']);
+    expect(Object.keys(localStorage).filter((k) => k.includes('pending'))).toEqual([]);
+  });
+
+  it('a signed-out visitor never sees progress tagged as another account\'s; an untagged copy is the guest copy', async () => {
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 9000)));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    fetchMock.mockImplementation(() => new Promise<Response>(() => {})); // answer still pending
+    const tagged = renderHook(() => useCourseProgress(IDS, true, null));
+    expect(tagged.result.current.progress.completedLessons).toEqual([]);
+    tagged.unmount();
+    localStorage.removeItem(COURSE_OWNER_KEY);
+    const guest = renderHook(() => useCourseProgress(IDS, true, null));
+    expect(guest.result.current.progress.completedLessons).toEqual(['ugc/01-a']);
   });
 
   it('sends one save at a time with the latest state', async () => {

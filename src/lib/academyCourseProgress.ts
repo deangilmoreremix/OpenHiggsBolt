@@ -201,6 +201,14 @@ export function unionCourseProgress(a: CourseProgress, b: CourseProgress): Cours
   return { v: 1, updatedAt: Math.max(a.updatedAt, b.updatedAt), last, completedLessons: completed, stepsDone, checks };
 }
 
+const stable = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(stable).join(',')}]`
+  : v && typeof v === 'object' ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`).join(',')}}`
+  : JSON.stringify(v) ?? 'null';
+
+/** Structural equality that does not depend on object key order. */
+export const sameCourseProgress = (a: CourseProgress, b: CourseProgress): boolean => stable(a) === stable(b);
+
 /* ----------------------------- localStorage ----------------------------- */
 
 export function loadCourseLocal(lessonIds: readonly string[]): CourseProgress {
@@ -218,6 +226,14 @@ export function saveCourseLocal(p: CourseProgress): void {
     if (typeof window !== 'undefined') window.localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(p));
   } catch {
     /* storage unavailable (private mode / quota): progress stays in memory */
+  }
+}
+
+export function clearCourseOwner(): void {
+  try {
+    if (typeof window !== 'undefined') window.localStorage.removeItem(COURSE_OWNER_KEY);
+  } catch {
+    /* storage unavailable */
   }
 }
 
