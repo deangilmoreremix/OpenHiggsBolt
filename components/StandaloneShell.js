@@ -44,6 +44,7 @@ const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 const AppsStudio = loadStudio('AppsStudio');
+const SkillsBrowser = loadStudio('SkillsBrowser');
 const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -153,6 +154,8 @@ const SLUG_TO_TAB = {
   'social-publishing': 'image',
   'go-ai-viral': 'go-ai-viral',
   apps: 'apps',
+  // Reached from the Recipes button in the studios; not a top-level tab.
+  skills: 'skills',
 };
 
 // Upstream-matching studios that stay mounted (hidden) after their first visit,
@@ -968,6 +971,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
+          {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>

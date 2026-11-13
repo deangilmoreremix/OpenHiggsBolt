@@ -16,5 +16,6 @@ export { default as DesignAgentStudio } from './components/DesignAgentStudio';
 export { default as AiInfluencerStudio } from './components/AiInfluencerStudio';
 export { default as LayersStudio } from './components/LayersStudio';
 export { default as AppsStudio } from './components/AppsStudio';
+export { default as SkillsBrowser } from './components/SkillsBrowser';
 export { default as EditStudio } from './components/edit/EditStudio';
 export * from './muapi';
