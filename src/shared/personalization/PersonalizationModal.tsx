@@ -708,6 +708,7 @@ export default function PersonalizationModal() {
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
     revertDiscoveredAssetEdit,
+    autoCutout,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -1735,6 +1736,7 @@ export default function PersonalizationModal() {
                 deleteLibraryAsset={deleteLibraryAsset}
                 revertLibraryAssetToOriginal={revertLibraryAssetToOriginal}
                 revertDiscoveredAssetEdit={revertDiscoveredAssetEdit}
+                autoCutout={autoCutout}
               />
           )}
         </main>
@@ -2202,6 +2204,7 @@ function ConfigurationView(props: any) {
     deleteLibraryAsset,
     revertLibraryAssetToOriginal,
     revertDiscoveredAssetEdit,
+    autoCutout,
   } = props
 
   // ── Access mode ────────────────────────────────────────────────────────────
@@ -2553,7 +2556,6 @@ function ConfigurationView(props: any) {
 
     batchVideoReadyRunningRef.current = true
     setBatchVideoReady({ running: true, current: 0, total: selected.length, label: 'Preparing assets', error: null })
-    let nextAssets = [...discoveredAssets]
     const failures: string[] = []
 
     for (let index = 0; index < selected.length; index += 1) {
@@ -2580,7 +2582,8 @@ function ConfigurationView(props: any) {
           },
         )
 
-        nextAssets = nextAssets.map((asset: DiscoveredAsset) => (
+        // Merge into the latest list: automatic cutouts may have finished while the AI request ran.
+        setDiscoveredAssets((latest) => latest.map((asset: DiscoveredAsset) => (
           asset.id === item.id
             ? {
                 ...asset,
@@ -2599,8 +2602,7 @@ function ConfigurationView(props: any) {
                 visionValidation: result.visionValidation,
               }
             : asset
-        ))
-        setDiscoveredAssets(nextAssets)
+        )))
       } catch (error) {
         failures.push(
           item.category.replace(/_/g, ' ') + ': ' +
@@ -4537,6 +4539,8 @@ function ConfigurationView(props: any) {
             onCategoryChange={updateDiscoveredAssetCategory}
             onEdit={onEditDiscovered || undefined}
             onRevert={revertDiscoveredAssetEdit}
+            cutout={autoCutout}
+            onSaveToAssets={isAnonymous ? undefined : (id) => importDiscoveredAssets({ ids: [id] })}
             onRemoveFromSection={removeDiscoveredAssetFromSection}
             onRestoreAll={() => setDiscoveredAssets((prev) => prev.map((a) => ({ ...a, rejected: false })))}
             onDragStart={(asset, e) => handleAssetDragStart({

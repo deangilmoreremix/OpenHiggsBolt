@@ -16,6 +16,7 @@
     "dev": "node scripts/dev-prod.js",
     "build": "next build",
     "typecheck": "tsc --noEmit",
+    "build:help-index": "tsx scripts/build-help-index.ts",
     "test:vfx": "vitest run tests/vfx-service.vitest.test.js tests/vfx-validation.vitest.test.js",
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
@@ -143,6 +144,7 @@
     }
   },
   "dependencies": {
+    "@bg0/browser": "0.1.1",
     "@clerk/backend": "3.23.0",
     "@clerk/nextjs": "^7.5.13",
     "@crawlee/cheerio": "^3.18.1",

@@ -1,124 +1,123 @@
 # Designing Sellable AI Art for Merch
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Transform AI art generations into high-resolution, vector-crisp graphics ready for direct-to-garment (DTG) printing.
-
-**Track:** AI Print-on-Demand & Merch Design  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-Most AI creators try to upload raw AI image generations directly to Print-on-Demand (POD) platforms like Printify, Printful, or Redbubble. The results are disappointing:
-* **Resolution Blur:** Raw AI generations (1024x1024px) pixelate heavily when stretched across a t-shirt chest print area requiring **4500x5400px at 300 DPI**.
-* **Solid Background Box:** Generating an image with a solid square background leaves an ugly rectangular box printed on a black or white t-shirt.
-* **Color Bleed:** Dark or muddy colors wash out during direct-to-garment (DTG) ink printing.
-
-If you don't isolate graphics, vector-upscale, and format specifically for apparel print specs, your products look cheap and get negative customer reviews.
+> **Time:** about 18 minutes. **You will finish with:** a transparent, 4500x5400px, 300 DPI graphic placed on a t-shirt mockup.
 
 ---
 
-## The Concept
+## Before you start
 
-The AI merch design pipeline relies on **Isolated Vector Prompting**, **Background Removal**, and **DPI Upscaling**:
+Raw AI images (1024x1024px) pixelate when stretched across a t-shirt chest print area that needs **4500x5400px at 300 DPI**. A solid-background image prints as an ugly box on the shirt, and dark or muddy colors wash out in direct-to-garment (DTG) ink. The fix is a pipeline: isolated vector prompt, then transparent PNG, then 4x upscale, then mockup.
 
+You need access to SmartVideo GO AI **Image Studio** (generation) and **Video Studio** (optional showcase motion), a background remover and an AI upscaler (tools below), and the template `templates/merch-prompt-brief.md`. No prerequisites.
+
+## Step by step
+
+### 1. Open the prompt brief
+
+Open `templates/merch-prompt-brief.md` and keep it beside Image Studio.
+
+**You should see:** vector style prompts, DPI specs and negative prompts.
+
+**If not:** check the Templates list in the track overview for the file.
+
+### 2. Write the vector prompt
+
+Draft this apparel-optimized prompt:
+
+```text
+Clean vector t-shirt graphic of a cyberpunk samurai cat wearing futuristic glowing neon goggles, Japanese typography, bold outlines, vibrant synthwave colors, isolated on solid black background, high contrast, 8k graphic.
 ```
-Isolated Prompting ──► Transparent PNG Isolation ──► Vector Upscale (4500x5400px 300DPI) ──► Apparel Mockup Placement
+
+**You should see:** a single prompt that names subject, style, outlines, colors and an isolated solid background.
+
+**If not:** add "vector illustration, isolated on white background, clean lines, bold graphic, high contrast, 300 DPI" as the style core.
+
+### 3. Add the negative prompt
+
+Use this negative prompt with it:
+
+```text
+photograph, realistic skin, complex background, gradient box, blurry lines, low resolution, noise, drop shadow.
 ```
 
-### Core Technical Pillars:
+**You should see:** the negative field filled in beside the prompt.
 
-1. **Isolated Vector Style Prompting:** Prompt for clean vector graphics with strong outlines on solid white or dark backgrounds (`"vector illustration, isolated on white background, clean lines, bold graphic, high contrast, 300 DPI"`).
-2. **Background Masking & Transparency:** Extracting the subject completely using AI background removers so only the artwork prints on the fabric.
-3. **300 DPI Resolution Scaling:** Scaling low-res renders using AI upscalers (such as Real-ESRGAN or muapi high-res upscaling) to hit standard POD specs (**4500 × 5400 px**).
+**If not:** if your tool has no negative field, say "no photograph, no drop shadow, no gradient box" inside the prompt.
 
----
+### 4. Generate the graphic
 
-## Do It
+Run the prompt with muapi `/nano-banana-2`.
 
-### Step 1: Write the Merch Vector Prompt
-Open [`templates/merch-prompt-brief.md`](templates/merch-prompt-brief.md). Draft an apparel-optimized prompt:
-* **Prompt:**  
-  > `"Clean vector t-shirt graphic of a cyberpunk samurai cat wearing futuristic glowing neon goggles, Japanese typography, bold outlines, vibrant synthwave colors, isolated on solid black background, high contrast, 8k graphic."`
-* **Negative Prompt:**  
-  > `"photograph, realistic skin, complex background, gradient box, blurry lines, low resolution, noise, drop shadow."`
+**You should see:** a bold graphic with strong outlines on a solid background.
 
-### Step 2: Generate and Isolate the Graphic
-Run the prompt using muapi `/nano-banana-2`. Pass the generated output to an AI background remover to save a transparent `merch-graphic-transparent.png`.
+**If not:** if it looks like a photo or has a busy background, regenerate and keep the negative prompt.
 
-### Step 3: Upscale to 4500x5400px @ 300 DPI
-Run an AI upscaler with a **4x scale factor**. Verify the final image dimensions are at least 4500px wide, maintaining crisp, sharp edges along all linework.
+### 5. Isolate the artwork
 
-### Step 4: Apply to Apparel Mockups
-Place `merch-graphic-transparent.png` onto a heavy cotton t-shirt mockup in your editor. Adjust graphic placement to sit 2 inches below the neck collar.
+Pass the output to an AI background remover (Photoroom or Clipdrop) and save `merch-graphic-transparent.png`.
 
----
+**You should see:** the artwork on a checkerboard (transparent) background with no box.
 
-## Worked Example
+**If not:** try again from a solid-color background; edges are cleaner when the subject stands out.
 
-<p align="center">
-<img src="templates/examples/cyberpunk-cat-merch-tshirt.jpg" alt="Cyberpunk Cat Merch T-Shirt Mockup" width="320">
-<img src="templates/examples/merch-design-motion.gif" alt="Merch Product Showcase Motion (I2V)" width="320">
-</p>
-<p align="center"><sub>AI Merch Design Mockup (Left) ──► Image-to-Video Showcase Motion (Right) · Video File: <a href="templates/examples/merch-design-motion.mp4">templates/examples/merch-design-motion.mp4</a></sub></p>
+### 6. Upscale 4x
 
-**Merch Design Execution for "Cyberpunk Cat Tee"**
+Run an AI upscaler (Real-ESRGAN, muapi high-res upscaling, or Vectorizer.ai for vector SVG) at a **4x scale factor**.
 
-* **Target Niche:** Cyberpunk & Cat Lovers.
-* **Graphic Specs:** 4500x5400px transparent PNG, 300 DPI.
-* **Apparel Mockup:** Heavyweight Unisex Crewneck T-Shirt (Black).
-* **Generation Cost:** **$0.06** AI credit vs **$250** freelance illustrator quote.
+**You should see:** the image at least **4500px wide**, with crisp, sharp linework.
 
----
+**If not:** if it is smaller, run the upscaler again on the result or choose a higher scale; if edges are soft, regenerate with bolder outlines.
 
-## Compare Tools
+### 7. Boost vibrancy
 
-| Platform / Tool | Purpose | Upscale Quality | Best For |
-|---|---|---|---|
-| **FLUX / muapi Vector Mode** | Graphic generation | High | Creating crisp linework & graphic illustrations |
-| **Photoroom / Clipdrop** | Background removal | Transparent PNG | Isolating artwork from solid backgrounds |
-| **Real-ESRGAN / Vectorizer.ai** | Resolution upscaling | 4x / Vector SVG | Scaling graphics to 4500x5400px 300DPI |
+Raise color vibrancy about **+15%** before exporting, because POD ink absorbs slightly into the fabric. Also check contrast on dark vs. light garments (white linework for black tees, dark linework for white or heather grey).
 
----
+**You should see:** punchy colors that still keep detail.
 
-## Launch It
+**If not:** if colors clip or look neon-flat, back off the boost a little.
 
-**Best practices for merch design:**
-* **Test Dark vs. Light Garments:** Create white linework variants for black tees and dark linework variants for white/heather grey tees.
-* **Always Check Contrast:** Print-on-demand ink absorbs slightly into fabric; boost color vibrancy by +15% before exporting.
+### 8. Place it on a mockup
 
----
+Place `merch-graphic-transparent.png` on a heavy cotton t-shirt mockup in your editor, about **2 inches below the neck collar**.
 
-## Exercises
+**You should see:** the graphic sitting cleanly on the shirt with no rectangle behind it.
 
-1. **Easy:** Generate a minimalist retro sunset vector graphic isolated on a white background.
-2. **Medium:** Remove the background and upscale the graphic to 4500x5400px at 300 DPI.
-3. **Hard:** Create a 3-item merch collection (T-shirt, Mug, Tote Bag) featuring variations of a unified design style.
+**If not:** a visible box means the background was not fully removed; redo step 5.
 
----
+## Check yourself
 
-## Templates
+* [ ] My graphic is a transparent PNG with no background box.
+* [ ] It is at least 4500px wide at 300 DPI with crisp edges.
+* [ ] I checked contrast for dark and light garments.
+* [ ] It sits about 2 inches below the collar on the mockup.
 
-* [`templates/merch-prompt-brief.md`](templates/merch-prompt-brief.md) — Vector style prompts, DPI scaling specs, and negative prompt libraries.
+## Common mistakes
 
----
+* Uploading raw 1024x1024px generations straight to Printify, Printful or Redbubble.
+* Leaving a solid square background, which prints as a box.
+* Muddy, low-contrast colors that wash out in DTG printing.
+* Skipping the dark-vs-light garment test.
 
-[Track Overview](README.md) · Next: [POD Platform Basics →](02-print-on-demand-platform-basics.md)
+## Go further
 
+**Worked example, "Cyberpunk Cat Tee":** target niche Cyberpunk and cat lovers; 4500x5400px transparent PNG at 300 DPI; Heavyweight Unisex Crewneck T-Shirt (Black); generation cost **$0.06** AI credit vs **$250** freelance illustrator quote. Preview: `templates/examples/cyberpunk-cat-merch-tshirt.jpg`, showcase motion `templates/examples/merch-design-motion.mp4`. Make showcase motion in Video Studio (image-to-video).
 
----
+**Compare tools:**
 
-## Produce this in SmartVideo GO AI
+| Tool | Purpose | Best for |
+|---|---|---|
+| FLUX / muapi Vector Mode | Graphic generation (high quality) | Crisp linework and graphic illustrations |
+| Photoroom / Clipdrop | Background removal (transparent PNG) | Isolating artwork from solid backgrounds |
+| Real-ESRGAN / Vectorizer.ai | Upscaling (4x / vector SVG) | Scaling to 4500x5400px 300DPI |
 
-Apply this lesson directly inside SmartVideo GO AI:
+**Exercises:**
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+1. Easy: generate a minimalist retro sunset vector graphic isolated on white.
+2. Medium: remove the background and upscale it to 4500x5400px at 300 DPI.
+3. Hard: create a 3-item collection (T-shirt, Mug, Tote Bag) with variations of one design style.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Template:** `templates/merch-prompt-brief.md` has vector style prompts, DPI specs and negative prompt libraries.
+
+**SmartVideo GO AI studios:** Image Studio (product and brand shots), Video Studio (image-to-video motion), Storyboard / Campaign Planner (batch matrices), AI Influencer Studio, Lip-Sync Studio. Workflow: Learn, See Example, Use Template, Generate.
+
+Next: Print-on-Demand Platform Basics.

@@ -1,146 +1,91 @@
 # Before/After Conversion Cases
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 15 minutes. **You will finish with:** your return rate calculated, three body-type try-on images made, and a measurement callout added to a listing image.
 
+---
 
+## Before you start
 
-> Real models increase clicks; accurate fit reduces returns.
+Online apparel stores typically see return rates of **20% to 40%**, mostly from fit errors ("tighter than it looked", "longer than I realised"), and returns destroy margin. Static mannequin shots also convert poorly. Showing the same garment on several body shapes helps: shoppers who see products on models matching their build are **40%** more likely to convert. Pair that with a clear callout of the model's measurements, for example height, build and size worn.
 
-**Track:** AI Fashion & Virtual Try-On  
-**Time:** ~45 minutes  
-**Prerequisites:** None  
+This is part 1 of 2. Here you diagnose and build the assets; in [part 2](04-conversion-cases-part-2.md) you run the 30-day test.
 
-## The Problem
+You will need:
 
-Fashion e-commerce suffers from a massive profit leak: **High Return Rates**. On average, online apparel stores see return rates between **20% and 40%**. The primary reason? Fit-related errors (such as *"the shirt fits tighter than it looked on the hanger"* or *"I didn't realize how long the hemline was"*). Processing returns, shipping packages back, and sorting stock in warehouses destroys profit margins.
+* Your store's returns data (or mock data) and [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md).
+* The try-on workflow from lesson 1 (Garment Try-on) and a photo editor.
+* SmartVideo GO AI **Image Studio** for the try-ons.
 
-At the same time, using static mannequin shots leads to low conversion rates because shoppers cannot visualize the clothing on a real body.
+## Step by step
 
-To scale a fashion brand, you must not only increase sales (CVR) but actively decrease returns by providing accurate, consistent model visuals and fit expectations.
+### 1. Calculate your return rate
 
-## The Concept
+1. Open [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md).
+2. Compute return rate: returned units divided by units sold (for example 90 returned of 500 sold is 18%).
 
-The economics of apparel optimization rely on **Return Rate Reduction**, **Diverse Representation**, and **Fit Transparency**:
+**You should see:** a return rate percentage in your tracker.
 
+**If not:** if you have no store data, use the mock numbers from the worked example in Go further.
+
+### 2. Read the return reasons
+
+Read the return reason logs. If over **50%** of returns mention "too small", "too large" or "poor fit", optimize the model listings.
+
+**You should see:** a count of fit-related returns against the 50% threshold.
+
+**If not:** if fit is not the main reason, fix the real reason first; this fix will not help.
+
+### 3. Generate three body-type try-ons
+
+Pick your best-selling garment and, following lesson 1, generate three try-on variations: slim, athletic and curvy.
+
+**You should see:** the same garment on three clearly different body shapes.
+
+**If not:** if the garment changes between images, reuse the same `garment_ref.png` and fitting rate **0.75**.
+
+### 4. Add a measurement callout
+
+In your photo editor add a clean, low-contrast text bar at the bottom of the listing image, in your brand font:
+
+```text
+Model is 5'9" (175cm), athletic build, wearing size Small.
 ```
-Identify Fit-Related Returns ──► Deploy AI Try-On Models ──► Add Fit Callouts ──► Measure CVR & Returns Lift
-```
 
-### 1. Reducing Fit Discrepancies:
-Ghost mannequin shots hide the drape of the fabric. By showing the garment on a model with specified body measurements (height, chest, waist), you give customers a realistic reference point, reducing sizing purchase errors.
+Use the model's real height, build and size.
 
-### 2. Diverse Model Personalization:
-If a customer only sees clothes on a slim, 6-foot model, they might hesitate to buy if they have a different build. AI try-on allows you to display the same dress on multiple body shapes (slim, athletic, curvy). Shoppers who see products on models that match their body type are **40%** more likely to convert.
+**You should see:** a legible bar that does not cover the garment.
 
-### 3. Clear Visual Overlays:
-Combine your model composite with clear text overlays detailing the model's measurements:
+**If not:** keep it in the same position on every page, using your lesson 3 layout guidelines.
 
-```
-[ Model Height: 5'10" / 178cm ] ──► [ Model Build: Athletic ] ──► [ Wearing Size: Medium ]
-```
+## Check yourself
 
----
+* [ ] I calculated a return rate as returned divided by sold.
+* [ ] I know whether more than 50% of returns are fit-related.
+* [ ] I have three body-type try-on images of one garment.
+* [ ] The callout states the true model height, build and size.
 
-## Do It
+## Common mistakes
 
-### Step 1: Analyze Return Rate Bottlenecks
-Open [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md). Review your store's return logistics data:
-* Calculate your return rate percentage.
-* Read return reason logs. If over **50%** of returns mention *"too small"*, *"too large"*, or *"poor fit"*, proceed to optimize the model listings.
+* **Lying in the overlay.** Listing a model as size Medium when they wear XS raises returns.
+* **Optimizing without data.** Check return reasons first.
+* **Inconsistent callout placement.** Keep it in the same spot on every page.
 
-### Step 2: Set Up Fit Representation Models
-Select your best-selling garment. Generate three try-on model variations representing different body types (e.g. slim, athletic, curvy) wearing the item, following the Module 1 workflow.
+## Go further
 
-### Step 3: Add Model Measurement Callout Cards
-In your photo editor, add a clean, low-contrast text bar at the bottom of the listing image:
-* *Example:* `"Model is 5'9\" (175cm), athletic build, wearing size Small."`
-Ensure the font matches your brand's style guide.
+**Worked example, denim brand.** Baseline: 28% return rate with flat-lay-only photos. Variant B used three models: Model 1 (5'11", slim, size 26), Model 2 (5'8", curvy, size 30), Model 3 (5'6", petite, size 25), with height and waist tags. 30-day results: return rate 28.0% (280 of 1,000 sold) for A versus 16.5% (165 of 1,000) for B; CVR up 38% (1.8% to 2.5%); $4,600 saved in return shipping and net revenue up $7,000 in one month.
 
-### Step 4: Run the A/B Listing Test
-Configure your store's testing app:
-* **Control (Variant A):** Standard ghost mannequin gallery photos.
-* **Test (Variant B):** Upgraded AI model photos featuring different body types and measurement callouts.
-Split incoming traffic 50/50.
+![Denim measurements](templates/examples/denim-model-measurements.jpg)
 
-### Step 5: Monitor CVR and Returns
-Allow the split test to run for 30 days (apparel tests require longer cycles to track return shipments):
-* Check conversion rates and return rates for both variants.
-* Calculate the net profit margins after subtracting return shipping costs.
-If Variant B shows a reduction in returns and a lift in sales, push the changes live across the entire product category.
+Motion: [templates/examples/denim-model-clip.mp4](templates/examples/denim-model-clip.mp4)
 
----
+**Exercises**
 
-## Worked Example
+1. Easy: a listing sold 500 units and 90 were returned; calculate the return rate.
+2. Medium: complete the CVR and return log in the tracker with mock data.
+3. Hard: design a dress main gallery image with a model, a sizing callout at the bottom inside safety margins, and export mobile-ready WebP.
 
-<p align="center">
-<img src="templates/examples/denim-model-measurements.jpg" alt="Denim Model Measurements" width="240">
-<img src="templates/examples/denim-model-clip.gif" alt="Denim Fit Video Motion (I2V)" width="240">
-</p>
-<p align="center"><sub>Denim Sizing Image (Left) ──► Image-to-Video Model Fit Motion (Right) · Video File: <a href="templates/examples/denim-model-clip.mp4">templates/examples/denim-model-clip.mp4</a></sub></p>
+**Template:** [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md).
 
-**Fit-Related Return Reduction for a Denim Brand**
+**SmartVideo GO AI studios for this track:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner (test plans), Lip-Sync Studio.
 
-
-
-* **Baseline Status:** A premium jeans brand suffered from a **28% return rate**. Product photos featured only flat-lay shots, leading to customer sizing confusion.
-* **Redesign Strategy (Variant B):**
-  * Generated model try-on shots showcasing the jeans on three models: Model 1 (5'11", slim build, size 26), Model 2 (5'8", curvy build, size 30), and Model 3 (5'6", petite build, size 25).
-  * Added clear text tags with model height and waist sizing.
-* **30-Day Split Test Results:**
-  * Variant A Return Rate: **28.0%** (280 returned units out of 1,000 sold).
-  * Variant B Return Rate: **16.5%** (165 returned units out of 1,000 sold).
-  * Variant B CVR Lift: **+38%** (Conversion jumped from 1.8% to 2.5%).
-* **Financial Impact:** Saved **$4,600 in return shipping fees** and increased net revenue by **$7,000** in one month.
-
----
-
-## Compare Tools
-
-| Platform / Tool | Optimization Purpose | Integration Level | Best for |
-|---|---|---|---|
-| **Loop Returns / Gorgias** | Tracking returns portal reasons and customer complaints | High (Direct Shopify app links) | Identifying specific sizing objections and return logs. |
-| **Google Analytics 4 (GA4)** | Funnel tracking and page drops | Medium | Tracking user drop-off points during cart checkout. |
-| **Shopify Flow** | Automating customer service tags | Medium | Tagging high-return SKUs automatically for design priority. |
-
-Use Loop Returns to track why customers return items (e.g. sizing fits too small). This database tells you exactly which products require urgent visual updates. Combine this with GA4 to monitor product page bounce rates.
-
----
-
-## Launch It
-
-**How to manage sizing visuals:**
-* **Keep sizing details accurate:** Never lie about the model's height or garment size in your overlays. If you list a model as wearing a size Medium when they are actually wearing an XS, customers will order the wrong size, causing returns to increase.
-* **Coordinate catalog scale bars:** Keep your layout guidelines consistent (Module 3) so that size callouts sit in the same visual location on every page.
-
----
-
-## Exercises
-
-1. **Easy:** Open a fashion listing and calculate its return rate if it sold 500 units and 90 were returned.
-2. **Medium:** Complete the CVR and Return log in the [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md) using mock data.
-3. **Hard:** Design a main gallery image for a dress. Place a model wearing the dress, add a sizing callout overlay at the bottom, align it to standard safety margins, and export a mobile-ready WebP file.
-
----
-
-## Templates
-
-* [`templates/fashion-cvr-tracker.md`](templates/fashion-cvr-tracker.md) — conversion tables, return rate metrics, split-test logs, and CRO checklists.
-
----
-
-[← Sizing & Layout consistency](03-sizing-layout-consistency.md) · [Track overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Before/After Conversion Cases, part 2.

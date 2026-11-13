@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Palette, Camera, Plus, ArrowLeft, ChevronRight, Globe } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+import HelpAgent from '@/components/help/HelpAgent';
 
 /**
  * Brand Studio — one application, one shell.
@@ -263,6 +264,8 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
           <DemoPersonalizeProvider>{children}</DemoPersonalizeProvider>
         </main>
       </div>
+      {/* "Ask SmartVideo" help assistant, same launcher as the other studios */}
+      <HelpAgent studioId={isPhotoStudio ? 'photo-studio' : 'brand-studio'} studioLabel={isPhotoStudio ? 'Photo Studio' : 'Brand Studio'} />
     </div>
   );
 }

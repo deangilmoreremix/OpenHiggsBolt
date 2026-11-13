@@ -1,147 +1,83 @@
 # Selling Short-Form Films
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Festivals want the story; sponsors want the eyeballs; platforms want the assets.
-
-**Track:** AI Filmmaking  
-**Time:** ~30 minutes  
-**Prerequisites:** Screenplay & Story Generation, Assembling a Short Film  
-
-## The Problem
-
-Most people who make AI short films share them on YouTube or Twitter, get a few hundred views, and make $0. They treat it purely as a hobby or an art project. Because they don't understand the commercial market for digital media, they miss out on the growing economic ecosystem surrounding AI video production.
-
-At the same time, brands are looking for cost-effective visual storytelling, new vertical drama platforms are spending millions of dollars licensing short episodes, and major technology companies are hosting AI film festivals with tens of thousands of dollars in cash prizes.
-
-To turn AI filmmaking into a sustainable business, you must transition from "making cool clips" to understanding how to structure sponsorships, pitch licensing agreements, and target the right monetization funnels.
-
-## The Concept
-
-Monetizing AI short-form video runs along three main avenues, each with a different financial return and effort level:
-
-```
-                  ┌───────────────────────┐
-                  │ AI Film Festivals     │ ──► Cash Prizes ($1K - $20K) & Brand Exposure
-                  ├───────────────────────┤
-AI Short Film ──► │ Brand Sponsorships    │ ──► Direct Product Placement ($300 - $1.5K)
-                  ├───────────────────────┤
-                  │ Platform Licensing    │ ──► Ep. Sales to Vertical Apps ($150 - $500/ep)
-                  └───────────────────────┘
-```
-
-1. **AI Film Festivals:** High prestige, low predictability. Submitted through aggregator directories, these offer cash prizes and direct introductions to agency directors.
-2. **Brand Sponsorships:** Moderate predictability, high margins. You integrate a brand's digital asset (a logo, a product model) into the world of your film.
-3. **Platform Licensing:** Highest predictability, volume-driven. Vertical video platforms (ReelShort, DramaBox, etc.) buy rights to short-form episodic narrative content.
+> **Time:** about 17 minutes. **You will finish with:** a delivery pack list, a sponsorship pitch draft, a festival target and a licensing terms sheet draft.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Package Your Visual Deliverables
-Before pitching, ensure you have a professional delivery pack:
-* **The Master Cut:** Widescreen 16:9 or 2.39:1 high-resolution video.
-* **The Vertical Cut:** 9:16 vertical version optimized for mobile feeds.
-* **The Clean Master:** A video export with sound effects and music, but *no voice track* (this allows platforms to dub your film into other languages).
+Most AI short films get a few hundred views and earn $0, because makers treat them as hobby art. Meanwhile brands want cost-effective storytelling, vertical drama platforms license short episodes, and AI film festivals pay cash prizes. Three routes: **AI film festivals** (prestige, low predictability, cash prizes of $1K-$20K), **brand sponsorships** (moderate predictability, high margins, $300-$1.5K for product placement) and **platform licensing** (highest predictability, volume-driven, $150-$500 per episode). You will need a finished film from lesson 4 (Assembling a Short Film), your storyboard frames from lesson 2, and the templates [`templates/sponsorship-pitch-template.md`](templates/sponsorship-pitch-template.md) and [`templates/licensing-agreement-sheet.md`](templates/licensing-agreement-sheet.md). SmartVideo GO AI's **Image Studio** and **Video Studio** can make key art and teaser clips, and its **Thumbnail** studio can help with preview images; follow the current screen.
 
-### Step 2: Build a Visual Pitch Deck
-Use [`templates/sponsorship-pitch-template.md`](templates/sponsorship-pitch-template.md) to outline your project's concept. Include your static storyboard frames from Module 2 to show the high visual quality of the project before it is rendered.
+## Step by step
 
-### Step 3: Pitch Brand Sponsorships
-Search for mid-sized brands whose aesthetic matches your film theme.
-* *Example:* If you are making a sci-fi film, target premium desk accessory or software companies. If you are making a drama, target fashion or skincare brands.
-* Send your pitch offering seamless product integration inside your narrative world. Charge an upfront fee (**$300–$1,000** for initial campaigns).
+### 1. Package your deliverables
 
-### Step 4: Submit to AI Film Festivals
-Set up a profile on FilmFreeway. Search for "AI Film Festivals." Submissions are often free or low-cost. Submit to major ones (e.g. Runway AIFF, muapi Creator Awards) to build industry credibility.
+Prepare three files:
 
-### Step 5: License to Vertical Drama Apps
-Reach out to licensing representatives of vertical vertical-video networks. Pitch them a multi-episode mini-series. Provide a terms sheet detailing upfront fees and royalty splits using the [`templates/licensing-agreement-sheet.md`](templates/licensing-agreement-sheet.md).
+1. **Master cut:** widescreen 16:9 or 2.39:1, high resolution.
+2. **Vertical cut:** 9:16 for mobile feeds.
+3. **Clean master:** with sound effects and music but **no voice track**, so platforms can dub it into other languages.
 
----
+**You should see:** three clearly named export files.
 
-## Worked Example
+**If not:** if you have only a single mix, re-export from your editor with the voice track muted.
 
-<p align="center">
-<img src="templates/examples/the-last-signal-poster.jpg" alt="Licensing Poster" width="280">
-<img src="templates/examples/last-signal-assembly-clip.gif" alt="Pitch Trailer Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Licensing Pitch Art (Left) ──► Image-to-Video Film Trailer Motion (Right) · Video File: <a href="templates/examples/last-signal-assembly-clip.mp4">templates/examples/last-signal-assembly-clip.mp4</a></sub></p>
+### 2. Build a visual pitch outline
 
-**Licensing "The Last Signal" Series to a Mobile App**
+Open [`templates/sponsorship-pitch-template.md`](templates/sponsorship-pitch-template.md) and outline your concept. Include your static storyboard frames from lesson 2 to show the visual quality.
 
+**You should see:** a one-page outline with concept, frames and your name.
 
+**If not:** if you have no strong frames, generate a key art image in **Image Studio**.
 
-* **The Deal:** A 5-episode vertical mini-series (1 minute per episode).
-* **The Agreement terms:**
-  * **Exclusivity:** Exclusive license for mobile app distribution for 12 months. Non-exclusive for personal portfolio display.
-  * **Upfront Fee:** **$300** per episode (Total **$1,500** upfront).
-  * **Royalty Split:** **15%** of net pay-per-view revenue generated by the episodes on the app.
-  * **Attribution:** Credit line: *"Created by [Your Name] using muapi models"* visible on the video description page.
+### 3. Draft a brand sponsorship pitch
 
-**The Financial Math:**
-* **Production Cost:** **$25** in video generation API credits (Kling/Luma).
-* **Editing Time:** 15 hours total across 5 episodes.
-* **Net Upfront Profit:** **$1,475** (approx. **$98/hour**).
-* **Passive Tail:** Extra monthly payments from the 15% royalty split as users unlock episodes.
+List mid-sized brands whose look matches your film (sci-fi: premium desk accessories or software; drama: fashion or skincare). Offer seamless product integration in your story world and quote an upfront fee, **$300-$1,000** for initial campaigns (a 5-second placement in a 1-minute clip is **$300-$800**). Send only to real people you have researched, and no secrets or private data.
 
----
+**You should see:** a short pitch email ready to send to a named brand.
 
-## Compare Tools
+**If not:** if you cannot find brands, look at who advertises heavily on social media (Meta Ad Library) but lacks high-production video.
 
-| Platform / Portal | Purpose | Best for |
-|---|---|---|
-| **FilmFreeway** | Central directory for film festival submissions globally. Includes filters for budget, genre, and "AI Film" categories. | Gaining credentials, winning cash prizes, and press releases. |
-| **Direct Brand Outreach (Email/LinkedIn)** | Reaching marketing managers directly to sell product placements. | Short-term cash flow and direct commercial partnerships. |
-| **Whop / Gumroad** | E-commerce hosting platforms to sell digital video assets or prompts. | Selling templates, visual assets, or LUT packs to other creators. |
+### 4. Choose festivals
 
-For direct monetization, cold outreach to brands and licensing to vertical platforms provides immediate, predictable income. Festivals should be treated as a marketing channel to increase your credibility and justify higher rates for future brand deals.
+Set up a profile on FilmFreeway, search for "AI Film Festivals" and shortlist a few. Submissions are often free or low-cost. The original lesson names Runway AIFF and muapi Creator Awards as examples; check current deadlines and rules on each page.
 
----
+**You should see:** a shortlist with deadlines.
 
-## Launch It
+**If not:** if the "AI Film" filter is missing, search for the festival names directly.
 
-**How to price your work:**
-* **Product Placement / Sponsorship:** Charge based on production complexity. A 5-second product placement inside a 1-minute cinematic clip is priced at **$300–$800** upfront.
-* **Vertical Drama Episodes:** Pitch packages of 10–20 episodes. Sell them at **$150–$350** per episode to mobile platforms, or negotiate a lower upfront fee in exchange for a higher revenue share (20-30%).
+### 5. Draft a licensing terms sheet
 
-**Where to find sponsors:**
-Target brands that already advertise heavily on social media (look at Meta Ad Library) but lack high-production-value video assets. Offer them cinematic lookups they cannot get from typical low-budget film crews.
+Open [`templates/licensing-agreement-sheet.md`](templates/licensing-agreement-sheet.md) and fill in a multi-episode mini-series pitch for vertical drama apps: exclusivity, upfront fee per episode and royalty split. Pitch 10-20 episode packages at **$150-$350** per episode, or a lower upfront fee for a higher revenue share (20-30%). For anything binding, get proper legal advice.
 
----
+**You should see:** a terms sheet with all three items filled in.
 
-## Exercises
+**If not:** compare with the worked example below.
 
-1. **Easy:** Draft a 1-page visual pitch deck outline for an AI-generated sci-fi short film, including target brand sponsors.
-2. **Medium:** Write a cold pitch email to a real watch or tech gear brand, proposing a 5-second seamless visual integration in a travel-themed short video.
-3. **Hard:** Draft a complete licensing term sheet for a 10-episode vertical drama series, defining regional exclusivity, upfront payment milestones, and revenue-sharing terms.
+## Check yourself
 
----
+* [ ] I have a master cut, a vertical cut and a voice-less clean master.
+* [ ] I have a pitch outline using my storyboard frames.
+* [ ] I drafted one sponsor pitch with an upfront fee.
+* [ ] I have a festival shortlist and a licensing terms sheet draft.
 
-## Templates
+## Common mistakes
 
-Reusable template(s) this module produces:
+* Making films with no delivery pack ready.
+* Pitching with no visuals.
+* Treating festivals as the only income instead of a credibility channel.
+* Sending the same generic pitch to every brand.
 
-* [`templates/sponsorship-pitch-template.md`](templates/sponsorship-pitch-template.md) — a cold email pitch structure for sponsorships.
-* [`templates/licensing-agreement-sheet.md`](templates/licensing-agreement-sheet.md) — a term sheet outlining licensing structures.
+## Go further
 
----
+**Worked example, licensing "The Last Signal" to a mobile app.** Deal: 5-episode vertical mini-series, 1 minute each. Terms: exclusive mobile app license for 12 months, non-exclusive for your portfolio; **$300** per episode (**$1,500** upfront); **15%** of net pay-per-view revenue; credit line "Created by [Your Name] using muapi models." Math: **$25** in video generation credits (Kling/Luma), 15 hours editing, net upfront profit **$1,475** (about **$98/hour**), plus a passive tail from royalties.
 
-[← Assembling a Short Film](04-assembling-short-film.md) · [Track overview](README.md)
+**Exercises**
 
+1. Easy: draft a 1-page pitch deck outline for an AI sci-fi short with target sponsors.
+2. Medium: write a cold pitch email to a real watch or tech gear brand for a 5-second integration in a travel-themed short.
+3. Hard: draft a licensing term sheet for a 10-episode vertical drama, with regional exclusivity, payment milestones and revenue share.
 
----
+**Compare tools.** FilmFreeway: central festival directory with AI Film filters, for credentials, prizes and press. Direct brand outreach (email/LinkedIn): reach marketing managers for short-term cash. Whop / Gumroad: sell templates, visual assets or LUT packs to other creators. Use outreach and licensing for predictable income and festivals as a marketing channel to justify higher rates.
 
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Templates:** [`templates/sponsorship-pitch-template.md`](templates/sponsorship-pitch-template.md), [`templates/licensing-agreement-sheet.md`](templates/licensing-agreement-sheet.md).

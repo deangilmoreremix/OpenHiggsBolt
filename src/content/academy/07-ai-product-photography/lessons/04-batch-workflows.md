@@ -1,138 +1,88 @@
 # Batch Workflows for Catalogs
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Consistency is what turns separate photos into a brand catalog.
-
-**Track:** AI Product Photography & E-commerce  
-**Time:** ~45 minutes  
-**Prerequisites:** Product Shots Basics  
-
-## The Problem
-
-Brands rarely sell just a single item. They launch full catalog collections containing 20, 50, or 200 variations (such as 10 different scent profiles of the same perfume bottle, or varying color patterns of the same water flask).
-
-If you design each backdrop prompt from scratch, the lighting angles, shadows, and camera coordinates will differ. When displayed on a catalog page, the products will look messy, jumping around the screen as the user scrolls.
-
-Designing these variations one-by-one is also incredibly slow. If you spend 1 hour editing each product, a 50-item catalog eats up a week of labor, destroying your agency's margins. You need a batch workflow to keep layouts identical and render catalogs in minutes.
-
-## The Concept
-
-Scaling catalog production requires **Layout Standardization**, **Prompt Pinning**, and **Batch Masking**:
-
-```
-[20 Product Images] ──► Batch Background Remover ──► Locked Backdrop Prompt ──► Template Bounding Box ──► Export WebP
-```
-
-* **Prompt Pinning:** To ensure the background environment remains identical, use the same prompt and seed for the backdrop scene. Do not generate a new background for each product. Place the products onto the *same* pre-rendered background image.
-* **Layout Standardization:** Establish rigid bounding box coordinates. In a product lineup, all containers must sit at the exact same vertical baseline (Y-coordinate) and occupy the same relative height percentage inside the frame.
-* **Batch Masking:** Use programmatic API folder calls or batch tools to remove backgrounds in bulk. This eliminates the need to manually click and erase pixels for every item.
+> **Time:** about 14 minutes. **You will finish with:** a catalog folder structure, isolated product masks and one locked master backdrop.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Set Up Your Catalog Folders
-Open [`templates/batch-catalog-spec.md`](templates/batch-catalog-spec.md). Build your local folder structure to separate work-in-progress files from completed assets:
-* Place all raw product shots in `01_raw_assets/`.
-* Name files by their product SKU (e.g., `sku_lavender_01.jpg`, `sku_rose_02.jpg`).
+Brands launch 20, 50 or 200 variations. If each backdrop is prompted from scratch, lighting, shadows and camera angles differ and the catalog looks messy. At 1 hour per product, a 50-item catalog takes about a week. Batch production rests on three ideas: **Prompt Pinning** (same prompt and seed, one pre-rendered background for all products), **Layout Standardization** (the same baseline Y-coordinate and relative height) and **Batch Masking** (remove backgrounds in bulk through folder tools or an API).
 
-### Step 2: Batch Remove Backgrounds
-Run a batch background removal tool. If using Photoshop:
-* Open File -> Scripts -> Image Processor.
-* Set source folder to `01_raw_assets/` and select "Save as PSD".
-* Open the actions panel, record a new action: select Subject, apply Mask, and save as transparent PNG. Run the batch action on the folder to output files into `02_isolated_masks/`.
-If using an API, run a Python script to send the folder files to `/remove-background` and download the results.
+You need 3 to 5 raw product shots of one collection, [`templates/batch-catalog-spec.md`](templates/batch-catalog-spec.md), Photoshop (or an API/Python script) for masking, and **Image Studio** in SmartVideo GO AI for the backdrop.
 
-### Step 3: Select and Lock Your Backdrop
-Generate and select your best-performing studio backdrop image. Scale and center the travertine block or pedestal surface. Save this single master image as `master_background.jpg`.
+## Step by step
 
-### Step 4: Construct the Alignment Template
-Open `master_background.jpg` in your photo editor. Pull down a horizontal ruler guide to set the baseline height where the bottom of the products will touch the pedestal surface. Mark side guides to represent the maximum padding limits. Save this document as `catalog_template.psd`.
+### 1. Create the catalog folders
 
-### Step 5: Run Batch Compositing
-Import your isolated PNG masks into the template:
-* Align each product mask's base to the horizontal baseline guide.
-* Proportional Scale: Ensure each variation fills the standard bounding box (e.g. 80% height).
-* Duplicate the shadow layer under the product. Since the lighting is identical, the same contact and drop shadow layers can be reused across all files.
-* Save each product variation layer group separately, and export the files as WebP into `05_final_deliver/`.
+Open [`templates/batch-catalog-spec.md`](templates/batch-catalog-spec.md) and create: `01_raw_assets/`, `02_isolated_masks/`, `03_ai_backgrounds/`, `04_composite_drafts/`, `05_final_deliver/`.
 
----
+**You should see:** five empty folders in order.
 
-## Worked Example
+**If not:** match the names exactly so the spec and your scripts agree.
 
-<p align="center">
-<img src="templates/examples/batch-skincare-grid.jpg" alt="Skincare Grid" width="280">
-<img src="templates/examples/batch-skincare-grid-clip.gif" alt="Catalog Batch Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Skincare Collection Catalog Image (Left) ──► Image-to-Video Batch Lighting Motion (Right) · Video File: <a href="templates/examples/batch-skincare-grid-clip.mp4">templates/examples/batch-skincare-grid-clip.mp4</a></sub></p>
+### 2. Add and name the raw shots
 
-**Batch Catalog Refurbishing for a Skincare Brand**
+Put every raw product shot in `01_raw_assets/` named by SKU, for example `sku_lavender_01.jpg`, `sku_rose_02.jpg`.
 
+**You should see:** every file starting with its SKU.
 
+**If not:** rename any file named like `IMG_2041.jpg` now, not later.
 
-* **Catalog Scope:** 5 different facial serum droppers (Rose, Lavender, Cucumber, Tea Tree, Citrus).
-* **Baseline Setup:**
-  * Master environment: Travertine marble ledge against a cream stucco background.
-  * Baseline coordinate: Set at Y: 800px on a 1920x1920px square canvas.
-  * Product height: Standardized to exactly 1100px.
-* **Batch Processing:**
-  * Ran folder-wide background removal on the 5 raw product shots.
-  * Imported all 5 PNG masks into the template PSD.
-  * Toggled each dropper layer on one by one (in Photoshop: click the eye icon next to a layer to show/hide it), keeping the base shadows and background layers identical.
-* **Results:** Generated 5 perfectly matching catalog images with uniform lighting, shadows, and sizing in under 10 minutes.
+### 3. Batch remove backgrounds in Photoshop
 
----
+Go to File -> Scripts -> Image Processor (menus move; follow the current screen). Set the source folder to `01_raw_assets/` and choose "Save as PSD". In the Actions panel record a new action: Select Subject, apply Mask, save as transparent PNG. Run it on the folder, outputting to `02_isolated_masks/`.
 
-## Compare Tools
+**You should see:** one transparent PNG per product in `02_isolated_masks/`.
 
-| Platform / Tool | Automation Speed | Workflow Suitability | Best for |
+**If not:** if a mask is poor, rerun that one file. Alternative: run a Python script that sends the folder's files to `/remove-background` and downloads the results. Never put API keys in chat.
+
+### 4. Lock your master backdrop
+
+Generate backdrops with the module 1 prompt style and choose one. Scale and center the travertine block or pedestal surface, then save it as `master_background.jpg`. Keep the prompt and seed in the brief so it can be regenerated identically.
+
+**You should see:** one backdrop file in `03_ai_backgrounds/` that every product will share.
+
+**If not:** if you want a different look, change it now; changing it later means redoing every composite.
+
+## Check yourself
+
+* [ ] All five folders exist with the exact names.
+* [ ] Raw files are named by SKU.
+* [ ] Every product has a transparent mask in `02_isolated_masks/`.
+* [ ] I have exactly one `master_background.jpg`.
+
+## Common mistakes
+
+* Generating a new background for each product.
+* Naming files by camera defaults instead of SKU.
+* Cleaning masks by hand, pixel by pixel, instead of batching.
+
+## Go further
+
+**Worked example: skincare serum catalog.** 5 serum droppers (Rose, Lavender, Cucumber, Tea Tree, Citrus). Master environment: travertine marble ledge against cream stucco. Baseline at Y: 800px on a 1920x1920px square canvas; product height standardized to exactly 1100px. Folder-wide background removal on the 5 raw shots, then all masks imported into one template.
+
+**Exercises.** Easy: set up the five standard folders. Medium: record a Photoshop Action or write a script that scales an image to 1080x1080px and adds a 10% outer border. Hard: batch process 3 coloured beverage cans on the same ledge at the same baseline with the same shadow layer.
+
+**Compare tools.**
+
+| Tool | Speed | Suitability | Best for |
 |---|---|---|---|
-| **Photoshop Batch Actions** | High (Processes local folders using recorded hotkeys) | Excellent (Preserves manual control over adjustments) | Professional designers managing complex layer adjustments. |
-| **Photoroom Batch API** | Ultra-High (Processes hundreds of files concurrently in the cloud) | Good | High-volume store operations with simple layouts. |
-| **Python Pillow (PIL)** | Ultra-High | Good (Requires writing python scripts) | Programmers automating bulk catalog overlays. |
+| Photoshop Batch Actions | High (local folders, recorded hotkeys) | Excellent (keeps manual control) | Designers with complex layer adjustments |
+| Photoroom Batch API | Ultra-high (cloud, hundreds of files at once) | Good | High-volume stores with simple layouts |
+| Python Pillow (PIL) | Ultra-high | Good (needs scripting) | Programmers automating bulk overlays |
 
-For design agencies, recording batch actions in Photoshop is the best workflow. It allows you to automate the repetitive tasks (masking, importing, positioning) while giving you the freedom to manually tweak the final shadows for high-quality QA. For massive catalogs (e.g. 500+ items), Photoroom's Batch API provides the fastest cloud execution.
+For agencies, recorded Photoshop actions plus manual QA on shadows is best. For 500+ items, Photoroom's Batch API is the fastest.
 
----
+**Template:** [`templates/batch-catalog-spec.md`](templates/batch-catalog-spec.md) covers directory setups, bounding box maps, catalog logs and checklists.
 
-## Launch It
+**SmartVideo GO AI studios** (generic list, same for every lesson):
 
-**How to organize file names:**
-* **Use standardized SKU tags:** Always name your files using the product SKU code (e.g., `SKU-BOT-01.webp`). This allows web developers to import and link images to correct product listings automatically via CSV spreadsheets, saving hours of manual uploads.
-* **Keep canvas sizes uniform:** Ensure all final exported images are exported at the same aspect ratio (e.g., 2000x2000px square). Mix-matching square and vertical shapes will cause your e-commerce layout grid to break.
+* **Image Studio**: anchors, character sheets, product and brand shots
+* **Video Studio**: UGC ads, talking-head clips, image-to-video motion
+* **AI Influencer Studio**: consistent recurring on-brand characters
+* **Storyboard / Campaign Planner**: batch matrices, ad briefs and test plans
+* **Lip-Sync Studio**: voice + mouth-sync for avatar performances
 
----
+The workflow is the same everywhere in SmartVideo GO AI: **Learn, See Example, Use Template, Generate.**
 
-## Exercises
-
-1. **Easy:** Set up the standard directory folders (`01_raw_assets/`, `02_isolated_masks/`, `03_ai_backgrounds/`, `04_composite_drafts/`, `05_final_deliver/`) on your computer.
-2. **Medium:** Record a Photoshop Action (or write a basic Python script) to scale an image to 1080x1080px and add a 10% outer border.
-3. **Hard:** Batch process 3 different colored beverage cans. Place them on the same background ledge at the exact same baseline coordinate, apply the same drop shadow layer, and export 3 matching catalog WebP files.
-
----
-
-## Templates
-
-* [`templates/batch-catalog-spec.md`](templates/batch-catalog-spec.md) — directory setups, bounding box maps, catalog logs, and workflow checklists.
-
----
-
-[← Selling as a Productized Service](03-productized-service.md) · [Track overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Batch Workflows for Catalogs, part 2.

@@ -100,7 +100,11 @@ import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { imageLoadsInBrowser } from './imageLoadProbe'
+import { prefetchBackgroundRemovalModel, cancelBackgroundRemovalPrefetch } from './backgroundRemoval/backgroundRemovalClient'
+import { useAutoCutout, shouldHoldAutoImport, AUTO_IMPORT_CUTOUT_WAIT_MS, type AutoCutoutControls } from './backgroundRemoval/useAutoCutout'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { reorderLayers } from './preview/layerOrder'
+import { normalizeAngle } from './preview/rotation'
 import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -193,6 +197,35 @@ interface GenerateOverrides {
  * itself is browser-only (layers burned in locally), else a non-blob result URL.
  */
 /**
+ * A fresh discovery result for assets already in the list (the final result after the fast
+ * one) must not wipe what the browser added meanwhile: finished cutouts, removal status,
+ * opt-outs and the original/cutout choice. Server fields win; the client fields are carried over.
+ */
+export function mergeDiscoveredAssets(prev: DiscoveredAsset[], next: DiscoveredAsset[]): DiscoveredAsset[] {
+  if (prev.length === 0) return next
+  const before = new Map(prev.map((asset) => [asset.id, asset]))
+  return next.map((asset) => {
+    const old = before.get(asset.id)
+    if (!old) return asset
+    const carried: Partial<DiscoveredAsset> = {}
+    if (old.editedDataUrl) {
+      carried.editedDataUrl = old.editedDataUrl
+      carried.edited = old.edited
+      carried.hasTransparency = old.hasTransparency
+      carried.videoReady = old.videoReady
+      carried.editMetadata = old.editMetadata
+      carried.originalPreviewUrl = old.originalPreviewUrl || asset.originalPreviewUrl
+    }
+    // Verified transparency is kept even when no cutout was generated (an already-transparent image).
+    if (old.hasTransparency) carried.hasTransparency = true
+    if (old.bgRemoval) carried.bgRemoval = old.bgRemoval
+    if (old.bgOptOut) carried.bgOptOut = old.bgOptOut
+    if (old.showOriginal) carried.showOriginal = old.showOriginal
+    return { ...asset, ...carried }
+  })
+}
+
+/**
  * The library without the assets placed automatically from the given
  * discovered-asset ids, wherever the user moved them. Edited copies stay. If
  * the primary logo goes, the first remaining logo becomes primary (flag and
@@ -200,7 +233,12 @@ interface GenerateOverrides {
  */
 export function withoutAutoImported(prev: AssetLibrary, ids: ReadonlySet<string>): AssetLibrary {
   const isAuto = (asset: PersonalizationAsset | null | undefined) =>
-    Boolean(asset?.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
+    Boolean(
+      asset?.sourceDiscoveredAssetId &&
+        ids.has(asset.sourceDiscoveredAssetId) &&
+        // An automatic background-removal cutout is not a user edit.
+        (!asset.edited || (asset.editMetadata as { engine?: string } | undefined)?.engine === 'bg0'),
+    )
   const logos = prev.logos.filter((asset) => !isAuto(asset))
   const primaryWasAuto = isAuto(prev.primaryLogo)
   const promoted = primaryWasAuto && logos[0] ? { ...logos[0], isPrimary: true } : null
@@ -295,7 +333,8 @@ function clampPreviewFrame(value: unknown, fallback: number): number {
 
 /** Keeps layer geometry/opacity/timing inside the ranges the renderer supports. */
 function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
-  return {
+  const rotation = normalizeAngle(layer.rotation)
+  const out: PreviewLayer = {
     ...layer,
     x: clampPreviewNumber(layer.x, 0, 1, 0),
     y: clampPreviewNumber(layer.y, 0, 1, 0),
@@ -308,6 +347,10 @@ function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
         ? clampPreviewFrame(layer.endFrame, clampPreviewFrame(layer.startFrame, 0))
         : undefined,
   }
+  // No rotation is stored as an absent property, so unrotated layers serialize exactly as before.
+  if (rotation !== 0) out.rotation = rotation
+  else delete out.rotation
+  return out
 }
 
 /** The demo's own aspect ratio when it is one the preview can render. */
@@ -806,7 +849,7 @@ export type DemoPersonalizeContextValue = {
   /** Shows (or clears with `null`) the discovery error banner. */
   setDiscoveryError: (message: string | null) => void
   importConfirmation: { count: number; clientName?: string } | null
-  setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
+  setDiscoveredAssets: (assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => void
   toggleDiscoveredAssetSelection: (id: string) => void
   rejectDiscoveredAsset: (id: string) => void
   restoreDiscoveredAsset: (id: string) => void
@@ -814,6 +857,8 @@ export type DemoPersonalizeContextValue = {
   removeDiscoveredAssetFromSection: (id: string) => void
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   revertDiscoveredAssetEdit: (id: string) => void
+  /** On-device background removal for discovered assets (auto queue + manual controls). */
+  autoCutout: AutoCutoutControls
   selectRecommendedDiscoveredAssets: () => void
   /** Imports the selected assets, or only `ids` into `section` (a drop onto a section). */
   /** Resolves with the ids of the discovered assets it placed. */
@@ -973,6 +1018,8 @@ export type DemoPersonalizeContextValue = {
   setPreviewVideo: (video: PreviewVideoRef | null) => void
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  /** Restacks the video's layers: the order given is the new order of `previewSettings.layers` (later = drawn above). */
+  reorderPreviewLayers: (orderedIds: string[]) => void
   /** Locks/unlocks a layer: a locked layer is never moved by the editor, a reflow or the placement engine. */
   setPreviewLayerLocked: (layerId: string, locked: boolean) => void
   /** Regions of the footage the overlays must not cover (customer-marked subject areas). */
@@ -1569,6 +1616,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [importConfirmation, setImportConfirmation] = useState<{ count: number; failedCount?: number; clientName?: string } | null>(null)
+  const autoCutout = useAutoCutout(discoveredAssets, setDiscoveredAssetsState, { paused: discoveryStatus === 'importing', disabled: access === 'anonymous' })
+  // Warm the model up while the modal is open (never without consent, with auto mode off, or where unsupported).
+  useEffect(() => {
+    if (!isOpen || !autoCutout.willAutoCutOut) return undefined
+    void prefetchBackgroundRemovalModel()
+    return () => cancelBackgroundRemovalPrefetch()
+  }, [isOpen, autoCutout.willAutoCutOut])
   const [visionStatus, setVisionStatus] = useState<'idle' | 'analyzing' | 'complete' | 'error'>('idle')
   const [visionError, setVisionError] = useState<string | null>(null)
 
@@ -3848,7 +3902,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // ── Discovered assets actions ───────────────────────────────────────────────
 
-  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[]) => {
+  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => {
     setDiscoveredAssetsState(assets)
     setDiscoveryStatus('reviewing')
     setDiscoveryError(null)
@@ -3906,6 +3960,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         visionValidation: undefined,
         videoReady: false,
         hasTransparency: false,
+        // Restoring the original also opts out of automatic background removal.
+        bgOptOut: true,
+        bgRemoval: { status: 'idle' },
+        showOriginal: false,
       } : a)),
     )
   }, [])
@@ -4108,6 +4166,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
+    // The business may have changed while the uploads ran: do not touch the new one's review.
+    if (importSession !== businessSessionRef.current) return []
+
     // Only assets that actually imported leave the review; failed ones stay
     // so they can be retried.
     const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
@@ -4163,10 +4224,29 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // When a found business's discovery finishes, place the best logo and
   // photos into empty asset cards so the preview and overlays use them right
   // away. Everything stays reviewable in the Discovered Assets grid.
+  //
+  // Cut out first, then place: while on-device background removal is expected to
+  // run, placement waits (up to AUTO_IMPORT_CUTOUT_WAIT_MS) until the picked
+  // assets' cutouts have settled, so the cards and the preview get the
+  // transparent versions. Auto mode off, a declined/failed model or a slow
+  // download place the originals right away, exactly as before.
+  const [autoImportWaitTick, setAutoImportWaitTick] = useState(0)
+  const autoImportHoldSinceRef = useRef<number | null>(null)
   useEffect(() => {
     if (!autoImportPendingRef.current || discoveryStatus !== 'reviewing' || discoveredAssets.length === 0) return
-    autoImportPendingRef.current = false
     const picks = pickAutoImportAssets(discoveredAssets, assets)
+    // Also wait while the model-download consent (phones / data-saver) is undecided: placing the
+    // originals now would remove the picks from the grid, and the consent prompt with them.
+    if (picks.length > 0 && (autoCutout.willAutoCutOut || autoCutout.needsConsent)) {
+      if (autoImportHoldSinceRef.current === null) autoImportHoldSinceRef.current = Date.now()
+      const waited = Date.now() - autoImportHoldSinceRef.current
+      if (shouldHoldAutoImport(picks.map((asset) => asset.id), discoveredAssets, { willAutoCutOut: true, waitedMs: waited })) {
+        const timer = setTimeout(() => setAutoImportWaitTick((n) => n + 1), Math.max(0, AUTO_IMPORT_CUTOUT_WAIT_MS - waited))
+        return () => clearTimeout(timer)
+      }
+    }
+    autoImportHoldSinceRef.current = null
+    autoImportPendingRef.current = false
     let domain = ''
     try {
       domain = clientForm.website ? new URL(normalizeWebsiteInput(clientForm.website)).hostname.replace(/^www\./, '') : ''
@@ -4204,7 +4284,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         forgetUnplaced([])
         summarize([])
       })
-  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website])
+  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website, autoCutout.willAutoCutOut, autoCutout.needsConsent, autoImportWaitTick])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
@@ -4552,7 +4632,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const live = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
       if (discoverySession === businessSessionRef.current) fn(...args)
     }
-    const setFoundAssets = live(setDiscoveredAssetsState)
+    const setFoundAssets = live((assets: DiscoveredAsset[]) => setDiscoveredAssetsState((prev) => mergeDiscoveredAssets(prev, assets)))
     const setStatus = live(setDiscoveryStatus)
     const setError = live(setDiscoveryError)
     const websiteUrl = (rawWebsiteUrl || '').trim()
@@ -4644,7 +4724,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const live = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
       if (discoverySession === businessSessionRef.current && requestId === discoveryRequestRef.current) fn(...args)
     }
-    const setFoundAssets = live(setDiscoveredAssetsState)
+    const setFoundAssets = live((assets: DiscoveredAsset[]) => setDiscoveredAssetsState((prev) => mergeDiscoveredAssets(prev, assets)))
     const setStatus = live(setDiscoveryStatus)
     const setError = live(setDiscoveryError)
 
@@ -4924,6 +5004,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     //     mapping, so both paths fill the same fields with the same rules.
     selectBusiness(options?.business || businessRecordFromWebsite(website))
     autoImportPendingRef.current = true
+    autoImportHoldSinceRef.current = null // a new business starts a fresh wait
     const workflowSession = businessSessionRef.current
 
     setDiscoveryError(null)
@@ -5626,7 +5707,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
     markSessionStarted()
-    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
+    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch || 'rotation' in patch
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) => {
@@ -5666,6 +5747,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignedImageUrlsKey])
+
+  const reorderPreviewLayers = useCallback((orderedIds: string[]) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => {
+      const layers = reorderLayers(prev.layers, orderedIds)
+      return layers.every((l, i) => l === prev.layers[i]) ? prev : { ...prev, layers }
+    })
+  }, [])
 
   const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
     markSessionStarted()
@@ -6289,6 +6378,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
     revertDiscoveredAssetEdit,
+    autoCutout,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -6387,6 +6477,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo,
     setPreviewLayout,
     updatePreviewLayer,
+    reorderPreviewLayers,
     setPreviewLayerLocked,
     setPreviewProtectedZones,
     applyPreviewPlacements,
