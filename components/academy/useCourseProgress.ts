@@ -34,6 +34,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   const idsRef = useRef(lessonIds);
   idsRef.current = lessonIds;
   const [progress, setProgress] = useState<CourseProgress>(() => emptyCourseProgress());
+  /** true once progress can be trusted for resuming: browser copy loaded and, when signed in, the account request settled */
   const [ready, setReady] = useState(false);
   const [sync, setSync] = useState<CourseSyncState>('local');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,8 +87,12 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     let cancelled = false;
     const local = loadCourseLocal(idsRef.current);
     setProgress(local);
-    setReady(true);
-    if (!syncRemote) return;
+    // browser-only: local progress is the whole truth. Signed in: `ready` waits until the account
+    // copy has settled, so resume/visit never run against empty local state and clobber the saved place.
+    if (!syncRemote) {
+      setReady(true);
+      return;
+    }
     (async () => {
       try {
         const res = await fetch(ENDPOINT, { cache: 'no-store' });
@@ -100,6 +105,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           pending.current = [];
           if (edits.length) saveCourseLocal(latest.current);
           setSync('local');
+          setReady(true);
           return;
         }
         if (!res.ok) throw new Error(String(res.status));
@@ -117,6 +123,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         if (owner) saveCourseOwner(owner);
         setProgress(merged);
         saveCourseLocal(merged);
+        setReady(true);
         if (edits.length > 0 || (base !== remote && base.updatedAt > 0)) push(merged);
         else setSync('saved');
       } catch {
@@ -125,6 +132,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         pending.current = [];
         saveCourseLocal(latest.current);
         setSync('offline');
+        setReady(true);
       }
     })();
     return () => {

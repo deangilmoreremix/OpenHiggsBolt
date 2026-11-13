@@ -16,7 +16,7 @@ describe('course progress helpers', () => {
     expect(p.updatedAt).toBe(7);
     expect(p.last).toEqual({}); // unknown lessons and a lesson filed under the wrong track are dropped
     expect(p.completedLessons).toEqual(['ugc/01-a']);
-    expect(p.stepsDone).toEqual({ 'ugc/01-a': ['s1'] });
+    expect(p.stepsDone).toEqual({}); // 'ugc/01-a' is completed, so its per-step detail is dropped
     expect(p.checks).toEqual({ 'ugc/01-a': [0, 2] });
     expect(sanitizeCourseProgress('junk', IDS)).toEqual(emptyCourseProgress());
   });
@@ -105,7 +105,7 @@ describe('useCourseProgress', () => {
     let release!: (r: Response) => void;
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.resolve(json({ ok: true })) : new Promise<Response>((res) => { release = res; })));
     const { result } = renderHook(() => useCourseProgress(IDS, true));
-    await waitFor(() => expect(result.current.ready).toBe(true));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     act(() => result.current.visit('ugc/02-b', 'concept')); // before the account copy arrived
     const saved = setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 4000);
     await act(async () => { release(json({ progress: saved, owner: 'userA' })); });
@@ -115,6 +115,33 @@ describe('useCourseProgress', () => {
     const sent = JSON.parse(((fetchMock.mock.calls.find(isPut)![1]) as RequestInit).body as string).progress;
     expect(sent.completedLessons).toEqual(['ugc/01-a']);
     expect(sent.last.ugc.stepId).toBe('concept');
+  });
+
+  it('signed in: not ready until the account copy has settled, so resume never runs on empty local state', async () => {
+    let release!: (r: Response) => void;
+    fetchMock.mockImplementation(() => new Promise<Response>((res) => { release = res; }));
+    const { result } = renderHook(() => useCourseProgress(IDS, true));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(result.current.ready).toBe(false);
+    const saved = visitStep(emptyCourseProgress(), 'ugc/02-b', 'do-it', 4000);
+    await act(async () => { release(json({ progress: saved, owner: 'userA' })); });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.progress.last.ugc.stepId).toBe('do-it');
+  });
+
+  it('ready also settles when the account request fails or the learner is signed out', async () => {
+    fetchMock.mockRejectedValue(new Error('net'));
+    const a = renderHook(() => useCourseProgress(IDS, true));
+    await waitFor(() => expect(a.result.current.ready).toBe(true));
+    a.unmount();
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(json({}, 401));
+    const b = renderHook(() => useCourseProgress(IDS, true));
+    await waitFor(() => expect(b.result.current.ready).toBe(true));
+    b.unmount();
+    const c = renderHook(() => useCourseProgress(IDS, false));
+    await waitFor(() => expect(c.result.current.ready).toBe(true));
   });
 
   it('uploads newer browser progress when the account copy is missing', async () => {
@@ -140,7 +167,7 @@ describe('useCourseProgress', () => {
     let release!: (r: Response) => void;
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.resolve(json({ ok: true })) : new Promise<Response>((res) => { release = res; })));
     const { result } = renderHook(() => useCourseProgress(IDS, true));
-    await waitFor(() => expect(result.current.ready).toBe(true));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     act(() => result.current.check('ugc/01-a', 0));
     const remote = setCourseCheck({ ...emptyCourseProgress(), updatedAt: 4000 }, 'ugc/01-a', 0, true, 4000);
     await act(async () => { release(json({ progress: remote, owner: 'userA' })); });

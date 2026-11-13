@@ -21,7 +21,13 @@ export const runtime = 'nodejs';
  *   413 PAYLOAD_TOO_LARGE · 400 BAD_JSON
  */
 
-const MAX_BODY_BYTES = 32 * 1024;
+/**
+ * Same ceiling as the database column (CHECK pg_column_size(state) <= 65536). The saved state is the
+ * sanitized body, which can only be smaller. The full checked-in course (113 lessons, all steps seen,
+ * all boxes ticked, all lessons complete) is about 16 KB in the compact form, and ~41 KB even if no
+ * lesson were marked complete (tests/academy-progress-size).
+ */
+const MAX_BODY_BYTES = 64 * 1024;
 
 /** Every real lesson id (`track/slug`), built from the lesson files, so unknown ids are dropped. */
 function lessonIds(): string[] {
@@ -47,7 +53,7 @@ export async function PUT(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
 
   const text = await req.text();
-  if (text.length > MAX_BODY_BYTES) return NextResponse.json({ error: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  if (Buffer.byteLength(text) > MAX_BODY_BYTES) return NextResponse.json({ error: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
   let body: unknown;
   try {
     body = JSON.parse(text);

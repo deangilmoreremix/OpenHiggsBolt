@@ -34,7 +34,11 @@ export interface CourseProgress {
    */
   last: Record<string, LastPosition>;
   completedLessons: string[];
-  /** Steps the learner has gone through, per lesson. */
+  /**
+   * Steps the learner has gone through, per lesson. Only kept for lessons that are NOT complete:
+   * a completed lesson is 100% and needs no per-step detail, which keeps the whole course far
+   * under the 64 KiB database column limit (old saved state is trimmed on read).
+   */
   stepsDone: Record<string, string[]>;
   /** Ticked checklist indexes, per lesson. */
   checks: Record<string, number[]>;
@@ -78,6 +82,8 @@ export function sanitizeCourseProgress(input: unknown, lessonIds: readonly strin
       if (ids.length) out.stepsDone[k] = ids;
     }
   }
+  // completed lessons carry no per-step detail (migrates state saved before this was compact)
+  for (const id of out.completedLessons) delete out.stepsDone[id];
   if (o.checks && typeof o.checks === 'object') {
     for (const [k, v] of Object.entries(o.checks as Record<string, unknown>)) {
       if (!ok.has(k) || !Array.isArray(v)) continue;
@@ -105,7 +111,7 @@ export function visitStep(p: CourseProgress, lessonId: string, stepId: string, n
 
 export function markStepDone(p: CourseProgress, lessonId: string, stepId: string, now: number): CourseProgress {
   const cur = p.stepsDone[lessonId] ?? [];
-  if (cur.includes(stepId) || cur.length >= MAX_STEPS_PER_LESSON) return p;
+  if (cur.includes(stepId) || cur.length >= MAX_STEPS_PER_LESSON || p.completedLessons.includes(lessonId)) return p;
   return touch({ ...p, stepsDone: { ...p.stepsDone, [lessonId]: [...cur, stepId] } }, now);
 }
 
@@ -123,7 +129,9 @@ export function setCourseCheck(p: CourseProgress, lessonId: string, index: numbe
 export function setCourseLessonComplete(p: CourseProgress, lessonId: string, done: boolean, now: number): CourseProgress {
   const has = p.completedLessons.includes(lessonId);
   if (done === has) return p;
-  return touch({ ...p, completedLessons: done ? [...p.completedLessons, lessonId] : p.completedLessons.filter((x) => x !== lessonId) }, now);
+  const stepsDone = { ...p.stepsDone };
+  if (done) delete stepsDone[lessonId]; // 100% already; drop the per-step detail to keep the saved state small
+  return touch({ ...p, stepsDone, completedLessons: done ? [...p.completedLessons, lessonId] : p.completedLessons.filter((x) => x !== lessonId) }, now);
 }
 
 /* ----------------------------- derivations ----------------------------- */
