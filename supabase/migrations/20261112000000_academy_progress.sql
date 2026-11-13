@@ -5,8 +5,11 @@
 -- follows them across devices. It is NOT an entitlement store: no code path reads
 -- it to decide access. Signed-out visitors keep progress in their browser only.
 --
--- NOT APPLIED. Review and apply manually (human approval required). Until it is
+-- Applied to the shared Supabase project "VideoRemix Product" on 2026-11-13. Until it is
 -- applied the app keeps working: progress is saved in the browser and the UI says so.
+--
+-- This database is shared by several apps: every object created here carries the
+-- [openhiggsbolt-academy] label in its table comment so it can be told apart.
 
 create table if not exists public.academy_progress (
   clerk_user_id text primary key,
@@ -33,3 +36,5 @@ end $$;
 
 -- Writes go through the server API route (app/api/academy/progress) using the
 -- service role; no anon/authenticated write policy exists.
+
+comment on table public.academy_progress is '[openhiggsbolt-academy] OpenHiggsBolt / SmartVideo GO Academy: per-learner course progress (current lesson and step, checklist ticks, completed lessons), keyed by Clerk user id. Educational activity only, never read for access decisions. Writes are service-role only via app/api/academy/progress.';
