@@ -251,7 +251,7 @@ function Dropdown({ isOpen, title, items, selectedId, onSelect, onClose, isVideo
                   e.stopPropagation();
                   onPreview(item);
                 }}
-                className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 z-20 text-white"
+                className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 z-20 text-white"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="11" cy="11" r="8" />
@@ -550,7 +550,7 @@ export default function MarketingStudio({
                   />
                    <button
                     onClick={(e) => { e.stopPropagation(); downloadFile(entry.url, `marketing-ad-${entry.id}.mp4`); }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
                     title={copy.buttons.download}
                    >
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -561,13 +561,13 @@ export default function MarketingStudio({
                      mediaUrl={entry.url}
                      mediaType="video"
                      title={entry.prompt?.substring(0, 50) || 'Marketing ad'}
-                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
                    />
                    <AssistStep
                      assetUrl={entry.url}
                      assetType="video"
                      onApply={() => {}}
-                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
                    >
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                        <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
@@ -1062,7 +1062,7 @@ export default function MarketingStudio({
                       setPreviewAvatar(null);
                       setDropdown(null);
                     }}
-                    className="bg-[#22d3ee] text-black px-6 py-2.5 rounded-full font-bold text-sm hover:opacity-95 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#22d3ee]/20"
+                    className="bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-[#22d3ee]/20"
                   >
                     <CheckSvg />
                     {copy.buttons.selectAvatar}

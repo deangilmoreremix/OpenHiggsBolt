@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import { X, Loader2, Sparkles, Download, Key } from 'lucide-react'
-import { semantic, appWrapper } from '@/shared/styles/designTokens'
+import { semantic, appWrapper, buttons } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
 import { AttachButton, ChatBubble, HomeHero, NewProjectTile, PlanCard, ProjectTile, PromptCard, PromptInput, SelectedChip, SendButton, TemplateOption, TemplatePickerModal, TemplatesPill, useTypingPlaceholder } from './ui'
 import { PublishStep } from '@/components/SocialPublishProvider'
@@ -225,7 +225,7 @@ function AssetModal({ asset, onClose, onAction }: { asset: Asset; onClose: () =>
                 style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
               />
             )}
-            <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--color-primary)', color: 'white' }}>Download</a>
+            <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={buttons.primary}>Download</a>
             {asset.type === 'image' && (
               <AssistStep
                 assetUrl={asset.url}
@@ -277,7 +277,7 @@ function BrandKitModal({ open, kit, setKit, onClose }: { open: boolean; kit: Bra
             <input value={kit[field]} onChange={event => setKit({ ...kit, [field]: event.target.value })} className="mt-1 w-full rounded-lg px-3 py-2 text-sm outline-none" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} placeholder={field === 'logo' ? 'Logo URL or asset label' : `Brand ${field}`} />
           </label>
         ))}
-        <div className="flex justify-end"><button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'var(--color-primary)', color: 'white' }}>Save Brand Kit</button></div>
+        <div className="flex justify-end"><button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium" style={buttons.primary}>Save Brand Kit</button></div>
       </div>
     </div>
   )

@@ -118,7 +118,7 @@ export default function SkillsBrowser({ apiKey }) {
                     setPendingRecipe(skill.slug, skill.studio);
                     router.push('/studio/' + skill.studio);
                   }}
-                  className="w-full rounded-md bg-[#22d3ee] px-3 py-2 text-sm font-semibold text-black transition hover:bg-cyan-300"
+                  className="w-full rounded-md bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-3 py-2 text-sm font-semibold transition"
                 >
                   Open in Studio
                 </button>

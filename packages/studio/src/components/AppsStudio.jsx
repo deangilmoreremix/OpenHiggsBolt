@@ -603,7 +603,7 @@ export default function AppsStudio({ locale = "en" }) {
                   }`}
                 >
                   {featured && (
-                    <span className="absolute -top-2.5 left-6 inline-flex items-center rounded-full bg-[#22d3ee] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-black">
+                    <span className="absolute -top-2.5 left-6 inline-flex items-center rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest">
                       {copy.packages.recommended}
                     </span>
                   )}
@@ -641,7 +641,7 @@ export default function AppsStudio({ locale = "en" }) {
                       data-status="ready"
                       className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         featured
-                          ? 'bg-[#22d3ee] text-black hover:bg-[#22d3ee]/90 active:scale-[0.98]'
+                          ? 'bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 active:scale-[0.98]'
                           : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
                       } focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40`}
                     >
@@ -910,7 +910,7 @@ export default function AppsStudio({ locale = "en" }) {
                         href={app.hosted}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee] px-4 py-2 text-xs font-bold text-black transition-all hover:opacity-95 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-4 py-2 text-xs font-bold transition-all active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
                       >
                         <FaExternalLinkAlt aria-hidden="true" focusable="false" className="text-[9px]" />
                         {copy.card.demo}

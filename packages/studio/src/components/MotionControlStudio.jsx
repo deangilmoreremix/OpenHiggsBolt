@@ -423,7 +423,7 @@ function AssetsDropdown({
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
               activeTab === tab
-                ? "bg-[#22d3ee] text-black shadow-sm"
+                ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20"
                 : "text-white/50 hover:text-white hover:bg-white/[0.04]"
             }`}
           >
@@ -483,7 +483,7 @@ function AssetsDropdown({
                       e.stopPropagation();
                       onSelectImage(item.url, item.name);
                     }}
-                    className="text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm"
+                    className="text-[11px] font-black px-2.5 py-1 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 rounded-md transition-colors whitespace-nowrap"
                   >
                     {copy.buttons.useAsImage}
                   </button>
@@ -494,7 +494,7 @@ function AssetsDropdown({
                       e.stopPropagation();
                       onSelectVideo(item.url, item.name);
                     }}
-                    className="text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm"
+                    className="text-[11px] font-black px-2.5 py-1 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 rounded-md transition-colors whitespace-nowrap"
                   >
                     {copy.buttons.useAsVideo}
                   </button>
@@ -988,7 +988,7 @@ export default function MotionControlStudio({
                       e.stopPropagation();
                       downloadFile(entry.url, `motion-control-${entry.id || idx}.mp4`);
                     }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
@@ -999,7 +999,7 @@ export default function MotionControlStudio({
                       mediaUrl={entry.url}
                       mediaType="video"
                       title={entry.prompt?.substring(0, 50) || "Motion control video"}
-                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
                     />
                   </span>
                   <button
@@ -1012,7 +1012,7 @@ export default function MotionControlStudio({
                       setVideoState(UPLOAD_STATE.READY);
                       toast.success("Loaded video as reference motion!");
                     }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-[#22d3ee] hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-[#22d3ee] hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="17 1 21 5 17 9" />
@@ -1303,7 +1303,7 @@ export default function MotionControlStudio({
                         }}
                         className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
                           duration === d
-                            ? "bg-[#22d3ee] text-black font-bold shadow-sm"
+                            ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 font-bold"
                             : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/10"
                         }`}
                       >
@@ -1392,7 +1392,7 @@ export default function MotionControlStudio({
                             onClick={() => setQuality(q)}
                             className={`flex-1 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
                               quality === q
-                                ? "bg-[#22d3ee] text-black shadow-sm"
+                                ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20"
                                 : "text-white/50 hover:text-white bg-white/[0.04]"
                             }`}
                           >

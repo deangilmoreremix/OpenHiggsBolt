@@ -74,7 +74,7 @@ export function AiWritingToolbar({ onAction, loading, disabled }: AiWritingToolb
         type="button"
         onClick={() => onAction('write')}
         disabled={loading || disabled}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#22d3ee] text-black hover:bg-[#22d3ee]/90 transition-all disabled:opacity-40"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 transition-all disabled:opacity-40"
       >
         {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
         Write Post

@@ -283,7 +283,7 @@ export default function ReviewPublishStep({
         type="button"
         onClick={onConfirm}
         disabled={!hasEnabledDestinations || publishing || blockers.length > 0 || pendingToPublish.length === 0}
-        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-[#22d3ee] text-black font-semibold text-sm hover:bg-[#22d3ee]/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {publishing ? (
           <>

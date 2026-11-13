@@ -1019,7 +1019,7 @@ export default function CinemaStudio({
                       event.stopPropagation();
                       handleCopyPrompt(entry.settings?.prompt, idx);
                     }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 font-black backdrop-blur-md transition-all hover:bg-[#22d3ee] hover:text-black ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 font-black backdrop-blur-md transition-all hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 ${
                       copiedPromptIndex === idx ? "text-[#22d3ee]" : "text-white"
                     }`}
                   >
@@ -1039,7 +1039,7 @@ export default function CinemaStudio({
                       event.stopPropagation();
                       handleCopyImage(entry.url, idx);
                     }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 backdrop-blur-md transition-all hover:bg-[#22d3ee] hover:text-black ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 backdrop-blur-md transition-all hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 ${
                       copiedImageIndex === idx ? "text-[#22d3ee]" : "text-white"
                     }`}
                   >
@@ -1071,7 +1071,7 @@ export default function CinemaStudio({
                         window.open(entry.url, "_blank");
                       }
                     }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
@@ -1081,13 +1081,13 @@ export default function CinemaStudio({
                     mediaUrl={entry.url}
                     mediaType="image"
                     title={entry.settings?.prompt?.substring(0, 50) || "Cinema shot"}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
                   />
                   <AssistStep
                     assetUrl={entry.url}
                     assetType="image"
                     onApply={() => {}}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
