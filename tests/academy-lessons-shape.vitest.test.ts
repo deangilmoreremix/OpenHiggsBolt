@@ -50,3 +50,13 @@ describe('lesson order', () => {
     }
   });
 });
+
+
+import { lessonTitleFromMarkdown } from '@/lib/academyLessons';
+describe('lesson title probe', () => {
+  it('ignores a "# " line inside a fenced code block', () => {
+    expect(lessonTitleFromMarkdown('```bash\n# install deps\n```\n\n# Real Title\n')).toBe('Real Title');
+    expect(lessonTitleFromMarkdown('# Track 3: Heading **Bold**\n')).toBe('Heading Bold');
+    expect(lessonTitleFromMarkdown('no heading here')).toBeNull();
+  });
+});

@@ -28,6 +28,8 @@ export const runtime = 'nodejs';
  * lesson were marked complete (tests/academy-progress-size).
  */
 const MAX_BODY_BYTES = 64 * 1024;
+/** The client's clock is trusted only this far ahead of the server's, so a device with a wrong clock cannot block the others. */
+const CLOCK_TOLERANCE_MS = 60_000;
 
 /** Every real lesson id (`track/slug`), built from the lesson files, so unknown ids are dropped. */
 function lessonIds(): string[] {
@@ -52,6 +54,9 @@ export async function PUT(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
 
+  // refuse early on a declared size, before buffering the body (the real size is checked again below)
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return NextResponse.json({ error: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
   const text = await req.text();
   if (Buffer.byteLength(text) > MAX_BODY_BYTES) return NextResponse.json({ error: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
   let body: unknown;
@@ -61,7 +66,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'BAD_JSON' }, { status: 400 });
   }
   const ids = lessonIds();
-  const progress = sanitizeCourseProgress((body as { progress?: unknown } | null)?.progress, ids);
+  const sanitized = sanitizeCourseProgress((body as { progress?: unknown } | null)?.progress, ids);
+  const progress = { ...sanitized, updatedAt: Math.min(sanitized.updatedAt, Date.now() + CLOCK_TOLERANCE_MS) };
 
   try {
     const db = getSupabaseAdmin();

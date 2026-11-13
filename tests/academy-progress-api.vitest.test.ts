@@ -108,6 +108,21 @@ describe('academy progress API', () => {
     await Promise.all([PUT(req({ progress: { updatedAt: 9000, completedLessons: [LESSON] } })), PUT(req({ progress: { updatedAt: 5000 } }))]);
     expect((stored as { updatedAt: number }).updatedAt).toBe(9000);
   });
+  it('a client clock far in the future is clamped, so it cannot block other devices', async () => {
+    authMock.mockResolvedValue({ userId: 'u1' });
+    const res = await PUT(req({ progress: { updatedAt: 9e15, completedLessons: [LESSON] } }));
+    expect(res!.status).toBe(200);
+    const at = (stored as { updatedAt: number }).updatedAt;
+    expect(at).toBeLessThanOrEqual(Date.now() + 61_000);
+    // a normal save from another device a moment later is still accepted
+    const next = await PUT(req({ progress: { updatedAt: Date.now() + 120_000, completedLessons: [] } }));
+    expect((await next!.json()).stale).toBeUndefined();
+  });
+  it('413 early on a too-large content-length, before the body is read', async () => {
+    authMock.mockResolvedValue({ userId: 'u1' });
+    const r = new Request('http://x/api', { method: 'PUT', body: '{}', headers: { 'content-length': String(70 * 1024) } }) as never;
+    expect((await PUT(r))!.status).toBe(413);
+  });
   it('413 for an oversized body, 400 for bad JSON', async () => {
     authMock.mockResolvedValue({ userId: 'u1' });
     expect((await PUT(req(null, 'x'.repeat(65 * 1024))))!.status).toBe(413);

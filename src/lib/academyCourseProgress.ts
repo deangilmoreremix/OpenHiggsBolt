@@ -178,6 +178,29 @@ export function mergeCourseProgress(local: CourseProgress, remote: CourseProgres
   return local.updatedAt > remote.updatedAt ? local : remote;
 }
 
+/**
+ * Combine two copies without losing progress from either: used when the account turns out to hold
+ * newer progress (another device) than this device's unsaved copy. Completions and ticks are
+ * unioned, the later resume pointer wins per track, and the clock is the newer of the two.
+ */
+export function unionCourseProgress(a: CourseProgress, b: CourseProgress): CourseProgress {
+  const completed = [...new Set([...a.completedLessons, ...b.completedLessons])];
+  const stepsDone: Record<string, string[]> = {};
+  for (const src of [a.stepsDone, b.stepsDone]) {
+    for (const [k, v] of Object.entries(src)) {
+      if (completed.includes(k)) continue;
+      stepsDone[k] = [...new Set([...(stepsDone[k] ?? []), ...v])].slice(0, MAX_STEPS_PER_LESSON);
+    }
+  }
+  const checks: Record<string, number[]> = {};
+  for (const src of [a.checks, b.checks]) {
+    for (const [k, v] of Object.entries(src)) checks[k] = [...new Set([...(checks[k] ?? []), ...v])].sort((x, y) => x - y);
+  }
+  const last: Record<string, LastPosition> = { ...a.last };
+  for (const [k, v] of Object.entries(b.last)) if (!last[k] || v.at >= last[k].at) last[k] = v;
+  return { v: 1, updatedAt: Math.max(a.updatedAt, b.updatedAt), last, completedLessons: completed, stepsDone, checks };
+}
+
 /* ----------------------------- localStorage ----------------------------- */
 
 export function loadCourseLocal(lessonIds: readonly string[]): CourseProgress {

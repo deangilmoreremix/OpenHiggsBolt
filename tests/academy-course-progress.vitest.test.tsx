@@ -86,8 +86,8 @@ describe('useCourseProgress', () => {
     expect(second.result.current.progress.stepsDone['ugc/02-b']).toEqual(['concept']);
   });
 
-  it('signed out (401) or table missing (503): browser only, never tries to save to the account', async () => {
-    for (const status of [401, 503]) {
+  it('signed out (401) or route unavailable (404): browser only, never tries to save to the account', async () => {
+    for (const status of [401, 404]) {
       fetchMock.mockReset();
       fetchMock.mockResolvedValue(json({}, status));
       const { result, unmount } = renderHook(() => useCourseProgress(IDS, true));
@@ -290,6 +290,67 @@ describe('useCourseProgress', () => {
     expect(c.result.current.progress.completedLessons).toEqual([]);
     await new Promise((r) => setTimeout(r, 800));
     expect(puts().length).toBe(1);
+  });
+
+  it('a 503 from the account store is transient: it retries and then syncs instead of going browser-only', async () => {
+    let gets = 0;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return Promise.resolve(json({ ok: true }));
+      gets++;
+      return Promise.resolve(gets === 1 ? json({ error: 'STORE_UNAVAILABLE' }, 503) : json({ progress: null, owner: 'userA' }));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+      await waitFor(() => expect(result.current.sync).toBe('offline'));
+      await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      await waitFor(() => expect(fetchMock.mock.calls.some(isPut)).toBe(true));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a hung save times out and is retried instead of blocking every later save', async () => {
+    let hang = true;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      if (!hang) return Promise.resolve(json({ ok: true }));
+      return new Promise<Response>((_res, rej) => init.signal?.addEventListener('abort', () => rej(new Error('aborted'))));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(1);
+      hang = false;
+      await act(async () => { await vi.advanceTimersByTimeAsync(20000); }); // timeout, then the backoff retry
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a stale save response brings in newer progress from another device and keeps this device\'s own', async () => {
+    const other = setCourseLessonComplete(emptyCourseProgress(), 'ugc/02-b', true, Date.now() + 5000);
+    let puts = 0;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      puts++;
+      return Promise.resolve(puts === 1 ? json({ ok: true, stale: true, progress: other }) : json({ ok: true }));
+    });
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    act(() => result.current.complete('ugc/01-a', true));
+    await waitFor(() => expect(result.current.progress.completedLessons.sort()).toEqual(['ugc/01-a', 'ugc/02-b']), { timeout: 3000 });
+    await waitFor(() => expect(puts).toBe(2), { timeout: 3000 }); // the union is sent back so the account has both
+    const last = JSON.parse((fetchMock.mock.calls.filter(isPut)[1][1] as RequestInit).body as string).progress;
+    expect(last.completedLessons.sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
   });
 
   it('sends one save at a time with the latest state', async () => {

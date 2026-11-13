@@ -223,6 +223,17 @@ describe('Learning Paths: a self-paced lesson', () => {
   });
 });
 
+describe('Studio Reference deep link', () => {
+  it('a deep-linked studio opens once: after closing it, a header-tab round trip does not reopen it', () => {
+    render(<AcademyCourse tracks={tracks} initial={{ view: 'studio-reference', studio: 'video', tab: 'create' }} />);
+    expect(screen.getByTestId('studio-create-guide')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Learning Paths' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Studio Reference' }));
+    expect(screen.queryByTestId('studio-create-guide')).toBeNull();
+  });
+});
+
 describe('Build with AI is its own tab', () => {
   it('shows a Build with AI tab in the header and keeps that course out of Learning Paths', async () => {
     render(<AcademyCourse tracks={tracks} />);
@@ -258,6 +269,13 @@ describe('Build with AI is its own tab', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Build with AI' }));
     expect(await screen.findByText(/Step 4 of 5/)).toBeTruthy();
     expect(screen.queryByText(/Step 3 of 5/)).toBeNull();
+  });
+
+  it('the overview lesson is not labelled "lesson 0 of N"', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai', lesson: '00-overview' }} />);
+    await screen.findByText(/Step 1 of 5/);
+    expect(screen.queryByText(/lesson 0 of/i)).toBeNull();
+    expect(screen.getByText(/Build with AI · Overview/)).toBeTruthy();
   });
 
   it('an old Track 16 link opens the tab with the same lesson', async () => {

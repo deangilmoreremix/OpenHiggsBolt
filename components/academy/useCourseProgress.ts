@@ -12,6 +12,7 @@ import {
   saveCourseOwner,
   setCourseCheck,
   setCourseLessonComplete,
+  unionCourseProgress,
   visitStep,
   type CourseProgress,
 } from '@/lib/academyCourseProgress';
@@ -22,6 +23,18 @@ export type CourseSyncState = 'local' | 'syncing' | 'saved' | 'offline';
 const ENDPOINT = '/api/academy/progress';
 /** Backoff between attempts to reach the account after a failed first load (the last value repeats). */
 const RETRY_MS = [2000, 5000, 15000, 30000];
+/** A request that has not answered by then is abandoned and treated as a retryable failure (it must never hold the save queue forever). */
+const REQUEST_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
 
 /** One learner action, kept as data so it can be saved in the browser while the account is unreachable. */
 type Edit =
@@ -116,12 +129,27 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
       let ok = false;
       do {
         again.current = false;
-        const res = await fetch(ENDPOINT, {
+        const res = await fetchWithTimeout(ENDPOINT, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ progress: latest.current }),
         });
         ok = res.ok;
+        if (ok) {
+          // the account already holds newer progress (another device saved meanwhile): adopt it
+          // without losing what this device did, and send the combined copy back
+          const body = (await res.json().catch(() => null)) as { stale?: boolean; progress?: unknown } | null;
+          if (body?.stale && body.progress) {
+            const theirs = sanitizeCourseProgress(body.progress, idsRef.current);
+            const merged = unionCourseProgress(latest.current, theirs);
+            if (JSON.stringify(merged) !== JSON.stringify(latest.current)) {
+              latest.current = merged;
+              setProgress(merged);
+              saveCourseLocal(merged);
+              if (JSON.stringify(merged) !== JSON.stringify(theirs)) again.current = true;
+            }
+          }
+        }
         // 4xx other than timeout / rate limit will not succeed by repeating the same request
         retryable = !ok && (res.status >= 500 || res.status === 408 || res.status === 429);
       } while (again.current);
@@ -172,9 +200,9 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     }
     const hydrate = async () => {
       try {
-        const res = await fetch(ENDPOINT, { cache: 'no-store' });
-        if (res.status === 401 || res.status === 404 || res.status === 503) {
-          // signed out, or the progress table is not set up yet: browser-only, replay edits locally
+        const res = await fetchWithTimeout(ENDPOINT, { cache: 'no-store' });
+        if (res.status === 401 || res.status === 404) {
+          // signed out, or the route is unavailable: browser-only, replay edits locally (a 503 is transient and retried below)
           if (cancelled) return;
           remoteOff.current = true;
           hydrated.current = true;

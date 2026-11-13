@@ -660,7 +660,7 @@ function BuildWithAiView({ track, initial, course, reopen = false }: { track: Ac
         ) : (
           <>
             <div className="mb-4">
-              <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>Build with AI · lesson {idx} of {lessons.length - 1}</p>
+              <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>Build with AI · {idx > 0 ? `lesson ${idx} of ${lessons.length - 1}` : 'Overview'}</p>
               <h2 className="text-xl font-extrabold">{lessons[idx]?.title}</h2>
               <SyncNote sync={course.sync} />
             </div>
@@ -1434,7 +1434,7 @@ export default function AcademyCourse({ tracks, initial, userId = null }: { trac
         ) : view === 'build-with-ai' && buildTrack ? (
           <BuildWithAiView track={buildTrack} initial={buildInitial} course={course} reopen={deepLinkUsed.current} />
         ) : (
-          <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={initial} />
+          <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={linked} />
         )}
       </div>
     </div>

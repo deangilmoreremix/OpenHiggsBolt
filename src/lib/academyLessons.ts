@@ -63,12 +63,24 @@ function titleFromFilename(file: string): string {
  * A lesson's display title: its own heading (for example "Screenplay & Story Generation"),
  * "Overview" for the 00- file of a track, and the cleaned-up file name as a last resort.
  */
+/** The lesson's own `# ` heading, skipping fenced code (same rule as the step parser); null when none. */
+export function lessonTitleFromMarkdown(md: string): string | null {
+  let fenced = false;
+  for (const line of md.slice(0, 800).split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    const m = !fenced ? line.match(/^#\s+(.+)$/) : null;
+    if (m) {
+      const clean = m[1].replace(/[*_`]/g, '').replace(/^(Track|Lesson)\s+\d+\s*[:—-]\s*/i, '').trim();
+      return clean || null;
+    }
+  }
+  return null;
+}
+
 function lessonTitle(dir: string, file: string): string {
   if (/^00-/.test(file)) return 'Overview';
   try {
-    const head = fs.readFileSync(path.join(dir, file), 'utf8').slice(0, 800);
-    const h1 = head.match(/^#\s+(.+)$/m)?.[1];
-    const clean = h1?.replace(/[*_`]/g, '').replace(/^(Track|Lesson)\s+\d+\s*[:—-]\s*/i, '').trim();
+    const clean = lessonTitleFromMarkdown(fs.readFileSync(path.join(dir, file), 'utf8'));
     if (clean) return clean;
   } catch {
     /* fall through to the file name */
