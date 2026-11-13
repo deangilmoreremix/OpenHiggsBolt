@@ -44,7 +44,7 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}, inflight?: 
 
 /** One learner action, kept as data so it can be saved in the browser while the account is unreachable. */
 type Edit =
-  | { k: 'visit'; l: string; s: string }
+  | { k: 'visit'; l: string; s: string; /** when the learner was there (epoch ms); a replay never overrides a newer pointer */ t?: number }
   | { k: 'step'; l: string; s: string }
   | { k: 'check'; l: string; i: number; c: boolean }
   | { k: 'complete'; l: string; d: boolean };
@@ -54,6 +54,28 @@ const editFn = (e: Edit) => (p: CourseProgress, now: number): CourseProgress =>
   : e.k === 'step' ? markStepDone(p, e.l, e.s, now)
   : e.k === 'check' ? setCourseCheck(p, e.l, e.i, e.c, now)
   : setCourseLessonComplete(p, e.l, e.d, now);
+
+/**
+ * Replay unsynced edits on top of `base`, keeping only those that still change something: a record the
+ * account copy already reflects is dropped, and a `visit` older than the account's resume pointer for that
+ * track never replaces it (it would upload a stale position with a fresh timestamp).
+ */
+function replayEdits(base: CourseProgress, edits: readonly Edit[]): { merged: CourseProgress; kept: Edit[] } {
+  let cur = base;
+  const kept: Edit[] = [];
+  for (const e of edits) {
+    if (e.k === 'visit') {
+      const at = base.last[e.l.slice(0, e.l.indexOf('/'))]?.at ?? -1;
+      if (at >= (e.t ?? 0) && at >= 0) continue;
+    }
+    const next = editFn(e)(cur, Date.now());
+    if (next !== cur) {
+      cur = next;
+      kept.push(e);
+    }
+  }
+  return { merged: cur, kept };
+}
 
 /** Per-user key: edits made before the account answered, never shared with another account. Signed-out visitors use the guest key. */
 const pendingKey = (userId: string | null | undefined) => `academy-course-pending:v1:${userId || 'guest'}`;
@@ -305,17 +327,17 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
         const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);
         // signed in: the replayed edits stay in the unsynced queue until a save succeeds
-        pending.current = key ? edits : [];
         persisted.current = [];
         hydrated.current = true;
-        const merged = edits.reduce((p, e) => editFn(e)(p, Date.now()), base);
+        const { merged, kept } = replayEdits(base, edits);
         if (owner) saveCourseOwner(owner);
         latest.current = merged; // a save queued right now must read this, not the previous render's state
         setProgress(merged);
         saveCourseLocal(merged);
+        pending.current = key ? kept : [];
         if (!mismatch) savePending(key, pending.current);
         setReady(true);
-        if (edits.length > 0 || (remote ? !sameCourseProgress(base, remote) && base.updatedAt > 0 : base.updatedAt > 0)) push(merged);
+        if (kept.length > 0 || (remote ? !sameCourseProgress(base, remote) && base.updatedAt > 0 : base.updatedAt > 0)) push(merged);
         else setSync('saved');
       } catch {
         if (cancelled) return;
@@ -368,6 +390,10 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   const apply = useCallback(
     (edit: Edit) => {
       const fn = editFn(edit);
+      // an action that changes nothing leaves no record: it would be replayed later with a fresh timestamp
+      const probe = fn(latest.current, Date.now());
+      if (probe === latest.current) return;
+      latest.current = probe;
       if (!hydrated.current) {
         pending.current = compactEdits([...pending.current, edit]);
         savePending(userRef.current, [...persisted.current, ...pending.current]);
@@ -392,7 +418,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     progress,
     ready,
     sync,
-    visit: (lessonId: string, stepId: string) => apply({ k: 'visit', l: lessonId, s: stepId }),
+    visit: (lessonId: string, stepId: string) => apply({ k: 'visit', l: lessonId, s: stepId, t: Date.now() }),
     stepDone: (lessonId: string, stepId: string) => apply({ k: 'step', l: lessonId, s: stepId }),
     /** `lessonId` is the checklist's tick key (see `checksKey`): the lesson id, or `lessonId#stepId` for a lesson's later checklists */
     check: (lessonId: string, index: number) => {

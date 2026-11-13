@@ -584,6 +584,32 @@ describe('useCourseProgress', () => {
     expect(fetchMock.mock.calls.some(isPut)).toBe(false);
   });
 
+  it('a no-op action (automatic visit of the step already saved) leaves no replayable record and sends nothing', async () => {
+    const synced = visitStep(emptyCourseProgress(), 'ugc/02-b', 'do-it', 4000);
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: synced, owner: 'userA' })));
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    act(() => {
+      result.current.visit('ugc/02-b', 'do-it');
+      result.current.complete('ugc/01-a', false);
+    });
+    await new Promise((r) => setTimeout(r, 800));
+    expect(localStorage.getItem('academy-course-pending:v1:userA')).toBeNull();
+    expect(fetchMock.mock.calls.some(isPut)).toBe(false);
+  });
+
+  it('a kept automatic visit never pushes a stale resume pointer over a newer one from another device', async () => {
+    localStorage.setItem('academy-course-pending:v1:userA', JSON.stringify([{ k: 'visit', l: 'ugc/02-b', s: 'do-it', t: 1000 }]));
+    const remote = visitStep(emptyCourseProgress(), 'ugc/02-b', 'check-yourself', Date.now() + 5000);
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userA' })));
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    expect(result.current.progress.last.ugc.stepId).toBe('check-yourself');
+    await new Promise((r) => setTimeout(r, 800));
+    expect(fetchMock.mock.calls.some(isPut)).toBe(false);
+    expect(localStorage.getItem('academy-course-pending:v1:userA')).toBeNull();
+  });
+
   it('a successful save acknowledges the unsynced queue: those edits are not replayed again later', async () => {
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: null, owner: 'userA' })));
     const first = renderHook(() => useCourseProgress(IDS, true, 'userA'));
