@@ -56,7 +56,55 @@ export function layerTextStyle(
     width: '100%',
     // Only break a word that cannot fit on a line by itself.
     overflowWrap: 'break-word',
+    // Even line lengths for wrapped headlines. Ignored where unsupported.
+    textWrap: 'balance',
     textShadow: TEXT_SHADOW,
+  }
+}
+
+/** Pixel box of a text layer in the space the caller draws in. */
+export interface RuleBox {
+  leftPx: number
+  topPx: number
+  widthPx: number
+  heightPx: number
+}
+
+/**
+ * Decorative accent under (or beside) a headline. Purely visual: it is not
+ * part of any layer's geometry, so placement and collision checks are
+ * unaffected. Centered layouts get a short rule underneath; the `lower-third`
+ * animation gets a vertical bar on the left edge of the text.
+ * Returns null for every other kind.
+ */
+export function accentRuleStyle(
+  kind: PreviewLayer['kind'],
+  animation: PreviewLayer['animation'],
+  box: RuleBox,
+  compW: number,
+  compH: number,
+  color: string,
+): React.CSSProperties | null {
+  if (kind !== 'headline' || box.widthPx <= 0 || box.heightPx <= 0) return null
+  const thickness = Math.max(3, Math.round(compH * 0.006))
+  const base: React.CSSProperties = {
+    position: 'absolute',
+    background: color,
+    borderRadius: thickness / 2,
+    boxShadow: '0 1px 6px rgba(0,0,0,.35)',
+    pointerEvents: 'none',
+  }
+  if (animation === 'lower-third') {
+    const gap = Math.round(compH * 0.015)
+    return { ...base, left: Math.max(0, box.leftPx - gap - thickness), top: box.topPx, width: thickness, height: box.heightPx }
+  }
+  const width = Math.round(Math.min(box.widthPx * 0.35, compW * 0.12))
+  return {
+    ...base,
+    left: Math.round(box.leftPx + box.widthPx / 2 - width / 2),
+    top: Math.round(box.topPx + box.heightPx + compH * 0.012),
+    width,
+    height: thickness,
   }
 }
 

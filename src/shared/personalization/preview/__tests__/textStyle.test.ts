@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ctaPillStyle, isTextStyleKind, layerTextStyle, PILL_SHADOW, TEXT_SHADOW } from '../textStyle'
+import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, PILL_SHADOW, TEXT_SHADOW } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -48,5 +48,37 @@ describe('isTextStyleKind', () => {
     expect(isTextStyleKind('cta')).toBe(true)
     expect(isTextStyleKind('logo')).toBe(false)
     expect(isTextStyleKind('design')).toBe(false)
+  })
+})
+
+describe('accentRuleStyle', () => {
+  const box = { leftPx: 400, topPx: 600, widthPx: 800, heightPx: 70 }
+  it('draws only for headlines', () => {
+    for (const k of ['tagline', 'businessName', 'offer', 'cta', 'logo', 'design'] as const) {
+      expect(accentRuleStyle(k, 'slide-up', box, 1920, 1080, '#f00')).toBeNull()
+    }
+    expect(accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00')).not.toBeNull()
+  })
+
+  it('puts a short centered rule under the text', () => {
+    const r = accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00')!
+    expect(r.top as number).toBeGreaterThan(box.topPx + box.heightPx)
+    expect((r.left as number) + (r.width as number) / 2).toBeCloseTo(box.leftPx + box.widthPx / 2, 0)
+    expect(r.width as number).toBeLessThan(box.widthPx)
+    expect(r.height as number).toBeGreaterThanOrEqual(3)
+    expect(r.background).toBe('#f00')
+  })
+
+  it('uses a vertical bar on the left edge for the lower-third animation', () => {
+    const r = accentRuleStyle('headline', 'lower-third', box, 1920, 1080, '#0f0')!
+    expect((r.left as number) + (r.width as number)).toBeLessThan(box.leftPx)
+    expect(r.height).toBe(box.heightPx)
+    expect(r.top).toBe(box.topPx)
+  })
+
+  it('never goes off the left edge and ignores empty boxes', () => {
+    const r = accentRuleStyle('headline', 'lower-third', { ...box, leftPx: 2 }, 1920, 1080, '#0f0')!
+    expect(r.left as number).toBeGreaterThanOrEqual(0)
+    expect(accentRuleStyle('headline', 'fade', { ...box, widthPx: 0 }, 1920, 1080, '#0f0')).toBeNull()
   })
 })

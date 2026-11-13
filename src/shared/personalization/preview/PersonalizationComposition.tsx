@@ -18,7 +18,7 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
-import { ctaPillStyle, layerTextStyle, type TextStyleKind } from './textStyle'
+import { accentRuleStyle, ctaPillStyle, layerTextStyle, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimBackground, scrimForBox } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
@@ -656,6 +656,13 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           const scrim = metrics
             ? scrimForBox({ left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }, compW, compH)
             : null
+          const ruleStyle = metrics
+            ? accentRuleStyle(
+                layer.kind, layer.animation,
+                { leftPx: metrics.leftPx, topPx: metrics.topPx, widthPx: metrics.widthPx, heightPx: metrics.heightPx },
+                compW, compH, settings.brandColors.accent,
+              )
+            : null
           return (
             <React.Fragment key={layer.id}>
               {scrim ? (
@@ -680,6 +687,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                   {text}
                 </div>
               </AbsoluteFill>
+              {ruleStyle ? (
+                <AbsoluteFill
+                  data-testid="headline-rule"
+                  style={{ zIndex: layerStyle.zIndex, opacity: layer.opacity * entrance.opacity, pointerEvents: 'none' }}
+                >
+                  <div style={ruleStyle} />
+                </AbsoluteFill>
+              ) : null}
             </React.Fragment>
           )
         })}

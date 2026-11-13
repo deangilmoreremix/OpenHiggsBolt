@@ -15,7 +15,7 @@ import {
   PREVIEW_POSITIONS,
   isImageLayerKind,
 } from '../preview/presets'
-import { ctaPillStyle, isTextStyleKind, layerTextStyle } from '../preview/textStyle'
+import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle } from '../preview/textStyle'
 import { hasTextScrim, scrimBackground, scrimForBox } from '../preview/scrim'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
@@ -540,12 +540,20 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                     compH * factor,
                   )
                 : null
+              const stageRule = scrimMetrics
+                ? accentRuleStyle(
+                    layer.kind, layer.animation,
+                    { leftPx: scrimMetrics.leftPx * factor, topPx: scrimMetrics.topPx * factor, widthPx: scrimMetrics.widthPx * factor, heightPx: scrimMetrics.heightPx * factor },
+                    compW * factor, compH * factor, settings.brandColors.accent,
+                  )
+                : null
 
               return (
                 <Fragment key={layer.id}>
                 {stageScrim ? (
                   <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, background: scrimBackground(stageScrim), opacity: layer.opacity, pointerEvents: 'none' }} />
                 ) : null}
+                {stageRule ? <div aria-hidden data-testid="stage-headline-rule" style={{ ...stageRule, opacity: layer.opacity }} /> : null}
                 <div
                   role="button"
                   tabIndex={0}
