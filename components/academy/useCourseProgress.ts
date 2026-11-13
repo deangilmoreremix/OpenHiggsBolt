@@ -246,21 +246,25 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         if (res.status === 401 || res.status === 404) {
           // signed out, or the route is unavailable: browser-only, replay edits locally (a 503 is transient and retried below)
           if (cancelled) return;
-          remoteOff.current = true;
-          hydrated.current = true;
           // Signed out: kept guest edits join the browser copy. A signed-in user who lost the session (401)
           // keeps their own kept edits in storage; only edits made this visit are merged.
           const guest = !key;
           const all = res.status === 401 && !guest ? pending.current : [...persisted.current, ...pending.current];
-          pending.current = [];
           const shown = all.reduce((p, e) => editFn(e)(p, Date.now()), local);
           latest.current = shown;
           setProgress(shown);
-          if (tagged && taggedOwner) {
-            // The shared browser copy is handed to this signed-out visitor right away: A's copy is parked for A
-            // (never shown to the guest, restored when A signs in) and the tag is cleared, so everything the
-            // guest does from here on is saved as guest progress and survives a refresh.
-            stashAccountCopy(taggedOwner, fullLocal);
+          // A copy tagged as another account's is handed to this signed-out visitor only once that account's copy is
+          // safely parked (never shown to the guest, restored when that account signs in). If parking fails nothing is
+          // touched: the tag and the copy stay, the guest's edits stay in their own kept copy, and the next mount retries.
+          if (tagged && taggedOwner && !stashAccountCopy(taggedOwner, fullLocal)) {
+            setSync('local');
+            setReady(true);
+            return; // `hydrated` stays false, so further edits keep queueing in the guest copy instead of the shared one
+          }
+          remoteOff.current = true;
+          hydrated.current = true;
+          pending.current = [];
+          if (tagged) {
             clearCourseOwner();
             saveCourseLocal(shown);
           }
@@ -281,7 +285,9 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
         const parked = owner ? takeAccountStash(owner, idsRef.current) : null; // this account's copy, parked while a guest used the browser
         const own = foreign ? emptyCourseProgress() : key ? local : fullLocal;
-        const base = mergeCourseProgress(parked ? unionCourseProgress(own, parked) : own, remote);
+        // a parked copy is combined field-wise with the account copy (never last-write-wins), so an offline
+        // completion in it survives however much newer the account copy is
+        const base = parked ? unionCourseProgress(unionCourseProgress(own, parked), remote ?? emptyCourseProgress()) : mergeCourseProgress(own, remote);
         // edits kept from an earlier visit only count when this really is the same account
         const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
         const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);

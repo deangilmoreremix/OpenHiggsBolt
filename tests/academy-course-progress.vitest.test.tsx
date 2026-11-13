@@ -79,7 +79,7 @@ describe('sameCourseProgress', () => {
 describe('useCourseProgress', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   beforeEach(() => { localStorage.clear(); fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock); });
-  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
   const isPut = (c: unknown[]) => (c[1] as RequestInit | undefined)?.method === 'PUT';
 
   it('remembers where the learner is in the browser and restores it after a reload', async () => {
@@ -481,6 +481,49 @@ describe('useCourseProgress', () => {
     const a = renderHook(() => useCourseProgress(IDS, true, 'userA'));
     await waitFor(() => expect(a.result.current.ready).toBe(true));
     expect(a.result.current.progress.completedLessons).toContain('ugc/01-a');
+  });
+
+  it('if A\'s copy cannot be parked, nothing is taken over: A\'s copy and tag stay and the guest\'s edits are kept, then it retries', async () => {
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 9000)));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    fetchMock.mockResolvedValue(json({ error: 'UNAUTHENTICATED' }, 401));
+    const real = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k.includes(':account:')) throw new Error('quota');
+      return real.call(this, k, v);
+    });
+    const first = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(first.result.current.sync).toBe('local'));
+    act(() => first.result.current.complete('ugc/02-b', true));
+    expect(localStorage.getItem(COURSE_OWNER_KEY)).toBe('userA');
+    expect(JSON.parse(localStorage.getItem(COURSE_STORAGE_KEY)!).completedLessons).toEqual(['ugc/01-a']);
+    expect(first.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+    first.unmount();
+    // storage works again: the guest's kept edit is still there and the takeover now succeeds
+    spy.mockRestore();
+    const second = renderHook(() => useCourseProgress(IDS, true, null));
+    await waitFor(() => expect(second.result.current.sync).toBe('local'));
+    expect(second.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+    expect(localStorage.getItem(COURSE_OWNER_KEY)).toBeNull();
+    expect(JSON.parse(localStorage.getItem('academy-course-progress:v1:account:userA')!).completedLessons).toEqual(['ugc/01-a']);
+  });
+
+  it('a corrupt parked copy is left in place, not destroyed', async () => {
+    const key = 'academy-course-progress:v1:account:userA';
+    localStorage.setItem(key, '{"v":1,"updatedAt":9000,"completedLessons":["ugc/01');
+    fetchMock.mockResolvedValue(json({ progress: null, owner: 'userA' }));
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(localStorage.getItem(key)).toBe('{"v":1,"updatedAt":9000,"completedLessons":["ugc/01');
+  });
+
+  it('a parked completion survives even when the account copy is newer', async () => {
+    localStorage.setItem('academy-course-progress:v1:account:userA', JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 9000)));
+    const remote = setCourseLessonComplete(emptyCourseProgress(), 'ugc/02-b', true, Date.now() + 10_000);
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userA' })));
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect([...result.current.progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
   });
 
   it('sends one save at a time with the latest state', async () => {
