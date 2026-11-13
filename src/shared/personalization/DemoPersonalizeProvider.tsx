@@ -100,6 +100,8 @@ import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { imageLoadsInBrowser } from './imageLoadProbe'
+import { prefetchBackgroundRemovalModel, cancelBackgroundRemovalPrefetch } from './backgroundRemoval/backgroundRemovalClient'
+import { useAutoCutout, shouldHoldAutoImport, AUTO_IMPORT_CUTOUT_WAIT_MS, type AutoCutoutControls } from './backgroundRemoval/useAutoCutout'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { reorderLayers } from './preview/layerOrder'
 import { normalizeAngle } from './preview/rotation'
@@ -202,7 +204,12 @@ interface GenerateOverrides {
  */
 export function withoutAutoImported(prev: AssetLibrary, ids: ReadonlySet<string>): AssetLibrary {
   const isAuto = (asset: PersonalizationAsset | null | undefined) =>
-    Boolean(asset?.sourceDiscoveredAssetId && ids.has(asset.sourceDiscoveredAssetId) && !asset.edited)
+    Boolean(
+      asset?.sourceDiscoveredAssetId &&
+        ids.has(asset.sourceDiscoveredAssetId) &&
+        // An automatic background-removal cutout is not a user edit.
+        (!asset.edited || (asset.editMetadata as { engine?: string } | undefined)?.engine === 'bg0'),
+    )
   const logos = prev.logos.filter((asset) => !isAuto(asset))
   const primaryWasAuto = isAuto(prev.primaryLogo)
   const promoted = primaryWasAuto && logos[0] ? { ...logos[0], isPrimary: true } : null
@@ -813,7 +820,7 @@ export type DemoPersonalizeContextValue = {
   /** Shows (or clears with `null`) the discovery error banner. */
   setDiscoveryError: (message: string | null) => void
   importConfirmation: { count: number; clientName?: string } | null
-  setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
+  setDiscoveredAssets: (assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => void
   toggleDiscoveredAssetSelection: (id: string) => void
   rejectDiscoveredAsset: (id: string) => void
   restoreDiscoveredAsset: (id: string) => void
@@ -821,6 +828,8 @@ export type DemoPersonalizeContextValue = {
   removeDiscoveredAssetFromSection: (id: string) => void
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   revertDiscoveredAssetEdit: (id: string) => void
+  /** On-device background removal for discovered assets (auto queue + manual controls). */
+  autoCutout: AutoCutoutControls
   selectRecommendedDiscoveredAssets: () => void
   /** Imports the selected assets, or only `ids` into `section` (a drop onto a section). */
   /** Resolves with the ids of the discovered assets it placed. */
@@ -1578,6 +1587,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [importConfirmation, setImportConfirmation] = useState<{ count: number; failedCount?: number; clientName?: string } | null>(null)
+  const autoCutout = useAutoCutout(discoveredAssets, setDiscoveredAssetsState, { paused: discoveryStatus === 'importing', disabled: access === 'anonymous' })
+  // Warm the model up while the modal is open (never without consent, with auto mode off, or where unsupported).
+  useEffect(() => {
+    if (!isOpen || !autoCutout.willAutoCutOut) return undefined
+    void prefetchBackgroundRemovalModel()
+    return () => cancelBackgroundRemovalPrefetch()
+  }, [isOpen, autoCutout.willAutoCutOut])
   const [visionStatus, setVisionStatus] = useState<'idle' | 'analyzing' | 'complete' | 'error'>('idle')
   const [visionError, setVisionError] = useState<string | null>(null)
 
@@ -3857,7 +3873,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // ── Discovered assets actions ───────────────────────────────────────────────
 
-  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[]) => {
+  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => {
     setDiscoveredAssetsState(assets)
     setDiscoveryStatus('reviewing')
     setDiscoveryError(null)
@@ -3915,6 +3931,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         visionValidation: undefined,
         videoReady: false,
         hasTransparency: false,
+        // Restoring the original also opts out of automatic background removal.
+        bgOptOut: true,
+        bgRemoval: { status: 'idle' },
+        showOriginal: false,
       } : a)),
     )
   }, [])
@@ -4172,10 +4192,29 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // When a found business's discovery finishes, place the best logo and
   // photos into empty asset cards so the preview and overlays use them right
   // away. Everything stays reviewable in the Discovered Assets grid.
+  //
+  // Cut out first, then place: while on-device background removal is expected to
+  // run, placement waits (up to AUTO_IMPORT_CUTOUT_WAIT_MS) until the picked
+  // assets' cutouts have settled, so the cards and the preview get the
+  // transparent versions. Auto mode off, a declined/failed model or a slow
+  // download place the originals right away, exactly as before.
+  const [autoImportWaitTick, setAutoImportWaitTick] = useState(0)
+  const autoImportHoldSinceRef = useRef<number | null>(null)
   useEffect(() => {
     if (!autoImportPendingRef.current || discoveryStatus !== 'reviewing' || discoveredAssets.length === 0) return
-    autoImportPendingRef.current = false
     const picks = pickAutoImportAssets(discoveredAssets, assets)
+    // Also wait while the model-download consent (phones / data-saver) is undecided: placing the
+    // originals now would remove the picks from the grid, and the consent prompt with them.
+    if (picks.length > 0 && (autoCutout.willAutoCutOut || autoCutout.needsConsent)) {
+      if (autoImportHoldSinceRef.current === null) autoImportHoldSinceRef.current = Date.now()
+      const waited = Date.now() - autoImportHoldSinceRef.current
+      if (shouldHoldAutoImport(picks.map((asset) => asset.id), discoveredAssets, { willAutoCutOut: true, waitedMs: waited })) {
+        const timer = setTimeout(() => setAutoImportWaitTick((n) => n + 1), Math.max(0, AUTO_IMPORT_CUTOUT_WAIT_MS - waited))
+        return () => clearTimeout(timer)
+      }
+    }
+    autoImportHoldSinceRef.current = null
+    autoImportPendingRef.current = false
     let domain = ''
     try {
       domain = clientForm.website ? new URL(normalizeWebsiteInput(clientForm.website)).hostname.replace(/^www\./, '') : ''
@@ -4213,7 +4252,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         forgetUnplaced([])
         summarize([])
       })
-  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website])
+  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website, autoCutout.willAutoCutOut, autoCutout.needsConsent, autoImportWaitTick])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
@@ -4933,6 +4972,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     //     mapping, so both paths fill the same fields with the same rules.
     selectBusiness(options?.business || businessRecordFromWebsite(website))
     autoImportPendingRef.current = true
+    autoImportHoldSinceRef.current = null // a new business starts a fresh wait
     const workflowSession = businessSessionRef.current
 
     setDiscoveryError(null)
@@ -6306,6 +6346,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
     revertDiscoveredAssetEdit,
+    autoCutout,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
