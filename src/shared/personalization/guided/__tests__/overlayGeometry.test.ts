@@ -624,3 +624,157 @@ describe('rotated layers', () => {
     expect(cy + ext.h / 2).toBeLessThanOrEqual(H - margin(H) + 2)
   })
 })
+
+// ── Eight resize handles and the rotation handle ─────────────────────────────
+
+describe('OverlayEditor handles', () => {
+  // Stage is 960 x 540 for a 1920 x 1080 frame, so 1 stage px = 2 frame px.
+  const logo = () => createLayer('logo', { x: 0.5, y: 0.5, scale: 0.2 }) // 384 px square, left 768 top 348 (frame px)
+  const last = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.at(-1)![1] as Record<string, number>
+
+  function drag(handleTestId: string, to: { x: number; y: number }, init: Record<string, unknown> = {}) {
+    const handle = screen.getByTestId(handleTestId)
+    act(() => { fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 7 }) })
+    act(() => { fireEvent.pointerMove(window, { clientX: to.x, clientY: to.y, pointerId: 7, ...init }) })
+    act(() => { fireEvent.pointerUp(window, { pointerId: 7 }) })
+  }
+
+  it('shows eight resize handles on the selected layer: the bottom-right keeps its plain name, the rest say where they are', () => {
+    renderEditor([logo()])
+    for (const id of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) expect(screen.getByTestId(`resize-handle-${id}`)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Resize Logo' })).toBe(screen.getByTestId('resize-handle-se'))
+    expect(screen.getByRole('button', { name: 'Resize Logo (top left)' })).toBe(screen.getByTestId('resize-handle-nw'))
+    expect(screen.getByRole('button', { name: 'Resize Logo (right)' })).toBe(screen.getByTestId('resize-handle-e'))
+  })
+
+  it('a corner drag keeps the opposite corner fixed and the proportions', () => {
+    const { updatePreviewLayer } = renderEditor([logo()])
+    // se corner is at stage (576, 366); the anchor (nw) is at (384, 174). Drag to 1.5x the distance along the diagonal.
+    drag('resize-handle-se', { x: 384 + 288, y: 174 + 288 })
+    const p = last(updatePreviewLayer)
+    expect(p.scale).toBeCloseTo(0.3, 3)
+    const left = p.x * 1920 - (p.scale * 1920) / 2
+    const top = p.y * 1080 - (p.scale * 1920) / 2
+    expect(left).toBeCloseTo(768, 0)
+    expect(top).toBeCloseTo(348, 0)
+  })
+
+  it('the top-left corner anchors the bottom-right corner instead', () => {
+    const { updatePreviewLayer } = renderEditor([logo()])
+    // nw corner at stage (384, 174), anchor se at (576, 366). Shrink to half the distance.
+    drag('resize-handle-nw', { x: 576 - 96, y: 366 - 96 })
+    const p = last(updatePreviewLayer)
+    expect(p.scale).toBeCloseTo(0.1, 3)
+    const right = p.x * 1920 + (p.scale * 1920) / 2
+    const bottom = p.y * 1080 + (p.scale * 1920) / 2
+    expect(right).toBeCloseTo(1152, 0)
+    expect(bottom).toBeCloseTo(732, 0)
+  })
+
+  it('an edge handle resizes along its axis only: dragging the right edge sideways changes nothing, and up/down does nothing', () => {
+    const { updatePreviewLayer } = renderEditor([logo()])
+    // right edge midpoint at stage (576, 270); anchor = left edge midpoint (384, 270)
+    drag('resize-handle-e', { x: 576, y: 480 }) // straight down: no change in factor
+    expect(last(updatePreviewLayer).scale).toBeCloseTo(0.2, 3)
+    updatePreviewLayer.mockClear()
+    drag('resize-handle-e', { x: 384 + 288, y: 270 }) // 1.5x along the axis
+    expect(last(updatePreviewLayer).scale).toBeCloseTo(0.3, 3)
+  })
+
+  it('a locked layer ignores resize drags', () => {
+    const { updatePreviewLayer } = renderEditor([{ ...logo(), locked: true }])
+    drag('resize-handle-se', { x: 900, y: 500 })
+    expect(updatePreviewLayer).not.toHaveBeenCalled()
+  })
+
+  it('design layers never get a rotation handle', () => {
+    renderEditor([{ ...createLayer('design'), designId: 'animated-headline' }])
+    expect(screen.queryByTestId('rotate-handle')).toBeNull()
+  })
+
+  it('shows a rotation handle only on rotatable, unlocked layers', () => {
+    renderEditor([logo()])
+    expect(screen.getByRole('slider', { name: 'Rotate Logo' })).toBeTruthy()
+    cleanup()
+    renderEditor([{ ...logo(), locked: true }])
+    expect(screen.queryByTestId('rotate-handle')).toBeNull()
+  })
+
+  it('dragging the rotation handle to the right of the layer rotates it 90 degrees; Shift snaps to 15', () => {
+    const { updatePreviewLayer } = renderEditor([logo()])
+    // layer center is at stage (480, 270). Pointer straight right of it:
+    drag('rotate-handle', { x: 580, y: 270 })
+    expect(last(updatePreviewLayer).rotation).toBeCloseTo(90, 0)
+    updatePreviewLayer.mockClear()
+    // about 20 degrees clockwise of straight up
+    const a = (20 * Math.PI) / 180
+    drag('rotate-handle', { x: 480 + Math.sin(a) * 100, y: 270 - Math.cos(a) * 100 }, { shiftKey: true })
+    expect(last(updatePreviewLayer).rotation).toBe(15)
+  })
+
+  it('a rotation edit also carries a position, so the rotated box stays inside the frame', () => {
+    const { updatePreviewLayer } = renderEditor([createLayer('logo', { x: 0.97, y: 0.5, scale: 0.2 })])
+    drag('rotate-handle', { x: 860, y: 270 })
+    const p = last(updatePreviewLayer)
+    expect(p).toHaveProperty('x')
+    expect(p).toHaveProperty('y')
+    expect(p.x).toBeLessThanOrEqual(1)
+  })
+
+  it('keyboard: arrows rotate by 1 degree (Shift 15), Home straightens, and none of it nudges the layer', () => {
+    const layer = { ...logo(), rotation: 30 }
+    const { updatePreviewLayer } = renderEditor([layer])
+    const h = screen.getByTestId('rotate-handle')
+    act(() => { fireEvent.keyDown(h, { key: 'ArrowRight' }) })
+    expect(last(updatePreviewLayer).rotation).toBe(31)
+    act(() => { fireEvent.keyDown(h, { key: 'ArrowLeft', shiftKey: true }) })
+    expect(last(updatePreviewLayer).rotation).toBe(15)
+    act(() => { fireEvent.keyDown(h, { key: 'Home' }) })
+    expect(last(updatePreviewLayer).rotation).toBe(0)
+    for (const [, patch] of updatePreviewLayer.mock.calls) expect(patch).toHaveProperty('rotation')
+  })
+
+  it('double-clicking the rotation handle straightens the layer', () => {
+    const { updatePreviewLayer } = renderEditor([{ ...logo(), rotation: 40 }])
+    act(() => { fireEvent.doubleClick(screen.getByTestId('rotate-handle')) })
+    expect(last(updatePreviewLayer).rotation).toBe(0)
+  })
+
+  it('the box and its handles turn with the layer, but the toolbar stays upright outside it', () => {
+    renderEditor([{ ...logo(), rotation: 20 }])
+    const box = screen.getByRole('button', { name: 'Move Logo' })
+    expect(box.style.transform).toBe('rotate(20deg)')
+    expect(box.contains(screen.getByTestId('resize-handle-se'))).toBe(true)
+    expect(box.contains(screen.getByTestId('rotate-handle'))).toBe(true)
+    expect(box.contains(screen.getByTestId('layer-toolbar'))).toBe(false)
+    expect(screen.getByTestId('layer-toolbar').style.transform).toBe('')
+  })
+
+  it('an unrotated box has no transform at all', () => {
+    renderEditor([logo()])
+    expect(screen.getByRole('button', { name: 'Move Logo' }).style.transform).toBe('')
+  })
+
+  it('the inspector rotation field shows, sets and resets the rotation', () => {
+    const { updatePreviewLayer } = renderEditor([{ ...logo(), rotation: 25 }])
+    const field = screen.getByTestId('rotation-field') as HTMLInputElement
+    expect(field.value).toBe('25')
+    act(() => { fireEvent.change(field, { target: { value: '-40' } }) })
+    expect(last(updatePreviewLayer).rotation).toBe(-40)
+    act(() => { fireEvent.change(field, { target: { value: '' } }) })
+    expect(updatePreviewLayer).toHaveBeenCalledTimes(1) // an empty box is ignored, not treated as 0
+    act(() => { fireEvent.click(screen.getByTestId('rotation-reset')) })
+    expect(last(updatePreviewLayer).rotation).toBe(0)
+  })
+
+  it('Reset is disabled when there is nothing to reset', () => {
+    renderEditor([logo()])
+    expect((screen.getByTestId('rotation-reset') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('rotation-field') as HTMLInputElement).value).toBe('0')
+  })
+
+  it('has no rotation field for a design layer', () => {
+    renderEditor([{ ...createLayer('design'), designId: 'animated-headline' }])
+    expect(screen.queryByTestId('rotation-field')).toBeNull()
+  })
+})

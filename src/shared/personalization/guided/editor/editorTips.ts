@@ -25,6 +25,11 @@ export const EDITOR_TIPS = {
   livePlay: { text: 'Play or pause the live preview. Grabbing a layer pauses it so you can place it exactly.', shortcut: 'Space on the scrubber' },
   liveToggle: { text: 'Edit on the live, animated video, or switch to the still image if it is slow or the video cannot play.' },
 
+  // ── handles on the selected layer ────────────────────────────────────
+  resizeHandle: { text: 'Drag to resize. Corners and edges both keep the proportions, and the opposite side stays where it is.', shortcut: 'Arrow keys: 2% · Shift: 10%' },
+  rotateHandle: { text: 'Drag to rotate the layer. Double-click to set it straight again.', shortcut: 'Shift: 15° steps · Arrows: 1°' },
+  rotationField: { text: 'Type an exact rotation in degrees. Positive turns clockwise.' },
+
   // ── layers list ──────────────────────────────────────────────────────
   layerReorder: { text: 'Drag to change what is in front. The top of the list is the frontmost layer.', shortcut: 'Keyboard: Space, ↑/↓, Space' },
   layerVisibility: { text: 'Show or hide this layer in the video.' },

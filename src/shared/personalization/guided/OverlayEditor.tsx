@@ -13,6 +13,8 @@ import { Tip } from './editor/Tip'
 import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
 import type { PlayerRef } from '@remotion/player'
 import { Timeline } from './editor/Timeline'
+import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
+import { isRotated, normalizeAngle, rotateCss, rotatedExtent } from '../preview/rotation'
 import type { EditorTipId } from './editor/editorTips'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -208,7 +210,11 @@ interface DragState {
   startY: number
   /** Safe-area-clamped snapshot taken when the drag started (no jump). */
   origin: PreviewLayer
-  mode: 'move' | 'resize'
+  mode: 'move' | 'resize' | 'rotate'
+  /** For resize: which of the eight handles is being dragged. */
+  handle?: HandleId
+  /** The drawn box (composition pixels) when the drag started: resize and rotate are measured against it. */
+  box0?: TransformBox
 }
 
 export interface OverlayEditorProps {
@@ -363,6 +369,16 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
     [updatePreviewLayer],
   )
 
+  /** Sets a layer's rotation and keeps it inside the safe area (a rotated box is bigger). */
+  const commitRotation = useCallback(
+    (layer: PreviewLayer, degrees: number) => {
+      const rotation = normalizeAngle(degrees)
+      const bounded = clampLayerToBounds({ ...layer, rotation }, compW, compH)
+      updatePreviewLayer(layer.id, { rotation, x: round(bounded.x), y: round(bounded.y) })
+    },
+    [updatePreviewLayer, compW, compH],
+  )
+
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
       const drag = dragRef.current
@@ -387,12 +403,22 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
           setGuides((g) => (g.x.length || g.y.length ? { x: [], y: [] } : g))
           commitPosition(drag.layerId, moved)
         }
+      } else if (drag.mode === 'rotate' && drag.box0) {
+        const pointer = { x: ((event.clientX - rect.left) / rect.width) * compW, y: ((event.clientY - rect.top) / rect.height) * compH }
+        commitRotation(drag.origin, rotationFromPointer({ x: drag.box0.cx, y: drag.box0.cy }, pointer, { snap: event.shiftKey, current: drag.origin.rotation }))
+      } else if (drag.mode === 'resize' && drag.handle && drag.box0) {
+        // Resizing from any handle keeps the opposite corner (or edge) where it is and the proportions the same.
+        const pointer = { x: ((event.clientX - rect.left) / rect.width) * compW, y: ((event.clientY - rect.top) / rect.height) * compH }
+        const o = drag.origin
+        const r = resizeFromHandle(drag.box0, drag.handle, pointer, { minFactor: MIN_LAYER_SCALE / o.scale, maxFactor: MAX_LAYER_SCALE / o.scale })
+        const moved = { ...o, x: o.x + (r.cx - drag.box0.cx) / compW, y: o.y + (r.cy - drag.box0.cy) / compH }
+        commitScale(drag.layerId, scaleLayerTo(moved, o.scale * r.factor, compW, compH))
       } else {
         const nextScale = drag.origin.scale * (1 + dx * 2)
         commitScale(drag.layerId, scaleLayerTo(drag.origin, nextScale, compW, compH))
       }
     },
-    [commitPosition, commitScale, compW, compH, snapOn, settings.layers, brand],
+    [commitPosition, commitScale, commitRotation, compW, compH, snapOn, settings.layers, brand],
   )
 
   const endDrag = useCallback(() => {
@@ -427,15 +453,17 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
     return MEDIA_ROLE_CONTRACTS[roleForLayer(layer, d ? { id: d.id, category: d.category } : null)]
   }
 
-  const startDrag = (event: React.PointerEvent, layer: PreviewLayer, mode: 'move' | 'resize') => {
+  const startDrag = (event: React.PointerEvent, layer: PreviewLayer, mode: 'move' | 'resize' | 'rotate', handle?: HandleId) => {
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
     // Editing a moving picture is hard: stop playback while a layer is grabbed.
     try { playerRef.current?.pause() } catch { /* no player */ }
     const allowed = contractOf(layer)
-    if (mode === 'move' ? !allowed.userMovable : !allowed.userResizable) return
+    if (mode === 'move' ? !allowed.userMovable : mode === 'rotate' ? !allowed.userRotatable : !allowed.userResizable) return
     if (layer.locked) return // locked: selectable, but not draggable until unlocked
+    const origin = clampLayerToBounds(layer, compW, compH)
+    const m = layerBoxMetrics(origin, compW, compH, isImageLayerKind(layer.kind) || layer.kind === 'design' ? undefined : layerText(layer, brand))
     dragRef.current = {
       layerId: layer.id,
       pointerId: typeof event.pointerId === 'number' ? event.pointerId : null,
@@ -444,8 +472,10 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
       // Snapshot the bounded geometry so the layer follows the pointer from
       // exactly where the customer sees it, even if the saved values were
       // out of the safe area.
-      origin: clampLayerToBounds(layer, compW, compH),
+      origin,
       mode,
+      handle,
+      box0: { cx: m.leftPx + m.widthPx / 2, cy: m.topPx + m.heightPx / 2, w: m.widthPx, h: m.heightPx, rotation: origin.rotation ?? 0 },
     }
     if (mode === 'move') {
       // Keep focus on the dragged box so arrow keys nudge straight after a drag.
@@ -737,6 +767,16 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 </>
               )
 
+              let toolbarTop = 0
+              if (isSelected) {
+                const drawn = layerBoxMetrics(layer, compW, compH, isImageLayerKind(layer.kind) ? undefined : text)
+                const h = drawn.heightPx * factor
+                const ext = rotatedExtent(box.width, h, layer.rotation ?? 0)
+                const mid = box.top + h / 2
+                const below = mid + ext.h / 2 + 8
+                toolbarTop = below + 38 > compH * factor ? mid - ext.h / 2 - 8 - 52 : below
+              }
+
               return (
                 <Fragment key={layer.id}>
                 {stageScrim ? (
@@ -763,6 +803,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     outlineOffset: 2,
                     opacity: layer.opacity,
                     userSelect: 'none',
+                    // The box turns with the layer (about its own center), and so do its handles.
+                    ...(isDesign || !rotateCss(layer.rotation) ? {} : { transform: rotateCss(layer.rotation), transformOrigin: 'center center' }),
                   }}
                 >
                   {liveOn ? (
@@ -770,6 +812,61 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     // (hidden, not removed) so the box fits it; images and designs mount nothing.
                     isImageLayerKind(layer.kind) || isDesign ? null : <div aria-hidden style={{ visibility: 'hidden' }}>{layerContent}</div>
                   ) : layerContent}
+                  {isSelected && contractOf(layer).userResizable && HANDLES.map((h) => (
+                    <span key={h.id} style={{ position: 'absolute', left: `${h.left}%`, top: `${h.top}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
+                      <Tip id="resizeHandle" side="top">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          // The bottom-right handle keeps the plain name the app has always used; the others say where they are.
+                          aria-label={h.id === 'se' ? `Resize ${LAYER_LABELS[layer.kind]}` : `Resize ${LAYER_LABELS[layer.kind]} (${h.label})`}
+                          data-testid={`resize-handle-${h.id}`}
+                          onPointerDown={(event) => startDrag(event, layer, 'resize', h.id)}
+                          onKeyDown={(event) => onHandleKeyDown(event, layer)}
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: 3,
+                            background: C.cyan,
+                            border: '2px solid #041014',
+                            cursor: cursorForHandle(h.id, layer.rotation ?? 0),
+                            touchAction: 'none',
+                          }}
+                        />
+                      </Tip>
+                    </span>
+                  ))}
+                  {isSelected && contractOf(layer).userRotatable && !layer.locked && layer.kind !== 'design' && (
+                    <span style={{ position: 'absolute', left: '50%', top: -34, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 4 }}>
+                      <Tip id="rotateHandle" side="top">
+                        <div
+                          role="slider"
+                          tabIndex={0}
+                          aria-label={`Rotate ${LAYER_LABELS[layer.kind]}`}
+                          aria-valuemin={-180}
+                          aria-valuemax={180}
+                          aria-valuenow={layer.rotation ?? 0}
+                          aria-valuetext={`${layer.rotation ?? 0} degrees`}
+                          data-testid="rotate-handle"
+                          onPointerDown={(event) => startDrag(event, layer, 'rotate')}
+                          onDoubleClick={(event) => { event.stopPropagation(); commitRotation(layer, 0) }}
+                          onKeyDown={(event) => {
+                            const step = event.shiftKey ? 15 : 1
+                            const next = event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? (layer.rotation ?? 0) - step
+                              : event.key === 'ArrowRight' || event.key === 'ArrowUp' ? (layer.rotation ?? 0) + step
+                              : event.key === 'Home' ? 0 : null
+                            if (next === null) return
+                            event.preventDefault()
+                            event.stopPropagation()
+                            commitRotation(layer, next)
+                          }}
+                          style={{ width: 14, height: 14, borderRadius: '50%', background: C.cyan, border: '2px solid #041014', cursor: 'grab', touchAction: 'none' }}
+                        />
+                      </Tip>
+                      <span aria-hidden style={{ width: 1, height: 16, background: C.cyan }} />
+                    </span>
+                  )}
+                </div>
                   {isSelected && layer.kind !== 'design' && (
                     <div
                       role="toolbar"
@@ -779,9 +876,9 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                       onClick={(event) => event.stopPropagation()}
                       style={{
                         position: 'absolute',
-                        left: 0,
-                        // Above the layer, or below it when it sits at the top edge of the frame.
-                        ...(box.top < 44 ? { top: '100%', marginTop: 8 } : { bottom: '100%', marginBottom: 8 }),
+                        left: box.left,
+                        // Below the layer's (rotated) bounding box, or above it when there is no room below.
+                        top: toolbarTop,
                         display: 'flex',
                         gap: 2,
                         padding: 3,
@@ -818,27 +915,6 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                       ))}
                     </div>
                   )}
-                  {isSelected && contractOf(layer).userResizable && (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Resize ${LAYER_LABELS[layer.kind]}`}
-                      onPointerDown={(event) => startDrag(event, layer, 'resize')}
-                      onKeyDown={(event) => onHandleKeyDown(event, layer)}
-                      style={{
-                        position: 'absolute',
-                        right: -7,
-                        bottom: -7,
-                        width: 14,
-                        height: 14,
-                        borderRadius: 4,
-                        background: C.cyan,
-                        border: '2px solid #041014',
-                        cursor: 'nwse-resize',
-                      }}
-                    />
-                  )}
-                </div>
                 </Fragment>
               )
             })}
@@ -1171,6 +1247,43 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   style={{ width: '100%', accentColor: C.cyan }}
                 />
               </div>
+
+              {contractOf(selected).userRotatable && selected.kind !== 'design' && (
+                <div>
+                  <label style={labelStyle} htmlFor={controlId('rotation')}>Rotation</label>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <Tip id="rotationField" side="top">
+                      <input
+                        id={controlId('rotation')}
+                        type="number"
+                        aria-label="Layer rotation in degrees"
+                        data-testid="rotation-field"
+                        min={-180}
+                        max={180}
+                        step={1}
+                        value={selected.rotation ?? 0}
+                        disabled={Boolean(selected.locked)}
+                        onChange={(event) => {
+                          if (event.target.value.trim() === '') return
+                          const n = Number(event.target.value)
+                          if (Number.isFinite(n)) commitRotation(selected, n)
+                        }}
+                        style={{ ...inputStyle, width: 90 }}
+                      />
+                    </Tip>
+                    <span style={{ ...hintStyle, margin: 0 }}>degrees</span>
+                    <button
+                      type="button"
+                      data-testid="rotation-reset"
+                      disabled={!isRotated(selected.rotation) || Boolean(selected.locked)}
+                      onClick={() => commitRotation(selected, 0)}
+                      style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 11, padding: '0 10px', opacity: isRotated(selected.rotation) ? 1 : 0.5 }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label style={labelStyle} htmlFor={controlId('animation')}>Animation</label>
