@@ -141,7 +141,7 @@ export default function PromptLibrary({ apiKey }) {
                 </button>
                 <button
                   onClick={() => handleEnhance(item)}
-                  className="flex-1 rounded-md bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-3 py-2 text-sm font-semibold transition "
+                  className="flex-1 rounded-md border border-[#586608] bg-[#25280e] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#2f3410]"
                 >
                   {isCopied ? 'Copied!' : 'Enhance'}
                 </button>

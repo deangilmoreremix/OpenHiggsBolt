@@ -78,7 +78,7 @@ function AgentCard({ agent, onClick, onEdit, copy }) {
             e.stopPropagation();
             onEdit(agent);
           }}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] hover:scale-110 z-10"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-[#25280e] hover:text-white hover:scale-110 z-10"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -147,7 +147,7 @@ function ChatBubble({ message }) {
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-medium"
+            ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white font-medium"
             : "bg-white/[0.04] border border-white/5 text-white/90"
         }`}
       >
@@ -434,7 +434,7 @@ export default function AgentStudio({ apiKey, locale = "en" }) {
           <button
             type="submit"
             disabled={creating || !createForm.name.trim() || !createForm.system_prompt.trim()}
-            className="w-full py-4 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all disabled:opacity-40 flex items-center justify-center gap-3"
+            className="w-full py-4 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl hover:bg-[#2f3410] transition-all disabled:opacity-40 flex items-center justify-center gap-3"
           >
             {creating ? (
               <>
@@ -526,7 +526,7 @@ export default function AgentStudio({ apiKey, locale = "en" }) {
             <button
               type="submit"
               disabled={!chatInput.trim() || sending}
-              className="px-5 py-3 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-xs font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-40"
+              className="px-5 py-3 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-[#2f3410] transition-all disabled:opacity-40"
             >
               {copy.buttons.send}
             </button>
@@ -564,7 +564,7 @@ export default function AgentStudio({ apiKey, locale = "en" }) {
 
         <button
           onClick={handleCreateAgent}
-          className="px-6 py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all active:scale-95 flex items-center gap-2"
+          className="px-6 py-2 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#2f3410] transition-all active:scale-95 flex items-center gap-2"
         >
           <span className="text-sm">+</span>
           {copy.buttons.create}

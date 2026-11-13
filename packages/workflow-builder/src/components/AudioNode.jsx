@@ -449,7 +449,7 @@ const AudioGeneration = ({ id, data, selected }) => {
       <div className="flex flex-col">
         <div className="flex items-center justify-between bg-gradient-to-r from-[#151618] to-[#1c1e21] rounded-t-2xl border-b border-zinc-800 py-2 px-3">
           <div className="flex items-center gap-2.5">
-            <div className={`p-1.5 rounded-lg ${selected ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "bg-zinc-800 text-zinc-400"} transition-colors`}>
+            <div className={`p-1.5 rounded-lg ${selected ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white" : "bg-zinc-800 text-zinc-400"} transition-colors`}>
               <AiOutlineAudio size={14} />
             </div>
             <h3 className="text-xs font-bold text-zinc-100">

@@ -1575,7 +1575,7 @@ export default function LayersStudio({
                   <button
                     onClick={handleRunRegionalEdit}
                     disabled={isProcessing}
-                    className="w-7 h-7 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 flex items-center justify-center transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+                    className="w-7 h-7 rounded-full bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white flex items-center justify-center shadow-[0_0_12px_rgba(217,255,0,0.6)] transition-all hover:scale-105 active:scale-95 flex-shrink-0"
                     title={copy.tools.runSelectionEdit}
                   >
                     <svg
@@ -1708,7 +1708,7 @@ export default function LayersStudio({
                   onClick={() => setActiveShape("line")}
                   className={`p-1.5 rounded-lg border transition-all ${
                     activeShape === "line"
-                      ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 "
+                      ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
                   title={copy.tools.line}
@@ -1729,7 +1729,7 @@ export default function LayersStudio({
                   onClick={() => setActiveShape("arrow")}
                   className={`p-1.5 rounded-lg border transition-all ${
                     activeShape === "arrow"
-                      ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 "
+                      ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
                   title={copy.tools.arrow}
@@ -1751,7 +1751,7 @@ export default function LayersStudio({
                   onClick={() => setActiveShape("rect")}
                   className={`p-1.5 rounded-lg border transition-all ${
                     activeShape === "rect"
-                      ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 "
+                      ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
                   title={copy.tools.rectangle}
@@ -1772,7 +1772,7 @@ export default function LayersStudio({
                   onClick={() => setActiveShape("circle")}
                   className={`p-1.5 rounded-lg border transition-all ${
                     activeShape === "circle"
-                      ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 "
+                      ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
                   title={copy.tools.circle}
@@ -1891,7 +1891,7 @@ export default function LayersStudio({
               onClick={() => setActiveTool("pointer")}
               className={`p-2 rounded-xl transition-all ${
                 activeTool === "pointer"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.selectPointerTool}
@@ -1910,7 +1910,7 @@ export default function LayersStudio({
               onClick={() => setActiveTool("hand")}
               className={`p-2 rounded-xl transition-all ${
                 activeTool === "hand"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.panTool}
@@ -1936,7 +1936,7 @@ export default function LayersStudio({
               }
               className={`group relative p-2 rounded-xl transition-all ${
                 activeTool === "lasso"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.lassoEdit}
@@ -1968,7 +1968,7 @@ export default function LayersStudio({
               }
               className={`group relative p-2 rounded-xl transition-all ${
                 activeTool === "regional-edit"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.regionalEdit}
@@ -2002,7 +2002,7 @@ export default function LayersStudio({
               }
               className={`p-2 rounded-xl transition-all ${
                 activeTool === "draw"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.highlightMarkerPen}
@@ -2026,7 +2026,7 @@ export default function LayersStudio({
               }
               className={`p-2 rounded-xl transition-all ${
                 activeTool === "eraser"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.eraserTool}
@@ -2049,7 +2049,7 @@ export default function LayersStudio({
               }
               className={`group relative p-2 rounded-xl transition-all ${
                 activeTool === "shapes"
-                  ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70"
+                  ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white shadow-[0_0_12px_rgba(217,255,0,0.4)]"
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
               title={copy.tools.shapes}
@@ -2129,7 +2129,7 @@ export default function LayersStudio({
             <button
               onClick={() => handleDecompose()}
               disabled={isProcessing}
-              className="w-10 h-10 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ml-2 flex-shrink-0"
+              className="w-10 h-10 rounded-full bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white flex items-center justify-center shadow-[0_0_20px_rgba(217,255,0,0.5)] transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ml-2 flex-shrink-0"
               title={copy.tools.runLayerDecomposition}
             >
               <svg
@@ -2409,7 +2409,7 @@ export default function LayersStudio({
                           onClick={() => setIsSoloMode(!isSoloMode)}
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
                             isSoloMode
-                              ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 "
+                              ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white border-[#84cc16]"
                               : "bg-white/5 text-white/60 hover:text-white border-white/10"
                           }`}
                           title={copy.carousel.viewOnlyActive}
@@ -2446,7 +2446,7 @@ export default function LayersStudio({
                               prev > 0 ? prev - 1 : decomposedLayers.length - 1,
                             )
                           }
-                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-[#25280e] hover:text-[#d9ff00] flex items-center justify-center backdrop-blur-md border border-white/10 transition-all"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-[#84cc16] text-white hover:text-black flex items-center justify-center backdrop-blur-md border border-white/10 transition-all shadow-md"
                           title={copy.carousel.previousLayer}
                         >
                           ‹
@@ -2458,7 +2458,7 @@ export default function LayersStudio({
                               prev < decomposedLayers.length - 1 ? prev + 1 : 0,
                             )
                           }
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-[#25280e] hover:text-[#d9ff00] flex items-center justify-center backdrop-blur-md border border-white/10 transition-all"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-[#84cc16] text-white hover:text-black flex items-center justify-center backdrop-blur-md border border-white/10 transition-all shadow-md"
                           title={copy.carousel.nextLayer}
                         >
                           ›
@@ -2495,7 +2495,7 @@ export default function LayersStudio({
                                 `layer_${carouselIndex + 1}.${outputFormat}`,
                               )
                             }
-                            className="px-2.5 py-1 rounded-lg bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-extrabold text-xs flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white font-extrabold text-xs flex items-center gap-1 shadow-md"
                             title={copy.carousel.downloadThisLayer}
                           >
                             <span>⬇</span>
@@ -3933,7 +3933,7 @@ export default function LayersStudio({
                       <span>{item.label}</span>
                     </div>
                     {item.isNew && (
-                      <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-md tracking-wider">
+                      <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white rounded-md tracking-wider">
                         {copy.menuItems.new}
                       </span>
                     )}
@@ -3958,7 +3958,7 @@ export default function LayersStudio({
                 <button
                   onClick={() => handleExecuteSideTool("edit-text")}
                   disabled={isProcessing}
-                  className="w-full py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-bold text-xs uppercase rounded-xl"
+                  className="w-full py-2 bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white font-bold text-xs uppercase rounded-xl shadow-md"
                 >
                   {isProcessing ? copy.editText.processing : copy.editText.run}
                 </button>
@@ -3976,7 +3976,7 @@ export default function LayersStudio({
                 <button
                   onClick={() => handleExecuteSideTool("enhancer")}
                   disabled={isProcessing}
-                  className="w-full py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-bold text-xs uppercase rounded-xl"
+                  className="w-full py-2 bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white font-bold text-xs uppercase rounded-xl shadow-md"
                 >
                   {isProcessing ? copy.enhancer.processing : copy.enhancer.run}
                 </button>
@@ -3994,7 +3994,7 @@ export default function LayersStudio({
                 <button
                   onClick={() => handleExecuteSideTool("relight")}
                   disabled={isProcessing}
-                  className="w-full py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-bold text-xs uppercase rounded-xl"
+                  className="w-full py-2 bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white font-bold text-xs uppercase rounded-xl shadow-md"
                 >
                   {isProcessing ? copy.relight.processing : copy.relight.run}
                 </button>
@@ -4012,7 +4012,7 @@ export default function LayersStudio({
                 <button
                   onClick={() => handleExecuteSideTool("angles")}
                   disabled={isProcessing}
-                  className="w-full py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-bold text-xs uppercase rounded-xl"
+                  className="w-full py-2 bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] text-white font-bold text-xs uppercase rounded-xl shadow-md"
                 >
                   {isProcessing ? copy.angles.processing : copy.angles.run}
                 </button>

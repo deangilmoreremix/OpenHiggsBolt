@@ -54,7 +54,7 @@ export const panels = {
 
 // ── Button styles ─────────────────────────────────────────────────────────────
 export const buttons = {
-  // Primary CTA — tinted fill + accent outline (same look as Generate / Personalize; never a solid fill)
+  // Primary CTA — olive tint + lime-edge border (Personalize colours)
   primary: {
     background: '#25280e',
     boxShadow: 'inset 0 0 0 1px #586608',

@@ -9,7 +9,7 @@
  */
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, FolderOpen, Plus, Send, Sparkles, Trash2, X } from 'lucide-react'
-import { semantic, buttons } from '@/shared/styles/designTokens'
+import { semantic } from '@/shared/styles/designTokens'
 
 /** Typewriter placeholder that cycles through `phrases`; frozen while `paused`. */
 export function useTypingPlaceholder(phrases: readonly string[], paused: boolean): string {
@@ -296,7 +296,7 @@ export function PlanCard({ eyebrow, title, meta, steps, onApprove, onReject, bus
       </div>
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" disabled={busy} onClick={onReject} className="px-4 py-2 rounded-lg text-xs font-medium disabled:opacity-50" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: semantic.textSecondary }}>{rejectLabel}</button>
-        <button type="button" disabled={busy} onClick={onApprove} className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={buttons.primary}>{approveLabel}</button>
+        <button type="button" disabled={busy} onClick={onApprove} className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: '#25280e', boxShadow: 'inset 0 0 0 1px #586608', color: 'white' }}>{approveLabel}</button>
       </div>
     </div>
   )

@@ -642,9 +642,9 @@ export default function VideoStudioParity({
                 <video src={entry.url} controls className="aspect-video w-full bg-black object-cover" />
                 <div className="absolute right-2 top-2 hidden flex-col gap-2 opacity-0 transition-opacity group-hover:opacity-100 md:flex">
                   <GenerationCopyButtons prompt={entry.prompt} onCopyError={onGenerationError} />
-                  <button type="button" onClick={() => downloadFile(entry.url, `video-${entry.id || index}.mp4`)} className="rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608]">↓</button>
-                  <PublishStep mediaUrl={entry.url} mediaType="video" title={entry.prompt?.substring(0, 50) || "Generated video"} className="flex items-center justify-center rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608]" />
-                  <AssistStep assetUrl={entry.url} assetType="video" onApply={() => {}} className="flex items-center justify-center rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608]" />
+                  <button type="button" onClick={() => downloadFile(entry.url, `video-${entry.id || index}.mp4`)} className="rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-white">↓</button>
+                  <PublishStep mediaUrl={entry.url} mediaType="video" title={entry.prompt?.substring(0, 50) || "Generated video"} className="flex items-center justify-center rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-white" />
+                  <AssistStep assetUrl={entry.url} assetType="video" onApply={() => {}} className="flex items-center justify-center rounded-full border border-white/10 bg-black/65 p-2 text-white hover:bg-[#25280e] hover:text-white" />
                   <button type="button" onClick={() => deleteEntry(entry, index)} className="rounded-full border border-red-500/20 bg-black/65 p-2 text-red-400 hover:bg-red-500 hover:text-white">×</button>
                 </div>
                 <MobileGenerationActions
@@ -737,7 +737,7 @@ export default function VideoStudioParity({
 
             <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-0.5">
               {["t2v", "i2v", "v2v"].filter((item) => selectedFamily?.supports?.[item]).map((item) => (
-                <button key={item} type="button" onClick={() => selectMode(item)} className={`rounded-md px-2.5 py-1.5 text-[10px] font-bold uppercase ${mode === item && !selectedWorkflowId ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70" : "text-white/45 hover:text-white"}`}>{item.replace("2", "→")}</button>
+                <button key={item} type="button" onClick={() => selectMode(item)} className={`rounded-md px-2.5 py-1.5 text-[10px] font-bold uppercase ${mode === item && !selectedWorkflowId ? "bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white" : "text-white/45 hover:text-white"}`}>{item.replace("2", "→")}</button>
               ))}
             </div>
 

@@ -485,7 +485,7 @@ export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls
                 <button
                   type="button"
                   onClick={handleDone}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-xl text-xs font-black transition-all hover:scale-105"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white rounded-xl text-xs font-black transition-all hover:scale-105"
                 >
                   {t.doneButton.replace("{count}", count)}
                 </button>
@@ -630,7 +630,7 @@ export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls
               <button
                 type="button"
                 onClick={handleDone}
-                className="px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-xl text-xs font-black transition-all hover:scale-105"
+                className="px-4 py-1.5 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white rounded-xl text-xs font-black transition-all hover:scale-105"
               >
                 {t.useSelected}
               </button>
@@ -1709,13 +1709,13 @@ export default function ImageStudio({
                     mediaUrl={entry.url}
                     mediaType="image"
                     title={entry.prompt?.substring(0, 50) || "Generated image"}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10 flex items-center justify-center"
                   />
                   <AssistStep
                     assetUrl={entry.url}
                     assetType="image"
                     onApply={() => {}}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10 flex items-center justify-center"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
@@ -1728,7 +1728,7 @@ export default function ImageStudio({
                       e.stopPropagation();
                       downloadImage(entry.url, `muapi-${entry.id || idx}.jpg`);
                     }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />

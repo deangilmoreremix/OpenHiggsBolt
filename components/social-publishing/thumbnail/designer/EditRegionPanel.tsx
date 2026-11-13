@@ -243,7 +243,7 @@ export default function EditRegionPanel({ sourceUrl, boxWidth, boxHeight, model,
             <span className="text-white/35">{pending.model ? `Made with ${pending.model}` : ''}</span>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={accept} className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70">Use this version</button>
+            <button type="button" onClick={accept} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-inset ring-[#586608]" style={{ background: '#25280e' }}>Use this version</button>
             <button type="button" onClick={() => setPending(null)} className="flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/60"><X size={12} /> Discard</button>
           </div>
         </div>

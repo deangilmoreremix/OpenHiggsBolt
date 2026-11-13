@@ -19,7 +19,7 @@ const DEFAULT_TEXTAREA_CLASS =
   "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40";
 
 const DEFAULT_ACTION_CLASS =
-  "bg-[#0f0f0f] text-white ring-1 ring-inset ring-[#343434] border-l-2 border-l-[#d9ff00] hover:bg-[#1a1a1a] hover:ring-[#d9ff00]/60 px-7 py-3 rounded-full font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto z-10 disabled:opacity-50 disabled:cursor-not-allowed";
+  "bg-[#0f0f0f] text-white px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#d9ff00]/20 hover:shadow-[#d9ff00]/35 border border-[#343434] border-l-2 border-l-[#d9ff00] z-10 disabled:opacity-50 disabled:cursor-not-allowed";
 
 const CONTROL_LAYOUT_CLASS =
   "h-[38px] flex items-center gap-2 rounded-md transition-all border group whitespace-nowrap shadow-inner focus:outline-none focus-visible:border-[#d9ff00]/45 focus-visible:ring-1 focus-visible:ring-[#d9ff00]/30";
@@ -327,7 +327,7 @@ export function PromptSegmentOption({
         "min-h-7 px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
         "focus:outline-none focus-visible:ring-1 focus-visible:ring-[#d9ff00]/40",
         selected
-          ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]"
+          ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] shadow-md shadow-[#d9ff00]/20"
           : "text-white/40 hover:text-white/70",
         className,
       )}

@@ -2133,7 +2133,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   type="button"
                   suppressHydrationWarning={true}
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full transition-colors"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full hover:bg-[#2f3410] transition-colors"
                 >
                   <FaToolbox size={14} /> Settings <FaAngleDown size={12} className={`transition-transform duration-300 ${isSettingsOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -2180,7 +2180,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   suppressHydrationWarning={true}
                   disabled={isRunning === 2 || !interactionMode}
                   onClick={handlePublishWorkflow}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410]"
                 >
                   {isRunning === 2 ? (
                     <>
@@ -2197,7 +2197,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   suppressHydrationWarning={true}
                   disabled={isRunning === 1 || !interactionMode}
                   onClick={handleRunWorkflow}
-                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-blue-500 text-white text-sm rounded-full font-semibold group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black hover:text-white whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-blue-500 text-white text-sm rounded-full font-semibold group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410] whitespace-nowrap"
                 >
                   {isRunning === 1 ? (
                     <>
@@ -2216,7 +2216,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                 suppressHydrationWarning={true}
                 disabled={interactionMode}
                 onClick={handleDuplicateWorkflow}
-                className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410]"
               >
                 {isRunning === 3 ? (
                   <>
@@ -2237,7 +2237,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
           type="button"
           suppressHydrationWarning={true}
           onClick={() => toast.error("This workflow can't be edited.")}
-          className={`p-3 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 cursor-pointer outline-none active:bg-[#22d3ee]/30 transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
+          className={`p-3 rounded-full bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] cursor-pointer outline-none text-white active:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
         >
           <MdLockOutline size={18} />
         </button>
@@ -2750,7 +2750,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
               type="button"
               suppressHydrationWarning={true}
               onClick={handleSaveWorkFlow}
-              className="px-4 py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-full transition w-full text-sm cursor-pointer"
+              className="px-4 py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] rounded-full hover:bg-[#2f3410] transition w-full text-sm cursor-pointer"
             >
               Save
             </button>

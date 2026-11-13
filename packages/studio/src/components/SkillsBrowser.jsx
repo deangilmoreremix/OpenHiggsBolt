@@ -108,7 +108,7 @@ export default function SkillsBrowser({ apiKey }) {
               {skill.kind === 'workflow' ? (
                 <button
                   onClick={() => setRunnerSkill(skill)}
-                  className="w-full rounded-md bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-3 py-2 text-sm font-semibold transition "
+                  className="w-full rounded-md border border-[#586608] bg-[#25280e] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#2f3410]"
                 >
                   Run Skill
                 </button>
@@ -118,7 +118,7 @@ export default function SkillsBrowser({ apiKey }) {
                     setPendingRecipe(skill.slug, skill.studio);
                     router.push('/studio/' + skill.studio);
                   }}
-                  className="w-full rounded-md bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-3 py-2 text-sm font-semibold transition"
+                  className="w-full rounded-md bg-[#25280e] ring-1 ring-inset ring-[#586608] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#2f3410]"
                 >
                   Open in Studio
                 </button>

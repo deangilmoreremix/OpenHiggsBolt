@@ -421,7 +421,7 @@ export function WriteStep({ asset, copy, onUpdateCopy, onRequestApiKey, sessionI
             AI writing runs on your own OpenAI account. You can still write your post by hand and publish without it.
           </p>
           {onRequestApiKey && (
-            <button type="button" onClick={onRequestApiKey} className="mt-2 rounded-lg bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-3 py-1.5 text-xs font-bold">
+            <button type="button" onClick={onRequestApiKey} className="mt-2 rounded-lg bg-[#25280e] ring-1 ring-inset ring-[#586608] px-3 py-1.5 text-xs font-bold text-white">
               Open API keys
             </button>
           )}
