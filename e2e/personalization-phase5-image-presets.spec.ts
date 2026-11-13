@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
+import { openQualityPanel } from './helpers/qualityPanel';
 import path from 'node:path';
 
 /**
@@ -174,6 +175,7 @@ test.describe('Image Overlay Styles — each preset on real footage, selected in
         // Step 4: what the Layout Quality Check says for THIS footage.
         await dialog.getByRole('button', { name: /Step 4/i }).click();
         await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+        await openQualityPanel(page);
         const panel = page.getByTestId('layout-quality-panel');
         await panel.scrollIntoViewIfNeeded();
         await expect(page.getByTestId('layout-quality-scope')).not.toContainText('Measuring', { timeout: 60_000 });

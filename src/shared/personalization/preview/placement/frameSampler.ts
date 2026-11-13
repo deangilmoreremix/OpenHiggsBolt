@@ -127,6 +127,22 @@ export async function sampleFrames(
   }
 }
 
+/**
+ * Frame measurements are expensive (they seek the video), so they are cached per URL. The cache is
+ * shared: the Layout Quality hook fills it, and the preview input builder reads it so the composition
+ * can size its text scrims to the footage without re-measuring or awaiting anything.
+ */
+const SAMPLE_CACHE = new Map<string, LumaSample[] | null>()
+export const hasCachedSamples = (url: string): boolean => SAMPLE_CACHE.has(url)
+/** Cached samples for `url`, or `null` when measuring failed / was never done. */
+export function getCachedSamples(url: string | null | undefined): LumaSample[] | null {
+  if (!url) return null
+  return SAMPLE_CACHE.get(url) ?? null
+}
+export function setCachedSamples(url: string, samples: LumaSample[] | null): void {
+  SAMPLE_CACHE.set(url, samples)
+}
+
 /** Natural width/height of each image URL; URLs that cannot be loaded are omitted. */
 export async function measureImageAspects(urls: string[], timeoutMs = 4000): Promise<Record<string, number>> {
   if (typeof Image === 'undefined') return {}

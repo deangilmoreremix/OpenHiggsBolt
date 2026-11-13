@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
 import type { ImageStyle } from '../preview/imageStyle'
@@ -13,9 +13,10 @@ import {
   PREVIEW_ANIMATIONS,
   PREVIEW_FONTS,
   PREVIEW_POSITIONS,
-  fontStackById,
   isImageLayerKind,
 } from '../preview/presets'
+import { accentRuleStyle, ctaPillStyle, isSingleLineBox, isTextStyleKind, layerTextStyle, textAlignFor } from '../preview/textStyle'
+import { hasTextScrim, scrimForBox, scrimStyle } from '../preview/scrim'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
   RemotionDesignTextSlot,
@@ -33,6 +34,7 @@ import {
   clampLayerToBounds,
   imageAssetDefaultLabel,
   imageAssetOptions,
+  layerBoxMetrics,
   nudgeDeltaForKey,
   offsetLayer,
   resolveCompositionSize,
@@ -200,6 +202,8 @@ interface DragState {
 
 export interface OverlayEditorProps {
   inputProps: PreviewInputProps
+  /** Rendered directly under the video stage (sticky with it), e.g. the layout quality bar. */
+  belowStage?: React.ReactNode
 }
 
 /**
@@ -222,7 +226,7 @@ export interface OverlayEditorProps {
 export const framesToSeconds = (frames: number, fps: number) => Math.round((frames / Math.max(1, fps)) * 100) / 100
 export const secondsToFrames = (seconds: number, fps: number) => Math.max(0, Math.round((Number.isFinite(seconds) ? seconds : 0) * Math.max(1, fps)))
 
-export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Element {
+export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     previewSettings,
@@ -451,7 +455,8 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
-        {/* ── Stage ─────────────────────────────────────────────────────── */}
+        {/* ── Stage column: stage + anything pinned directly under it ───── */}
+        <div style={{ minWidth: 0, position: 'sticky', top: 8, alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="overlay-stage-column">
         <div
           ref={stageRef}
           role="group"
@@ -526,9 +531,34 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 )
               }
 
+              // Same local scrim the render draws behind this text (stage pixels).
+              const scrimMetrics = hasTextScrim(layer.kind) && !repeatsName ? layerBoxMetrics(layer, compW, compH, text) : null
+              const stageScrim = scrimMetrics
+                ? scrimForBox(
+                    { left: scrimMetrics.leftPx * factor, top: scrimMetrics.topPx * factor, width: scrimMetrics.widthPx * factor, height: scrimMetrics.heightPx * factor },
+                    compW * factor,
+                    compH * factor,
+                  )
+                : null
+              const textMetrics = isTextStyleKind(layer.kind) && layer.kind !== 'cta' ? layerBoxMetrics(layer, compW, compH, text) : null
+              const stageAlign = textMetrics ? textAlignFor(layer, textMetrics, compW) : 'center'
+              const stageRule = scrimMetrics
+                ? accentRuleStyle(
+                    layer.kind, layer.animation,
+                    { leftPx: scrimMetrics.leftPx * factor, topPx: scrimMetrics.topPx * factor, widthPx: scrimMetrics.widthPx * factor, heightPx: scrimMetrics.heightPx * factor },
+                    compW * factor, compH * factor, settings.brandColors.accent, stageAlign,
+                  )
+                : null
+
               return (
+                <Fragment key={layer.id}>
+                {stageScrim ? (
+                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, opacity: layer.opacity, pointerEvents: 'none' }}>
+                    <div style={scrimStyle(stageScrim)} />
+                  </div>
+                ) : null}
+                {stageRule ? <div aria-hidden data-testid="stage-headline-rule" style={{ ...stageRule, opacity: layer.opacity }} /> : null}
                 <div
-                  key={layer.id}
                   role="button"
                   tabIndex={0}
                   aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
@@ -574,17 +604,15 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     // The REAL design, drawn by the same composition the video uses (not a name label).
                     <DesignLayerPlayer layer={layer} inputProps={inputProps} fallbackLabel={design ? design.name : 'Design'} />
                   ) : layer.kind === 'cta' ? (
-                    <div style={{ width: '100%', textAlign: 'center' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                       <span
                         style={{
-                          background: layer.color ?? settings.brandColors.accent,
-                          color: '#041014',
-                          padding: '0.4em 1.1em',
-                          borderRadius: 999,
-                          display: 'inline-block',
-                          fontFamily: fontStackById(layer.fontFamily),
-                          fontSize: box.fontSize,
-                          fontWeight: 800,
+                          ...ctaPillStyle({
+                            background: layer.color ?? settings.brandColors.accent,
+                            color: '#041014',
+                            fontSizePx: box.fontSize,
+                            fontFamily: layer.fontFamily,
+                          }),
                           pointerEvents: 'none',
                         }}
                       >
@@ -594,14 +622,13 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   ) : (
                     <div
                       style={{
-                        fontFamily: fontStackById(layer.fontFamily),
-                        color,
-                        fontSize: box.fontSize,
-                        fontWeight: layer.kind === 'businessName' ? 800 : 600,
-                        lineHeight: 1.15,
-                        textAlign: 'center',
-                        width: '100%',
-                        wordBreak: 'break-word',
+                        ...layerTextStyle(isTextStyleKind(layer.kind) ? layer.kind : 'headline', {
+                          fontSizePx: box.fontSize,
+                          color,
+                          fontFamily: layer.fontFamily,
+                          align: stageAlign,
+                          singleLine: isSingleLineBox(box.width, compW * factor),
+                        }),
                         pointerEvents: 'none',
                         ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),
                       }}
@@ -631,8 +658,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     />
                   )}
                 </div>
+                </Fragment>
               )
             })}
+        </div>
+        {belowStage}
         </div>
 
         {/* ── Layer list + controls ─────────────────────────────────────── */}
