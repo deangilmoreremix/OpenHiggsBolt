@@ -89,4 +89,91 @@ describe('thumbnail-generate route', () => {
     expect(res.status).toBe(400)
     expect((await res.json()).error).toMatch(/OpenAI API key/)
   })
+
+  it('offers Images 2.6 (sunburst and flare) and sends the chosen model', async () => {
+    for (const model of ['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare']) {
+      fetchMock.mockClear()
+      const res = await POST(request({ action: 'generate', prompt: 'Bold', model }))
+      expect(res.status).toBe(200)
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe(model)
+      expect((await res.json()).model).toBe(model)
+    }
+  })
+
+  it('falls back to GPT Image 2 when the 2.6 model is not available to the key, and says so', async () => {
+    fetchMock.mockReset()
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'The model `gpt-image-2.6-sunburst` does not exist or you do not have access to it.' } }), { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ b64_json: 'QUJD' }] }), { status: 200 }))
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2.6-sunburst' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.model).toBe('gpt-image-2')
+    expect(data.fallback_from).toBe('gpt-image-2.6-sunburst')
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe('gpt-image-2')
+  })
+
+  it('does not hide other errors behind the fallback', async () => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Rate limit reached' } }), { status: 429 }))
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2.6-flare' }))
+    expect(res.status).toBe(429)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes an inpainting mask to images/edits on refine', async () => {
+    const MASK = `data:image/png;base64,${Buffer.from('mask').toString('base64')}`
+    const res = await POST(request({ action: 'refine', prompt: 'Replace the sky', image_url: PNG_DATA_URL, mask_url: MASK }))
+    expect(res.status).toBe(200)
+    const form = fetchMock.mock.calls[0][1].body as FormData
+    expect(form.get('mask')).toBeTruthy()
+    expect(form.getAll('image[]')).toHaveLength(1)
+  })
+
+  it('rejects a mask that is not a PNG', async () => {
+    const res = await POST(request({ action: 'refine', prompt: 'x', image_url: PNG_DATA_URL, mask_url: 'data:image/jpeg;base64,QUJD' }))
+    expect(res.status).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('passes quality xhigh, a custom size and complexity (Images 2.6 only) to OpenAI', async () => {
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2.6-sunburst', quality: 'xhigh', complexity: 'medium', size: '1536x864', background: 'opaque', output_format: 'webp', output_compression: 80 }))
+    expect(res.status).toBe(200)
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body).toMatchObject({ model: 'gpt-image-2.6-sunburst', quality: 'xhigh', complexity: 'medium', size: '1536x864', background: 'opaque', output_format: 'webp', output_compression: 80 })
+  })
+
+  it('does not send complexity to models that do not have it', async () => {
+    const res = await POST(request({ action: 'generate', prompt: 'Bold', model: 'gpt-image-2', complexity: 'high' }))
+    expect(res.status).toBe(200)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).complexity).toBeUndefined()
+  })
+
+  it('rejects bad size, complexity and compression values before calling OpenAI', async () => {
+    for (const extra of [{ size: '1000x1000' }, { size: '3840x640' }, { complexity: 'extreme' }, { output_compression: 50 }, { background: 'transparent', output_format: 'jpeg' }]) {
+      fetchMock.mockClear()
+      const res = await POST(request({ action: 'generate', prompt: 'x', ...extra }))
+      expect(res.status, JSON.stringify(extra)).toBe(400)
+      expect(fetchMock).not.toHaveBeenCalled()
+    }
+  })
+
+  it('uses the custom size for edits too', async () => {
+    const res = await POST(request({ action: 'refine', prompt: 'x', image_url: PNG_DATA_URL, size: '1536x864' }))
+    expect(res.status).toBe(200)
+    expect((fetchMock.mock.calls[0][1].body as FormData).get('size')).toBe('1536x864')
+  })
+
+  it('falls back with a quality GPT Image 2 supports (xhigh and max become high)', async () => {
+    for (const q of ['xhigh', 'max']) {
+      fetchMock.mockReset()
+      fetchMock
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'The model `gpt-image-2.6-sunburst` does not exist' } }), { status: 404 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ b64_json: 'QUJD' }] }), { status: 200 }))
+      const res = await POST(request({ action: 'generate', prompt: 'x', model: 'gpt-image-2.6-sunburst', quality: q }))
+      expect(res.status).toBe(200)
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).quality).toBe(q)
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ model: 'gpt-image-2', quality: 'high' })
+    }
+  })
 })
