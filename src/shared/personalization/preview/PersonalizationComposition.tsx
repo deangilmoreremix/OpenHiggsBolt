@@ -17,8 +17,8 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
-import { entranceFor, exitFor, usesWordEntrance, wordEntrance } from './motion'
-import { accentRuleStyle, ctaPillStyle, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
+import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from './motion'
+import { accentRuleStyle, ctaPillStyle, endCardBackground, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
@@ -150,12 +150,20 @@ const EndCard: React.FC<{
   const logoUrl = brand.logoUrl
   const contactLine = [brand.phone, brand.website].filter((value) => value && value.trim()).join('   ·   ')
   const ctaText = brand.cta && brand.cta.trim() ? brand.cta : ''
+  // Dark text on a light brand color, white on a dark one (was always dark).
+  const onPrimary = readableTextOn(settings.brandColors.primary, PILL_TEXT_COLOR)
+  const rise = Math.round(settings.height * 0.03)
+  const item = (index: number): React.CSSProperties => {
+    const e = itemEntrance(index, frame, settings.fps, rise)
+    return { opacity: e.opacity, transform: e.translateY ? `translateY(${e.translateY}px)` : undefined }
+  }
 
   return (
     <AbsoluteFill
       style={{
-        background: settings.brandColors.primary,
-        opacity: 0.92 * fade,
+        background: endCardBackground(settings.brandColors.primary),
+        // Fully opaque once faded in: overlays beneath must not ghost through the card.
+        opacity: fade,
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
@@ -170,6 +178,7 @@ const EndCard: React.FC<{
             width: Math.round(settings.width * 0.18),
             height: Math.round(settings.width * 0.18),
             objectFit: 'contain',
+            ...item(0),
           }}
         />
       ) : null}
@@ -177,13 +186,15 @@ const EndCard: React.FC<{
         <div
           style={{
             fontFamily: fontStackById(),
-            color: PILL_TEXT_COLOR,
+            color: onPrimary,
             fontSize: Math.round(settings.height * 0.055),
             fontWeight: 800,
-            lineHeight: 1.15,
+            lineHeight: 1.12,
+            letterSpacing: '-0.01em',
             textAlign: 'center',
             wordBreak: 'break-word',
             width: '90%',
+            ...item(1),
           }}
         >
           {brand.businessName}
@@ -193,29 +204,26 @@ const EndCard: React.FC<{
         <div
           style={{
             fontFamily: fontStackById(),
-            color: PILL_TEXT_COLOR,
+            color: onPrimary,
             fontSize: Math.round(settings.height * 0.032),
             fontWeight: 600,
             lineHeight: 1.2,
+            letterSpacing: '0.02em',
             textAlign: 'center',
+            ...item(2),
           }}
         >
           {contactLine}
         </div>
       ) : null}
       {ctaText ? (
-        <div style={{ width: '100%', textAlign: 'center' }}>
+        <div style={{ width: '100%', textAlign: 'center', ...item(3) }}>
           <span
-            style={{
+            style={ctaPillStyle({
               background: settings.brandColors.accent,
-              color: PILL_TEXT_COLOR,
-              padding: '0.4em 1.1em',
-              borderRadius: 999,
-              display: 'inline-block',
-              fontFamily: fontStackById(),
-              fontSize: Math.round(settings.height * 0.036),
-              fontWeight: 800,
-            }}
+              color: readableTextOn(settings.brandColors.accent, PILL_TEXT_COLOR),
+              fontSizePx: Math.round(settings.height * 0.036),
+            })}
           >
             {ctaText}
           </span>

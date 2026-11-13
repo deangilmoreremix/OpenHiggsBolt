@@ -125,3 +125,20 @@ export function exitFor(layer: Pick<PreviewLayer, 'endFrame'>, frame: number): E
   const p = clamp01((frame - (layer.endFrame - EXIT_FRAMES)) / EXIT_FRAMES)
   return { opacity: 1 - p, translateY: -p * 12 }
 }
+
+/**
+ * Staggered reveal of the `index`-th item of a list that appears one after another
+ * (end-card logo, name, contact line, button). Rises `distancePx` while fading in.
+ */
+export function itemEntrance(
+  index: number,
+  frame: number,
+  fps: number,
+  distancePx: number,
+  staggerFrames = 6,
+): WordState {
+  const start = Math.max(0, index) * staggerFrames
+  if (frame < start) return { opacity: 0, translateY: distancePx }
+  const p = clamp01(spring({ frame: frame - start, fps: Math.max(1, fps), config: { damping: 22, stiffness: 140 } }))
+  return { opacity: clamp01(p * 1.6), translateY: (1 - p) * distancePx }
+}

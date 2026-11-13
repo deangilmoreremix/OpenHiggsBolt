@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, lightenHex, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
+import { accentRuleStyle, ctaPillStyle, darkenHex, endCardBackground, isTextStyleKind, layerTextStyle, lightenHex, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -36,7 +36,7 @@ describe('ctaPillStyle', () => {
     const s = ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014' })
     expect(s.background).toMatch(/^linear-gradient\(to bottom, #[0-9a-f]{6}, #28c98b\)$/)
     expect(s.color).toBe('#041014')
-    expect(s.borderRadius).toBe(999)
+    expect(s.borderRadius).toBe('0.975em')
     expect(s.boxShadow).toBe(PILL_SHADOW)
     expect(s.fontSize).toBe(30)
   })
@@ -118,5 +118,19 @@ describe('CTA pill highlight', () => {
 
   it('falls back to the plain color when it is not a hex value', () => {
     expect(ctaPillStyle({ fontSizePx: 30, background: 'tomato', color: '#000' }).background).toBe('tomato')
+  })
+})
+
+describe('end card background', () => {
+  it('is an opaque diagonal linear-gradient built around the brand color', () => {
+    const css = endCardBackground('#29d3f2')
+    expect(css).toMatch(/^linear-gradient\(155deg, #[0-9a-f]{6} 0%, #29d3f2 55%, #[0-9a-f]{6} 100%\)$/)
+    expect(css).not.toMatch(/rgba|radial|transparent/i)
+  })
+  it('darkens toward black and falls back to the plain color for non-hex input', () => {
+    expect(darkenHex('#ffffff', 0.5)).toBe('#808080')
+    expect(darkenHex('#000', 0.5)).toBe('#000000')
+    expect(darkenHex('hsl(10,10%,10%)', 0.3)).toBeNull()
+    expect(endCardBackground('tomato')).toBe('tomato')
   })
 })

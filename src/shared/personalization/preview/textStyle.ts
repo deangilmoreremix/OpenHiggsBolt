@@ -125,6 +125,16 @@ export function accentRuleStyle(
   }
 }
 
+/** Mixes a hex color toward black by `amount` (0..1). Null for non-hex input. */
+export function darkenHex(color: string, amount: number): string | null {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec((color ?? '').trim())
+  if (!m) return null
+  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1]
+  const t = Math.min(1, Math.max(0, amount))
+  const out = [0, 2, 4].map((i) => Math.round(parseInt(h.slice(i, i + 2), 16) * (1 - t)).toString(16).padStart(2, '0'))
+  return `#${out.join('')}`
+}
+
 /**
  * Mixes a hex color toward white by `amount` (0..1). Returns null for anything
  * that is not a plain hex color, so callers can fall back to the solid color.
@@ -157,7 +167,9 @@ export function ctaPillStyle(opts: {
     background: lit ? `linear-gradient(to bottom, ${lit}, ${opts.background})` : opts.background,
     color: opts.color,
     padding: '0.4em 1.1em',
-    borderRadius: 999,
+    // Exactly half the pill's height (line-height 1.15em + 2 x 0.4em padding = 1.95em). A huge
+    // radius like 999px is clamped by browsers but NOT by the browser exporter, which draws an ellipse.
+    borderRadius: '0.975em',
     display: 'inline-block',
     fontFamily: fontStackById(opts.fontFamily),
     fontSize: opts.fontSizePx,
@@ -166,4 +178,15 @@ export function ctaPillStyle(opts: {
     letterSpacing: role.letterSpacing,
     boxShadow: PILL_SHADOW,
   }
+}
+
+/**
+ * Background of the branded end card: the brand color with a gentle diagonal
+ * lift (darker corner to lighter corner). Opaque linear-gradient only, so the
+ * browser exporter draws it. Non-hex colors fall back to the plain color.
+ */
+export function endCardBackground(primary: string): string {
+  const dark = darkenHex(primary, 0.28)
+  const light = lightenHex(primary, 0.12)
+  return dark && light ? `linear-gradient(155deg, ${dark} 0%, ${primary} 55%, ${light} 100%)` : primary
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { entranceFor, exitFor, usesWordEntrance, wordEntrance } from '../motion'
+import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from '../motion'
 import { EXIT_FRAMES } from '../imageStyle'
 import { createLayer } from '../presets'
 import type { PreviewLayer } from '../types'
@@ -110,5 +110,17 @@ describe('exitFor', () => {
       expect(o).toBeLessThanOrEqual(prev)
       prev = o
     }
+  })
+})
+
+describe('itemEntrance', () => {
+  it('reveals items one after another and settles to rest', () => {
+    const a = itemEntrance(0, 8, FPS, 30)
+    const d = itemEntrance(3, 8, FPS, 30)
+    expect(a.opacity).toBeGreaterThan(d.opacity)
+    expect(itemEntrance(3, 5, FPS, 30)).toEqual({ opacity: 0, translateY: 30 })
+    const done = itemEntrance(3, 120, FPS, 30)
+    expect(done.opacity).toBe(1)
+    expect(done.translateY).toBeCloseTo(0, 1)
   })
 })
