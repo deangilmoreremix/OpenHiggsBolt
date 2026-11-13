@@ -11,7 +11,7 @@ vi.mock('@/lib/supabaseServer', () => ({
   getSupabaseAdmin: () => ({
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
-      upsert: async (row: unknown) => { upsert(row); return { error: null }; },
+      upsert: (row: unknown) => { upsert(row); return { select: async () => ({ data: [{ clerk_user_id: 'user_1' }], error: null }) }; },
     }),
   }),
 }));

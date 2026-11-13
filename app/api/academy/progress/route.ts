@@ -65,19 +65,30 @@ export async function PUT(req: NextRequest) {
 
   try {
     const db = getSupabaseAdmin();
-    // never let an older request overwrite newer saved progress (requests can arrive out of order)
-    const existing = await db.from('academy_progress').select('state').eq('clerk_user_id', userId).maybeSingle();
-    if (existing.error) throw existing.error;
-    if (existing.data) {
-      const stored = sanitizeCourseProgress(existing.data.state, ids);
-      if (stored.updatedAt > progress.updatedAt) {
+    // The row's updated_at carries the client's progress clock, so "is this older than what is saved?"
+    // is decided by ONE conditional statement in Postgres (atomic), not by read-then-write: two tabs or
+    // devices saving at once can never let the older request land last and overwrite newer progress.
+    const at = new Date(progress.updatedAt).toISOString();
+    const row = { clerk_user_id: userId, state: progress, updated_at: at };
+    // 1) create the row if this learner has none (does nothing if it exists)
+    const ins = await db.from('academy_progress').upsert(row, { onConflict: 'clerk_user_id', ignoreDuplicates: true }).select('clerk_user_id');
+    if (ins.error) throw ins.error;
+    if (!ins.data?.length) {
+      // 2) update only if what is saved is not newer than this request
+      const upd = await db
+        .from('academy_progress')
+        .update({ state: progress, updated_at: at })
+        .eq('clerk_user_id', userId)
+        .lte('updated_at', at)
+        .select('clerk_user_id');
+      if (upd.error) throw upd.error;
+      if (!upd.data?.length) {
+        const existing = await db.from('academy_progress').select('state').eq('clerk_user_id', userId).maybeSingle();
+        if (existing.error) throw existing.error;
+        const stored = existing.data ? sanitizeCourseProgress(existing.data.state, ids) : progress;
         return NextResponse.json({ ok: true, stale: true, progress: stored }, { headers: { 'Cache-Control': 'no-store' } });
       }
     }
-    const { error } = await db
-      .from('academy_progress')
-      .upsert({ clerk_user_id: userId, state: progress, updated_at: new Date().toISOString() }, { onConflict: 'clerk_user_id' });
-    if (error) throw error;
     return NextResponse.json({ ok: true, progress }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'STORE_UNAVAILABLE' }, { status: 503 });
