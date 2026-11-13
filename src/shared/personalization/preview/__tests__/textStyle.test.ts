@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentRuleStyle, ctaPillStyle, darkenHex, endCardBackground, isTextStyleKind, layerTextStyle, lightenHex, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
+import { accentRuleStyle, ctaPillStyle, darkenHex, endCardBackground, isTextStyleKind, layerTextStyle, lightenHex, LEFT_COLUMN_MAX_X, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -39,6 +39,10 @@ describe('ctaPillStyle', () => {
     expect(s.borderRadius).toBe('0.975em')
     expect(s.boxShadow).toBe(PILL_SHADOW)
     expect(s.fontSize).toBe(30)
+  })
+
+  it('never wraps its label (the box width is only an estimate)', () => {
+    expect(ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014' }).whiteSpace).toBe('nowrap')
   })
 })
 
@@ -87,6 +91,11 @@ describe('textAlignFor', () => {
   it('left-aligns text whose box the safe-area clamp pushed against the margin', () => {
     // x=.08 on 1920: unclamped left = 154 - 400 = -246, clamped to 38
     expect(textAlignFor({ x: 0.08 }, { leftPx: 38, widthPx: 800 }, 1920)).toBe('left')
+  })
+  it('keeps a centered column centered even when its wide box was nudged by the margin', () => {
+    // x=.3 on 1920: unclamped left = 576 - 561 = 15, clamped to 38 -> still a centered column
+    expect(0.3).toBeGreaterThan(LEFT_COLUMN_MAX_X)
+    expect(textAlignFor({ x: 0.3 }, { leftPx: 38, widthPx: 1122 }, 1920)).toBe('center')
   })
   it('keeps centered text centered when nothing was clamped', () => {
     expect(textAlignFor({ x: 0.5 }, { leftPx: 560, widthPx: 800 }, 1920)).toBe('center')

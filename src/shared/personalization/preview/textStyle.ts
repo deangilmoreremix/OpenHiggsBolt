@@ -41,16 +41,22 @@ export function isTextStyleKind(kind: PreviewLayer['kind']): kind is TextStyleKi
 
 export type TextAlign = 'left' | 'center'
 
+/** Anchors at or left of this are an intentional left-margin column, not a centered column. */
+export const LEFT_COLUMN_MAX_X = 0.15
+
 /**
  * Text is centered in its box, but a box the safe-area clamp pushed against the
- * left margin (a left-column layout) would then leave every line starting at a
- * different x. Such text is left-aligned so the column shares one edge.
+ * left margin (a left-column layout, anchor x <= LEFT_COLUMN_MAX_X) would then leave
+ * every line starting at a different x. Such text is left-aligned so the column shares
+ * one edge. A centered column (e.g. anchored at x = .3) stays centered even when its
+ * wide box is nudged by the margin, so its lines stay centered on one another.
  */
 export function textAlignFor(
   layer: { x: number },
   box: { leftPx: number; widthPx: number },
   compW: number,
 ): TextAlign {
+  if (layer.x > LEFT_COLUMN_MAX_X) return 'center'
   const unclampedLeft = Math.round(layer.x * compW - box.widthPx / 2)
   return box.leftPx > unclampedLeft ? 'left' : 'center'
 }
@@ -171,6 +177,8 @@ export function ctaPillStyle(opts: {
     // radius like 999px is clamped by browsers but NOT by the browser exporter, which draws an ellipse.
     borderRadius: '0.975em',
     display: 'inline-block',
+    // The box width is an estimate; never let the label wrap inside the pill.
+    whiteSpace: 'nowrap',
     fontFamily: fontStackById(opts.fontFamily),
     fontSize: opts.fontSizePx,
     fontWeight: role.fontWeight,

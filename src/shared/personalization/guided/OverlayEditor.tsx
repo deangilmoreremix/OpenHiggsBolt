@@ -604,7 +604,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                     // The REAL design, drawn by the same composition the video uses (not a name label).
                     <DesignLayerPlayer layer={layer} inputProps={inputProps} fallbackLabel={design ? design.name : 'Design'} />
                   ) : layer.kind === 'cta' ? (
-                    <div style={{ width: '100%', textAlign: 'center' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                       <span
                         style={{
                           ...ctaPillStyle({

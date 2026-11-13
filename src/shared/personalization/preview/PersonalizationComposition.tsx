@@ -591,7 +591,8 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           if (layer.kind === 'cta') {
             return (
               <AbsoluteFill key={layer.id} style={layerStyle}>
-                <div style={{ width: '100%', textAlign: 'center' }}>
+                {/* Flex centering keeps a pill wider than its estimated box centered on both sides. */}
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                   <span
                     style={ctaPillStyle({
                       // The layer's color is the button color (default: accent);
