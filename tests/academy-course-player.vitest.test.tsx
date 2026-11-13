@@ -149,6 +149,16 @@ describe('Learning Paths: a self-paced lesson', () => {
     await waitFor(() => expect(window.location.search).toContain('s=2-two'));
   });
 
+  it('returning to LEARN after SEE keeps the step the learner reached, not the deep-linked one', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: '2-two' }} />);
+    expect(await screen.findByText(/Step 4 of 5/)).toBeTruthy(); // opened at the deep-linked step
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    expect(await screen.findByText(/Step 5 of 5/)).toBeTruthy(); // moved on
+    fireEvent.click(screen.getByRole('button', { name: /SEE/ }));
+    fireEvent.click(screen.getByRole('button', { name: /LEARN/ }));
+    expect(await screen.findByText(/Step 5 of 5/)).toBeTruthy(); // not thrown back to step 4
+  });
+
   it('checklist boxes can be ticked, are saved, and survive a reload', async () => {
     const first = render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: 'check-yourself' }} />);
     const ready = (await screen.findByLabelText('ready')) as HTMLInputElement;

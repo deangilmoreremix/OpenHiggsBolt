@@ -468,7 +468,8 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
             ready={course.ready}
             actions={course}
             initialStepId={lessonStepId}
-            onStepChange={setShownStepId}
+            // keep the step the player resumes from in step with where the learner is, so leaving LEARN and coming back does not jump to the original deep link
+            onStepChange={(id) => { setShownStepId(id); setLessonStepId(id); }}
             next={nextLesson}
           />
         )}
@@ -663,7 +664,7 @@ function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; init
               ready={course.ready}
               actions={course}
               initialStepId={stepId}
-              onStepChange={setShownStepId}
+              onStepChange={(id) => { setShownStepId(id); setStepId(id); }}
               next={nextL ? { title: nextL.title, go: () => open(nextL.slug) } : null}
             />
           </>
