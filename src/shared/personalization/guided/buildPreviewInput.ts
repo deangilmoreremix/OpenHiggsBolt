@@ -15,6 +15,7 @@ import type {
 } from '../types'
 import type { ImageHints } from '../preview/imageStyle'
 import { imageRoleFromCategory } from '../preview/imagePresets'
+import { getCachedSamples } from '../preview/placement/frameSampler'
 import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
@@ -77,8 +78,12 @@ export function buildPreviewInput(
     imageHints[url] = { ...assetHints[url], ...measured }
   }
 
+  const videoUrl = previewVideo?.url || source?.sourceMedia || null
+  const lumaSamples = source?.mediaType === 'image' ? null : getCachedSamples(videoUrl)
+
   return {
-    videoUrl: previewVideo?.url || source?.sourceMedia || null,
+    videoUrl,
+    ...(lumaSamples && lumaSamples.length ? { lumaSamples } : {}),
     posterUrl: previewVideo?.poster || source?.poster || null,
     isImageSource: source?.mediaType === 'image',
     audioUrl: previewSettings.audio?.url ?? previewVideo?.audioUrl ?? null,
