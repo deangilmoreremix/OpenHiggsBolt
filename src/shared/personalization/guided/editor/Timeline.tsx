@@ -95,10 +95,11 @@ export function Timeline({
           const name = labels[layer.id] ?? layer.kind
           return (
             <div key={layer.id} style={{ display: 'contents' }}>
-              <button type="button" onClick={() => onSelect(layer.id)} aria-pressed={selected}
-                style={{ background: 'transparent', border: 'none', textAlign: 'left', color: selected ? C.cyan : C.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {/* A label, not a button: layer selection for keyboard and screen-reader users is the layers list and the bar's own controls (they select on use). */}
+              <span data-testid="timeline-label" onClick={() => onSelect(layer.id)}
+                style={{ color: selected ? C.cyan : C.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {name}
-              </button>
+              </span>
               <div data-testid="timeline-track" style={{ position: 'relative', height: 22, background: 'rgba(255,255,255,.04)', borderRadius: 6 }}>
                 <div data-testid="timeline-bar" data-layer-id={layer.id} data-start={start} data-end={layer.endFrame === undefined ? '' : end}
                   style={{ position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: `${width}%`, borderRadius: 6, background: selected ? C.cyanSoft : 'rgba(255,255,255,.12)', border: `1px solid ${selected ? C.cyan : C.borderStrong}`, boxSizing: 'border-box', overflow: 'hidden' }}>
