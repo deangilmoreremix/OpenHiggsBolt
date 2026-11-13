@@ -49,6 +49,11 @@ export interface PreviewLayer {
   endFrame?: number
   /** 0..1 layer opacity. */
   opacity: number
+  /**
+   * Rotation in degrees, clockwise, about the center of the drawn box, normalized to (-180, 180]. Absent = not rotated.
+   * Only text, CTA and image layers rotate (see `userRotatable` in mediaRoles).
+   */
+  rotation?: number
   /** Text content for text-bearing layers. */
   text?: string
   /** Accent/text color (hex). Falls back to brandColors.text. */

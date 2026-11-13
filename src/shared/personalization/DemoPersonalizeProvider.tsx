@@ -102,6 +102,7 @@ import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestore
 import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { reorderLayers } from './preview/layerOrder'
+import { normalizeAngle } from './preview/rotation'
 import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -296,7 +297,8 @@ function clampPreviewFrame(value: unknown, fallback: number): number {
 
 /** Keeps layer geometry/opacity/timing inside the ranges the renderer supports. */
 function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
-  return {
+  const rotation = normalizeAngle(layer.rotation)
+  const out: PreviewLayer = {
     ...layer,
     x: clampPreviewNumber(layer.x, 0, 1, 0),
     y: clampPreviewNumber(layer.y, 0, 1, 0),
@@ -309,6 +311,10 @@ function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
         ? clampPreviewFrame(layer.endFrame, clampPreviewFrame(layer.startFrame, 0))
         : undefined,
   }
+  // No rotation is stored as an absent property, so unrotated layers serialize exactly as before.
+  if (rotation !== 0) out.rotation = rotation
+  else delete out.rotation
+  return out
 }
 
 /** The demo's own aspect ratio when it is one the preview can render. */
@@ -5629,7 +5635,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
     markSessionStarted()
-    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
+    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch || 'rotation' in patch
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) => {

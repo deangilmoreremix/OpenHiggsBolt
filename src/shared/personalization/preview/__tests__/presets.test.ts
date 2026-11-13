@@ -719,3 +719,24 @@ describe('business introduction lower-third', () => {
     expect([logo.x, logo.y]).toEqual([0.08, 0.08])
   })
 })
+
+describe('layer rotation in saved settings', () => {
+  const withRotation = (rotation: unknown) => {
+    const base = createDefaultPreviewSettings()
+    return normalizePreviewSettings({ ...base, layers: base.layers.map((l) => (l.kind === 'headline' ? { ...l, rotation } : l)) })
+  }
+  const headline = (s: ReturnType<typeof normalizePreviewSettings>) => s.layers.find((l) => l.kind === 'headline')!
+
+  it('restores a saved rotation, normalized', () => {
+    expect(headline(withRotation(30)).rotation).toBe(30)
+    expect(headline(withRotation(370)).rotation).toBe(10)
+    expect(headline(withRotation(-200)).rotation).toBe(160)
+  })
+  it('drops a zero or invalid rotation so unrotated layers serialize as before', () => {
+    for (const v of [0, 360, NaN, 'x', null, undefined]) expect('rotation' in headline(withRotation(v))).toBe(false)
+  })
+  it('clampLayer keeps a rotation normalized and removes a zero one', () => {
+    expect(clampLayer({ ...createLayer('logo'), rotation: 400 }).rotation).toBe(40)
+    expect('rotation' in clampLayer({ ...createLayer('logo'), rotation: 0 })).toBe(false)
+  })
+})

@@ -11,6 +11,7 @@ import { createElement } from 'react'
 import { useDemoPersonalize } from '../../DemoPersonalizeProvider'
 import { OverlayEditor } from '../OverlayEditor'
 import { createDefaultPreviewSettings, createLayer } from '../../preview/presets'
+import { rotatedExtent } from '../../preview/rotation'
 import type { PreviewInputProps, PreviewLayer } from '../../preview/types'
 import type { AssetLibrary, PersonalizationAsset } from '../../types'
 import {
@@ -565,5 +566,61 @@ describe('OverlayEditor interaction', () => {
       fireEvent.change(select, { target: { value: '' } })
     })
     expect(updatePreviewLayer).toHaveBeenLastCalledWith('logo', { imageUrl: undefined })
+  })
+})
+
+// ── Rotated layers are bounded by their rotated bounding box ──────────────────
+
+describe('rotated layers', () => {
+  const W = 1920
+  const H = 1080
+  const margin = (v: number) => v * SAFE_AREA_MARGIN
+  const aabb = (layer: PreviewLayer) => {
+    const m = layerBoxMetrics(layer, W, H)
+    const ext = rotatedExtent(m.widthPx, m.heightPx, layer.rotation ?? 0)
+    const cx = m.leftPx + m.widthPx / 2
+    const cy = m.topPx + m.heightPx / 2
+    return { left: cx - ext.w / 2, right: cx + ext.w / 2, top: cy - ext.h / 2, bottom: cy + ext.h / 2 }
+  }
+
+  it('an unrotated layer clamps exactly as before', () => {
+    const base = createLayer('logo', { x: 0.99, y: 0.5, scale: 0.2 })
+    const a = clampLayerToBounds({ ...base, rotation: 0 }, W, H)
+    const b = clampLayerToBounds(base, W, H)
+    expect([a.x, a.y, a.scale]).toEqual([b.x, b.y, b.scale])
+  })
+
+  it('keeps a rotated logo dragged past every edge inside the safe area', () => {
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0.5, 1]] as const) {
+      const out = clampLayerToBounds(createLayer('logo', { x, y, scale: 0.2, rotation: 33 }), W, H)
+      const b = aabb(out)
+      expect(b.left).toBeGreaterThanOrEqual(margin(W) - 1)
+      expect(b.right).toBeLessThanOrEqual(W - margin(W) + 1)
+      expect(b.top).toBeGreaterThanOrEqual(margin(H) - 1)
+      expect(b.bottom).toBeLessThanOrEqual(H - margin(H) + 1)
+    }
+  })
+
+  it('does not move a rotated layer that already fits', () => {
+    const l = createLayer('logo', { x: 0.5, y: 0.5, scale: 0.15, rotation: 20 })
+    const out = clampLayerToBounds(l, W, H)
+    expect(out.x).toBeCloseTo(0.5, 6)
+    expect(out.y).toBeCloseTo(0.5, 6)
+  })
+
+  it('a rotated layer is limited to a smaller scale than the same layer unrotated (its rotated box is bigger)', () => {
+    const flat = maxScaleThatFits(createLayer('logo', { x: 0.5, y: 0.5, rotation: 0 }), W, H)
+    const turned = maxScaleThatFits(createLayer('logo', { x: 0.5, y: 0.5, rotation: 45 }), W, H)
+    expect(turned).toBeLessThanOrEqual(flat)
+  })
+
+  it('keeps rotated text inside the frame too', () => {
+    const out = clampLayerToBounds({ ...createLayer('headline', { x: 0.02, y: 0.98, scale: 0.06, rotation: -15 }), text: 'A fairly long headline for this frame' }, W, H)
+    const m = layerBoxMetrics(out, W, H, out.text)
+    const ext = rotatedExtent(m.widthPx, m.heightPx, -15)
+    const cx = m.leftPx + m.widthPx / 2
+    const cy = m.topPx + m.heightPx / 2
+    expect(cx - ext.w / 2).toBeGreaterThanOrEqual(margin(W) - 2)
+    expect(cy + ext.h / 2).toBeLessThanOrEqual(H - margin(H) + 2)
   })
 })
