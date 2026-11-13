@@ -230,6 +230,31 @@ describe('useAutoCutout (auto queue)', () => {
     expect(latest.assets.find((a) => a.id === 'b')!.hasTransparency).toBe(true)
   })
 
+  it('a request made right after Cancel is not wiped by the cancelled job finishing', async () => {
+    // The first job is stuck downloading; Cancel then an immediate request for the same asset.
+    let stall = true
+    vi.mocked(loadImageBlob).mockImplementation((url: string, options?: { signal?: AbortSignal }) =>
+      stall
+        ? new Promise<Blob>((_, reject) => {
+            options?.signal?.addEventListener('abort', () => {
+              stall = false
+              reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+            })
+          })
+        : Promise.resolve(new Blob([url], { type: 'image/jpeg' })),
+    )
+    await mount([asset({ id: 'a', previewUrl: 'https://shop.example/a.jpg' })])
+    await settle(150)
+    expect(latest.assets[0].bgRemoval?.status).toBe('running')
+    await act(async () => latest.cutout.setAutoEnabled(false)) // only a manual request can restart it
+    await act(async () => {
+      latest.cutout.cancelAll()
+      latest.cutout.requestRemoval(['a'])
+    })
+    await settle(0, () => latest.assets.find((a) => a.id === 'a')?.bgRemoval?.status === 'done')
+    expect(latest.assets.find((a) => a.id === 'a')!.hasTransparency).toBe(true)
+  })
+
   it('Cancel frees the queue even when an image download is stuck', async () => {
     // A host that never answers: the download only ends when the job's signal aborts.
     vi.mocked(loadImageBlob).mockImplementation((url: string, options?: { signal?: AbortSignal }) =>
