@@ -64,7 +64,7 @@ function LayoutQualityBar({ quality, layers }: { quality: LayoutQualityState; la
             <span style={{ fontSize: 12, fontWeight: 800, color: C.text }}>
               Layout check{adjust > 0 ? ` · ${adjust} to fix` : review > 0 ? ` · ${review} to review` : ''}
             </span>
-            <span data-testid="layout-quality-status" data-status={report.status} style={badgeStyle(s.tone)}>{s.label}</span>
+            <span data-testid="layout-quality-bar-status" data-status={report.status} style={badgeStyle(s.tone)}>{s.label}</span>
           </div>
           <div style={{ ...hintStyle, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {first ? first.message : s.text}
