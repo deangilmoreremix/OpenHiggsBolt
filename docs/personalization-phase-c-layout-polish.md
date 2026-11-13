@@ -137,3 +137,15 @@ images, a rotation handle above its top edge (just inside it when the layer is a
 
 Approximations: the placement and layout quality checks use the unrotated box; the safe-area clamp uses the rotated bounding box.
 Snap guides use the unrotated box.
+
+## Inspector tabs, first-run tour, uploaded videos
+
+- The layer inspector has three groups: **Content** (text, image, colors, font), **Layout** (size, opacity, rotation, lock,
+  position presets) and **Timing** (animation, start delay, shown from). Inactive groups stay mounted but hidden, so every
+  control keeps its label and test id. They are plain buttons with `aria-pressed`, not `role="tab"`, because the modal's own
+  step bar is the only tablist the "no tab navigation" guard allows.
+- `guided/editor/EditorTour.tsx`: a four-step inline tour (not a modal, never blocks the stage) shown once; dismissal is stored
+  in `localStorage` (wrapped in try/catch). "Quick tour" reopens it; "Shortcuts" shows a cheat sheet.
+- **Uploaded videos:** Step 2 uploads become `blob:` URLs. `middleware.js` now lists `blob:` in `connect-src` (it already allowed
+  `blob:` for media and images) so the Player and exporter can read them. Verified: the e2e test "an uploaded video ... plays in the
+  live editor" fails without the change and passes with it.

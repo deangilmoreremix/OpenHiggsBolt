@@ -29,7 +29,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net",
+  "connect-src 'self' blob: https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net",
   "font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com",
   "worker-src 'self' blob:",
   "frame-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://challenges.cloudflare.com",
