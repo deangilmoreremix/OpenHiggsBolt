@@ -778,3 +778,40 @@ describe('OverlayEditor handles', () => {
     expect(screen.queryByTestId('rotation-field')).toBeNull()
   })
 })
+
+describe('OverlayEditor inspector tabs', () => {
+  const logo = () => createLayer('logo', { x: 0.5, y: 0.5, scale: 0.2 })
+  const isShown = (el: HTMLElement) => !el.closest('[hidden]')
+
+  it('starts on Content and shows one group of settings at a time', () => {
+    renderEditor([logo()])
+    expect(screen.getByTestId('inspector-tab-content').getAttribute('aria-pressed')).toBe('true')
+    expect(isShown(screen.getByLabelText('Layer image'))).toBe(true)
+    expect(isShown(screen.getByLabelText('Layer size'))).toBe(false)
+    expect(isShown(screen.getByLabelText('Layer animation'))).toBe(false)
+  })
+
+  it('Layout shows size, opacity, rotation, lock and position presets', () => {
+    renderEditor([logo()])
+    act(() => { fireEvent.click(screen.getByTestId('inspector-tab-layout')) })
+    for (const el of [screen.getByLabelText('Layer size'), screen.getByLabelText('Layer opacity'), screen.getByTestId('rotation-field'), screen.getByTestId('overlay-lock-position')]) {
+      expect(isShown(el)).toBe(true)
+    }
+    expect(isShown(screen.getByLabelText('Layer image'))).toBe(false)
+  })
+
+  it('Timing shows animation and when the layer appears', () => {
+    renderEditor([logo()])
+    act(() => { fireEvent.click(screen.getByTestId('inspector-tab-timing')) })
+    expect(isShown(screen.getByLabelText('Layer animation'))).toBe(true)
+    expect(isShown(screen.getByLabelText('Shown from seconds'))).toBe(true)
+    expect(isShown(screen.getByLabelText('Layer size'))).toBe(false)
+  })
+
+  it('changing a setting from a hidden-then-shown tab still updates the layer', () => {
+    const { updatePreviewLayer } = renderEditor([logo()])
+    act(() => { fireEvent.click(screen.getByTestId('inspector-tab-layout')) })
+    act(() => { fireEvent.change(screen.getByLabelText('Layer opacity'), { target: { value: '0.5' } }) })
+    expect(updatePreviewLayer).toHaveBeenCalledWith(expect.any(String), { opacity: 0.5 })
+  })
+})

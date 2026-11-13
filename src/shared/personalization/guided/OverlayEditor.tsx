@@ -13,6 +13,7 @@ import { Tip } from './editor/Tip'
 import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
 import type { PlayerRef } from '@remotion/player'
 import { Timeline } from './editor/Timeline'
+import { EditorTour } from './editor/EditorTour'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
 import { isRotated, normalizeAngle, rotateCss, rotatedExtent } from '../preview/rotation'
 import type { EditorTipId } from './editor/editorTips'
@@ -248,6 +249,13 @@ export interface OverlayEditorProps {
 export const framesToSeconds = (frames: number, fps: number) => Math.round((frames / Math.max(1, fps)) * 100) / 100
 export const secondsToFrames = (seconds: number, fps: number) => Math.max(0, Math.round((Number.isFinite(seconds) ? seconds : 0) * Math.max(1, fps)))
 
+type InspectorTab = 'content' | 'layout' | 'timing'
+const INSPECTOR_TABS: { id: InspectorTab; label: string }[] = [
+  { id: 'content', label: 'Content' },
+  { id: 'layout', label: 'Layout' },
+  { id: 'timing', label: 'Timing' },
+]
+
 export function OverlayEditor({ inputProps, belowStage, liveStage = false }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
@@ -273,6 +281,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
   const [confirmRemoveDesign, setConfirmRemoveDesign] = useState(false)
   // Snap guides: on by default, switched off from the toolbar or by holding Alt while dragging.
   const [snapOn, setSnapOn] = useState(true)
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('content')
   // Live stage: the person can still switch back to the still poster (lighter, and a fallback if the video cannot play).
   const [liveWanted, setLiveWanted] = useState(true)
   const liveOn = liveStage && liveWanted
@@ -578,6 +587,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
         selected layer by 1% (Shift for 5%), Delete hides it. Layers stay inside the 2% safe area of the
         frame, and positions are saved with your project.
       </p>
+      <EditorTour />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
         {/* ── Stage column: stage + anything pinned directly under it ───── */}
@@ -1050,6 +1060,24 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
             <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
               <div style={{ color: C.text, fontSize: 12, fontWeight: 800 }}>{LAYER_LABELS[selected.kind]}</div>
 
+              <Tip id="inspectorTabs" side="top">
+                <div role="group" aria-label="Layer settings" data-testid="inspector-tabs" style={{ display: 'flex', gap: 4 }}>
+                  {INSPECTOR_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      aria-pressed={inspectorTab === t.id}
+                      data-testid={`inspector-tab-${t.id}`}
+                      onClick={() => setInspectorTab(t.id)}
+                      style={{ ...chipStyle(inspectorTab === t.id), minHeight: 28, fontSize: 11, flex: 1 }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </Tip>
+
+              <div id={controlId('panel-content')} hidden={inspectorTab !== 'content'} style={{ display: inspectorTab === 'content' ? 'flex' : 'none', flexDirection: 'column', gap: 10 }}>
               {selected.kind === 'design' && (
                 <div style={{ color: C.muted, fontSize: 10 }}>
                   {selectedDesign
@@ -1220,6 +1248,9 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 )
               })()}
 
+              </div>
+
+              <div id={controlId('panel-layout')} hidden={inspectorTab !== 'layout'} style={{ display: inspectorTab === 'layout' ? 'flex' : 'none', flexDirection: 'column', gap: 10 }}>
               <div>
                 <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>
                 <input
@@ -1290,6 +1321,9 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 </div>
               )}
 
+              </div>
+
+              <div id={controlId('panel-timing')} hidden={inspectorTab !== 'timing'} style={{ display: inspectorTab === 'timing' ? 'flex' : 'none', flexDirection: 'column', gap: 10 }}>
               <div>
                 <label style={labelStyle} htmlFor={controlId('animation')}>Animation</label>
                 <select
@@ -1338,6 +1372,9 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 </div>
               </div>
 
+              </div>
+
+              <div hidden={inspectorTab !== 'layout'} style={{ display: inspectorTab === 'layout' ? 'flex' : 'none', flexDirection: 'column', gap: 10 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: C.text, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
@@ -1372,6 +1409,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
               <div style={{ color: C.muted, fontSize: 10 }}>
                 Position {Math.round(selected.x * 100)}% / {Math.round(selected.y * 100)}% · Size{' '}
                 {Math.round(selected.scale * 100)}% · kept inside the {Math.round(SAFE_AREA_MARGIN * 100)}% safe area
+              </div>
               </div>
             </div>
           )}
