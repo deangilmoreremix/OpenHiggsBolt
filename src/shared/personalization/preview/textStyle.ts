@@ -1,5 +1,6 @@
 import type React from 'react'
 import { fontStackById } from './presets'
+import { rotateCss } from './rotation'
 import type { PreviewLayer } from './types'
 
 /**
@@ -74,7 +75,7 @@ export function isSingleLineBox(widthPx: number, compW: number): boolean {
 /** Style for a plain text layer (headline, tagline, business name, offer). */
 export function layerTextStyle(
   kind: TextStyleKind,
-  opts: { fontSizePx: number; color: string; fontFamily?: string; align?: TextAlign; singleLine?: boolean },
+  opts: { fontSizePx: number; color: string; fontFamily?: string; align?: TextAlign; singleLine?: boolean; rotation?: number },
 ): React.CSSProperties {
   const role = ROLE_STYLE[kind]
   const align = opts.align ?? 'center'
@@ -84,9 +85,11 @@ export function layerTextStyle(
     ? {
         whiteSpace: 'nowrap',
         width: 'max-content',
-        ...(align === 'center' ? { position: 'relative', left: '50%', transform: 'translateX(-50%)' } : {}),
+        ...(align === 'center' ? { position: 'relative', left: '50%' } : {}),
       }
     : { width: '100%' }
+  // One transform: centering first (single-line, centered text), then the layer's rotation about the text's own center.
+  const transform = [opts.singleLine && align === 'center' ? 'translateX(-50%)' : '', rotateCss(opts.rotation)].filter(Boolean).join(' ')
   return {
     fontFamily: fontStackById(opts.fontFamily),
     color: opts.color,
@@ -101,6 +104,7 @@ export function layerTextStyle(
     // Even line lengths for wrapped headlines. Ignored where unsupported.
     textWrap: 'balance',
     textShadow: TEXT_SHADOW,
+    ...(transform ? { transform, transformOrigin: 'center center' } : {}),
   }
 }
 
@@ -127,6 +131,7 @@ export function accentRuleStyle(
   compH: number,
   color: string,
   align: TextAlign = 'center',
+  rotation?: number,
 ): React.CSSProperties | null {
   if (kind !== 'headline' || box.widthPx <= 0 || box.heightPx <= 0) return null
   const thickness = Math.max(3, Math.round(compH * 0.006))
@@ -137,18 +142,26 @@ export function accentRuleStyle(
     boxShadow: '0 1px 6px rgba(0,0,0,.35)',
     pointerEvents: 'none',
   }
+  let placed: React.CSSProperties
   if (animation === 'lower-third') {
     const gap = Math.round(compH * 0.015)
-    return { ...base, left: Math.max(0, box.leftPx - gap - thickness), top: box.topPx, width: thickness, height: box.heightPx }
+    placed = { ...base, left: Math.max(0, box.leftPx - gap - thickness), top: box.topPx, width: thickness, height: box.heightPx }
+  } else {
+    const width = Math.round(Math.min(box.widthPx * 0.35, compW * 0.12))
+    placed = {
+      ...base,
+      left: align === 'left' ? Math.round(box.leftPx) : Math.round(box.leftPx + box.widthPx / 2 - width / 2),
+      top: Math.round(box.topPx + box.heightPx + compH * 0.012),
+      width,
+      height: thickness,
+    }
   }
-  const width = Math.round(Math.min(box.widthPx * 0.35, compW * 0.12))
-  return {
-    ...base,
-    left: align === 'left' ? Math.round(box.leftPx) : Math.round(box.leftPx + box.widthPx / 2 - width / 2),
-    top: Math.round(box.topPx + box.heightPx + compH * 0.012),
-    width,
-    height: thickness,
-  }
+  // A rotated headline carries its rule with it: rotate the rule about the TEXT's center, not its own.
+  const turn = rotateCss(rotation)
+  if (!turn) return placed
+  const originX = box.leftPx + box.widthPx / 2 - (placed.left as number)
+  const originY = box.topPx + box.heightPx / 2 - (placed.top as number)
+  return { ...placed, transform: turn, transformOrigin: `${originX}px ${originY}px` }
 }
 
 /** Mixes a hex color toward black by `amount` (0..1). Null for non-hex input. */
@@ -183,6 +196,7 @@ export function ctaPillStyle(opts: {
   background: string
   color: string
   fontFamily?: string
+  rotation?: number
 }): React.CSSProperties {
   const role = ROLE_STYLE.cta
   // A top-lit gradient from a lighter shade to the exact layer color. It is opaque on
@@ -205,6 +219,7 @@ export function ctaPillStyle(opts: {
     lineHeight: role.lineHeight,
     letterSpacing: role.letterSpacing,
     boxShadow: PILL_SHADOW,
+    ...(rotateCss(opts.rotation) ? { transform: rotateCss(opts.rotation), transformOrigin: 'center center' } : {}),
   }
 }
 
