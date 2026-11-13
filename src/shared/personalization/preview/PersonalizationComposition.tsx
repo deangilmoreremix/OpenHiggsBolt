@@ -19,7 +19,7 @@ import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from './motion'
 import { accentRuleStyle, ctaPillStyle, endCardBackground, isSingleLineBox, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
-import { hasTextScrim, scrimForBox, scrimStyle } from './scrim'
+import { hasTextScrim, scrimForBox, scrimPeakAt, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
 import { toPlayablePreviewMediaUrl } from './remoteMedia'
@@ -245,6 +245,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   audioUrl,
   settings,
   brand,
+  lumaSamples,
 }) => {
   const frame = useCurrentFrame()
   const videoConfig = useVideoConfig()
@@ -612,9 +613,12 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
           // A soft local scrim sits just behind the text and fades in and out with it.
           const metrics = hasTextScrim(layer.kind) ? layerBoxMetrics(layer, compW, compH, text) : null
-          const scrim = metrics
-            ? scrimForBox({ left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }, compW, compH)
+          const scrimBox = metrics
+            ? { left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }
             : null
+          // Strength adapts to the measured brightness of the footage behind this text at this moment.
+          const scrimPeak = scrimBox ? scrimPeakAt(lumaSamples, scrimBox, compW, compH, frame / Math.max(1, settings.fps), textColor) : 0
+          const scrim = scrimBox && scrimPeak > 0.005 ? scrimForBox(scrimBox, compW, compH) : null
           const align = textAlignFor(layer, box, compW)
           const ruleStyle = metrics
             ? accentRuleStyle(
@@ -639,7 +643,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                   data-testid="text-scrim"
                   style={{ zIndex: layerStyle.zIndex, opacity: shapeOpacity, pointerEvents: 'none' }}
                 >
-                  <div style={scrimStyle(scrim)} />
+                  <div style={scrimStyle(scrim, scrimPeak)} />
                 </AbsoluteFill>
               ) : null}
               <AbsoluteFill style={textBoxStyle}>

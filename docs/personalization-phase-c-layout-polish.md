@@ -83,9 +83,21 @@ frame after the entrances settle (about frame 60) and inside the end card
   `toBox` character-width estimate, which is narrower than the real text. This predates the
   polish work and is flagged by the quality check's `text-overflow` rule when it gets bad.
 
+## Adaptive scrim
+
+The scrim strength follows the footage. `placement/frameSampler.ts` measures luminance grids of the source
+clip (cached per URL via `getCachedSamples`); `buildPreviewInput` puts them on `PreviewInputProps.lumaSamples`;
+`scrimPeakAt` (`preview/scrim.ts`) interpolates the luminance behind a text box between the two samples around
+the current time and maps it to a strength between `SCRIM_MIN` (0.2) and `SCRIM_MAX` (0.6). Interpolation keeps
+it from stepping at sample boundaries. With no samples (still image, or the clip could not be read in the
+browser) the default `SCRIM_PEAK` (0.42) is used. Text darker than relative luminance 0.3 gets no darkening
+scrim. The layout quality check calls the same `peakFromLuminance` per sample, so the contrast it credits is
+exactly what the render draws.
+
+The editor stage still draws the default-strength scrim over the poster image (it has no frame measurements);
+the exported video and the Player use the adaptive one.
+
 ## Not done here
 
-The scrim strength is fixed. It is not yet adapted to the measured brightness of the footage,
-because the composition does not receive the frame samples that `placement/frameSampler.ts`
-produces. The placement engine's candidate scoring also ignores the scrim, which can only make
-it more cautious than needed.
+The placement engine's candidate scoring still ignores the scrim, which can only make it more cautious than
+needed.

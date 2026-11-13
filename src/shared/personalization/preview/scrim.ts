@@ -16,6 +16,8 @@
  * really drawn counts toward readability, and one that is not drawn never does).
  */
 import type React from 'react'
+import { hexLuminance, regionLuminance } from './placement/geometry'
+import type { LumaSample } from './placement/types'
 import type { PreviewLayer } from './types'
 
 export interface ScrimRect {
@@ -83,6 +85,65 @@ export function scrimAlphaOverBox(s: Scrim, box: ScrimRect, peak: number = SCRIM
     scrimAlphaAt(s, 0, box.top + box.height / 2, peak),
     scrimAlphaAt(s, 0, box.top + box.height, peak),
   )
+}
+
+/** Lightest and darkest the scrim gets when it adapts to the footage. */
+export const SCRIM_MIN = 0.2
+export const SCRIM_MAX = 0.6
+/** Text darker than this (relative luminance) gets no darkening scrim: it would make it harder to read. */
+const DARK_TEXT_LUMINANCE = 0.3
+
+/**
+ * Scrim strength for a text row over footage of relative luminance `lum` (0..1; null = not measured).
+ * Brighter footage needs a stronger scrim, dark footage barely needs one. Dark text gets none.
+ * Unmeasured footage uses the default strength.
+ */
+export function peakFromLuminance(lum: number | null | undefined, textLuminance: number): number {
+  if (textLuminance < DARK_TEXT_LUMINANCE) return 0
+  if (lum == null || !Number.isFinite(lum)) return SCRIM_PEAK
+  return Math.min(SCRIM_MAX, Math.max(SCRIM_MIN, 0.18 + 0.55 * lum))
+}
+
+/**
+ * Mean luminance of the footage behind `box` at time `t` seconds. Linearly interpolates between the
+ * two measured samples that bracket `t`, so the scrim fades smoothly instead of stepping at sample
+ * boundaries. Null when there are no usable samples.
+ */
+export function footageLuminanceAt(
+  samples: readonly LumaSample[] | null | undefined,
+  box: ScrimRect,
+  width: number,
+  height: number,
+  t: number,
+): number | null {
+  if (!samples || samples.length === 0) return null
+  const lum = (smp: LumaSample) => regionLuminance(smp, box, width, height)
+  const sorted = samples.length > 1 ? [...samples].sort((a, b) => a.t - b.t) : samples
+  if (t <= sorted[0].t) return lum(sorted[0])
+  const last = sorted[sorted.length - 1]
+  if (t >= last.t) return lum(last)
+  let i = 0
+  while (i < sorted.length - 2 && sorted[i + 1].t < t) i++
+  const a = sorted[i]
+  const b = sorted[i + 1]
+  const la = lum(a)
+  const lb = lum(b)
+  if (la == null) return lb
+  if (lb == null) return la
+  const k = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t)
+  return la + (lb - la) * k
+}
+
+/** The scrim strength to draw for a text layer at time `t`: footage brightness behind it + its text color. */
+export function scrimPeakAt(
+  samples: readonly LumaSample[] | null | undefined,
+  box: ScrimRect,
+  width: number,
+  height: number,
+  t: number,
+  textColor: string,
+): number {
+  return peakFromLuminance(footageLuminanceAt(samples, box, width, height, t), hexLuminance(textColor))
 }
 
 const STOP_DISTANCES = [1, 0.85, 0.7, 0.55, 0.4, CORE] as const

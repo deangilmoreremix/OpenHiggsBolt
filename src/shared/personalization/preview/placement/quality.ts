@@ -23,10 +23,11 @@ import {
   intersectionArea,
   outsideSafeArea,
   splitPanelRect,
+  hexLuminance,
   zoneToPx,
 } from './geometry'
 import { boxOf, samplesFor, visibleSeconds, worstContrast } from './engine'
-import { hasTextScrim, scrimAlphaOverBox, scrimForBox } from '../scrim'
+import { hasTextScrim, peakFromLuminance, scrimAlphaOverBox, scrimForBox } from '../scrim'
 import type { PlacementInput, PlacementLayer, QualityIssue, QualityReport } from './types'
 
 const MIN_CONTRAST = 3
@@ -110,8 +111,13 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
       if (input.samples.length) {
         // The composition draws a soft scrim behind these text kinds; credit it, but only
         // the weakest alpha the box gets (and nothing for text kinds that draw none).
-        const scrimAlpha = hasTextScrim(l.layer.kind) ? scrimAlphaOverBox(scrimForBox(box, width, height), box) : 0
-        const wc = worstContrast(box, samplesFor(input.samples, window(l)), width, height, l.layer.color ?? input.textColor, scrimAlpha)
+        const textColor = l.layer.color ?? input.textColor
+        const band = scrimForBox(box, width, height)
+        // The scrim's strength follows the footage luminance behind the text, exactly as the render draws it.
+        const alphaFor = hasTextScrim(l.layer.kind)
+          ? (lum: number) => scrimAlphaOverBox(band, box, peakFromLuminance(lum, hexLuminance(textColor)))
+          : () => 0
+        const wc = worstContrast(box, samplesFor(input.samples, window(l)), width, height, textColor, 0, alphaFor)
         if (wc && wc.ratio < MIN_CONTRAST) {
           issues.push({ code: 'low-contrast', severity: 'adjust', layerId: l.layer.id, tStart: wc.t, tEnd: window(l)[1], fixable: movable(l),
             message: `${contract.label} is hard to read at ${wc.t.toFixed(1)} s (contrast ${wc.ratio.toFixed(1)}:1).` })
