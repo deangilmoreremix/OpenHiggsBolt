@@ -172,3 +172,56 @@ describe('single-line text', () => {
     expect(s.whiteSpace).toBeUndefined()
   })
 })
+
+describe('rotation in the shared styles', () => {
+  it('rotates a text layer about its own center, and leaves unrotated styles without a transform', () => {
+    const s = layerTextStyle('headline', { fontSizePx: 40, color: '#fff', rotation: 15 })
+    expect(s.transform).toBe('rotate(15deg)')
+    expect(s.transformOrigin).toBe('center center')
+    expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff' }).transform).toBeUndefined()
+    expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff', rotation: 0 }).transform).toBeUndefined()
+    expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff', rotation: 360 }).transform).toBeUndefined()
+  })
+
+  it('applies the centering translate before the rotation, and no translate when left-aligned', () => {
+    expect(layerTextStyle('tagline', { fontSizePx: 30, color: '#fff', singleLine: true, rotation: 20 }).transform).toBe('translateX(-50%) rotate(20deg)')
+    expect(layerTextStyle('tagline', { fontSizePx: 30, color: '#fff', singleLine: true, align: 'left', rotation: 20 }).transform).toBe('rotate(20deg)')
+    expect(layerTextStyle('tagline', { fontSizePx: 30, color: '#fff', singleLine: true }).transform).toBe('translateX(-50%)')
+  })
+
+  it('rotates the CTA pill about its center', () => {
+    const s = ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014', rotation: -8 })
+    expect(s.transform).toBe('rotate(-8deg)')
+    expect(s.transformOrigin).toBe('center center')
+    expect(ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014' }).transform).toBeUndefined()
+  })
+})
+
+describe('accent rule follows a rotated headline', () => {
+  const box = { leftPx: 400, topPx: 600, widthPx: 800, heightPx: 70 }
+
+  it('has no transform when the headline is not rotated', () => {
+    expect(accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00', 'center')!.transform).toBeUndefined()
+    expect(accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00', 'center', 0)!.transform).toBeUndefined()
+  })
+
+  it('rotates about the center of the TEXT box, expressed in the rule\'s own coordinates', () => {
+    const r = accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00', 'center', -12)!
+    expect(r.transform).toBe('rotate(-12deg)')
+    const [ox, oy] = String(r.transformOrigin).split(' ').map((v) => parseFloat(v))
+    // the pivot, mapped back into the frame, is the text box center
+    expect((r.left as number) + ox).toBeCloseTo(800, 6)
+    expect((r.top as number) + oy).toBeCloseTo(635, 6)
+  })
+
+  it('does the same for the lower-third bar and for left-aligned text', () => {
+    const bar = accentRuleStyle('headline', 'lower-third', box, 1920, 1080, '#0f0', 'center', 20)!
+    expect((bar.left as number) + parseFloat(String(bar.transformOrigin).split(' ')[0])).toBeCloseTo(800, 6)
+    const left = accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#0f0', 'left', 20)!
+    expect((left.left as number) + parseFloat(String(left.transformOrigin).split(' ')[0])).toBeCloseTo(800, 6)
+  })
+
+  it('is still null for non-headlines whatever the rotation', () => {
+    expect(accentRuleStyle('tagline', 'slide-up', box, 1920, 1080, '#f00', 'center', 30)).toBeNull()
+  })
+})

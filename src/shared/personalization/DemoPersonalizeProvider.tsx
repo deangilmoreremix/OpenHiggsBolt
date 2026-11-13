@@ -102,6 +102,8 @@ import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestore
 import { imageLoadsInBrowser } from './imageLoadProbe'
 import { useAutoCutout, shouldHoldAutoImport, AUTO_IMPORT_CUTOUT_WAIT_MS, type AutoCutoutControls } from './backgroundRemoval/useAutoCutout'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { reorderLayers } from './preview/layerOrder'
+import { normalizeAngle } from './preview/rotation'
 import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -296,7 +298,8 @@ function clampPreviewFrame(value: unknown, fallback: number): number {
 
 /** Keeps layer geometry/opacity/timing inside the ranges the renderer supports. */
 function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
-  return {
+  const rotation = normalizeAngle(layer.rotation)
+  const out: PreviewLayer = {
     ...layer,
     x: clampPreviewNumber(layer.x, 0, 1, 0),
     y: clampPreviewNumber(layer.y, 0, 1, 0),
@@ -309,6 +312,10 @@ function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
         ? clampPreviewFrame(layer.endFrame, clampPreviewFrame(layer.startFrame, 0))
         : undefined,
   }
+  // No rotation is stored as an absent property, so unrotated layers serialize exactly as before.
+  if (rotation !== 0) out.rotation = rotation
+  else delete out.rotation
+  return out
 }
 
 /** The demo's own aspect ratio when it is one the preview can render. */
@@ -976,6 +983,8 @@ export type DemoPersonalizeContextValue = {
   setPreviewVideo: (video: PreviewVideoRef | null) => void
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  /** Restacks the video's layers: the order given is the new order of `previewSettings.layers` (later = drawn above). */
+  reorderPreviewLayers: (orderedIds: string[]) => void
   /** Locks/unlocks a layer: a locked layer is never moved by the editor, a reflow or the placement engine. */
   setPreviewLayerLocked: (layerId: string, locked: boolean) => void
   /** Regions of the footage the overlays must not cover (customer-marked subject areas). */
@@ -5652,7 +5661,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
     markSessionStarted()
-    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch
+    const touchesGeometry = 'x' in patch || 'y' in patch || 'scale' in patch || 'rotation' in patch
     setPreviewSettings((prev) => ({
       ...prev,
       layers: prev.layers.map((layer) => {
@@ -5692,6 +5701,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignedImageUrlsKey])
+
+  const reorderPreviewLayers = useCallback((orderedIds: string[]) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => {
+      const layers = reorderLayers(prev.layers, orderedIds)
+      return layers.every((l, i) => l === prev.layers[i]) ? prev : { ...prev, layers }
+    })
+  }, [])
 
   const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
     markSessionStarted()
@@ -6414,6 +6431,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo,
     setPreviewLayout,
     updatePreviewLayer,
+    reorderPreviewLayers,
     setPreviewLayerLocked,
     setPreviewProtectedZones,
     applyPreviewPlacements,

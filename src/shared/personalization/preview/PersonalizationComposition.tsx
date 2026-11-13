@@ -18,6 +18,7 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from './motion'
+import { rotateCss, rotatedExtent } from './rotation'
 import { accentRuleStyle, ctaPillStyle, endCardBackground, isSingleLineBox, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimPeakAt, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
@@ -445,6 +446,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           if (entrance.translateX) transformParts.push(`translateX(${entrance.translateX}px)`)
           if (entrance.translateY + exit.translateY) transformParts.push(`translateY(${entrance.translateY + exit.translateY}px)`)
           if (entrance.scale !== 1) transformParts.push(`scale(${entrance.scale})`)
+          // Images rotate on their (explicitly sized) wrapper. Text and the CTA rotate on their own element, where the real size is
+          // (their wrapper is as tall as the frame, so it would pivot about the wrong point); designs never rotate.
+          const rotation = isImage ? layer.rotation : undefined
+          if (rotateCss(rotation)) transformParts.push(rotateCss(rotation))
 
           // The layer's media role decides stacking and image fitting.
           const designForRole = isDesign && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
@@ -549,7 +554,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
             const reveal = style ? revealFactors(style, frame, layer.startFrame + (layer.animationDelay || 0)) : { progress: 1, scale: 1 }
             // A reveal replaces the layer's own entrance animation.
-            const boxStyle = (style?.reveal === 'wipe' || style?.reveal === 'diagonal') ? { ...layerStyle, opacity: layer.opacity, transform: undefined } : layerStyle
+            const boxStyle = (style?.reveal === 'wipe' || style?.reveal === 'diagonal') ? { ...layerStyle, opacity: layer.opacity, transform: rotateCss(layer.rotation) || undefined } : layerStyle
             return (
               <AbsoluteFill key={layer.id} style={{ ...boxStyle, height: box.widthPx }}>
                 <div style={{ position: 'absolute', inset: 0, opacity: exit.opacity, transform: exit.scale !== 1 ? `scale(${exit.scale})` : undefined }}>
@@ -602,6 +607,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                       color: readableTextOn(textColor, PILL_TEXT_COLOR),
                       fontSizePx: box.fontSizePx,
                       fontFamily: layer.fontFamily,
+                      rotation: layer.rotation,
                     })}
                   >
                     {text}
@@ -613,8 +619,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
           // A soft local scrim sits just behind the text and fades in and out with it.
           const metrics = hasTextScrim(layer.kind) ? layerBoxMetrics(layer, compW, compH, text) : null
+          // A rotated row is as tall as its rotated bounding box, so the band is sized to that (same center).
           const scrimBox = metrics
-            ? { left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }
+            ? (() => {
+                const ext = rotatedExtent(metrics.widthPx, metrics.heightPx, layer.rotation ?? 0)
+                const cx = metrics.leftPx + metrics.widthPx / 2
+                const cy = metrics.topPx + metrics.heightPx / 2
+                return { left: cx - ext.w / 2, top: cy - ext.h / 2, width: ext.w, height: ext.h }
+              })()
             : null
           // Strength adapts to the measured brightness of the footage behind this text at this moment.
           const scrimPeak = scrimBox ? scrimPeakAt(lumaSamples, scrimBox, compW, compH, frame / Math.max(1, settings.fps), textColor) : 0
@@ -624,7 +636,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             ? accentRuleStyle(
                 layer.kind, layer.animation,
                 { leftPx: metrics.leftPx, topPx: metrics.topPx, widthPx: metrics.widthPx, heightPx: metrics.heightPx },
-                compW, compH, settings.brandColors.accent, align,
+                compW, compH, settings.brandColors.accent, align, layer.rotation,
               )
             : null
           // Headlines and names enter word by word; the layer-level entrance then only drives
@@ -654,6 +666,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     fontFamily: layer.fontFamily,
                     align,
                     singleLine: isSingleLineBox(box.widthPx, compW),
+                    rotation: layer.rotation,
                   })}
                 >
                   {wordMode

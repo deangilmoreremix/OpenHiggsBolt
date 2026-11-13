@@ -30,6 +30,7 @@ import type {
 // deterministic typeface. `templates/typography` imports nothing from
 // `preview/`, so this import cannot form a cycle.
 import { DESIGN_FONT_STACK } from '../templates/typography'
+import { normalizeAngle } from './rotation'
 
 const LAYER_KINDS: PreviewLayerKind[] = [
   'logo',
@@ -361,6 +362,9 @@ export function clampLayer(layer: PreviewLayer): PreviewLayer {
   } else {
     delete clamped.endFrame
   }
+  const rotation = normalizeAngle(layer.rotation)
+  if (rotation !== 0) clamped.rotation = rotation
+  else delete clamped.rotation
   return clamped
 }
 
@@ -947,6 +951,8 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   const textSlotOverrides = normalizeTextSlotOverrides(raw.textSlotOverrides)
   if (textSlotOverrides) normalized.textSlotOverrides = textSlotOverrides
   if (raw.locked === true) normalized.locked = true
+  const rotation = normalizeAngle(raw.rotation)
+  if (rotation !== 0) normalized.rotation = rotation
   const imageStyle = normalizeImageStyle(raw.imageStyle)
   if (imageStyle) normalized.imageStyle = imageStyle
   if (typeof raw.imageRole === 'string' && (IMAGE_ROLES as readonly string[]).includes(raw.imageRole)) normalized.imageRole = raw.imageRole as ImageRole
