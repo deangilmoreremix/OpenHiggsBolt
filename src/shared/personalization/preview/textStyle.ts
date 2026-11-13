@@ -125,6 +125,22 @@ export function accentRuleStyle(
   }
 }
 
+/**
+ * Mixes a hex color toward white by `amount` (0..1). Returns null for anything
+ * that is not a plain hex color, so callers can fall back to the solid color.
+ */
+export function lightenHex(color: string, amount: number): string | null {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec((color ?? '').trim())
+  if (!m) return null
+  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1]
+  const t = Math.min(1, Math.max(0, amount))
+  const out = [0, 2, 4].map((i) => {
+    const v = parseInt(h.slice(i, i + 2), 16)
+    return Math.round(v + (255 - v) * t).toString(16).padStart(2, '0')
+  })
+  return `#${out.join('')}`
+}
+
 /** Style for the call-to-action pill. `background` is the layer color; the label color is chosen by the caller. */
 export function ctaPillStyle(opts: {
   fontSizePx: number
@@ -133,8 +149,12 @@ export function ctaPillStyle(opts: {
   fontFamily?: string
 }): React.CSSProperties {
   const role = ROLE_STYLE.cta
+  // A top-lit gradient from a lighter shade to the exact layer color. It is opaque on
+  // purpose: the browser exporter draws a gradient INSTEAD of the background color, so a
+  // translucent highlight over a solid color would lose the color in exported videos.
+  const lit = lightenHex(opts.background, 0.22)
   return {
-    background: opts.background,
+    background: lit ? `linear-gradient(to bottom, ${lit}, ${opts.background})` : opts.background,
     color: opts.color,
     padding: '0.4em 1.1em',
     borderRadius: 999,

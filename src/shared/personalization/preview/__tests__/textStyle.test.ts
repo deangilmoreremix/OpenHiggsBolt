@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
+import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, lightenHex, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -34,7 +34,7 @@ describe('layerTextStyle', () => {
 describe('ctaPillStyle', () => {
   it('is a rounded pill in the layer color with a soft shadow', () => {
     const s = ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014' })
-    expect(s.background).toBe('#28c98b')
+    expect(s.background).toMatch(/^linear-gradient\(to bottom, #[0-9a-f]{6}, #28c98b\)$/)
     expect(s.color).toBe('#041014')
     expect(s.borderRadius).toBe(999)
     expect(s.boxShadow).toBe(PILL_SHADOW)
@@ -96,5 +96,27 @@ describe('textAlignFor', () => {
     expect(layerTextStyle('headline', { fontSizePx: 40, color: '#fff' }).textAlign).toBe('center')
     const box = { leftPx: 38, topPx: 400, widthPx: 800, heightPx: 60 }
     expect(accentRuleStyle('headline', 'slide-up', box, 1920, 1080, '#f00', 'left')!.left).toBe(38)
+  })
+})
+
+describe('CTA pill highlight', () => {
+  it('lightens hex colors toward white and rejects everything else', () => {
+    expect(lightenHex('#000000', 0.5)).toBe('#808080')
+    expect(lightenHex('#fff', 0.3)).toBe('#ffffff')
+    expect(lightenHex('#28c98b', 0)).toBe('#28c98b')
+    expect(lightenHex('rgb(1,2,3)', 0.2)).toBeNull()
+    expect(lightenHex('red', 0.2)).toBeNull()
+    expect(lightenHex('#28c98b', 5)).toBe('#ffffff')
+  })
+
+  it('is an opaque gradient ending in the exact color, so the exporter keeps the color', () => {
+    const s = ctaPillStyle({ fontSizePx: 30, background: '#28c98b', color: '#041014' })
+    const stops = String(s.background).match(/#[0-9a-f]{6}/g)!
+    expect(stops[stops.length - 1]).toBe('#28c98b')
+    expect(String(s.background)).not.toMatch(/rgba|transparent/i)
+  })
+
+  it('falls back to the plain color when it is not a hex value', () => {
+    expect(ctaPillStyle({ fontSizePx: 30, background: 'tomato', color: '#000' }).background).toBe('tomato')
   })
 })
