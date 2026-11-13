@@ -155,6 +155,8 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
       let ok = false;
       do {
         again.current = false;
+        const snapshot = pending.current; // the unsynced edits this request covers
+        let resend = false;
         const res = await fetchWithTimeout(ENDPOINT, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
@@ -181,11 +183,17 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
               latest.current = merged;
               setProgress(merged);
               saveCourseLocal(merged);
-              if (!sameCourseProgress(merged, theirs)) again.current = true;
+              if (!sameCourseProgress(merged, theirs)) { again.current = true; resend = true; }
             }
           }
         }
         if (parseFailed) ok = false;
+        // a confirmed save: the edits it covered are synced, so they leave the unsynced queue (edits made
+        // while it was in flight are a different array and stay queued for the next request)
+        if (ok && !resend && userRef.current && pending.current === snapshot) {
+          pending.current = [];
+          savePending(userRef.current, []);
+        }
         // 4xx other than timeout / rate limit will not succeed by repeating the same request
         retryable = parseFailed || (!ok && (res.status >= 500 || res.status === 408 || res.status === 429));
       } while (again.current && !disposed.current);
@@ -285,25 +293,27 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
         const parked = owner ? takeAccountStash(owner, idsRef.current) : null; // this account's copy, parked while a guest used the browser
         const own = foreign ? emptyCourseProgress() : key ? local : fullLocal;
-        // a parked copy is combined field-wise with the account copy (never last-write-wins), so an offline
-        // completion in it survives however much newer the account copy is
-        // The browser copy of THIS account (owner tag matches) is combined field-wise with the account copy, so an
-        // unsynced completion is not lost to a newer clock from another device. Anything else keeps last-write-wins.
+        // A parked copy (kept while a guest used this browser) is combined field-wise with the account copy.
+        // For the same account the ACCOUNT copy is the base and only this browser's unsynced edits (the queue
+        // below, removals included) are replayed on top: an old browser snapshot is never merged back in, since
+        // it would resurrect progress another device removed. Anything else keeps last-write-wins.
         const sameAccount = !!owner && storedOwner === owner;
         const base = parked
           ? unionCourseProgress(unionCourseProgress(own, parked), remote ?? emptyCourseProgress())
-          : remote && sameAccount && !foreign ? unionCourseProgress(own, remote) : mergeCourseProgress(own, remote);
+          : remote && sameAccount && !foreign && key ? remote : mergeCourseProgress(own, remote);
         // edits kept from an earlier visit only count when this really is the same account
         const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
         const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);
-        pending.current = [];
+        // signed in: the replayed edits stay in the unsynced queue until a save succeeds
+        pending.current = key ? edits : [];
+        persisted.current = [];
         hydrated.current = true;
         const merged = edits.reduce((p, e) => editFn(e)(p, Date.now()), base);
         if (owner) saveCourseOwner(owner);
         latest.current = merged; // a save queued right now must read this, not the previous render's state
         setProgress(merged);
-        saveCourseLocal(merged); // now in the owner-tagged browser copy, so the per-user pending copy can go
-        if (!mismatch) savePending(key, []);
+        saveCourseLocal(merged);
+        if (!mismatch) savePending(key, pending.current);
         setReady(true);
         if (edits.length > 0 || (remote ? !sameCourseProgress(base, remote) && base.updatedAt > 0 : base.updatedAt > 0)) push(merged);
         else setSync('saved');
@@ -363,6 +373,11 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         savePending(userRef.current, [...persisted.current, ...pending.current]);
         setProgress((cur) => fn(cur, Date.now()));
         return;
+      }
+      if (userRef.current && !remoteOff.current) {
+        // unsynced until a save succeeds; kept in this browser, private to this account
+        pending.current = compactEdits([...pending.current, edit]);
+        savePending(userRef.current, pending.current);
       }
       setProgress((cur) => {
         const next = fn(cur, Date.now());

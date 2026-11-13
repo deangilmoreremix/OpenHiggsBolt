@@ -541,12 +541,18 @@ describe('useCourseProgress', () => {
     expect([...result.current.progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
   });
 
-  it('same account: an unsynced completion in the browser copy is combined with a newer account copy and sent back; another account\'s copy is never merged', async () => {
-    const mine = setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 5000);
+  it('same account: a completion made while saves were failing survives a newer account copy and is sent back; another account\'s copy is never merged', async () => {
+    const remoteOld = setCourseLessonComplete(emptyCourseProgress(), 'ugc/02-b', true, 1000);
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => (init?.method === 'PUT' ? Promise.reject(new Error('offline')) : Promise.resolve(json({ progress: remoteOld, owner: 'userA' }))));
+    const first = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(first.result.current.sync).toBe('saved'));
+    act(() => first.result.current.complete('ugc/01-a', true));
+    await waitFor(() => expect(first.result.current.sync).toBe('offline'), { timeout: 3000 });
+    first.unmount();
+    // another device saved newer progress meanwhile
     const remote = setCourseLessonComplete(emptyCourseProgress(), 'ugc/02-b', true, Date.now() + 10_000);
+    fetchMock.mockReset();
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userA' })));
-    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(mine));
-    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
     const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect([...result.current.progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
@@ -554,14 +560,38 @@ describe('useCourseProgress', () => {
     expect([...JSON.parse(((fetchMock.mock.calls.find(isPut)![1]) as RequestInit).body as string).progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
     cleanup();
     // a copy tagged for another account is not mixed in
-    cleanup();
-    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(mine));
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 5000)));
     localStorage.setItem(COURSE_OWNER_KEY, 'userA');
     fetchMock.mockReset();
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userB' })));
     const other = renderHook(() => useCourseProgress(IDS, true, 'userB'));
     await waitFor(() => expect(other.result.current.ready).toBe(true));
     expect(other.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+  });
+
+  it('a removal made on another device stays removed when an old browser snapshot is hydrated, and nothing is uploaded back', async () => {
+    // device 1 completed the lesson and synced; this browser still holds that snapshot
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseCheck(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 5000), 'ugc/02-b', 0, true, 5001)));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    // device 2 (same account) marked it not complete and unticked the box, and synced
+    const remote = { ...emptyCourseProgress(), updatedAt: Date.now() + 10_000 };
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userA' })));
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.sync).toBe('saved'));
+    expect(result.current.progress.completedLessons).toEqual([]);
+    expect(result.current.progress.checks).toEqual({});
+    await new Promise((r) => setTimeout(r, 800));
+    expect(fetchMock.mock.calls.some(isPut)).toBe(false);
+  });
+
+  it('a successful save acknowledges the unsynced queue: those edits are not replayed again later', async () => {
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: null, owner: 'userA' })));
+    const first = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(first.result.current.sync).toBe('saved'));
+    act(() => first.result.current.complete('ugc/01-a', true));
+    await waitFor(() => expect(fetchMock.mock.calls.some(isPut)).toBe(true), { timeout: 3000 });
+    await waitFor(() => expect(first.result.current.sync).toBe('saved'));
+    expect(Object.keys(localStorage).filter((k) => k.includes('pending'))).toEqual([]);
   });
 
   it('a tick on a later checklist step is kept offline across a reload and stays apart from the first checklist', async () => {
