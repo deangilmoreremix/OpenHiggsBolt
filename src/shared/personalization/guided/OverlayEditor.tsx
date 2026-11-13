@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
-import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
+import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Move, RotateCcw, Unlock } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
 import type { ImageStyle } from '../preview/imageStyle'
 import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview/imagePresets'
@@ -697,6 +697,54 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                       data-testid={repeatsName ? 'overlay-repeat-placeholder' : undefined}
                     >
                       {text}
+                    </div>
+                  )}
+                  {isSelected && layer.kind !== 'design' && (
+                    <div
+                      role="toolbar"
+                      aria-label={`${LAYER_LABELS[layer.kind]} actions`}
+                      data-testid="layer-toolbar"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        // Above the layer, or below it when it sits at the top edge of the frame.
+                        ...(box.top < 44 ? { top: '100%', marginTop: 8 } : { bottom: '100%', marginBottom: 8 }),
+                        display: 'flex',
+                        gap: 2,
+                        padding: 3,
+                        background: 'rgba(8,11,15,.92)',
+                        border: `1px solid ${C.borderStrong}`,
+                        borderRadius: 10,
+                        boxShadow: '0 6px 20px rgba(0,0,0,.5)',
+                        zIndex: 60,
+                        cursor: 'default',
+                      }}
+                    >
+                      {([
+                        { id: 'forward', label: 'Bring forward', icon: <ArrowUp size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'forward'), run: () => restack(layer.id, 'forward') },
+                        { id: 'backward', label: 'Send backward', icon: <ArrowDown size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'backward'), run: () => restack(layer.id, 'backward') },
+                        { id: 'lock', label: layer.locked ? 'Unlock position' : 'Lock position', icon: layer.locked ? <Unlock size={13} /> : <Lock size={13} />, disabled: false, pressed: !!layer.locked, run: () => setPreviewLayerLocked(layer.id, !layer.locked) },
+                        { id: 'hide', label: `Hide ${LAYER_LABELS[layer.kind]}`, icon: <EyeOff size={13} />, disabled: false, run: () => updatePreviewLayer(layer.id, { visible: false }) },
+                      ] as { id: string; label: string; icon: React.ReactNode; disabled: boolean; pressed?: boolean; run: () => void }[]).map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          data-testid={`layer-toolbar-${a.id}`}
+                          aria-label={a.label}
+                          title={a.label}
+                          aria-pressed={a.pressed}
+                          disabled={a.disabled}
+                          onClick={a.run}
+                          style={{
+                            width: 26, height: 24, display: 'grid', placeItems: 'center', borderRadius: 6, border: 'none', cursor: a.disabled ? 'default' : 'pointer',
+                            background: a.pressed ? C.cyanSoft : 'transparent', color: a.disabled ? C.muted2 : a.pressed ? C.cyan : C.text, opacity: a.disabled ? 0.5 : 1,
+                          }}
+                        >
+                          {a.icon}
+                        </button>
+                      ))}
                     </div>
                   )}
                   {isSelected && contractOf(layer).userResizable && (

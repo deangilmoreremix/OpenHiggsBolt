@@ -387,6 +387,32 @@ function renderEditor(layers: PreviewLayer[]): EditorStub {
   return { updatePreviewLayer }
 }
 
+describe('OverlayEditor floating toolbar', () => {
+  it('shows actions for the selected layer and hides it from the toolbar', () => {
+    const layers = [createLayer('logo', { x: 0.2, y: 0.5 }), createLayer('headline', { x: 0.6, y: 0.5 })]
+    const { updatePreviewLayer } = renderEditor(layers)
+    const toolbars = screen.getAllByTestId('layer-toolbar')
+    expect(toolbars).toHaveLength(1) // only the selected layer has one
+    act(() => { fireEvent.click(screen.getByTestId('layer-toolbar-hide')) })
+    expect(updatePreviewLayer).toHaveBeenCalledWith('logo', { visible: false })
+  })
+
+  it('disables Send backward for the bottom layer and Bring forward for the top layer', () => {
+    const layers = [createLayer('logo', { x: 0.2, y: 0.5 }), createLayer('headline', { x: 0.6, y: 0.5 })]
+    renderEditor(layers) // the first layer (logo) is selected and is at the bottom of the stack
+    expect((screen.getByTestId('layer-toolbar-backward') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('layer-toolbar-forward') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('clicking a toolbar button does not start a drag or deselect', () => {
+    const layers = [createLayer('logo', { x: 0.2, y: 0.5 })]
+    const { updatePreviewLayer } = renderEditor(layers)
+    act(() => { fireEvent.pointerDown(screen.getByTestId('layer-toolbar-hide'), { clientX: 10, clientY: 10, pointerId: 3 }) })
+    act(() => { fireEvent.pointerMove(window, { clientX: 400, clientY: 300, pointerId: 3 }) })
+    expect(updatePreviewLayer).not.toHaveBeenCalled()
+  })
+})
+
 describe('OverlayEditor interaction', () => {
   it('snaps a dragged layer edge onto the right-third line and draws a guide, and Alt bypasses it', () => {
     const layers = [createLayer('logo', { x: 0.5, y: 0.5, scale: 0.22 })]

@@ -124,4 +124,47 @@ test.describe('Personalization modal on real local footage', () => {
     await page.keyboard.press('Escape');
     await expect(pop).toHaveCount(0);
   });
+
+  test('the layer toolbar restacks, locks and hides; the layers list reorders from the keyboard', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    const order = async () => dialog.getByTestId('layer-row').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-layer-id')));
+    const before = await order(); // front to back
+    expect(before.length).toBeGreaterThanOrEqual(3);
+
+    // Select the frontmost layer: Bring forward is disabled; Send backward moves it down one place.
+    const front = before[0]!;
+    await dialog.locator(`[data-layer-id="${front}"] [role="button"][aria-label^="Select"]`).click();
+    const toolbar = dialog.getByTestId('layer-toolbar');
+    await expect(toolbar).toBeVisible();
+    await expect(toolbar.getByTestId('layer-toolbar-forward')).toBeDisabled();
+    await page.screenshot({ path: path.join(OUT, 'layer-toolbar.png') });
+    await toolbar.getByTestId('layer-toolbar-backward').click();
+    await expect.poll(order).toEqual([before[1], before[0], ...before.slice(2)]);
+
+    // Keyboard reorder through the drag handle (dnd-kit): Space picks up, ArrowDown moves, Space drops.
+    const handle = dialog.locator(`[data-layer-id="${before[1]}"] [data-testid="layer-drag-handle"]`);
+    await handle.focus();
+    // dnd-kit measures between steps, so give each key a frame to land.
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(500);
+    await expect.poll(order).toEqual([before[0], before[1], ...before.slice(2)]);
+
+    // Lock then hide from the toolbar.
+    await dialog.getByTestId('layer-toolbar-lock').click();
+    await expect(dialog.getByTestId('layer-toolbar-lock')).toHaveAttribute('aria-pressed', 'true');
+    await dialog.getByTestId('layer-toolbar-hide').click();
+    await expect(dialog.getByRole('button', { name: /^Show / }).first()).toBeVisible();
+  });
 });
