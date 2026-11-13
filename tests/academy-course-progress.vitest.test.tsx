@@ -526,6 +526,29 @@ describe('useCourseProgress', () => {
     expect([...result.current.progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
   });
 
+  it('same account: an unsynced completion in the browser copy is combined with a newer account copy and sent back; another account\'s copy is never merged', async () => {
+    const mine = setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, 5000);
+    const remote = setCourseLessonComplete(emptyCourseProgress(), 'ugc/02-b', true, Date.now() + 10_000);
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userA' })));
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(mine));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    const { result } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect([...result.current.progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
+    await waitFor(() => expect(fetchMock.mock.calls.some(isPut)).toBe(true), { timeout: 3000 });
+    expect([...JSON.parse(((fetchMock.mock.calls.find(isPut)![1]) as RequestInit).body as string).progress.completedLessons].sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
+    cleanup();
+    // a copy tagged for another account is not mixed in
+    cleanup();
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(mine));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    fetchMock.mockReset();
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT' ? json({ ok: true }) : json({ progress: remote, owner: 'userB' })));
+    const other = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(other.result.current.ready).toBe(true));
+    expect(other.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {

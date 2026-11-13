@@ -287,7 +287,12 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         const own = foreign ? emptyCourseProgress() : key ? local : fullLocal;
         // a parked copy is combined field-wise with the account copy (never last-write-wins), so an offline
         // completion in it survives however much newer the account copy is
-        const base = parked ? unionCourseProgress(unionCourseProgress(own, parked), remote ?? emptyCourseProgress()) : mergeCourseProgress(own, remote);
+        // The browser copy of THIS account (owner tag matches) is combined field-wise with the account copy, so an
+        // unsynced completion is not lost to a newer clock from another device. Anything else keeps last-write-wins.
+        const sameAccount = !!owner && storedOwner === owner;
+        const base = parked
+          ? unionCourseProgress(unionCourseProgress(own, parked), remote ?? emptyCourseProgress())
+          : remote && sameAccount && !foreign ? unionCourseProgress(own, remote) : mergeCourseProgress(own, remote);
         // edits kept from an earlier visit only count when this really is the same account
         const mismatch = persisted.current.length > 0 && !!owner && owner !== key;
         const edits = compactEdits(mismatch ? pending.current : [...persisted.current, ...pending.current]);
@@ -300,7 +305,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         saveCourseLocal(merged); // now in the owner-tagged browser copy, so the per-user pending copy can go
         if (!mismatch) savePending(key, []);
         setReady(true);
-        if (edits.length > 0 || (base !== remote && base.updatedAt > 0)) push(merged);
+        if (edits.length > 0 || (remote ? !sameCourseProgress(base, remote) && base.updatedAt > 0 : base.updatedAt > 0)) push(merged);
         else setSync('saved');
       } catch {
         if (cancelled) return;
