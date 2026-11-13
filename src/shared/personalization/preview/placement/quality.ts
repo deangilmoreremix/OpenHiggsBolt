@@ -26,6 +26,7 @@ import {
   zoneToPx,
 } from './geometry'
 import { boxOf, samplesFor, visibleSeconds, worstContrast } from './engine'
+import { hasTextScrim, scrimAlphaOverBox, scrimForBox } from '../scrim'
 import type { PlacementInput, PlacementLayer, QualityIssue, QualityReport } from './types'
 
 const MIN_CONTRAST = 3
@@ -107,7 +108,10 @@ export function evaluateLayoutQuality(input: PlacementInput): QualityReport {
           message: `${contract.label} wraps onto ${lines} lines. Shorten the text.` })
       }
       if (input.samples.length) {
-        const wc = worstContrast(box, samplesFor(input.samples, window(l)), width, height, l.layer.color ?? input.textColor)
+        // The composition draws a soft scrim behind these text kinds; credit it, but only
+        // the weakest alpha the box gets (and nothing for text kinds that draw none).
+        const scrimAlpha = hasTextScrim(l.layer.kind) ? scrimAlphaOverBox(scrimForBox(box, width, height), box) : 0
+        const wc = worstContrast(box, samplesFor(input.samples, window(l)), width, height, l.layer.color ?? input.textColor, scrimAlpha)
         if (wc && wc.ratio < MIN_CONTRAST) {
           issues.push({ code: 'low-contrast', severity: 'adjust', layerId: l.layer.id, tStart: wc.t, tEnd: window(l)[1], fixable: movable(l),
             message: `${contract.label} is hard to read at ${wc.t.toFixed(1)} s (contrast ${wc.ratio.toFixed(1)}:1).` })

@@ -19,6 +19,8 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { ctaPillStyle, layerTextStyle, type TextStyleKind } from './textStyle'
+import { hasTextScrim, scrimBackground, scrimForBox } from './scrim'
+import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
 import { toPlayablePreviewMediaUrl } from './remoteMedia'
 import {
@@ -649,18 +651,36 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             )
           }
 
+          // A soft local scrim sits just behind the text and fades in and out with it.
+          const metrics = hasTextScrim(layer.kind) ? layerBoxMetrics(layer, compW, compH, text) : null
+          const scrim = metrics
+            ? scrimForBox({ left: metrics.leftPx, top: metrics.topPx, width: metrics.widthPx, height: metrics.heightPx }, compW, compH)
+            : null
           return (
-            <AbsoluteFill key={layer.id} style={layerStyle}>
-              <div
-                style={layerTextStyle(layer.kind as TextStyleKind, {
-                  fontSizePx: box.fontSizePx,
-                  color: textColor,
-                  fontFamily: layer.fontFamily,
-                })}
-              >
-                {text}
-              </div>
-            </AbsoluteFill>
+            <React.Fragment key={layer.id}>
+              {scrim ? (
+                <AbsoluteFill
+                  data-testid="text-scrim"
+                  style={{
+                    zIndex: layerStyle.zIndex,
+                    opacity: layer.opacity * entrance.opacity,
+                    background: scrimBackground(scrim),
+                    pointerEvents: 'none',
+                  }}
+                />
+              ) : null}
+              <AbsoluteFill style={layerStyle}>
+                <div
+                  style={layerTextStyle(layer.kind as TextStyleKind, {
+                    fontSizePx: box.fontSizePx,
+                    color: textColor,
+                    fontFamily: layer.fontFamily,
+                  })}
+                >
+                  {text}
+                </div>
+              </AbsoluteFill>
+            </React.Fragment>
           )
         })}
         {settings.showEndCard ? (

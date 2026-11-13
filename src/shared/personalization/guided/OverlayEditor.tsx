@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
 import type { ImageStyle } from '../preview/imageStyle'
@@ -16,6 +16,7 @@ import {
   isImageLayerKind,
 } from '../preview/presets'
 import { ctaPillStyle, isTextStyleKind, layerTextStyle } from '../preview/textStyle'
+import { hasTextScrim, scrimBackground, scrimForBox } from '../preview/scrim'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
   RemotionDesignTextSlot,
@@ -33,6 +34,7 @@ import {
   clampLayerToBounds,
   imageAssetDefaultLabel,
   imageAssetOptions,
+  layerBoxMetrics,
   nudgeDeltaForKey,
   offsetLayer,
   resolveCompositionSize,
@@ -529,9 +531,22 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                 )
               }
 
+              // Same local scrim the render draws behind this text (stage pixels).
+              const scrimMetrics = hasTextScrim(layer.kind) && !repeatsName ? layerBoxMetrics(layer, compW, compH, text) : null
+              const stageScrim = scrimMetrics
+                ? scrimForBox(
+                    { left: scrimMetrics.leftPx * factor, top: scrimMetrics.topPx * factor, width: scrimMetrics.widthPx * factor, height: scrimMetrics.heightPx * factor },
+                    compW * factor,
+                    compH * factor,
+                  )
+                : null
+
               return (
+                <Fragment key={layer.id}>
+                {stageScrim ? (
+                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, background: scrimBackground(stageScrim), opacity: layer.opacity, pointerEvents: 'none' }} />
+                ) : null}
                 <div
-                  key={layer.id}
                   role="button"
                   tabIndex={0}
                   aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
@@ -629,6 +644,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                     />
                   )}
                 </div>
+                </Fragment>
               )
             })}
         </div>
