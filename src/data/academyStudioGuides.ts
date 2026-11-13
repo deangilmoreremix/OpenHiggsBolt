@@ -63,7 +63,16 @@ export function academyStudioUrl(id: string): string {
   return `/academy?view=studio-reference&studio=${encodeURIComponent(id)}&tab=create`;
 }
 
-/** Academy deep link to a track (and optionally a lesson). */
+/** The Netlify/Clerk/Stripe "build with Claude or ChatGPT" course. It has its own tab in the Academy header, not a place in Learning Paths. */
+export const BUILD_WITH_AI_TRACK = '16-build-and-launch-apps-with-ai-assistants';
+
+/** Academy deep link to the "Build with AI" course (and optionally a lesson). */
+export function academyBuildWithAiUrl(lesson?: string): string {
+  return `/academy?view=build-with-ai${lesson ? `&lesson=${encodeURIComponent(lesson)}` : ''}`;
+}
+
+/** Academy deep link to a track (and optionally a lesson). The Build with AI course lives on its own tab. */
 export function academyTrackUrl(track: string, lesson?: string): string {
+  if (track === BUILD_WITH_AI_TRACK) return academyBuildWithAiUrl(lesson);
   return `/academy?track=${encodeURIComponent(track)}${lesson ? `&lesson=${encodeURIComponent(lesson)}` : ''}`;
 }

@@ -1,129 +1,86 @@
 # Batching & Scheduling at Volume
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Consistency is scheduled; chaos is manual.
-
-**Track:** AI Content Factories  
-**Time:** ~35 minutes  
-**Prerequisites:** The Multi-Step Production Pipeline  
-
-## The Problem
-
-Most creators run their channels in a state of constant panic. They realize they haven't posted in two days, rush to write a script, throw together some visual clips, and upload the video immediately. Because they are rushed, the video quality suffers. When they get busy at their day job, they stop uploading entirely. 
-
-Recommendation algorithms reward **consistency**. A channel that uploads once a day, every day, at the exact same hour will out-perform a channel that uploads five videos in one day and then posts nothing for two weeks.
-
-To run a successful content agency or network of channels, you must separate **production** from **publishing**. You need to build a 30-day queue of content so that your upload schedule runs on autopilot while you focus on scripting and editing the next month's batch.
-
-## The Concept
-
-The core mechanism of high-volume publishing is the **30-Day Queue System**:
-
-```
-[Batch Production Week] ──► [30 Scheduled Videos] ──► [Daily Auto-Release]
-```
-
-To establish this system, you use:
-* **Temporal Batching:** You execute only one production station at a time. You do not edit a video until all scripts and voiceovers are locked for the entire batch.
-* **Syndicated Schedulers:** You upload your completed batches into native platform schedulers, setting them to release automatically.
-* **Repurposing Pipelines:** You scale your inventory by feeding long-form videos into automated clipping tools like [`ai-clipping-generator`](https://github.com/Anil-matcha/awesome-generative-ai-apps/tree/main/video_generation/ai-clipping-generator), which extracts multiple vertical shorts from a single long-form file.
+> **Time:** about 15 minutes. **You will finish with:** a filled-in 30-day release calendar and a batch plan that runs one station at a time.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Establish Your Release Calendar
-Open the [`templates/30-day-production-calendar.md`](templates/30-day-production-calendar.md). Mark your upload frequency (e.g. 1 post/day at 12:00 PM).
+Algorithms reward **consistency**: a channel posting once a day at the same hour beats one that posts five videos in a day and then vanishes. The answer is to separate production from publishing and build a 30-day queue: Batch Production Week, 30 Scheduled Videos, Daily Auto-Release. You batch one station at a time, schedule in native platform tools, and can repurpose long videos with clipping tools such as [`ai-clipping-generator`](https://github.com/Anil-matcha/awesome-generative-ai-apps/tree/main/video_generation/ai-clipping-generator).
 
-### Step 2: Batch Scripting (Days 1–5)
-Draft 30 scripts in one block. Group them by sub-topic (e.g. 10 videos on Invoice Parsing, 10 videos on Lead Generation, 10 videos on Database Syncing) to keep your writing focused.
+You will need the pipeline from lesson 1 and a list of sub-topics. This lesson plans the batch and schedule; the full 30-video run takes about 15 hours, so you do the production in your own sessions. SmartVideo GO AI's **Storyboard / Campaign Planner** can hold batch matrices and briefs.
 
-### Step 3: Batch Voice Generation (Days 6–8)
-Generate all 30 audio narrations in one session. Name them sequentially (`01.mp3` to `30.mp3`). Trim pauses and silences.
+## Step by step
 
-### Step 4: Batch Visual Harvesting (Days 9–12)
-Generate your background visuals in bulk. Keep your prompt formats uniform to maintain a consistent visual style across the entire 30-video run.
+### 1. Set your release calendar
 
-### Step 5: Timeline Assembly & Export (Days 13–17)
-Open your video editor. Set up a master project file. Import all audio and visual folders. Edit and export the 30 completed files in bulk.
+Open [`templates/30-day-production-calendar.md`](templates/30-day-production-calendar.md) and mark your upload frequency (for example 1 post per day at 12:00 PM).
 
-### Step 6: Native Scheduling (Days 18–20)
-Open YouTube Studio Web, TikTok Studio Web, and Instagram Creator Studio. Upload your videos. Write optimized titles and descriptions. Set the **Schedule** release date and time for each video (e.g. Day 1 at 12:00 PM, Day 2 at 12:00 PM, etc.).
+**You should see:** a calendar with one release slot per day.
 
----
+**If not:** if one daily post is too much, choose a frequency you can sustain; consistency matters more than volume.
 
-## Worked Example
+### 2. Plan the scripting batch (Days 1-5)
 
-<p align="center">
-<img src="templates/examples/batch-production-suite.jpg" alt="Batch Suite" width="280">
-<img src="templates/examples/batch-suite-clip.gif" alt="Calendar Video Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Batch Schedule Image (Left) ──► Image-to-Video Motion (Right) · Video File: <a href="templates/examples/batch-suite-clip.mp4">templates/examples/batch-suite-clip.mp4</a></sub></p>
+List 30 scripts grouped by sub-topic, for example 10 on Invoice Parsing, 10 on Lead Generation and 10 on Database Syncing.
 
-**30-Shorts Production Run (Total time: 15 hours)**
+**You should see:** 30 numbered topics in three groups.
 
+**If not:** if you run short, add angles to the strongest group.
 
+### 3. Plan voice and visuals (Days 6-12)
 
-* **Scripting Batch:** 30 scripts drafted in Claude. (Time spent: **3 hours**).
-* **Audio Batch:** 30 ElevenLabs voice generations. (Time spent: **1 hour**).
-* **Visuals Batch:** 150 image prompt generations via muapi. (Time spent: **4 hours**).
-* **Editing Batch:** Timelines matched, captioned, and exported in CapCut. (Time spent: **5 hours**).
-* **Scheduling Batch:** Uploaded and scheduled across YT Shorts, TikTok, and Reels. (Time spent: **2 hours**).
+Write the naming rule: audio files named `01.mp3` to `30.mp3`, trimmed of pauses (Days 6-8). For visuals (Days 9-12), write one uniform prompt format to keep a consistent style across all 30.
 
-**The Result:** You have scheduled **90 total posts** (30 videos syndicated across 3 platforms) in just **15 hours of total work time**. Your channels will publish once a day for a month on complete autopilot.
+**You should see:** a naming rule and one reusable prompt pattern in your plan.
 
----
+**If not:** if styles vary, tighten the prompt format before generating.
 
-## Compare Tools
+### 4. Plan assembly and export (Days 13-17)
 
-| Platform / Tool | Bulk Upload Capabilities | Scheduling Pacing | Best for |
-|---|---|---|---|
-| **Native Web Studios** | High (Supports scheduling weeks in advance, free, reliable) | Precise hours | Uploading daily short-form and long-form content safely. |
-| **Buffer / Later** | Medium (Single dashboard, but has API upload limitations on some formats) | Daily schedules | General brand updates, less ideal for creator feeds. |
-| **Clipping Automation** (`ai-clipping-generator`) | Fast (Extracts multiple clips from long video inputs programmatically) | Automated | Generating secondary shorts from long-form assets. |
+Note one master project file that imports all audio and visual folders, then edit and export all 30 files in bulk.
 
-Always prefer native platform schedulers for high-traffic channels. To scale your video library further, use programmatic tools like `ai-clipping-generator` to extract highlight clips from old long-form client videos and schedule them as secondary shorts.
+**You should see:** a dated block for editing in the calendar.
 
----
+**If not:** do not start editing until scripts, voices and visuals are all locked.
 
-## Launch It
+### 5. Plan native scheduling (Days 18-20)
 
-**How to optimize your release times:**
-* **Identify Peak Hours:** Check your channel's real-time analytics. Look at the "When your viewers are on YouTube" chart. Schedule your video to release **2 hours before** this peak window so the platform has time to index the video metadata.
-* **Don't schedule simultaneously:** If you cross-post to multiple platforms, stagger your schedule slightly (e.g. YouTube at 12:00 PM, TikTok at 12:30 PM, Reels at 1:00 PM) to capture audiences across feeds.
+Add the upload block: YouTube Studio Web, TikTok Studio Web and Instagram Creator Studio, with optimized titles and descriptions and a Schedule date and time per video (Day 1 at 12:00 PM, Day 2 at 12:00 PM, and so on).
 
----
+**You should see:** every day of the month has a scheduled slot.
 
-## Exercises
+**If not:** menus move; follow the current screen in each studio.
 
-1. **Easy:** Fill out a 7-day schedule using the 30-Day Production Calendar. 
-2. **Medium:** Run a batched script-to-audio run. Write 5 script drafts, generate the 5 audio files, and trim the silences in one session. Log your time.
-3. **Hard:** Take a 10-minute video, feed it into the `ai-clipping-generator` tool, extract 5 short highlight clips, and schedule them to upload daily on a test channel.
+### 6. Choose your release hour
 
----
+Check your analytics ("When your viewers are on YouTube") for peak time. Schedule **2 hours before** the peak. If you cross-post, stagger platforms (YouTube 12:00 PM, TikTok 12:30 PM, Reels 1:00 PM).
 
-## Templates
+**You should see:** one release time per platform in your calendar.
 
-* [`templates/30-day-production-calendar.md`](templates/30-day-production-calendar.md) — a monthly batch schedule and upload tracker.
+**If not:** with no analytics yet, start with 12:00 PM and adjust after a few weeks.
 
----
+## Check yourself
 
-[← AI Thumbnail Design](04-thumbnail-design.md) · Next: [Selling Content-Factory Output as a Service →](06-selling-content-services.md)
+* [ ] My calendar shows a release slot every day for 30 days.
+* [ ] Each station (scripts, voice, visuals, edit, schedule) has its own block of days.
+* [ ] Files use a sequential naming rule.
+* [ ] Cross-posts are staggered, not simultaneous.
 
+## Common mistakes
 
----
+* Editing a video before all scripts and voiceovers are locked.
+* Posting in bursts and then going silent.
+* Posting to every platform at exactly the same minute.
 
-## Produce this in SmartVideo GO AI
+## Go further
 
-Apply this lesson directly inside SmartVideo GO AI:
+**Worked example, 30-Shorts run (15 hours):** scripting 30 scripts in Claude, **3 hours**; audio 30 ElevenLabs generations, **1 hour**; visuals 150 image prompts via muapi, **4 hours**; editing in CapCut, **5 hours**; scheduling across YT Shorts, TikTok and Reels, **2 hours**. Result: **90 posts** (30 videos on 3 platforms) from **15 hours** of work.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**Compare tools:** native web studios (high bulk capability, free, reliable, precise hours); Buffer / Later (medium, some API upload limits, better for brand updates); clipping automation `ai-clipping-generator` (fast clip extraction from long videos). Prefer native schedulers for high-traffic channels.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Exercises:** Easy: fill a 7-day schedule. Medium: write 5 scripts, generate 5 audio files and trim them in one session, logging your time. Hard: feed a 10-minute video to `ai-clipping-generator`, extract 5 clips and schedule them daily on a test channel.
+
+**Template:** [`templates/30-day-production-calendar.md`](templates/30-day-production-calendar.md).
+
+Next: Selling Content-Factory Output as a Service.

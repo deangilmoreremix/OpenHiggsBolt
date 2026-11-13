@@ -1,156 +1,141 @@
-# Module 1: Pricing Your Services
+# Pricing Your Services
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Moving from hourly billing trap to value-based pricing, high-margin package tiers, retainer math, and contract anchoring for AI creation services.
+> **Time:** about 15 minutes. **You will finish with:** a value-based price, a 3-tier offer and a scope-trade-off reply written for one real service you could sell.
 
 ---
 
-## 🎯 The Core Problem: Why Hourly Billing Destroys AI Business Margins
+## Before you start
 
-When you transition from traditional creative tools (Photoshop, After Effects, manual 3D modeling) to AI workflows (FLUX 1.1 Pro, Midjourney v6, Runway Gen-3 Alpha, ElevenLabs), your productivity increases by **10x to 50x**. 
+AI makes you many times faster, so hourly billing punishes you for being efficient. In the lesson's example, retouching 50 corporate headshots takes 20 hours by hand (20 x $50 = $1,000) but about 1.5 hours with AI (1.5 x $50 = $75). You would lose $925 for being efficient. The fix is to charge for the business value delivered, not for time spent.
 
-If you price your services using traditional hourly rates (e.g., $50/hour), **AI efficiency punishes your earnings**:
+The core formula is: **Project Fee = Traditional Market Replacement Cost x (25% - 40%)**. If traditional production costs the client $28,000, you charge about $7,000 to $11,200. All figures in this lesson are worked examples, not guarantees of what you will earn.
 
-### Traditional vs. AI Production Economics:
+You will need:
 
-```
-TRADITIONAL MANUAL WORKFLOW
---------------------------------------------------------------------------
-• Task: Retouch 50 B2B corporate team headshots
-• Time Required: 20 Hours of manual Photoshop brushwork & color correction
-• Billing Rate: $50 / Hour
-• Total Client Invoice: $1,000.00
---------------------------------------------------------------------------
+* A service you could offer (for example headshots, product images, social video ads).
+* A calculator or spreadsheet, and a way to look up what traditional providers charge.
+* About 15 minutes.
 
-AI-POWERED WORKFLOW (FLUX 1.1 + COMFYUI)
---------------------------------------------------------------------------
-• Task: Retouch 50 B2B corporate team headshots
-• Time Required: 1.5 Hours of batch execution & GPU upscaling
-• Billing Rate: $50 / Hour
-• Total Client Invoice: $75.00  <--- YOU LOSE $925 FOR BEING EFFICIENT!
---------------------------------------------------------------------------
-```
+## Step by step
 
-> [!IMPORTANT]
-> **The Golden Rule of AI Service Pricing:** Never charge for time spent. Charge for business value delivered to the client. The client is paying for the end commercial deliverable and its business impact, not the number of minutes your GPU was running.
+### 1. Write down the traditional replacement cost
 
----
+Pick one service. List what a client would pay a traditional provider to get the same result. The lesson's example for a 100-person company's headshots: photographer day rate $3,500, equipment and lighting $1,200, travel for remote staff $12,500, retouching $120 x 100 = $12,000. Total: **$28,700**.
 
-## 📊 Value-Based Pricing Architecture
+**You should see:** one total number for your own service, built from line items.
 
-Value-based pricing anchors your fee to the **financial return or baseline savings** created for the client. Instead of calculating `Hours × Rate`, you calculate `Client Value × Value Share`.
+**If not:** search for local production-house or retoucher rates and use a rough range. A labelled estimate is fine.
 
-### Formula for Value-Based Pricing:
-$$\text{Project Fee} = \text{Traditional Market Replacement Cost} \times (25\% - 40\%)$$
+### 2. Calculate your fee range
 
-> **Plain English:** If traditional production costs the client $28,000, you charge **25–40% of that** — i.e., **$7,000 to $11,200**. You capture a fraction of the value you save them, while the client still pockets the majority of the savings.
+1. Multiply your total by 25%.
+2. Multiply it by 40%.
+3. Pick a flat project fee inside that range.
 
-### Real-World Case Study: B2B Corporate Headshots for a 100-Person Tech Company
-1. **Traditional Photography Quote:**
-   - On-site photographer day rate: $3,500
-   - Studio equipment rental & lighting rig: $1,200
-   - Travel & accommodation for remote staff: $12,500
-   - Per-head retouching fee ($120 × 100): $12,000
-   - **Total Traditional Replacement Cost: $28,700**
+In the example, $28,700 gives roughly $7,175 to $11,480, and the lesson offers a flat **$7,500**, which saves the client $21,200 and delivers in 24 hours instead of 4 weeks.
 
-2. **Your AI Agency Value-Based Offer:**
-   - Unified 8k studio-grade corporate headshots from smartphone selfies.
-   - 24-hour turnaround (vs. 4 weeks traditional).
-   - Zero travel, zero venue booking, zero employee downtime.
-   - **Your Flat Project Fee: $7,500** (Saves the client $21,200 while delivering 10x faster).
+**You should see:** a low figure, a high figure and one chosen flat fee.
 
-3. **Your Internal Cost Breakdown (COGS):**
-   - FLUX 1.1 Pro API rendering: $0.04 / image × 300 variations = $12.00
-   - Upscaling & enhancement compute: $5.00
-   - Offshore QA auditor review (1 hr): $15.00
-   - **Total Direct COGS: $32.00**
+**If not:** if your fee comes out below $1,500, check step 1 for missing costs, or see step 6 on your floor.
 
-4. **Your Profit Margin:**
-   $$\text{Net Profit} = \$7,500 - \$32 = \$7,468 \quad (\mathbf{99.57\% \text{ Gross Margin}})$$
+### 3. Check your margin
 
----
+List your direct costs (COGS): tool or API costs, upscaling compute and any reviewer's time. The lesson's example: 300 images at $0.04 = $12.00, upscaling $5.00, one hour of offshore QA review $15.00, total **$32.00**. Then: Net Profit = fee - COGS = $7,500 - $32 = $7,468, about a 99.57% gross margin (an example, not a promise).
 
-## 📦 Creating 3-Tier Offer Bundles
+**You should see:** a COGS total and a margin for your own offer.
 
-Never present a client with a single take-it-or-leave-it price. Always present 3 structured tiers. Multi-tier pricing eliminates price haggling by shifting the client's decision from *"Should I hire this agency?"* to *"Which tier fits our budget best?"*
+**If not:** if your costs are unknown, estimate high and refine after your first project.
 
-```
-+--------------------------------+  +--------------------------------+  +--------------------------------+
-|       TIER 1: ESSENTIALS       |  |   TIER 2: PROFESSIONAL (Rec)   |  |      TIER 3: ENTERPRISE        |
-+--------------------------------+  +--------------------------------+  +--------------------------------+
-| Price: $2,500 (One-Time)       |  | Price: $5,500 (One-Time)       |  | Price: $9,500 / Month          |
-|                                |  |                                |  |                                |
-| • Single Asset Batch           |  | • Full Multi-Format Asset Suite|  | • Unlimited On-Demand Assets   |
-| • 25 Final 8k Renders          |  | • 75 Final 8k Renders          |  | • Dedicated Custom LoRA Model  |
-| • 48-Hour Turnaround           |  | • 24-Hour Express Sync         |  | • 12-Hour Priority SLA         |
-| • 2 Revision Rounds            |  | • 3 Revision Rounds            |  | • Unlimited Revisions          |
-| • Standard Commercial License  |  | • Full Commercial IP Assignment|  | • Full Commercial IP Transfer  |
-| • Email Support Only           |  | • Priority Slack/Email Support |  | • Dedicated Account Manager    |
-+--------------------------------+  +--------------------------------+  +--------------------------------+
+### 4. Build three tiers
+
+Never send a single take-it-or-leave-it price. Copy this structure and fill in your own numbers. The lesson's example tiers are:
+
+```text
+TIER 1: ESSENTIALS - $2,500 (one-time)
+- Single asset batch, 25 final 8k renders
+- 48-hour turnaround, 2 revision rounds
+- Standard commercial license, email support only
+
+TIER 2: PROFESSIONAL (Recommended) - $5,500 (one-time)
+- Full multi-format asset suite, 75 final 8k renders
+- 24-hour express sync, 3 revision rounds
+- Full commercial IP assignment, priority Slack/email support
+
+TIER 3: ENTERPRISE - $9,500 / month
+- Unlimited on-demand assets, dedicated custom LoRA model
+- 12-hour priority SLA, unlimited revisions
+- Full commercial IP transfer, dedicated account manager
 ```
 
-### Psychological Anchoring Strategy:
-1. **Tier 3 (Enterprise Anchor):** Priced high ($9,500/mo) to establish premium market positioning and anchor value.
-2. **Tier 2 (Target Deal):** Highlighted as **"Most Popular"** or **"Recommended"**. Priced at $5,500, which feels like a massive bargain compared to Tier 3.
-3. **Tier 1 (Budget Floor):** Set at $2,500 as your absolute floor. If a client selects Tier 1, you still maintain a 98%+ margin.
+**You should see:** three tiers where the middle one is marked Recommended.
 
----
+**If not:** make sure each tier differs in quantity, speed, revisions and support, not only in price.
 
-## 🔄 Retainer Pricing: Building Recurring Revenue
+### 5. Use anchoring on purpose
 
-One-off projects create a revenue rollercoaster. The key to building a scalable $20k+/month AI agency is converting one-off clients into monthly recurring retainers ($3,000 – $10,000 / month).
+1. Tier 3 is the high anchor that sets premium positioning.
+2. Tier 2 is your target deal, labelled "Most Popular" or "Recommended".
+3. Tier 1 is your budget floor; the lesson notes it still keeps a 98%+ margin in its example.
 
-### High-Margin Retainer Models Across AI Verticals:
+**You should see:** Tier 2 feels reasonable next to Tier 3.
 
-| AI Vertical | Target Client Type | Monthly Retainer Deliverables | Monthly Retainer Fee | Estimated Monthly COGS | Monthly Net Profit |
-|---|---|---|---|---|---|
-| **E-Commerce Merch** | Apparel Brand | 20 New Merch Graphics + 5 I2V Product Promos | **$4,000 / mo** | $50.00 | **$3,950 / mo** |
-| **Real Estate Staging** | High-End Brokerage | Virtual Staging for 10 Properties (80 Renders) | **$5,500 / mo** | $65.00 | **$5,435 / mo** |
-| **Corporate Branding** | Remote Tech SaaS | Ongoing Headshot Onboarding (up to 30 hires/mo) | **$3,500 / mo** | $25.00 | **$3,475 / mo** |
-| **Social Video Ads** | D2C Consumer Brand | 12 Short-Form AI Video Ads + Audio Voiceovers | **$7,500 / mo** | $120.00 | **$7,380 / mo** |
+**If not:** if Tier 1 loses money, raise it or trim its contents.
 
----
+### 6. Set your project floor
 
-## 💡 Navigating Client Price Negotiations
+Set your minimum contract size to **$1,500** and never quote under $1,000. Write this down where you will see it when quoting.
 
-When a corporate client asks for a discount (*"Can you do this for $3,000 instead of $5,500?"*), **never reduce your price without reducing the scope**. Giving an unearned discount destroys authority.
+**You should see:** a written floor number.
 
-### The Scope Trade-Off Script:
-> *"We would love to work with your $3,000 budget! To fit within that investment level, we can adjust the Professional package from 75 renders down to 30 renders, with a 48-hour turnaround instead of 24 hours. Which set of deliverables would you prefer us to lock in?"*
+**If not:** if you are tempted to go lower, use the scope trade-off in the next step instead.
 
----
+### 7. Prepare your negotiation reply
 
-## 🛠️ Step-by-Step Action Plan
+When a client asks for a discount, never reduce price without reducing scope. Copy this script and adjust the numbers to your offer:
 
-1. **Establish Your Project Floor:** Set your minimum contract size to $1,500 (never quote under $1,000).
-2. **Benchmark Local Market Rates:** Research what traditional production houses in your area charge for video shoot days and photo retouching.
-3. **Download the Pricing Calculator Template:** Use [`templates/agency-pricing-calculator.md`](templates/agency-pricing-calculator.md) to calculate exact gross margins before sending proposals.
-4. **Inspect Agency Pitch Deck Proposal:** View the commercial pitch deck mockup graphic:
-   ![Agency Pitch Deck Proposal Mockup](templates/examples/agency-pricing-deck-mockup.jpg)
-   *Watch the proposal motion video loop ([agency-pricing-deck-motion.mp4](templates/examples/agency-pricing-deck-motion.mp4) / [.gif](templates/examples/agency-pricing-deck-motion.gif)).*
+```text
+We would love to work with your $3,000 budget! To fit within that investment level, we can adjust the Professional package from 75 renders down to 30 renders, with a 48-hour turnaround instead of 24 hours. Which set of deliverables would you prefer us to lock in?
+```
 
----
+**You should see:** a saved reply that cuts scope in exchange for a lower price.
 
-## 💡 Key Takeaways
-- AI productivity makes hourly billing suicidal; transition 100% of your business to value-based project fees and monthly retainers.
-- Anchor your prices against traditional replacement costs ($30k traditional vs $7.5k AI proposal).
-- Always present 3-tier proposals with Tier 2 highlighted as the recommended target deal.
-- Protect your pricing integrity by requiring scope reductions whenever a client requests budget concessions.
+**If not:** write the trade-off as a choice for the client, ending in a question.
 
+### 8. Run the numbers in the calculator template
 
----
+Open `templates/agency-pricing-calculator.md` in this track and enter your fee, COGS and tiers to confirm gross margin before you send any proposal.
 
-## Produce this in SmartVideo GO AI
+**You should see:** your margin worked out for each tier.
 
-Apply this lesson directly inside SmartVideo GO AI:
+**If not:** if a tier shows a thin margin, adjust its scope.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+## Check yourself
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+* [ ] I can explain why hourly billing loses money when AI makes me faster.
+* [ ] I have a replacement-cost total and a fee between 25% and 40% of it.
+* [ ] I have three tiers with the middle one recommended.
+* [ ] I have a floor and a scope-trade-off reply ready.
+
+## Common mistakes
+
+* **Charging for time.** Charge for business value delivered.
+* **Quoting one price.** Always present three tiers.
+* **Discounting without cutting scope.** An unearned discount destroys authority.
+* **Treating example numbers as promises.** Use your own market research.
+
+## Go further
+
+**Retainers.** One-off projects create a revenue rollercoaster, so aim to convert clients into monthly retainers (the lesson's range: $3,000 to $10,000 a month). Example models from the lesson (illustrative figures):
+
+| Vertical | Deliverables | Fee | Est. COGS | Net |
+|---|---|---|---|---|
+| E-Commerce Merch | 20 new merch graphics + 5 image-to-video promos | $4,000/mo | $50 | $3,950/mo |
+| Real Estate Staging | Virtual staging for 10 properties (80 renders) | $5,500/mo | $65 | $5,435/mo |
+| Corporate Branding | Headshot onboarding, up to 30 hires/mo | $3,500/mo | $25 | $3,475/mo |
+| Social Video Ads | 12 short-form AI video ads + voiceovers | $7,500/mo | $120 | $7,380/mo |
+
+**Exercise.** Build your own retainer row with deliverables, fee, estimated COGS and net.
+
+**Pitch deck.** See the mockup at `templates/examples/agency-pricing-deck-mockup.jpg` for how a priced proposal can look.
+
+Next: Contracts and scope basics.

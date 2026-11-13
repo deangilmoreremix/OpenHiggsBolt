@@ -1,45 +1,28 @@
-# Batch Headshots & Bulk Automation for Remote Teams
+# Batch Headshots for Remote Teams
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Scale from individual portraits to processing 50+ remote employee headshots in a single automated batch run.
-
-**Track:** AI Headshots & Portraits  
-**Time:** ~40 minutes  
-**Prerequisites:** [01: Consistent Headshot Generation](01-consistent-headshot-generation.md), [02: Standing Out Against Fiverr Competition](02-standing-out-against-fiverr-competition.md)  
-
-## The Problem
-
-When scaling your headshot agency to handle enterprise clients, manual processing becomes a bottleneck. A company with **50 remote employees** across 6 countries sends you 150+ raw selfies.
-
-If you open each selfie in an editor, manually type prompts, run inference one-by-one, and organize folders individually, processing 50 employees takes **over 12 hours of repetitive manual work**.
-
-To service high-ticket corporate contracts efficiently, you need an automated **Bulk CSV Ingestion & Batch Rendering Pipeline**.
+> **Time:** about 14 minutes. **You will finish with:** a team roster CSV and a folder of auto-cropped, square selfies ready for batch rendering.
 
 ---
 
-## The Concept
+## Before you start
 
-The **Batch Headshot Automation Pipeline** processes multi-employee rosters systematically:
+A company with **50 remote employees** in 6 countries sends 150+ raw selfies. Cropping, prompting, rendering and sorting each by hand takes **over 12 hours**. The fix is a batch pipeline: CSV roster plus selfie folder, then automated identity extraction, then batch rendering with one shared background, then auto-zipped folders. In this first part you prepare the inputs: a roster and face-aligned 1:1 crops.
 
-```
-CSV Roster + Selfie Directory ──► Automated Identity Vector Extraction ──► Batch Inpainting & Background Sync ──► Auto-Folder Zip Generation
-```
+You will need [`templates/b2b-headshot-proposal.md`](templates/b2b-headshot-proposal.md), a `selfies/` folder, and Python with a face-detection library (OpenCV or MediaPipe) if you script the crop. Use SmartVideo GO AI **Storyboard / Campaign Planner** for the batch matrix and **Image Studio** for rendering. Menus move; follow the current screen. Use only selfies people have consented to share.
 
-### Core Automation Pillars:
+## Step by step
 
-1. **Batch CSV Roster Ingestion:** Reading a master CSV file (`employee_id, full_name, role, dress_code, selfie_path`).
-2. **Automated Facial Alignment & Pre-Cropping:** Running face-detection scripts (OpenCV / MediaPipe) to auto-crop selfies to a standardized square aspect ratio before feeding them to identity models.
-3. **Unified Brand Background Injections:** Pre-loading a fixed corporate background asset (e.g., modern glass office or studio grey gradient) across all 50 renders so every team member shares an identical background composition.
+### 1. Open the template
 
----
+Open [`templates/b2b-headshot-proposal.md`](templates/b2b-headshot-proposal.md) and find the batch CSV schema and folder naming standards.
 
-## Do It
+**You should see:** the roster columns and naming rules.
 
-### Step 1: Prepare the Master Employee Roster CSV
-Open [`templates/b2b-headshot-proposal.md`](templates/b2b-headshot-proposal.md). Create a batch input CSV file `team_roster.csv`:
+**If not:** use the CSV in the next step as written.
+
+### 2. Create the roster CSV
+
+Create `team_roster.csv`:
 
 ```csv
 EmployeeID,FullName,Title,DressCode,SelfieFile
@@ -48,80 +31,37 @@ EMP002,Sarah Jenkins,Lead Designer,Creative Blazer,selfies/sarah_j.jpg
 EMP003,Alex Rivera,Senior Developer,Tech Sweater,selfies/alex_r.jpg
 ```
 
-### Step 2: Run Batch Face-Detection & Auto-Cropping
-Run a Python pre-processing script to detect face bounding boxes in `selfies/`, auto-cropping each image with a 35% margin above the head and 1:1 aspect ratio.
+**You should see:** one row per employee with a real file path in `SelfieFile`.
 
-### Step 3: Execute Batch Inference via API Loop
-Run your batch script calling muapi `/nano-banana-2` (or InstantID endpoint) in a loop, passing each employee's identity vector and target dress code prompt while locking the corporate background seed.
+**If not:** if a path does not exist in `selfies/`, fix the file name or the row before going on.
 
-### Step 4: Auto-Package into Client Zip Bundles
-Generate employee subfolders containing `[FullName]_linkedin.jpg` (1080x1080px) and `[FullName]_website.jpg` (2400x3000px). Compress all folders into a master client deliverable `Apex_Financial_Team_Headshots.zip`.
+### 3. Auto-crop with face detection
 
----
+Run a Python pre-processing script (OpenCV / MediaPipe) that finds the face bounding box in each file in `selfies/` and crops to **1:1** with a **35% margin above the head**. If you do not code, ask an AI assistant to write it, and never paste secrets or client data into the chat.
 
-## Worked Example
+**You should see:** a new folder of square crops, one per row, each centered on a face.
 
-<p align="center">
-<img src="templates/examples/corporate-executive-headshot.jpg" alt="Batch Processed Corporate Headshot" width="320">
-</p>
-<p align="center"><sub>Batch Processed Corporate Team Asset (Unified Brand Background & Studio Lighting)</sub></p>
+**If not:** if a crop is empty or off-face, the selfie probably has no clear face. Flag that employee for a retake.
 
-**Batch Processing Performance for "Summit Cloud Systems" (42 Employees)**
+### 4. Spot-check the crops
 
-* **Input:** 42 employee selfies uploaded via self-serve intake portal.
-* **Batch Processing Time:** 18 minutes automated script execution.
-* **Deliverable:** 42 organized employee folders with 3 high-res renders each (126 total image files).
-* **Labor Time:** 12 minutes setup & quality review (vs. 10+ hours manual labor).
-* **Contract Revenue:** **$840.00** ($20/person).
-* **API Compute Cost:** **$2.52** total credit cost.
+Open 5 crops at random.
 
----
+**You should see:** the head with room above it, consistent framing across people.
 
-## Compare Tools
+**If not:** change the margin value and re-run on the whole folder so all crops stay consistent.
 
-| Platform / Tool | Automation Capability | Identity Consistency | Best For |
-|---|---|---|---|
-| **muapi Batch API + Python** | Ultra-High (Folder-wide script execution, auto-zip output) | High (InstantID vector embedding per employee) | High-volume corporate team contracts (25–100+ employees) |
-| **InstantID / FLUX PuLID (local)** | Medium (Manual batch queue via ComfyUI) | Maximum (Highest identity fidelity) | Premium executive packages where top-tier accuracy is critical |
-| **Typeform + Zapier Automation** | High (Auto-routes intake form submissions to processing queue) | N/A | Client-facing intake portals for self-serve employee photo uploads |
+## Check yourself
 
----
+* [ ] `team_roster.csv` has all five columns.
+* [ ] Every `SelfieFile` path exists.
+* [ ] Crops are 1:1 with a 35% margin above the head.
+* [ ] I flagged any employee whose face was not detected.
 
-## Launch It
+## Common mistakes
 
-**Pricing for batch corporate packages:**
-* **Per-Seat Add-On Rate:** Charge **$20 – $25 per additional employee** beyond the base package tier (e.g., a 35-person team on the $799 Corporate Standard package: 25 included + 10 add-ons × $20 = **$999 total**).
-* **Automate Quality Audits:** Write a quick script to check output resolution and file size automatically before zipping, ensuring no corrupt or under-sized renders are sent to the client.
+* **Tuning crops per person.** The point is a uniform margin across the team.
+* **Mismatched paths.** One wrong path stops a whole batch later.
+* **Skipping consent.** Process only selfies people agreed to submit.
 
----
-
-## Exercises
-
-1. **Easy:** Create a CSV roster file for 5 hypothetical employees with names, titles, and dress code tags.
-2. **Medium:** Write a Python script to auto-crop 5 selfies to 1:1 aspect ratio centered on face landmarks.
-3. **Hard:** Run a batch script generating 5 employee headshots with a unified studio background.
-
----
-
-## Templates
-
-* [`templates/b2b-headshot-proposal.md`](templates/b2b-headshot-proposal.md) — Batch CSV schemas, automated folder naming standards, and team packaging guides.
-
----
-
-[← Standing Out Against Fiverr Competition](02-standing-out-against-fiverr-competition.md) · Next: [Creative Headshots & Stylized Portraits →](04-creative-headshots-and-stylized-portraits.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Batch Headshots for Remote Teams, part 2.

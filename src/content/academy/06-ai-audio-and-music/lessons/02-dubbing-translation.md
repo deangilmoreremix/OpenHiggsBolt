@@ -1,134 +1,105 @@
 # AI Dubbing & Translation
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> A video that speaks only one language reaches only a fraction of the world.
-
-**Track:** AI Audio & Music  
-**Time:** ~45 minutes  
-**Prerequisites:** Voice Cloning & TTS Basics  
-
-## The Problem
-
-If you only distribute your content, ads, or online courses in English, you are ignoring over 80% of the world's internet users. Massive markets in Latin America, Europe, and Asia are completely locked out of your sales funnels.
-
-However, traditional translation and localization are slow and expensive. You have to hire foreign translation specialists, contract local voice actors in multiple countries, record their voice tracks in professional studios, and manually align the new audio tracks to fit the exact pacing of the original video timeline.
-
-To scale a global content network, you need a repeatable process to translate your audio tracks into multiple foreign languages automatically, while preserving the original speaker's tone, voice profile, and emotional inflections.
-
-## The Concept
-
-Automated audio translation relies on **Tone-Preserving Voice Dubbing** and **Time-Boundary Sync**:
-
-```
-English Voice Track  ──►  Translation Engine  ──►  Pitch/Timbre Mapping  ──►  Foreign Dub (Sync'd)
-```
-
-1. **Voice Preservation:** The dubbing model extracts the vocal resonance (timbre) and pitch curve of the original speaker, and projects it onto the target language's speech synthesizer. The speaker sounds like themselves speaking a foreign language.
-2. **Expansion Pacing:** Different languages take different times to express the same idea. For example, translating the phrase *"Automate your billing"* into Spanish yields *"Automatice su facturación."* The Spanish phrase has more syllables and takes longer to speak. To prevent overlap, the translation engine must compress the speech speed slightly (e.g. by 1.1x) to fit the original time slot.
-3. **Timeline Alignment:** You follow the [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md) to audit timecode boundaries, ensuring sound effects and visuals align perfectly with the translated audio.
+> **Time:** about 16 minutes. **You will finish with:** a dubbed version of a short video in a second language that keeps the original speaker's voice, plus a pacing audit.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Prep Your Source Dialogue
-Open the [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md). Export the text transcript of your source video. Remove any filler words. Extract the timecode logs (e.g. *Line 1: 0:00.00 to 0:04.50*).
+If you publish only in English you ignore over 80% of the world's internet users, and traditional localization (translators, voice actors, studios, manual alignment) is slow and expensive. Automated dubbing preserves the speaker's timbre and pitch while a translation engine speaks the target language. Different languages take different times: "Automate your billing" becomes "Automatice su facturación" in Spanish, which has more syllables, so the engine compresses speech slightly (for example 1.1x) to fit the original slot.
 
-### Step 2: Configure the Translation Engine
-Open ElevenLabs and navigate to the **Dubbing** tab (or call the `/dubbing` API route). Set up the project:
-* **Source Language:** English (or detect automatically).
-* **Target Language:** Spanish (or German, French, Hindi, etc.).
-* **Resolution Settings:** Select "Highest Resolution" to preserve background music isolation.
+You will need: a short source video (10 seconds is enough), an ElevenLabs account, an editor with a timeline, and [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md). Prerequisite: lesson 1, Voice Cloning & TTS Basics. SmartVideo GO AI studios that help: Video Studio and Lip-Sync Studio (see Go further).
 
-### Step 3: Run the Dubbing Synthesis
-Submit the video file. The AI engine will:
-* Separate the dialogue track from the background music track using stem splitting.
-* Translate the English text.
-* Re-synthesize the dialogue in the target language using the cloned voice of the original speaker.
-* Re-combine the new dialogue with the original background music track.
+## Step by step
 
-### Step 4: Pacing and Syllable Speed Audit
-Listen to the generated foreign dub. Zoom in to the timeline in your editor:
-* Check for "chipmunk" speed issues where the translation was compressed too much to fit a short duration.
-* If a translated line is clipped at the end, adjust the visual editor timeline by splitting the background clip and adding a 0.5-second freeze frame, allowing the voice track to finish naturally.
+### 1. Prepare the source dialogue
 
----
+Open [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md). Export the text transcript of your source video, remove filler words, and extract timecode logs, for example `Line 1: 0:00.00 to 0:04.50`.
 
-## Worked Example
+**You should see:** a clean transcript where every line has a start and end time.
 
-<p align="center">
-<img src="templates/examples/dubbing-studio.jpg" alt="Dubbing Studio" width="280">
-<img src="templates/examples/dubbing-studio-clip.gif" alt="Global Dubbing Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Dubbing Studio Image (Left) ──► Image-to-Video Dubbing Motion (Right) · Audio File: <a href="templates/examples/rachel-vocal-dubbed.mp3">templates/examples/rachel-vocal-dubbed.mp3</a> · Video File: <a href="templates/examples/dubbing-studio-clip.mp4">templates/examples/dubbing-studio-clip.mp4</a></sub></p>
+**If not:** play the video and note the times by hand in the checklist.
 
-**Translating a SaaS Tutorial Video (English to Spanish)**
+### 2. Configure the dubbing project
 
+Open ElevenLabs and go to the **Dubbing** tab (or call the `/dubbing` API route). Set:
 
+1. **Source Language:** English, or detect automatically.
+2. **Target Language:** Spanish (or German, French, Hindi, etc.).
+3. **Resolution:** "Highest Resolution", to preserve background music isolation.
 
-* **Original Clip:** Duration: 4.5 seconds. Dialogue: *"Here is how to parse your invoice files instantly."*
-* **Dubbing Output:** Spanish translation: *"Aquí le mostramos cómo analizar sus archivos de facturas al instante."*
-* **Synthesis Audit:**
-  * The Spanish voice sounds exactly like the English speaker's vocal timbre.
-  * Because the Spanish text contains more syllables, the engine auto-compressed the speech speed by **1.12x**.
-  * The audio track was aligned to start at exactly 0:00.00 and end at 0:04.45.
-* **The Result:** The Spanish dub sits perfectly on the original video timeline. The user can export and publish the video directly.
+**You should see:** a project ready to submit with both languages shown.
 
-> [!NOTE]
-> You can listen to a demo of a tone-preserved Spanish dub generated with this workflow here: [rachel-vocal-dubbed.mp3](templates/examples/rachel-vocal-dubbed.mp3).
+**If not:** menus move; follow the current ElevenLabs screen for dubbing.
 
----
+### 3. Submit the video
 
-## Compare Tools
+Upload the video file and start the dub. The engine separates dialogue from background music (stem splitting), translates, re-synthesizes the dialogue in the original speaker's cloned voice, and recombines it with the original music.
 
-| Platform / Tool | Voice Preservation Quality | Pacing & Alignment | Best for |
+**You should see:** a finished dub you can play, in the target language.
+
+**If not:** if processing fails, try a shorter clip or a supported file format.
+
+### 4. Listen for voice and meaning
+
+Play the dub with the transcript beside it.
+
+**You should see:** a voice that sounds like the English speaker, with the music still present under it.
+
+**If not:** if the voice differs a lot, retry with cleaner source audio.
+
+### 5. Audit pacing and syllable speed
+
+Zoom in on the timeline in your editor. Check for "chipmunk" speed where the translation was compressed too much for a short slot.
+
+**You should see:** each dubbed line starting and ending inside its original timecodes.
+
+**If not:** if a line is clipped at the end, split the background clip and add a 0.5-second freeze frame so the voice can finish.
+
+### 6. Translate the metadata
+
+Translate your title, description and tags using the checklist, so a Spanish audio track does not carry an English title.
+
+**You should see:** translated metadata recorded in the checklist.
+
+**If not:** ask a native speaker to check short phrases before publishing.
+
+## Check yourself
+
+* [ ] My dub keeps the original speaker's voice and the background music.
+* [ ] Each line fits its original timecodes with no clipped endings.
+* [ ] No line sounds sped up like a chipmunk.
+* [ ] Title, description and tags are translated.
+
+## Common mistakes
+
+* Uploading a Spanish track with an English title and description.
+* Ignoring that translated lines run longer and getting clipped endings.
+* Leaving filler words in the transcript, which waste time slots.
+* Not checking that sound effects still land on the same frames.
+
+## Go further
+
+**Worked example (English to Spanish tutorial):** original 4.5 seconds: "Here is how to parse your invoice files instantly." Spanish: "Aquí le mostramos cómo analizar sus archivos de facturas al instante." The voice matched the speaker's timbre; the engine auto-compressed speech by **1.12x**; audio started at 0:00.00 and ended at 0:04.45, so it sits on the original timeline. Demo: [rachel-vocal-dubbed.mp3](templates/examples/rachel-vocal-dubbed.mp3).
+
+**Compare tools:**
+
+| Tool | Voice preservation | Pacing | Best for |
 |---|---|---|---|
-| **ElevenLabs Dubbing API** | Ultra-High (Preserves vocal timbre and background music track separation) | Good (Auto-compresses speech speed to match time boundaries) | Fast, automated dubbing of YouTube videos and ads. |
-| **HeyGen Video Translate** | High (Includes automated lip-sync translation to match foreign mouth shapes) | Fair | Face-to-camera videos where lip movement matches target audio. |
-| **Local Pipeline (Whisper + XTTS)** | Medium | Manual (Requires manual timeline alignment of audio clips) | Custom development with zero API costs. |
+| ElevenLabs Dubbing API | Ultra-high, with background music separation | Good, auto-compresses speed | Faceless videos and ads |
+| HeyGen Video Translate | High, with lip-sync to foreign mouth shapes | Fair | Face-to-camera videos |
+| Local pipeline (Whisper + XTTS) | Medium | Manual alignment | Custom builds with zero API costs |
 
-For B2B faceless channels, using the ElevenLabs Dubbing API is the most efficient choice because it processes both translation and background audio reconstruction in a single pipeline. For face-to-camera spokesperson videos, HeyGen Video Translate is ideal because it matches mouth shapes to the new language.
+**Publishing tip:** YouTube lets you upload multiple audio tracks (English, Spanish, Portuguese) to one video, consolidating views on one URL.
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: translate a 3-sentence script into Spanish and time both versions read aloud.
+2. Medium: dub a 10-second video and audit the voice similarity.
+3. Hard: dub a video with sound effects and verify they hit the same visual frames as the original.
 
-**How to manage localized channels:**
-* **Use YouTube Multi-Language Audio:** YouTube allows you to upload multiple audio tracks (English, Spanish, Portuguese) to a single video file. This consolidates all views on a single URL, boosting your ranking in the algorithm.
-* **Translate metadata:** Do not upload a Spanish audio track with an English title and description. Translate your titles, descriptions, and tag files using your media checklist templates.
+**Templates:** [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md).
 
----
+**Produce this in SmartVideo GO AI:** **Video Studio** for the clips, **Lip-Sync Studio** for voice plus mouth-sync, **Storyboard / Campaign Planner** for batching languages as briefs.
 
-## Exercises
-
-1. **Easy:** Translate a 3-sentence script into Spanish. Read both versions aloud and measure the time difference in spoken duration.
-2. **Medium:** Submit a 10-second video to an automated dubbing engine. Download the output and audit the voice similarity.
-3. **Hard:** Produce a translated video with background sound effects. Verify that the sound effects occur at the exact same visual frame boundaries as the original, while the translated audio remains clear and synced.
-
----
-
-## Templates
-
-* [`templates/dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md) — script translation guides, timestamp allocations, and speed pacing checks.
-
----
-
-[← Voice Cloning & TTS Basics](01-voice-cloning-tts.md) · Next: [Podcast Production & Audio Cleaning →](03-podcast-production.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Podcast Production & Audio Cleaning.
