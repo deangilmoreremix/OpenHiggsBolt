@@ -200,6 +200,22 @@ describe('Learning Paths: a self-paced lesson', () => {
     expect((screen.getByLabelText('set') as HTMLInputElement).checked).toBe(false);
   });
 
+  it('two checklist steps in one lesson keep separate ticks; the first keeps the lesson key', async () => {
+    const TWO = ['# Two lists', '', 'Hi.', '', '## Check yourself', '', '* [ ] first a', '* [ ] first b', '', '## Check your work', '', '* [ ] second a', '* [ ] second b'].join('\n');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).includes('/api/academy/progress')
+      ? new Response('{}', { status: 401 })
+      : new Response(JSON.stringify({ markdown: TWO }), { status: 200 }))));
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: 'check-your-work' }} />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'second a' }));
+    const stored = () => JSON.parse(localStorage.getItem('academy-course-progress:v1')!).checks;
+    await waitFor(() => expect(stored()).toEqual({ 'ugc/01-intro#check-your-work': [0] }));
+    fireEvent.click(within(stepNav()).getByRole('button', { name: /Check yourself/ }));
+    const first = await screen.findByRole('checkbox', { name: 'first a' });
+    expect((first as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(first);
+    await waitFor(() => expect(stored()).toEqual({ 'ugc/01-intro': [0], 'ugc/01-intro#check-your-work': [0] }));
+  });
+
   it('Mark lesson complete is offered at the checklist, not only after optional sections', async () => {
     const withTail = [LESSON, '', '## Common mistakes', '* Skipping a step.'].join('\n');
     vi.stubGlobal('fetch', vi.fn(async (url: string) => String(url).includes('/api/academy/progress') ? new Response('{}', { status: 401 }) : new Response(JSON.stringify({ markdown: withTail }), { status: 200 })));

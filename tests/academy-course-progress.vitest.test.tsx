@@ -4,7 +4,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useCourseProgress } from '@/components/academy/useCourseProgress';
 import {
   COURSE_OWNER_KEY, COURSE_STORAGE_KEY, courseContinueTarget, hasStarted, emptyCourseProgress, firstUndoneStep, lessonPercent, markStepDone,
-  mergeCourseProgress, sameCourseProgress, overallPercent, sanitizeCourseProgress, setCourseCheck, setCourseLessonComplete, visitStep,
+  mergeCourseProgress, sameCourseProgress, checksKey, overallPercent, sanitizeCourseProgress, setCourseCheck, setCourseLessonComplete, visitStep,
 } from '@/lib/academyCourseProgress';
 
 const IDS = ['ugc/01-a', 'ugc/02-b', '02-ai-filmmaking/01-c'];
@@ -64,6 +64,21 @@ describe('course progress helpers', () => {
     expect(mergeCourseProgress(a, b)).toBe(b);
     expect(mergeCourseProgress({ ...a, updatedAt: 9 }, b).updatedAt).toBe(9);
     expect(mergeCourseProgress(a, null)).toBe(a);
+  });
+});
+
+describe('checklist tick keys', () => {
+  it('the first checklist step keeps the lesson key; later ones are namespaced and kept apart', () => {
+    expect(checksKey('ugc/01-a', 'check-yourself', 'check-yourself')).toBe('ugc/01-a');
+    expect(checksKey('ugc/01-a', 'check-your-work', 'check-yourself')).toBe('ugc/01-a#check-your-work');
+    let p = setCourseCheck(emptyCourseProgress(), checksKey('ugc/01-a', 'check-yourself', 'check-yourself'), 0, true, 1);
+    p = setCourseCheck(p, checksKey('ugc/01-a', 'check-your-work', 'check-yourself'), 0, true, 2);
+    p = setCourseCheck(p, checksKey('ugc/01-a', 'check-your-work', 'check-yourself'), 0, false, 3);
+    expect(p.checks).toEqual({ 'ugc/01-a': [0] }); // ticking and unticking step 2 never touches step 1
+    const q = setCourseCheck(p, 'ugc/01-a#check-your-work', 2, true, 4);
+    expect(sanitizeCourseProgress(q, IDS).checks).toEqual({ 'ugc/01-a': [0], 'ugc/01-a#check-your-work': [2] });
+    // unknown lessons and empty/oversized suffixes are still dropped
+    expect(sanitizeCourseProgress({ checks: { 'zzz#x': [0], 'ugc/01-a#': [0], ['ugc/01-a#' + 'x'.repeat(100)]: [0] } }, IDS).checks).toEqual({});
   });
 });
 
@@ -547,6 +562,17 @@ describe('useCourseProgress', () => {
     const other = renderHook(() => useCourseProgress(IDS, true, 'userB'));
     await waitFor(() => expect(other.result.current.ready).toBe(true));
     expect(other.result.current.progress.completedLessons).toEqual(['ugc/02-b']);
+  });
+
+  it('a tick on a later checklist step is kept offline across a reload and stays apart from the first checklist', async () => {
+    fetchMock.mockResolvedValue(json({ error: 'x' }, 500));
+    const first = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(first.result.current.sync).toBe('offline'));
+    act(() => { first.result.current.check('ugc/01-a', 0); first.result.current.check('ugc/01-a#check-your-work', 0); });
+    first.unmount();
+    const second = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(second.result.current.sync).toBe('offline'));
+    expect(second.result.current.progress.checks).toEqual({ 'ugc/01-a': [0], 'ugc/01-a#check-your-work': [0] });
   });
 
   it('sends one save at a time with the latest state', async () => {

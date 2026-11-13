@@ -4,7 +4,7 @@ import React from 'react';
 import { LessonViewer } from '../AssetGallery';
 import { AcademyCard, cx } from '../primitives';
 import { parseLesson } from '@/lib/academySteps';
-import { firstUndoneStep, lessonPercent, type CourseProgress } from '@/lib/academyCourseProgress';
+import { checksKey, firstUndoneStep, lessonPercent, type CourseProgress } from '@/lib/academyCourseProgress';
 import { colors, semantic } from '@/shared/styles/designTokens';
 import { useLessonMarkdown } from './useLessonMarkdown';
 
@@ -89,7 +89,9 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
   const isLast = index >= steps.length - 1;
   // finishing is allowed at the checklist too, so optional sections after it never block completion
   const canFinish = isLast || step?.kind === 'checklist';
-  const ticks = progress.checks[lessonId] ?? [];
+  // ticks are kept per checklist step: the first one under the lesson id (as always), later ones namespaced
+  const tickKey = step ? checksKey(lessonId, step.id, steps.find((s) => s.kind === 'checklist')?.id) : lessonId;
+  const ticks = progress.checks[tickKey] ?? [];
 
   const go = (i: number) => {
     moved.current = true;
@@ -177,7 +179,7 @@ export function LessonPlayer({ track, lessonSlug, lessonTitle, progress, ready, 
                       <input
                         type="checkbox"
                         checked={ticks.includes(i)}
-                        onChange={() => actions.check(lessonId, i)}
+                        onChange={() => actions.check(tickKey, i)}
                         className="mt-1 h-4 w-4 accent-[#22d3ee]"
                       />
                       <span>{item}</span>

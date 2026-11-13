@@ -81,7 +81,7 @@ function loadPending(userId: string | null | undefined, ids: readonly string[]):
     const arr = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(arr)) return [];
     const ok = new Set(ids);
-    return compactEdits(arr.slice(-MAX_PENDING).filter((e): e is Edit => !!e && typeof e === 'object' && ok.has((e as Edit).l) && (
+    return compactEdits(arr.slice(-MAX_PENDING).filter((e): e is Edit => !!e && typeof e === 'object' && typeof (e as Edit).l === 'string' && ok.has((e as Edit).l.split('#')[0]) && (
       ((e.k === 'visit' || e.k === 'step') && typeof e.s === 'string' && e.s.length > 0 && e.s.length <= 80)
       || (e.k === 'check' && Number.isInteger(e.i) && typeof e.c === 'boolean')
       || (e.k === 'complete' && typeof e.d === 'boolean')
@@ -379,6 +379,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     sync,
     visit: (lessonId: string, stepId: string) => apply({ k: 'visit', l: lessonId, s: stepId }),
     stepDone: (lessonId: string, stepId: string) => apply({ k: 'step', l: lessonId, s: stepId }),
+    /** `lessonId` is the checklist's tick key (see `checksKey`): the lesson id, or `lessonId#stepId` for a lesson's later checklists */
     check: (lessonId: string, index: number) => {
       // capture the learner's intent now, so replaying it after hydration sets (not flips) the box
       const checked = !(latest.current.checks[lessonId] ?? []).includes(index);

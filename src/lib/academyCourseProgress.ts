@@ -53,6 +53,21 @@ export const emptyCourseProgress = (now = 0): CourseProgress => ({
   checks: {},
 });
 
+/**
+ * Where a checklist step's ticks are stored. The FIRST checklist step of a lesson keeps the plain lesson id
+ * (so everything already saved, in browsers and accounts, stays valid); any further checklist step in the
+ * same lesson is namespaced as `lessonId#stepId` so two checklists never share one set of tick indexes.
+ */
+export const checksKey = (lessonId: string, stepId: string, firstChecklistStepId: string | undefined): string =>
+  !firstChecklistStepId || stepId === firstChecklistStepId ? lessonId : `${lessonId}#${stepId}`;
+
+function validChecksKey(key: string, ok: ReadonlySet<string>): boolean {
+  const i = key.indexOf('#');
+  if (i < 0) return ok.has(key);
+  const suffix = key.slice(i + 1);
+  return ok.has(key.slice(0, i)) && suffix.length > 0 && suffix.length <= MAX_STEP_ID;
+}
+
 /** Coerce untrusted input (storage, network) into a valid state, dropping unknown lessons. */
 export function sanitizeCourseProgress(input: unknown, lessonIds: readonly string[]): CourseProgress {
   const ok = new Set(lessonIds);
@@ -86,7 +101,7 @@ export function sanitizeCourseProgress(input: unknown, lessonIds: readonly strin
   for (const id of out.completedLessons) delete out.stepsDone[id];
   if (o.checks && typeof o.checks === 'object') {
     for (const [k, v] of Object.entries(o.checks as Record<string, unknown>)) {
-      if (!ok.has(k) || !Array.isArray(v)) continue;
+      if (!validChecksKey(k, ok) || !Array.isArray(v)) continue;
       const idx = [...new Set(v.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < MAX_CHECK_INDEX))].sort((a, b) => a - b);
       if (idx.length) out.checks[k] = idx;
     }
