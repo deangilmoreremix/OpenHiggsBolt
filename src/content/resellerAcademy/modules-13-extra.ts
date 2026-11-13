@@ -11,6 +11,7 @@ export interface Module13Extra {
   advanced?: string[];
   mistakes?: string[];
   complete?: string[];
+  troubleshooting?: { problem: string; fix: string }[];
 }
 
 export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
@@ -21,14 +22,19 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'Protect each account like the keys to a shop: a strong unique password in a password manager, two-step sign-in, and your business email so the accounts never depend on a personal address.',
     ],
     follow: [
-      { text: 'Turn on two-step sign-in in each of the four accounts and save the recovery codes somewhere safe, away from the chat.' },
-      { text: 'In Clerk, find the API keys page and look at it without copying anything. You will use the keys in lesson 13.8.', link: K.clerkDocs },
+      { text: 'Turn on two-step sign-in in each of the four accounts, using the security or account settings of each service (menus move; follow the current screen).', expect: 'Each account shows two-step sign-in (or two-factor) as turned on.' },
+      { text: 'Save the recovery codes somewhere safe, away from the chat, such as your password manager.', expect: 'The recovery codes for each account are stored in your password manager, not in a chat or a screenshot folder.' },
+      { text: 'In Clerk, find the API keys page and look at it without copying anything. You will use the keys in lesson 13.8.', link: K.clerkDocs, expect: 'You see a publishable key and a secret key for your development instance, and you have copied neither yet.' },
     ],
     advanced: [
       'Netlify can deploy from several branches. The "production" branch is what customers see; every other branch can get its own preview address. You will use previews to test Clerk safely in 13.9.',
       'Clerk separates a development instance from a production instance, each with its own keys and its own users. Stripe separates test mode from live mode the same way. Keep this pattern in mind: nothing carries over from "practice" to "real" automatically.',
     ],
     complete: ['Two-step sign-in is on and recovery codes are saved', 'I wrote today\'s date next to each free-plan limit'],
+    troubleshooting: [
+      { problem: 'I cannot see a Test mode or Sandbox indicator in Stripe.', fix: 'Dashboards move things around. Look for a test or sandbox switch near the top of the Stripe dashboard, and check the official Stripe page on test mode before continuing.' },
+      { problem: 'A service does not offer two-step sign-in where I looked.', fix: 'Search that service\'s help page for two-step or two-factor sign-in; the setting is usually under account or security.' },
+    ],
   },
   '13.2': {
     learn: [
@@ -37,14 +43,18 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'A new account will show zero sites and zero payments. That is a good test result: it proves Claude reached your account, not someone else\'s.',
     ],
     follow: [
-      { text: 'Check the answer matches your dashboards (empty lists are fine). If it shows the wrong account or live Stripe data, disconnect, sign out of that service in your browser, and reconnect with the right account.' },
-      { text: 'Send this once to set the rule for the whole project.', copy: { label: 'Working rule', value: 'Do not ask me for secret keys. If a step involves a key, tell me the variable name and which dashboard page to paste it into.' } },
+      { text: 'Check the answer matches your dashboards (empty lists are fine). If it shows the wrong account or live Stripe data, disconnect, sign out of that service in your browser, and reconnect with the right account.', expect: 'The site names, Clerk application name and Stripe test payments match what you see in your own three dashboards (or all show as empty).' },
+      { text: 'Send this once to set the rule for the whole project.', copy: { label: 'Working rule', value: 'Do not ask me for secret keys. If a step involves a key, tell me the variable name and which dashboard page to paste it into.' }, expect: 'The assistant agrees and says it will name variables and dashboard pages instead of asking for keys.' },
     ],
     advanced: [
       'Connectors are usually built on the Model Context Protocol (MCP), an open standard for letting assistants use tools. Both Claude and ChatGPT use it, which is why the same three services work with either.',
       'Some connectors list their tools only after a separate authorization. If a connector shows as added but the chat cannot use it, complete that authorization from its entry in settings.',
     ],
     mistakes: ['Approving a connector for a client or employer account.', 'Ignoring a connector that stays in an "authorization needed" state.'],
+    complete: ['The answer matched my own dashboards, not someone else\'s', 'I sent the working rule about secret keys'],
+    troubleshooting: [
+      { problem: 'The answer shows the wrong account or live Stripe data.', fix: 'Disconnect the connector, sign out of that service in your browser, and reconnect with the right account in test mode.' },
+    ],
   },
   '13.3': {
     learn: [
@@ -53,9 +63,10 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'Even when connectors are unavailable you can finish the whole module: ask the assistant to explain each change, and make the dashboard changes yourself.',
     ],
     follow: [
-      { text: 'Check that each connector is switched on for the conversation you are using, if your ChatGPT version asks you to enable them per chat.' },
-      { text: 'Read every confirmation before approving an action that changes something. Approve only what you expect.' },
+      { text: 'Read every confirmation before approving an action that changes something. Approve only what you expect.', expect: 'Before any change, ChatGPT shows a confirmation naming the service and the action, and you can decline it.' },
     ],
+    complete: ['I know which of the three services my ChatGPT plan can use', 'I read a confirmation before approving any change'],
+    troubleshooting: [{ problem: 'The connector is added but ChatGPT does not use it in my chat.', fix: 'If your ChatGPT version asks, switch the connector on for the conversation you are using, and check OpenAI\'s current help page.' }],
     advanced: ['Write actions may ask for confirmation each time. That is a feature: it is your chance to catch a wrong target (for example, a live Stripe account instead of test).'],
   },
   '13.4': {
@@ -64,13 +75,15 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'You do not need to understand every line of a change. Check three things: does the explanation match what you asked for, is the change on a branch, and is there a test you can run ("open this page, you should see this")?',
     ],
     follow: [
-      { text: 'Compare the assistant\'s summary with the workshop panels: same sign-in system, same Stripe webhook route, same variable names, and the place where users and credits are stored. Correct anything it got wrong.' },
-      { text: 'Send the working rules message.', copy: { label: 'Working rules', value: 'For the rest of this project: always show me a plan first, change one thing at a time, tell me how to test each change, and tell me exactly which dashboard I must visit for anything involving a key or a setting.' } },
+      { text: 'Compare the assistant\'s summary with the workshop panels: same sign-in system, same Stripe webhook route, same variable names, and the place where users and credits are stored. Correct anything it got wrong.', expect: 'Each item in the summary matches the workshop panel, or you have told the assistant what to correct and it has fixed its summary.' },
+      { text: 'Send the working rules message.', copy: { label: 'Working rules', value: 'For the rest of this project: always show me a plan first, change one thing at a time, tell me how to test each change, and tell me exactly which dashboard I must visit for anything involving a key or a setting.' }, expect: 'The assistant agrees to show a plan first, change one thing at a time and name the dashboard for any key.' },
     ],
     advanced: [
       'If the assistant starts changing payment code while you asked about sign-in, stop it: "Explain why this is needed and what could go wrong." Unexpected scope is the most common sign a plan went off track.',
     ],
     mistakes: ['Skipping the summary check: a wrong assumption now becomes a broken build later.'],
+    complete: ['I corrected anything the summary got wrong', 'I sent the working rules message'],
+    troubleshooting: [{ problem: 'The summary does not match my workshop panel.', fix: 'Tell the assistant which part is wrong, ask it to look at the repo again, and confirm the corrected summary before any change.' }],
   },
   '13.5': {
     learn: [
@@ -79,9 +92,9 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'Two values need care: the variable holding your site\'s own public address (it must match the real netlify.app address, so set it after the first deploy and redeploy), and the database address (use the application connection string your host gives you).',
     ],
     follow: [
-      { text: 'If the assistant proposes a configuration change for Netlify, ask for it on a new branch (for example netlify-setup) and have it explain the change first. It should not change how the app behaves.' },
-      { text: 'After the first deploy, set the variable that holds your site\'s public address to the real netlify.app address, then redeploy.' },
-      { text: 'If the deploy fails, ask the assistant to read the log and name only the first error.', copy: { label: 'Prompt', value: 'Read the failed deploy log through the Netlify connector and tell me the first error and what causes it. Do not change anything yet.' } },
+      { text: 'If the assistant proposes a configuration change for Netlify, ask for it on a new branch (for example netlify-setup) and have it explain the change first. It should not change how the app behaves.', expect: 'Any proposed change is explained first and sits on a branch such as netlify-setup; if none was needed, there is nothing to do here.' },
+      { text: 'After the first deploy, set the variable that holds your site\'s public address to the real netlify.app address, then redeploy.', expect: 'The variable shows your real netlify.app address and Netlify starts a new deploy that finishes as Published.' },
+      { text: 'If the deploy fails, ask the assistant to read the log and name only the first error.', copy: { label: 'Prompt', value: 'Read the failed deploy log through the Netlify connector and tell me the first error and what causes it. Do not change anything yet.' }, expect: 'The assistant names one first error and its cause, and has changed nothing yet. If the deploy succeeded, skip this step.' },
     ],
     advanced: [
       'Fix one error at a time and redeploy after each. The first error is usually the real one; later errors are often consequences of it.',
@@ -96,9 +109,10 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'Clerk\'s development instance works on netlify.app and preview addresses. A production instance needs your own domain, has its own keys and its own user list, and is set up in lesson 13.13.',
     ],
     follow: [
-      { text: 'Ask for the change on a new branch called clerk-signup, one explained file at a time. Ask it to tell you the variable names to add in Netlify, not the values.', copy: { label: 'Prompt', value: 'Create a branch called clerk-signup and make the change you described. Explain each file you change. Tell me the exact environment variable names I need to add in Netlify. Do not ask me for secret keys.' } },
-      { text: 'Test the edge cases on the preview: signing in with Google if you enabled it, visiting a signed-in page while signed out (you should be sent to sign-in), and visiting sign-in while signed in (you should be sent into the app).' },
-      { text: 'Sign out and sign back in. You must return to the same account and the same credits.' },
+      { text: 'Approve the plan, then ask for the change on a new branch called clerk-signup, one explained file at a time. Ask it to tell you the variable names to add in Netlify, not the values.', copy: { label: 'Prompt', value: 'Create a branch called clerk-signup and make the change you described. Explain each file you change. Tell me the exact environment variable names I need to add in Netlify. Do not ask me for secret keys.' }, expect: 'A branch called clerk-signup exists, each changed file is explained, and you have a list of variable names (no values).' },
+      { text: 'On the preview, visit a signed-in page while signed out.', expect: 'You are sent to the sign-in page.' },
+      { text: 'Still on the preview, sign in and then visit the sign-in page again.', expect: 'You are sent into the app instead of seeing sign-in again.' },
+      { text: 'If you enabled Google as a sign-in option in Clerk, try signing up with it too. Skip this step if you did not.', expect: 'Google sign-up completes and the new user appears in Clerk.' },
     ],
     advanced: [
       'If you ever see a redirect loop, ask the assistant to read the middleware and explain which routes are public. This is the usual cause.',
@@ -113,8 +127,10 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'Test and live data are completely separate. A test key cannot see live payments and the other way round, which is why test mode is safe to experiment in.',
     ],
     follow: [
-      { text: 'Test the unhappy paths: a declined test card must add nothing, cancelling on the Checkout page must come back with no credits, and buying twice must add credits twice, not once or four times.', link: K.stripeTesting },
-      { text: 'If credits go to the wrong person, stop and ask the assistant how a checkout is tied to a user. This usually traces back to the user mapping from lessons 13.7 to 13.9.' },
+      { text: 'Buy a pack with a declined Stripe test card (use a decline number from Stripe\'s testing page).', link: K.stripeTesting, expect: 'Stripe shows the card was declined and your credits do not change.' },
+      { text: 'Start another purchase and cancel on the Stripe Checkout page.', expect: 'You return to your app with no credits added.' },
+      { text: 'Buy the same pack twice with the successful test card.', expect: 'Credits go up by one pack for each purchase, not once and not four times.' },
+      { text: 'If credits go to the wrong person, stop and ask the assistant how a checkout is tied to a user. This usually traces back to the user mapping from lessons 13.7 to 13.9. If credits went to the right person, skip this step.', expect: 'Credits appear on the account that bought them, or the assistant explains how a checkout is tied to a user.' },
     ],
     advanced: [
       'A trailing slash or a wrong path in the webhook address is a very common cause of "payment succeeded but credits did not appear". Compare the endpoint address with the path in your workshop panel character by character.',
@@ -129,12 +145,20 @@ export const MODULE_13_EXTRA: Record<string, Module13Extra> = {
       'After launch, check weekly for failed deploys and failed webhook deliveries, watch your free-plan limits, rotate any key that was ever exposed and back up your database as your host recommends.',
     ],
     follow: [
-      { text: 'Add your domain in Netlify and follow its DNS instructions. Wait until the domain is confirmed before changing Clerk and Stripe.', link: K.netlifyDocs },
-      { text: 'Create the Clerk production instance for your domain and put its keys in Netlify\'s production variables. Create the live Stripe webhook for your real address and put its signing secret in Netlify. Redeploy.', link: K.clerkDocs },
-      { text: 'Final test: sign up with a new real email on your domain, buy the smallest credit pack with a real card, confirm credits and the successful webhook, then refund the payment yourself in Stripe.', link: K.stripeDashboardPayments },
-      { text: 'Set a weekly reminder to ask the assistant for a summary of failed deploys and failed webhook deliveries.', copy: { label: 'Weekly prompt', value: 'Summarise failed Netlify deploys and failed Stripe webhook deliveries from the last 7 days and tell me what each one means. Do not change anything.' } },
+      { text: 'Add your domain in Netlify and follow its DNS instructions at your domain provider (check the official page; the screens differ by provider).', link: K.netlifyDocs, expect: 'Netlify lists your domain and shows the DNS records it wants you to set.' },
+      { text: 'Wait until Netlify shows the domain as confirmed before changing Clerk and Stripe. DNS changes can take a while, so come back later if needed.', expect: 'Netlify shows your domain as confirmed and your site opens at it.' },
+      { text: 'Create the Clerk production instance for your domain and put its keys in Netlify\'s production variables only.', link: K.clerkDocs, expect: 'Clerk shows a production instance for your domain, and its keys are in Netlify\'s production variables, not in preview builds.' },
+      { text: 'Create the live Stripe webhook for your real address, put its signing secret in Netlify\'s production variables, and redeploy.', expect: 'Stripe lists a live-mode webhook endpoint for your domain, and the redeploy finishes as Published.' },
+      { text: 'Final test, part one: sign up with a new real email on your domain.', expect: 'You sign up on your own domain and the user appears in the Clerk production instance.' },
+      { text: 'Final test, part two: buy the smallest credit pack with a real card.', link: K.stripeDashboardPayments, expect: 'Your credits go up, and Stripe (live mode) shows the payment and a successful webhook delivery.' },
+      { text: 'Refund that payment yourself in Stripe.', link: K.stripeDashboardPayments, expect: 'Stripe shows the payment as refunded.' },
+      { text: 'Set a weekly reminder to ask the assistant for a summary of failed deploys and failed webhook deliveries.', copy: { label: 'Weekly prompt', value: 'Summarise failed Netlify deploys and failed Stripe webhook deliveries from the last 7 days and tell me what each one means. Do not change anything.' }, expect: 'Your calendar or notes app has a repeating weekly reminder containing this prompt.' },
     ],
     advanced: ['Sign-in that fails only on your domain usually means the Clerk production instance does not list the domain yet. A payment that succeeds with no effect usually means the live webhook is missing or uses the test signing secret.'],
     mistakes: ['Not refunding your own test purchase.', 'Carrying test keys into production or live keys into previews.'],
+    troubleshooting: [
+      { problem: 'Netlify does not confirm my domain.', fix: 'DNS changes can take time. Re-check the records against what Netlify shows and the official Netlify page for your domain provider, then wait and check again before changing Clerk or Stripe.' },
+      { problem: 'Sign-in fails only on my own domain.', fix: 'The Clerk production instance probably does not list the domain yet, or Netlify\'s production variables still hold development keys.' },
+    ],
   },
 };

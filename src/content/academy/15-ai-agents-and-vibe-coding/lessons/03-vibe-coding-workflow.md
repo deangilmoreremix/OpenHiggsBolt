@@ -1,155 +1,126 @@
-# The Vibe-Coding Workflow: Prompt → Build → Test → Ship
+# The Vibe-Coding Workflow: Prompt, Build, Test, Ship
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> A repeatable 4-phase development loop that lets you build and ship working creator tools without reading a single line of code.
-
-**Track:** AI Agents & Vibe-Coding for Creators
-**Time:** ~50 minutes
-**Prerequisites:** [01: What Coding Agents Actually Do](01-what-coding-agents-actually-do.md), [02: Building Your First Sellable Micro-Tool](02-building-your-first-sellable-micro-tool.md)
-
-## The Problem
-
-Most creators who start vibe-coding hit the same wall after their second or third tool:
-
-* The agent produces a file that crashes on the first run.
-* The creator pastes the error message back, the agent fixes it, but now something else breaks.
-* After 3 rounds of back-and-forth, the session devolves into confusion and the project is abandoned.
-
-This happens because vibe-coding without a **structured workflow** is just random prompting. A disciplined 4-phase loop — **Prompt → Build → Test → Ship** — eliminates this failure pattern by giving both you and the agent a clear contract for what each phase produces.
+> **Time:** about 18 minutes. **You will finish with:** a written session brief, a tool built and tested from it, and a zipped, ship-ready package.
 
 ---
 
-## The Concept
+## Before you start
 
-The **Vibe-Coding Loop** is a repeatable session structure:
+After a second or third tool, many creators hit a wall: the agent produces a file that crashes, you paste the error back, something else breaks, and after 3 rounds the project is abandoned. Vibe-coding without structure is just random prompting. The fix is a 4-phase loop, **Prompt, Build, Test, Ship**, which gives you and the agent a clear contract for each phase. Original timing guidance: Prompt about 10 minutes, Build 15-30, Test 10-15, Ship 10. A first run with a small tool can be much faster, which is what this lesson uses.
 
-```
-Phase 1: PROMPT (Define Scope) ──► Phase 2: BUILD (Agent Generates) ──► Phase 3: TEST (You Verify) ──► Phase 4: SHIP (Package & Publish)
-```
+You will need: Claude Code or Cursor from lesson 1, a small tool idea (the example is a FLUX Batch Prompt Runner), 3 real prompts, and a muapi key stored as the `MUAPI_KEY` environment variable (never typed into chat). Prerequisites: lessons 1 and 2.
 
-### Phase Breakdown:
+## Step by step
 
-#### Phase 1 — PROMPT (10 minutes)
-Write the **Tool Spec Brief** (see [`templates/vibe-coding-session-brief.md`](templates/vibe-coding-session-brief.md)) before opening the agent. Your brief must include:
-* **One-sentence tool description** (what it does, for whom, using what input/output).
-* **Error handling rules** (e.g., *"if a line in the input file is blank, skip it and continue"*).
-* **Tech constraints** (e.g., *"use only Python standard library — no external packages except `openai`"*).
+### 1. Write the session brief before opening the agent
 
-> **The Golden Rule of Prompting for Code:** Never open the agent without a written brief. Improvised prompting produces improvised code that breaks unpredictably.
+Open [`templates/vibe-coding-session-brief.md`](templates/vibe-coding-session-brief.md). A brief needs a one-sentence description, error handling rules and tech constraints. Golden rule: never open the agent without a written brief. Fill it in like this:
 
-#### Phase 2 — BUILD (15–30 minutes)
-Paste your full brief into the agent in a single message. Let the agent generate the complete initial version without interrupting. Then:
-* Read the agent's explanation of what it built (not the code — the explanation in plain English).
-* If the explanation matches your brief, proceed to Phase 3.
-* If it doesn't match, correct the agent with a **targeted single-sentence fix**, not a full re-description.
-
-#### Phase 3 — TEST (10–15 minutes)
-Run the tool on real data — not dummy placeholder data. Use the actual filenames, actual product names, or actual prompts your buyers will use. Check:
-* ✅ Does it produce the correct output format?
-* ✅ Does it handle edge cases gracefully (blank lines, special characters, long strings)?
-* ✅ Does it complete in under 60 seconds for a typical input size?
-
-When you find a bug, paste the **exact error message** (not a paraphrase) back to the agent:
-> *"Running the script gives this error: `KeyError: 'title1'`. Fix it."*
-
-#### Phase 4 — SHIP (10 minutes)
-Ask the agent to generate the packaging assets:
-> *"Write a plain-English README.md explaining installation and usage. Also create a `requirements.txt` listing all pip packages needed."*
-
-Zip the folder: `[tool-name]-v1.0.zip`. Upload to Gumroad or LemonSqueezy. Done.
-
----
-
-## Do It
-
-### Step 1: Write Your Session Brief
-Open [`templates/vibe-coding-session-brief.md`](templates/vibe-coding-session-brief.md). Complete each field:
-
-```
+```text
 Tool Name: FLUX Batch Prompt Runner
-One-Line Description: Reads prompts from prompts.txt, sends each to muapi /nano-banana-2, 
-                      saves all output image URLs to results.csv.
-Input: prompts.txt — one prompt string per line
-Output: results.csv — columns: PromptText, ImageURL, Timestamp
+One-Line Description: Reads prompts from prompts.txt, sends each to muapi /nano-banana-2, saves all output image URLs to results.csv.
+Input: prompts.txt - one prompt string per line
+Output: results.csv - columns: PromptText, ImageURL, Timestamp
 API: muapi (key from MUAPI_KEY environment variable)
 Error Handling: If an API call fails, log the error to errors.log and continue.
 Packages Allowed: requests, csv (standard library)
 ```
 
-### Step 2: Run the BUILD Phase
-Paste the completed brief to Claude Code or Cursor. Wait for the full first draft. Do not interrupt mid-generation.
+**You should see:** a complete brief with every field filled and no blanks.
 
-### Step 3: Run the TEST Phase
-Create a `prompts.txt` with 3 real prompts you would actually use. Run the script. Verify `results.csv` contains 3 rows with working image URLs.
+**If not:** if you cannot fill a field, the tool is not scoped yet. Revisit lesson 2's four questions.
 
-### Step 4: Run the SHIP Phase
-Ask the agent: *"Generate a README.md and requirements.txt for this project."* Then zip and upload.
+### 2. Build: paste the whole brief once
 
----
+Paste the full brief into the agent in a single message and let it finish without interrupting.
 
-## Worked Example
+**You should see:** the agent generating the complete first version and explaining it in plain English.
 
-**Full Vibe-Coding Session: "FLUX Batch Prompt Runner"**
+**If not:** if the agent stops to ask something, answer briefly and let it continue.
 
-* **Phase 1 (Prompt):** 8-minute brief writing session in `vibe-coding-session-brief.md`.
-* **Phase 2 (Build):** Agent generated `batch_runner.py` in 2 minutes. One issue caught immediately: the agent used `requests.get()` instead of `requests.post()` for the API call — fixed with 1 correction sentence.
-* **Phase 3 (Test):** Tested with 10 real prompts. 9 succeeded, 1 failed due to a prompt containing a special apostrophe character. Agent fixed the encoding issue in 30 seconds.
-* **Phase 4 (Ship):** Agent generated README and requirements.txt in 1 minute. Zip created and uploaded to Gumroad.
-* **Total Session Time:** 52 minutes from blank folder to live product page.
-* **Gumroad Price:** **$29 one-time**.
-* **Week 1 Revenue:** 11 sales × $29 = **$319**.
+### 3. Check the explanation, not the code
 
----
+Read the agent's plain-English explanation and compare it with your brief.
 
-## Compare Tools
+**You should see:** an explanation that matches your input, output, API and error handling.
+
+**If not:** correct it with one targeted sentence, not a full re-description. In the original example the agent used `requests.get()` instead of `requests.post()`, and a single sentence fixed it.
+
+### 4. Test on real data
+
+Create a `prompts.txt` with 3 real prompts you would actually use, then run the script (adapt the file name to what your agent created):
+
+```bash
+python batch_runner.py
+```
+
+Check three things: is the output format correct, does it handle blank lines, special characters and long strings, and does it finish in under 60 seconds for a typical input?
+
+**You should see:** a `results.csv` with 3 rows and working image URLs.
+
+**If not:** paste the **exact error message**, not a paraphrase:
+
+```text
+Running the script gives this error: KeyError: 'title1'. Fix it.
+```
+
+### 5. Ship: generate the packaging files
+
+Ask the agent:
+
+```text
+Write a plain-English README.md explaining installation and usage. Also create a requirements.txt listing all pip packages needed.
+```
+
+**You should see:** a `README.md` and a `requirements.txt` in the folder.
+
+**If not:** if packages are missing from `requirements.txt`, ask the agent to check every import in the script.
+
+### 6. Zip and name it
+
+Zip the folder as `[tool-name]-v1.0.zip`. Uploading to Gumroad or LemonSqueezy is covered in lesson 4.
+
+**You should see:** one zip containing the script, README and `requirements.txt`, and no API key inside any file.
+
+**If not:** if you find a key in any file, remove it and use the environment variable instead.
+
+## Check yourself
+
+* [ ] I wrote a brief before opening the agent.
+* [ ] I judged the build by its plain-English explanation first.
+* [ ] I tested with real data and pasted exact error messages when something failed.
+* [ ] My zip is named with a version and contains no secrets.
+
+## Common mistakes
+
+* **Improvised prompting.** No brief means unpredictable code.
+* **Interrupting the build.** Let the first draft finish, then correct.
+* **Paraphrasing errors.** Paste the exact message.
+* **Testing only with dummy data.** Real names and prompts reveal the real bugs.
+
+## Go further
+
+**Worked example: FLUX Batch Prompt Runner.** Phase 1: 8 minutes writing the brief. Phase 2: the agent generated `batch_runner.py` in 2 minutes; the `get`/`post` mistake was fixed with one sentence. Phase 3: 10 real prompts, 9 succeeded and 1 failed on a special apostrophe, fixed in 30 seconds. Phase 4: README and requirements in 1 minute, zip uploaded to Gumroad. Total: 52 minutes from blank folder to live product page, priced at **$29 one-time**, week 1: 11 sales x $29 = **$319**.
+
+**Compare tools**
 
 | Vibe-Coding Setup | Phase 2 Speed | Phase 3 Error Recovery | Learning Curve |
 |---|---|---|---|
-| **Claude Code (terminal)** | Fast (single command sends full brief) | Excellent (paste error → instant fix) | Low — just type in terminal |
-| **Cursor (visual editor)** | Fast (chat panel) | Excellent (click error in editor → agent sees context) | Very Low — familiar UI |
+| **Claude Code (terminal)** | Fast (single command sends full brief) | Excellent (paste error, instant fix) | Low |
+| **Cursor (visual editor)** | Fast (chat panel) | Excellent (click error in editor, agent sees context) | Very Low |
 | **Windsurf (Codeium)** | Fast | Good | Low |
-| **ChatGPT.com (no file access)** | Slow (manual copy-paste between phases) | Poor (loses context across messages) | Medium |
+| **ChatGPT.com (no file access)** | Slow (manual copy-paste) | Poor (loses context) | Medium |
 
----
+**Scaling beyond one tool:** release a `v2.0` (for example a GUI window so buyers need no terminal) and charge existing buyers an upgrade fee of **$9-$15**. Bundle 3 related tools (for example "The POD Creator Toolkit": Etsy Title Generator + Keyword Expander + Mockup Namer) at a 25% discount; bundles can outperform single tools by **2.5-4x revenue**.
 
-## Launch It
+**Exercises**
 
-**Scaling beyond one tool:**
-* **Version 2 Upgrades:** Release a `v2.0` update (e.g., add a GUI window so buyers don't need a terminal) and charge existing buyers an upgrade fee of **$9 – $15**. Gumroad supports this natively.
-* **Tool Bundle Packs:** Bundle 3 related micro-tools (e.g., "The POD Creator Toolkit": Etsy Title Generator + Keyword Expander + Mockup Namer) at a 25% discount from buying separately. Bundles consistently outperform individual tools by **2.5–4x revenue**.
+1. **Easy:** Write a full session brief for a "YouTube Script Section Formatter" without opening an agent.
+2. **Medium:** Run all 4 phases to build a script that reads Etsy store names and generates 5 niche product idea keywords per store.
+3. **Hard:** Complete Prompt, Build, Test, Ship for a tool of your choice, upload it to a Gumroad draft page and write the product description.
 
----
+**Templates:** [`templates/vibe-coding-session-brief.md`](templates/vibe-coding-session-brief.md) for session planning, agent prompt frameworks and tool spec sheets.
 
-## Exercises
+**Produce this in SmartVideo GO AI:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner and Lip-Sync Studio can all be fed by tools like these.
 
-1. **Easy:** Write a full session brief for a "YouTube Script Section Formatter" tool using the template — without opening an agent.
-2. **Medium:** Run a full 4-phase vibe-coding session to build a script that reads a list of Etsy store names and generates 5 niche-specific product idea keywords per store.
-3. **Hard:** Complete a full Prompt → Build → Test → Ship cycle for a tool of your choosing, upload it to a Gumroad draft page, and write the product description copy.
-
----
-
-## Templates
-
-* [`templates/vibe-coding-session-brief.md`](templates/vibe-coding-session-brief.md) — Session planning templates, agent prompt frameworks, and tool spec sheets.
-
----
-
-[← Building Your First Sellable Micro-Tool](02-building-your-first-sellable-micro-tool.md) · Next: [Pricing & Selling Tools You Build With Agents →](04-pricing-and-selling-tools.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Pricing & Selling Tools You Build With Agents.

@@ -1,84 +1,94 @@
 # Screenplay & Story Generation
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> A good script is cheap; a good story that can actually be filmed by AI is rare.
-
-**Track:** AI Filmmaking  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-Traditional screenplays are written for human actors and camera crews. A standard script might describe "a crowded café with dozens of patrons chatting, as the protagonist slams their coffee cup down in anger, causing coffee to spill onto a passing waiter's uniform." 
-
-If you feed a scene like this into a generative AI video model, the rendering will fail completely. The patrons' faces will morph, the physical interaction of spilling coffee on a waiter will look like a surreal glitch, and keeping the protagonist looking like the same person across shots will be impossible.
-
-Most aspiring AI filmmakers start by writing a standard story, only to waste hundreds of generation credits trying to force an AI model to render complex physics, crowds, or constant location shifts. Designing your screenplay with **AI-first constraints** from day one is the difference between a completed film and a folder of discarded, glitchy clips.
-
-## The Concept
-
-AI-first screenwriting is the process of drafting stories designed specifically around the limitations and strengths of generative models. 
-
-### Core Constraints of Generative Video Models:
-* **The Physics Gap:** AI models struggle with complex object interaction (e.g., tying shoes, pouring liquids, buttoning a shirt, eating food). 
-* **The Crowd Dilemma:** Any scene with more than two characters in frame dramatically increases visual morphing and reduces identity consistency.
-* **Continuous Action Limits:** Most models generate clips in 4–5 second increments. Long, continuous single-take action scenes are not yet feasible.
-
-To design around these constraints, we write scripts that focus on **static character postures, environmental moods, atmospheric lighting, and high-impact dialogue/voiceover** rather than complex physical action.
-
-```
-Story Outline → Constraint Check → Visual Script Formatting → Prompts Generation
-```
-
-Instead of describing physical struggle, describe the *emotional reaction* shown on a character's face or the *mood* of the setting, which AI video generators render beautifully.
-
-## Do It
-
-### Step 1: Define the Production Constraints
-Before writing a single word of your script, fill out the project constraints in your brief. Choose:
-* **Max 1–2 characters** to maintain facial consistency.
-* **Max 2 locations** (e.g., a quiet office, a dimly lit street).
-* **Atmospheric focus:** Decide on the visual theme (e.g., neon cyberpunk, dusty retro-future, noir daylight) to anchor prompt styling.
-
-### Step 2: Write the Screenplay with Visual Anchor Prompts
-Format your screenplay using a layout that integrates standard screenwriting format with image/video prompt anchors. 
-* Break the script into individual, discrete shots (each lasting 3-4 seconds).
-* For each shot, write a clear **visual action description** that details the character's facial expression or slow movement.
-* Keep dialogue brief (under 15 words per shot) so that TTS models can read it naturally without rushing.
-
-### Step 3: LLM Script Generation
-Use a text LLM (like Claude or Gemini) to brainstorm and refine the script. Use a system prompt that forces the AI to respect physical limitations:
-> *System Prompt:* "You are an AI-first screenwriter. Write a 60-second sci-fi script. Only 1 character. Set entirely in a single room. Avoid any physical object interactions. Focus on facial expressions, slow camera tracking shots, and voiceover dialogue. For every scene, output a detailed visual prompt describing camera movement, framing, character appearance, and lighting."
-
-### Step 4: Prune the Actions
-Review the script line by line. If a line says "He stands up, walks to the shelf, grabs a book, opens it, and smiles," prune it. Replace it with: "He sits at the desk, looking at the shelf. [Camera pushes in on his face, showing curiosity]." This is highly renderable.
-
-### Step 5: Save Character & Style Anchors
-Create a style sheet with your prompt prefixes (lighting, film stock, aspect ratio) so they can be copy-pasted into every image generator.
+> **Time:** about 16 minutes. **You will finish with:** a short AI-friendly screenplay of about 5 shots, each with a ready-to-use visual prompt, plus a saved style prefix.
 
 ---
 
-## Worked Example
+## Before you start
 
-<p align="center">
-<img src="templates/examples/astronaut-anchor.jpg" alt="Hero Portrait for The Last Signal: Astronaut in flight suit" width="320">
-<img src="templates/examples/astronaut-intro-clip.gif" alt="Hero Character Motion Clip (I2V)" width="320">
-</p>
-<p align="center"><sub>AI Hero Character Anchor Image (Left) ──► Image-to-Video Animation (Right) · Video File: <a href="templates/examples/astronaut-intro-clip.mp4">templates/examples/astronaut-intro-clip.mp4</a></sub></p>
+A normal screenplay breaks AI video models. A crowded café with spilled coffee gives morphing faces, glitchy physics and a hero who looks different in every shot, and you burn generation credits on clips you throw away. Writing with **AI-first constraints** from the start is the difference between a finished film and a folder of discarded clips. The constraints: the physics gap (pouring, tying shoes and eating look wrong), the crowd dilemma (more than two characters in frame hurts identity consistency), and continuous action limits (most models make 4-5 second clips, so long single takes are not feasible). You will need a text assistant such as Claude or Gemini, the templates [`templates/ai-film-brief.md`](templates/ai-film-brief.md) and [`templates/screenplay-prompt-template.md`](templates/screenplay-prompt-template.md), and SmartVideo GO AI's **Image Studio** and **Video Studio** for the optional test render. No prerequisites.
 
-**Film Brief: "The Last Signal"**
-* **Character:** John (40s), a tired astronaut.
-* **Location:** Spaceship communication deck.
-* **Vibe:** Cinematic sci-fi, moody blue lighting.
+## Step by step
 
+### 1. Set your production constraints
 
+Open [`templates/ai-film-brief.md`](templates/ai-film-brief.md) and fill in:
 
-**Script Excerpt & Prompts:**
+1. **Max 1-2 characters**, to keep faces consistent.
+2. **Max 2 locations** (for example a quiet office and a dimly lit street).
+3. **A visual theme** (neon cyberpunk, dusty retro-future, noir daylight) to anchor your prompt styling.
 
-```markdown
+**You should see:** a brief with characters, locations and one theme written down.
+
+**If not:** if you have more than two characters or locations, cut the least important ones now. It is far cheaper than cutting later.
+
+### 2. Ask an assistant for a first draft
+
+Paste this into Claude or Gemini (change the genre or length if you like):
+
+```text
+You are an AI-first screenwriter. Write a 60-second sci-fi script. Only 1 character. Set entirely in a single room. Avoid any physical object interactions. Focus on facial expressions, slow camera tracking shots, and voiceover dialogue. For every scene, output a detailed visual prompt describing camera movement, framing, character appearance, and lighting.
+```
+
+**You should see:** a short script where every scene comes with a visual prompt.
+
+**If not:** if the draft has crowds or lots of hand action, reply "Remove all physical interactions and keep one character" and ask again.
+
+### 3. Prune the physical action
+
+Read the draft line by line. Replace any multi-step action with a low-action version. For example, "He stands up, walks to the shelf, grabs a book, opens it, and smiles" becomes:
+
+```text
+He sits at the desk, looking at the shelf. [Camera pushes in on his face, showing curiosity]
+```
+
+**You should see:** characters mostly sitting or standing, with emotion shown on the face or in the mood of the room.
+
+**If not:** look for verbs like pour, tie, eat, button, grab. Each one is a likely glitch.
+
+### 4. Break it into 3-4 second shots
+
+Use [`templates/screenplay-prompt-template.md`](templates/screenplay-prompt-template.md). Make each shot discrete (3-4 seconds), give it a visual action description of the character's expression or slow movement, and keep dialogue **under 15 words per shot** so text-to-speech reads it naturally.
+
+**You should see:** about 5 numbered shots, each with an action line, a short voiceover line and a video prompt.
+
+**If not:** if a shot needs more than one action, split it into two shots.
+
+### 5. Save your style prefix
+
+Write one reusable prefix (lighting, film stock, aspect ratio) and keep it in your brief, for example the one from the worked example below: "Static shot, high quality cinematic, Arri Alexa, film grain." You will paste it at the start of every image prompt in the next lesson.
+
+**You should see:** one line of style text saved next to your character description.
+
+**If not:** if your shots look inconsistent later, a missing or changing prefix is the usual cause.
+
+### 6. Test one shot in SmartVideo GO AI
+
+Open **Image Studio** and generate an anchor image from your Shot 1 prompt, then (optionally) animate it in **Video Studio** with image-to-video. Studio menus move; follow the current screen.
+
+**You should see:** a still that matches your prompt, and optionally a short clip that keeps the same character and background.
+
+**If not:** if the character looks wrong, add more specific details (age, hair, clothing) to the prompt and re-run the image before animating.
+
+## Check yourself
+
+* [ ] My brief limits the story to 1-2 characters and 2 locations.
+* [ ] No shot needs complex physics, crowds or a long continuous action.
+* [ ] Each shot lasts about 3-4 seconds and dialogue is under 15 words.
+* [ ] Every shot has a visual prompt, and I saved a style prefix.
+
+## Common mistakes
+
+* Writing a normal script first and hoping the AI copes with the physics.
+* Putting 3 or more characters in one frame.
+* Long dialogue per shot, which makes text-to-speech rush.
+* Describing physical struggle instead of the emotional reaction or the mood of the setting.
+
+## Go further
+
+**Worked example: "The Last Signal."** Character: John (40s), a tired astronaut. Location: spaceship communication deck. Vibe: cinematic sci-fi, moody blue lighting. Excerpt:
+
+```text
 SCENE 1: INTERIOR SPACE CABIN - NIGHT
 
 John sits in a high-tech pilot seat, surrounded by glowing green instrument panels. Cool blue light washes over his face. He looks up at a flickering display monitor off-camera.
@@ -90,78 +100,18 @@ VIDEO PROMPT (Shot 1.1):
 "Medium close-up of a tired astronaut (40s, short gray hair, stubble, wearing a worn silver flight suit) sitting in a spaceship cockpit. Glowing green instrument panels are out of focus in the background. Cool blue light illuminates his face. Static shot, high quality cinematic, Arri Alexa, film grain."
 ```
 
-**Why this script works:**
-1. **Low-action:** The character is sitting down. The movement is limited to "looking up," which video models interpolate smoothly.
-2. **Atmospheric lighting:** The cool blue light and glowing green panels give the video generator clear lighting keys to follow, creating consistency.
-3. **Voiceover-driven:** The dialogue is a voiceover (V.O.), which means you do not need perfect lip-syncing for this shot, eliminating uncanny valley mouth movements.
+Why it works: low action (he only looks up), atmospheric lighting that gives the generator clear keys, and a voiceover (V.O.) so no perfect lip-sync is needed. The real example clip was made with `nano-banana-2` for the anchor image (text-to-image, $0.06/image) and `seedance-2-image-to-video-fast` (image-to-video, $0.50/clip), then converted to a GIF with ffmpeg. See [`templates/examples/astronaut-intro-clip.mp4`](templates/examples/astronaut-intro-clip.mp4).
 
-**The clip below is real, not a mockup** — the anchor image generated via `nano-banana-2` and animated into a short cinematic clip using `seedance-2-image-to-video-fast` from the script excerpt above, so you can see what a first-pass output actually looks like:
+**Exercises**
 
+1. Easy: rewrite a 1-page movie script under AI-first constraints (1 location, 1 character, zero hand-object interactions).
+2. Medium: write a 60-second thriller in 5 shots, with scene description, voiceover line and exact visual prompt for each.
+3. Hard: have an LLM write three visual prompts for one scene, varying only the lens (85mm portrait, 24mm wide, anamorphic), and explain how each changes the mood.
 
+**Compare tools.** Claude 3.5 Sonnet or Gemini 1.5 Pro follow complex structural constraints and output formatted prompts, so they suit overall script writing. Specialized screenplay tools give standard formats but are rigid and lack prompt generation. ChatGPT Plus (GPT-4o) is good for brainstorming and dialogue variants but needs heavy prompting to avoid cliches. General frontier LLMs with structured system prompts are the best path.
 
-<p align="center"><i>An unedited first pass — character features, clothing, and background are held perfectly consistent from the starting storyboard frame because of first-frame conditioning.</i></p>
+**Launch it.** Sell pre-production visual scripts and briefs (a formatted 1-minute script with storyboard prompt keys: **$50-$150**), or adapt a client's traditional script into an AI-optimised format (**$200-$500** per project). Find clients on AI creator forums, Discord servers and freelance sites under "Pre-Production Consultant" or "AI Scriptwriter."
 
-*How this was actually produced, end to end, via the muapi API:*
-1. Generated the anchor portrait with **`nano-banana-2`** (text-to-image, $0.06/image) using the visual prompt above with widescreen aspect ratio.
-2. Uploaded that image via muapi's `upload_file` endpoint to get a URL.
-3. Fed that image URL into **`seedance-2-image-to-video-fast`** (image-to-video, $0.50/clip) on the `images_list` param with a prompt describing the camera movement.
-4. Downloaded the resulting `.mp4` and converted it to the silent GIF preview above using `ffmpeg`.
+**Templates:** [`templates/screenplay-prompt-template.md`](templates/screenplay-prompt-template.md), [`templates/ai-film-brief.md`](templates/ai-film-brief.md).
 
----
-
-## Compare Tools
-
-| LLM / Tool | Screenwriting Capabilities | Best For |
-|---|---|---|
-| **Claude 3.5 Sonnet / Gemini 1.5 Pro** | Excellent at following complex structural constraints and outputting formatted Markdown prompts. | Overall script writing and prompt creation. |
-| **Specialized Screenplay AI tools** | Provide standard script formats (Celtx/Final Draft styles) but are often too rigid and lack built-in prompt-generation logic. | Standard film workflows, less optimized for AI generation workflows. |
-| **ChatGPT Plus (GPT-4o)** | Good creative writing capabilities but requires heavy prompting to avoid cliché screenwriting tropes. | Brainstorming and quick dialogue variants. |
-
-The best path is utilizing general-purpose frontier LLMs (Gemini/Claude) with structured system prompts, as they allow you to modify prompt formatting on the fly and integrate camera commands directly into the script markdown.
-
----
-
-## Launch It
-
-**How to monetize this skill:**
-* **Screenplay & Brief Packages:** Sell pre-production visual scripts and film briefs to other creators or agencies looking to produce AI videos. A fully formatted script complete with storyboard prompt keys sells for **$50–$150** for a 1-minute video.
-* **Pre-Production Adaptation:** Offer adaptation services for existing standard scripts. Take a client's traditional short film script and rewrite it into an "AI-optimised format" to save them thousands of wasted credits during production. Price this at **$200–$500** per project.
-
-**Where to find clients:**
-AI creator forums, Discord servers (Runway, Midjourney, muapi), and freelance sites (Fiverr/Upwork) under "Pre-Production Consultant" or "AI Scriptwriter."
-
----
-
-## Exercises
-
-1. **Easy:** Take a standard 1-page movie script and rewrite it under AI-first constraints (limit to 1 location, 1 character, and zero hand-object physical interactions).
-2. **Medium:** Write a 60-second thriller script using the integrated formatting: divide into 5 shots, writing scene descriptions, voiceover lines, and the exact visual prompt for each shot.
-3. **Hard:** Use a text LLM to generate three visual prompt options for a single scene, varying only the camera lens (e.g., 85mm portrait, 24mm wide angle, anamorphic) and explain how this shifts the story mood.
-
----
-
-## Templates
-
-Reusable template(s) this module produces — fill these in and reuse them on real work:
-
-* [`templates/screenplay-prompt-template.md`](templates/screenplay-prompt-template.md) — the screenplay format designed specifically to generate image/video prompts.
-* [`templates/ai-film-brief.md`](templates/ai-film-brief.md) — a project-starter brief to lock visual aesthetics and constraints.
-
----
-
-[← Track overview](README.md) · Next: [Storyboarding & Shot Planning →](02-storyboarding-and-shots.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Storyboarding & Shot Planning.

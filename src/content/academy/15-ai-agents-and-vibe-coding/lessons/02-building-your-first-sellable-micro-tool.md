@@ -1,150 +1,125 @@
 # Building Your First Sellable Micro-Tool
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Scope, build, and wrap a single-function creator tool in one vibe-coding session — then turn it into a product.
-
-**Track:** AI Agents & Vibe-Coding for Creators
-**Time:** ~50 minutes
-**Prerequisites:** [01: What Coding Agents Actually Do](01-what-coding-agents-actually-do.md)
-
-## The Problem
-
-Most creators who discover coding agents immediately try to build something ambitious — a full SaaS platform, a multi-feature app, a custom AI model training dashboard. These projects stall within 48 hours because:
-
-* The scope is too large to describe clearly in a single instruction.
-* When the agent produces an error, the creator doesn't know if the error is in step 1 or step 27.
-* Weeks pass with a half-finished project that can't be sold.
-
-The correct approach is the **Micro-Tool Method**: build one tool that does **exactly one thing** extremely well. A micro-tool is small enough to be built in a single 60-minute session, specific enough to solve a painful creator problem, and simple enough that a non-developer can maintain it.
+> **Time:** about 18 minutes. **You will finish with:** a scoped micro-tool, built and tested on real data, with a plain-English README a buyer could follow.
 
 ---
 
-## The Concept
+## Before you start
 
-The **Micro-Tool Funnel** transforms a single creator pain point into a sellable digital product:
+Most creators who discover coding agents try to build something huge, such as a full SaaS platform. These projects stall within 48 hours because the scope is too large to describe in one instruction, errors cannot be traced, and weeks pass with nothing to sell. The **Micro-Tool Method** fixes this: build one tool that does **exactly one thing** well, small enough for a single 60-minute session. Before you open the agent, answer four questions: what is the exact **input**, the exact **output**, the one **transformation**, and who is the **buyer**.
 
-```
-Identify 1 Painful Repetitive Creator Task ──► Define Exact Input & Output ──► Agent Builds the Tool ──► Wrap & Price It ──► Sell on Gumroad
-```
+You will need: a coding agent from lesson 1 (Claude Code or Cursor) in a new empty folder, an OpenAI API key stored in an environment variable called `OPENAI_API_KEY` (never pasted into a chat), and 5 real product names. Prerequisite: lesson 1. No SmartVideo GO AI studio is needed to build the tool.
 
-### The Micro-Tool Scope Definition Framework:
+## Step by step
 
-A valid micro-tool must answer all 4 questions clearly before you open the agent:
+### 1. Pick one painful, repetitive task
 
-1. **What is the exact input?** (e.g., a `.txt` file with 10 product names)
-2. **What is the exact output?** (e.g., a `.csv` file with 3 SEO titles and 5 keywords per product)
-3. **What is the one transformation?** (e.g., GPT-4o generates titles and keywords using a fixed commercial SEO prompt)
-4. **Who is the buyer?** (e.g., Etsy print-on-demand sellers who hate writing SEO copy)
-
-### 5 High-Value Micro-Tool Categories for Creators:
+Choose one category, or your own in the same style:
 
 | Tool Category | What It Does | Target Buyer | Sell Price |
 |---|---|---|---|
-| **Batch Prompt Runner** | Sends 50+ prompts to FLUX/muapi in one click | AI image creators | $29 – $49 |
-| **Etsy SEO Title Generator** | Generates 3 title + keyword sets per product from a name list | POD sellers | $19 – $39 |
-| **Stock Metadata CSV Writer** | Reads image filenames and writes 30 IPTC keywords per image | Stock contributors | $29 – $59 |
-| **Pricing Calculator Widget** | Interactive web form that calculates package pricing for a client | Agency freelancers | $19 – $29 |
-| **YouTube Script Formatter** | Reformats a raw script into hook / body / CTA sections with timestamps | Faceless channel creators | $15 – $25 |
+| **Batch Prompt Runner** | Sends 50+ prompts to FLUX/muapi in one click | AI image creators | $29 - $49 |
+| **Etsy SEO Title Generator** | Generates 3 title + keyword sets per product from a name list | POD sellers | $19 - $39 |
+| **Stock Metadata CSV Writer** | Reads image filenames and writes 30 IPTC keywords per image | Stock contributors | $29 - $59 |
+| **Pricing Calculator Widget** | Interactive web form that calculates package pricing for a client | Agency freelancers | $19 - $29 |
+| **YouTube Script Formatter** | Reformats a raw script into hook / body / CTA sections with timestamps | Faceless channel creators | $15 - $25 |
 
----
+The rest of this lesson uses the **Etsy SEO Title Generator**.
 
-## Do It
+**You should see:** one tool chosen that solves a task you or a buyer repeats often.
 
-### Step 1: Define Your Micro-Tool Scope
-Open [`templates/tool-scope-definition.md`](templates/tool-scope-definition.md). Fill in the 4 questions above for your chosen tool. Example for the **Etsy SEO Title Generator**:
+**If not:** if two tools tempt you, pick the one whose buyer you can name today.
 
-* **Input:** A `.txt` file named `products.txt` — one product name per line (e.g., `"Cyberpunk Cat Tee"`, `"Botanical Wildflower Mug"`).
-* **Output:** A `seo_titles.csv` file with columns: `Product Name`, `Title 1`, `Title 2`, `Title 3`, `Keywords`.
-* **Transformation:** Call the OpenAI API with a fixed SEO prompt for each product name.
+### 2. Fill in the scope definition
+
+Open [`templates/tool-scope-definition.md`](templates/tool-scope-definition.md) and answer the four questions. For the Etsy tool:
+
+* **Input:** a `.txt` file named `products.txt`, one product name per line (for example `Cyberpunk Cat Tee`, `Botanical Wildflower Mug`).
+* **Output:** a `seo_titles.csv` with columns `Product Name`, `Title 1`, `Title 2`, `Title 3`, `Keywords`.
+* **Transformation:** call the OpenAI API with a fixed SEO prompt for each product name.
 * **Buyer:** Etsy POD sellers who publish 20+ new designs per month.
 
-### Step 2: Write the Agent Instruction
-Open Claude Code or Cursor in a new empty folder. Paste this exact instruction (adapting for your tool):
+**You should see:** four short, specific answers, each one line.
 
-> *"Build a Python script called `etsy_seo_generator.py` that:*
-> *1. Reads product names from `products.txt` (one per line).*
-> *2. For each name, calls the OpenAI chat completions API using the model `gpt-4o-mini` with this system prompt: 'You are an expert Etsy SEO copywriter. Generate 3 optimized Etsy listing title variations and 5 relevant keywords for the given product name. Format your response as JSON: {title1, title2, title3, keywords}.'*
-> *3. Writes all results to `seo_titles.csv` with columns: ProductName, Title1, Title2, Title3, Keywords.*
-> *4. Reads the OpenAI API key from an environment variable called OPENAI_API_KEY."*
+**If not:** if an answer needs "and", the tool is doing two things. Cut one.
 
-### Step 3: Test with Real Data
-Create a `products.txt` file with 5 of your actual product names. Run the script:
+### 3. Give the agent the instruction
+
+Open your agent in a new empty folder and paste this, adapting it only if you chose another tool:
+
+```text
+Build a Python script called etsy_seo_generator.py that:
+1. Reads product names from products.txt (one per line).
+2. For each name, calls the OpenAI chat completions API using the model gpt-4o-mini with this system prompt: 'You are an expert Etsy SEO copywriter. Generate 3 optimized Etsy listing title variations and 5 relevant keywords for the given product name. Format your response as JSON: {title1, title2, title3, keywords}.'
+3. Writes all results to seo_titles.csv with columns: ProductName, Title1, Title2, Title3, Keywords.
+4. Reads the OpenAI API key from an environment variable called OPENAI_API_KEY.
+```
+
+**You should see:** the agent creating `etsy_seo_generator.py` and explaining in plain English what it built.
+
+**If not:** if the explanation does not match the four points, correct it with one sentence, not a full re-description.
+
+### 4. Test with real data
+
+1. Create `products.txt` with 5 of your actual product names.
+2. Run:
+
 ```bash
 python etsy_seo_generator.py
 ```
-Open `seo_titles.csv` and verify the output quality. If a title looks weak, tell the agent: *"Improve the system prompt to produce more buyer-intent focused titles with emotional hooks."*
 
-### Step 4: Package for Non-Technical Buyers
+3. Open `seo_titles.csv` and judge the titles.
+
+**You should see:** a CSV with 5 rows, each with 3 titles and keywords.
+
+**If not:** paste the exact error message into the agent. If a title looks weak, tell it:
+
+```text
+Improve the system prompt to produce more buyer-intent focused titles with emotional hooks.
+```
+
+### 5. Package it for non-technical buyers
+
 Ask the agent:
-> *"Add a simple README.md explaining how to install and run this tool in plain English for someone who has never used Python. Include the exact terminal commands."*
 
-Now your tool is buyer-ready. A non-technical Etsy seller can follow the README and run it.
+```text
+Add a simple README.md explaining how to install and run this tool in plain English for someone who has never used Python. Include the exact terminal commands.
+```
 
----
+**You should see:** a `README.md` with numbered install and run steps.
 
-## Worked Example
+**If not:** if it is too technical, ask the agent to rewrite it for a complete beginner and add a sample `products.txt`.
 
-**Micro-Tool Build: "Stock Metadata CSV Writer"**
+## Check yourself
 
-* **Problem:** Stock photographers spend 8–15 minutes manually tagging each image with IPTC keywords before uploading to Adobe Stock.
-* **Tool Built:** Python script that reads a folder of image filenames, sends each filename to GPT-4o-mini asking for 30 commercial stock keywords, and writes a `metadata.csv` ready for FTP upload.
-* **Build Time:** 45 minutes (including testing with 10 sample filenames).
-* **Agent Errors Encountered:** 2 (a missing `csv` import and a JSON parsing edge case) — both fixed by pasting the error message back to the agent.
-* **Result:** Tool processes 100 images in 4 minutes. Manual equivalent: 25 hours.
-* **Listed on Gumroad at:** $39 one-time purchase.
-* **First Month Revenue:** 14 sales × $39 = **$546 passive income**.
+* [ ] I can state my tool's input, output, transformation and buyer in four lines.
+* [ ] The script ran on 5 real product names and produced a correct CSV.
+* [ ] The API key is read from `OPENAI_API_KEY`, not written in the code or chat.
+* [ ] A README explains installation and use for a beginner.
 
----
+## Common mistakes
 
-## Compare Tools
+* **Building a platform.** One input, one output, one transformation.
+* **Skipping the buyer.** If you cannot name who pays, do not build it yet.
+* **Testing on dummy data.** Weak titles only show up with real product names.
+* **Pasting your API key into the agent.** Use the environment variable.
 
-| Agent / Environment | Recommended for This Lesson | Why |
-|---|---|---|
-| **Claude Code (terminal)** | ✅ Best for this lesson | Handles multi-file project creation cleanly. `claude "build me a script that..."` works directly. |
-| **Cursor (visual editor)** | ✅ Good alternative | Easier for creators who find the terminal intimidating. Chat panel on the right, file tree on the left. |
-| **ChatGPT + manual copy-paste** | ❌ Avoid | Too slow — you'll spend more time copying code than building. |
+## Go further
 
----
+**Worked example: Stock Metadata CSV Writer.** Stock photographers spend 8-15 minutes tagging each image with IPTC keywords. The tool reads a folder of image filenames, asks GPT-4o-mini for 30 commercial stock keywords each, and writes a `metadata.csv` ready for FTP upload. Build time: 45 minutes including testing with 10 sample filenames. Agent errors: 2 (a missing `csv` import and a JSON parsing edge case), both fixed by pasting the error back. It processes 100 images in 4 minutes versus about 25 hours by hand. Listed on Gumroad at $39 one-time, first month: 14 sales x $39 = **$546**.
 
-## Launch It
+**Compare tools:** Claude Code (terminal) is best for this lesson because it handles multi-file projects cleanly. Cursor is a good alternative if the terminal is intimidating. ChatGPT with manual copy-paste is best avoided: you spend more time copying code than building.
 
-**How to wrap and price your micro-tool:**
-* **Free README + Paid Script Bundle:** Zip the script + README + sample input file. Price at **$19 – $59** depending on time saved per use.
-* **Lifetime License (Recommended):** One-time payment is the easiest sell for small creator tools — buyers don't want subscriptions for a script they'll run weekly.
-* **Upload to Gumroad:** Create a product page in 10 minutes. Set the file as a downloadable product. Gumroad handles payment, delivery, and VAT automatically.
+**How to wrap and price it:** zip the script, README and sample input; price at **$19-$59** by time saved per use. A one-time lifetime license is the easiest sell for small tools. On Gumroad you can create a downloadable product page in about 10 minutes, and it handles payment, delivery and VAT.
 
----
+**Exercises**
 
-## Exercises
+1. **Easy:** Complete the scope definition for a "YouTube Script Formatter" in `templates/tool-scope-definition.md`.
+2. **Medium:** Build a script that reads `designs.txt` and outputs `titles.csv` with 3 Etsy title variations per design using GPT-4o-mini.
+3. **Hard:** Package the tool with a README, a sample input file and a `requirements.txt`, then ask a fellow creator to run it from scratch.
 
-1. **Easy:** Complete the tool scope definition for a "YouTube Script Formatter" tool in `templates/tool-scope-definition.md`.
-2. **Medium:** Use an agent to build a Python script that reads `designs.txt` and outputs `titles.csv` with 3 Etsy title variations per design using GPT-4o-mini.
-3. **Hard:** Package your tool with a README, sample input file, and a `requirements.txt` dependencies list. Share the zip with a fellow creator and ask them to run it from scratch.
+**Templates:** [`templates/tool-scope-definition.md`](templates/tool-scope-definition.md) for scope definitions, input/output specs and monetization checklists.
 
----
+**Produce this in SmartVideo GO AI:** pair your tool with Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner and Lip-Sync Studio; the workflow is Learn, See Example, Use Template, Generate.
 
-## Templates
-
-* [`templates/tool-scope-definition.md`](templates/tool-scope-definition.md) — Single-function tool scope definitions, input/output specs, and monetization checklists.
-
----
-
-[← What Coding Agents Actually Do](01-what-coding-agents-actually-do.md) · Next: [The Vibe-Coding Workflow →](03-vibe-coding-workflow.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: The Vibe-Coding Workflow.

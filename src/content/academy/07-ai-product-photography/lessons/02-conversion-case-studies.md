@@ -1,141 +1,108 @@
 # Before/After Conversion Case Studies
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 16 minutes. **You will finish with:** a completed listing audit, a written hypothesis and a configured 50/50 A/B test plan (the test itself runs 14 days).
 
+---
 
+## Before you start
 
-> Clean images get clicks; contextual images get sales.
+Brands update images blindly, assuming "pretty" sells. **CRO (Conversion Rate Optimization)** is the science of improving how many visitors to a product page actually buy. High traffic but low sales means the gallery images fail to build trust. Low clicks in search means the main image lacks contrast. Two numbers drive this: **Click-Through Rate (CTR)**, helped by the main search image, and **Conversion Rate (CVR)**, helped by gallery and lifestyle images. Never ship new images without a split test: run Variant A (original) and Variant B (AI image) concurrently, 50% of traffic each, until you reach **95% statistical significance**.
 
-**Track:** AI Product Photography & E-commerce  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
+You need module 1 skills, a product page with real metrics (or a mock one), [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md), and a split-testing tool (VWO, AB Tasty or Shopify's native test features). Image creation uses **Image Studio** in SmartVideo GO AI.
 
-## The Problem
+## Step by step
 
-Brands update their websites and ad creatives blindly. They assume that if an image looks "pretty" to them, it will sell. But without structured Conversion Rate Optimization (CRO) methodology, they have no way of knowing whether a visual change is making money or driving customers away.
+### 1. Audit the bottleneck
 
-If a listing has high traffic but low sales, the images are failing to answer customer questions or build trust. If a listing has low clicks on search pages, the main search image lacks the visual contrast needed to stand out from competitors.
+Open [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md) and record the page's current metrics. If traffic is high but conversion is below **2%**, the gallery images are weak: redesign the lifestyle context. If organic traffic is low, redesign the main hero image so it stands out in search results.
 
-To run a profitable e-commerce channel, you must implement A/B testing frameworks and understand the visual psychology that drives customers to click the "Add to Cart" button. This practice is called **CRO (Conversion Rate Optimization)** — the science of improving how many visitors to your product page actually make a purchase.
+**You should see:** a filled checklist that names one bottleneck: gallery (CVR) or hero (CTR).
 
-## The Concept
+**If not:** if you have no real data, use a mock listing and invent clearly labelled sample numbers.
 
-The conversion optimization loop is driven by **Click-Through Rate (CTR)**, **Conversion Rate (CVR)**, and **Statistical Significance**:
+### 2. Write the visual hypothesis
 
+Name the customer's core objection and write one sentence, for example:
+
+```text
+Replacing the flat white background of the facial oil listing with a premium marble counter backdrop will increase user trust, boosting CVR by 20%.
 ```
-Identify Listing Bottleneck ──► Formulate Visual Hypothesis ──► Generate Test Assets ──► A/B Split Run ──► Audit CVR
-```
 
-### 1. Main Search Image (CTR Hook):
-On Amazon or Google Shopping, your main image must stand out in a grid of 20 competitors. Standard white background photos are the baseline. To increase CTR, use high-contrast lighting, bold product angles, and crisp shadows to create depth.
+**You should see:** one hypothesis with one change and one expected outcome.
 
-### 2. Gallery / Lifestyle Images (CVR Closer):
-Once a customer clicks your listing, they need to visualize the product in their life. Lifestyle images must evoke an emotional response. A face cream shouldn't just sit in empty space; placing it on a marble vanity surrounded by fresh morning light builds an immediate association with luxury self-care.
+**If not:** if it mentions two changes (say image and price), cut one. Test one variable at a time.
 
-### 3. Split-Testing Rigor:
-Never deploy new images permanently without running a split test. Run the original image (Variant A) and the new AI-generated image (Variant B) concurrently using tools that direct 50% of traffic to each page. Run the test until you reach **95% statistical significance** (ensuring the change was caused by the image, not random chance).
+### 3. Build Variant B
 
----
+Create the new image using the module 1 rules. Add benefit callouts such as *"100% Organic Cold-Pressed"* as clean, high-contrast text overlays.
 
-## Do It
+**You should see:** a Variant B image with a premium backdrop, realistic shadows and readable callouts.
 
-### Step 1: Audit the Bottleneck
-Open the [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md). Review the current metrics of your target product page:
-* If the page has high traffic but a conversion rate below **2%**, your gallery images are weak. Proceed to redesign the lifestyle context.
-* If the page has low organic traffic, focus on redesigning the Main Hero Image to stand out on the search results page.
+**If not:** if text is hard to read, enlarge it or raise the contrast.
 
-### Step 2: Formulate the Visual Hypothesis
-Identify the core objection of the customer:
-* *Hypothesis:* `"Replacing the flat white background of the facial oil listing with a premium marble counter backdrop will increase user trust, boosting CVR by 20%."`
+### 4. Check it on mobile
 
-### Step 3: Compile and Design Test Variants
-Generate your new Variant B lifestyle graphics following the rules in Module 1. Map benefit callouts (e.g. *"100% Organic Cold-Pressed"*) over the image using clean, high-contrast text overlays.
+Over **70%** of e-commerce traffic is on mobile. View Variant B on a physical phone screen.
 
-### Step 4: Configure the A/B Split Test
-Open your split-testing software (e.g., VWO, AB Tasty, or Shopify's native test features).
-* Set Variant A as the control (original images).
-* Set Variant B as the test page (new AI environment visuals).
-* Split incoming traffic: **50% Control / 50% Test**.
+**You should see:** the text readable without pinching and zooming.
 
-### Step 5: Run the Test and Audit CVR
-Allow the test to run for at least 14 days to capture mid-week and weekend shopping behaviors. Do not stop the test early. Analyze the results:
-* Check conversion rates and total revenue.
-* If Variant B shows a lift with >95% significance, push the changes live to 100% of traffic. Log the results in your case study index.
+**If not:** increase the font size and re-export.
 
----
+### 5. Configure the split test
 
-## Worked Example
+In your testing tool, set Variant A as the control (original images), Variant B as the test page, and split traffic **50% Control / 50% Test**.
 
-<p align="center">
-<img src="templates/examples/coffee-before-after.jpg" alt="Coffee Bag Before/After AI Redesign" width="480">
-<br>
-<img src="templates/examples/coffee-motion.gif" alt="Coffee Product Motion Loop (I2V)" width="360">
-</p>
-<p align="center"><sub>AI Product Image Redesign (Top) ──► Image-to-Video Steam Loop (Bottom) · Video File: <a href="templates/examples/coffee-motion.mp4">templates/examples/coffee-motion.mp4</a></sub></p>
+**You should see:** two variants listed with an even split.
 
-**Redesigning a High-End Specialty Coffee Bag Listing**
+**If not:** if the tool offers no even split, look for a "traffic allocation" setting; menus move, so follow the current screen.
 
+### 6. Set your stopping rule
 
+Write down: run at least 14 days (to capture mid-week and weekend behaviour), do not stop early, push Variant B live to 100% only if it shows a lift with more than 95% significance, then log the result in your case study index.
 
-* **Initial Listing Status:** The brand sold a $25 bag of coffee beans using a flat stock photograph. Average Conversion Rate was **1.8%**.
-* **Visual Redesign (Variant B):**
-  * Main Hero: Replaced flat file with high-contrast angled packaging shot casting a realistic, long shadow.
-  * Lifestyle Gallery: Composite bag onto an AI-generated dark slate kitchen bar. Added soft morning light beams passing through window frames, an espresso cup with a glossy crema texture, and scattered roasted beans at the base.
-* **A/B Test Run:**
-  * Sample Size: 3,000 visitors per variant over 14 days.
-  * **Variant A CVR:** 1.8% (54 conversions).
-  * **Variant B CVR:** 3.1% (93 conversions).
-* **Financial Impact:** A **72% increase in sales** with zero additional advertising spend.
+**You should see:** a written rule with a start date and a decision date.
 
----
+**If not:** add the dates to the audit checklist so you cannot forget them.
 
-## Compare Tools
+## Check yourself
 
-| Platform / Tool | Optimization Purpose | Implementation Speed | Best for |
+* [ ] My audit names one bottleneck, CTR or CVR.
+* [ ] My hypothesis changes one variable only.
+* [ ] Variant B is readable on a phone.
+* [ ] The test is set to 50/50 with a 14-day minimum and 95% significance rule.
+
+## Common mistakes
+
+* Changing price and image at the same time.
+* Stopping the test early when one variant leads.
+* Checking images only on a desktop screen.
+
+## Go further
+
+**Worked example: specialty coffee bag.** A $25 bag sold on a flat stock photo at **1.8%** CVR. Variant B: a high-contrast angled hero with a long realistic shadow, and a lifestyle composite on a dark slate kitchen bar with soft morning light beams, an espresso cup with glossy crema and scattered roasted beans. Test: 3,000 visitors per variant over 14 days. Variant A 1.8% (54 conversions); Variant B 3.1% (93 conversions). Result: a **72% increase in sales** with no extra ad spend.
+
+**Exercises.** Easy: find a live listing with weak lifestyle photos and note 3 improvements. Medium: audit a mock listing with the checklist and write a hypothesis. Hard: design Variant A (product on white) and Variant B (premium composite on an AI stone base) for a kitchen product, with mobile crops for both.
+
+**Compare tools.**
+
+| Tool | Purpose | Speed | Best for |
 |---|---|---|---|
-| **VWO / AB Tasty** | Enterprise A/B testing and split runs | Medium (Requires inserting tracking scripts) | Comprehensive CRO audits across custom websites. |
-| **Shopify Split-Testers** | Direct e-commerce store variant testing | Fast (One-click app integrations) | Fast split-testing of product gallery images. |
-| **Hotjar / Clarity** | Visual heatmapping and scroll depth logs | Fast | Auditing how far down users scroll before abandoning the page. |
+| VWO / AB Tasty | Enterprise A/B testing | Medium (tracking scripts) | CRO audits on custom sites |
+| Shopify split-testers | Store variant testing | Fast (one-click apps) | Product gallery image tests |
+| Hotjar / Clarity | Heatmaps and scroll depth | Fast | Seeing where users leave a page |
 
-For fast e-commerce setups, Shopify apps like *Themewood* or *A/B testing* packages are the fastest way to split-test product images. If you are building high-volume custom landing pages, VWO provides deep analytics, tracking not just conversion rates but hover times and specific clicks.
+VWO also tracks hover times and specific clicks.
 
----
+**Template:** [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md) covers metric trackers, test criteria and logs.
 
-## Launch It
+**SmartVideo GO AI studios** (generic list, same for every lesson):
 
-**How to manage listing tests:**
-* **Test one variable at a time:** Never change both the product price and the main product image at the same time. If conversions jump, you won't know whether it was the new image or the lower price.
-* **Optimize for mobile first:** Over **70%** of e-commerce traffic is on mobile devices. Always check your test images on a physical mobile screen. Ensure any text overlays are large enough to read without pinching and zooming.
+* **Image Studio**: anchors, character sheets, product and brand shots
+* **Video Studio**: UGC ads, talking-head clips, image-to-video motion
+* **AI Influencer Studio**: consistent recurring on-brand characters
+* **Storyboard / Campaign Planner**: batch matrices, ad briefs and test plans
+* **Lip-Sync Studio**: voice + mouth-sync for avatar performances
 
----
+The workflow is the same everywhere in SmartVideo GO AI: **Learn, See Example, Use Template, Generate.**
 
-## Exercises
-
-1. **Easy:** Open your favorite online brand and find a product listing with weak lifestyle gallery photos. Identify 3 ways to improve their visual appeal.
-2. **Medium:** Complete a full visual audit of a mock listing using the [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md). Write down a clear split-test hypothesis.
-3. **Hard:** Design Variant A (standard product on white) and Variant B (premium composite on AI stone base) for a kitchen product. Prepare the mobile-optimized crop templates for both variants.
-
----
-
-## Templates
-
-* [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md) — metric trackers, split-testing criteria, and conversion logs.
-
----
-
-[← Product Shots Without a Photographer](01-product-photography.md) · Next: [Selling as a Productized Service →](03-productized-service.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Selling as a Productized Service.

@@ -1,141 +1,121 @@
 # AI Music & Sound Effects
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 16 minutes. **You will finish with:** a custom instrumental loop, a transition sound effect, and a three-track timeline with music ducked under narration.
 
+---
 
+## Before you start
 
-> The right sound turns b-roll into a movie.
+Stock music is expensive, and popular music can get your video muted, demonetized or struck. Even copyright-free tracks must be fitted to your script by hand. Instead, generate your own loops and sound effects (SFX) and automate the mix. Write structured prompts with **tempo (BPM), genre, lead instruments and vocal exclusions** ("instrumental only") rather than abstract moods. Generate SFX in isolation with no echo. Then duck the music under the voice: -18dB while speaking, -12dB during silence.
 
-**Track:** AI Audio & Music  
-**Time:** ~35 minutes  
-**Prerequisites:** None  
+You will need: an AI music engine (Suno or Udio), an ElevenLabs account for Sound Effects, a video editor, a voiceover, and [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md). No prerequisites. SmartVideo GO AI's Video Studio is where the finished soundtrack goes (see Go further).
 
-## The Problem
+## Step by step
 
-Finding high-quality background music and sound effects (SFX) is a massive bottleneck. Stock music sites charge expensive monthly subscriptions. If you try to use free, popular music from the internet, social media platforms will demonetize your channel, mute your video audio, or issue copyright strikes.
+### 1. Pick a prompt formula
 
-Even if you find copyright-free music, matching the track's tempo, mood, and drops to your video script is frustrating. You end up spending hours cutting and fading tracks to fit.
+Open [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md) and choose a music formula.
 
-To run a fast content factory, you need to generate custom, copyright-free background loops and specific sound effects on demand, and automate how they sit in your video mix.
+**You should see:** a formula with BPM, genre, instruments and "instrumental only".
 
-## The Concept
+**If not:** use the example in the next step.
 
-The pipeline for video audio assembly uses **Generative Audio Prompts** and **Auto-Ducking**:
+### 2. Generate a background loop
 
-### 1. The BGM Prompt Matrix:
-Rather than prompting AI music engines with abstract moods (e.g. *"cool coding music"*), write structured musical prompts specifying **Tempo (BPM)**, **Genre**, **Lead Instruments**, and **Vocal Exclusions** (always specify *"no vocals"* or *"instrumental only"* to prevent AI voices from competing with your narrator).
+Open Suno or Udio and use this prompt:
 
-### 2. Isolated SFX Sourcing:
-Sound effects (whooshes, UI clicks, paper slides) must be generated in isolation. Use the formulas in the [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md) to generate clean tracks with zero echo or background reverb so they blend naturally into any video scene.
-
-### 3. Auto-Ducking:
-The background music track must automatically lower in volume whenever the narrator speaks:
-
-```
-[Voice Track A1 (Speaking)] ──► Auto-Ducks ──► [Music Track A2 (-18dB)]
-[Voice Track A1 (Silence)]  ──► Auto-Boosts ──► [Music Track A2 (-12dB)]
+```text
+120 BPM, clean corporate tech house loop. Minimalist synthesizer, warm deep bass, soft digital percussion, optimistic mood. Instrumental only, seamless audio loop, high fidelity.
 ```
 
----
+Download the instrumental `.mp3`.
 
-## Do It
+**You should see:** a loop with no vocals.
 
-### Step 1: Generate Background Tracks
-Select a formula from the [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md). Open an AI music engine (e.g., Suno or Udio).
-* *Example prompt:* `"120 BPM, clean corporate tech house loop. Minimalist synthesizer, warm deep bass, soft digital percussion, optimistic mood. Instrumental only, seamless audio loop, high fidelity."`
-Generate and download the instrumental loop `.mp3`.
+**If not:** if a voice appears, repeat "no vocals" in the prompt and regenerate.
 
-### Step 2: Generate Specific Transition SFX
-Open ElevenLabs and select the **Sound Effects** tool (or call the `/sound-effects` API). Generate transition sounds:
-* *Prompt:* `"Cinematic sub-bass whoosh transition sound effect, deep low rumble, clean isolated track."`
-Download the output files.
+### 3. Generate a transition SFX
 
-### Step 3: Set Up Timeline Channels
-Open your video editor. Set up a standard track layout:
-* **Track A1:** Voiceover narration (volume: 0dB).
-* **Track A2:** Sound Effects (SFX) (volume: -6dB).
-* **Track A3:** Background Music (BGM) (volume: -18dB).
+Open ElevenLabs and choose the **Sound Effects** tool (or call the `/sound-effects` API). Use:
 
-### Step 4: Configure Auto-Ducking
-If your editor supports auto-ducking (e.g. Premiere Pro or CapCut):
-* Select the music track (A3) and enable the "Ducking" toggle.
-* Link it to the voiceover track (A1).
-* Set the ducking amount to **-18dB** when voice is detected, and configure the fade-in/fade-out speed to **0.3 seconds**. 
-* If editing manually, place keyframes on the A3 volume line, dropping the volume to -18dB during talking sections and raising it to -12dB during visual splits.
+```text
+Cinematic sub-bass whoosh transition sound effect, deep low rumble, clean isolated track.
+```
 
----
+Download the output.
 
-## Worked Example
+**You should see:** a short, clean whoosh without background reverb.
 
-<p align="center">
-<img src="templates/examples/ai-music-workstation.jpg" alt="Music Workstation" width="280">
-<img src="templates/examples/ai-music-workstation-clip.gif" alt="Synthesizer Visualizer Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Synthesizer Workstation Image (Left) ──► Image-to-Video Visualizer Motion (Right) · Video File: <a href="templates/examples/ai-music-workstation-clip.mp4">templates/examples/ai-music-workstation-clip.mp4</a></sub></p>
+**If not:** add "clean isolated track, no echo" and regenerate.
 
-**Sound Design for a 15-Second Vertical SaaS Ad**
+### 4. Set up three timeline tracks
 
+In your video editor set: **A1** voiceover at 0dB, **A2** SFX at -6dB, **A3** background music at -18dB.
 
+**You should see:** three labelled audio tracks with your files placed.
 
-* **Voice Track:** Narrator speaks from 0:00 to 0:03, silences from 0:03 to 0:06 (visual demo), speaks from 0:06 to 0:15.
-* **Music Track:** generated 120 BPM tech house loop.
-* **Ducking keyframes:**
-  * **0:00 - 0:03:** Music volume set to **-18dB** (vocal is speaking).
-  * **0:03 - 0:06:** Music volume rises to **-12dB** (visual demo only).
-  * **0:06 - 0:15:** Music volume drops back to **-18dB** (vocal speaks CTA).
-* **SFX Placements:** Added a digital UI click sound effect at 0:03.50 when the screen cursor clicks a button on screen.
+**If not:** drag each file onto its own track.
 
-**The Result:** The voice is clear and easy to understand. During the visual split, the music volume boosts naturally to fill the gap. The transition click makes the interface demo feel responsive.
+### 5. Enable auto-ducking
 
----
+If your editor supports it (for example Premiere Pro or CapCut), enable ducking on the music track A3, link it to the voiceover A1, set the ducking amount to **-18dB** and the fade in/out speed to **0.3 seconds**.
 
-## Compare Tools
+**You should see:** music dipping automatically when the voice speaks.
 
-| Platform / Tool | Generation Purpose | Audio Output Control | Best for |
+**If not:** menus move; follow the current screen.
+
+### 6. Or duck manually with keyframes
+
+Without auto-ducking, place keyframes on A3: **-18dB** during talking sections and **-12dB** during visual-only sections.
+
+**You should see:** a volume line that dips and rises with the narration.
+
+**If not:** zoom the timeline so keyframes land exactly on speech start and stop.
+
+### 7. Check the final level
+
+Play the mix and confirm the music never exceeds -10dB.
+
+**You should see:** a clear voice with music underneath.
+
+**If not:** lower the music; loud music gets compressed by phone speakers and distorts the voiceover.
+
+## Check yourself
+
+* [ ] My music prompt included BPM, instruments and "instrumental only".
+* [ ] The SFX is clean and isolated.
+* [ ] Tracks are A1 0dB, A2 -6dB, A3 -18dB.
+* [ ] Music ducks under narration and never exceeds -10dB.
+
+## Common mistakes
+
+* Prompting with vague moods like "cool coding music".
+* Forgetting "instrumental only", so vocals fight the narrator.
+* Music too loud for phone speakers.
+* Regenerating common SFX each time instead of reusing a saved vault.
+
+## Go further
+
+**Worked example (15-second vertical SaaS ad):** narrator speaks 0:00 to 0:03, silent 0:03 to 0:06 for the demo, speaks 0:06 to 0:15. Music at -18dB, rises to -12dB during the demo, drops back to -18dB for the call to action. A UI click SFX sits at 0:03.50 when the cursor clicks a button.
+
+**Compare tools:**
+
+| Tool | Purpose | Control | Best for |
 |---|---|---|---|
-| **Suno / Udio** | Creative full-length songs and background music loops | Good (Supports extension loops) | Creating unique, genre-specific background tracks. |
-| **Mubert / Soundraw** | Loop-centric background audio | High (Allows muting specific stems like drums or synths) | Fast, modular background tracks for B2B channels. |
-| **ElevenLabs SFX** | Specific, isolated sound effects | Instant (Generates 2-4s isolated sound clips) | Sourcing custom transition sounds and button taps. |
+| Suno / Udio | Songs and loops | Good, supports extension | Unique genre-specific tracks |
+| Mubert / Soundraw | Loop-based audio | High, can mute stems | Fast modular B2B tracks (mute the melody, keep drums and bass) |
+| ElevenLabs SFX | Isolated effects | Instant, 2-4s clips | Whooshes and button taps |
 
-For B2B marketing channels, Soundraw is highly effective because you can manually mute the melody track, keeping only the drum and bass tracks so they do not distract from the voiceover. For sound design details (whooshes, UI clicks), ElevenLabs SFX provides clean, isolated sounds.
+**Organize:** keep an SFX vault of reusable files such as `whoosh_fast.wav` and `click_modern.wav`.
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: generate a 1-minute loop with "instrumental" and "loop" in the prompt.
+2. Medium: keyframe music down 6dB under speech.
+3. Hard: generate 3 transition SFX and align them to the frames of a logo reveal or cut.
 
-**How to organize your sound library:**
-* **Build an SFX vault:** Keep a local library of your most-used sound effects (e.g. `whoosh_fast.wav`, `click_modern.wav`). Instead of generating them for every video, import them from your vault to speed up edits.
-* **Use constant music volume:** Never let your music volume exceed -10dB. If music is too loud, mobile phone speakers will compress the entire audio track, making the voiceover sound distorted and hard to hear.
+**Templates:** [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md).
 
----
+**Produce this in SmartVideo GO AI:** **Video Studio** for ad clips, **Storyboard / Campaign Planner** for ad briefs and test plans.
 
-## Exercises
-
-1. **Easy:** Generate a 1-minute background loop using Mubert or Suno. Ensure the prompt contains "instrumental" and "loop".
-2. **Medium:** Import a voice track and a music track. Apply manual volume keyframes to drop the music volume by 6dB during speaking sections.
-3. **Hard:** Generate 3 distinct transition sound effects using an SFX engine. Import them into your editor and align them to match the exact visual frames of a logo reveal or video cut.
-
----
-
-## Templates
-
-* [`templates/audio-prompt-library.md`](templates/audio-prompt-library.md) — music loops, mood anchors, and transition sound effects prompt keys.
-
----
-
-[← Podcast Production & Audio Cleaning](03-podcast-production.md) · Next: [Singing Voice Conversion & Vocal Synthesis →](05-singing-vocal-synthesis.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Singing Voice Conversion & Vocal Synthesis.
