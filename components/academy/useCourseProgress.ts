@@ -26,13 +26,15 @@ const RETRY_MS = [2000, 5000, 15000, 30000];
 /** A request that has not answered by then is abandoned and treated as a retryable failure (it must never hold the save queue forever). */
 const REQUEST_TIMEOUT_MS = 15000;
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit = {}, inflight?: Set<AbortController>): Promise<Response> {
   const ctl = new AbortController();
+  inflight?.add(ctl);
   const t = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
   try {
     return await fetch(url, { ...init, signal: ctl.signal });
   } finally {
     clearTimeout(t);
+    inflight?.delete(ctl);
   }
 }
 
@@ -114,7 +116,11 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   const dirty = useRef(false);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryAttempt = useRef(0);
+  // set when the hook unmounts: nothing may be sent, retried or scheduled after that
+  const disposed = useRef(false);
+  const inflight = useRef(new Set<AbortController>());
   const flush = useCallback(async () => {
+    if (disposed.current) return;
     if (sending.current) {
       again.current = true;
       return;
@@ -133,12 +139,14 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ progress: latest.current }),
-        });
+        }, inflight.current);
+        if (disposed.current) return;
         ok = res.ok;
         if (ok) {
           // the account already holds newer progress (another device saved meanwhile): adopt it
           // without losing what this device did, and send the combined copy back
           const body = (await res.json().catch(() => null)) as { stale?: boolean; progress?: unknown } | null;
+          if (disposed.current) return;
           if (body?.stale && body.progress) {
             const theirs = sanitizeCourseProgress(body.progress, idsRef.current);
             const merged = unionCourseProgress(latest.current, theirs);
@@ -152,17 +160,20 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         }
         // 4xx other than timeout / rate limit will not succeed by repeating the same request
         retryable = !ok && (res.status >= 500 || res.status === 408 || res.status === 429);
-      } while (again.current);
+      } while (again.current && !disposed.current);
+      if (disposed.current) return;
       dirty.current = !ok;
       if (ok) retryAttempt.current = 0;
       setSync(ok ? 'saved' : 'offline');
     } catch {
+      if (disposed.current) return;
       dirty.current = true;
       retryable = true;
       setSync('offline');
     } finally {
       sending.current = false;
     }
+    if (disposed.current) return;
     // keep the unsaved state and try again later (same backoff as the first load, never a tight loop);
     // it goes through the same conditional write, so a stale retry still cannot overwrite newer progress
     if (dirty.current && retryable) {
@@ -200,7 +211,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     }
     const hydrate = async () => {
       try {
-        const res = await fetchWithTimeout(ENDPOINT, { cache: 'no-store' });
+        const res = await fetchWithTimeout(ENDPOINT, { cache: 'no-store' }, inflight.current);
         if (res.status === 401 || res.status === 404) {
           // signed out, or the route is unavailable: browser-only, replay edits locally (a 503 is transient and retried below)
           if (cancelled) return;
@@ -263,7 +274,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   // connectivity back / tab visible again: retry an unsaved change now instead of waiting for the backoff
   useEffect(() => {
     const retryNow = () => {
-      if (!dirty.current || !hydrated.current || remoteOff.current || sending.current) return;
+      if (disposed.current || !dirty.current || !hydrated.current || remoteOff.current || sending.current) return;
       retryAttempt.current = 0;
       void flush();
     };
@@ -278,9 +289,17 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     };
   }, [flush]);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-    if (retryTimer.current) clearTimeout(retryTimer.current);
+  useEffect(() => {
+    disposed.current = false; // (re-armed for React strict-mode's mount, unmount, mount)
+    const requests = inflight.current;
+    return () => {
+      disposed.current = true;
+      if (timer.current) clearTimeout(timer.current);
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      timer.current = null;
+      retryTimer.current = null;
+      requests.forEach((c) => c.abort());
+    };
   }, []);
 
   const apply = useCallback(

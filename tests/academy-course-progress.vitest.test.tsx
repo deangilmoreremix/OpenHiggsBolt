@@ -353,6 +353,30 @@ describe('useCourseProgress', () => {
     expect(last.completedLessons.sort()).toEqual(['ugc/01-a', 'ugc/02-b']);
   });
 
+  it('after unmount a pending save that fails or times out is not retried and leaves no timer behind', async () => {
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      return new Promise<Response>((_res, rej) => init.signal?.addEventListener('abort', () => rej(new Error('aborted'))));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result, unmount } = renderHook(() => useCourseProgress(IDS, true, 'userA'));
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(1); // the save is in flight
+      unmount();
+      await act(async () => { await vi.advanceTimersByTimeAsync(120000); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(1);
+      expect(vi.getTimerCount()).toBe(0);
+      window.dispatchEvent(new Event('online'));
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
