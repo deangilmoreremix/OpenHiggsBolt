@@ -768,11 +768,13 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
               )
 
               let toolbarTop = 0
+              let rotateInside = false
               if (isSelected) {
                 const drawn = layerBoxMetrics(layer, compW, compH, isImageLayerKind(layer.kind) ? undefined : text)
                 const h = drawn.heightPx * factor
                 const ext = rotatedExtent(box.width, h, layer.rotation ?? 0)
                 const mid = box.top + h / 2
+                rotateInside = mid - ext.h / 2 < 40
                 const below = mid + ext.h / 2 + 8
                 toolbarTop = below + 38 > compH * factor ? mid - ext.h / 2 - 8 - 52 : below
               }
@@ -801,6 +803,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     cursor: contractOf(layer).userMovable ? 'move' : 'default',
                     outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
                     outlineOffset: 2,
+                    // The selected layer's handles must stay grabbable even where another layer's box overlaps them.
+                    ...(isSelected ? { zIndex: 3 } : {}),
                     opacity: layer.opacity,
                     userSelect: 'none',
                     // The box turns with the layer (about its own center), and so do its handles.
@@ -837,7 +841,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     </span>
                   ))}
                   {isSelected && contractOf(layer).userRotatable && !layer.locked && layer.kind !== 'design' && (
-                    <span style={{ position: 'absolute', left: '50%', top: -34, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ position: 'absolute', left: '50%', // Normally above the top edge; a layer at the very top of the frame would put it outside the (clipped) stage, so it sits just inside instead.
+                      top: rotateInside ? 8 : -34, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 4 }}>
                       <Tip id="rotateHandle" side="top">
                         <div
                           role="slider"

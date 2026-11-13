@@ -319,4 +319,54 @@ test.describe('Personalization modal on real local footage', () => {
     await dialog.getByTestId('editor-live-toggle').click();
     await expect(live).toBeVisible();
   });
+
+  test('a corner resize keeps the opposite corner fixed, and the rotation handle turns the layer', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+    await dialog.getByTestId('editor-live-player').scrollIntoViewIfNeeded();
+
+    // Select the logo (a clean square, so the box maths is easy to read).
+    const logo = dialog.getByRole('button', { name: 'Move Logo' });
+    await logo.click();
+    for (const id of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) await expect(dialog.getByTestId(`resize-handle-${id}`)).toBeVisible();
+
+    // Drag the bottom-right corner outward: the top-left corner must not move.
+    const before = (await logo.boundingBox())!;
+    const se = (await dialog.getByTestId('resize-handle-se').boundingBox())!;
+    await page.mouse.move(se.x + se.width / 2, se.y + se.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(se.x + se.width / 2 + 40, se.y + se.height / 2 + 40, { steps: 8 });
+    await page.mouse.up();
+    const grown = (await logo.boundingBox())!;
+    expect(grown.width, 'the box grew').toBeGreaterThan(before.width + 10);
+    expect(Math.abs(grown.x - before.x), 'left edge fixed').toBeLessThan(3);
+    expect(Math.abs(grown.y - before.y), 'top edge fixed').toBeLessThan(3);
+
+    // Drag the rotation handle to the right of the layer's center: about 90 degrees.
+    const c = { x: grown.x + grown.width / 2, y: grown.y + grown.height / 2 };
+    const rot = (await dialog.getByTestId('rotate-handle').boundingBox())!;
+    await page.mouse.move(rot.x + rot.width / 2, rot.y + rot.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(c.x + 120, c.y, { steps: 10 });
+    await page.mouse.up();
+    const field = dialog.getByTestId('rotation-field');
+    const turned = Number(await field.inputValue());
+    expect(turned, 'rotated close to 90 degrees').toBeGreaterThan(80);
+    expect(turned).toBeLessThan(100);
+    await expect(dialog.getByTestId('rotate-handle')).toHaveAttribute('aria-valuenow', String(turned));
+
+    // Keyboard: arrows rotate by 1, Home straightens.
+    await dialog.getByTestId('rotate-handle').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(field).toHaveValue(String(turned + 1));
+    await page.keyboard.press('Home');
+    await expect(field).toHaveValue('0');
+    await page.screenshot({ path: path.join(OUT, 'handles.png') });
+  });
 });

@@ -118,3 +118,22 @@ off elsewhere, so Advanced Editing and the existing tests keep the still poster)
   "Show" seek use. So "Show" seeks the Before/After preview, not the editor's Player.
 
 Not measured: the cost of two Players (Before/After preview plus the editor) playing at once on slow machines.
+
+## Resize handles and rotation
+
+A selected layer shows eight resize handles (four corners, four edges) and, for text, CTA, logo and product/service
+images, a rotation handle above its top edge (just inside it when the layer is at the very top of the frame).
+
+- **Resize** keeps the proportions and keeps the opposite corner (or edge midpoint) fixed. A layer has a single `scale`, so
+  edge handles also keep proportions; independent width and height would be a model change and is not done.
+  The bottom-right handle keeps the accessible name `Resize <Layer>`; the others say where they are.
+- **Rotate** by dragging the handle (Shift snaps to 15 degrees), arrow keys (1 degree, Shift 15), Home or double-click
+  (straighten), or the Rotation field in the inspector. Rotation is stored as `PreviewLayer.rotation` (degrees, -180 to 180).
+  Full-frame scenes, effects, designs and picture-in-picture do not rotate.
+- **Render:** the composition and the editor stage share `layerTextStyle` / `ctaPillStyle` / `accentRuleStyle`, so a rotated headline
+  carries its accent rule and scrim band with it. Verified with real `renderStillOnWeb` stills (logo, headline, CTA), and by the
+  in-browser export spec.
+- The selected layer's box sits above other layers' boxes so its handles are always grabbable.
+
+Approximations: the placement and layout quality checks use the unrotated box; the safe-area clamp uses the rotated bounding box.
+Snap guides use the unrotated box.
