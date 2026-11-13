@@ -60,7 +60,10 @@ export function classifySocialUrl(raw: string): { network: SocialNetwork; url: s
     const segs = u.pathname.split('/').filter(Boolean)
     if (!segs.length) return null // bare homepage is not a business profile
     u.hash = ''
-    return { network, url: `${u.protocol}//${u.hostname.replace(/^m\./, 'www.')}${u.pathname.replace(/\/$/, '')}` }
+    // The query string is dropped (tracking noise) except where it IS the identity: facebook.com/profile.php?id=…
+    const id = /\/profile\.php$/i.test(u.pathname) ? u.searchParams.get('id') : null
+    const keep = id && /^\d{5,30}$/.test(id) ? `?id=${id}` : ''
+    return { network, url: `${u.protocol}//${u.hostname.replace(/^m\./, 'www.')}${u.pathname.replace(/\/$/, '')}${keep}` }
   }
   return null
 }

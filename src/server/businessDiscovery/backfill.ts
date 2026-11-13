@@ -67,6 +67,23 @@ export function normalizeDomain(url: string | undefined): string | null {
   }
 }
 
+/**
+ * Hosts where many unrelated businesses live under one domain (site builders, link hubs, social pages).
+ * A shared domain proves nothing there, so identity uses host + path instead (`sites.google.com/view/alpha`).
+ */
+const SHARED_HOSTS = /(^|\.)(sites\.google\.com|google\.com|business\.site|wixsite\.com|weebly\.com|squarespace\.com|godaddysites\.com|wordpress\.com|blogspot\.com|webs\.com|jimdosite\.com|carrd\.co|linktr\.ee|facebook\.com|instagram\.com|yelp\.com|yellowpages\.com|tripadvisor\.com|mapquest\.com|linkedin\.com)$/
+
+/** Identity key for a website: the domain, or host + path for shared hosts. Null when there is no usable site. */
+export function websiteIdentity(url: string | undefined): string | null {
+  const domain = normalizeDomain(url)
+  if (!domain) return null
+  if (!SHARED_HOSTS.test(domain)) return domain
+  try {
+    const path = new URL(/^https?:\/\//i.test(url!) ? url! : `https://${url}`).pathname.replace(/\/+$/, '').toLowerCase()
+    return path ? `${domain}${path}` : null // a bare shared-host homepage identifies no one business
+  } catch { return null }
+}
+
 const NAME_NOISE = /\b(llc|inc|incorporated|co|company|corp|corporation|ltd|the)\b/g
 export function normalizeBusinessName(name: string): string {
   return name.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9\s]/g, ' ').replace(NAME_NOISE, ' ').replace(/\s+/g, ' ').trim()
@@ -83,8 +100,8 @@ function phoneDigits(p: string | undefined): string | null {
 export function identityKeys(r: BusinessDiscoveryRecord): string[] {
   const keys: string[] = []
   if (r.osmType && r.osmId) keys.push(`osm:${r.osmType}/${r.osmId}`)
-  const domain = normalizeDomain(r.website)
-  if (domain) keys.push(`domain:${domain}`)
+  const site = websiteIdentity(r.website)
+  if (site) keys.push(`domain:${site}`)
   const phone = phoneDigits(r.phone)
   if (phone) keys.push(`phone:${phone}`)
   const name = normalizeBusinessName(r.name)

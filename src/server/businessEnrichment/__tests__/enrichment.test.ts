@@ -163,6 +163,42 @@ describe('similarity / resilient selection', () => {
   })
 })
 
+describe('review fixes', () => {
+  it('keeps the Facebook profile.php id and drops other query noise', () => {
+    expect(classifySocialUrl('https://www.facebook.com/profile.php?id=100012345678&ref=x')?.url).toBe('https://www.facebook.com/profile.php?id=100012345678')
+    expect(classifySocialUrl('https://www.facebook.com/joes?utm_source=a')?.url).toBe('https://www.facebook.com/joes')
+  })
+  it('robots Crawl-delay stays a minimum: fast responses cannot speed the domain past it', async () => {
+    let t = 0; const sleeps: number[] = []
+    const th = new DomainThrottle({ minDelayMs: 100, now: () => t, sleep: async (ms) => { sleeps.push(ms); t += ms } })
+    await th.run('a.com', async () => ({ status: 200 }))
+    th.setFloor('a.com', 5)
+    for (let i = 0; i < 4; i++) await th.run('a.com', async () => ({ status: 200 }))
+    expect(th.delayFor('a.com')).toBeGreaterThanOrEqual(5000)
+    expect(sleeps.every((s) => s >= 4000)).toBe(true) // the very first request after setFloor already waited
+  })
+  it('a deadline abort cancels a throttle wait instead of sleeping through it', async () => {
+    const th = new DomainThrottle({ minDelayMs: 100 })
+    await th.run('b.com', async () => ({ status: 429, retryAfterMs: 120_000 }))
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 20)
+    const t0 = Date.now()
+    await expect(th.run('b.com', async () => ({ status: 200 }), ctl.signal)).rejects.toThrow(/abort/)
+    expect(Date.now() - t0).toBeLessThan(1000)
+  })
+  it('resolves contact links against the redirected homepage and does not trip the breaker on an abort', async () => {
+    const pages: Record<string, { body: string; finalUrl?: string }> = {
+      'https://r.com/robots.txt': { body: '' },
+      'https://r.com/': { body: '<body><a href="contact">Contact</a></body>', finalUrl: 'https://r.com/en/' },
+      'https://r.com/en/contact': { body: '<body><a href="mailto:hi@r.com">m</a></body>' },
+    }
+    const calls: string[] = []
+    const fetchPage = async (u: string): Promise<FetchedPage> => { calls.push(u); const p = pages[u] ?? { body: '' }; return { status: pages[u] ? 200 : 404, body: p.body, finalUrl: p.finalUrl ?? u, contentType: 'text/html' } }
+    const r = await enrichBusinessWebsite('https://r.com/', { fetchPage, sleep: async () => {}, fetchBytes: async () => null })
+    expect(calls).toContain('https://r.com/en/contact')
+    expect(r.emails[0]?.value).toBe('hi@r.com')
+  })
+})
+
 describe('enrichBusinessWebsite (offline orchestration)', () => {
   const site = (pages: Record<string, { status?: number; body: string; ct?: string }>) => {
     const calls: string[] = []

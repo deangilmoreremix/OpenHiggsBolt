@@ -127,3 +127,15 @@ describe('chain + format descriptor classification', () => {
     expect(classifyOwnership({ name: 'Ross Plumbing' } as never)).not.toMatchObject({ ownership: 'national_bigbox' })
   })
 })
+
+describe('shared-host websites are not identity', () => {
+  it('keeps two businesses on sites.google.com apart but still merges the same page', async () => {
+    const { mergeDuplicates, websiteIdentity } = await import('../backfill')
+    const a = { id: 'a', source: 'OPENSTREETMAP', name: 'Alpha Cafe', website: 'https://sites.google.com/view/alpha', websiteStatus: 'unknown', verificationStatus: 'unverified' } as never
+    const b = { id: 'b', source: 'OPENSTREETMAP', name: 'Beta Salon', website: 'https://sites.google.com/view/beta', websiteStatus: 'unknown', verificationStatus: 'unverified' } as never
+    expect(mergeDuplicates([a, b])).toHaveLength(2)
+    expect(websiteIdentity('https://sites.google.com/view/alpha/')).toBe(websiteIdentity('https://sites.google.com/view/alpha'))
+    expect(websiteIdentity('https://sites.google.com/')).toBeNull()
+    expect(websiteIdentity('https://www.joes.com/about')).toBe('joes.com')
+  })
+})

@@ -37,19 +37,34 @@ export class DomainThrottle {
     }
   }
 
-  delayFor(domain: string): number { return this.delays.get(domain) ?? this.o.minDelayMs }
+  private floors = new Map<string, number>()
+
+  /** Current pacing for a domain; never below the global minimum or the site's robots Crawl-delay. */
+  delayFor(domain: string): number { return Math.max(this.delays.get(domain) ?? this.o.minDelayMs, this.floors.get(domain) ?? 0) }
 
   /** Robots Crawl-delay is a floor the adaptive delay may never go under. */
   setFloor(domain: string, delaySec: number | null) {
-    if (delaySec && delaySec * 1000 > this.delayFor(domain)) this.delays.set(domain, Math.min(delaySec * 1000, this.o.maxDelayMs))
+    if (!delaySec || delaySec <= 0) return
+    const floor = Math.min(delaySec * 1000, this.o.maxDelayMs)
+    this.floors.set(domain, floor) // persistent minimum: adaptive speed-ups can never go under it
+    this.nextAt.set(domain, Math.max(this.nextAt.get(domain) ?? 0, this.o.now() + floor)) // applies to the very next request too
+  }
+
+  /** Sleeps for `ms`, rejecting as soon as `signal` aborts so a deadline can cancel a throttle/Retry-After wait. */
+  private async wait(ms: number, signal?: AbortSignal) {
+    if (signal?.aborted) throw new Error('aborted')
+    if (!signal) return this.o.sleep(ms)
+    let onAbort!: () => void
+    const aborted = new Promise<never>((_, rej) => { onAbort = () => rej(new Error('aborted')); signal.addEventListener('abort', onAbort, { once: true }) })
+    try { await Promise.race([this.o.sleep(ms), aborted]) } finally { signal.removeEventListener('abort', onAbort) }
   }
 
   /** Runs `task` under the per-domain/global caps and the domain's pacing; records latency. */
-  async run<T extends { status?: number; retryAfterMs?: number }>(domain: string, task: () => Promise<T>): Promise<T> {
+  async run<T extends { status?: number; retryAfterMs?: number }>(domain: string, task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     await this.acquire(domain)
     try {
       const wait = Math.max(0, (this.nextAt.get(domain) ?? 0) - this.o.now())
-      if (wait > 0) await this.o.sleep(wait)
+      if (wait > 0) await this.wait(wait, signal)
       const started = this.o.now()
       let result: T
       try {
@@ -67,7 +82,7 @@ export class DomainThrottle {
 
   private observe(domain: string, latencyMs: number, status: number, retryAfterMs?: number) {
     let delay = this.delayFor(domain)
-    const floor = this.o.minDelayMs
+    const floor = Math.max(this.o.minDelayMs, this.floors.get(domain) ?? 0)
     if (BLOCK_STATUSES.has(status)) {
       delay = Math.max(delay * 2, retryAfterMs ?? 0) // block backoff ×2 (or the server's own ask)
     } else {

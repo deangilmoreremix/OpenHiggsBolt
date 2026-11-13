@@ -18,7 +18,8 @@ export function useBusinessEnrichment(visible: BusinessDiscoveryRecord[]): Recor
   const requested = useRef(new Set<string>())
   const stopped = useRef(false)
   const alive = useRef(true)
-  useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
+  const unmountCtl = useRef(new AbortController())
+  useEffect(() => { alive.current = true; const c = unmountCtl.current; return () => { alive.current = false; c.abort() } }, [])
 
   useEffect(() => {
     const todo = visible.filter((b) => b.website && isOwnedWebsite(b.website) && !requested.current.has(b.id))
@@ -26,7 +27,8 @@ export function useBusinessEnrichment(visible: BusinessDiscoveryRecord[]): Recor
     todo.forEach((b) => requested.current.add(b.id))
     setStates((s) => ({ ...s, ...Object.fromEntries(todo.map((b) => [b.id, { status: 'loading' } as EnrichState])) }))
 
-    const ctl = new AbortController()
+    // The lookup survives the list growing ("Show 8 more"): the only thing that cancels it is unmounting.
+    const ctl = unmountCtl.current
     ;(async () => {
       for (let i = 0; i < todo.length; i += BATCH) {
         const batch = todo.slice(i, i + BATCH)
@@ -45,12 +47,13 @@ export function useBusinessEnrichment(visible: BusinessDiscoveryRecord[]): Recor
           setStates((s) => ({ ...s, ...Object.fromEntries(batch.map((b) => [b.id, byId.get(b.id) ?? ({ status: 'failed' } as EnrichState)])) }))
         } catch {
           if (!alive.current) return
-          setStates((s) => ({ ...s, ...Object.fromEntries(batch.map((b) => [b.id, { status: 'failed' } as EnrichState])) }))
+          // Rate-limited: this batch and everything queued behind it is marked failed so no card spins forever.
+          const failed = stopped.current ? todo.slice(i) : batch
+          setStates((s) => ({ ...s, ...Object.fromEntries(failed.map((b) => [b.id, { status: 'failed' } as EnrichState])) }))
           if (stopped.current) return
         }
       }
     })()
-    return () => ctl.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible.map((b) => b.id).join('|')])
 

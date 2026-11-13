@@ -48,3 +48,21 @@ describe('mergeCardContacts', () => {
     expect(mergeCardContacts(biz('a'), { status: 'failed' }).email).toBeNull()
   })
 })
+
+describe('useBusinessEnrichment — list growth', () => {
+  it('keeps an in-flight lookup alive when more cards become visible, and finishes both', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: any) => {
+      const body = JSON.parse(init.body); calls.push(body)
+      if (calls.length === 1) await gate
+      return { status: 200, json: async () => ({ results: body.businesses.map((x: any) => ({ id: x.id, ok: true, enrichment: enr('x') })) }) }
+    }))
+    const first = [biz('a', 'https://a.com')]
+    const { result, rerender } = renderHook(({ l }) => useBusinessEnrichment(l), { initialProps: { l: first } })
+    await waitFor(() => expect(calls).toHaveLength(1))
+    rerender({ l: [...first, biz('b', 'https://b.com')] }) // "Show 8 more" while the first lookup is still running
+    release()
+    await waitFor(() => { expect(result.current.a?.status).toBe('done'); expect(result.current.b?.status).toBe('done') })
+  })
+})

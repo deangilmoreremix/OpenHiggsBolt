@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pLimit from 'p-limit'
 import { createCorrelationId, logPersonalization } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
-import { createStageDeadline, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
+import { createStageDeadline, withDeadline, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
 import { enrichBusinessWebsite } from '@/server/businessEnrichment/enrich'
 import { DomainThrottle } from '@/server/businessEnrichment/throttle'
 import { CircuitBreaker } from '@/server/businessEnrichment/retry'
@@ -58,16 +58,25 @@ export async function POST(req: NextRequest) {
   const breaker = new CircuitBreaker()
   const gate = pLimit(BATCH_CONCURRENCY)
 
-  const results = await Promise.all(batch.map((b) => gate(async () => {
+  type Row =
+    | { id?: string; website: string; ok: true; enrichment: Awaited<ReturnType<typeof enrichBusinessWebsite>> }
+    | { id?: string; website: string; ok: false; error: string }
+  // One slot per business, filled as each finishes, so a stalled site cannot hold back the ones that completed.
+  const slots: Array<Row | undefined> = new Array(batch.length).fill(undefined)
+  const work = Promise.all(batch.map((b, i) => gate(async () => {
     try {
       const enrichment = await enrichBusinessWebsite(b.website, { throttle, breaker, signal: deadline.signal, maxPages: 4 })
-      return { id: b.id, website: b.website, ok: true as const, enrichment }
+      slots[i] = { id: b.id, website: b.website, ok: true, enrichment }
     } catch (err) {
       // SSRF rejections and other failures are reported per business, without internals.
       const msg = err instanceof Error ? err.message : 'failed'
-      return { id: b.id, website: b.website, ok: false as const, error: /not allowed|Private|blocked/i.test(msg) ? 'website not allowed' : 'could not be enriched' }
+      slots[i] = { id: b.id, website: b.website, ok: false, error: /not allowed|Private|blocked/i.test(msg) ? 'website not allowed' : 'could not be enriched' }
     }
   })))
+  // The deadline settles the response even if a site stalls: finished businesses are returned, the rest are
+  // reported as timed out, instead of the platform cutting off the whole request.
+  await withDeadline(work, deadline).catch(() => undefined)
+  const results: Row[] = batch.map((b, i) => slots[i] ?? { id: b.id, website: b.website, ok: false, error: 'timed out' })
 
   logPersonalization({ route: '/api/personalization/enrich-business', stage: 'enrich', httpStatus: 200, correlationId, durationMs: Date.now() - startedAt })
   return NextResponse.json(

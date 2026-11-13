@@ -52,7 +52,7 @@ export async function safeFetchPage(url: string, signal?: AbortSignal): Promise<
 
 async function safeFetchBytes(url: string, signal?: AbortSignal): Promise<Buffer | null> {
   try {
-    const { response } = await fetchWithValidatedRedirects(url, { timeoutMs: 8000, maxBytes: 3_000_000, signal, headers: { 'User-Agent': ENRICH_USER_AGENT } })
+    const { response } = await fetchWithValidatedRedirects(url, { timeoutMs: 8000, maxBytes: 3_000_000, signal, headers: { 'User-Agent': ENRICH_USER_AGENT }, responseType: 'arraybuffer' })
     const d = response.data as unknown
     return Buffer.isBuffer(d) ? d : Buffer.from(typeof d === 'string' ? d : '')
   } catch { return null }
@@ -81,14 +81,14 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
     if (breaker.isOpen(domain)) { out.pagesSkipped.push({ url, reason: 'blocked' }); return null }
     try {
       const page = await withRetry(async () => {
-        const p = await throttle.run(domain, () => fetchPage(url, deps.signal))
+        const p = await throttle.run(domain, () => fetchPage(url, deps.signal), deps.signal)
         if (p.status === 429 || p.status >= 500) { const e = new Error(`HTTP ${p.status}`) as Error & { response: { status: number } }; e.response = { status: p.status }; throw e }
         return p
       }, { signal: deps.signal, ...(deps.sleep ? { sleep: deps.sleep } : {}) })
       breaker.success(domain)
       return page
     } catch {
-      breaker.failure(domain)
+      if (!deps.signal?.aborted) breaker.failure(domain) // a deadline abort is not the site's fault
       out.pagesSkipped.push({ url, reason: 'error' })
       return null
     }
@@ -97,7 +97,7 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
   // 1) robots.txt (fail-closed on 5xx/network, open on 4xx)
   let rules: RobotsRules
   try {
-    const r = await throttle.run(domain, () => fetchPage(`${origin}/robots.txt`, deps.signal))
+    const r = await throttle.run(domain, () => fetchPage(`${origin}/robots.txt`, deps.signal), deps.signal)
     rules = robotsFromResponse(r.status, r.body, deps.userAgent ?? 'OpenHiggsBoltBot')
   } catch { rules = robotsFromResponse(null, '') }
   out.robots = { checked: true, status: rules.status }
@@ -108,7 +108,7 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
   const extractions: PageExtraction[] = []
   const visited = new Set<string>()
 
-  const visit = async (url: string): Promise<{ html: string; anchors: Anchor[] } | null> => {
+  const visit = async (url: string): Promise<{ html: string; anchors: Anchor[]; finalUrl: string } | null> => {
     if (visited.has(url)) return null
     if (visited.size >= maxPages) { out.pagesSkipped.push({ url, reason: 'cap' }); return null }
     if (!allowed(url)) { out.pagesSkipped.push({ url, reason: 'robots' }); return null }
@@ -124,7 +124,7 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
     extractions.push(extractFromHtml(html, page.finalUrl))
     const $ = cheerio.load(html)
     const anchors: Anchor[] = $('a[href]').toArray().map((a) => ({ href: $(a).attr('href') ?? '', text: $(a).text().replace(/\s+/g, ' ').trim() }))
-    return { html, anchors }
+    return { html, anchors, finalUrl: page.finalUrl }
   }
 
   // 2) homepage
@@ -136,7 +136,10 @@ export async function enrichBusinessWebsite(website: string, deps: EnrichDeps = 
   }
 
   // 3) candidate pages: homepage link scoring + sitemap URLs scored by the same rules
-  const linked = pickContactPages(home.anchors, base.toString(), maxPages)
+  // Links resolve against where the homepage actually ended up — but only while that is the same site, because
+  // robots.txt, throttling and the same-site filter above were all established for this host.
+  const linkBase = home.finalUrl && host(home.finalUrl) === domain ? home.finalUrl : base.toString()
+  const linked = pickContactPages(home.anchors, linkBase, maxPages)
   for (const url of linked) if (!allowed(url)) out.pagesSkipped.push({ url, reason: 'robots' })
   const fromLinks = linked.filter(allowed)
   let fromSitemap: string[] = []

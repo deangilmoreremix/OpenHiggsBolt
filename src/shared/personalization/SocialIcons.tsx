@@ -52,11 +52,9 @@ export interface SocialIconsProps {
   titles?: Partial<Record<SocialNetwork, string>>
 }
 
-let gradientSeq = 0
-
 export function SocialIcons({ links, size = 14, name, titles }: SocialIconsProps) {
   const items = ORDER.map((n) => ({ n, href: socialHref(n, links[n]) })).filter((x): x is { n: SocialNetwork; href: string } => !!x.href)
-  const [gid] = React.useState(() => `ig-grad-${++gradientSeq}`)
+  const gid = `ig-grad-${React.useId().replace(/[^a-zA-Z0-9_-]/g, '')}` // stable across server and client render
   if (!items.length) return null
   return (
     <span data-testid="social-icons" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>

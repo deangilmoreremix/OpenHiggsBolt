@@ -40,7 +40,7 @@ describe('<SocialIcons />', () => {
     expect(fills('facebook')).toEqual(['#1877F2'])
     expect(fills('linkedin')).toEqual(['#0A66C2'])
     expect(fills('youtube')).toEqual(['#FF0000'])
-    expect(fills('instagram')[0]).toMatch(/^url\(#ig-grad-\d+\)$/)
+    expect(fills('instagram')[0]).toMatch(/^url\(#ig-grad-[A-Za-z0-9_-]+\)$/)
     expect(container.querySelector('linearGradient')).toBeTruthy()
     expect(fills('tiktok')).toEqual(['#25F4EE', '#FE2C55', '#FFFFFF'])
   })
