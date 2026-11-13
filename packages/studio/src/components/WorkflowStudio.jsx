@@ -504,7 +504,7 @@ export default function WorkflowStudio({
                     type="button"
                     className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
                       activeSubTab === "playground"
-                        ? "bg-[#22d3ee] text-black shadow-[0_0_15px_rgba(34, 211, 238,0.2)]"
+                        ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20"
                         : "text-white/40 hover:text-white"
                     }`}
                   >
@@ -521,7 +521,7 @@ export default function WorkflowStudio({
                     type="button"
                     className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
                       activeSubTab === "builder"
-                        ? "bg-[#22d3ee] text-black shadow-[0_0_15px_rgba(34, 211, 238,0.2)]"
+                        ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20"
                         : "text-white/40 hover:text-white"
                     }`}
                   >
@@ -566,7 +566,7 @@ export default function WorkflowStudio({
                  onClick={() => setActiveSubTab("playground")}
                  type="button"
                  className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
-                   activeSubTab === "playground" ? "bg-[#22d3ee] text-black" : "text-white/40"
+                   activeSubTab === "playground" ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20" : "text-white/40"
                  }`}
                >
                  Play
@@ -575,7 +575,7 @@ export default function WorkflowStudio({
                  onClick={() => setActiveSubTab("builder")}
                  type="button"
                  className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${
-                   activeSubTab === "builder" ? "bg-[#22d3ee] text-black" : "text-white/40"
+                   activeSubTab === "builder" ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20" : "text-white/40"
                  }`}
                >
                  Builder
@@ -674,7 +674,7 @@ export default function WorkflowStudio({
                     <button
                       type="submit"
                       disabled={isExecuting || !selectedWorkflow.id}
-                      className="w-full py-4 bg-[#22d3ee] text-black text-xs font-black uppercase tracking-[0.2em] rounded-xl hover:bg-white transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale shadow-[0_0_30px_rgba(34, 211, 238,0.15)] flex items-center justify-center gap-3 mt-8"
+                      className="w-full py-4 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3 mt-8"
                     >
                       {isExecuting ? (
                         <>
@@ -829,7 +829,7 @@ export default function WorkflowStudio({
                                 href={out.value}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee] hover:text-black transition-colors"
+                                className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] transition-colors"
                               >
                                 <svg
                                   width="14"
@@ -901,7 +901,7 @@ export default function WorkflowStudio({
             </div>
             <button
               onClick={() => handleCreateWorkflow()}
-              className="px-6 py-3 bg-[#22d3ee] text-black text-xs font-black uppercase tracking-widest rounded-lg hover:bg-white transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(34, 211, 238,0.3)] flex items-center gap-2"
+              className="px-6 py-3 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-xs font-black uppercase tracking-widest rounded-lg transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2"
             >
               <svg
                 width="14"
@@ -1018,7 +1018,7 @@ export default function WorkflowStudio({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#22d3ee] text-black px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white transition-all transform hover:scale-105 active:scale-95"
+                  className="flex-1 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95"
                 >
                   Save Name
                 </button>
