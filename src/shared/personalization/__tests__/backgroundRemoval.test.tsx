@@ -54,7 +54,7 @@ vi.mock('../alphaVerification', () => ({
 import { removeAssetBackground, BackgroundRemovalFailure } from '../backgroundRemoval/backgroundRemovalClient'
 import { loadImageBlob } from '../backgroundRemoval/loadImageBlob'
 import { useAutoCutout, type AutoCutoutControls } from '../backgroundRemoval/useAutoCutout'
-import { DiscoveredAssetGrid } from '../DiscoveredAssetGrid'
+import { DiscoveredAssetGrid, discoveredAssetDisplayUrl } from '../DiscoveredAssetGrid'
 
 function asset(overrides: Partial<DiscoveredAsset>): DiscoveredAsset {
   return {
@@ -472,5 +472,16 @@ describe('DiscoveredAssetGrid with background removal', () => {
     })
     expect(container.querySelector('[data-testid="background-removal-bar"]')).toBeNull()
     expect(container.querySelector('[aria-label="Remove background"]')).toBeNull()
+  })
+})
+
+describe('discoveredAssetDisplayUrl', () => {
+  it('shows an AI edit even if the user had picked Original on the earlier cutout', () => {
+    const edited = asset({ showOriginal: true, originalPreviewUrl: 'https://x/orig.jpg', editedDataUrl: 'data:image/png;base64,AI', editMetadata: { operation: 'remove_background', engine: 'ai' } as never })
+    expect(discoveredAssetDisplayUrl(edited)).toBe('data:image/png;base64,AI')
+  })
+  it('still shows the original when a cutout exists and Original is picked', () => {
+    const cut = asset({ showOriginal: true, hasTransparency: true, originalPreviewUrl: 'https://x/orig.jpg', editedDataUrl: 'data:image/png;base64,CUT', editMetadata: { operation: 'remove_background', engine: 'bg0' } as never })
+    expect(discoveredAssetDisplayUrl(cut)).toBe('https://x/orig.jpg')
   })
 })
