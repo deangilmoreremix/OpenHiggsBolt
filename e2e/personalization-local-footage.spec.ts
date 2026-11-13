@@ -167,4 +167,33 @@ test.describe('Personalization modal on real local footage', () => {
     await dialog.getByTestId('layer-toolbar-hide').click();
     await expect(dialog.getByRole('button', { name: /^Show / }).first()).toBeVisible();
   });
+
+  test('tooltips explain controls on hover and keyboard focus', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    // Keyboard focus shows the tip and links it to the control; Esc hides it.
+    const snap = dialog.getByTestId('editor-snap');
+    await snap.scrollIntoViewIfNeeded();
+    await snap.focus();
+    const tip = dialog.getByTestId('editor-tip');
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText('Snap layers to the frame center');
+    await expect(snap).toHaveAttribute('aria-describedby', /.+/);
+    await page.screenshot({ path: path.join(OUT, 'tooltip-snap.png') });
+    await page.keyboard.press('Escape');
+    await expect(tip).toHaveCount(0);
+
+    // Hover also shows a tip (the Render / Generate buttons are only shown to signed-in users, so their
+    // paid/free badges are covered by the Tip unit tests instead).
+    const undo = dialog.locator('[data-tip-id="undo"]');
+    await undo.hover();
+    await expect(dialog.getByTestId('editor-tip')).toContainText('Undo your last change');
+  });
 });

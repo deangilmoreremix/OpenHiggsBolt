@@ -4,6 +4,7 @@ import { GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { C } from '../tokens'
+import { Tip } from './Tip'
 
 /**
  * One row of the layers list with a drag handle. The handle is the only drag activator, so the row
@@ -28,11 +29,11 @@ export function SortableRow({ id, label, children }: { id: string; label: string
         gap: 4,
       }}
     >
+      <Tip id="layerReorder">
       <button
         type="button"
         ref={setActivatorNodeRef}
         aria-label={`Reorder ${label}`}
-        title="Drag to change what is in front. Keyboard: Space to pick up, arrow keys to move, Space to drop."
         data-testid="layer-drag-handle"
         {...attributes}
         {...listeners}
@@ -40,6 +41,7 @@ export function SortableRow({ id, label, children }: { id: string; label: string
       >
         <GripVertical size={14} />
       </button>
+      </Tip>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
     </div>
   )

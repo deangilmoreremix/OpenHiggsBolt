@@ -8,6 +8,7 @@ import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
+import { Tip } from './editor/Tip'
 import { LayoutQualityPanel } from './LayoutQualityPanel'
 import { useLayoutQuality } from './useLayoutQuality'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
@@ -268,6 +269,7 @@ export function StepPreviewApprove(): React.JSX.Element {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Tip id="renderBranded" side="top">
                 <button
                   type="button"
                   onClick={handleCreate}
@@ -288,6 +290,8 @@ export function StepPreviewApprove(): React.JSX.Element {
                     ? `Rendering… ${generation?.progress || 0}%`
                     : 'Render branded video'}
                 </button>
+                </Tip>
+                <Tip id="generateAi" side="top">
                 <button
                   type="button"
                   onClick={handleCreate}
@@ -306,6 +310,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                     ? `Generating… ${generation?.progress || 0}%`
                     : 'Generate with AI'}
                 </button>
+                </Tip>
               </div>
               {quality.rightsNeedConfirmation && (
                 <label data-testid="guided-rights-confirm" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: C.text, cursor: 'pointer' }}>

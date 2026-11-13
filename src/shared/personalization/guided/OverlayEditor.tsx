@@ -9,6 +9,8 @@ import { MEDIA_ROLE_CONTRACTS, roleForLayer } from '../preview/mediaRoles'
 import { ImageStyleControls } from './ImageStyleControls'
 import { ColorField } from './editor/ColorField'
 import { SortableRow } from './editor/SortableRow'
+import { Tip } from './editor/Tip'
+import type { EditorTipId } from './editor/editorTips'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { canMoveLayer, moveLayer, type LayerMove } from '../preview/layerOrder'
@@ -480,20 +482,22 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
           Edit on the video
         </h3>
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
-          <button type="button" data-testid="editor-undo" aria-label="Undo" disabled={!canUndoPreview} onClick={() => undoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canUndoPreview ? 1 : 0.5 }}>Undo</button>
-          <button type="button" data-testid="editor-redo" aria-label="Redo" disabled={!canRedoPreview} onClick={() => redoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canRedoPreview ? 1 : 0.5 }}>Redo</button>
+          <Tip id="undo"><button type="button" data-testid="editor-undo" aria-label="Undo" disabled={!canUndoPreview} onClick={() => undoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canUndoPreview ? 1 : 0.5 }}>Undo</button></Tip>
+          <Tip id="redo"><button type="button" data-testid="editor-redo" aria-label="Redo" disabled={!canRedoPreview} onClick={() => redoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canRedoPreview ? 1 : 0.5 }}>Redo</button></Tip>
+          <Tip id="snap">
           <button
             type="button"
             data-testid="editor-snap"
             aria-label="Snap to guides"
             aria-pressed={snapOn}
-            title="Snap layers to the frame center, thirds, edges and other layers (hold Alt while dragging to turn off)"
             onClick={() => setSnapOn((v) => !v)}
             style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', borderColor: snapOn ? C.cyan : undefined, color: snapOn ? C.cyan : undefined }}
           >
             Snap: {snapOn ? 'On' : 'Off'}
           </button>
+          </Tip>
         </span>
+        <Tip id="restoreLayout">
         <button
           type="button"
           onClick={() => resetPreviewLayout()}
@@ -502,6 +506,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
         >
           <RotateCcw size={11} /> Restore default layout
         </button>
+        </Tip>
       </div>
       <p style={hintStyle}>
         Drag any layer on the video to move it, or use its corner handle to resize. Arrow keys nudge the
@@ -723,17 +728,16 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                       }}
                     >
                       {([
-                        { id: 'forward', label: 'Bring forward', icon: <ArrowUp size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'forward'), run: () => restack(layer.id, 'forward') },
-                        { id: 'backward', label: 'Send backward', icon: <ArrowDown size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'backward'), run: () => restack(layer.id, 'backward') },
-                        { id: 'lock', label: layer.locked ? 'Unlock position' : 'Lock position', icon: layer.locked ? <Unlock size={13} /> : <Lock size={13} />, disabled: false, pressed: !!layer.locked, run: () => setPreviewLayerLocked(layer.id, !layer.locked) },
-                        { id: 'hide', label: `Hide ${LAYER_LABELS[layer.kind]}`, icon: <EyeOff size={13} />, disabled: false, run: () => updatePreviewLayer(layer.id, { visible: false }) },
-                      ] as { id: string; label: string; icon: React.ReactNode; disabled: boolean; pressed?: boolean; run: () => void }[]).map((a) => (
+                        { id: 'forward', tip: 'layerForward', label: 'Bring forward', icon: <ArrowUp size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'forward'), run: () => restack(layer.id, 'forward') },
+                        { id: 'backward', tip: 'layerBackward', label: 'Send backward', icon: <ArrowDown size={13} />, disabled: !canMoveLayer(settings.layers, layer.id, 'backward'), run: () => restack(layer.id, 'backward') },
+                        { id: 'lock', tip: 'layerLock', label: layer.locked ? 'Unlock position' : 'Lock position', icon: layer.locked ? <Unlock size={13} /> : <Lock size={13} />, disabled: false, pressed: !!layer.locked, run: () => setPreviewLayerLocked(layer.id, !layer.locked) },
+                        { id: 'hide', tip: 'layerHide', label: `Hide ${LAYER_LABELS[layer.kind]}`, icon: <EyeOff size={13} />, disabled: false, run: () => updatePreviewLayer(layer.id, { visible: false }) },
+                      ] as { id: string; tip: EditorTipId; label: string; icon: React.ReactNode; disabled: boolean; pressed?: boolean; run: () => void }[]).map((a) => (
+                        <Tip key={a.id} id={a.tip} side="top">
                         <button
-                          key={a.id}
                           type="button"
                           data-testid={`layer-toolbar-${a.id}`}
                           aria-label={a.label}
-                          title={a.label}
                           aria-pressed={a.pressed}
                           disabled={a.disabled}
                           onClick={a.run}
@@ -744,6 +748,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                         >
                           {a.icon}
                         </button>
+                        </Tip>
                       ))}
                     </div>
                   )}
@@ -817,6 +822,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                 {layer.kind === 'endCard' ? (
                   <span style={{ color: C.muted, fontSize: 10 }}>{settings.showEndCard ? 'On' : 'Off'}</span>
                 ) : (
+                  <Tip id="layerVisibility">
                   <button
                     type="button"
                     aria-label={`${layer.visible ? 'Hide' : 'Show'} ${LAYER_LABELS[layer.kind]}`}
@@ -829,6 +835,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                   >
                     {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                   </button>
+                  </Tip>
                 )}
               </div>
               </SortableRow>
@@ -922,6 +929,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                       id={controlId('color')}
                       label={selected.kind === 'cta' ? 'Button color' : 'Color'}
                       ariaLabel={selected.kind === 'cta' ? 'Button color' : 'Text color'}
+                      tipId={selected.kind === 'cta' ? 'buttonColor' : 'textColor'}
                       value={selected.color || (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)}
                       onChange={(hex) => updatePreviewLayer(selected.id, { color: hex })}
                       brand={settings.brandColors}

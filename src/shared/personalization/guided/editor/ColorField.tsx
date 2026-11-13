@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Pipette, Wand2 } from 'lucide-react'
 import { C, hintStyle, inputStyle, labelStyle, secondaryButtonStyle } from '../tokens'
+import { Tip } from './Tip'
+import type { EditorTipId } from './editorTips'
 import {
   autoTextColor, averageColor, contrastBetween, extractPalette, gradeContrast, hexToHsv, hsvToHex, parseHex, pushRecent,
   type Hsv,
@@ -26,6 +28,8 @@ export interface ColorFieldProps {
   brand: { primary: string; accent: string; text: string }
   /** The video's poster/frame image: colors and the contrast backdrop are read from it, best effort. */
   posterUrl?: string | null
+  /** Tooltip for the trigger button. */
+  tipId?: EditorTipId
 }
 
 const RECENT_KEY = 'personalization:recent-colors'
@@ -74,7 +78,7 @@ const swatchStyle = (color: string, active: boolean): React.CSSProperties => ({
   border: `2px solid ${C.modal}`, outline: `${active ? 2 : 1}px solid ${active ? C.cyan : C.border}`,
 })
 
-export function ColorField({ id, label, ariaLabel, value, onChange, brand, posterUrl }: ColorFieldProps): React.JSX.Element {
+export function ColorField({ id, label, ariaLabel, value, onChange, brand, posterUrl, tipId }: ColorFieldProps): React.JSX.Element {
   const uid = useId()
   const current = parseHex(value) ?? '#ffffff'
   const [open, setOpen] = useState(false)
@@ -177,6 +181,7 @@ export function ColorField({ id, label, ariaLabel, value, onChange, brand, poste
   return (
     <div ref={rootRef} style={{ position: 'relative' }}>
       <label style={labelStyle} htmlFor={id}>{label}</label>
+      {tipId ? <Tip id={tipId}>
       <button
         id={id}
         ref={triggerRef}
@@ -191,6 +196,22 @@ export function ColorField({ id, label, ariaLabel, value, onChange, brand, poste
         <span aria-hidden style={{ width: 20, height: 20, borderRadius: 5, background: current, border: `1px solid ${C.borderStrong}`, flexShrink: 0 }} />
         <span style={{ color: C.text, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{current.toUpperCase()}</span>
       </button>
+      </Tip> : (
+      <button
+        id={id}
+        ref={triggerRef}
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        data-testid="color-field-trigger"
+        onClick={() => (open ? close(true) : setOpen(true))}
+        style={{ ...inputStyle, display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 34, cursor: 'pointer', padding: '0 8px' }}
+      >
+        <span aria-hidden style={{ width: 20, height: 20, borderRadius: 5, background: current, border: `1px solid ${C.borderStrong}`, flexShrink: 0 }} />
+        <span style={{ color: C.text, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{current.toUpperCase()}</span>
+      </button>
+      )}
 
       {open && (
         <div

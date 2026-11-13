@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Eye, HelpCircle, Loader2, Wand2 } from 'lucide-react'
+import { Tip } from './editor/Tip'
 import { C, badgeStyle, hintStyle, panelStyle, secondaryButtonStyle } from './tokens'
 import type { LayoutQualityState } from './useLayoutQuality'
 import type { QualityIssue, QualityStatus } from '../preview/placement'
@@ -70,15 +71,19 @@ function LayoutQualityBar({ quality, layers }: { quality: LayoutQualityState; la
             {first ? first.message : s.text}
           </div>
         </div>
+        <Tip id="qualityReview">
         <button type="button" data-testid="layout-quality-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}
           style={{ ...secondaryButtonStyle, minHeight: 30, padding: '0 10px', fontSize: 11 }}>
           {open ? 'Hide details' : 'Review'}
         </button>
+        </Tip>
         {fixable && (
+          <Tip id="qualityFixAll">
           <button type="button" data-testid="layout-quality-fix-all" onClick={() => quality.applyRecommended()}
             style={{ ...secondaryButtonStyle, minHeight: 30, padding: '0 12px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, color: C.cyan, borderColor: C.cyan }}>
             <Wand2 size={12} /> Fix all
           </button>
+          </Tip>
         )}
       </div>
       {open && <FullPanel quality={quality} layers={layers} />}
