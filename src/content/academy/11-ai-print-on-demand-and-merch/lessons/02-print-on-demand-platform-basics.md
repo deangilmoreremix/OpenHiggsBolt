@@ -1,118 +1,107 @@
 # Print-on-Demand Platform Basics
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Automate production, fulfillment, and store sync across Etsy, Shopify, and POD suppliers.
-
-**Track:** AI Print-on-Demand & Merch Design  
-**Time:** ~35 minutes  
-**Prerequisites:** [01: Designing Sellable AI Art](01-designing-sellable-ai-art-for-merch.md)  
-
-## The Problem
-
-Creating great AI artwork is only half the battle. Setting up physical manufacturing, managing inventory, and handling shipping logistics manually can sink a merch business before it starts.
-
-Traditional inventory models require purchasing 100+ shirts upfront in various sizes (S, M, L, XL), storing boxes in your home, and risking unsold stock if a design doesn't sell.
-
-Print-on-Demand (POD) eliminates inventory risk by printing and shipping orders automatically when a customer buys—but setting up integration bridges between platforms (Etsy/Shopify) and suppliers (Printify/Printful) requires proper configuration.
+> **Time:** about 18 minutes. **You will finish with:** a supplier linked to your store, a product with your graphic, and automatic order routing switched on.
 
 ---
 
-## The Concept
+## Before you start
 
-The automated POD e-commerce workflow connects storefronts directly to fulfillment providers:
+Great artwork is half the job. Traditional inventory means buying 100+ shirts upfront in S, M, L and XL, storing boxes and risking unsold stock. Print-on-Demand (POD) removes that risk: when a customer buys, the supplier prints and ships automatically. The flow is: customer orders on Etsy or Shopify, the order auto-syncs to the print supplier (Printify), it is printed and shipped by **DTG (Direct-to-Garment, inkjet printing onto fabric one item at a time, no minimum order)**, and tracking is sent to the customer automatically.
 
-```
-Customer Places Order (Etsy/Shopify) ──► Auto-Sync to Print Supplier (Printify) ──► DTG Printing & Shipping ──► Tracking Auto-Sent to Customer
-```
+You need your `merch-graphic-transparent.png` from lesson 1 (Designing Sellable AI Art for Merch), an Etsy or Shopify store, and SmartVideo GO AI **Image Studio** for lifestyle mockups. Use only your own accounts and sign in through each service's own page; never paste passwords or keys into chat.
 
-### Core Components:
+## Step by step
 
-1. **Front-End Storefronts:** Etsy (built-in search traffic), Shopify (custom brand control), or Redbubble (marketplace catalog).
-2. **Back-End Print Suppliers:** Printify, Printful, or Gelato. They handle **DTG (Direct-to-Garment — a process that inkjet-prints your design directly onto fabric, one item at a time, with no minimum order)** printing, quality control, packaging, and shipping.
-3. **Mockup Generation:** Creating photorealistic lifestyle product photos so customers see the shirt/mug in a real-world setting.
+### 1. Create the supplier account
 
----
+Create a Printify (or Printful) account. Printify has the vendor network and lowest base prices; Printful has in-house print quality.
 
-## Do It
+**You should see:** your supplier dashboard.
 
-### Step 1: Connect Your POD Supplier to Your Store
-Create a Printify/Printful account and link it to your Etsy or Shopify store using API OAuth.
+**If not:** menus move; follow the current screen and the supplier's help page.
 
-### Step 2: Upload Your 300 DPI Transparent Graphic
-Select a garment (e.g., Bella+Canvas 3001 Unisex Tee). Upload your `merch-graphic-transparent.png`. Center the graphic on the printable area.
+### 2. Connect your store
 
-### Step 3: Publish Lifestyle Mockups
-Generate lifestyle product photos using your AI photography pipeline from [`templates/merch-prompt-brief.md`](templates/merch-prompt-brief.md) or Printify mockup tools.
+Link the supplier to your Etsy or Shopify store using the OAuth connection (sign in on the store's own page and approve).
 
-### Step 4: Configure Automated Order Routing
+**You should see:** your store listed as connected in the supplier.
+
+**If not:** allow pop-ups and try again; if it shows the wrong store, disconnect and reconnect.
+
+### 3. Pick a garment
+
+Select a garment such as the Bella+Canvas 3001 Unisex Tee.
+
+**You should see:** a blank product mockup with a printable area.
+
+**If not:** search the catalog for the garment name.
+
+### 4. Upload and center the graphic
+
+Upload `merch-graphic-transparent.png` (300 DPI) and center it on the printable area.
+
+**You should see:** the artwork on the shirt with no box behind it.
+
+**If not:** a box means the PNG is not transparent; redo the background removal from lesson 1.
+
+### 5. Make lifestyle mockups
+
+Generate lifestyle product photos with your AI photography pipeline from `templates/merch-prompt-brief.md` (Image Studio) or use Printify mockup tools.
+
+**You should see:** the shirt or mug shown in a real-world setting.
+
+**If not:** simplify the scene prompt; keep the product the hero.
+
+### 6. Turn on automatic fulfillment
+
 Enable **Automatic Fulfillment** in your supplier settings so incoming store orders process without manual intervention.
 
----
+**You should see:** the setting shown as on.
 
-## Worked Example
+**If not:** menus move; check the current screen under order or store settings.
 
-<p align="center">
-<img src="templates/examples/vintage-botanical-mug-mockup.jpg" alt="Vintage Botanical Ceramic Mug Mockup" width="480">
-</p>
-<p align="center"><sub>AI Vintage Botanical Coffee Mug Mockup (Product Showcase)</sub></p>
+### 7. Set a backup supplier
 
-**Product Listing Setup for "Botanical Wildflower Ceramic Mug"**
+Set up backup supplier routing in Printify so if one print shop runs out of stock on black L shirts, orders route to a secondary supplier.
 
-* **Print Supplier:** Monster Digital via Printify.
-* **Product:** 11oz White Ceramic Mug.
-* **Retail Price:** **$16.99**.
-* **Base Production Cost:** **$4.50** + **$5.00** shipping.
-* **Profit per Sale:** **$7.49** (44% Margin).
-* **Fulfillment:** 100% automated upon order receipt.
+**You should see:** a second print provider listed as fallback.
 
----
+**If not:** not every product offers this; note it and check again later.
 
-## Compare Tools
+## Check yourself
 
-| Platform / Supplier | Best Strengths | Fulfillment Speeds | Best For |
+* [ ] My supplier is connected to my Etsy or Shopify store.
+* [ ] My transparent 300 DPI graphic is on a product.
+* [ ] I have at least one lifestyle mockup.
+* [ ] Automatic Fulfillment is on and I know my backup option.
+
+## Common mistakes
+
+* Buying stock upfront instead of using POD.
+* Uploading a graphic that is not transparent or not 300 DPI.
+* Leaving orders on manual routing.
+* Pasting store or supplier passwords into chat.
+
+## Go further
+
+**Worked example, "Botanical Wildflower Ceramic Mug":** Monster Digital via Printify; 11oz White Ceramic Mug; retail **$16.99**; base cost **$4.50** + **$5.00** shipping; profit per sale **$7.49** (44% margin); fulfillment 100% automated. Preview: `templates/examples/vintage-botanical-mug-mockup.jpg`.
+
+**Compare:**
+
+| Supplier | Strengths | Speed | Best for |
 |---|---|---|---|
-| **Printify** | Vendor network, lowest base prices | 2 - 5 business days | High-margin Etsy & Shopify stores |
-| **Printful** | In-house print quality, custom branding inserts | 2 - 4 business days | Premium apparel brands |
-| **Redbubble** | Built-in organic search traffic | 3 - 7 business days | Zero-setup passive catalog publishing |
+| Printify | Vendor network, lowest base prices | 2 - 5 business days | High-margin Etsy and Shopify stores |
+| Printful | In-house print quality, custom branding inserts | 2 - 4 business days | Premium apparel brands |
+| Redbubble | Built-in organic search traffic | 3 - 7 business days | Zero-setup passive catalog publishing |
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: create a free Printify account and upload an isolated AI graphic onto a t-shirt mockup.
+2. Medium: connect your supplier to an Etsy or Shopify dev store.
+3. Hard: set up automated fulfillment and test a sample order delivery.
 
-* **Enable Automatic Order Backup:** Set up backup supplier routing in Printify so if one print shop runs out of stock on black L shirts, your orders automatically route to a secondary supplier.
+**Template:** `templates/pod-pricing-calculator.md` has COGS models, margin calculators and platform fee breakdowns.
 
----
+**SmartVideo GO AI studios:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio.
 
-## Exercises
-
-1. **Easy:** Create a free Printify account and upload an isolated AI graphic onto a t-shirt mockup.
-2. **Medium:** Connect your POD supplier to an Etsy or Shopify dev store.
-3. **Hard:** Set up automated order fulfillment and test a sample order delivery.
-
----
-
-## Templates
-
-* [`templates/pod-pricing-calculator.md`](templates/pod-pricing-calculator.md) — COGS pricing models, profit margin calculators, and platform fee breakdowns.
-
----
-
-[← Designing Sellable AI Art](01-designing-sellable-ai-art-for-merch.md) · Next: [Building a Catalog Without Repeating Yourself →](03-building-a-catalog-without-repeating.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Building a Catalog Without Repeating Yourself.

@@ -1,139 +1,111 @@
 # High-converting Studio Lookbooks
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 18 minutes. **You will finish with:** one lookbook image: a generated backdrop, a model composited with matched shadows, and a colour grade, filled in on your moodboard.
 
+---
 
+## Before you start
 
-> A lookbook doesn't just sell clothes; it sells a lifestyle.
+Seasonal lookbooks are logistics nightmares (weather, travel, props, changing light), shot in a plain office they look flat, and stock photos look generic. The fix is a cohesive pipeline: pick a **theme**, build a **backdrop** with consistent lighting, composite your try-on model, then apply one **colour grade** (LUT) so every image looks like the same shoot. Use diffused side softbox light with soft neutral shadows; avoid harsh sunbeams unless the collection is high-contrast summer.
 
-**Track:** AI Fashion & Virtual Try-On  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
+You will need:
 
-## The Problem
+* A try-on model image from lesson 1 (Garment Try-on).
+* [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md).
+* SmartVideo GO AI **Image Studio** for the backdrop; a layer editor such as Photoshop or Photopea for compositing and grading (menus move; follow the current screen).
 
-To launch a seasonal collection (e.g., Autumn/Winter), fashion brands require editorial "lookbooks"—lifestyle catalogs showcasing garments in stylized environments. Organizing these outdoor shoots is a logistics nightmare: dealing with weather delays, booking travel to exotic locations, renting studio props, and managing lighting across different times of day.
+## Step by step
 
-If you try to shoot lookbooks in a basic office room, they look flat and cheap. If you use stock photography, they look generic and do not match your brand's unique aesthetic identity.
+### 1. Lock the moodboard theme
 
-To maintain a premium brand presence, you need to generate high-end, cohesive fashion lookbook backdrops on demand, and composite your collection models into them with perfect lighting harmony.
+1. Open [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md).
+2. Choose a visual archetype, colour palette and studio lighting setup. Example: "Nordic Autumn" with taupe, soft sand and slate grey.
 
-## The Concept
+**You should see:** a filled moodboard with theme, palette and lighting.
 
-The lookbook production pipeline relies on **Visual Theming**, **Symmetrical Lighting Design**, and **Cohesive Color Grading**:
+**If not:** if you cannot choose, use the Nordic Autumn example and change it later.
 
+### 2. Generate the backdrop
+
+1. In Image Studio (or another image generator), paste this prompt:
+
+```text
+A high-end fashion studio backdrop. A minimalist light grey textured plaster screen, soft diffused overcast window light casting faint shadows, editorial fashion set, photorealistic, 8k resolution, shot on 85mm lens, f/5.6.
 ```
-Define Theme Archetype ──► Design Lighting & Backdrops ──► Composite VTO Models ──► Apply Batch Color Grade
-```
 
-* **Theming Consistency:** A lookbook must feel like a single story. If your first model is shot against a textured plaster screen in warm sand, the next model cannot sit in a high-tech concrete warehouse. Establish a unified backdrop palette and texture set before generating images.
-* **Studio Lighting Presets:** Standardize light directions across your catalog. Lookbook backdrops should feature diffused side softbox lighting, casting soft, neutral shadows. Avoid harsh direct sunbeams unless specifically designing a high-contrast summer collection.
-* **Cohesive Color Grading:** In fashion publishing, images are processed through color profiles (LUTs) in post-production. You must apply a uniform color grading map across all final composite images (e.g., cooling the shadows and warming the highlights) to make them look like they were taken during the same shoot.
+2. Save the result as `studio_bg_01.jpg`.
 
----
+**You should see:** an empty plaster-style set with soft light and faint shadows.
 
-## Do It
+**If not:** if the light is harsh or colours drift from your palette, add your palette words to the prompt and regenerate.
 
-### Step 1: Lock the Moodboard Theme
-Open [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md). Select your visual archetype, core color palette, and studio lighting setup.
-* *Example Theme:* "Nordic Autumn" with taupe, soft sand, and slate grey colors.
+### 3. Composite the model
 
-### Step 2: Generate Lookbook Backdrops
-Use an image generator to create the studio backdrops according to your moodboard specs:
-* *Prompt:* `"A high-end fashion studio backdrop. A minimalist light grey textured plaster screen, soft diffused overcast window light casting faint shadows, editorial fashion set, photorealistic, 8k resolution, shot on 85mm lens, f/5.6."`
-Run the model and save the backdrop as `studio_bg_01.jpg`.
+1. Import your lesson 1 model layer over `studio_bg_01.jpg`.
+2. Position the model centred in the frame.
 
-### Step 3: Composite the Model Layer
-Drape your collection garment onto your model using the VTO pipeline (Module 1). Import the model layer over `studio_bg_01.jpg`. Position the model centered in the frame.
+**You should see:** the model standing on the backdrop, still floating without shadows.
 
-### Step 4: Align Lighting & Cast Shadows
-Verify that the light highlights on the model's face and shoulders match the light direction in the backdrop (e.g. key light coming from the top-left).
-* Paint a soft shadow on the plaster screen layer where the model's shoulders and torso block the key light. Set layer opacity to **25%** and blend mode to **Multiply**.
-* Paint a soft contact shadow under the model's shoes at the baseline.
+**If not:** if edges look cut out, refine the mask edge before continuing.
 
-### Step 5: Apply Batch Color Grading
-Create a global color grading layer (such as a gradient map, color lookup table, or Lightroom preset) and apply it across all final lookbook assets.
-* Shift shadows slightly toward teal and midtones toward warm beige.
-* Limit maximum contrast to maintain soft details in dark fabrics.
-Export the completed lookbook files as high-quality WebP.
+### 4. Match light and cast shadows
 
----
+1. Check that highlights on the face and shoulders match the backdrop's light direction (for example key light from top-left).
+2. Paint a soft shadow on the screen where shoulders and torso block the light; set the layer to **25%** opacity and **Multiply** blend mode.
+3. Paint a soft contact shadow under the shoes at the baseline.
 
-## Worked Example
+**You should see:** the model sits in the scene, lit from the same side as the backdrop.
 
-<p align="center">
-<img src="templates/examples/fashion-lookbook-model.jpg" alt="Editorial Fashion Lookbook Model" width="240">
-<img src="templates/examples/fashion-lookbook-loop.gif" alt="Lookbook Motion Loop (I2V)" width="240">
-</p>
-<p align="center"><sub>Editorial Studio Lookbook Image (Left) ──► Image-to-Video Camera Motion (Right) · Video File: <a href="templates/examples/fashion-lookbook-loop.mp4">templates/examples/fashion-lookbook-loop.mp4</a></sub></p>
+**If not:** if the shadow looks pasted on, soften the brush and lower the opacity.
 
-**Cashmere Collection Lookbook (Nordic Autumn Theme)**
+### 5. Grade and export
 
+1. Create one global grading layer (gradient map, LUT or Lightroom preset).
+2. Shift shadows slightly toward teal and midtones toward warm beige; limit maximum contrast so dark fabrics keep detail.
+3. Export as high-quality WebP, at least 2000px vertical so shop zoom stays sharp.
 
+**You should see:** a finished lookbook image with a unified colour feel.
 
-* **Theme Spec:** Minimalist plaster backdrop, soft side daylight, earth-tone colors.
-* **Backdrop Asset:** Generated a warm grey stucco wall scene with a soft shadow of a window frame cast on it.
-* **Model Layer:** Model wearing a beige oversized organic cashmere knit sweater.
-* **Grading Settings:**
-  * Shadows: Teal shift (+5%).
-  * Highlights: Gold shift (+8%).
-  * Grain: Added 5% digital noise to replicate high-end film stock.
-* **Export Format:** 1080x1350px vertical format.
+**If not:** if skin looks over-smoothed or orange, reduce the grade strength and skip blur filters.
 
-**The Result:** The brand received a 10-page editorial lookbook ready for print and web launch, looking exactly like a premium studio shoot.
+## Check yourself
 
-> [!NOTE]
-> You can view a high-end studio lookbook model photography example here: [fashion-lookbook-model.jpg](templates/examples/fashion-lookbook-model.jpg) and its corresponding silent animation loop here: [fashion-lookbook-loop.gif](templates/examples/fashion-lookbook-loop.gif).
+* [ ] My moodboard names a theme, palette and lighting setup.
+* [ ] Backdrop light direction matches the model's light.
+* [ ] Shadow layer is 25% Multiply, with a contact shadow at the shoes.
+* [ ] One grade is applied, and the export is at least 2000px vertical.
 
----
+## Common mistakes
 
-## Compare Tools
+* **Mixed themes.** A sand plaster screen for one model and a concrete warehouse for the next breaks the story.
+* **Harsh direct light.** Stick to diffused side softbox light.
+* **Over-smoothed skin.** Keep natural pores and hair texture; it builds credibility.
+* **Grading each image by hand.** Apply one shared grade across the whole set.
 
-| Platform / Tool | Generation Quality | Batch Processing | Best for |
+## Go further
+
+**Worked example, cashmere collection (Nordic Autumn).** Minimalist plaster backdrop, soft side daylight, earth tones. Backdrop: a warm grey stucco wall with a soft window-frame shadow. Model: beige oversized organic cashmere knit sweater. Grading: shadows teal shift +5%, highlights gold shift +8%, 5% digital grain for a film feel. Export 1080x1350px vertical. Result: a 10-page editorial lookbook ready for print and web.
+
+![Lookbook model](templates/examples/fashion-lookbook-model.jpg)
+
+Motion loop: [templates/examples/fashion-lookbook-loop.mp4](templates/examples/fashion-lookbook-loop.mp4)
+
+**Compare tools**
+
+| Tool | Quality | Batch processing | Best for |
 |---|---|---|---|
-| **FLUX Pro / Midjourney** | Ultra-High (Excellent styling details, studio backdrop presets) | Low | Generating creative, high-end editorial backdrops. |
-| **Lightroom / Capture One** | High | Ultra-High (Allows batch syncing of color profiles across hundreds of images) | Syncing final color grading and grain details. |
-| **Photoshop / Photopea** | High | Medium | Compositing model layers, masking shadows, and QA check edits. |
+| FLUX Pro / Midjourney | Ultra-high | Low | Editorial backdrops (plaster, wood, fabric) |
+| Lightroom / Capture One | High | Ultra-high | Batch-syncing colour profiles across hundreds of images |
+| Photoshop / Photopea | High | Medium | Compositing, shadow masking, QA edits |
 
-For backdrop generation, FLUX Pro is highly effective at rendering realistic studio textures (plaster, wood, fabric). For the final post-production stage, import all composite images into Adobe Lightroom to batch-sync your color grading presets, ensuring catalog consistency.
+**Exercises**
 
----
+1. Easy: customize the moodboard for a Summer swimwear collection.
+2. Medium: generate 2 backdrops with different prompts but identical palette and lighting angles.
+3. Hard: composite a model on your backdrop, apply a custom LUT matching the model's highlights to the backdrop's warm tone, and add a soft grain layer.
 
-## Launch It
+**Template:** [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md).
 
-**How to manage editorial assets:**
-* **Keep skin textures natural:** When editing lookbooks, avoid over-smoothing the model's skin using heavy blur filters. Professional fashion lookbooks preserve natural skin textures, pores, and hair, which builds credibility.
-* **Use high-resolution outputs:** Export lookbook images at a minimum of 2000px vertical resolution. This allows e-commerce platforms to display zoom features without the image looking pixelated.
+**SmartVideo GO AI studios for this track:** Image Studio, Video Studio (image-to-video camera motion), AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio.
 
----
-
-## Exercises
-
-1. **Easy:** Customize the [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md) spec sheet for a Summer swimwear collection.
-2. **Medium:** Generate 2 cohesive lookbook backdrops using different prompts, but keep the color palette and lighting angles identical.
-3. **Hard:** Composite a fashion model onto your generated backdrop. Apply a custom color lookup table (LUT) to match the model's highlights with the backdrop's warm tone. Add a soft grain layer across the composite.
-
----
-
-## Templates
-
-* [`templates/lookbook-moodboard.md`](templates/lookbook-moodboard.md) — aesthetic themes, lighting coordinates, backdrop presets, and prompt tokens.
-
----
-
-[← Garment Try-on for Fashion E-commerce](01-garment-tryon.md) · Next: [Sizing / Layout consistency →](03-sizing-layout-consistency.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Sizing & Layout Consistency.

@@ -1,151 +1,111 @@
 # Selling to Realtors & Agencies
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Turn active vacant property listings into recurring monthly agency retainers through targeted before/after audits.
-
-**Track:** AI Real Estate (Virtual Staging)  
-**Time:** ~45 minutes  
-**Prerequisites:** [01: Empty Room Pipeline](01-empty-room-to-staged-room.md), [02: Pricing & Packaging](02-pricing-against-traditional-staging.md)  
-
-## The Problem
-
-Most AI creators build virtual staging skills but fail at client acquisition. They post generic portfolio images on Instagram or send spammy cold emails saying *"Hi, I do AI virtual staging for $10."* Real estate agents delete these emails immediately because they don't solve an active problem on a current listing.
-
-Real estate agents and listing media agencies are flooded with generic solicitations. However, agents with **active vacant listings** on Redfin or Zillow that have been sitting on the market for **20+ days** are actively losing money and stressing over seller client feedback.
-
-If you don't target agents at the exact moment their listing is struggling, your cold outreach gets zero response.
+> **Time:** about 18 minutes. **You will finish with:** a list of 10 vacant listings, one before/after sample, and a personalized outreach email ready to send.
 
 ---
 
-## The Concept
+## Before you start
 
-The most effective sales strategy in virtual staging is **The "Active Vacant Listing" Audit**:
+Generic emails like "I do AI virtual staging for $10" get deleted. Agents with **active vacant listings** that have sat on Redfin or Zillow for **20+ days** are losing money and facing seller pressure, so reach them then. The method is the "Active Vacant Listing" Audit: find a vacant listing, make a staged sample, send a personalized email, then close a retainer. The four stages are precision prospecting, a free transformation hook, hyper-personalized outreach, and retainer locking (**$499-$1,299/month**). This part covers the first three; part 2 covers video audits, the retainer and scaling.
 
-```
-Find Vacant Listing (Zillow/Redfin) ──► Staging Sample Generation ──► Personalized 1-Min Loom / Email Audit ──► Close Retainer
-```
+You will need: lessons 1 and 2 ([Module 1 Pipeline](01-empty-room-to-staged-room.md), [Pricing & Packaging](02-pricing-against-traditional-staging.md)), a Zillow or Redfin account view, and [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md). **Image Studio** makes the sample.
 
-### The 4-Stage Client Acquisition Engine:
+## Step by step
 
-1. **Precision Lead Prospecting:** Filter Zillow/Redfin for listings in your area tagged as *"Vacant"* or showing photos of empty rooms that have been active for **20+ Days on Market (DOM)**.
-2. **The Free Transformation Hook:** Download 1 empty room photo from their active listing, run it through your AI staging pipeline, and create a striking before/after composite.
-3. **Hyper-Personalized Outreach:** Email the listing agent showing their exact room transformed into a modern luxury living room—before asking for a sale.
-4. **Brokerage Retainer Locking:** Once an agent experiences a 24-hour turnaround on an active listing, lock them into a **Monthly Agency Retainer** ($499–$1,299/month) for all their upcoming listings.
+### 1. Filter for vacant listings
 
----
+Open Zillow or Redfin and apply:
 
-## Do It
-
-### Step 1: Build Your Prospecting List (Zillow/Redfin Scan)
-Open Zillow or Redfin. Apply these filters:
 * **Status:** For Sale (Active).
 * **Keywords:** `"vacant"`, `"empty"`, `"unfurnished"`, `"bring your ideas"`.
 * **Days on Zillow:** 14+ days.
-* Extract 10 listing URLs and note the listing agent's name, email, and brokerage firm into [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md).
 
-### Step 2: Generate the "Proof of Value" Staged Sample
-Download the hero empty living room image from Listing #1. Run it through your [Module 1 Pipeline](01-empty-room-to-staged-room.md) using a sleek Modern Scandinavian theme. Save the before/after asset as `sample-staging-listing1.jpg`.
+**You should see:** a list of active listings with empty rooms in the photos.
 
-### Step 3: Send the Personalized Cold Email Audit
-Send this exact high-converting outreach email to the listing agent:
+**If not:** filters move between sites; follow the current screen, or widen your search area.
 
-> **Subject:** Quick question about [Property Address] listing photos...
-> 
-> Hi [Agent Name],
-> 
-> I noticed your listing at **[Property Address]** on Zillow — beautiful architectural bones and natural light! 
-> 
-> I saw the living room is currently vacant. Since buyers often struggle to visualize empty spaces, I took 2 minutes to virtually stage your main living area so you can see what it looks like fully furnished:
-> 
-> **[Embed / Attach Before & After Image Here]**
-> 
-> If you'd like to add this staged photo (plus the master bedroom) to your MLS listing today to help drive more weekend showings, I can send over the high-res files in 10 minutes.
-> 
-> Worth a quick look?
-> 
-> Best,  
-> [Your Name]  
-> AI Virtual Staging Studio  
+### 2. Record 10 prospects
 
-### Step 4: Record a 60-Second Video Audit (Optional High-Ticket Closer)
-For premium listings ($1M+), record a 60-second Loom video showing:
-1. Their current empty Zillow listing photo.
-2. Your AI staged transformation.
-3. A short walk-through of the 3 staging style options available (Scandinavian, Luxury, Coastal).
+Extract 10 listing URLs. For each, note the listing agent's name, email and brokerage into [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md). Prefer listings at 20+ days on market. Tools such as Apollo.io or Hunter.io can help find contact info (free tiers exist).
 
-### Step 5: Upsell the Monthly Brokerage Retainer
-After successfully delivering their first listing package, present the **Brokerage Unlimited Pass**:
-* **Package Rate:** **$699/month** (Includes up to 5 properties / 30 staged photos per month).
-* **Agent Benefit:** Guaranteed 12-hour turnaround, priority style requests, and dedicated listing video clips.
+**You should see:** 10 rows with URL, agent, email and brokerage.
 
----
+**If not:** if agent emails are hidden, check the brokerage website, or fill the rest in later and start with the ones you have.
 
-## Worked Example
+### 3. Create the proof-of-value sample
 
-<p align="center">
-<img src="templates/examples/empty-to-staged-before-after.jpg" alt="Empty to Staged Real Estate Transformation" width="560">
-</p>
-<p align="center"><sub>Vacant Property Photo vs. AI Virtual Staging Transformation (Before & After Split View)</sub></p>
+1. Download the hero empty living room image from Listing #1.
+2. Run it through your [Module 1 Pipeline](01-empty-room-to-staged-room.md) with a sleek Modern Scandinavian theme in **Image Studio**.
+3. Save the before/after asset as `sample-staging-listing1.jpg`.
 
-**Outreach Campaign Results for Compass Real Estate (Dallas Market)**
+**You should see:** a before/after image of that exact room, furnished.
 
-* **Campaign Target:** 25 cold emails sent to agents with vacant listings sitting 20+ DOM.
-* **Open Rate:** **76%** (high interest due to property address in subject line).
-* **Response Rate:** **32%** (8 agents replied praising the free sample).
-* **Listings Closed:** 5 instant listing sales ($199 × 5 = **$995** revenue).
-* **Retainers Signed:** 2 agents converted to $599/month retainers = **$1,198/month recurring revenue**.
-* **Total Time Invested:** 3.5 hours across 1 week.
+**If not:** if furniture warps, redo the mask and depth settings from lesson 1.
 
----
+### 4. Personalize the email
 
-## Compare Tools
+Copy this email, replace the bracketed parts, and attach or embed the before/after:
 
-| Sales & Prospecting Tool | Purpose | Cost | Value to Workflow |
-|---|---|---|---|
-| **Zillow / Redfin / MLS** | Free lead sourcing for active vacant properties | Free | High — Live real-time market data on struggling listings |
-| **Loom / Vidyard** | 60-second personalized video audits | Free tier | Very High — Boosts cold response rate by 2.5x |
-| **Apollo.io / Hunter.io** | Agent direct phone & email lookup | Free tier | Essential for finding direct contact info for top brokers |
+```text
+Subject: Quick question about [Property Address] listing photos...
 
----
+Hi [Agent Name],
 
-## Launch It
+I noticed your listing at [Property Address] on Zillow — beautiful architectural bones and natural light!
 
-**Best practices for scaling real estate sales:**
-* **Partner with Real Estate Photographers:** Local real estate photographers already shoot 20–50 homes a month. Offer them a **30% white-label commission split** ($50 per house staged) to sell your virtual staging directly to their existing agent client base.
-* **MLS Compliance Check:** Ensure your virtual staging files include a small subtle watermark reading *"Virtually Staged for Visualization"* in the bottom corner if required by local MLS board rules.
+I saw the living room is currently vacant. Since buyers often struggle to visualize empty spaces, I took 2 minutes to virtually stage your main living area so you can see what it looks like fully furnished:
 
----
+[Embed / Attach Before & After Image Here]
 
-## Exercises
+If you'd like to add this staged photo (plus the master bedroom) to your MLS listing today to help drive more weekend showings, I can send over the high-res files in 10 minutes.
 
-1. **Easy:** Go to Zillow and find 3 active vacant listings in your zip code. Download 1 empty room image from each.
-2. **Medium:** Virtually stage the 3 empty room images and assemble 3 before/after comparison graphics.
-3. **Hard:** Write 3 personalized cold email pitches using the template above, insert your before/after graphics, and send them to the respective listing agents.
+Worth a quick look?
 
----
+Best,
+[Your Name]
+AI Virtual Staging Studio
+```
 
-## Templates
+**You should see:** an email with the real address, agent name and your image, no brackets left.
 
-* [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md) — Cold email templates, Loom video scripts, and real estate photographer partnership agreements.
+**If not:** search the draft for "[" to catch leftovers.
 
----
+### 5. Send and log it
 
-[← Pricing Against Traditional Staging](02-pricing-against-traditional-staging.md) · [Track Overview](README.md)
+Send the email to the listing agent for Listing #1 and note the date in your outreach template so you can follow up.
 
+**You should see:** a sent email and a dated row in your log.
 
----
+**If not:** if you are not ready to send, save it as a draft and finish the log; the rest of the track still works.
 
-## Produce this in SmartVideo GO AI
+## Check yourself
 
-Apply this lesson directly inside SmartVideo GO AI:
+* [ ] My prospect list has 10 listings with agent contacts.
+* [ ] I targeted listings sitting 14+ days, ideally 20+.
+* [ ] My sample shows the agent's actual room.
+* [ ] The email has no leftover brackets.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+## Common mistakes
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+* Sending a generic portfolio or a "$10" pitch.
+* Staging a room that is not from the agent's own listing.
+* Asking for the sale before showing the free sample.
+* Forgetting to log who you contacted.
+
+## Go further
+
+**Worked example, Compass Real Estate (Dallas):** 25 cold emails to agents with vacant listings at 20+ DOM. Open rate **76%**, response rate **32%** (8 replies), 5 instant sales ($199 x 5 = **$995**), 2 retainers at $599/month = **$1,198/month** recurring, in 3.5 hours over 1 week. Example image: `templates/examples/empty-to-staged-before-after.jpg`.
+
+**Tools:** Zillow / Redfin / MLS (free lead sourcing); Loom / Vidyard (60-second video audits, free tier); Apollo.io / Hunter.io (agent contact lookup, free tier).
+
+**Exercises:**
+
+1. Easy: find 3 active vacant listings in your zip code and download 1 empty room image from each.
+2. Medium: stage the 3 images and make 3 before/after graphics.
+3. Hard: write 3 personalized pitches with the template, insert your graphics and send them.
+
+**Studios in SmartVideo GO AI:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio.
+
+Template: [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md).
+
+Next: Selling to Realtors & Agencies, part 2.

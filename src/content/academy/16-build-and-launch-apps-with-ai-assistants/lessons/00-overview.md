@@ -1,18 +1,16 @@
 # Track 16: Build and Launch Apps with Claude or ChatGPT, Netlify, Clerk and Stripe
 
-> **SmartVideo GO AI Academy** — Take one of the ready-made reseller apps from your own GitHub copy to a live, hosted business, with an AI chat doing the technical work for you through connectors.
+> **Time:** about 8 minutes to read. **You will finish with:** a clear map of the 13 lessons, the safety rules, and the habits that make the assistant useful.
 
 ---
 
-## Who this track is for
+## Before you start
 
-You own (or are about to own) one of the 38 reseller apps and you are not a developer. You do not want to learn a framework. You want to be able to say "host this", "add sign-up", "check the payment went through" to a chat and have it done, while you stay in control of what changes and what it costs.
+**SmartVideo GO AI Academy.** This track takes one of the ready-made reseller apps from your own GitHub copy to a live, hosted business, with an AI chat doing the technical work for you through connectors.
 
-If you can create accounts, copy and paste, and read a screen carefully, you can do this track. Every step tells you what you should see when it worked.
+**Who it is for.** You own (or are about to own) one of the 38 reseller apps and you are not a developer. You do not want to learn a framework. You want to be able to say "host this", "add sign-up", "check the payment went through" to a chat and have it done, while you stay in control of what changes and what it costs. If you can create accounts, copy and paste, and read a screen carefully, you can do this track. Every step tells you what you should see when it worked.
 
-## What you will build
-
-By the end you will have, for one app of your choice:
+**What you will build.** By the end you will have, for one app of your choice:
 
 1. **Free accounts** on Netlify, Clerk and Stripe (Stripe in test mode), alongside GitHub.
 2. **Connectors** that let Claude and/or ChatGPT see and use those services with your approval.
@@ -23,12 +21,12 @@ By the end you will have, for one app of your choice:
 
 ## The lessons
 
-Every lesson takes **under 20 minutes**, so you can finish one in a sitting and stop at a safe point.
+Every lesson takes **under 20 minutes** (the times below are honest estimates), so you can finish one in a sitting and stop at a safe point.
 
 | # | Lesson | Time | What you finish with |
 | --- | --- | --- | --- |
 | 1 | Start your free accounts | 18 min | Netlify, Clerk, Stripe (test), GitHub |
-| 2 | Connect Claude with connectors | 18 min | Claude can read your three services |
+| 2 | Connect Claude with connectors | 15 min | Claude can read your three services |
 | 3 | Connect ChatGPT the same way | 15 min | ChatGPT can, or you know it cannot on your plan |
 | 4 | Brief your assistant on the app | 18 min | An assistant that understands your app |
 | 5 | Check readiness and create the Netlify site | 18 min | A Netlify site connected to your repo |
@@ -52,26 +50,55 @@ Be clear about this before you start, because it decides what your assistant has
 
 This is why the track is a build and not a button: you are making two real changes to a real application, safely.
 
-## How this track fits with the Reseller Setup Walkthrough
+## Step by step: how to use this course
 
-The Reseller Setup Walkthrough (`/academy/reseller/launch`) takes you through Vercel-based deployment, the database, Google sign-in, Stripe and launch for the app you select. **Module 13** of that course is the interactive version of this track: Learn, Follow along, Complete and Verify for each lesson, with your selected app's facts shown beside the steps. Use this track to understand the whole picture; use Module 13 to do the work.
+### 1. Start with lesson 1 and go in order
+
+Each lesson depends on the one before it. Open lesson 1 and finish it before moving on.
+
+**You should see:** each lesson ends with a **Check yourself** list and a pointer to the next lesson.
+
+**If not:** if you skipped ahead and a step does not match your screen, go back to the first lesson you did not finish.
+
+### 2. Stop at the end of any lesson
+
+Every lesson ends at a safe stopping point, and nothing is left half-changed. Take a break there.
+
+**You should see:** all the boxes in **Check yourself** ticked before you close the lesson.
+
+**If not:** if one box will not tick, use that lesson's **Common mistakes** before you continue.
+
+### 3. Use Module 13 to do the work
+
+The Reseller Setup Walkthrough (`/academy/reseller/launch`) takes you through Vercel-based deployment, the database, Google sign-in, Stripe and launch for the app you select. **Module 13** of that course is the interactive version of this track: Learn, Follow along, Complete and Verify for each lesson, with your selected app's facts shown beside the steps.
+
+**You should see:** your selected app's facts beside each step.
+
+**If not:** use this track to understand the whole picture, and follow the written steps here.
 
 ## The rules that keep you safe
 
 * **Sign in to your own accounts only.** Never connect a client's or an employer's account to practise.
 * **Read-only first.** Before a chat is allowed to change anything, test it with a question that only reads.
 * **Never paste a secret key into a chat.** Not Stripe keys, not the Clerk secret key, not database addresses, not the MuAPI key. Secrets go into the dashboard settings of Netlify, Clerk and Stripe. The assistant's job is to tell you which variable name to fill in; your job is to paste the value into the dashboard yourself.
-* **Test mode until you decide otherwise.** Stripe stays in test mode, and Clerk stays on its development instance, until lesson 8.
+* **Test mode until lesson 13.** Stripe stays in test mode, and Clerk stays on its development instance, until you go live in lesson 13.
 * **Small steps, explained first.** Ask the assistant to say what it will change and why before it changes it. You can undo anything in GitHub.
 * **Menus change.** Claude, ChatGPT, Netlify, Clerk and Stripe all rename and move things. This track teaches the flow and tells you what the result should look like; when a label differs, follow the service's official page.
 
-## How to use an assistant well (the habits that matter)
+## How to use an assistant well
 
 1. **Give context once, clearly** (lesson 4), then refer back to it.
 2. **Ask for a plan before a change.** "Plan how to... Do not change anything yet."
 3. **One change at a time.** After each, test it before the next.
 4. **Make it show evidence.** "Show me the file you changed." "Read the deploy log and tell me the first error."
 5. **Keep a note of what worked**, because the prompts become your template for every later app.
+
+## Check yourself
+
+* [ ] I know which app I am taking live.
+* [ ] I know the two things the apps do not include: Netlify settings and Clerk sign-in.
+* [ ] I can state the safety rules: own accounts, read-only first, no secrets in chat, test mode.
+* [ ] I know to start with lesson 1.
 
 ## Words you will meet
 
@@ -83,4 +110,10 @@ The Reseller Setup Walkthrough (`/academy/reseller/launch`) takes you through Ve
 * **Connector (plugin):** a switch that lets Claude or ChatGPT use another service for you.
 * **Test mode:** Stripe's practice mode: fake cards, no real money.
 
-When you are ready, start with lesson 1. Each lesson ends at a safe stopping point.
+## Common mistakes
+
+* **Rushing past a check.** Tick every box before the next lesson.
+* **Pasting a secret to "help" the chat.** Secrets go only into dashboards.
+* **Skipping the plan.** Ask for a plan before every change.
+
+Next: lesson 1, starting your free accounts.

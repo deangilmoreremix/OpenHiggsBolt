@@ -1,79 +1,18 @@
-# Track 7 — AI Product Photography & E-commerce
+# AI Product Photography & E-commerce
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> Studio-quality product photography and catalog variations on demand, with matching lighting, reflections, shadows and perspective, without renting a camera or studio.
 
+You will learn to isolate a product, build a premium backdrop, prove it with a split test, sell it as a fixed-price service and scale it across a catalog. Each lesson is a short guided walkthrough with a result at the end. Reusable files (briefs, checklists, specs) live in [`templates/`](templates/).
 
-
-> Studio-quality product photography and catalog variations on demand, matching lighting, reflection, shadows, and perspective—without renting a physical camera or studio.
-
-Four modules, in order. Each is one markdown file — click straight in, no subfolders. Every module follows the same structure: Problem → Concept → Do It → Compare Tools → Launch It → Exercises.
-
-**"Templates" below** = the reusable template(s) each module produces (briefs, checklists, spec sheets) — actual files you fill in and reuse, saved in [`templates/`](templates/).
-
-| # | Module | Time | Requires |
+| # | Lesson | Time | Requires |
 |:---:|---|:---:|---|
-| 1 | [Product Shots Without a Photographer](01-product-photography.md) | ~45 min | — |
-| 2 | [Before/After Conversion Case Studies](02-conversion-case-studies.md) | ~40 min | Module 1 |
-| 3 | [Selling as a Productized Service](03-productized-service.md) | ~35 min | — |
-| 4 | [Batch Workflows for Catalogs](04-batch-workflows.md) | ~45 min | Module 1 |
+| 1 | [Product Shots Without a Photographer](01-product-photography.md) | ~14 min | None |
+| 2 | [Product Shots Without a Photographer, part 2](01-product-photography-part-2.md) | ~10 min | Lesson 1 |
+| 3 | [Before/After Conversion Case Studies](02-conversion-case-studies.md) | ~16 min | Lessons 1-2 |
+| 4 | [Selling as a Productized Service](03-productized-service.md) | ~16 min | None |
+| 5 | [Batch Workflows for Catalogs](04-batch-workflows.md) | ~14 min | Lessons 1-2 |
+| 6 | [Batch Workflows for Catalogs, part 2](04-batch-workflows-part-2.md) | ~13 min | Lesson 5 |
 
----
+You will mostly work in **Image Studio** in SmartVideo GO AI, with a photo editor and background remover. The workflow is always: Learn, See Example, Use Template, Generate.
 
-### 1. [Product Shots Without a Photographer](01-product-photography.md)
-
-> A premium backdrop shifts your product from cheap to premium.
-
-- Isolate physical product containers using automated background masking.
-- Write descriptive studio backdrop environment prompts specifying surface details and sunlight angles.
-- Composite products onto backdrops by rendering matching ambient occlusion contact shadows and directional drop shadows.
-
-**Templates:** [`photography-brief-template.md`](templates/photography-brief-template.md)
-
-### 2. [Before/After Conversion Case Studies](02-conversion-case-studies.md)
-
-> Clean images get clicks; contextual images get sales.
-
-- Audit existing listing visual gaps using conversion checklist scores.
-- Build visual hypotheses targeting click-through rates (CTR) and landing page conversion rates (CVR).
-- Structure statistical split-testing runs directing traffic between old stock layouts and new AI lifestyle backdrops.
-
-**Templates:** [`conversion-audit-checklist.md`](templates/conversion-audit-checklist.md)
-
-### 3. [Selling as a Productized Service](03-productized-service.md)
-
-> Don't sell "AI images"; sell conversion rate uplifts.
-
-- Package product photography tasks into defined service scopes with fixed prices.
-- Configure client intake questionnaires to capture high-resolution product masks and logo styles.
-- Pitch e-commerce brand owners using side-by-side visual updates as a lead hook.
-
-**Templates:** [`productized-service-offer.md`](templates/productized-service-offer.md)
-
-### 4. [Batch Workflows for Catalogs](04-batch-workflows.md)
-
-> Consistency is what turns separate photos into a brand catalog.
-
-- Organize large catalog datasets using clear directory blueprints.
-- Maintain sizing, baseline placement, and lighting consistency across collection drop lists.
-- Speed up production by utilizing master PSD file layers for repeatable shadows and backdrops.
-
-**Templates:** [`batch-catalog-spec.md`](templates/batch-catalog-spec.md)
-
----
-
-All templates live in [`templates/`](templates/). For status across the other 11 tracks, see [ROADMAP.md](../../ROADMAP.md).
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Start with lesson 1.

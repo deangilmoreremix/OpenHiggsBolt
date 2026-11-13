@@ -27,7 +27,8 @@ describe('help index integrity', () => {
         const id = c.url.replace(/^\/(studio\/)?/, '');
         const ok = c.url === '/studio' || c.url === '/photo-studio' || c.url === '/brand-studio' || c.url === '/studio/apps' || shell.includes(`id: '${id}'`) || fs.existsSync(path.join(process.cwd(), 'app/studio')) ;
         expect(ok, c.id).toBe(true);
-      } else if (c.kind === 'academy') expect(c.url).toMatch(/^\/academy\?track=[^&]+(&lesson=[^&]+)?$/);
+      } else if (c.kind === 'academy') // the Build with AI course has its own tab, so its lessons link to ?view=build-with-ai
+        expect(c.url).toMatch(/^\/academy\?(track=[^&]+|view=build-with-ai)(&lesson=[^&]+)?$/);
       else if (c.kind === 'reseller') expect(lessonIds.has(c.url.split('lesson=')[1]), c.id).toBe(true);
       else expect(WORKSHOP_APP_IDS.includes(c.url.split('/').pop()!), c.id).toBe(true);
     }
@@ -47,7 +48,7 @@ describe('help index integrity', () => {
 
 describe('retrieval golden set', () => {
   const golden: [string, string, (c: HelpChunk) => boolean, string?][] = [
-    ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3')],
+    ['How do I set up the Stripe webhook for my app?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.includes('16-build-and-launch-apps-with-ai-assistants:lessons:10-stripe-keys-and-webhook')],
     // 8.3 (Vercel path) and 13.10/13.11 (Netlify path) both correctly answer this
     ['How do I set up the Stripe webhook so credits are added?', 'reseller', (c) => c.id.startsWith('reseller:8.3') || c.id.startsWith('reseller:13.10') || c.id.startsWith('reseller:13.11')],
     ['Why did my payment succeed but the credits did not appear', 'reseller', (c) => c.kind === 'reseller' || c.kind === 'app'],

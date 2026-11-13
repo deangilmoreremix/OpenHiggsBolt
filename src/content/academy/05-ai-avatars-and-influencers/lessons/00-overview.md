@@ -1,90 +1,31 @@
-# Track 5 — AI Avatars & Influencers
+# AI Avatars & Influencers
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+Build a consistent AI character, give it a voice, lip-sync its dialogue and turn it into income through sponsors or client retainers. Everything here can be produced in SmartVideo GO AI using the Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner and Lip-Sync Studio. Each lesson is a short guided walk-through of about 12-18 minutes.
 
+## Lessons
 
+| # | Lesson | Time |
+|:---:|---|:---:|
+| 1 | [Building a Consistent AI Character](01-consistent-character.md) | 18 min |
+| 2 | [Character to Content Pipeline](02-character-content-pipeline.md) | 12 min |
+| 3 | [Character to Content Pipeline, part 2](02-character-content-pipeline-part-2.md) | 12 min |
+| 4 | [Voice Cloning & Dialogue](03-voice-cloning-dialogue.md) | 15 min |
+| 5 | [Voice Cloning & Dialogue, part 2](03-voice-cloning-dialogue-part-2.md) | 12 min |
+| 6 | [Monetization Tiers by Follower Count](04-monetization-tiers.md) | 18 min |
+| 7 | [Agency Case Study: Small-Team Economics](05-agency-economics.md) | 18 min |
 
-> Build a consistent AI character, synthesize its voice, lip-sync its dialogue, and manage virtual influencers for clients.
+## What you will be able to do
 
-Five modules, in order. Each is one markdown file — click straight in, no subfolders. Every module follows the same structure: Problem → Concept → Do It → Compare Tools → Launch It → Exercises.
+* Lock a character's face, hair and wardrobe across scenes with description anchors, a master portrait and face swapping.
+* Animate the character with audio-driven lip-sync and cut it with b-roll so viewers stay engaged.
+* Clone a clean voice, fix pronunciation with phonetic spelling and control rhythm with punctuation.
+* Monetize at small scale with a sponsor media kit and bundled placements.
+* Run a Virtual Influencer Agency on monthly retainers, keeping the engine files and handing over video rights.
 
-**"Templates" below** = the reusable template(s) each module produces (style guides, media kits, retainer agreements) — actual files you fill in and reuse, saved in [`templates/`](templates/).
+## Templates
 
-| # | Module | Time | Requires |
-|:---:|---|:---:|---|
-| 1 | [Building a Consistent AI Character](01-consistent-character.md) | ~45 min | — |
-| 2 | [Character to Content Pipeline](02-character-content-pipeline.md) | ~45 min | Module 1 |
-| 3 | [Voice Cloning & Dialogue](03-voice-cloning-dialogue.md) | ~35 min | Modules 1–2 |
-| 4 | [Monetization Tiers by Follower Count](04-monetization-tiers.md) | ~30 min | Modules 1, 3 |
-| 5 | [Agency Case Study: Small-Team Economics](05-agency-economics.md) | ~30 min | Modules 1, 4 |
+Reusable files live in [`templates/`](templates/): [character style guide](templates/character-style-guide.md), [lip-sync spec sheet](templates/lipsync-spec-sheet.md), [voice cloning checklist](templates/voice-cloning-checklist.md), [sponsor media kit](templates/sponsor-media-kit.md) and [influencer agency agreement](templates/influencer-agency-agreement.md).
 
----
+## How to work
 
-### 1. [Building a Consistent AI Character](01-consistent-character.md)
-
-> A virtual influencer needs a locked face, not a random prompt.
-
-- Establish consistent visual identities using detailed face prompts, locked seeds, and clothing anchors.
-- Prevent face variations across scenes by using reference images and post-generation face swapping.
-- Organize characters into visual style guides to repeat visual features seamlessly.
-
-**Templates:** [`character-style-guide.md`](templates/character-style-guide.md)
-
-### 2. [Character to Content Pipeline](02-character-content-pipeline.md)
-
-> The character is the face, but the motion makes them real.
-
-- Animate still characters into dynamic vertical explainers using audio-driven lip-sync engines.
-- Lock character dimensions and hair details by confining facial movements to speaking lips and blinks.
-- Sequence talking heads alongside B-roll slide cuts in video editors to keep viewers engaged.
-
-**Templates:** [`lipsync-spec-sheet.md`](templates/lipsync-spec-sheet.md)
-
-### 3. [Voice Cloning & Dialogue](03-voice-cloning-dialogue.md)
-
-> A face creates the identity, but the voice builds the relationship.
-
-- Record, gate, and clean vocal training clips to upload and clone custom voice profiles on ElevenLabs.
-- Write phonetic word substitutions in script fields to force correct pronunciation of acronyms and brands.
-- Control narrative rhythm and breathing pauses using structured sentence segments and punctuation cues.
-
-**Templates:** [`voice-cloning-checklist.md`](templates/voice-cloning-checklist.md)
-
-### 4. [Monetization Tiers by Follower Count](04-monetization-tiers.md)
-
-> A virtual influencer's reach is digital, but the sponsor money is real.
-
-- Monetize virtual characters at small scale by pitching highly targeted B2B SaaS tool sponsorships.
-- Bundle placement packages (integrations, pinned links, and bios) to pitch brands with active budgets.
-- Package account metrics, niches, and audience demographics into custom Media Kits.
-
-**Templates:** [`sponsor-media-kit.md`](templates/sponsor-media-kit.md)
-
-### 5. [Agency Case Study: Small-Team Economics](05-agency-economics.md)
-
-> Don't build an audience for yourself; build and manage audiences for paying clients.
-
-- Launch a Virtual Influencer Agency (VIA) managing customized brand characters on monthly retainers.
-- Retain ownership of underlying engine guide files (prompts, seeds, voices) while transferring video rights.
-- Coordinate weekly batch delivery schedules and approval cycles with professional service clients.
-
-**Templates:** [`influencer-agency-agreement.md`](templates/influencer-agency-agreement.md)
-
----
-
-All templates live in [`templates/`](templates/). For status across the other 10 tracks, see [ROADMAP.md](../../ROADMAP.md).
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Go in order; each lesson builds on the last. The SmartVideo GO AI workflow is the same throughout: Learn, See Example, Use Template, Generate.

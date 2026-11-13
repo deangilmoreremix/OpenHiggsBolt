@@ -1,136 +1,107 @@
 # Sizing & Layout Consistency
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Proportions build the canvas; alignment builds the brand.
-
-**Track:** AI Fashion & Virtual Try-On  
-**Time:** ~35 minutes  
-**Prerequisites:** Garment Try-on Basics  
-
-## The Problem
-
-When browsing an online clothing store, consistency is key to a professional experience. If the model's head size jumps around, or if the shoulder baseline shifts up and down as you click between different shirts, the website looks cheap and messy.
-
-If you try to align each virtual try-on image by eye, you will inevitably make errors. Some models will look too tall, others too short, and the clothing alignment will be inconsistent.
-
-To build a professional brand catalog, you must implement a standardized layout grid and keep all model proportions, heights, and poses aligned across your entire collection.
-
-## The Concept
-
-Standardizing fashion catalog layouts relies on **Bounding Margins**, **Baseline Joint Coordinates**, and **Pose Templates**:
-
-```
-Model Try-On Render ──► Import into Grid Canvas ──► Joint Guide Alignment ──► Baseline Stabilization ──► Export WebP
-```
-
-* **The Shoulder Baseline Rule:** The shoulders are the anchor point of any garment. To align shirts, jackets, or dresses, always align the model's shoulder joints to the same vertical coordinate (Y-axis) in your template. This keeps the chest and neck lines consistent across your listing grid.
-* **Aspect Ratio Margins:** E-commerce channels require specific margins. For a standard 4:5 vertical format (1080x1350px), maintain a **10%** bottom margin for the feet and a **12%** top margin for head clearance to prevent text overlays from covering the model.
-* **Center Seam Centering:** The vertical center seam of the garment (the zipper or button line) must align perfectly with the horizontal center of the canvas (X-axis center). This prevents the product from looking off-center or tilted.
+> **Time:** about 15 minutes. **You will finish with:** one model image aligned to a 1080 x 1350px grid (shoulders at Y 400, seam at X 540) and exported as WebP.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Set Up the Canvas Grid
-Open [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md). Configure your canvas guides in your editor:
-* Set canvas size to **1080 x 1350px**.
-* Add a vertical center guide at **X: 540px**.
-* Add horizontal baseline guides: Shoulder Line at **Y: 400px**, Waist Line at **Y: 750px**, Hip Line at **Y: 950px**.
+If head size or shoulder height jumps between product pages, a store looks cheap, and aligning by eye always produces errors. The fix is a standard grid. Three rules: align the **shoulder joints** to the same Y coordinate on every image; keep **margins** on a 4:5 vertical canvas (1080x1350px) of **10%** at the bottom for the feet and **12%** at the top for head clearance; and put the garment's vertical **centre seam** (zipper or buttons) on the canvas centre X.
 
-### Step 2: Import the Model Layer
-Import your generated model try-on layer into the template. Position it roughly in the center.
+You will need:
 
-### Step 3: Align the Shoulders
-Scale the model layer proportionally (hold `Shift` in your editor):
-* Drag the model layer until the left and right shoulder seams align exactly with the horizontal **Shoulder Line (Y: 400px)** guide.
-* Let the head and legs scale naturally. This ensures the chest and torso placement is uniform across all product listings.
+* A model try-on render (from lesson 1).
+* [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md).
+* An editor with guides (Photoshop, Photopea). SmartVideo GO AI **Image Studio** can produce the render; menus move, so follow the current screen.
 
-### Step 4: Align the Center Seam
-Move the model layer left or right until the shirt's collar button or zipper line aligns exactly with the **Center Vertical Guide (X: 540px)**.
+## Step by step
 
-### Step 5: Verify Margins & Export
-Perform a visual QA check:
-* Ensure the top of the model's head does not cross the top safety line.
-* Ensure the hands and sides do not cross the side padding guides.
-Hide the grid template layers, and export the file as WebP. Repeat this process for all items in the catalog collection.
+### 1. Set up the canvas grid
 
----
+1. Open [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md).
+2. In your editor, set canvas size to **1080 x 1350px**.
+3. Add a vertical guide at **X: 540px** and horizontal guides: Shoulder Line **Y: 400px**, Waist Line **Y: 750px**, Hip Line **Y: 950px**.
 
-## Worked Example
+**You should see:** a blank canvas with one vertical and three horizontal guides.
 
-<p align="center">
-<img src="templates/examples/mannequin-grid-alignment.jpg" alt="Mannequin Alignment Grid" width="280">
-<img src="templates/examples/mannequin-grid-clip.gif" alt="Alignment Grid Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Baseline Grid Alignment Image (Left) ──► Image-to-Video Grid Lighting Motion (Right) · Video File: <a href="templates/examples/mannequin-grid-clip.mp4">templates/examples/mannequin-grid-clip.mp4</a></sub></p>
+**If not:** if guides will not snap, turn on snapping in your editor's View menu.
 
-**Aligning a 5-Item Windbreaker Collection**
+### 2. Import the model layer
 
+Import your try-on render and place it roughly in the centre.
 
+**You should see:** the model over the grid, not yet aligned.
 
-* **Catalog Resolution:** 1080x1350px vertical.
-* **Baseline Settings:**
-  * Center Guide: X: 540px.
-  * Shoulder Guide Y: 400px.
-  * Waist Guide Y: 750px.
-* **Execution:**
-  * Imported 5 separate VTO model renders (Black, Blue, Orange, Red, Grey windbreakers).
-  * Scaled each layer so the jacket shoulder seams snapped to the Y: 400px line.
-  * Centered each zipper line to the vertical center.
-* **Results:** When browsing the catalog page, the models stand at the exact same height and center, allowing shoppers to focus on comparing the product colors without visual distractions.
+**If not:** if the layer is far too big or small, scale it down or up first before fine alignment.
 
----
+### 3. Align the shoulders
 
-## Compare Tools
+1. Scale the layer proportionally (hold `Shift`).
+2. Drag until the left and right shoulder seams sit on the Shoulder Line (**Y: 400px**).
+3. Let head and legs scale naturally.
 
-| Platform / Tool | Automation Capability | Layout Control | Best for |
+**You should see:** both shoulder seams touching the 400px guide.
+
+**If not:** if the shoulders are tilted, check the pose; a tilted source cannot be fixed by scaling.
+
+### 4. Align the centre seam
+
+Move the layer left or right until the collar button or zipper line sits on the vertical guide (**X: 540px**).
+
+**You should see:** the seam straight on the centre guide.
+
+**If not:** if the garment looks tilted, not just offset, regenerate with a straighter pose.
+
+### 5. Check margins and export
+
+1. Make sure the head does not cross the top safety line and hands and sides stay inside the side padding.
+2. Hide the grid layers and export as WebP.
+3. Repeat for every item in the collection.
+
+**You should see:** a clean image with no guides, framed with the 12% top and 10% bottom margins.
+
+**If not:** if the head is clipped, rescale slightly smaller and re-align the shoulders.
+
+## Check yourself
+
+* [ ] The canvas is 1080 x 1350px with guides at X 540 and Y 400 / 750 / 950.
+* [ ] Shoulders sit on Y 400 and the seam on X 540.
+* [ ] Top and bottom margins are respected.
+* [ ] I exported WebP without grid layers.
+
+## Common mistakes
+
+* **Aligning by eye.** Always snap to guides.
+* **Changing camera height between shots.** Keep the camera at chest level (about 4 feet) so perspective stays the same and baselines align.
+* **Aligning the head instead of the shoulders.** Shoulders are the garment's anchor.
+* **Undocumented grid settings.** Record them in the alignment template and share with your team.
+
+## Go further
+
+**Worked example, 5-item windbreaker collection.** Catalog 1080x1350px, centre guide X 540, shoulder guide Y 400, waist guide Y 750. Five VTO renders (black, blue, orange, red, grey) were scaled so shoulder seams snapped to Y 400 and zippers were centred. Result: on the catalog page the models stand at the same height and centre, so shoppers compare colours without distraction.
+
+![Alignment grid](templates/examples/mannequin-grid-alignment.jpg)
+
+Motion loop: [templates/examples/mannequin-grid-clip.mp4](templates/examples/mannequin-grid-clip.mp4)
+
+**Compare tools**
+
+| Tool | Automation | Layout control | Best for |
 |---|---|---|---|
-| **Photoshop / Photopea** | Low (Requires manual scaling to guides) | Ultra-High (Pixel-perfect visual guides) | High-end listing photography QC. |
-| **Python Pillow (PIL)** | Ultra-High (Can write scripts to crop and auto-align eyes/shoulders using keypoints) | Medium | Programmatic batch processing of large catalog datasets. |
-| **Figma** | Low | High | Creating user interface mockups and checking page layout consistency. |
+| Photoshop / Photopea | Low (manual scaling) | Ultra-high | High-end listing QC |
+| Python Pillow (PIL) | Ultra-high (scripted crop and align using keypoints) | Medium | Large catalogs |
+| Figma | Low | High | UI mockups, page layout checks |
 
-For design QA, using Photoshop's horizontal guidelines is the best workflow. For developers managing massive databases (e.g. 1000+ fashion catalog updates), writing a Python script using a keypoint detection model (like YOLO-pose) to detect shoulder joints and auto-crop the canvas is the standard way to scale the pipeline.
+For 1000+ catalog updates, a script using a keypoint model such as YOLO-pose to detect shoulder joints and auto-crop is the standard way to scale.
 
----
+**Exercises**
 
-## Launch It
+1. Easy: draw guides for a square 1:1 layout (shoulders Y 300px, waist Y 600px).
+2. Medium: import 2 model photos, align shoulders to your guides and toggle layers to verify.
+3. Hard: write a checklist to QA 10 listing pages, naming 4 alignment errors (for example off-center zipper, head clipping) and their fixes.
 
-**How to organize pose templates:**
-* **Lock the camera angle:** Keep the camera height at chest level (approx. 4 feet off the ground) for all catalog photography. Changing camera heights (e.g., low-angle shots vs. high-angle shots) alters perspective, making it impossible to align baseline coordinates.
-* **Use standardized baselines:** Document your grid settings in the [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md) file and share it with your design team.
+**Template:** [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md).
 
----
+**SmartVideo GO AI studios for this track:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio.
 
-## Exercises
-
-1. **Easy:** Open a photo editor and draw guides for a square 1:1 e-commerce layout (Shoulders at Y: 300px, Waist at Y: 600px).
-2. **Medium:** Import 2 model photos and scale them so their shoulders align perfectly to your guides. Toggle the layers to verify alignment.
-3. **Hard:** Write a mock checklist to QA a batch of 10 clothing listing pages. List 4 potential alignment errors (e.g., off-center zipper, head clipping) and how to fix them.
-
----
-
-## Templates
-
-* [`templates/mannequin-alignment-template.md`](templates/mannequin-alignment-template.md) — canvas sizes, margin constraints, baseline coordinate maps, and QC checklists.
-
----
-
-[← High-converting Studio Lookbooks](02-studio-lookbooks.md) · Next: [Before/After Conversion Cases →](04-conversion-cases.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Before/After Conversion Cases.

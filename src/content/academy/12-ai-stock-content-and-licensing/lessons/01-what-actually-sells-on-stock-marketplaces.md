@@ -1,72 +1,99 @@
 # What Actually Sells on Stock Marketplaces
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Identify high-demand commercial stock niches and generate licensable visual assets that buyers actually download.
-
-**Track:** AI Stock Content & Licensing  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-The stock photography market is overflowing with generic AI images: fantasy landscapes, futuristic cyber cities, and random aesthetic portraits. Beginners upload thousands of these generic images to Adobe Stock or Shutterstock, only to make **$0.00 in total royalties**.
-
-Marketplace buyers (ad agencies, news editors, corporate design teams, and marketing agencies) are not looking for art—they are looking for **commercial concepts that illustrate specific business problems**:
-* Business professionals shaking hands on a deal.
-* Renewable energy solar farm installations.
-* Diverse healthcare workers discussing patient charts.
-* Cyber security data breach concepts.
-
-If you generate pretty art without a commercial use-case, your images sit at the bottom of marketplace search results forever.
+> **Time:** about 15 minutes. **You will finish with:** one commercial stock image with copy space, checked for artifacts and ready with 30+ IPTC keywords.
 
 ---
 
-## The Concept
+## Before you start
 
-The AI stock licensing pipeline relies on **Commercial Trend Analysis**, **IPTC Metadata Tagging** (IPTC = International Press Telecommunications Council — the industry-standard schema for embedding titles, keywords, and copyright fields inside an image file), and **Property Release Compliance**:
+Beginners upload thousands of generic AI images (fantasy landscapes, cyber cities, aesthetic portraits) and earn **$0.00 in total royalties**. Buyers such as ad agencies, news editors and corporate design teams want commercial concepts that illustrate a business problem: a handshake on a deal, a solar farm, healthcare workers discussing charts, a data breach. Images with clean copy space (negative space on the left or top 30% of the frame, for headlines and logos) sell 4x more often than cluttered ones. Stock agencies also reject recognizable brand logos (Apple, Nike, BMW), trademarked architecture and copyrighted artwork.
 
+The pipeline is: Commercial Demand Search, Concept Prompting, Quality Audit and Upscale, IPTC Keywording, Marketplace Submission. IPTC (International Press Telecommunications Council) is the industry-standard schema for embedding titles, keywords and copyright fields inside an image file.
+
+You will need: an Adobe Stock Contributor account (or access to its portal), an IPTC editor such as ExifTool or a stock tagger, and **Image Studio** in SmartVideo GO AI. Optionally **Video Studio** for a motion clip.
+
+## Step by step
+
+### 1. Research trending keywords
+
+Open the Adobe Stock Contributor Portal and find the monthly **"Demand Trends Brief"**. Note three commercial search terms that are missing or convert well, for example *"diverse executive handshake modern office"*.
+
+**You should see:** a short list of 3 commercial search terms written down.
+
+**If not:** menus move; follow the current screen, or look for any trends or insights area in the portal.
+
+### 2. Open the metadata template
+
+Open [`templates/stock-metadata-template.md`](templates/stock-metadata-template.md). It holds the metadata tagging schemas, copy space guides and agency submission checklists you will use below.
+
+**You should see:** the template with its tagging schema and copy space guide.
+
+**If not:** check the link path exactly as written, from the lessons folder into `templates/`.
+
+### 3. Generate the image with copy space
+
+In **Image Studio**, paste this prompt:
+
+```text
+Photorealistic 8k commercial stock photo of two diverse business executives shaking hands across a glass conference table in a sunlit modern corporate office, copy space on left side for text overlay, shot on 35mm lens, neutral corporate color palette, high resolution.
 ```
-Commercial Demand Search ──► Concept Prompting ──► Quality Audit & Upscale ──► IPTC Keywording ──► Marketplace Submission
+
+Then add this negative prompt (if your studio has a negative prompt field; otherwise skip it):
+
+```text
+brand logos, watermarks, text, cartoon, 3d render, extra fingers, distorted hands, blurry, oversaturated.
 ```
 
-### The 4 Commercial Stock Demand Pillars:
+**You should see:** a handshake image with clean empty space on the left.
 
-1. **High-Demand Commercial Categories:**
-   * **Business & Corporate:** Team meetings, office handshakes, remote video calls, executive presentations.
-   * **Technology & Cyber Security:** Server rooms, AI cloud computing, data security, biometric authentication.
-   * **Healthcare & Wellness:** Medical research, doctor-patient trust, mental health therapy, biotechnology labs.
-   * **Green Energy & Sustainability:** Wind turbines, electric vehicle charging, solar panels, sustainable architecture.
-2. **Copy Space (Negative Space for Text Overlay):** Stock buyers need room to add headlines, logos, and promotional text. Images with clean, uncluttered backgrounds (e.g., negative space on the left or top 30% of the frame) sell 4x more frequently than busy, cluttered compositions.
-3. **No Trademark / Brand Artifacts:** Stock agencies reject images containing recognizable brand logos (Apple, Nike, BMW), trademarked architecture, or copyrighted artwork.
+**If not:** regenerate, and make the copy space instruction stronger (for example "empty left third of the frame").
 
----
+### 4. Inspect at 100% zoom
 
-## Do It
+Zoom to 100% and check the key details:
 
-### Step 1: Research Trending Keywords on Adobe Stock Insights
-Open Adobe Stock Contributor Portal. Check the monthly **"Demand Trends Brief"** for missing or high-conversion commercial search terms (e.g., *"diverse executive handshake modern office"*).
+1. **Hand and finger geometry:** exactly 5 fingers per hand, nothing warped.
+2. **Eye reflection and catchlights:** pupils round and clear.
+3. No brand logos or readable text anywhere.
 
-### Step 2: Assemble the Stock Prompt with Copy Space
-Open [`templates/stock-metadata-template.md`](templates/stock-metadata-template.md). Draft a commercial stock prompt with copy space:
-* **Prompt:**  
-  > `"Photorealistic 8k commercial stock photo of two diverse business executives shaking hands across a glass conference table in a sunlit modern corporate office, copy space on left side for text overlay, shot on 35mm lens, neutral corporate color palette, high resolution."`
-* **Negative Prompt:**  
-  > `"brand logos, watermarks, text, cartoon, 3d render, extra fingers, distorted hands, blurry, oversaturated."`
+**You should see:** clean hands and eyes, with no logos.
 
-### Step 3: Inspect for Artifacts at 100% Zoom
-Before submitting to stock portals, inspect key details:
-* **Hand & Finger Geometry:** Ensure handshakes contain exactly 5 fingers per hand without warping.
-* **Eye Reflection & Catchlights:** Confirm pupils are round and clear.
+**If not:** discard the render and generate again. Do not submit a glitchy image.
 
-### Step 4: Add IPTC Metadata (Title, Keywords, Categories)
-Use an IPTC editor (ExifTool or stock tagger) to embed 30+ targeted commercial keywords (e.g., *agreement, partnership, deal, handshake, business, corporate, executive, meeting, office, teamwork, trust*).
+### 5. Add IPTC metadata
 
----
+Use an IPTC editor (ExifTool or a stock tagger) to embed a title, categories and **30+ targeted commercial keywords**, for example: agreement, partnership, deal, handshake, business, corporate, executive, meeting, office, teamwork, trust.
 
-## Worked Example
+**You should see:** the title and 30+ keywords saved in the file's metadata.
+
+**If not:** reopen the file in the editor and confirm the fields saved; some tools need an explicit save or write step.
+
+### 6. Tag it as AI before upload
+
+When you upload to Adobe Stock, check the **"Created using Generative AI tools"** box. Hiding AI origin risks account suspension.
+
+**You should see:** the AI box checked on the upload form.
+
+**If not:** menus move; follow the current screen to find the AI disclosure option before submitting.
+
+## Check yourself
+
+* [ ] I have 3 commercial search terms from a demand source.
+* [ ] My image has clean copy space and no logos or text.
+* [ ] I checked hands and eyes at 100% zoom.
+* [ ] My file carries 30+ IPTC keywords and I will tick the AI box on upload.
+
+## Common mistakes
+
+* Uploading pretty art with no commercial use-case.
+* Busy backgrounds with no room for headlines.
+* Brand logos, trademarked architecture or copyrighted artwork in the frame.
+* Skipping the 100% zoom check on hands and eyes.
+* Hiding that the image is AI generated.
+
+## Go further
+
+**Worked example, "Corporate Handshake Concept":**
 
 <p align="center">
 <img src="templates/examples/corporate-handshake-stock.jpg" alt="Corporate Handshake Commercial Stock Photo" width="480">
@@ -74,59 +101,28 @@ Use an IPTC editor (ExifTool or stock tagger) to embed 30+ targeted commercial k
 </p>
 <p align="center"><sub>Commercial Stock Photograph (Left) ──► Image-to-Video Stock Motion Clip (Right) · Video File: <a href="templates/examples/stock-catalog-motion.mp4">templates/examples/stock-catalog-motion.mp4</a></sub></p>
 
-**Stock Asset Performance Analysis for "Corporate Handshake Concept"**
+* Marketplace: Adobe Stock and Freepik. Category: Business / Finance / Corporate Partnership.
+* Metadata: 38 commercial keywords plus a copy space tag.
+* Result: 142 licensing downloads in 90 days, **$142.00** from 1 single image render (an example, not a promise).
 
-* **Marketplace:** Adobe Stock & Freepik.
-* **Category:** Business / Finance / Corporate Partnership.
-* **Metadata Tags:** 38 commercial keywords + copy space tag.
-* **Downloads:** 142 licensing downloads in 90 days.
-* **Royalty Revenue:** **$142.00** passive recurring earnings from 1 single image render.
+**Demand pillars:** Business and Corporate (meetings, handshakes, remote calls); Technology and Cyber Security (server rooms, AI cloud, biometrics); Healthcare and Wellness (research, doctor-patient trust, therapy, biotech labs); Green Energy and Sustainability (wind turbines, EV charging, solar panels).
 
----
-
-## Compare Tools
+**Compare marketplaces:**
 
 | Stock Marketplace | AI Image Acceptance | Royalty Structure | Best For |
 |---|---|---|---|
-| **Adobe Stock** | **Accepted** (requires AI tag) | 33% per download ($0.33 to $9.90+) | Highest revenue per download |
-| **Freepik Premium** | **Accepted** | Pay-per-download pool (~$0.05 to $0.15) | High volume downloads |
-| **Shutterstock** | Restricted (In-house AI only) | Varies | Non-AI stock submission |
+| **Adobe Stock** | Accepted (requires AI tag) | 33% per download ($0.33 to $9.90+) | Highest revenue per download |
+| **Freepik Premium** | Accepted | Pay-per-download pool (~$0.05 to $0.15) | High volume downloads |
+| **Shutterstock** | Restricted (in-house AI only) | Varies | Non-AI stock submission |
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: research 3 trending commercial search terms on Adobe Stock.
+2. Medium: generate a commercial stock photo featuring copy space for headlines.
+3. Hard: tag your image with 30+ commercial IPTC keywords and submit it to a stock contributor portal.
 
-* **Tag Your Uploads Correctly:** Always check the **"Created using Generative AI tools"** box when uploading to Adobe Stock. Hiding AI origin risks account suspension.
+**Template:** [`templates/stock-metadata-template.md`](templates/stock-metadata-template.md) for metadata tagging schemas, copy space guides and agency submission checklists.
 
----
+**Produce this in SmartVideo GO AI:** Image Studio (anchors, character sheets, product and brand shots), Video Studio (image-to-video motion), AI Influencer Studio (consistent recurring characters), Storyboard / Campaign Planner (batch matrices and briefs), Lip-Sync Studio (voice and mouth-sync). Workflow: Learn, See Example, Use Template, Generate.
 
-## Exercises
-
-1. **Easy:** Research 3 trending commercial search terms on Adobe Stock.
-2. **Medium:** Generate a commercial stock photo featuring copy space for headlines.
-3. **Hard:** Tag your image with 30+ commercial IPTC keywords and submit it to a stock contributor portal.
-
----
-
-## Templates
-
-* [`templates/stock-metadata-template.md`](templates/stock-metadata-template.md) — Metadata tagging schemas, copy space guides, and agency submission checklists.
-
----
-
-[Track Overview](README.md) · Next: [Batch-Generating a Licensable Catalog →](02-batch-generating-a-licensable-catalog.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Batch-Generating a Licensable Catalog.
