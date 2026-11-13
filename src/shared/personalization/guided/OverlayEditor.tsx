@@ -8,6 +8,11 @@ import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview
 import { MEDIA_ROLE_CONTRACTS, roleForLayer } from '../preview/mediaRoles'
 import { ImageStyleControls } from './ImageStyleControls'
 import { ColorField } from './editor/ColorField'
+import { SortableRow } from './editor/SortableRow'
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { canMoveLayer, moveLayer, type LayerMove } from '../preview/layerOrder'
+import { layerSnapBox, snapMove, snapTargets } from './editor/snap'
 import { DesignLayerPlayer } from './DesignLayerPlayer'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import {
@@ -232,6 +237,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
   const {
     previewSettings,
     updatePreviewLayer,
+    reorderPreviewLayers,
     setPreviewLayerLocked,
     setRemotionDesign,
     undoPreview,
@@ -249,6 +255,29 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
   const dragRef = useRef<DragState | null>(null)
   const [confirmRemoveDesign, setConfirmRemoveDesign] = useState(false)
+  // Snap guides: on by default, switched off from the toolbar or by holding Alt while dragging.
+  const [snapOn, setSnapOn] = useState(true)
+  const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
+  // Layers list reorder: top of the list = frontmost, so the list is the layer array reversed.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const onReorderEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const frontToBack = [...settings.layers].reverse().map((l) => l.id)
+    const from = frontToBack.indexOf(String(active.id))
+    const to = frontToBack.indexOf(String(over.id))
+    if (from < 0 || to < 0) return
+    const next = [...frontToBack]
+    next.splice(to, 0, next.splice(from, 1)[0])
+    reorderPreviewLayers?.(next.reverse())
+  }
+  const restack = (id: string, move: LayerMove) => {
+    if (!canMoveLayer(settings.layers, id, move)) return
+    reorderPreviewLayers?.(moveLayer(settings.layers, id, move).map((l) => l.id))
+  }
 
   // The Layout Quality Check's "Show" selects the affected layer here.
   useEffect(() => {
@@ -328,17 +357,31 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
       const dx = (event.clientX - drag.startX) / rect.width
       const dy = (event.clientY - drag.startY) / rect.height
       if (drag.mode === 'move') {
-        commitPosition(drag.layerId, offsetLayer(drag.origin, dx, dy, compW, compH))
+        const moved = offsetLayer(drag.origin, dx, dy, compW, compH)
+        if (snapOn && !event.altKey) {
+          const self = settings.layers.find((l) => l.id === drag.layerId)
+          const others = settings.layers
+            .filter((l) => l.id !== drag.layerId && l.visible && l.kind !== 'endCard' && l.kind !== 'design' && (!isImageLayerKind(l.kind) || Boolean(layerImageUrl(l, brand))))
+            .map((l) => layerSnapBox(l, isImageLayerKind(l.kind) ? undefined : layerText(l, brand), compW, compH))
+          const text = self && !isImageLayerKind(self.kind) ? layerText(self, brand) : undefined
+          const res = snapMove(layerSnapBox(moved, text, compW, compH), snapTargets(others, SAFE_AREA_MARGIN))
+          setGuides({ x: res.guidesX, y: res.guidesY })
+          commitPosition(drag.layerId, clampLayerToBounds({ ...moved, x: moved.x + res.dx, y: moved.y + res.dy }, compW, compH))
+        } else {
+          setGuides((g) => (g.x.length || g.y.length ? { x: [], y: [] } : g))
+          commitPosition(drag.layerId, moved)
+        }
       } else {
         const nextScale = drag.origin.scale * (1 + dx * 2)
         commitScale(drag.layerId, scaleLayerTo(drag.origin, nextScale, compW, compH))
       }
     },
-    [commitPosition, commitScale, compW, compH],
+    [commitPosition, commitScale, compW, compH, snapOn, settings.layers, brand],
   )
 
   const endDrag = useCallback(() => {
     dragRef.current = null
+    setGuides((g) => (g.x.length || g.y.length ? { x: [], y: [] } : g))
   }, [])
 
   // Window-level listeners: a drag that leaves the stage (or the window)
@@ -439,6 +482,17 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
           <button type="button" data-testid="editor-undo" aria-label="Undo" disabled={!canUndoPreview} onClick={() => undoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canUndoPreview ? 1 : 0.5 }}>Undo</button>
           <button type="button" data-testid="editor-redo" aria-label="Redo" disabled={!canRedoPreview} onClick={() => redoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canRedoPreview ? 1 : 0.5 }}>Redo</button>
+          <button
+            type="button"
+            data-testid="editor-snap"
+            aria-label="Snap to guides"
+            aria-pressed={snapOn}
+            title="Snap layers to the frame center, thirds, edges and other layers (hold Alt while dragging to turn off)"
+            onClick={() => setSnapOn((v) => !v)}
+            style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', borderColor: snapOn ? C.cyan : undefined, color: snapOn ? C.cyan : undefined }}
+          >
+            Snap: {snapOn ? 'On' : 'Off'}
+          </button>
         </span>
         <button
           type="button"
@@ -496,6 +550,13 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
               pointerEvents: 'none',
             }}
           />
+
+          {guides.x.map((x) => (
+            <div key={`gx-${x}`} aria-hidden data-testid="snap-guide-x" style={{ position: 'absolute', top: 0, bottom: 0, left: `${x * 100}%`, width: 1, background: '#ff4fd8', opacity: 0.85, pointerEvents: 'none', zIndex: 50 }} />
+          ))}
+          {guides.y.map((y) => (
+            <div key={`gy-${y}`} aria-hidden data-testid="snap-guide-y" style={{ position: 'absolute', left: 0, right: 0, top: `${y * 100}%`, height: 1, background: '#ff4fd8', opacity: 0.85, pointerEvents: 'none', zIndex: 50 }} />
+          ))}
 
           {factor > 0 &&
             editableLayers.filter((layer) => layer.visible).map((layer) => {
@@ -669,14 +730,16 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
         {/* ── Layer list + controls ─────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <div style={labelStyle}>Layers</div>
-          {settings.layers.map((layer) => {
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>
+          <SortableContext items={[...settings.layers].reverse().map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          {[...settings.layers].reverse().map((layer) => {
             const layerDesign =
               layer.kind === 'design' && layer.designId
                 ? getRemotionDesignTemplate(layer.designId)
                 : undefined
             return (
+              <SortableRow key={layer.id} id={layer.id} label={LAYER_LABELS[layer.kind]}>
               <div
-                key={layer.id}
                 role="button"
                 tabIndex={0}
                 aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
@@ -720,8 +783,11 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                   </button>
                 )}
               </div>
+              </SortableRow>
             )
           })}
+          </SortableContext>
+          </DndContext>
 
           {selected && selected.kind !== 'endCard' && (
             <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>

@@ -101,6 +101,7 @@ import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { imageLoadsInBrowser } from './imageLoadProbe'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { reorderLayers } from './preview/layerOrder'
 import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -973,6 +974,8 @@ export type DemoPersonalizeContextValue = {
   setPreviewVideo: (video: PreviewVideoRef | null) => void
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  /** Restacks the video's layers: the order given is the new order of `previewSettings.layers` (later = drawn above). */
+  reorderPreviewLayers: (orderedIds: string[]) => void
   /** Locks/unlocks a layer: a locked layer is never moved by the editor, a reflow or the placement engine. */
   setPreviewLayerLocked: (layerId: string, locked: boolean) => void
   /** Regions of the footage the overlays must not cover (customer-marked subject areas). */
@@ -5667,6 +5670,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignedImageUrlsKey])
 
+  const reorderPreviewLayers = useCallback((orderedIds: string[]) => {
+    markSessionStarted()
+    setPreviewSettings((prev) => {
+      const layers = reorderLayers(prev.layers, orderedIds)
+      return layers.every((l, i) => l === prev.layers[i]) ? prev : { ...prev, layers }
+    })
+  }, [])
+
   const setPreviewLayerLocked = useCallback((layerId: string, locked: boolean) => {
     markSessionStarted()
     setPreviewSettings((prev) => ({
@@ -6387,6 +6398,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo,
     setPreviewLayout,
     updatePreviewLayer,
+    reorderPreviewLayers,
     setPreviewLayerLocked,
     setPreviewProtectedZones,
     applyPreviewPlacements,

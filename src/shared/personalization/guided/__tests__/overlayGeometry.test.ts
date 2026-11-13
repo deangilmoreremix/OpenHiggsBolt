@@ -388,9 +388,36 @@ function renderEditor(layers: PreviewLayer[]): EditorStub {
 }
 
 describe('OverlayEditor interaction', () => {
+  it('snaps a dragged layer edge onto the right-third line and draws a guide, and Alt bypasses it', () => {
+    const layers = [createLayer('logo', { x: 0.5, y: 0.5, scale: 0.22 })]
+    const { updatePreviewLayer } = renderEditor(layers)
+    const box = screen.getByRole('button', { name: 'Move Logo' })
+    act(() => { fireEvent.pointerDown(box, { clientX: 400, clientY: 200, pointerId: 1 }) })
+    // dx = 6.25%: the logo's right edge lands 0.6% past the 2/3 line, inside the snap range.
+    act(() => { fireEvent.pointerMove(window, { clientX: 460, clientY: 200, pointerId: 1 }) })
+    const snapped = updatePreviewLayer.mock.calls.at(-1)![1]
+    expect(snapped.x).toBeLessThan(0.5625)
+    expect(screen.getByTestId('snap-guide-x')).toBeTruthy()
+    // Holding Alt turns snapping off for that move.
+    act(() => { fireEvent.pointerMove(window, { clientX: 460, clientY: 200, pointerId: 1, altKey: true }) })
+    expect(updatePreviewLayer).toHaveBeenLastCalledWith('logo', { x: 0.5625, y: 0.5 })
+    expect(screen.queryByTestId('snap-guide-x')).toBeNull()
+    act(() => { fireEvent.pointerUp(window, { pointerId: 1 }) })
+  })
+
+  it('the Snap toggle switches snapping off and on', () => {
+    renderEditor([createLayer('logo', { x: 0.5, y: 0.5, scale: 0.22 })])
+    const toggle = screen.getByTestId('editor-snap')
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    act(() => { fireEvent.click(toggle) })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    expect(toggle.textContent).toContain('Off')
+  })
+
   it('drags a layer and persists coordinates clamped into the frame', () => {
     const layers = [createLayer('logo', { x: 0.5, y: 0.5, scale: 0.22 })]
     const { updatePreviewLayer } = renderEditor(layers)
+    act(() => { fireEvent.click(screen.getByTestId('editor-snap')) }) // exact pointer coordinates: snapping off
     const box = screen.getByRole('button', { name: 'Move Logo' })
 
     act(() => {
