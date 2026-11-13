@@ -53,7 +53,7 @@ function boundedSignal(parent: AbortSignal | undefined, ms: number): { signal: A
  */
 export async function loadImageBlob(
   url: string,
-  options: { signal?: AbortSignal; directTimeoutMs?: number; proxyTimeoutMs?: number } = {},
+  options: { signal?: AbortSignal; directTimeoutMs?: number; proxyTimeoutMs?: number; anonymous?: boolean } = {},
 ): Promise<Blob> {
   const { signal } = options
   if (signal?.aborted) throw abortError()
@@ -74,7 +74,8 @@ export async function loadImageBlob(
 
   const proxy = boundedSignal(signal, options.proxyTimeoutMs ?? PROXY_DOWNLOAD_TIMEOUT_MS)
   try {
-    const res = await fetch('/api/personalization/download-image', {
+    // Signed-out visitors cannot use the signed-in proxy (401): they get the public, rate-limited one.
+    const res = await fetch(options.anonymous ? '/api/demo/download-image' : '/api/personalization/download-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',

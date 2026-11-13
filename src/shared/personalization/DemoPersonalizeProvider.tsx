@@ -1616,7 +1616,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [importConfirmation, setImportConfirmation] = useState<{ count: number; failedCount?: number; clientName?: string } | null>(null)
-  const autoCutout = useAutoCutout(discoveredAssets, setDiscoveredAssetsState, { paused: discoveryStatus === 'importing', disabled: access === 'anonymous' })
+  const autoCutout = useAutoCutout(discoveredAssets, setDiscoveredAssetsState, { paused: discoveryStatus === 'importing', anonymous: access === 'anonymous' })
   // Warm the model up while the modal is open (never without consent, with auto mode off, or where unsupported).
   useEffect(() => {
     if (!isOpen || !autoCutout.willAutoCutOut) return undefined
@@ -3983,11 +3983,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
     // A drop onto a section imports exactly the dropped asset into that
     // section, selected or not; otherwise every selected asset is imported.
-    const toImport = ids
+    const toImportRaw = ids
       ? discoveredAssets
           .filter((a) => ids.includes(a.id) && !a.rejected)
           .map((a) => (sectionOverride ? { ...a, assignedSection: sectionOverride } : a))
       : discoveredAssets.filter((a) => a.selected && !a.rejected)
+    // Free (signed-out) visitors see and download cutouts, but cannot store files: they import the
+    // original image link exactly as before, so nothing needs an upload or a sign-in.
+    const toImport = access === 'anonymous'
+      ? toImportRaw.map((a) =>
+          a.editMetadata?.engine === 'bg0'
+            ? { ...a, editedDataUrl: undefined, edited: false, hasTransparency: false, editMetadata: undefined }
+            : a,
+        )
+      : toImportRaw
     if (toImport.length === 0) {
       setDiscoveryStatus('reviewing')
       return []
@@ -4208,7 +4217,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       clientName: clientForm.businessName || clientForm.name || undefined,
     })
     return createdAssets.map((asset) => asset.sourceDiscoveredAssetId).filter((id): id is string => Boolean(id))
-  }, [discoveredAssets, setAssets, uploadAsset, clientForm, createOwnedAsset])
+  }, [discoveredAssets, setAssets, uploadAsset, clientForm, createOwnedAsset, access])
 
   /** Remove assets that were placed automatically for the previous business. */
   const removeAutoImportedAssets = useCallback(() => {
@@ -4237,7 +4246,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const picks = pickAutoImportAssets(discoveredAssets, assets)
     // Also wait while the model-download consent (phones / data-saver) is undecided: placing the
     // originals now would remove the picks from the grid, and the consent prompt with them.
-    if (picks.length > 0 && (autoCutout.willAutoCutOut || autoCutout.needsConsent)) {
+    if (picks.length > 0 && access !== 'anonymous' && (autoCutout.willAutoCutOut || autoCutout.needsConsent)) {
       if (autoImportHoldSinceRef.current === null) autoImportHoldSinceRef.current = Date.now()
       const waited = Date.now() - autoImportHoldSinceRef.current
       if (shouldHoldAutoImport(picks.map((asset) => asset.id), discoveredAssets, { willAutoCutOut: true, waitedMs: waited })) {
@@ -4284,7 +4293,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         forgetUnplaced([])
         summarize([])
       })
-  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website, autoCutout.willAutoCutOut, autoCutout.needsConsent, autoImportWaitTick])
+  }, [discoveryStatus, discoveredAssets, assets, importDiscoveredAssets, clientForm.website, autoCutout.willAutoCutOut, autoCutout.needsConsent, autoImportWaitTick, access])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])

@@ -57,6 +57,23 @@ describe('loadImageBlob', () => {
     await expect(loadImageBlob('https://shop.example/a.jpg')).rejects.toThrow('could not be loaded')
   })
 
+  it('signed-out visitors use the public download route, signed-in ones the personalization route', async () => {
+    const proxyBody = { ok: true, results: [{ ok: true, dataUrl: `data:image/jpeg;base64,${btoa('X')}` }] }
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.includes('/download-image')) return new Response(JSON.stringify(proxyBody), { status: 200 })
+      throw new TypeError('blocked by CSP')
+    }))
+    await loadImageBlob('https://shop.example/a.jpg', { anonymous: true })
+    await loadImageBlob('https://shop.example/b.jpg')
+    expect(calls.filter((u) => u.includes('/download-image'))).toEqual([
+      '/api/demo/download-image',
+      '/api/personalization/download-image',
+    ])
+  })
+
   describe('stalled hosts and cancellation', () => {
     /** A fetch that never answers until its signal aborts, like a host that stops sending. */
     const hangUntilAborted = (init?: RequestInit) =>
