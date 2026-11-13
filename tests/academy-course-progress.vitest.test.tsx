@@ -255,6 +255,43 @@ describe('useCourseProgress', () => {
     }
   });
 
+  it('edits made while the account is unreachable survive a reload, stay private to that user, and sync once', async () => {
+    let getOk = false;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return Promise.resolve(json({ ok: true }));
+      return Promise.resolve(getOk ? json({ progress: null, owner: 'userB' }) : json({ error: 'x' }, 500));
+    });
+    const puts = () => fetchMock.mock.calls.filter(isPut);
+    const first = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(first.result.current.sync).toBe('offline'));
+    act(() => first.result.current.complete('ugc/01-a', true));
+    first.unmount();
+    // reload while still offline: the work is still shown, nothing uploaded
+    const second = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(second.result.current.sync).toBe('offline'));
+    expect(second.result.current.progress.completedLessons).toEqual(['ugc/01-a']);
+    expect(puts().length).toBe(0);
+    second.unmount();
+    // a different account on the same browser never sees or uploads it
+    const other = renderHook(() => useCourseProgress(IDS, true, 'userC'));
+    await waitFor(() => expect(other.result.current.sync).toBe('offline'));
+    expect(other.result.current.progress.completedLessons).toEqual([]);
+    other.unmount();
+    // the account answers: B's edit is sent once and the pending copy is cleared
+    getOk = true;
+    const third = renderHook(() => useCourseProgress(IDS, true, 'userB'));
+    await waitFor(() => expect(puts().length).toBe(1), { timeout: 3000 });
+    expect(JSON.parse((puts()[0][1] as RequestInit).body as string).progress.completedLessons).toEqual(['ugc/01-a']);
+    expect(Object.keys(localStorage).filter((k) => k.includes('pending'))).toEqual([]);
+    third.unmount();
+    // ...and as C afterwards: nothing of B's is visible or uploaded
+    const c = renderHook(() => useCourseProgress(IDS, true, 'userC'));
+    await waitFor(() => expect(c.result.current.ready).toBe(true));
+    expect(c.result.current.progress.completedLessons).toEqual([]);
+    await new Promise((r) => setTimeout(r, 800));
+    expect(puts().length).toBe(1);
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {

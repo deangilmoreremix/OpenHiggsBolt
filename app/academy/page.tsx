@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server';
 import AcademyCourse from '@/components/academy/AcademyCourse';
 import HelpAgent from '@/components/help/HelpAgent';
 import { getAllTracks } from '@/lib/academyLessons';
@@ -23,6 +24,13 @@ export const metadata = {
  */
 export default async function AcademyPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const tracks = getAllTracks();
+  // the signed-in user (if any) keys the browser-side copy of edits made while the account is unreachable
+  let userId: string | null = null;
+  try {
+    userId = (await auth()).userId ?? null;
+  } catch {
+    /* signed out, or auth not configured: progress stays browser-only */
+  }
   const sp = (await searchParams) ?? {};
   const pick = (k: string) => { const v = sp[k]; return typeof v === 'string' ? v.slice(0, 80) : undefined; };
   const initial = {
@@ -56,7 +64,7 @@ export default async function AcademyPage({ searchParams }: { searchParams?: Pro
 
   return (
     <DemoPersonalizeProvider>
-      <AcademyCourse tracks={tracks} initial={initial} />
+      <AcademyCourse tracks={tracks} initial={initial} userId={userId} />
       <HelpAgent />
       {studioPersonalizeOptions && (
         <div className="fixed bottom-4 left-4 z-40">

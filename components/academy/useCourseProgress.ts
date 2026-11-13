@@ -23,6 +23,49 @@ const ENDPOINT = '/api/academy/progress';
 /** Backoff between attempts to reach the account after a failed first load (the last value repeats). */
 const RETRY_MS = [2000, 5000, 15000, 30000];
 
+/** One learner action, kept as data so it can be saved in the browser while the account is unreachable. */
+type Edit =
+  | { k: 'visit'; l: string; s: string }
+  | { k: 'step'; l: string; s: string }
+  | { k: 'check'; l: string; i: number; c: boolean }
+  | { k: 'complete'; l: string; d: boolean };
+
+const editFn = (e: Edit) => (p: CourseProgress, now: number): CourseProgress =>
+  e.k === 'visit' ? visitStep(p, e.l, e.s, now)
+  : e.k === 'step' ? markStepDone(p, e.l, e.s, now)
+  : e.k === 'check' ? setCourseCheck(p, e.l, e.i, e.c, now)
+  : setCourseLessonComplete(p, e.l, e.d, now);
+
+/** Per-user key: edits made before the account answered, never shared with another account. */
+const pendingKey = (userId: string) => `academy-course-pending:v1:${userId}`;
+const MAX_PENDING = 500;
+
+function loadPending(userId: string | null | undefined, ids: readonly string[]): Edit[] {
+  if (!userId) return [];
+  try {
+    const raw = window.localStorage.getItem(pendingKey(userId));
+    const arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    const ok = new Set(ids);
+    return arr.filter((e): e is Edit => !!e && typeof e === 'object' && ok.has((e as Edit).l) && (
+      ((e.k === 'visit' || e.k === 'step') && typeof e.s === 'string' && e.s.length > 0 && e.s.length <= 80)
+      || (e.k === 'check' && Number.isInteger(e.i) && typeof e.c === 'boolean')
+      || (e.k === 'complete' && typeof e.d === 'boolean')
+    )).slice(-MAX_PENDING);
+  } catch {
+    return [];
+  }
+}
+function savePending(userId: string | null | undefined, edits: readonly Edit[]) {
+  if (!userId) return;
+  try {
+    if (edits.length) window.localStorage.setItem(pendingKey(userId), JSON.stringify(edits.slice(-MAX_PENDING)));
+    else window.localStorage.removeItem(pendingKey(userId));
+  } catch {
+    /* storage unavailable: edits stay in memory */
+  }
+}
+
 /**
  * Academy course progress. Always works from the browser; when the learner is
  * signed in it also saves to their account so it follows them across devices.
@@ -30,9 +73,13 @@ const RETRY_MS = [2000, 5000, 15000, 30000];
  * before the account copy arrives are replayed on top of it, one save at a
  * time, and a browser copy that belongs to another account is never shared.
  *
- * `syncRemote` can be turned off (tests / previews).
+ * `syncRemote` can be turned off (tests / previews). `userId` is the signed-in user as the server
+ * saw them (null when signed out): while the account is unreachable, edits are kept in this browser
+ * under that user's own key and replayed on top of the account copy once it loads.
  */
-export function useCourseProgress(lessonIds: readonly string[], syncRemote = true) {
+export function useCourseProgress(lessonIds: readonly string[], syncRemote = true, userId: string | null = null) {
+  const userRef = useRef(userId);
+  userRef.current = userId;
   const idsRef = useRef(lessonIds);
   idsRef.current = lessonIds;
   const [progress, setProgress] = useState<CourseProgress>(() => emptyCourseProgress());
@@ -43,7 +90,8 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   const latest = useRef(progress);
   latest.current = progress;
   const hydrated = useRef(!syncRemote);
-  const pending = useRef<Array<(p: CourseProgress, now: number) => CourseProgress>>([]);
+  // edits made before the account answered; `saved` ones were loaded from this browser's per-user copy
+  const pending = useRef<Edit[]>([]);
   // signed out, or the account store is not available: stay browser-only without error noise
   const remoteOff = useRef(!syncRemote);
 
@@ -109,8 +157,13 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | null = null;
     let attempt = 0;
-    const local = loadCourseLocal(idsRef.current);
-    setProgress(local);
+    // a browser copy that belongs to another account is not even shown to this one
+    const storedOwner0 = loadCourseOwner();
+    const local = userRef.current && storedOwner0 && storedOwner0 !== userRef.current ? emptyCourseProgress() : loadCourseLocal(idsRef.current);
+    const saved = syncRemote ? loadPending(userRef.current, idsRef.current) : [];
+    const savedCount = saved.length; // `saved` itself is the queue and grows as the learner acts
+    pending.current = saved;
+    setProgress(saved.reduce((p, e) => editFn(e)(p, Date.now()), local));
     // browser-only: local progress is the whole truth. Signed in: `ready` waits until the account
     // copy has settled, so resume/visit never run against empty local state and clobber the saved place.
     if (!syncRemote) {
@@ -127,7 +180,15 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           hydrated.current = true;
           const edits = pending.current;
           pending.current = [];
-          if (edits.length) saveCourseLocal(latest.current);
+          if (res.status !== 401 && edits.length) saveCourseLocal(latest.current);
+          // 401: the learner is signed out, so edits kept for a signed-in user are not theirs to merge into the shared browser copy
+          if (res.status === 401 && savedCount) {
+            const rest = edits.slice(savedCount);
+            const shown = rest.reduce((p, e) => editFn(e)(p, Date.now()), local);
+            latest.current = shown;
+            setProgress(shown);
+            if (rest.length) saveCourseLocal(shown);
+          }
           setSync('local');
           setReady(true);
           return;
@@ -140,14 +201,17 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         const storedOwner = loadCourseOwner();
         const foreign = !!owner && !!storedOwner && storedOwner !== owner;
         const base = mergeCourseProgress(foreign ? emptyCourseProgress() : local, remote);
-        const edits = pending.current;
+        // edits kept from an earlier visit only count when this really is the same account
+        const mismatch = savedCount > 0 && !!owner && owner !== userRef.current;
+        const edits = mismatch ? pending.current.slice(savedCount) : pending.current;
         pending.current = [];
         hydrated.current = true;
-        const merged = edits.reduce((p, fn) => fn(p, Date.now()), base);
+        const merged = edits.reduce((p, e) => editFn(e)(p, Date.now()), base);
         if (owner) saveCourseOwner(owner);
         latest.current = merged; // a save queued right now must read this, not the previous render's state
         setProgress(merged);
-        saveCourseLocal(merged);
+        saveCourseLocal(merged); // now in the owner-tagged browser copy, so the per-user pending copy can go
+        if (!mismatch) savePending(userRef.current, []);
         setReady(true);
         if (edits.length > 0 || (base !== remote && base.updatedAt > 0)) push(merged);
         else setSync('saved');
@@ -192,9 +256,11 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
   }, []);
 
   const apply = useCallback(
-    (fn: (p: CourseProgress, now: number) => CourseProgress) => {
+    (edit: Edit) => {
+      const fn = editFn(edit);
       if (!hydrated.current) {
-        pending.current.push(fn);
+        pending.current.push(edit);
+        savePending(userRef.current, pending.current);
         setProgress((cur) => fn(cur, Date.now()));
         return;
       }
@@ -211,13 +277,13 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     progress,
     ready,
     sync,
-    visit: (lessonId: string, stepId: string) => apply((p, n) => visitStep(p, lessonId, stepId, n)),
-    stepDone: (lessonId: string, stepId: string) => apply((p, n) => markStepDone(p, lessonId, stepId, n)),
+    visit: (lessonId: string, stepId: string) => apply({ k: 'visit', l: lessonId, s: stepId }),
+    stepDone: (lessonId: string, stepId: string) => apply({ k: 'step', l: lessonId, s: stepId }),
     check: (lessonId: string, index: number) => {
       // capture the learner's intent now, so replaying it after hydration sets (not flips) the box
       const checked = !(latest.current.checks[lessonId] ?? []).includes(index);
-      apply((p, n) => setCourseCheck(p, lessonId, index, checked, n));
+      apply({ k: 'check', l: lessonId, i: index, c: checked });
     },
-    complete: (lessonId: string, done: boolean) => apply((p, n) => setCourseLessonComplete(p, lessonId, done, n)),
+    complete: (lessonId: string, done: boolean) => apply({ k: 'complete', l: lessonId, d: done }),
   };
 }

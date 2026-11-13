@@ -266,7 +266,7 @@ function SyncNote({ sync }: { sync: Course['sync'] }) {
   const text =
     sync === 'saved' ? 'Progress saved to your account'
     : sync === 'syncing' ? 'Saving…'
-    : sync === 'offline' ? 'Could not reach your account yet. It will sync when the connection returns.'
+    : sync === 'offline' ? 'Could not reach your account yet. Your changes are kept in this browser and will sync when the connection returns.'
     : 'Saved in this browser. Sign in to keep your progress on every device.';
   return <span className="text-[11px]" style={{ color: semantic.textMuted }} aria-live="polite">{text}</span>;
 }
@@ -1348,13 +1348,13 @@ function EmptyState({ text }: { text: string }) {
 
 type AcademyView = 'learning-paths' | 'studio-reference' | 'build-with-ai';
 
-export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrack[]; initial?: AcademyInitialState }) {
+export default function AcademyCourse({ tracks, initial, userId = null }: { tracks: AcademyTrack[]; initial?: AcademyInitialState; userId?: string | null }) {
   // The Build with AI course has its own tab; the other tracks are the Learning Paths.
   const buildTrack = tracks.find((t) => t.slug === BUILD_WITH_AI_TRACK) ?? null;
   const pathTracks = React.useMemo(() => tracks.filter((t) => t.slug !== BUILD_WITH_AI_TRACK), [tracks]);
   const allLessonIds = React.useMemo(() => tracks.flatMap((t) => t.lessons.map((l) => lessonKey(t.slug, l.slug))), [tracks]);
   // one progress store for the whole Academy, shared by every tab
-  const course = useCourseProgress(allLessonIds);
+  const course = useCourseProgress(allLessonIds, true, userId);
 
   const [view, setViewState] = React.useState<AcademyView>(
     buildTrack && (initial?.view === 'build-with-ai' || initial?.track === BUILD_WITH_AI_TRACK)
