@@ -82,6 +82,17 @@ describe('Learning Paths: a self-paced lesson', () => {
     expect(screen.getByText('Do one.')).toBeTruthy();
   });
 
+  it('a deep-linked step is used once: switching the header tab and back stays on the step reached', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro', s: '1-one' }} />);
+    await screen.findByText(/Step 3 of 5/);
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    await screen.findByText(/Step 4 of 5/);
+    fireEvent.click(screen.getByRole('tab', { name: 'Studio Reference' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Learning Paths' }));
+    expect(await screen.findByText(/Step 4 of 5/)).toBeTruthy();
+    expect(screen.queryByText(/Step 3 of 5/)).toBeNull();
+  });
+
   it('shows where progress is saved', async () => {
     render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
     expect(await screen.findByText(/Saved in this browser/)).toBeTruthy();
@@ -219,6 +230,17 @@ describe('Build with AI is its own tab', () => {
     render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai' }} />);
     fireEvent.click(await screen.findByRole('button', { name: /Continue where you left off/ }));
     expect(await screen.findByText(/Step 2 of 5/)).toBeTruthy();
+  });
+
+  it('Build with AI: a deep-linked step is used once; switching the header tab and back stays on the step reached', async () => {
+    render(<AcademyCourse tracks={tracks} initial={{ view: 'build-with-ai', lesson: '01-start-free-accounts', s: '1-one' }} />);
+    await screen.findByText(/Step 3 of 5/);
+    fireEvent.click(screen.getByRole('button', { name: /Next step/ }));
+    await screen.findByText(/Step 4 of 5/);
+    fireEvent.click(screen.getByRole('tab', { name: 'Studio Reference' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Build with AI' }));
+    expect(await screen.findByText(/Step 4 of 5/)).toBeTruthy();
+    expect(screen.queryByText(/Step 3 of 5/)).toBeNull();
   });
 
   it('an old Track 16 link opens the tab with the same lesson', async () => {

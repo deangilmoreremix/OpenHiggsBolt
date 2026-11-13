@@ -175,6 +175,34 @@ describe('useCourseProgress', () => {
     expect(result.current.progress.checks['ugc/01-a']).toEqual([0]);
   });
 
+  it('another account\'s browser copy is never uploaded when the first account request fails; normal after a later success', async () => {
+    localStorage.setItem(COURSE_STORAGE_KEY, JSON.stringify(setCourseLessonComplete(emptyCourseProgress(), 'ugc/01-a', true, Date.now() + 10_000)));
+    localStorage.setItem(COURSE_OWNER_KEY, 'userA');
+    let gets = 0;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') return Promise.resolve(json({ ok: true }));
+      gets++;
+      return Promise.resolve(gets === 1 ? json({ error: 'x' }, 500) : json({ progress: null, owner: 'userB' }));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result } = renderHook(() => useCourseProgress(IDS, true));
+      await waitFor(() => expect(result.current.sync).toBe('offline'));
+      act(() => result.current.visit('ugc/02-b', 'concept')); // B works while the account is unreachable
+      await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+      expect(fetchMock.mock.calls.some(isPut)).toBe(false);
+      // retry succeeds: A's copy is dropped, B's own edit is kept and saved to B's account
+      await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+      await waitFor(() => expect(fetchMock.mock.calls.some(isPut)).toBe(true));
+      const sent = JSON.parse(((fetchMock.mock.calls.find(isPut)![1]) as RequestInit).body as string).progress;
+      expect(sent.completedLessons).toEqual([]);
+      expect(sent.last.ugc.stepId).toBe('concept');
+      expect(localStorage.getItem(COURSE_OWNER_KEY)).toBe('userB');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {

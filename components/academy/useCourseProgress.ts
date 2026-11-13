@@ -20,6 +20,8 @@ import {
 export type CourseSyncState = 'local' | 'syncing' | 'saved' | 'offline';
 
 const ENDPOINT = '/api/academy/progress';
+/** Backoff between attempts to reach the account after a failed first load (the last value repeats). */
+const RETRY_MS = [2000, 5000, 15000, 30000];
 
 /**
  * Academy course progress. Always works from the browser; when the learner is
@@ -85,6 +87,8 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
 
   useEffect(() => {
     let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
     const local = loadCourseLocal(idsRef.current);
     setProgress(local);
     // browser-only: local progress is the whole truth. Signed in: `ready` waits until the account
@@ -93,7 +97,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
       setReady(true);
       return;
     }
-    (async () => {
+    const hydrate = async () => {
       try {
         const res = await fetch(ENDPOINT, { cache: 'no-store' });
         if (res.status === 401 || res.status === 404 || res.status === 503) {
@@ -121,6 +125,7 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         hydrated.current = true;
         const merged = edits.reduce((p, fn) => fn(p, Date.now()), base);
         if (owner) saveCourseOwner(owner);
+        latest.current = merged; // a save queued right now must read this, not the previous render's state
         setProgress(merged);
         saveCourseLocal(merged);
         setReady(true);
@@ -128,15 +133,18 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
         else setSync('saved');
       } catch {
         if (cancelled) return;
-        hydrated.current = true;
-        pending.current = [];
-        saveCourseLocal(latest.current);
+        // Ownership of the browser copy and the account copy are both unknown, so NOTHING is uploaded:
+        // `hydrated` stays false (edits queue in memory and are replayed once the account answers, on top
+        // of the right base) and the request is retried with backoff.
         setSync('offline');
         setReady(true);
+        retry = setTimeout(() => void hydrate(), RETRY_MS[Math.min(attempt++, RETRY_MS.length - 1)]);
       }
-    })();
+    };
+    void hydrate();
     return () => {
       cancelled = true;
+      if (retry) clearTimeout(retry);
     };
   }, [syncRemote, push]);
 

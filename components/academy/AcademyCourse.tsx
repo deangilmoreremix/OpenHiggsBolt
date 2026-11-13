@@ -266,7 +266,7 @@ function SyncNote({ sync }: { sync: Course['sync'] }) {
   const text =
     sync === 'saved' ? 'Progress saved to your account'
     : sync === 'syncing' ? 'Saving…'
-    : sync === 'offline' ? 'Saved in this browser (could not reach your account)'
+    : sync === 'offline' ? 'Could not reach your account yet. It will sync when the connection returns.'
     : 'Saved in this browser. Sign in to keep your progress on every device.';
   return <span className="text-[11px]" style={{ color: semantic.textMuted }} aria-live="polite">{text}</span>;
 }
@@ -530,13 +530,20 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
 /*  Sub-component: "Build with AI" course (its own tab in the header)  */
 /* ------------------------------------------------------------------ */
 
-function BuildWithAiView({ track, initial, course }: { track: AcademyTrack; initial?: AcademyInitialState; course: Course }) {
+function BuildWithAiView({ track, initial, course, reopen = false }: { track: AcademyTrack; initial?: AcademyInitialState; course: Course; reopen?: boolean }) {
   const lessons = track.lessons;
   const ids = React.useMemo(() => lessons.map((l) => lessonKey(track.slug, l.slug)), [lessons, track.slug]);
-  const seed = initial?.lesson && lessons.some((l) => l.slug === initial.lesson) ? initial.lesson : null;
+  // `reopen`: the learner came back to this tab within the same visit (header-tab switch), so
+  // return to the lesson and step they reached instead of the course home
+  const [reopenAt] = React.useState(() => {
+    const t = reopen && !initial?.lesson && hasStarted(course.progress, ids) ? courseContinueTarget(course.progress, ids) : null;
+    return t && lessons.some((l) => lessonKey(track.slug, l.slug) === t.lessonId) ? t : null;
+  });
+  const seed = reopenAt ? reopenAt.lessonId.slice(track.slug.length + 1) : initial?.lesson && lessons.some((l) => l.slug === initial.lesson) ? initial.lesson : null;
+  const seedStep = reopenAt ? reopenAt.stepId : seed ? initial?.s ?? null : null;
   const [lessonSlug, setLessonSlug] = React.useState<string | null>(seed);
-  const [stepId, setStepId] = React.useState<string | null>(seed ? initial?.s ?? null : null);
-  const [shownStepId, setShownStepId] = React.useState<string | null>(seed ? initial?.s ?? null : null);
+  const [stepId, setStepId] = React.useState<string | null>(seedStep);
+  const [shownStepId, setShownStepId] = React.useState<string | null>(seedStep);
   const [drawer, setDrawer] = React.useState(false);
 
   React.useEffect(() => {
@@ -1357,9 +1364,15 @@ export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrac
     // each tab writes its own address (the views sync it themselves once they open); clear stale params first
     syncUrl(v === 'studio-reference' ? { view: 'studio-reference' } : v === 'build-with-ai' ? { view: 'build-with-ai' } : {});
   };
+  // The address the page was opened with (deep link to a track, lesson, step) applies ONCE. Header-tab
+  // switches unmount and remount the views, and a remounted view must resume from saved progress, not
+  // re-seed itself from the original link and jump back to the deep-linked step.
+  const deepLinkUsed = React.useRef(false);
+  React.useEffect(() => { deepLinkUsed.current = true; }, []);
+  const linked = deepLinkUsed.current ? undefined : initial;
   // links to the Build with AI track from older addresses open the tab with the same lesson
-  const buildInitial: AcademyInitialState | undefined = initial?.track === BUILD_WITH_AI_TRACK ? { ...initial, view: 'build-with-ai' } : initial;
-  const learningInitial: AcademyInitialState | undefined = initial?.track === BUILD_WITH_AI_TRACK ? { ...initial, track: undefined, lesson: undefined } : initial;
+  const buildInitial: AcademyInitialState | undefined = linked?.track === BUILD_WITH_AI_TRACK ? { ...linked, view: 'build-with-ai' } : linked;
+  const learningInitial: AcademyInitialState | undefined = linked?.track === BUILD_WITH_AI_TRACK ? { ...linked, track: undefined, lesson: undefined } : linked;
 
   const tabs: { id: AcademyView; label: string }[] = [
     { id: 'learning-paths', label: 'Learning Paths' },
@@ -1417,7 +1430,7 @@ export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrac
         {view === 'learning-paths' ? (
           <LearningPathsView tracks={pathTracks} initial={learningInitial} course={course} />
         ) : view === 'build-with-ai' && buildTrack ? (
-          <BuildWithAiView track={buildTrack} initial={buildInitial} course={course} />
+          <BuildWithAiView track={buildTrack} initial={buildInitial} course={course} reopen={deepLinkUsed.current} />
         ) : (
           <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={initial} />
         )}
