@@ -7,6 +7,7 @@ import type { ImageStyle } from '../preview/imageStyle'
 import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview/imagePresets'
 import { MEDIA_ROLE_CONTRACTS, roleForLayer } from '../preview/mediaRoles'
 import { ImageStyleControls } from './ImageStyleControls'
+import { ColorField } from './editor/ColorField'
 import { DesignLayerPlayer } from './DesignLayerPlayer'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import {
@@ -803,17 +804,15 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                   {/* A design with no text has no text colour or font: those controls would do nothing. */}
                   {!(selected.kind === 'design' && selectedSlots.length === 0) && (
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
-                    <div>
-                      <label style={labelStyle} htmlFor={controlId('color')}>{selected.kind === 'cta' ? 'Button color' : 'Color'}</label>
-                      <input
-                        id={controlId('color')}
-                        type="color"
-                        aria-label={selected.kind === 'cta' ? 'Button color' : 'Text color'}
-                        value={selected.color || (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)}
-                        onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
-                        style={{ width: '100%', height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
-                      />
-                    </div>
+                    <ColorField
+                      id={controlId('color')}
+                      label={selected.kind === 'cta' ? 'Button color' : 'Color'}
+                      ariaLabel={selected.kind === 'cta' ? 'Button color' : 'Text color'}
+                      value={selected.color || (selected.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)}
+                      onChange={(hex) => updatePreviewLayer(selected.id, { color: hex })}
+                      brand={settings.brandColors}
+                      posterUrl={inputProps.posterUrl}
+                    />
                     {/* Only shown when there's a real choice: with one bundled
                         font every option renders the same in the video. */}
                     {SELECTABLE_FONT_COUNT > 1 && (

@@ -86,4 +86,42 @@ test.describe('Personalization modal on real local footage', () => {
     console.log('CONSOLE ERRORS:\n' + (consoleErrors.join('\n') || '(none)'));
     expect(pageErrors, `uncaught page errors: ${pageErrors.join(' | ')}`).toEqual([]);
   });
+
+  test('the color popover opens on the real clip, offers colors from the video, and applies one', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Select Business name' }).click();
+    const trigger = dialog.getByRole('button', { name: 'Text color' });
+    await trigger.scrollIntoViewIfNeeded();
+    const before = (await trigger.innerText()).trim();
+    await trigger.click();
+    const pop = dialog.getByTestId('color-field-popover');
+    await expect(pop).toBeVisible();
+
+    // Colors read from the video's own frame, and a contrast readout against it.
+    await expect(pop.getByText('From your video')).toBeVisible({ timeout: 15_000 });
+    await expect(pop.getByTestId('color-field-contrast')).toBeVisible();
+    await page.waitForTimeout(400); // let the popover finish scrolling into view
+    await page.screenshot({ path: path.join(OUT, 'color-popover.png') });
+
+    // Applying a sampled color changes the control (and the layer).
+    const sample = pop.getByRole('button', { name: /^Use #/ }).nth(3);
+    const wanted = (await sample.getAttribute('aria-label'))!.replace('Use ', '').toUpperCase();
+    await sample.click();
+    await expect(trigger).toContainText(wanted);
+    expect(before).not.toBe(wanted);
+
+    // Auto picks a readable color for this footage; Esc closes and keeps focus on the control.
+    await pop.getByTestId('color-field-auto').click();
+    await expect(pop.getByTestId('color-field-contrast')).toHaveAttribute('data-grade', /AAA|AA/);
+    await page.keyboard.press('Escape');
+    await expect(pop).toHaveCount(0);
+  });
 });
