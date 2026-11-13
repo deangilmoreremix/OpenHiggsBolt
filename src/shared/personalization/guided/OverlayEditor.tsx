@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Move, RotateCcw, Unlock } from 'lucide-react'
+import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Move, Pause, Play, RotateCcw, Unlock } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
 import type { ImageStyle } from '../preview/imageStyle'
 import { imageRoleForLayerKind, presetStyle, resolveImageLook } from '../preview/imagePresets'
@@ -10,6 +10,8 @@ import { ImageStyleControls } from './ImageStyleControls'
 import { ColorField } from './editor/ColorField'
 import { SortableRow } from './editor/SortableRow'
 import { Tip } from './editor/Tip'
+import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
+import type { PlayerRef } from '@remotion/player'
 import { Timeline } from './editor/Timeline'
 import type { EditorTipId } from './editor/editorTips'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -213,6 +215,11 @@ export interface OverlayEditorProps {
   inputProps: PreviewInputProps
   /** Rendered directly under the video stage (sticky with it), e.g. the layout quality bar. */
   belowStage?: React.ReactNode
+  /**
+   * Edit on the real animated video: the Remotion Player draws the composition and the layer boxes become a
+   * transparent interaction layer above it. Off by default; the stage then shows the poster image.
+   */
+  liveStage?: boolean
 }
 
 /**
@@ -235,7 +242,7 @@ export interface OverlayEditorProps {
 export const framesToSeconds = (frames: number, fps: number) => Math.round((frames / Math.max(1, fps)) * 100) / 100
 export const secondsToFrames = (seconds: number, fps: number) => Math.max(0, Math.round((Number.isFinite(seconds) ? seconds : 0) * Math.max(1, fps)))
 
-export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): React.JSX.Element {
+export function OverlayEditor({ inputProps, belowStage, liveStage = false }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     previewSettings,
@@ -260,6 +267,12 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
   const [confirmRemoveDesign, setConfirmRemoveDesign] = useState(false)
   // Snap guides: on by default, switched off from the toolbar or by holding Alt while dragging.
   const [snapOn, setSnapOn] = useState(true)
+  // Live stage: the person can still switch back to the still poster (lighter, and a fallback if the video cannot play).
+  const [liveWanted, setLiveWanted] = useState(true)
+  const liveOn = liveStage && liveWanted
+  const playerRef = useRef<PlayerRef | null>(null)
+  const [playFrame, setPlayFrame] = useState(0)
+  const [playing, setPlaying] = useState(false)
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
   // Layers list reorder: top of the list = frontmost, so the list is the layer array reversed.
   const sensors = useSensors(
@@ -418,6 +431,8 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
+    // Editing a moving picture is hard: stop playback while a layer is grabbed.
+    try { playerRef.current?.pause() } catch { /* no player */ }
     const allowed = contractOf(layer)
     if (mode === 'move' ? !allowed.userMovable : !allowed.userResizable) return
     if (layer.locked) return // locked: selectable, but not draggable until unlocked
@@ -552,6 +567,24 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
             touchAction: 'none',
           }}
         >
+          {liveOn ? (
+            <>
+              <div data-testid="editor-live-player" style={{ position: 'absolute', inset: 0 }}>
+                <PersonalizationPlayer
+                  inputProps={inputProps}
+                  hideTransport
+                  loop
+                  playerRefOverride={playerRef}
+                  onFrameChange={setPlayFrame}
+                  onPlayingChange={setPlaying}
+                  ariaLabel="Live preview of your video"
+                />
+              </div>
+              {/* Shield: clicks on empty stage must not reach the Player (it would toggle play). Layers sit above it. */}
+              <div aria-hidden data-testid="editor-live-shield" style={{ position: 'absolute', inset: 0 }} />
+            </>
+          ) : (
+            <>
           {inputProps.posterUrl ? (
             <img
               src={inputProps.posterUrl}
@@ -564,6 +597,8 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
             </div>
           )}
           <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: settings.brandColors.backgroundDim, pointerEvents: 'none' }} />
+            </>
+          )}
           {/* Safe-area guide: the same 2% inset the clamp enforces. */}
           <div
             aria-hidden
@@ -607,6 +642,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
               if (look?.style?.presetId === 'multi-image-collage' && imgUrls.length < 2) look = { ...look, style: presetStyle('rounded-floating-card', settings.aspectRatio) }
               const isSplit = look?.style?.presetId === 'split-screen'
 
+              if (isSplit && look?.style && liveOn) return null // the Player draws the split panel
               if (isSplit && look?.style) {
                 // A half-frame panel is placed in composition space (not a draggable box).
                 return (
@@ -619,7 +655,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
               }
 
               // Same local scrim the render draws behind this text (stage pixels).
-              const scrimMetrics = hasTextScrim(layer.kind) && !repeatsName ? layerBoxMetrics(layer, compW, compH, text) : null
+              const scrimMetrics = !liveOn && hasTextScrim(layer.kind) && !repeatsName ? layerBoxMetrics(layer, compW, compH, text) : null
               const stageScrim = scrimMetrics
                 ? scrimForBox(
                     { left: scrimMetrics.leftPx * factor, top: scrimMetrics.topPx * factor, width: scrimMetrics.widthPx * factor, height: scrimMetrics.heightPx * factor },
@@ -637,34 +673,8 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                   )
                 : null
 
-              return (
-                <Fragment key={layer.id}>
-                {stageScrim ? (
-                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, opacity: layer.opacity, pointerEvents: 'none' }}>
-                    <div style={scrimStyle(stageScrim)} />
-                  </div>
-                ) : null}
-                {stageRule ? <div aria-hidden data-testid="stage-headline-rule" style={{ ...stageRule, opacity: layer.opacity }} /> : null}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
-                  aria-pressed={isSelected}
-                  onPointerDown={(event) => startDrag(event, layer, 'move')}
-                  onKeyDown={(event) => onLayerKeyDown(event, layer)}
-                  style={{
-                    position: 'absolute',
-                    left: box.left,
-                    top: box.top,
-                    width: box.width,
-                    height: box.height,
-                    cursor: contractOf(layer).userMovable ? 'move' : 'default',
-                    outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
-                    outlineOffset: 2,
-                    opacity: layer.opacity,
-                    userSelect: 'none',
-                  }}
-                >
+              const layerContent = (
+                <>
                   {isImageLayerKind(layer.kind) ? (
                     look?.style ? (
                       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -724,6 +734,42 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                       {text}
                     </div>
                   )}
+                </>
+              )
+
+              return (
+                <Fragment key={layer.id}>
+                {stageScrim ? (
+                  <div aria-hidden data-testid="stage-text-scrim" style={{ position: 'absolute', inset: 0, opacity: layer.opacity, pointerEvents: 'none' }}>
+                    <div style={scrimStyle(stageScrim)} />
+                  </div>
+                ) : null}
+                {stageRule ? <div aria-hidden data-testid="stage-headline-rule" style={{ ...stageRule, opacity: layer.opacity }} /> : null}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
+                  aria-pressed={isSelected}
+                  onPointerDown={(event) => startDrag(event, layer, 'move')}
+                  onKeyDown={(event) => onLayerKeyDown(event, layer)}
+                  style={{
+                    position: 'absolute',
+                    left: box.left,
+                    top: box.top,
+                    width: box.width,
+                    height: box.height,
+                    cursor: contractOf(layer).userMovable ? 'move' : 'default',
+                    outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
+                    outlineOffset: 2,
+                    opacity: layer.opacity,
+                    userSelect: 'none',
+                  }}
+                >
+                  {liveOn ? (
+                    // The real Player draws this layer; here it is only a transparent hit area. Text keeps its size
+                    // (hidden, not removed) so the box fits it; images and designs mount nothing.
+                    isImageLayerKind(layer.kind) || isDesign ? null : <div aria-hidden style={{ visibility: 'hidden' }}>{layerContent}</div>
+                  ) : layerContent}
                   {isSelected && layer.kind !== 'design' && (
                     <div
                       role="toolbar"
@@ -797,6 +843,50 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
               )
             })}
         </div>
+        {liveStage && (
+          <div data-testid="editor-transport" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -2 }}>
+            {liveOn && (
+              <>
+                <Tip id="livePlay" side="top">
+                  <button
+                    type="button"
+                    data-testid="editor-play"
+                    aria-label={playing ? 'Pause preview' : 'Play preview'}
+                    onClick={() => { const pl = playerRef.current; if (!pl) return; if (pl.isPlaying()) pl.pause(); else pl.play() }}
+                    style={{ ...secondaryButtonStyle, minHeight: 28, width: 34, padding: 0, display: 'grid', placeItems: 'center' }}
+                  >
+                    {playing ? <Pause size={13} /> : <Play size={13} />}
+                  </button>
+                </Tip>
+                <input
+                  type="range"
+                  data-testid="editor-scrubber"
+                  aria-label="Preview position"
+                  min={0}
+                  max={Math.max(1, Math.round(settings.durationInFrames) - 1)}
+                  value={Math.min(playFrame, Math.max(1, Math.round(settings.durationInFrames) - 1))}
+                  onChange={(event) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(Number(event.target.value)) } catch { /* no player */ } }}
+                  style={{ flex: 1, accentColor: C.cyan }}
+                />
+                <span data-testid="editor-timecode" style={{ ...hintStyle, margin: 0, fontVariantNumeric: 'tabular-nums', minWidth: 74, textAlign: 'right' }}>
+                  {(playFrame / Math.max(1, settings.fps)).toFixed(1)} / {(settings.durationInFrames / Math.max(1, settings.fps)).toFixed(1)} s
+                </span>
+              </>
+            )}
+            <span style={{ flex: liveOn ? undefined : 1 }} />
+            <Tip id="liveToggle" side="top">
+              <button
+                type="button"
+                data-testid="editor-live-toggle"
+                aria-pressed={liveOn}
+                onClick={() => setLiveWanted((v) => !v)}
+                style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', borderColor: liveOn ? C.cyan : undefined, color: liveOn ? C.cyan : undefined }}
+              >
+                Live: {liveOn ? 'On' : 'Off'}
+              </button>
+            </Tip>
+          </div>
+        )}
         {belowStage}
         <Timeline
           layers={editableLayers}
@@ -806,6 +896,8 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
           selectedId={selected?.id ?? ''}
           onSelect={setSelectedId}
           onChange={(id, patch) => updatePreviewLayer(id, patch)}
+          playheadFrame={liveOn ? playFrame : undefined}
+          onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
         />
         </div>
 

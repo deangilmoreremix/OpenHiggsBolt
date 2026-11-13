@@ -101,3 +101,20 @@ the exported video and the Player use the adaptive one.
 
 The placement engine's candidate scoring still ignores the scrim, which can only make it more cautious than
 needed.
+
+## Live editing stage
+
+Step 4's "Edit on the video" now edits on the real animated video. `OverlayEditor` takes `liveStage` (set by Step 4;
+off elsewhere, so Advanced Editing and the existing tests keep the still poster). In live mode:
+
+- `PersonalizationPlayer` (the same Remotion Player and composition the export uses) draws the video and every overlay,
+  including the scrim, accent rule, motion and designs. The editor draws none of those itself.
+- The layer boxes are a transparent interaction layer above it: text stays in the DOM, hidden, so each box keeps its size;
+  images and designs mount nothing. A full-stage shield stops clicks on empty stage reaching the Player (which would toggle play).
+- Grabbing a layer pauses playback. A transport row under the video has play/pause, a scrubber and the time, and the timeline shows a
+  playhead on every track; clicking the ruler seeks.
+- **Live: On/Off** switches back to the still poster (lighter, and a fallback if a clip cannot play).
+- The editor Player has its own ref and does not use the shared `previewPlayerRef`, which the Before/After preview and the Layout Quality
+  "Show" seek use. So "Show" seeks the Before/After preview, not the editor's Player.
+
+Not measured: the cost of two Players (Before/After preview plus the editor) playing at once on slow machines.

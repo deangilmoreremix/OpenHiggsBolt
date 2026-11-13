@@ -238,6 +238,7 @@ export function StepPreviewApprove(): React.JSX.Element {
       {/* The layout quality check sits directly under the video (no scrolling). */}
       <OverlayEditor
         inputProps={inputProps}
+        liveStage
         belowStage={<LayoutQualityPanel compact quality={quality} layers={previewSettings.layers} />}
       />
 

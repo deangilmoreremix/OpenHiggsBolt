@@ -68,7 +68,11 @@ test.describe('Personalization modal on real local footage', () => {
     const s = (await stage.boundingBox())!;
     const b = (await bar.boundingBox())!;
     expect(b.y, 'bar starts below the stage').toBeGreaterThanOrEqual(s.y + s.height - 1);
-    expect(b.y - (s.y + s.height), 'bar is right under the stage (no editor controls in between)').toBeLessThan(40);
+    // Only the video's own transport row (play, scrubber, Live toggle) may sit between the video and the bar.
+    const transport = (await page.getByTestId('editor-transport').boundingBox())!;
+    expect(transport.y, 'the transport row is right under the video').toBeLessThan(s.y + s.height + 20);
+    expect(b.y, 'the bar follows the transport row').toBeGreaterThanOrEqual(transport.y + transport.height - 1);
+    expect(b.y - (transport.y + transport.height), 'nothing else sits between the transport row and the bar').toBeLessThan(30);
 
     await page.screenshot({ path: path.join(OUT, 'step4-quality-bar.png') });
 
@@ -269,5 +273,50 @@ test.describe('Personalization modal on real local footage', () => {
     await dialog.getByTestId('remove-branding-cancel').click();
     await expect(confirm).toHaveCount(0);
     expect(jobSubmitted, 'no paid job may be submitted without an explicit confirm').toBe(0);
+  });
+
+  test('the live stage plays the real clip under the editor and a layer can be dragged on top of it', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    const live = dialog.getByTestId('editor-live-player');
+    await live.scrollIntoViewIfNeeded();
+    await expect(live).toBeVisible();
+    await expect(dialog.getByTestId('editor-live-toggle')).toHaveAttribute('aria-pressed', 'true');
+
+    // Press play: the preview clock advances, so the real Remotion Player is running the real clip.
+    const time = dialog.getByTestId('editor-timecode');
+    const t0 = (await time.innerText()).trim();
+    await dialog.getByTestId('editor-play').click();
+    await expect.poll(async () => (await time.innerText()).trim(), { timeout: 20_000 }).not.toBe(t0);
+    await dialog.getByTestId('editor-play').click(); // pause
+    await expect(dialog.getByTestId('editor-play')).toHaveAttribute('aria-label', 'Play preview');
+    await page.screenshot({ path: path.join(OUT, 'live-stage.png') });
+
+    // Scrub to a later frame with the slider.
+    await dialog.getByTestId('editor-scrubber').fill('90');
+    await expect.poll(async () => (await time.innerText()).trim().startsWith('3.0')).toBe(true);
+
+    // Dragging a layer over the live video moves it, and playback is paused while it is grabbed.
+    const box = dialog.getByRole('button', { name: 'Move Business name' });
+    const before = (await box.boundingBox())!;
+    await page.mouse.move(before.x + 10, before.y + before.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(before.x + 120, before.y + before.height / 2 - 40, { steps: 8 });
+    await page.mouse.up();
+    const after = (await box.boundingBox())!;
+    expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y), 'the layer moved').toBeGreaterThan(20);
+
+    // The Live toggle falls back to the still poster and back.
+    await dialog.getByTestId('editor-live-toggle').click();
+    await expect(live).toHaveCount(0);
+    await dialog.getByTestId('editor-live-toggle').click();
+    await expect(live).toBeVisible();
   });
 });

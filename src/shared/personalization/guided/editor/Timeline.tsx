@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { C, hintStyle } from '../tokens'
 import { Tip } from './Tip'
 import {
-  applyTimelineEdit, formatSeconds, frameToFraction, layerSpan, rulerTicks, type TimelineEdit,
+  applyTimelineEdit, formatSeconds, fractionToFrame, frameToFraction, layerSpan, rulerTicks, type TimelineEdit,
 } from './timeline'
 import type { PreviewLayer } from '../../preview/types'
 
@@ -20,6 +20,8 @@ export function Timeline({
   selectedId,
   onSelect,
   onChange,
+  playheadFrame,
+  onSeek,
 }: {
   layers: PreviewLayer[]
   labels: Record<string, string>
@@ -28,6 +30,10 @@ export function Timeline({
   selectedId: string
   onSelect: (id: string) => void
   onChange: (layerId: string, patch: { startFrame: number; endFrame: number | undefined }) => void
+  /** Where the live preview is now; draws a playhead on every track. */
+  playheadFrame?: number
+  /** When given, clicking or dragging the ruler seeks the preview. */
+  onSeek?: (frame: number) => void
 }): React.JSX.Element | null {
   const trackRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: string; part: TimelineEdit; startX: number; origin: Pick<PreviewLayer, 'startFrame' | 'endFrame'>; pointerId: number | null } | null>(null)
@@ -80,12 +86,14 @@ export function Timeline({
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr', columnGap: 8, rowGap: 4, alignItems: 'center' }}>
         <span />
-        <div ref={trackRef} aria-hidden style={{ position: 'relative', height: 14 }}>
+        <div ref={trackRef} aria-hidden data-testid="timeline-ruler" style={{ position: 'relative', height: 14, cursor: onSeek ? 'pointer' : undefined }}
+          onPointerDown={onSeek ? (e) => { const r = e.currentTarget.getBoundingClientRect(); if (r.width > 0) onSeek(fractionToFrame((e.clientX - r.left) / r.width, duration)) } : undefined}>
           {ticks.map((f) => (
             <span key={f} style={{ position: 'absolute', left: `${frameToFraction(f, duration) * 100}%`, fontSize: 9, color: C.muted2, transform: 'translateX(-1px)' }}>
               {Math.round(f / Math.max(1, fps))}s
             </span>
           ))}
+          {playheadFrame !== undefined && <div aria-hidden data-testid="timeline-playhead" style={{ position: 'absolute', top: 0, bottom: 0, left: `${frameToFraction(playheadFrame, duration) * 100}%`, width: 2, marginLeft: -1, background: '#ff4fd8', pointerEvents: 'none', zIndex: 3 }} />}
         </div>
         {rows.map((layer) => {
           const { start, end } = layerSpan(layer, duration)
@@ -107,7 +115,7 @@ export function Timeline({
                     aria-valuetext={formatSeconds(start, fps)} data-testid="timeline-start"
                     onPointerDown={(e) => begin(e, layer, 'start')} onKeyDown={(e) => key(e, layer, 'start')} style={{ ...handle, left: 0 }} />
                   <Tip id="timelineBar" side="top">
-                    <button type="button" aria-label={`Move ${name} on the timeline`} data-testid="timeline-move"
+                    <button type="button" aria-label={`Retime ${name} on the timeline`} data-testid="timeline-move"
                       onPointerDown={(e) => begin(e, layer, 'move')} onKeyDown={(e) => key(e, layer, 'move')}
                       style={{ position: 'absolute', left: 8, right: 8, top: 0, bottom: 0, background: 'transparent', border: 'none', cursor: 'grab', touchAction: 'none' }} />
                   </Tip>
@@ -115,6 +123,7 @@ export function Timeline({
                     aria-valuetext={layer.endFrame === undefined ? 'until the end' : formatSeconds(end, fps)} data-testid="timeline-end"
                     onPointerDown={(e) => begin(e, layer, 'end')} onKeyDown={(e) => key(e, layer, 'end')} style={{ ...handle, right: 0 }} />
                 </div>
+                {playheadFrame !== undefined && <div aria-hidden data-testid="timeline-playhead" style={{ position: 'absolute', top: 0, bottom: 0, left: `${frameToFraction(playheadFrame, duration) * 100}%`, width: 2, marginLeft: -1, background: '#ff4fd8', pointerEvents: 'none', zIndex: 3 }} />}
               </div>
             </div>
           )

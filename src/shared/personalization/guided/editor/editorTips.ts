@@ -21,6 +21,10 @@ export const EDITOR_TIPS = {
   snap: { text: 'Snap layers to the frame center, thirds, safe edges and to each other while you drag. Pink lines show what it lined up with.', shortcut: 'Hold Alt to turn off while dragging' },
   restoreLayout: { text: 'Put every layer back where this layout starts. Your text, colors and images are kept.' },
 
+  // ── live stage ───────────────────────────────────────────────────────
+  livePlay: { text: 'Play or pause the live preview. Grabbing a layer pauses it so you can place it exactly.', shortcut: 'Space on the scrubber' },
+  liveToggle: { text: 'Edit on the live, animated video, or switch to the still image if it is slow or the video cannot play.' },
+
   // ── layers list ──────────────────────────────────────────────────────
   layerReorder: { text: 'Drag to change what is in front. The top of the list is the frontmost layer.', shortcut: 'Keyboard: Space, ↑/↓, Space' },
   layerVisibility: { text: 'Show or hide this layer in the video.' },
