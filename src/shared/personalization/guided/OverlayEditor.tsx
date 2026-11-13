@@ -15,7 +15,7 @@ import {
   PREVIEW_POSITIONS,
   isImageLayerKind,
 } from '../preview/presets'
-import { accentRuleStyle, ctaPillStyle, isTextStyleKind, layerTextStyle, textAlignFor } from '../preview/textStyle'
+import { accentRuleStyle, ctaPillStyle, isSingleLineBox, isTextStyleKind, layerTextStyle, textAlignFor } from '../preview/textStyle'
 import { hasTextScrim, scrimForBox, scrimStyle } from '../preview/scrim'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
@@ -627,6 +627,7 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                           color,
                           fontFamily: layer.fontFamily,
                           align: stageAlign,
+                          singleLine: isSingleLineBox(box.width, compW * factor),
                         }),
                         pointerEvents: 'none',
                         ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),

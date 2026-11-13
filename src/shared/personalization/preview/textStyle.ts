@@ -61,12 +61,32 @@ export function textAlignFor(
   return box.leftPx > unclampedLeft ? 'left' : 'center'
 }
 
+/**
+ * `toBox` sizes a text box from a per-character estimate (0.55 em) capped at 90% of the frame.
+ * When the box is NOT capped, the text was expected to fit on one line, and real text can be a
+ * few percent wider than the estimate (capital-heavy strings measure ~0.56 em/char), which
+ * would wrap the last word. Such text is kept on one line instead.
+ */
+export function isSingleLineBox(widthPx: number, compW: number): boolean {
+  return widthPx < compW * 0.9 - 1
+}
+
 /** Style for a plain text layer (headline, tagline, business name, offer). */
 export function layerTextStyle(
   kind: TextStyleKind,
-  opts: { fontSizePx: number; color: string; fontFamily?: string; align?: TextAlign },
+  opts: { fontSizePx: number; color: string; fontFamily?: string; align?: TextAlign; singleLine?: boolean },
 ): React.CSSProperties {
   const role = ROLE_STYLE[kind]
+  const align = opts.align ?? 'center'
+  // Single-line text takes its real width and stays centered on the box center (or pinned left),
+  // so an estimate that is a few px short can never wrap it or push it off-center.
+  const single: React.CSSProperties = opts.singleLine
+    ? {
+        whiteSpace: 'nowrap',
+        width: 'max-content',
+        ...(align === 'center' ? { position: 'relative', left: '50%', transform: 'translateX(-50%)' } : {}),
+      }
+    : { width: '100%' }
   return {
     fontFamily: fontStackById(opts.fontFamily),
     color: opts.color,
@@ -74,8 +94,8 @@ export function layerTextStyle(
     fontWeight: role.fontWeight,
     lineHeight: role.lineHeight,
     letterSpacing: role.letterSpacing,
-    textAlign: opts.align ?? 'center',
-    width: '100%',
+    textAlign: align,
+    ...single,
     // Only break a word that cannot fit on a line by itself.
     overflowWrap: 'break-word',
     // Even line lengths for wrapped headlines. Ignored where unsupported.

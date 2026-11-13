@@ -18,7 +18,7 @@ import {
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from './motion'
-import { accentRuleStyle, ctaPillStyle, endCardBackground, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
+import { accentRuleStyle, ctaPillStyle, endCardBackground, isSingleLineBox, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveDesignSlotValues } from './designSlots'
@@ -649,6 +649,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     color: textColor,
                     fontFamily: layer.fontFamily,
                     align,
+                    singleLine: isSingleLineBox(box.widthPx, compW),
                   })}
                 >
                   {wordMode

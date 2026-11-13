@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accentRuleStyle, ctaPillStyle, darkenHex, endCardBackground, isTextStyleKind, layerTextStyle, lightenHex, LEFT_COLUMN_MAX_X, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
+import { isSingleLineBox, accentRuleStyle, ctaPillStyle, darkenHex, endCardBackground, isTextStyleKind, layerTextStyle, lightenHex, LEFT_COLUMN_MAX_X, PILL_SHADOW, TEXT_SHADOW, textAlignFor } from '../textStyle'
 
 describe('layerTextStyle', () => {
   const base = { fontSizePx: 48, color: '#fff' }
@@ -141,5 +141,34 @@ describe('end card background', () => {
     expect(darkenHex('#000', 0.5)).toBe('#000000')
     expect(darkenHex('hsl(10,10%,10%)', 0.3)).toBeNull()
     expect(endCardBackground('tomato')).toBe('tomato')
+  })
+})
+
+describe('single-line text', () => {
+  it('only boxes that were NOT capped at 90% of the frame are single-line', () => {
+    expect(isSingleLineBox(480, 1920)).toBe(true)
+    expect(isSingleLineBox(1728, 1920)).toBe(false)
+    expect(isSingleLineBox(1726, 1920)).toBe(true)
+  })
+
+  it('keeps a centered single line on one line, centered on the box center whatever its real width', () => {
+    const s = layerTextStyle('tagline', { fontSizePx: 34, color: '#fff', singleLine: true })
+    expect(s.whiteSpace).toBe('nowrap')
+    expect(s.width).toBe('max-content')
+    expect(s.left).toBe('50%')
+    expect(s.transform).toBe('translateX(-50%)')
+  })
+
+  it('pins a left-aligned single line to the left edge with no centering transform', () => {
+    const s = layerTextStyle('tagline', { fontSizePx: 34, color: '#fff', singleLine: true, align: 'left' })
+    expect(s.whiteSpace).toBe('nowrap')
+    expect(s.transform).toBeUndefined()
+    expect(s.left).toBeUndefined()
+  })
+
+  it('leaves wrapping text as a full-width block', () => {
+    const s = layerTextStyle('headline', { fontSizePx: 60, color: '#fff' })
+    expect(s.width).toBe('100%')
+    expect(s.whiteSpace).toBeUndefined()
   })
 })
