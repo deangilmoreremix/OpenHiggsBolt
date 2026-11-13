@@ -37,6 +37,19 @@ const EXPANDING = /^(step by step|do it)$/i;
 const CHECKLIST = /^check (yourself|your work)$/i;
 
 const clean = (t: string) => t.replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
+/**
+ * Plain text of a checklist item: formatting markers go, but identifiers survive. Code spans keep every
+ * character (`OPENAI_API_KEY`), and an underscore only counts as emphasis at a word edge, so snake_case,
+ * `02_isolated_masks/` and `master_background.jpg` are left alone. (Titles keep using `clean`: their step ids
+ * are derived from it and saved progress depends on them.)
+ */
+const cleanItem = (t: string) =>
+  t
+    .split(/(`[^`]*`)/)
+    .map((seg, i) => (i % 2 ? seg.slice(1, -1) : seg.replace(/\*/g, '').replace(/(^|[^A-Za-z0-9_])_{1,2}(?=[^\s_])/g, '$1').replace(/(?<=[^\s_])_{1,2}(?![A-Za-z0-9_])/g, '')))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
 const slug = (t: string) =>
   clean(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'step';
 
@@ -139,7 +152,7 @@ export function parseLesson(markdown: string): ParsedLesson {
       for (const l of sec.lines) {
         if (FENCE.test(l)) f = !f;
         const m = !f ? l.match(TASK) : null;
-        if (m) items.push(clean(m[1]));
+        if (m) items.push(cleanItem(m[1]));
         else rest.push(l);
       }
       if (items.length) {

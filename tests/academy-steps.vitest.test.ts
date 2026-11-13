@@ -127,3 +127,21 @@ describe('parseLesson: every real lesson in src/content/academy', () => {
     expect(hosting.steps.length).toBeGreaterThanOrEqual(6);
   });
 });
+
+
+describe('checklist item text keeps identifiers intact', () => {
+  it('does not strip underscores inside words or code, but still removes emphasis markers', () => {
+    const md = [
+      '# T', '', '## Check yourself', '',
+      '* [ ] `OPENAI_API_KEY` is set in .env',
+      '* [ ] Folders `02_isolated_masks/` and master_background.jpg exist',
+      '* [ ] OPENAI_API_KEY and 02_isolated_masks/ (plain text)',
+      '* [ ] **bold**, _emphasis_ and __strong__ text',
+    ].join('\n');
+    const items = parseLesson(md).steps.find((x) => x.kind === 'checklist')!.checklist!;
+    expect(items[0]).toBe('OPENAI_API_KEY is set in .env');
+    expect(items[1]).toBe('Folders 02_isolated_masks/ and master_background.jpg exist');
+    expect(items[2]).toBe('OPENAI_API_KEY and 02_isolated_masks/ (plain text)');
+    expect(items[3]).toBe('bold, emphasis and strong text');
+  });
+});
