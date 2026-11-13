@@ -18,6 +18,7 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
+import { ctaPillStyle, layerTextStyle, type TextStyleKind } from './textStyle'
 import { resolveDesignSlotValues } from './designSlots'
 import { toPlayablePreviewMediaUrl } from './remoteMedia'
 import {
@@ -479,7 +480,6 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           const textColor =
             layer.color ??
             (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
-          const isExtraBold = layer.kind === 'businessName' || layer.kind === 'cta'
           const transformParts: string[] = []
           if (entrance.translateX) transformParts.push(`translateX(${entrance.translateX}px)`)
           if (entrance.translateY) transformParts.push(`translateY(${entrance.translateY}px)`)
@@ -633,18 +633,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
               <AbsoluteFill key={layer.id} style={layerStyle}>
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   <span
-                    style={{
+                    style={ctaPillStyle({
                       // The layer's color is the button color (default: accent);
                       // the label is dark or white, whichever reads on it.
                       background: textColor,
                       color: readableTextOn(textColor, PILL_TEXT_COLOR),
-                      padding: '0.4em 1.1em',
-                      borderRadius: 999,
-                      display: 'inline-block',
-                      fontFamily: fontStackById(layer.fontFamily),
-                      fontSize: box.fontSizePx,
-                      fontWeight: 800,
-                    }}
+                      fontSizePx: box.fontSizePx,
+                      fontFamily: layer.fontFamily,
+                    })}
                   >
                     {text}
                   </span>
@@ -656,18 +652,11 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           return (
             <AbsoluteFill key={layer.id} style={layerStyle}>
               <div
-                style={{
-                  fontFamily: fontStackById(layer.fontFamily),
+                style={layerTextStyle(layer.kind as TextStyleKind, {
+                  fontSizePx: box.fontSizePx,
                   color: textColor,
-                  fontSize: box.fontSizePx,
-                  fontWeight: isExtraBold ? 800 : 600,
-                  lineHeight: 1.15,
-                  textAlign: 'center',
-                  width: '100%',
-                  // Only break a word that cannot fit on a line by itself;
-                  // `wordBreak: 'break-word'` split ordinary words mid-word.
-                  overflowWrap: 'break-word',
-                }}
+                  fontFamily: layer.fontFamily,
+                })}
               >
                 {text}
               </div>

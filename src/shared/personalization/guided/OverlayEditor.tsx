@@ -13,9 +13,9 @@ import {
   PREVIEW_ANIMATIONS,
   PREVIEW_FONTS,
   PREVIEW_POSITIONS,
-  fontStackById,
   isImageLayerKind,
 } from '../preview/presets'
+import { ctaPillStyle, isTextStyleKind, layerTextStyle } from '../preview/textStyle'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
   RemotionDesignTextSlot,
@@ -580,14 +580,12 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                     <div style={{ width: '100%', textAlign: 'center' }}>
                       <span
                         style={{
-                          background: layer.color ?? settings.brandColors.accent,
-                          color: '#041014',
-                          padding: '0.4em 1.1em',
-                          borderRadius: 999,
-                          display: 'inline-block',
-                          fontFamily: fontStackById(layer.fontFamily),
-                          fontSize: box.fontSize,
-                          fontWeight: 800,
+                          ...ctaPillStyle({
+                            background: layer.color ?? settings.brandColors.accent,
+                            color: '#041014',
+                            fontSizePx: box.fontSize,
+                            fontFamily: layer.fontFamily,
+                          }),
                           pointerEvents: 'none',
                         }}
                       >
@@ -597,14 +595,11 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
                   ) : (
                     <div
                       style={{
-                        fontFamily: fontStackById(layer.fontFamily),
-                        color,
-                        fontSize: box.fontSize,
-                        fontWeight: layer.kind === 'businessName' ? 800 : 600,
-                        lineHeight: 1.15,
-                        textAlign: 'center',
-                        width: '100%',
-                        wordBreak: 'break-word',
+                        ...layerTextStyle(isTextStyleKind(layer.kind) ? layer.kind : 'headline', {
+                          fontSizePx: box.fontSize,
+                          color,
+                          fontFamily: layer.fontFamily,
+                        }),
                         pointerEvents: 'none',
                         ...(repeatsName ? { opacity: 0.45, fontStyle: 'italic', fontSize: Math.max(10, box.fontSize * 0.55) } : {}),
                       }}
