@@ -369,4 +369,61 @@ test.describe('Personalization modal on real local footage', () => {
     await expect(field).toHaveValue('0');
     await page.screenshot({ path: path.join(OUT, 'handles.png') });
   });
+
+  test('inspector tabs switch groups of settings, and the first-run tour is dismissible and remembered', async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    // First visit: the tour opens by itself; Skip closes it and it stays closed after a reload of the step.
+    const tour = dialog.getByTestId('editor-tour');
+    await tour.scrollIntoViewIfNeeded();
+    await expect(tour).toBeVisible();
+    await dialog.getByTestId('editor-tour-next').click();
+    await expect(tour).toContainText('Step 2 of 4');
+    await dialog.getByTestId('editor-tour-skip').click();
+    await expect(tour).toHaveCount(0);
+    await dialog.getByTestId('editor-shortcuts-toggle').click();
+    await expect(dialog.getByTestId('editor-shortcuts')).toContainText('Undo');
+    await dialog.getByTestId('editor-shortcuts-toggle').click();
+
+    // Tabs: only one group of settings is visible at a time.
+    await dialog.getByRole('button', { name: 'Move Logo' }).click();
+    await expect(dialog.getByLabel('Layer image')).toBeVisible();
+    await expect(dialog.getByLabel('Layer size')).toBeHidden();
+    await dialog.getByTestId('inspector-tab-layout').click();
+    await expect(dialog.getByLabel('Layer size')).toBeVisible();
+    await expect(dialog.getByTestId('rotation-field')).toBeVisible();
+    await dialog.getByTestId('inspector-tab-timing').click();
+    await expect(dialog.getByLabel('Layer animation')).toBeVisible();
+    await expect(dialog.getByLabel('Layer size')).toBeHidden();
+  });
+
+  test('an uploaded video (a blob: URL) plays in the live editor and raises no security-policy errors', async ({ page }) => {
+    test.setTimeout(240_000);
+    const violations: string[] = [];
+    page.on('console', (m) => { if (/Content Security Policy|Refused to connect/i.test(m.text())) violations.push(m.text().slice(0, 200)); });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 2/i }).click();
+    await dialog.getByRole('tab', { name: 'Upload' }).click();
+    await page.setInputFiles('#guided-video-upload', path.join(process.cwd(), 'public/media/minimax-h3/videos/luxury-perfume-commercial.webm'));
+    await expect(dialog.getByText(/Uploaded videos stay in this browser/)).toBeVisible();
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    const live = dialog.getByTestId('editor-live-player');
+    await live.scrollIntoViewIfNeeded();
+    await expect(live).toBeVisible();
+    const time = dialog.getByTestId('editor-timecode');
+    const t0 = (await time.innerText()).trim();
+    await dialog.getByTestId('editor-play').click();
+    await expect.poll(async () => (await time.innerText()).trim(), { timeout: 20_000 }).not.toBe(t0);
+    await dialog.getByTestId('editor-play').click();
+    expect(violations, 'no CSP violations while reading the uploaded video').toEqual([]);
+  });
 });

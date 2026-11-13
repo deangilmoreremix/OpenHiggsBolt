@@ -28,6 +28,7 @@ export const EDITOR_TIPS = {
   // ── handles on the selected layer ────────────────────────────────────
   resizeHandle: { text: 'Drag to resize. Corners and edges both keep the proportions, and the opposite side stays where it is.', shortcut: 'Arrow keys: 2% · Shift: 10%' },
   rotateHandle: { text: 'Drag to rotate the layer. Double-click to set it straight again.', shortcut: 'Shift: 15° steps · Arrows: 1°' },
+  inspectorTabs: { text: 'Content is the text, image and colors. Layout is size, opacity, rotation and position. Timing is the animation and when the layer is on screen.' },
   rotationField: { text: 'Type an exact rotation in degrees. Positive turns clockwise.' },
 
   // ── layers list ──────────────────────────────────────────────────────
