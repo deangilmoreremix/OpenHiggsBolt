@@ -106,6 +106,21 @@ function isLocationQualifierToken(token: string): boolean {
 }
 
 /**
+ * Generic store-format descriptors a chain's own branches carry ("Walmart Supercenter", "CVS Pharmacy",
+ * "Target Express"). A name that is a chain plus ONLY these words is still that chain. Deliberately small:
+ * a trade word ("Ross Plumbing") is not in it, so independents sharing a first word stay independent.
+ */
+const CHAIN_FORMAT_TOKENS = new Set([
+  'supercenter', 'super', 'center', 'centre', 'store', 'stores', 'pharmacy', 'drugstore', 'market', 'neighborhood',
+  'express', 'fuel', 'gas', 'station', 'drive', 'thru', 'drivethru', 'outlet', 'warehouse', 'club', 'photo', 'optical',
+  'tire', 'auto', 'service', 'services', 'cafe', 'restaurant', 'kitchen', 'grill',
+])
+
+function isChainFormatRemainder(tokens: string[]): boolean {
+  return tokens.length > 0 && tokens.every((t) => CHAIN_FORMAT_TOKENS.has(t) || isLocationQualifierToken(t))
+}
+
+/**
  * Match on the FIRST token(s) of the normalized name: "McDonald's of Fort
  * Lauderdale" must classify national_bigbox. A longer name only matches a
  * chain when the remainder is a location qualifier (of/in/at or a unit
@@ -122,7 +137,7 @@ function isNationalChain(name: string): boolean {
     if (
       tokens.length > chainTokens.length &&
       tokens.slice(0, chainTokens.length).join(' ') === chainTokens.join(' ') &&
-      isLocationQualifierToken(tokens[chainTokens.length])
+      (isLocationQualifierToken(tokens[chainTokens.length]) || isChainFormatRemainder(tokens.slice(chainTokens.length)))
     ) {
       return true
     }

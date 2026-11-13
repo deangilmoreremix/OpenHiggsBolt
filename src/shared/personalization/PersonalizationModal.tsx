@@ -43,6 +43,8 @@ import {
   Share2,
   SlidersHorizontal,
 } from 'lucide-react'
+import { SocialIcons } from './SocialIcons'
+import { useBusinessEnrichment, mergeCardContacts } from './useBusinessEnrichment'
 import { DEFAULT_ADVANCED_SECTIONS, useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { AutoFillKey } from './businessContentFromResearch'
 import type { AdvancedEditingSections, AdvancedEditingTab } from './types'
@@ -2406,6 +2408,7 @@ function ConfigurationView(props: any) {
   // Long result lists show a page at a time so the section stays short.
   const [shownResultCount, setShownResultCount] = useState(RESULTS_PAGE)
   useEffect(() => { setShownResultCount(RESULTS_PAGE) }, [businessSearchResults])
+  const enrichStates = useBusinessEnrichment(businessSearchResults.slice(0, shownResultCount))
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -3065,7 +3068,9 @@ function ConfigurationView(props: any) {
               </div>
               {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
-                {businessSearchResults.slice(0, shownResultCount).map((business) => (
+                {businessSearchResults.slice(0, shownResultCount).map((business) => {
+                  const contacts = mergeCardContacts(business, enrichStates[business.id])
+                  return (
                   <div
                     key={business.id}
                     style={{
@@ -3104,11 +3109,12 @@ function ConfigurationView(props: any) {
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
-                          {business.instagram && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Instagram</span>
+                          {contacts.email && (
+                            <span title={contacts.email.title} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Email</span>
                           )}
-                          {business.facebook && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Facebook</span>
+                          <SocialIcons name={business.name} links={contacts.links} titles={contacts.titles} />
+                          {contacts.loading && (
+                            <span style={{ fontSize: 9, fontWeight: 600, color: C.muted2 }} aria-live="polite">Looking up contacts…</span>
                           )}
                         </div>
                       </div>
@@ -3160,7 +3166,7 @@ function ConfigurationView(props: any) {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
                 {businessSearchResults.length > shownResultCount && (
                   <button
                     type="button"
@@ -3168,8 +3174,15 @@ function ConfigurationView(props: any) {
                     onClick={() => setShownResultCount((count) => count + RESULTS_PAGE)}
                     style={{ minHeight: 34, borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan, fontSize: 11, fontWeight: 800 }}
                   >
-                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more of {businessSearchResults.length - shownResultCount}
+                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more
                   </button>
+                )}
+                {businessSearchResults.length > RESULTS_PAGE && (
+                  <p data-testid="pz-results-count" style={{ margin: 0, textAlign: 'center', color: C.muted2, fontSize: 10 }}>
+                    {businessSearchResults.length > shownResultCount
+                      ? `Showing ${shownResultCount} of ${businessSearchResults.length}`
+                      : `Showing all ${businessSearchResults.length}`}
+                  </p>
                 )}
               </div>
               )}
