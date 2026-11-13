@@ -820,7 +820,7 @@ export type DemoPersonalizeContextValue = {
   /** Shows (or clears with `null`) the discovery error banner. */
   setDiscoveryError: (message: string | null) => void
   importConfirmation: { count: number; clientName?: string } | null
-  setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
+  setDiscoveredAssets: (assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => void
   toggleDiscoveredAssetSelection: (id: string) => void
   rejectDiscoveredAsset: (id: string) => void
   restoreDiscoveredAsset: (id: string) => void
@@ -3873,7 +3873,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // ── Discovered assets actions ───────────────────────────────────────────────
 
-  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[]) => {
+  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[] | ((prev: DiscoveredAsset[]) => DiscoveredAsset[])) => {
     setDiscoveredAssetsState(assets)
     setDiscoveryStatus('reviewing')
     setDiscoveryError(null)
