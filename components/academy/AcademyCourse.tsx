@@ -290,8 +290,11 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
 
   const activeTrack = tracks.find((t) => t.slug === activeTrackSlug) ?? tracks[0];
   const isUgc = activeTrack.slug === 'ugc';
+  // automatic "open where you left off" runs at most once, and never after the learner has navigated
+  const resumed = React.useRef(!!initial?.track);
 
   const openLesson = (trackSlug: string, lessonSlug: string, stepId: string | null = null) => {
+    resumed.current = true; // an explicit choice (sidebar, track picker, link) always beats the automatic resume
     setActiveTrackSlug(trackSlug);
     setActiveLessonSlug(lessonSlug);
     setLessonStepId(stepId);
@@ -328,7 +331,6 @@ function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]
 
   // Arriving with no deep link opens where the learner left off in Learning Paths (once their saved
   // progress has loaded) instead of dropping them on the first lesson.
-  const resumed = React.useRef(!!initial?.track);
   React.useEffect(() => {
     if (resumed.current || !course.ready) return;
     resumed.current = true;

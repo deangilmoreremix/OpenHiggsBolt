@@ -203,6 +203,58 @@ describe('useCourseProgress', () => {
     }
   });
 
+  it('a failed save is kept and retried when connectivity returns, with no further edits needed', async () => {
+    let putFails = true;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      return putFails ? Promise.reject(new Error('offline')) : Promise.resolve(json({ ok: true }));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result } = renderHook(() => useCourseProgress(IDS, true));
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      await waitFor(() => expect(result.current.sync).toBe('offline'));
+      const puts = () => fetchMock.mock.calls.filter(isPut).length;
+      expect(puts()).toBe(1);
+      // connectivity returns: the unsaved completion is sent, nothing else was edited
+      putFails = false;
+      await act(async () => { window.dispatchEvent(new Event('online')); });
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      expect(puts()).toBe(2);
+      expect(JSON.parse((fetchMock.mock.calls.filter(isPut)[1][1] as RequestInit).body as string).progress.completedLessons).toEqual(['ugc/01-a']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a failed save also retries by itself with backoff, and stops once it is saved', async () => {
+    let fails = 2;
+    fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return Promise.resolve(json({ progress: null, owner: 'userA' }));
+      return fails-- > 0 ? Promise.resolve(json({ error: 'x' }, 503)) : Promise.resolve(json({ ok: true }));
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result, unmount } = renderHook(() => useCourseProgress(IDS, true));
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      act(() => result.current.complete('ugc/01-a', true));
+      await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(2);
+      await act(async () => { await vi.advanceTimersByTimeAsync(5100); });
+      await waitFor(() => expect(result.current.sync).toBe('saved'));
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(3);
+      await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+      expect(fetchMock.mock.calls.filter(isPut).length).toBe(3); // no further retries once saved
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sends one save at a time with the latest state', async () => {
     const puts: { body: string; done: (r: Response) => void }[] = [];
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {

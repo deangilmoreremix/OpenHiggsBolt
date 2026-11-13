@@ -49,12 +49,21 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
 
   const sending = useRef(false);
   const again = useRef(false);
+  // a save failed and has not been retried successfully yet (the state in `latest` is still unsaved)
+  const dirty = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryAttempt = useRef(0);
   const flush = useCallback(async () => {
     if (sending.current) {
       again.current = true;
       return;
     }
     sending.current = true;
+    if (retryTimer.current) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
+    let retryable = false;
     try {
       let ok = false;
       do {
@@ -65,12 +74,23 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
           body: JSON.stringify({ progress: latest.current }),
         });
         ok = res.ok;
+        // 4xx other than timeout / rate limit will not succeed by repeating the same request
+        retryable = !ok && (res.status >= 500 || res.status === 408 || res.status === 429);
       } while (again.current);
+      dirty.current = !ok;
+      if (ok) retryAttempt.current = 0;
       setSync(ok ? 'saved' : 'offline');
     } catch {
+      dirty.current = true;
+      retryable = true;
       setSync('offline');
     } finally {
       sending.current = false;
+    }
+    // keep the unsaved state and try again later (same backoff as the first load, never a tight loop);
+    // it goes through the same conditional write, so a stale retry still cannot overwrite newer progress
+    if (dirty.current && retryable) {
+      retryTimer.current = setTimeout(() => void flush(), RETRY_MS[Math.min(retryAttempt.current++, RETRY_MS.length - 1)]);
     }
   }, []);
 
@@ -148,8 +168,27 @@ export function useCourseProgress(lessonIds: readonly string[], syncRemote = tru
     };
   }, [syncRemote, push]);
 
+  // connectivity back / tab visible again: retry an unsaved change now instead of waiting for the backoff
+  useEffect(() => {
+    const retryNow = () => {
+      if (!dirty.current || !hydrated.current || remoteOff.current || sending.current) return;
+      retryAttempt.current = 0;
+      void flush();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') retryNow();
+    };
+    window.addEventListener('online', retryNow);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', retryNow);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [flush]);
+
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
+    if (retryTimer.current) clearTimeout(retryTimer.current);
   }, []);
 
   const apply = useCallback(

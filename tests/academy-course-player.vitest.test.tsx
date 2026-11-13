@@ -93,6 +93,23 @@ describe('Learning Paths: a self-paced lesson', () => {
     expect(screen.queryByText(/Step 3 of 5/)).toBeNull();
   });
 
+  it('a lesson the learner picks while the account copy is still loading is never replaced by the automatic resume', async () => {
+    let release!: (r: Response) => void;
+    const f = vi.fn((url: string) => (String(url).includes('/api/academy/progress')
+      ? new Promise<Response>((res) => { release = res; })
+      : Promise.resolve(new Response(JSON.stringify({ markdown: LESSON }), { status: 200 }))));
+    vi.stubGlobal('fetch', f);
+    render(<AcademyCourse tracks={tracks} />);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Second lesson/ }))[0]);
+    const saved = { v: 1, updatedAt: 5000, last: { ugc: { lessonId: 'ugc/01-intro', stepId: '2-two', at: 5000 } }, completedLessons: [], stepsDone: {}, checks: {} };
+    release(new Response(JSON.stringify({ progress: saved, owner: 'userA' }), { status: 200 }));
+    await waitFor(() => expect(screen.getByText(/Saved to your account|Progress saved to your account/)).toBeTruthy());
+    expect(screen.getAllByRole('heading', { name: /Second lesson/ }).length).toBeGreaterThan(0);
+    await new Promise((r) => setTimeout(r, 100)); // let any (wrong) automatic resume run
+    expect(window.location.search).toContain('lesson=02-next');
+    expect(window.location.search).toContain('lesson=02-next');
+  });
+
   it('shows where progress is saved', async () => {
     render(<AcademyCourse tracks={tracks} initial={{ track: 'ugc', lesson: '01-intro' }} />);
     expect(await screen.findByText(/Saved in this browser/)).toBeTruthy();
