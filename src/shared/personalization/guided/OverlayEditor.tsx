@@ -10,6 +10,7 @@ import { ImageStyleControls } from './ImageStyleControls'
 import { ColorField } from './editor/ColorField'
 import { SortableRow } from './editor/SortableRow'
 import { Tip } from './editor/Tip'
+import { Timeline } from './editor/Timeline'
 import type { EditorTipId } from './editor/editorTips'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -475,7 +476,26 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
   const imageOptions = (layer: PreviewLayer) => imageAssetOptions(layer, assets)
 
   return (
-    <div style={panelStyle}>
+    <div
+      style={panelStyle}
+      onKeyDown={(event) => {
+        // ⌘Z / Ctrl+Z undo, ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y redo, only while focus is in the editor and not in a field that
+        // has its own undo (text boxes, number inputs, selects).
+        if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+        const t = event.target as HTMLElement | null
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+          if (!(t.tagName === 'INPUT' && ['range', 'checkbox', 'radio', 'color'].includes((t as HTMLInputElement).type))) return
+        }
+        const k = event.key.toLowerCase()
+        if (k === 'z' && !event.shiftKey) {
+          event.preventDefault()
+          if (canUndoPreview) undoPreview?.()
+        } else if ((k === 'z' && event.shiftKey) || k === 'y') {
+          event.preventDefault()
+          if (canRedoPreview) redoPreview?.()
+        }
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
         <Move size={15} color={C.cyan} />
         <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
@@ -778,6 +798,15 @@ export function OverlayEditor({ inputProps, belowStage }: OverlayEditorProps): R
             })}
         </div>
         {belowStage}
+        <Timeline
+          layers={editableLayers}
+          labels={Object.fromEntries(editableLayers.map((l) => [l.id, LAYER_LABELS[l.kind]]))}
+          durationInFrames={settings.durationInFrames}
+          fps={settings.fps}
+          selectedId={selected?.id ?? ''}
+          onSelect={setSelectedId}
+          onChange={(id, patch) => updatePreviewLayer(id, patch)}
+        />
         </div>
 
         {/* ── Layer list + controls ─────────────────────────────────────── */}

@@ -31,6 +31,9 @@ export const EDITOR_TIPS = {
   layerLock: { text: 'Lock the position so dragging, resizing and automatic placement leave it alone.' },
   layerHide: { text: 'Hide this layer from the video. You can show it again from the layers list.', shortcut: 'Delete' },
 
+  // ── timeline ─────────────────────────────────────────────────────────
+  timelineBar: { text: 'Drag the bar to change when this layer is on screen. Drag an edge to trim it.', shortcut: 'Arrow keys: 1 frame · Shift: 10' },
+
   // ── inspector ────────────────────────────────────────────────────────
   textColor: { text: 'Pick the text color. The picker shows how readable it is on your video and can choose white or dark for you.' },
   buttonColor: { text: 'Pick the button color. The label switches between dark and white so it stays readable.' },

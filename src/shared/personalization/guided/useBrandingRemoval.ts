@@ -39,7 +39,9 @@ export function useBrandingRemoval(opts: {
   const onDoneRef = useRef(onDone)
   onDoneRef.current = onDone
   const mounted = useRef(true)
-  useEffect(() => () => { mounted.current = false; token.current++ }, [])
+  // Set true on every mount: React Strict Mode runs mount -> cleanup -> mount in development, and a cleanup that only
+  // cleared the flag left it false for good, so every result was ignored.
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; token.current++ } }, [])
 
   const getDeps = useCallback(async () => deps ?? (await loadDefaultDeps()), [deps])
 

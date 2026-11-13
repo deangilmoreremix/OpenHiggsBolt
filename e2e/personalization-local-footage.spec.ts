@@ -190,10 +190,84 @@ test.describe('Personalization modal on real local footage', () => {
     await page.keyboard.press('Escape');
     await expect(tip).toHaveCount(0);
 
-    // Hover also shows a tip (the Render / Generate buttons are only shown to signed-in users, so their
-    // paid/free badges are covered by the Tip unit tests instead).
+    // Hover also shows a tip.
     const undo = dialog.locator('[data-tip-id="undo"]');
     await undo.hover();
     await expect(dialog.getByTestId('editor-tip')).toContainText('Undo your last change');
+
+    // Paid vs free actions are marked in their tips.
+    const ai = dialog.locator('[data-tip-id="generateAi"]');
+    await ai.scrollIntoViewIfNeeded();
+    await ai.hover();
+    await expect(dialog.getByTestId('tip-paid')).toBeVisible();
+    await dialog.locator('[data-tip-id="renderBranded"]').hover();
+    await expect(dialog.getByTestId('tip-free')).toBeVisible();
+  });
+
+  test('the timeline sits under the quality bar and retiming a layer changes real project state', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    const timeline = dialog.getByTestId('timeline');
+    await timeline.scrollIntoViewIfNeeded();
+    await expect(timeline).toBeVisible();
+    const bar = page.getByTestId('layout-quality-bar');
+    const b = (await bar.boundingBox())!;
+    const t = (await timeline.boundingBox())!;
+    expect(t.y, 'timeline is under the quality bar').toBeGreaterThanOrEqual(b.y + b.height - 1);
+
+    const headlineBar = timeline.locator('[data-testid="timeline-bar"][data-layer-id="headline"]');
+    const before = Number(await headlineBar.getAttribute('data-start'));
+    await headlineBar.getByTestId('timeline-move').focus();
+    for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+    await expect(headlineBar).toHaveAttribute('data-start', String(before + 10));
+    // the same change is what the project holds, so the preview and export use it
+    const held = await page.evaluate(() => (window as unknown as { __personalizationCtx?: { previewSettings?: { layers: { id: string; startFrame: number }[] } } }).__personalizationCtx?.previewSettings?.layers.find((l) => l.id === 'headline')?.startFrame);
+    if (held !== undefined) expect(held).toBe(before + 10);
+    await page.screenshot({ path: path.join(OUT, 'timeline.png') });
+  });
+
+  test('Remove branding (AI) asks for confirmation, shows the cost, and starts no job until confirmed', async ({ page }) => {
+    test.setTimeout(240_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    // No real request may leave: the estimate and balance are faked, and any attempt to submit the paid job is recorded.
+    let jobSubmitted = 0;
+    await page.route('**/api/v1/models/**/estimate-cost', (route) => route.fulfill({ json: { cost: 0.25, currency: 'USD' } }));
+    await page.route('**/api/v1/account/balance', (route) => route.fulfill({ json: { balance: 12 } }));
+    await page.route('**/api/v1/video-watermark-remover', (route) => { jobSubmitted++; return route.abort(); });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await seedBrand(page);
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /Step 3/i }).click();
+    await dialog.getByRole('button', { name: /Step 4/i }).click();
+    await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+
+    const open = dialog.getByTestId('remove-branding-open');
+    await open.scrollIntoViewIfNeeded();
+    await expect(open).toBeVisible();
+    await expect(open).toContainText('Remove branding (AI)');
+    await open.hover();
+    await expect(dialog.getByTestId('tip-paid')).toBeVisible();
+
+    await open.click();
+    const confirm = dialog.getByTestId('remove-branding-confirm');
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toContainText('This is not free');
+    await expect(dialog.getByTestId('remove-branding-cost')).toContainText('0.25 USD');
+    await expect(confirm).toContainText('original video is kept');
+    const go = dialog.getByTestId('remove-branding-confirm-button');
+    await expect(go).toBeDisabled(); // needs the rights tick first
+    await page.screenshot({ path: path.join(OUT, 'remove-branding-confirm.png') });
+
+    // Cancel: nothing was started.
+    await dialog.getByTestId('remove-branding-cancel').click();
+    await expect(confirm).toHaveCount(0);
+    expect(jobSubmitted, 'no paid job may be submitted without an explicit confirm').toBe(0);
   });
 });

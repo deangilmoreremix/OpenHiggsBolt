@@ -387,6 +387,50 @@ function renderEditor(layers: PreviewLayer[]): EditorStub {
   return { updatePreviewLayer }
 }
 
+describe('OverlayEditor undo/redo shortcuts', () => {
+  function renderWithHistory() {
+    const undoPreview = vi.fn()
+    const redoPreview = vi.fn()
+    const layers = [createLayer('logo', { x: 0.2, y: 0.5 })]
+    const settings = { ...createDefaultPreviewSettings(), layers }
+    vi.mocked(useDemoPersonalize).mockReturnValue({
+      previewSettings: settings, updatePreviewLayer: vi.fn(), updatePreviewComposition: vi.fn(), resetPreviewLayout: vi.fn(), assets: ASSETS,
+      undoPreview, redoPreview, canUndoPreview: true, canRedoPreview: true,
+    } as unknown as ReturnType<typeof useDemoPersonalize>)
+    render(createElement(OverlayEditor, { inputProps: { ...INPUT_PROPS, settings } }))
+    return { undoPreview, redoPreview }
+  }
+
+  it('Ctrl/Cmd+Z undoes and Ctrl+Shift+Z / Ctrl+Y redo, when focus is on a layer', () => {
+    const { undoPreview, redoPreview } = renderWithHistory()
+    const box = screen.getByRole('button', { name: 'Move Logo' })
+    act(() => { fireEvent.keyDown(box, { key: 'z', ctrlKey: true }) })
+    expect(undoPreview).toHaveBeenCalledTimes(1)
+    act(() => { fireEvent.keyDown(box, { key: 'z', metaKey: true }) })
+    expect(undoPreview).toHaveBeenCalledTimes(2)
+    act(() => { fireEvent.keyDown(box, { key: 'z', ctrlKey: true, shiftKey: true }) })
+    act(() => { fireEvent.keyDown(box, { key: 'y', ctrlKey: true }) })
+    expect(redoPreview).toHaveBeenCalledTimes(2)
+  })
+
+  it('leaves undo to a text field when typing in one', () => {
+    const { undoPreview } = renderWithHistory()
+    const field = document.createElement('input')
+    field.type = 'text'
+    screen.getByRole('button', { name: 'Move Logo' }).parentElement!.appendChild(field)
+    act(() => { fireEvent.keyDown(field, { key: 'z', ctrlKey: true }) })
+    expect(undoPreview).not.toHaveBeenCalled()
+  })
+
+  it('ignores a plain z and Alt combos', () => {
+    const { undoPreview } = renderWithHistory()
+    const box = screen.getByRole('button', { name: 'Move Logo' })
+    act(() => { fireEvent.keyDown(box, { key: 'z' }) })
+    act(() => { fireEvent.keyDown(box, { key: 'z', ctrlKey: true, altKey: true }) })
+    expect(undoPreview).not.toHaveBeenCalled()
+  })
+})
+
 describe('OverlayEditor floating toolbar', () => {
   it('shows actions for the selected layer and hides it from the toolbar', () => {
     const layers = [createLayer('logo', { x: 0.2, y: 0.5 }), createLayer('headline', { x: 0.6, y: 0.5 })]

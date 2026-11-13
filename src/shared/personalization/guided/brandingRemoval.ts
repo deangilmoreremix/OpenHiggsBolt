@@ -32,11 +32,26 @@ export interface Quote {
 
 const finiteNumber = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
-/** What the confirmation shows. Each part is best effort: a missing estimate or balance never blocks the dialog. */
-export async function loadQuote(deps: RemovalDeps, input: { apiKey: string; videoUrl: string; signal?: AbortSignal }): Promise<Quote> {
+/** How long the cost and balance lookups may take before the dialog is shown without them. */
+export const QUOTE_TIMEOUT_MS = 8000
+
+/** Resolves with `fallback` if `p` has not settled in `ms` (or rejects), so a slow lookup can never trap the dialog. */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms)
+    p.then((v) => { clearTimeout(timer); resolve(v) }, () => { clearTimeout(timer); resolve(fallback) })
+  })
+}
+
+/** What the confirmation shows. Each part is best effort: a missing, failed or slow estimate or balance never blocks the dialog. */
+export async function loadQuote(
+  deps: RemovalDeps,
+  input: { apiKey: string; videoUrl: string; signal?: AbortSignal; timeoutMs?: number },
+): Promise<Quote> {
+  const ms = input.timeoutMs ?? QUOTE_TIMEOUT_MS
   const [estimate, balance] = await Promise.all([
-    deps.estimateV2VCost({ model: REMOVE_BRANDING_MODEL, video_url: input.videoUrl }, input.signal).catch(() => null),
-    deps.getUserBalance(input.apiKey).then((b) => finiteNumber(b?.balance)).catch(() => null),
+    withTimeout(Promise.resolve().then(() => deps.estimateV2VCost({ model: REMOVE_BRANDING_MODEL, video_url: input.videoUrl }, input.signal)), ms, null),
+    withTimeout(Promise.resolve().then(() => deps.getUserBalance(input.apiKey)).then((b) => finiteNumber(b?.balance)), ms, null),
   ])
   return { estimate, balance }
 }

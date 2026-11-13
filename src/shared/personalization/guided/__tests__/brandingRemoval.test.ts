@@ -25,6 +25,22 @@ describe('loadQuote', () => {
     expect(q2).toEqual({ estimate: { cost: 0.12, currency: 'USD' }, balance: null })
   })
 
+  it('does not wait forever: a hung lookup is given up on after the timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      const never = new Promise<never>(() => {})
+      const p = loadQuote(deps({ estimateV2VCost: vi.fn(() => never), getUserBalance: vi.fn(() => never) }), { apiKey: 'k', videoUrl: 'u', timeoutMs: 1000 })
+      await vi.advanceTimersByTimeAsync(1100)
+      expect(await p).toEqual({ estimate: null, balance: null })
+    } finally { vi.useRealTimers() }
+  })
+
+  it('a lookup that throws synchronously is also just unknown', async () => {
+    const q = await loadQuote(deps({ estimateV2VCost: vi.fn(() => { throw new Error('boom') }) }), { apiKey: 'k', videoUrl: 'u' })
+    expect(q.estimate).toBeNull()
+    expect(q.balance).toBe(42)
+  })
+
   it('treats a non-numeric balance as unknown', async () => {
     const q = await loadQuote(deps({ getUserBalance: vi.fn(async () => ({ balance: 'lots' })) }), { apiKey: 'k', videoUrl: 'u' })
     expect(q.balance).toBeNull()

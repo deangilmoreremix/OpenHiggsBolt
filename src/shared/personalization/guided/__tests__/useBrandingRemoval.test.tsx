@@ -30,7 +30,8 @@ function setup(over: Partial<RemovalDeps> = {}, opts: { videoUrl?: string | null
   function Probe() { ref.current = useBrandingRemoval({ apiKey: opts.apiKey ?? 'key', videoUrl: opts.videoUrl === undefined ? 'https://v/a.mp4' : opts.videoUrl, onDone, deps }); return null }
   const el = document.createElement('div'); document.body.appendChild(el)
   const root = createRoot(el); mounted.push({ root, el })
-  act(() => { root.render(<Probe />) })
+  // React.StrictMode like the dev server: effects mount, clean up and mount again.
+  act(() => { root.render(<React.StrictMode><Probe /></React.StrictMode>) })
   return { ref, deps, onDone, job }
 }
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve() })
