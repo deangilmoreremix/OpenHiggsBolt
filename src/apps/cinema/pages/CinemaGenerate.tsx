@@ -74,7 +74,7 @@ export default function CinemaGenerate() {
           <button
             onClick={() => setShowAdvanced((v) => !v)}
             className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
-              showAdvanced ? 'bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20' : 'bg-[var(--bg-card)] hover:bg-[var(--border-color)]'
+              showAdvanced ? 'bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70' : 'bg-[var(--bg-card)] hover:bg-[var(--border-color)]'
             }`}
           >
             <Settings size={16} />
@@ -146,7 +146,7 @@ export default function CinemaGenerate() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="w-full py-3 px-4 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>

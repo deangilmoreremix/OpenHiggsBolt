@@ -66,7 +66,7 @@ export function EditToolCard({ tool, onOpen }) {
           <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/80">
             {tool.media}
           </span>
-          <span className="absolute bottom-3 right-3 translate-y-2 rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-3 py-1 text-[11px] font-bold opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <span className="absolute bottom-3 right-3 translate-y-2 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-3 py-1 text-[11px] font-bold opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
             Open playground →
           </span>
         </div>

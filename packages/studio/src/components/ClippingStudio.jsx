@@ -983,7 +983,7 @@ export default function ClippingStudio({
                                 e.stopPropagation();
                                 copyToClipboard(clipUrl);
                               }}
-                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
+                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10"
                             >
                               <CopyIcon />
                             </button>
@@ -994,20 +994,20 @@ export default function ClippingStudio({
                                 e.stopPropagation();
                                 downloadVideo(clipUrl, `clip-${i + 1}.mp4`);
                               }}
-                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10"
+                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10"
                             >
                               <DownloadIcon />
                             </button>
                             <PublishStep
                               mediaUrl={clipUrl}
                               mediaType="video"
-                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
+                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10 flex items-center justify-center"
                             />
                             <AssistStep
                               assetUrl={clipUrl}
                               assetType="video"
                               onApply={() => {}}
-                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee]/15 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-all border border-white/10 flex items-center justify-center"
+                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-[#d9ff00] hover:border-[#586608] transition-all border border-white/10 flex items-center justify-center"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>

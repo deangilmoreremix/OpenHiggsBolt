@@ -507,7 +507,7 @@ function PremiumAudioPlayer({ url, title, copy = en }) {
           {/* Main Play/Pause Button */}
           <button
             onClick={togglePlay}
-            className="w-12 h-12 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+            className="w-12 h-12 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
             title={isPlaying ? copy.player.pause : copy.player.play}
             type="button"
           >
@@ -1047,7 +1047,7 @@ export default function AudioStudio({
             type="button"
             onClick={handleGenerate}
             disabled={isGenerating || !selectedModel}
-            className="w-full py-4 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-base font-bold rounded transition-all transform hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
+            className="w-full py-4 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-base font-bold rounded transition-all transform hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3"
           >
             {isGenerating ? (
               <>

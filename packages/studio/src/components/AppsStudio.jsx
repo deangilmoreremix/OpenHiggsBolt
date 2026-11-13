@@ -603,7 +603,7 @@ export default function AppsStudio({ locale = "en" }) {
                   }`}
                 >
                   {featured && (
-                    <span className="absolute -top-2.5 left-6 inline-flex items-center rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                    <span className="absolute -top-2.5 left-6 inline-flex items-center rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest">
                       {copy.packages.recommended}
                     </span>
                   )}
@@ -641,7 +641,7 @@ export default function AppsStudio({ locale = "en" }) {
                       data-status="ready"
                       className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         featured
-                          ? 'bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 active:scale-[0.98]'
+                          ? 'bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 active:scale-[0.98]'
                           : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
                       } focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40`}
                     >
@@ -674,7 +674,7 @@ export default function AppsStudio({ locale = "en" }) {
                     aria-disabled={locked ? 'true' : undefined}
                     data-package="upgrade"
                     data-status={state.status}
-                    className={`rounded-full border border-[#22d3ee]/40 bg-[#22d3ee]/10 px-6 py-2.5 text-xs font-bold text-[#22d3ee] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                    className={`rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-6 py-2.5 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       locked ? '' : 'hover:bg-[#22d3ee]/20 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40'
                     }`}
                   >
@@ -738,7 +738,7 @@ export default function AppsStudio({ locale = "en" }) {
         <div className="w-full max-w-5xl mx-auto pt-6 flex justify-center">
           <a
             href="/academy/reseller/launch"
-            className="inline-flex items-center gap-2 rounded-full bg-[#22d3ee]/10 px-5 py-2 text-xs font-bold text-[#22d3ee] border border-[#22d3ee]/30 transition-all hover:bg-[#22d3ee]/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+            className="inline-flex items-center gap-2 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-5 py-2 text-xs font-bold transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
           >
             <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
             {copy.walkthroughLink}
@@ -910,7 +910,7 @@ export default function AppsStudio({ locale = "en" }) {
                         href={app.hosted}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 px-4 py-2 text-xs font-bold transition-all active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-4 py-2 text-xs font-bold transition-all active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
                       >
                         <FaExternalLinkAlt aria-hidden="true" focusable="false" className="text-[9px]" />
                         {copy.card.demo}
@@ -980,7 +980,7 @@ export default function AppsStudio({ locale = "en" }) {
                     <a
                       href={`/academy/reseller/apps/${app.id}`}
                       aria-label={copy.card.learnToLaunchLabel.replace('{app}', app.name)}
-                      className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee]/10 px-4 py-2 text-xs font-bold text-[#22d3ee] border border-[#22d3ee]/30 transition-all hover:bg-[#22d3ee]/20 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                      className="flex items-center justify-center gap-2 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 px-4 py-2 text-xs font-bold transition-all active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
                     >
                       <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
                       {copy.card.learnToLaunch}

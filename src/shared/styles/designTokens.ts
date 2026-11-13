@@ -56,9 +56,9 @@ export const panels = {
 export const buttons = {
   // Primary CTA — tinted fill + accent outline (same look as Generate / Personalize; never a solid fill)
   primary: {
-    background: 'rgba(34,211,238,0.10)',
-    boxShadow: 'inset 0 0 0 1px rgba(34,211,238,0.5)',
-    color: 'var(--color-primary)',
+    background: '#25280e',
+    boxShadow: 'inset 0 0 0 1px #586608',
+    color: 'white',
   },
   // Ghost — for secondary actions
   ghost: {

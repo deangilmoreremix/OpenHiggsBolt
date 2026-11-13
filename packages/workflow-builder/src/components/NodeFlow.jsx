@@ -2133,7 +2133,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   type="button"
                   suppressHydrationWarning={true}
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-sm rounded-full transition-colors"
+                  className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full transition-colors"
                 >
                   <FaToolbox size={14} /> Settings <FaAngleDown size={12} className={`transition-transform duration-300 ${isSettingsOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -2180,7 +2180,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   suppressHydrationWarning={true}
                   disabled={isRunning === 2 || !interactionMode}
                   onClick={handlePublishWorkflow}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isRunning === 2 ? (
                     <>
@@ -2216,7 +2216,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                 suppressHydrationWarning={true}
                 disabled={interactionMode}
                 onClick={handleDuplicateWorkflow}
-                className="flex items-center gap-2 px-4 py-1.5 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-1.5 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isRunning === 3 ? (
                   <>
@@ -2237,7 +2237,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
           type="button"
           suppressHydrationWarning={true}
           onClick={() => toast.error("This workflow can't be edited.")}
-          className={`p-3 rounded-full bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 cursor-pointer outline-none active:bg-[#22d3ee]/30 transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
+          className={`p-3 rounded-full bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 cursor-pointer outline-none active:bg-[#22d3ee]/30 transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
         >
           <MdLockOutline size={18} />
         </button>
@@ -2258,7 +2258,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
             suppressHydrationWarning={true}
             disabled={!interactionMode}
             onClick={() => setDropDown((prev) => prev === 1 ? 0 : 1)}
-            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 1 ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
+            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 1 ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
           >
             <FaPlus size={18} />
           </button>
@@ -2285,7 +2285,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
             suppressHydrationWarning={true}
             disabled={!interactionMode}
             onClick={() => setDropDown((prev) => prev === 4 ? 0 : 4)}
-            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 4 ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
+            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 4 ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
           >
             <FaToolbox size={18} />
           </button>
@@ -2341,7 +2341,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
           type="button"
           suppressHydrationWarning={true}
           onClick={() => setIsDragging(!isDragging)}
-          className={`p-3 rounded-full cursor-pointer outline-none active:bg-gray-600 transition ${!isDragging ? "bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40" : "text-gray-300 hover:bg-[#1b1e23] hover:text-white"}`}
+          className={`p-3 rounded-full cursor-pointer outline-none active:bg-gray-600 transition ${!isDragging ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 hover:bg-[#1b1e23] hover:text-white"}`}
         >
           <LuMousePointer2 size={18} />
         </button>
@@ -2750,7 +2750,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
               type="button"
               suppressHydrationWarning={true}
               onClick={handleSaveWorkFlow}
-              className="px-4 py-2 bg-[#22d3ee]/10 text-[#22d3ee] ring-1 ring-inset ring-[#22d3ee]/40 hover:bg-[#22d3ee]/20 rounded-full transition w-full text-sm cursor-pointer"
+              className="px-4 py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] hover:ring-[#d9ff00]/70 rounded-full transition w-full text-sm cursor-pointer"
             >
               Save
             </button>
