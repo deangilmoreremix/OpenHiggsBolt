@@ -12,12 +12,12 @@ import {
   interpolate,
   Internals,
   Sequence,
-  spring,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
+import { entranceFor, exitFor, usesWordEntrance, wordEntrance } from './motion'
 import { accentRuleStyle, ctaPillStyle, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
@@ -34,7 +34,6 @@ import type {
   RemotionDesignTemplate,
 } from '../templates/types'
 import type {
-  PreviewAnimationId,
   PreviewInputProps,
   PreviewLayer,
   PersonalizationPreviewSettings,
@@ -61,57 +60,6 @@ const NOOP_SEQUENCE_MANAGER = {
   registerSequence: () => {},
   unregisterSequence: () => {},
   sequences: [],
-}
-
-interface EntranceState {
-  opacity: number
-  scale: number
-  translateX: number
-  translateY: number
-}
-
-/**
- * Frame-local entrance progress. Spring-based animations read progress from
- * `startFrame + animationDelay`; fade/slide animations ease across 15 frames.
- */
-function entranceFor(layer: PreviewLayer, frame: number, fps: number): EntranceState {
-  const entryStart = layer.startFrame + layer.animationDelay
-  const eased = interpolate(frame, [entryStart, entryStart + 15], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-    easing: Easing.out(Easing.cubic),
-  })
-  const springProgress = spring({
-    frame: Math.max(0, frame - entryStart),
-    fps: Math.max(1, fps),
-    config: { damping: 200 },
-  })
-
-  const animation: PreviewAnimationId = layer.animation
-  switch (animation) {
-    case 'none':
-      return { opacity: 1, scale: 1, translateX: 0, translateY: 0 }
-    case 'fade':
-      return { opacity: eased, scale: 1, translateX: 0, translateY: 0 }
-    case 'slide-up':
-      return { opacity: eased, scale: 1, translateX: 0, translateY: (1 - eased) * 40 }
-    case 'slide-down':
-      return { opacity: eased, scale: 1, translateX: 0, translateY: -(1 - eased) * 40 }
-    case 'slide-left':
-      return { opacity: eased, scale: 1, translateX: (1 - eased) * 60, translateY: 0 }
-    case 'pop':
-      return { opacity: eased, scale: 0.6 + 0.4 * springProgress, translateX: 0, translateY: 0 }
-    case 'logo-reveal':
-      return { opacity: eased, scale: 0.85 + 0.15 * springProgress, translateX: 0, translateY: 0 }
-    case 'lower-third':
-      return { opacity: eased, scale: 1, translateX: -(1 - eased) * 30, translateY: 0 }
-    case 'cta-pulse': {
-      const pulse = interpolate(Math.sin((frame - entryStart) / 6), [-1, 1], [0.97, 1.03])
-      return { opacity: eased, scale: pulse, translateX: 0, translateY: 0 }
-    }
-    default:
-      return { opacity: eased, scale: 1, translateX: 0, translateY: 0 }
-  }
 }
 
 /** Dark text on light colors, white on dark ones (hex colors; else the default). */
@@ -479,12 +427,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
           const box = toBox(layer, compW, compH, isText ? text : undefined)
           const entrance = entranceFor(layer, frame, settings.fps)
+          // Text and CTA fade-and-lift out before their end frame (images have their own exit).
+          const exit = isText ? exitFor(layer, frame) : { opacity: 1, translateY: 0 }
           const textColor =
             layer.color ??
             (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
           const transformParts: string[] = []
           if (entrance.translateX) transformParts.push(`translateX(${entrance.translateX}px)`)
-          if (entrance.translateY) transformParts.push(`translateY(${entrance.translateY}px)`)
+          if (entrance.translateY + exit.translateY) transformParts.push(`translateY(${entrance.translateY + exit.translateY}px)`)
           if (entrance.scale !== 1) transformParts.push(`scale(${entrance.scale})`)
 
           // The layer's media role decides stacking and image fitting.
@@ -497,7 +447,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             top: box.topPx,
             width: box.widthPx,
             transform: transformParts.length > 0 ? transformParts.join(' ') : undefined,
-            opacity: layer.opacity * entrance.opacity,
+            opacity: layer.opacity * entrance.opacity * exit.opacity,
             pointerEvents: 'none',
           }
 
@@ -664,21 +614,26 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                 compW, compH, settings.brandColors.accent, align,
               )
             : null
+          // Headlines and names enter word by word; the layer-level entrance then only drives
+          // the scrim and rule, so the text is not moved twice.
+          const wordMode = usesWordEntrance(layer)
+          const words = text.trim().split(/\s+/).filter(Boolean)
+          const entryFrame = layer.startFrame + layer.animationDelay
+          const shapeOpacity = layer.opacity * entrance.opacity * exit.opacity
+          const textBoxStyle: React.CSSProperties = wordMode
+            ? { ...layerStyle, opacity: layer.opacity * exit.opacity, transform: exit.translateY ? `translateY(${exit.translateY}px)` : undefined }
+            : layerStyle
           return (
             <React.Fragment key={layer.id}>
               {scrim ? (
                 <AbsoluteFill
                   data-testid="text-scrim"
-                  style={{
-                    zIndex: layerStyle.zIndex,
-                    opacity: layer.opacity * entrance.opacity,
-                    pointerEvents: 'none',
-                  }}
+                  style={{ zIndex: layerStyle.zIndex, opacity: shapeOpacity, pointerEvents: 'none' }}
                 >
                   <div style={scrimStyle(scrim)} />
                 </AbsoluteFill>
               ) : null}
-              <AbsoluteFill style={layerStyle}>
+              <AbsoluteFill style={textBoxStyle}>
                 <div
                   style={layerTextStyle(layer.kind as TextStyleKind, {
                     fontSizePx: box.fontSizePx,
@@ -687,13 +642,28 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     align,
                   })}
                 >
-                  {text}
+                  {wordMode
+                    ? words.map((word, i) => {
+                        const w = wordEntrance(i, words.length, frame, entryFrame, settings.fps, box.fontSizePx)
+                        return (
+                          <React.Fragment key={i}>
+                            {i > 0 ? ' ' : null}
+                            <span
+                              data-testid="entrance-word"
+                              style={{ display: 'inline-block', opacity: w.opacity, transform: w.translateY ? `translateY(${w.translateY}px)` : undefined }}
+                            >
+                              {word}
+                            </span>
+                          </React.Fragment>
+                        )
+                      })
+                    : text}
                 </div>
               </AbsoluteFill>
               {ruleStyle ? (
                 <AbsoluteFill
                   data-testid="headline-rule"
-                  style={{ zIndex: layerStyle.zIndex, opacity: layer.opacity * entrance.opacity, pointerEvents: 'none' }}
+                  style={{ zIndex: layerStyle.zIndex, opacity: shapeOpacity, pointerEvents: 'none' }}
                 >
                   <div style={ruleStyle} />
                 </AbsoluteFill>
