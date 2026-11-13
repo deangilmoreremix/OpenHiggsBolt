@@ -79,7 +79,7 @@ export default function VideoGenerate() {
             <button
               onClick={() => setShowAdvanced((v) => !v)}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-                showAdvanced ? 'bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white' : 'bg-bg-card hover:bg-border-color'
+                showAdvanced ? 'bg-primary text-black' : 'bg-bg-card hover:bg-border-color'
               }`}
             >
               <SlidersHorizontal size={16} />
@@ -161,7 +161,7 @@ export default function VideoGenerate() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="w-full py-3 px-4 bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white font-semibold rounded-xl hover:bg-[#2f3410] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>

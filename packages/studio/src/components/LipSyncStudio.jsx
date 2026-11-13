@@ -424,7 +424,7 @@ function HistoryThumb({ entry, isActive, onSelect, onDownload }) {
             e.stopPropagation();
             onDownload(entry);
           }}
-          className="p-1.5 bg-[#25280e] ring-1 ring-inset ring-[#586608] rounded-lg text-white hover:scale-110 transition-transform"
+          className="p-1.5 bg-primary rounded-lg text-black hover:scale-110 transition-transform"
           title="Download"
         >
           <svg
@@ -1018,7 +1018,7 @@ export default function LipSyncStudio({
                       e.stopPropagation();
                       downloadFile(entry.url, `lipsync-${entry.id || idx}.mp4`);
                     }}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
@@ -1028,13 +1028,13 @@ export default function LipSyncStudio({
                     mediaUrl={entry.url}
                     mediaType="video"
                     title={entry.model?.name || 'Lip sync video'}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
                   />
                   <AssistStep
                     assetUrl={entry.url}
                     assetType="video"
                     onApply={() => {}}
-                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10 flex items-center justify-center"
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>

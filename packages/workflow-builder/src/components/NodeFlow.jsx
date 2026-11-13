@@ -2133,7 +2133,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   type="button"
                   suppressHydrationWarning={true}
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full hover:bg-[#2f3410] transition-colors"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-white text-black text-sm rounded-full hover:bg-black hover:text-white transition-colors"
                 >
                   <FaToolbox size={14} /> Settings <FaAngleDown size={12} className={`transition-transform duration-300 ${isSettingsOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -2180,7 +2180,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   suppressHydrationWarning={true}
                   disabled={isRunning === 2 || !interactionMode}
                   onClick={handlePublishWorkflow}
-                  className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410]"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-white text-black text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black hover:text-white"
                 >
                   {isRunning === 2 ? (
                     <>
@@ -2197,7 +2197,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                   suppressHydrationWarning={true}
                   disabled={isRunning === 1 || !interactionMode}
                   onClick={handleRunWorkflow}
-                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-blue-500 text-white text-sm rounded-full font-semibold group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410] whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-blue-500 text-white text-sm rounded-full font-semibold group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black hover:text-white whitespace-nowrap"
                 >
                   {isRunning === 1 ? (
                     <>
@@ -2216,7 +2216,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
                 suppressHydrationWarning={true}
                 disabled={interactionMode}
                 onClick={handleDuplicateWorkflow}
-                className="flex items-center gap-2 px-4 py-1.5 border border-[#586608] bg-[#25280e] text-white text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#2f3410]"
+                className="flex items-center gap-2 px-4 py-1.5 border border-gray-600/70 bg-white text-black text-sm rounded-full group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black hover:text-white"
               >
                 {isRunning === 3 ? (
                   <>
@@ -2237,7 +2237,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
           type="button"
           suppressHydrationWarning={true}
           onClick={() => toast.error("This workflow can't be edited.")}
-          className={`p-3 rounded-full bg-[#25280e] ring-1 ring-inset ring-[#586608] hover:bg-[#2f3410] cursor-pointer outline-none text-white active:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
+          className={`p-3 rounded-full bg-white hover:bg-[#1b1e23] cursor-pointer outline-none text-black active:bg-gray-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${interactionMode && "hidden"}`}
         >
           <MdLockOutline size={18} />
         </button>
@@ -2258,7 +2258,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
             suppressHydrationWarning={true}
             disabled={!interactionMode}
             onClick={() => setDropDown((prev) => prev === 1 ? 0 : 1)}
-            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 1 ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
+            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 1 ? "bg-white text-black" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
           >
             <FaPlus size={18} />
           </button>
@@ -2285,7 +2285,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
             suppressHydrationWarning={true}
             disabled={!interactionMode}
             onClick={() => setDropDown((prev) => prev === 4 ? 0 : 4)}
-            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 4 ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
+            className={`p-3 rounded-full cursor-pointer outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${dropDown === 4 ? "bg-white text-black" : "text-gray-300 active:bg-gray-600 hover:text-white hover:bg-[#1b1e23]"}`}
           >
             <FaToolbox size={18} />
           </button>
@@ -2341,7 +2341,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
           type="button"
           suppressHydrationWarning={true}
           onClick={() => setIsDragging(!isDragging)}
-          className={`p-3 rounded-full cursor-pointer outline-none active:bg-gray-600 transition ${!isDragging ? "bg-[#25280e] text-white ring-1 ring-inset ring-[#586608]" : "text-gray-300 hover:bg-[#1b1e23] hover:text-white"}`}
+          className={`p-3 rounded-full cursor-pointer outline-none active:bg-gray-600 transition ${!isDragging ? "bg-white text-black" : "text-gray-300 hover:bg-[#1b1e23] hover:text-white"}`}
         >
           <LuMousePointer2 size={18} />
         </button>
@@ -2750,7 +2750,7 @@ const NodeFlow = ({ initialNodeSchemas, initialWorkflowData }) => {
               type="button"
               suppressHydrationWarning={true}
               onClick={handleSaveWorkFlow}
-              className="px-4 py-2 bg-[#25280e] text-white ring-1 ring-inset ring-[#586608] rounded-full hover:bg-[#2f3410] transition w-full text-sm cursor-pointer"
+              className="px-4 py-2 bg-white text-black rounded-full hover:bg-blue-500 hover:text-white transition w-full text-sm cursor-pointer"
             >
               Save
             </button>

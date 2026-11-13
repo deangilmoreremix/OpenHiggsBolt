@@ -41,7 +41,7 @@ export default function SocialPublishStepper({ currentStep, onStepClick }: Socia
               className={`
                 flex items-center justify-center w-4 h-4 rounded-full text-[10px]
                 ${isCompleted
-                  ? 'bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white'
+                  ? 'bg-[#22d3ee] text-black'
                   : isCurrent
                     ? 'border border-[#22d3ee]/50 text-[#22d3ee]'
                     : 'border border-white/20 text-white/30'

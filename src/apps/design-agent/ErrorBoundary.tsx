@@ -53,7 +53,7 @@ export default class DesignAgentErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={this.handleReset}
-              className="px-4 py-2 rounded-lg bg-[#25280e] ring-1 ring-inset ring-[#586608] text-white text-sm font-medium hover:brightness-110 transition-all"
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:brightness-110 transition-all"
             >
               Try Again
             </button>

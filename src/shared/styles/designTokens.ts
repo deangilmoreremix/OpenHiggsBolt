@@ -54,11 +54,10 @@ export const panels = {
 
 // ── Button styles ─────────────────────────────────────────────────────────────
 export const buttons = {
-  // Primary CTA — olive tint + lime-edge border (Personalize colours)
+  // Primary CTA — cyan background
   primary: {
-    background: '#25280e',
-    boxShadow: 'inset 0 0 0 1px #586608',
-    color: 'white',
+    background: 'var(--color-primary)',
+    color: 'black',
   },
   // Ghost — for secondary actions
   ghost: {

@@ -446,7 +446,7 @@ export default function EditToolPlayground({
             type="button"
             onClick={handleGenerate}
             disabled={Object.keys(uploading).length > 0}
-            className="rounded-xl bg-[#25280e] ring-1 ring-inset ring-[#586608] px-4 py-3 text-sm font-black text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl bg-[#22d3ee] px-4 py-3 text-sm font-black text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {running ? "Run again" : "Generate"}
           </button>

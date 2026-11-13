@@ -270,7 +270,7 @@ function SortableShot({
                 mediaUrl={shot.frameUrl}
                 mediaType="image"
                 title={"Shot " + (index + 1)}
-                className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-[#25280e] hover:text-white transition-all border border-white/10"
+                className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
               />
             </div>
           </div>

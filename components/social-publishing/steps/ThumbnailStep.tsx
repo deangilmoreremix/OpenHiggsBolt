@@ -626,7 +626,7 @@ export default function ThumbnailStep({
       {error && /openai api key/i.test(error) && onRequestApiKey && (
         <div data-testid="thumbnail-needs-openai-key" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200" role="alert">
           Add your OpenAI key to create thumbnails with AI.
-          <button type="button" onClick={onRequestApiKey} className="ml-2 rounded-lg bg-[#25280e] ring-1 ring-inset ring-[#586608] px-3 py-1 font-bold text-white">Add OpenAI key</button>
+          <button type="button" onClick={onRequestApiKey} className="ml-2 rounded-lg bg-[#22d3ee] px-3 py-1 font-bold text-black">Add OpenAI key</button>
         </div>
       )}
       {results[0]?.fallbackFrom && (

@@ -69,16 +69,16 @@ const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/Thumb
 // Video Studio's trigger keeps the exact class and label it had when the
 // studio rendered the shared module itself.
 const PERSONALIZE_TRIGGER_CLASS_VIDEO =
-  'h-12 px-3 rounded-xl border border-[#586608] bg-[#25280e] hover:bg-[#2f3410] text-[10px] font-bold text-white hover:border-[#d9ff00]/70 transition-colors';
+  'h-12 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors';
 
 // The trigger of the studios whose trigger sits in a normal flex row.
 const PERSONALIZE_TRIGGER_CLASS =
-  'px-2.5 py-1 rounded-lg border border-[#586608] bg-[#25280e] hover:bg-[#2f3410] text-[10px] font-bold text-white hover:border-[#d9ff00]/70 transition-colors';
+  'px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors';
 
 // The AI Influencer preview is a `relative` box whose Publish/Assist buttons
 // are absolutely positioned, so its trigger needs an absolute class too.
 const PERSONALIZE_TRIGGER_CLASS_OVERLAY =
-  'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25280e] backdrop-blur-sm border border-[#586608] text-white text-[11px] font-semibold hover:bg-[#2f3410] transition-all';
+  'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all';
 
 const renderPersonalizeAction = (options) => (
   <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>

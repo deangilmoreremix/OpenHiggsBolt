@@ -23,7 +23,7 @@ export const FIELD_CLASS =
 
 /** The studios' main action button (same classes as PromptAction), for buttons that are not Generate. */
 export const PRIMARY_BUTTON_CLASS =
-  'flex items-center justify-center gap-2 rounded-full border border-[#586608] bg-[#25280e] ring-1 ring-inset ring-[#586608] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#d9ff00]/20 transition-all hover:scale-[1.02] hover:opacity-95 hover:shadow-[#d9ff00]/35 active:scale-[0.98]';
+  'flex items-center justify-center gap-2 rounded-full border border-[#22d3ee]/10 bg-[#22d3ee] px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-[#22d3ee]/20 transition-all hover:scale-[1.02] hover:opacity-95 hover:shadow-[#22d3ee]/35 active:scale-[0.98]';
 
 /** A quiet secondary button on the dark panels. */
 export const SECONDARY_BUTTON_CLASS =
