@@ -19,7 +19,14 @@ export function useBusinessEnrichment(visible: BusinessDiscoveryRecord[]): Recor
   const stopped = useRef(false)
   const alive = useRef(true)
   const unmountCtl = useRef(new AbortController())
-  useEffect(() => { alive.current = true; const c = unmountCtl.current; return () => { alive.current = false; c.abort() } }, [])
+  useEffect(() => {
+    // A fresh controller per mount: React StrictMode mounts, unmounts and re-mounts every effect in development,
+    // and a controller aborted by that first cleanup would otherwise cancel every request made afterwards.
+    alive.current = true
+    const c = new AbortController()
+    unmountCtl.current = c
+    return () => { alive.current = false; c.abort() }
+  }, [])
 
   useEffect(() => {
     const todo = visible.filter((b) => b.website && isOwnedWebsite(b.website) && !requested.current.has(b.id))

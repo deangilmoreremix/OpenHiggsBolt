@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pLimit from 'p-limit'
+import { clientIpFromHeaders } from '@/server/clientIp'
 import { createCorrelationId, logPersonalization } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 import { createStageDeadline, withDeadline, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
 import { enrichBusinessWebsite } from '@/server/businessEnrichment/enrich'
+import { enrichmentCache } from '@/server/businessEnrichment/cache'
 import { DomainThrottle } from '@/server/businessEnrichment/throttle'
 import { CircuitBreaker } from '@/server/businessEnrichment/retry'
 
@@ -26,17 +28,10 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 10
 const ANON_RATE_LIMIT_MAX = 100
 
-function clientIpOf(req: NextRequest): string | undefined {
-  const realIp = req.headers.get('x-real-ip')?.trim()
-  if (realIp) return realIp
-  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',').map((h) => h.trim()).filter(Boolean)
-  return hops.length ? hops[hops.length - 1] : undefined
-}
-
 export async function POST(req: NextRequest) {
   const correlationId = createCorrelationId(req)
   const startedAt = Date.now()
-  const key = resolveRateLimitKey(undefined, clientIpOf(req))
+  const key = resolveRateLimitKey(undefined, clientIpFromHeaders(req.headers))
   const limited = rateLimit(`enrich-business:${key}`, { windowMs: RATE_LIMIT_WINDOW_MS, max: key === 'anon' ? ANON_RATE_LIMIT_MAX : RATE_LIMIT_MAX })
   if (!limited.allowed) return rateLimit429(limited.retryAfterMs)
 
@@ -65,7 +60,12 @@ export async function POST(req: NextRequest) {
   const slots: Array<Row | undefined> = new Array(batch.length).fill(undefined)
   const work = Promise.all(batch.map((b, i) => gate(async () => {
     try {
+      const cached = enrichmentCache.get(b.website)
+      if (cached) { slots[i] = { id: b.id, website: b.website, ok: true, enrichment: cached }; return }
       const enrichment = await enrichBusinessWebsite(b.website, { throttle, breaker, signal: deadline.signal, maxPages: 4 })
+      // Only a crawl that actually completed is worth keeping: a deadline abort or an unreachable site would
+      // otherwise pin an empty result for a day.
+      if (!deadline.signal.aborted && (enrichment.pagesVisited.length > 0 || enrichment.robots.status === 'disallow-all')) enrichmentCache.set(b.website, enrichment)
       slots[i] = { id: b.id, website: b.website, ok: true, enrichment }
     } catch (err) {
       // SSRF rejections and other failures are reported per business, without internals.

@@ -19,6 +19,18 @@ import type { BusinessDiscoveryRecord, OwnershipType } from './types'
  * once at module load before matching.
  */
 export const NATIONAL_CHAIN_NAMES: readonly string[] = [
+  // Added after a live run returned Checkers as an "independent": regional and national chains missing from the
+  // original list (fast food, grocery, discount, auto, fitness, convenience/fuel, wireless, rental). Appended
+  // only; existing entries are untouched. Matching stays exact-name or chain + number/location/format word, so
+  // independents that merely share a first word (e.g. "Marathon Pet Grooming") are not caught.
+  'Checkers', "Rally's", 'Krystal', "Zaxby's", 'Cook Out', "Raising Cane's", 'Bojangles', "Church's Chicken",
+  "Church's Texas Chicken", 'Del Taco', 'Waffle House', "Moe's Southwest Grill", 'Qdoba', 'El Pollo Loco',
+  'In-N-Out Burger', 'Steak n Shake', 'Buffalo Wild Wings', 'Firehouse Subs', 'Tim Hortons', 'Panera Bread',
+  "Papa Murphy's", 'Chipotle Mexican Grill', 'Aldi', 'Lidl', 'Food Lion', 'Piggly Wiggly', 'Harris Teeter', 'Meijer',
+  'H-E-B', 'HEB', 'Wegmans', 'Family Dollar', 'Big Lots', "Ollie's Bargain Outlet", 'Tractor Supply', 'Harbor Freight',
+  'Ace Hardware', "O'Reilly Auto Parts", 'Pep Boys', 'Firestone', 'Goodyear', 'Discount Tire', 'Take 5 Oil Change',
+  'Orangetheory Fitness', 'Snap Fitness', 'The UPS Store', "Aaron's", 'Rent-A-Center', 'Boost Mobile',
+  'Metro by T-Mobile', 'Cricket Wireless', 'QuikTrip', 'Speedway', 'Cumberland Farms', 'Marathon', 'Citgo',
   "McDonald's", 'Starbucks', 'Subway', "Dunkin'", 'Chick-fil-A', 'Taco Bell',
   'Burger King', "Wendy's", 'KFC', 'Pizza Hut', "Domino's", 'Popeyes',
   "Jimmy John's", 'Five Guys', 'Chipotle', 'Panera', 'Walmart', 'Target',

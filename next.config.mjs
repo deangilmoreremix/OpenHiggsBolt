@@ -26,6 +26,8 @@ const nextConfig = {
   turbopack: {
     root: rootDir,
     resolveAlias: {
+      // Same reason as the webpack alias below: never resolve onnxruntime-node's native binaries.
+      'onnxruntime-node': { browser: './scripts/empty-module.js', default: './scripts/empty-module.js' },
       '@': ['./src', './'],
       '@/components': ['./components', './src/shared/components'],
       '@/components/*': ['./components/*', './src/shared/components/*'],
@@ -121,6 +123,16 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // On-device background removal (@bg0/browser → @huggingface/transformers) imports `onnxruntime-node` for Node
+  // use. The app only runs it in the browser (a Web Worker uses onnxruntime-web), but webpack still resolves the
+  // import and then fails trying to parse onnxruntime-node's native `.node` binaries ("Module parse failed:
+  // Unexpected character" on bin/napi-v3/*/onnxruntime_binding.node) — which broke every Netlify build after the
+  // BG0 merge. Aliasing it to nothing is the documented Transformers.js + Next.js setup; nothing server-side
+  // uses onnxruntime-node.
+  webpack: (config) => {
+    config.resolve.alias = { ...config.resolve.alias, 'onnxruntime-node$': false };
+    return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
   async redirects() {
