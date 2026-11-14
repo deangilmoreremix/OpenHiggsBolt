@@ -74,7 +74,7 @@ export default function SeedancePromptsHero() {
             </Magnetic>
             <Magnetic className="w-full sm:w-auto">
               <Link
-                href="#smartvideo-gallery-prompts"
+                href="#smartvideo-gallery-all"
                 className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto"
               >
                 Watch More

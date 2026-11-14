@@ -71,7 +71,7 @@ body {
   html { scroll-behavior: smooth; }
 }
 /* Native anchor jumps land below the sticky header (height set by LandingNav). */
-main section[id] { scroll-margin-top: calc(var(--landing-header-h, 72px) + 16px); }
+main section[id], main [data-anchor][id] { scroll-margin-top: calc(var(--landing-header-h, 72px) + 16px); }
 
 /* Lenis (from lenis/dist/lenis.css) */
 html.lenis, html.lenis body { height: auto; }
@@ -160,7 +160,12 @@ html.lenis, html.lenis body { height: auto; }
 }
 
 /* Swiper coverflow reel: keep slides at the existing card widths. */
-.fx-reel .swiper-slide { height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
+/* The coverflow pushes slides back in 3D, behind the wrapper's own plane, so
+   the wrapper won every hit test and no card button could be clicked. Let
+   pointers fall through the wrapper to the slides (drags still bubble up to
+   Swiper's container). */
+.fx-reel .swiper-wrapper { pointer-events: none; }
+.fx-reel .swiper-slide { pointer-events: auto; height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
 .fx-reel .swiper-slide:not(.swiper-slide-active) { opacity: 0.55; filter: saturate(0.7); }
 
 .landing-noise {
@@ -243,6 +248,13 @@ html.lenis, html.lenis body { height: auto; }
 
 .animated-word--initialized {
   position: relative;
+}
+
+/* Phones: the longer phrases don't fit one line, so let them wrap to two and
+   reserve both lines so the hero doesn't jump as phrases change. */
+@media (max-width: 639px) {
+  .animated-headline { display: block; min-height: 2em; }
+  .animated-word { white-space: normal; }
 }
 
 .animated-word--default {

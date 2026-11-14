@@ -1,64 +1,40 @@
 'use client';
-import { useState } from 'react';
-import { motion } from 'motion/react';
-import DemoMediaCard from './DemoMediaCard';
+import DemoCarousel from './DemoCarousel';
 import { getDemosForNiche } from '@/data/nicheDemos';
 import { type NicheConfig } from '@/data/nicheContent';
-
-const INITIAL_COUNT = 10;
-const STEP = 10;
 
 type NicheSectionProps = {
   niche: NicheConfig;
   /** Override: pass demos directly instead of looking them up. */
   demos?: import('@/data/types').VideoDemo[];
+  /** False when a wrapper (NearViewport) carries the `niche-…` anchor id. */
+  withAnchor?: boolean;
 };
 
-export default function NicheSection({ niche, demos }: NicheSectionProps) {
+/**
+ * One industry: heading and copy, then every demo for that industry on a
+ * swipeable carousel row ("View all" opens the grid). Personalization is
+ * attached to each demo card.
+ */
+export default function NicheSection({ niche, demos, withAnchor = true }: NicheSectionProps) {
   const activeDemos = demos ?? getDemosForNiche(niche.id);
-  const [visible, setVisible] = useState(INITIAL_COUNT);
-  const shown = activeDemos.slice(0, visible);
-  const hasMore = visible < activeDemos.length;
 
   return (
-    <section className="border-y border-white/10 bg-[#030303] py-24" id={`niche-${niche.id}`}>
+    <section className="border-y border-white/10 bg-[#030303] py-24" id={withAnchor ? `niche-${niche.id}` : undefined}>
       <div className="mx-auto max-w-7xl px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
-              {niche.label}
-            </p>
-            <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
-              {niche.heading}
-            </h2>
-            <p className="mt-5 text-lg leading-8 text-white/60">{niche.subtext}</p>
-          </div>
+        <div className="max-w-2xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
+            {niche.label}
+          </p>
+          <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
+            {niche.heading}
+          </h2>
+          <p className="mt-5 text-lg leading-8 text-white/60">{niche.subtext}</p>
         </div>
 
-        {/* Demo grid — personalization is attached to each demo card */}
-        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((demo, i) => (
-            <DemoMediaCard key={demo.slug} demo={demo} index={i} />
-          ))}
+        <div className="mt-10">
+          <DemoCarousel demos={activeDemos} label={`${niche.label} demos`} />
         </div>
-
-        {/* Show more */}
-        {hasMore && (
-          <div className="mt-10 flex justify-center">
-            <motion.button
-              type="button"
-              onClick={() => setVisible((v) => Math.min(v + STEP, activeDemos.length))}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-bold text-white transition-colors hover:border-cyan-400/40 hover:bg-white/[0.08]"
-            >
-              Show More
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white/70">
-                {activeDemos.length - visible} more
-              </span>
-            </motion.button>
-          </div>
-        )}
       </div>
     </section>
   );

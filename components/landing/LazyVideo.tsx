@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useReducedMotion } from './useReducedMotion';
 
 /* ── Global playback limiter ────────────────────────────────────────────────
@@ -8,10 +8,18 @@ import { useReducedMotion } from './useReducedMotion';
  * video is paused. Keeps the page light and the network calm on mobile.
  */
 const MAX_ACTIVE = 6;
+/** Phones and tablets decode fewer videos at once. */
+const MAX_ACTIVE_TOUCH = 3;
 const registry = new Set<() => void>();
 
+function maxActive() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+    ? MAX_ACTIVE_TOUCH
+    : MAX_ACTIVE;
+}
+
 function requestPlay(stop: () => void) {
-  if (registry.size >= MAX_ACTIVE) {
+  if (registry.size >= maxActive()) {
     const oldest = registry.values().next().value as (() => void) | undefined;
     if (oldest) {
       oldest();
@@ -126,8 +134,10 @@ export default function LazyVideo({
     }
   }, [shouldPlay, src]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     if (!toggleOnClick) return;
+    // The tap is for playback; keep it from reaching a clickable parent card.
+    event.stopPropagation();
     const el = ref.current;
     const willPin = !pinned;
     setPinned(willPin);
