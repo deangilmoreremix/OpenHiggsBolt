@@ -51,21 +51,14 @@ export default function SmartVideoShowcase() {
           heading="Every SmartVideo GO AI Demo, On Demand"
           subtext="Browse the full library. Open any prompt or jump straight into the matching studio."
           sectionId="smartvideo-gallery-25"
-          initialCount={1000}
         />
 
         {/* Seedance 1 — ZeroLu community prompts with proof clips */}
         <Seedance1Reel />
 
-        {/* Seedance 2.0 — HuyLe82US community-curated prompts */}
+        {/* Seedance 2.0 — HuyLe82US community-curated prompts. Its gallery had no
+            demos to show, so only the hero is rendered for now. */}
         <SeedancePromptsHero />
-        <AIVideoGallery
-          demos={[]}
-          label="Community prompts"
-          heading="Community-Curated Seedance Prompts"
-          subtext="Hand-picked prompts from the AI video generation community."
-          sectionId="smartvideo-gallery-prompts"
-        />
 
         {/* Visual Prompt Feed — curated AI video demos from x.com */}
         <PromptFeedHero />
@@ -75,7 +68,6 @@ export default function SmartVideoShowcase() {
           heading="AI Video Demos from the Community"
           subtext="Real prompts, real results. Open any to see the full prompt or create your own."
           sectionId="smartvideo-gallery-pf"
-          initialCount={1000}
         />
 
         {/* Combined gallery — all demos */}
@@ -85,7 +77,6 @@ export default function SmartVideoShowcase() {
           heading="Full Video Demo Library"
           subtext="Browse every AI video demo across all sources. Open any prompt or jump straight into the matching studio."
           sectionId="smartvideo-gallery-all"
-          initialCount={1000}
         />
       </div>
     </DemoPromptProvider>

@@ -1,12 +1,9 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import DemoMediaCard from './DemoMediaCard';
+import { motion } from 'motion/react';
+import DemoCarousel from './DemoCarousel';
 import { MINIMAX_H3_DEMOS, DEMO_CATEGORIES } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
-
-const INITIAL_COUNT = 12;
-const STEP = 12;
 
 type AIVideoGalleryProps = {
   /** Demos to display. Defaults to MINIMAX_H3_DEMOS. */
@@ -19,32 +16,38 @@ type AIVideoGalleryProps = {
   subtext?: string;
   /** Section id for anchor linking. */
   sectionId?: string;
-  /** Number of cards to render initially. Defaults to 12. Set to a large number to render all cards immediately. */
-  initialCount?: number;
 };
 
+/**
+ * A demo library: category filters, then the filtered demos on a carousel
+ * row ("View all" opens the grid, where filtering glides cards with Flip).
+ * Only categories this library actually has are offered, with counts.
+ * Renders nothing for an empty library.
+ */
 export default function AIVideoGallery({
   demos,
   label,
   heading,
   subtext,
   sectionId = 'smartvideo-gallery',
-  initialCount = INITIAL_COUNT,
 }: AIVideoGalleryProps) {
-  const reduced = useReducedMotion();
   const allDemos = demos ?? MINIMAX_H3_DEMOS;
   const [category, setCategory] = useState<string>('All');
-  const [visible, setVisible] = useState(initialCount);
 
-  const categories = useMemo(() => ['All', ...DEMO_CATEGORIES], []);
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    allDemos.forEach((d) => counts.set(d.category, (counts.get(d.category) ?? 0) + 1));
+    return [
+      { name: 'All', count: allDemos.length },
+      ...DEMO_CATEGORIES.filter((c) => counts.has(c)).map((c) => ({ name: c, count: counts.get(c)! })),
+    ];
+  }, [allDemos]);
   const filtered = useMemo(
-    () =>
-      category === 'All'
-        ? allDemos
-        : allDemos.filter((d) => d.category === category),
+    () => (category === 'All' ? allDemos : allDemos.filter((d) => d.category === category)),
     [category, allDemos],
   );
-  const shown = filtered.slice(0, visible);
+
+  if (!allDemos.length) return null;
 
   return (
     <section id={sectionId} className="border-y border-white/10 bg-[#030303] py-24">
@@ -62,63 +65,46 @@ export default function AIVideoGallery({
         </div>
 
         {/* Category filter */}
-        <div className="mt-10 flex flex-wrap justify-center gap-2">
-          {categories.map((cat) => {
-            const active = cat === category;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  setCategory(cat);
-                  setVisible(initialCount);
-                }}
-                aria-pressed={active}
-                className={`relative rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                  active
-                    ? 'border-transparent text-black'
-                    : 'border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]'
-                }`}
-              >
-                {/* Motion: the active highlight slides between filters */}
-                {active && (
-                  <motion.span
-                    layoutId={`${sectionId}-filter`}
-                    className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"
-                    transition={{ type: 'spring', stiffness: 400, damping: 34 }}
-                  />
-                )}
-                <span className="relative">{cat}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Grid — Motion fades/lifts the new set in whenever the filter changes */}
-        <motion.div
-          key={category}
-          initial={reduced ? false : { opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4"
-        >
-          {shown.map((demo, i) => (
-            <DemoMediaCard key={demo.slug} demo={demo} index={i} />
-          ))}
-        </motion.div>
-
-        {/* Show more */}
-        {visible < filtered.length && (
-          <div className="mt-10 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setVisible((v) => v + STEP)}
-              className="rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]"
-            >
-              Show More ({filtered.length - visible} more)
-            </button>
+        {categories.length > 2 && (
+          <div className="mt-10 flex flex-wrap justify-center gap-2">
+            {categories.map(({ name, count }) => {
+              const active = name === category;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setCategory(name)}
+                  aria-pressed={active}
+                  className={`relative rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? 'border-transparent text-black'
+                      : 'border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {/* Motion: the active highlight slides between filters */}
+                  {active && (
+                    <motion.span
+                      layoutId={`${sectionId}-filter`}
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"
+                      transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+                    />
+                  )}
+                  <span className="relative">
+                    {name} <span className={active ? 'text-black/60' : 'text-white/40'}>{count}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
+
+        <div className="mt-10">
+          <DemoCarousel
+            demos={filtered}
+            label={`${label ?? 'Showcase'} demos`}
+            gridClassName="grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          />
+        </div>
       </div>
     </section>
   );
