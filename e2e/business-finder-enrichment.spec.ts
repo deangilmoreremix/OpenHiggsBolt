@@ -114,3 +114,42 @@ test('a rate-limited enrichment (429) stops quietly: results stay, no error bann
   await expect(dialog.getByText('Biz 0', { exact: true })).toBeVisible();
   expect(calls).toBe(1); // stopped after the first 429; the second batch was not attempted
 });
+
+test('choosing a business shows the contacts found on its website, with source, and they can be removed', async ({ page }) => {
+  await page.route('**/api/personalization/find-businesses', (r) =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, businesses: businesses.slice(0, 3), query: { niche: 'Restaurants / Food', location: 'Tampa, FL', radiusMiles: 15 } }) }));
+  const picked: string[] = [];
+  await page.route('**/api/personalization/enrich-business', async (r) => {
+    const body = JSON.parse(r.request().postData() || '{}');
+    const b = body.businesses[0];
+    picked.push(b.id);
+    await r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, results: body.businesses.map((x: { id: string; website: string }) => ({
+        id: x.id, website: x.website, ok: true,
+        enrichment: {
+          website: x.website, emails: [{ value: `owner@${x.id}.example.com`, sourceUrl: `${x.website}/contact`, confidence: 0.95, method: 'mailto' }],
+          phones: [], addresses: [], contactNames: [], pagesVisited: [x.website], pagesSkipped: [], robots: { checked: true, status: 'allow-all' }, jsRendered: false, notes: [],
+          socials: { instagram: { value: `https://instagram.com/${x.id}`, sourceUrl: x.website, confidence: 0.85, method: 'footer-link' } },
+        },
+      })) }),
+    });
+  });
+
+  const dialog = await openFinder(page);
+  await dialog.locator('#business-niche').selectOption('restaurants-food');
+  await dialog.locator('#business-location').fill('Tampa, FL');
+  await dialog.getByRole('button', { name: /15/ }).first().click();
+  await expect(dialog.getByText(/businesses found for/i).first()).toBeVisible({ timeout: 30_000 });
+
+  await dialog.getByText('Biz 1', { exact: true }).locator('xpath=ancestor::div[.//button[normalize-space()="Use This Business"]][1]').getByRole('button', { name: 'Use This Business' }).click();
+  const found = dialog.getByTestId('pz-found-contacts');
+  await expect(found).toBeVisible({ timeout: 20_000 });
+  await expect(found.getByText('Email: owner@b1.example.com')).toBeVisible();
+  await expect(found.getByText('Instagram: https://instagram.com/b1')).toBeVisible();
+  await expect(found.getByText('Email: owner@b1.example.com').locator('xpath=..')).toHaveAttribute('title', /Found on https:\/\/site1\.example\.com\/contact \(mailto, confidence 95%\)/);
+
+  await found.getByRole('button', { name: 'Remove Email' }).click();
+  await expect(found.getByText('Email: owner@b1.example.com')).toHaveCount(0);
+  await expect(found.getByText('Instagram: https://instagram.com/b1')).toBeVisible(); // only the removed one went
+});

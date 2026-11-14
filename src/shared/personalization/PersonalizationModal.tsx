@@ -2072,6 +2072,8 @@ function ConfigurationView(props: any) {
   const {
     autoFilledKeys,
     businessLoadSummary,
+    contactSources,
+    clearContactValue,
     advancedTab: ctxAdvancedTab,
     setAdvancedTab: ctxSetAdvancedTab,
     advancedSections: ctxAdvancedSections,
@@ -2409,6 +2411,15 @@ function ConfigurationView(props: any) {
   const [shownResultCount, setShownResultCount] = useState(RESULTS_PAGE)
   useEffect(() => { setShownResultCount(RESULTS_PAGE) }, [businessSearchResults])
   const enrichStates = useBusinessEnrichment(businessSearchResults.slice(0, shownResultCount))
+  // Contact values found on the business's own website that are STILL what the profile holds (a value the user
+  // typed over, or an OpenStreetMap one, is never labelled as "found on the website").
+  const foundContacts = (['email', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok'] as const).flatMap((key) => {
+    const source = contactSources[key]
+    const value = clientForm[key]
+    return source && value && value === source.value
+      ? [{ key, label: key === 'email' ? 'Email' : key[0].toUpperCase() + key.slice(1), value, source }]
+      : []
+  })
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -3348,6 +3359,17 @@ function ConfigurationView(props: any) {
               <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5 }}>
                 {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
                 {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
+                {foundContacts.length > 0 && (
+                  <div data-testid="pz-found-contacts" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Found on the business's website</div>
+                    {foundContacts.map((c) => (
+                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`Found on ${c.source.sourceUrl} (${c.source.method}, confidence ${Math.round(c.source.confidence * 100)}%)`}>
+                        <span style={{ color: C.text }}>{c.label}: {c.value}</span>
+                        <button type="button" aria-label={`Remove ${c.label}`} onClick={() => clearContactValue(c.key)} style={{ background: 'transparent', border: 0, color: C.muted2, cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div>
                   <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Website</label>
                   <input
