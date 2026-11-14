@@ -130,8 +130,15 @@ const nextConfig = {
   // Unexpected character" on bin/napi-v3/*/onnxruntime_binding.node) — which broke every Netlify build after the
   // BG0 merge. Aliasing it to nothing is the documented Transformers.js + Next.js setup; nothing server-side
   // uses onnxruntime-node.
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = { ...config.resolve.alias, 'onnxruntime-node$': false };
+    if (isServer) {
+      // Background removal only ever runs in the browser. The server (SSR) pass still walks the dynamic import,
+      // which pulled @huggingface/transformers' whole Node build (and sharp) into the server compile: extra
+      // memory, "Module not found" noise from sharp's optional native packages, and a bigger function bundle.
+      // Nothing on the server executes it, so resolve it to nothing there.
+      config.resolve.alias['@bg0/browser$'] = false;
+    }
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.

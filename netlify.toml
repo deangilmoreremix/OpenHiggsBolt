@@ -17,6 +17,10 @@
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
   [build.environment]
+    # `next build` of this app peaks at ~4.7 GB RSS (measured locally, 3 min). Node's default heap limit (~2 GB)
+    # makes webpack die with "JavaScript heap out of memory" (exit 134) once the dependency graph is this large,
+    # which Netlify reports only as "Build script returned non-zero exit code". Give it headroom.
+    NODE_OPTIONS = "--max-old-space-size=6144"
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
     # are installed even if the build image sets NODE_ENV=production.
     NPM_CONFIG_PRODUCTION = "false"
