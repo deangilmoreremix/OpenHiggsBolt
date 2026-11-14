@@ -160,7 +160,12 @@ html.lenis, html.lenis body { height: auto; }
 }
 
 /* Swiper coverflow reel: keep slides at the existing card widths. */
-.fx-reel .swiper-slide { height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
+/* The coverflow pushes slides back in 3D, behind the wrapper's own plane, so
+   the wrapper won every hit test and no card button could be clicked. Let
+   pointers fall through the wrapper to the slides (drags still bubble up to
+   Swiper's container). */
+.fx-reel .swiper-wrapper { pointer-events: none; }
+.fx-reel .swiper-slide { pointer-events: auto; height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
 .fx-reel .swiper-slide:not(.swiper-slide-active) { opacity: 0.55; filter: saturate(0.7); }
 
 .landing-noise {
