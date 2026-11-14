@@ -125,6 +125,27 @@ describe('loadImageBlob', () => {
     }
   })
 
+  it('only an auth refusal reaches the public route: a signed-in 429, 5xx, network error or failed image does not', async () => {
+    for (const failure of ['429', '500', 'throw', 'image-failed'] as const) {
+      resetProxyChoiceForTests()
+      const calls: string[] = []
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        calls.push(url)
+        if (url === '/api/personalization/download-image') {
+          if (failure === '429') return new Response('{}', { status: 429 })
+          if (failure === '500') return new Response('{}', { status: 500 })
+          if (failure === 'image-failed') return new Response(JSON.stringify({ ok: true, results: [{ ok: false, error: 'x' }] }), { status: 200 })
+          throw new TypeError('network')
+        }
+        if (url === '/api/demo/download-image') return new Response(JSON.stringify({ ok: true, results: [{ ok: true, dataUrl: 'data:image/png;base64,AA==' }] }), { status: 200 })
+        throw new TypeError('blocked by CSP')
+      }))
+      await expect(loadImageBlob('https://shop.example/a.jpg')).rejects.toThrow('could not be loaded')
+      expect(calls.filter((u) => u.includes('/download-image'))).toEqual(['/api/personalization/download-image'])
+    }
+  })
+
   it('a signed-in user never touches the public route', async () => {
     const okBody = { ok: true, results: [{ ok: true, dataUrl: `data:image/jpeg;base64,${btoa('SIGNED')}` }] }
     const calls: string[] = []

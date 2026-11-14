@@ -109,8 +109,11 @@ export async function loadImageBlob(
       const data = await res.json().catch(() => ({}))
       const dataUrl = data?.results?.[0]?.ok ? data.results[0].dataUrl : null
       if (res.ok && typeof dataUrl === 'string') return dataUrlToBlob(dataUrl)
+      // Only an auth refusal (handled above) may reach the public route: a 429, a 5xx or a failed
+      // image from the signed-in route must not be routed around its own limits.
+      if (endpoint === SIGNED_IN_PROXY) break
     } catch {
-      // try the next route, else reported below
+      if (endpoint === SIGNED_IN_PROXY) break
     } finally {
       proxy.release()
     }
