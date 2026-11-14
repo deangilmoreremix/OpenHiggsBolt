@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-13T15:29:22.206Z",
-  "skillCount": 65,
+  "skillCount": 57,
   "skills": [
     {
       "slug": "muapi-3d-logo-animation",
@@ -40,7 +40,8 @@
         "animated logo",
         "cinematic logo"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "3D Logo Animation"
     },
     {
       "slug": "muapi-action-figure-generator",
@@ -80,7 +81,8 @@
         "character toy",
         "collectible figure"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Action Figure Generator"
     },
     {
       "slug": "muapi-ad-creative",
@@ -142,28 +144,29 @@
         "ad banner",
         "display ad"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Ad Creative"
     },
     {
       "slug": "muapi-ai-clipping",
       "name": "muapi-ai-clipping",
-      "description": "Turn a long video into N viral-ready short clips with a single managed API call. Wraps muapi.ai's `/ai-clipping` endpoint, which handles transcription, highlight ranking through a virality framework (hook / emotional peak / opinion bomb / revelation / conflict / quotable / story peak / practical value), overlap dedupe, and vertical face-tracking auto-crop server-side. No local Whisper, no local LLM, no GPU.",
+      "description": "Turn a long video into N viral-ready short clips with a single managed API call. Wraps SmartVideo Go's `/ai-clipping` endpoint, which handles transcription, highlight ranking through a virality framework (hook / emotional peak / opinion bomb / revelation / conflict / quotable / story peak / practical value), overlap dedupe, and vertical face-tracking auto-crop server-side. No local Whisper, no local LLM, no GPU.",
       "category": "edit",
-      "studio": "image",
+      "studio": "clipping",
       "kind": "recipe",
       "inputs": [],
       "steps": [
         {
-          "type": "image",
-          "model": "muapi-cli",
-          "endpoint": "muapi-cli",
+          "type": "clipping",
+          "model": "ai-clipping",
+          "endpoint": "ai-clipping",
           "aspectRatio": "9:16",
-          "prompt": "--coords-only",
           "references": []
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "AI Clipping"
     },
     {
       "slug": "muapi-ai-fight-scene",
@@ -229,7 +232,8 @@
         "combat choreography",
         "seedance 2 storyboard"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "AI Fight Scene"
     },
     {
       "slug": "muapi-amazon-product-listing",
@@ -289,7 +293,8 @@
         "product photography amazon",
         "listing images"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Amazon Product Listing"
     },
     {
       "slug": "muapi-animal-video-generator",
@@ -341,7 +346,8 @@
         "vlog video",
         "monkey in noida"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Animal Video Generator"
     },
     {
       "slug": "muapi-award-ceremony-video",
@@ -389,7 +395,8 @@
         "winner announcement video",
         "red carpet award"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Award Ceremony Video"
     },
     {
       "slug": "muapi-blog-header",
@@ -437,7 +444,8 @@
         "open graph image",
         "hero image"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Blog Header"
     },
     {
       "slug": "muapi-brand-kit",
@@ -490,7 +498,8 @@
         "brand design",
         "visual identity"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Brand Kit"
     },
     {
       "slug": "muapi-brochures",
@@ -558,7 +567,8 @@
         "marketing brochure",
         "product brochure"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Brochures"
     },
     {
       "slug": "muapi-cartoon-dance-animation",
@@ -600,7 +610,8 @@
         "dance video",
         "cartoonify and animate"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Cartoon Dance Animation"
     },
     {
       "slug": "muapi-character-story-video",
@@ -647,7 +658,8 @@
         "multi part video",
         "sequential story"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Character Story Video"
     },
     {
       "slug": "muapi-chibi-collage-effect",
@@ -682,12 +694,13 @@
         "sticker diary photo",
         "scrapbook chibi"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Chibi Collage Effect"
     },
     {
       "slug": "muapi-cinema-director",
       "name": "muapi-cinema-director",
-      "description": "Direct high-fidelity cinematic video with AI — translates creative intent into technical cinematographic directives for Veo3, Kling, and Luma video models via muapi.ai",
+      "description": "Direct high-fidelity cinematic video with AI — translates creative intent into technical cinematographic directives for Veo3, Kling, and Luma video models via SmartVideo Go",
       "category": "motion",
       "studio": "video",
       "kind": "recipe",
@@ -703,7 +716,10 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Cinema Director",
+      "hidden": true,
+      "hiddenReason": "steps are a CLI script name, no model"
     },
     {
       "slug": "muapi-color-analysis-board",
@@ -740,7 +756,8 @@
         "fashion color board",
         "capsule wardrobe board"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Color Analysis Board"
     },
     {
       "slug": "muapi-couple-grid-creator",
@@ -774,7 +791,8 @@
         "couple photo box",
         "stylized couple portrait"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Couple Grid Creator"
     },
     {
       "slug": "muapi-design-guide",
@@ -835,7 +853,8 @@
         "brand colors",
         "typography"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Design Guide"
     },
     {
       "slug": "muapi-drone-style-video",
@@ -896,7 +915,8 @@
         "top down",
         "overhead video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Drone Style Video"
     },
     {
       "slug": "muapi-fashion-try-on",
@@ -936,7 +956,8 @@
         "model fashion",
         "clothing preview"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Fashion Try On"
     },
     {
       "slug": "muapi-floor-plan-rendering",
@@ -976,7 +997,8 @@
         "house design",
         "interior plan"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Floor Plan Rendering"
     },
     {
       "slug": "muapi-freeze-effect-video",
@@ -1043,7 +1065,8 @@
         "time stand still",
         "pause time effect"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Freeze Effect Video"
     },
     {
       "slug": "muapi-giant-product-showcase",
@@ -1083,7 +1106,8 @@
         "scale comparison",
         "product animation"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Giant Product Showcase"
     },
     {
       "slug": "muapi-instagram-post",
@@ -1129,7 +1153,8 @@
         "feed post",
         "instagram creative"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Instagram Post"
     },
     {
       "slug": "muapi-interior-design",
@@ -1190,7 +1215,8 @@
         "house design",
         "interior visualization"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Interior Design"
     },
     {
       "slug": "muapi-interior-design-visualizer",
@@ -1236,7 +1262,8 @@
         "home decor",
         "redesign room"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Interior Design Visualizer"
     },
     {
       "slug": "muapi-jewelry-product-video",
@@ -1276,7 +1303,8 @@
         "ring commercial",
         "high-end jewelry showcase"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Jewelry Product Video"
     },
     {
       "slug": "muapi-keyboard-art-maker",
@@ -1310,7 +1338,8 @@
         "keyboard message",
         "custom keycap image"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Keyboard Art Maker"
     },
     {
       "slug": "muapi-logo-branding",
@@ -1372,12 +1401,13 @@
         "logo generator",
         "brand identity logo"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Logo Branding"
     },
     {
       "slug": "muapi-logo-creator",
       "name": "muapi-logo-creator",
-      "description": "Engineer professional-grade brand logos using geometric primitives and negative space — generates minimalist, scalable vector-style marks via muapi.ai",
+      "description": "Engineer professional-grade brand logos using geometric primitives and negative space — generates minimalist, scalable vector-style marks via SmartVideo Go",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
@@ -1393,7 +1423,10 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Logo Creator",
+      "hidden": true,
+      "hiddenReason": "steps are a CLI script name, no model"
     },
     {
       "slug": "muapi-logo-generator",
@@ -1453,7 +1486,8 @@
         "generate logo",
         "logo for my brand"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Logo Generator"
     },
     {
       "slug": "muapi-multi-angle-reshoot",
@@ -1496,7 +1530,8 @@
         "macro photography",
         "camera perspective"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Multi Angle Reshoot"
     },
     {
       "slug": "muapi-multi-angle-shots",
@@ -1558,7 +1593,8 @@
         "angle shots",
         "product photography set"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Multi Angle Shots"
     },
     {
       "slug": "muapi-music-video",
@@ -1609,12 +1645,13 @@
         "video story",
         "song visualization"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Music Video"
     },
     {
       "slug": "muapi-nano-banana",
       "name": "muapi-nano-banana",
-      "description": "Reasoning-driven image generation using structured creative briefs (Gemini 3 style) — generates high-fidelity images via muapi.ai with logic-based prompting",
+      "description": "Reasoning-driven image generation using structured creative briefs (Gemini 3 style) — generates high-fidelity images via SmartVideo Go with logic-based prompting",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
@@ -1630,7 +1667,10 @@
         }
       ],
       "triggers": [],
-      "promptFormula": "Subject + Action + Context + Composition + Lighting"
+      "promptFormula": "Subject + Action + Context + Composition + Lighting",
+      "title": "Nano Banana",
+      "hidden": true,
+      "hiddenReason": "steps are a CLI script name, no model"
     },
     {
       "slug": "muapi-one-shot-video",
@@ -1689,7 +1729,8 @@
         "cinematic shot",
         "seamless video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "One Shot Video"
     },
     {
       "slug": "muapi-photo-pack-generator",
@@ -1702,15 +1743,16 @@
       "steps": [
         {
           "type": "image",
-          "model": "",
-          "endpoint": "",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
           "aspectRatio": "",
           "prompt": "Generate a pack of professional or aesthetic photos from a single reference image while preserving the exact identity of the person.",
           "references": []
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Photo Pack Generator"
     },
     {
       "slug": "muapi-product-ad-cinematic",
@@ -1755,7 +1797,8 @@
         "cinematic ad",
         "product video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Product Ad Cinematic"
     },
     {
       "slug": "muapi-product-campaign",
@@ -1783,8 +1826,8 @@
         },
         {
           "type": "i2v",
-          "model": "sd-2-omni-reference",
-          "endpoint": "sd-2-omni-reference",
+          "model": "seedance-2-omni-reference",
+          "endpoint": "seedance-2-omni-reference",
           "aspectRatio": "9:16",
           "prompt": "Slow cinematic push-in on {{product_name}}, elegant motion, premium feel.",
           "references": [
@@ -1802,7 +1845,8 @@
         "full campaign",
         "campaign assets"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Product Campaign"
     },
     {
       "slug": "muapi-product-showcase-video",
@@ -1848,7 +1892,8 @@
         "fresh product animation",
         "commercial video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Product Showcase Video"
     },
     {
       "slug": "muapi-product-video-ad-maker",
@@ -1888,7 +1933,8 @@
         "commercial video maker",
         "professional product ad"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Product Video Ad Maker"
     },
     {
       "slug": "muapi-rednote-cover",
@@ -1949,7 +1995,8 @@
         "chinese social",
         "lifestyle cover"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Rednote Cover"
     },
     {
       "slug": "muapi-seedance-2",
@@ -1970,7 +2017,8 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Seedance 2"
     },
     {
       "slug": "muapi-selfie-with-celebrities",
@@ -2010,7 +2058,8 @@
         "take a picture with actor",
         "behind the scenes selfie"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Selfie With Celebrities"
     },
     {
       "slug": "muapi-social-media-video",
@@ -2031,7 +2080,10 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Social Media Video",
+      "hidden": true,
+      "hiddenReason": "step is a brand-identity.md file, no model"
     },
     {
       "slug": "muapi-social-pack",
@@ -2072,7 +2124,8 @@
         "cross-post",
         "multi-platform"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Social Pack"
     },
     {
       "slug": "muapi-storyboard",
@@ -2117,7 +2170,8 @@
         "scene sequence",
         "story panels"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Storyboard"
     },
     {
       "slug": "muapi-storyboard-to-cooking-video",
@@ -2141,8 +2195,8 @@
         },
         {
           "type": "i2v",
-          "model": "sd-2-omni-reference",
-          "endpoint": "sd-2-omni-reference",
+          "model": "seedance-2-omni-reference",
+          "endpoint": "seedance-2-omni-reference",
           "aspectRatio": "16:9",
           "prompt": "Cinematic cooking sequence: {{topic}}. Smooth camera moves, appetizing lighting.",
           "references": []
@@ -2161,7 +2215,8 @@
         "tutorial video from photo",
         "storyboard to video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Storyboard To Cooking Video"
     },
     {
       "slug": "muapi-talking-baby-video",
@@ -2207,7 +2262,8 @@
         "baby doctor",
         "funny baby animation"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Talking Baby Video"
     },
     {
       "slug": "muapi-ugc-ads-workflow",
@@ -2254,8 +2310,8 @@
         },
         {
           "type": "i2v",
-          "model": "sd-2-omni-reference",
-          "endpoint": "sd-2-omni-reference",
+          "model": "seedance-2-omni-reference",
+          "endpoint": "seedance-2-omni-reference",
           "aspectRatio": "9:16",
           "prompt": "A UGC-style video. The influencer holds the {{product_name}}, smiling genuinely. Brings it closer to the camera, then applies it smoothly. Nods in approval and smiles. Natural movements, talking to the camera, lifestyle vlog style.",
           "references": [
@@ -2270,7 +2326,8 @@
         "product ad video",
         "combine product and human"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "UGC Ads Workflow"
     },
     {
       "slug": "muapi-ugc-lifestyle-try-on",
@@ -2332,7 +2389,8 @@
         "ugc content",
         "lifestyle try on"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "UGC Lifestyle Try On"
     },
     {
       "slug": "muapi-ugc-video-factory",
@@ -2386,12 +2444,15 @@
         "lifestyle product video",
         "vertical ugc video"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "UGC Video Factory",
+      "hidden": true,
+      "hiddenReason": "step endpoint is the input name \"person\", prompt is a placeholder"
     },
     {
       "slug": "muapi-ui-design",
       "name": "muapi-ui-design",
-      "description": "Generate high-fidelity UI/UX mockups for mobile and web apps using Atomic Design principles — creates wireframes and design systems via muapi.ai",
+      "description": "Generate high-fidelity UI/UX mockups for mobile and web apps using Atomic Design principles — creates wireframes and design systems via SmartVideo Go",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
@@ -2407,7 +2468,10 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "UI Design",
+      "hidden": true,
+      "hiddenReason": "steps are a CLI script name, no model"
     },
     {
       "slug": "muapi-url-to-design",
@@ -2468,7 +2532,8 @@
         "website to design",
         "convert url to design"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Url To Design"
     },
     {
       "slug": "muapi-workflow",
@@ -2489,12 +2554,15 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Workflow",
+      "hidden": true,
+      "hiddenReason": "step is a CLI path, no model"
     },
     {
       "slug": "muapi-youtube-shorts",
       "name": "muapi-youtube-shorts",
-      "description": "Auto-generate viral 9:16 YouTube Shorts (or TikTok / Reels clips) from a long-form video. Thin platform-aware wrapper around the AI Clipping skill — picks sensible defaults for short-form social platforms (9:16, 30–60s sweet spot) and delegates the actual highlight extraction + crop to muapi.ai's `/ai-clipping` endpoint.",
+      "description": "Auto-generate viral 9:16 YouTube Shorts (or TikTok / Reels clips) from a long-form video. Thin platform-aware wrapper around the AI Clipping skill — picks sensible defaults for short-form social platforms (9:16, 30–60s sweet spot) and delegates the actual highlight extraction + crop to SmartVideo Go's `/ai-clipping` endpoint.",
       "category": "social",
       "studio": "marketing",
       "kind": "workflow",
@@ -2525,7 +2593,8 @@
         }
       ],
       "triggers": [],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Youtube Shorts"
     },
     {
       "slug": "muapi-youtube-thumbnail",
@@ -2571,7 +2640,8 @@
         "video thumbnail",
         "youtube cover"
       ],
-      "promptFormula": ""
+      "promptFormula": "",
+      "title": "Youtube Thumbnail"
     },
     {
       "slug": "flux-3-dev-flagship",
@@ -2618,7 +2688,10 @@
         "flagship image",
         "4k image"
       ],
-      "promptFormula": "subject + style + lighting + detail"
+      "promptFormula": "subject + style + lighting + detail",
+      "title": "Flux 3 Dev Flagship",
+      "hidden": true,
+      "hiddenReason": "flux-3-dev is not a model in this app (only FLUX 3 video models exist)"
     },
     {
       "slug": "grok-imagine-2",
@@ -2657,7 +2730,8 @@
         "grok image",
         "grok imagine 2"
       ],
-      "promptFormula": "subject + style"
+      "promptFormula": "subject + style",
+      "title": "Grok Imagine 2"
     },
     {
       "slug": "minimax-h3-i2v",
@@ -2699,7 +2773,8 @@
         "minimax image to video",
         "h3 i2v"
       ],
-      "promptFormula": "image + motion"
+      "promptFormula": "image + motion",
+      "title": "Minimax H3 I2V"
     },
     {
       "slug": "wan-3-t2v",
@@ -2725,8 +2800,8 @@
       "steps": [
         {
           "type": "t2v",
-          "model": "wan-3.0-t2v",
-          "endpoint": "wan-3.0-t2v",
+          "model": "wan3.0-text-to-video",
+          "endpoint": "wan3.0-text-to-video",
           "aspectRatio": "16:9",
           "resolution": "1080p",
           "duration": 10,
@@ -2740,7 +2815,8 @@
         "wan t2v",
         "wan text to video"
       ],
-      "promptFormula": "scene + audio"
+      "promptFormula": "scene + audio",
+      "title": "Wan 3 T2V"
     },
     {
       "slug": "flux-3-t2v",
@@ -2781,7 +2857,8 @@
         "flux t2v",
         "flux text to video"
       ],
-      "promptFormula": "scene + audio"
+      "promptFormula": "scene + audio",
+      "title": "Flux 3 T2V"
     },
     {
       "slug": "seedance-omni-reference",
@@ -2807,8 +2884,8 @@
       "steps": [
         {
           "type": "i2v",
-          "model": "seedance-2.5-pro-omni-reference",
-          "endpoint": "seedance-2.5-pro-omni-reference",
+          "model": "seedance-2.5-omni-reference",
+          "endpoint": "seedance-2.5-omni-reference",
           "aspectRatio": "16:9",
           "resolution": "1080p",
           "duration": 10,
@@ -2827,7 +2904,8 @@
         "seedance reference",
         "character consistent video"
       ],
-      "promptFormula": "character sheet + action"
+      "promptFormula": "character sheet + action",
+      "title": "Seedance Omni Reference"
     },
     {
       "slug": "seedance-first-last-frame-cinematic",
@@ -2859,8 +2937,8 @@
       "steps": [
         {
           "type": "i2v",
-          "model": "seedance-2.5-pro-first-last-frame",
-          "endpoint": "seedance-2.5-pro-first-last-frame",
+          "model": "seedance-2.5-first-last-frame",
+          "endpoint": "seedance-2.5-first-last-frame",
           "aspectRatio": "16:9",
           "resolution": "1080p",
           "duration": 10,
@@ -2883,7 +2961,8 @@
         "keyframe video",
         "seedance first last"
       ],
-      "promptFormula": "first frame + last frame + motion"
+      "promptFormula": "first frame + last frame + motion",
+      "title": "Seedance First Last Frame Cinematic"
     },
     {
       "slug": "ai-influencer-character-consistency",
@@ -2909,8 +2988,8 @@
       "steps": [
         {
           "type": "character",
-          "model": "seedance-2.5-pro-create_character",
-          "endpoint": "seedance-2.5-pro-create_character",
+          "model": "seedance-2-character",
+          "endpoint": "seedance-2-character",
           "aspectRatio": "16:9",
           "prompt": "Create a consistent character from the reference sheet, preserving face, hair, outfit, and style.",
           "references": [
@@ -2922,8 +3001,8 @@
         },
         {
           "type": "i2v",
-          "model": "seedance-2.5-pro-omni-reference",
-          "endpoint": "seedance-2.5-pro-omni-reference",
+          "model": "seedance-2.5-omni-reference",
+          "endpoint": "seedance-2.5-omni-reference",
           "aspectRatio": "16:9",
           "resolution": "1080p",
           "duration": 10,
@@ -2943,7 +3022,8 @@
         "consistent influencer",
         "virtual influencer"
       ],
-      "promptFormula": "character sheet + scene"
+      "promptFormula": "character sheet + scene",
+      "title": "AI Influencer Character Consistency"
     }
   ],
   "prompts": {
@@ -2952,25 +3032,37 @@
         "title": "FLUX 3 Product Hero",
         "prompt": "A floating {{product}} on a reflective obsidian pedestal, rim-lit with cool studio light, shallow depth of field, ultra-detailed, 8k product photography.",
         "model": "flux-3-dev",
-        "params": { "resolution": "4k", "aspect_ratio": "1:1" }
+        "params": {
+          "resolution": "4k",
+          "aspect_ratio": "1:1"
+        }
       },
       {
         "title": "FLUX 3 Cinematic Portrait",
         "prompt": "Close-up portrait of {{subject}}, dramatic side lighting, film grain, anamorphic bokeh, moody color grade, photorealistic skin.",
         "model": "flux-3-dev",
-        "params": { "resolution": "4k", "aspect_ratio": "9:16" }
+        "params": {
+          "resolution": "4k",
+          "aspect_ratio": "9:16"
+        }
       },
       {
         "title": "Grok Imagine Concept Art",
         "prompt": "Epic concept art of {{subject}}, sweeping environment, intricate detail, volumetric light, painterly fantasy style.",
         "model": "grok-imagine-image-2",
-        "params": { "resolution": "2k", "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "2k",
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "FLUX 3 Image Edit",
         "prompt": "Restyle the input image into {{style}}, keep the subject and composition, upgrade lighting and detail.",
         "model": "flux-3-image-to-image",
-        "params": { "resolution": "4k", "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "4k",
+          "aspect_ratio": "16:9"
+        }
       }
     ],
     "motion": [
@@ -2978,25 +3070,44 @@
         "title": "MiniMax H3 6-Part Formula",
         "prompt": "Subject: {{subject}}. Action: {{action}}. Camera: {{camera}}. Light: {{light}}. Sound: {{sound}}. Atmosphere: {{atmosphere}}.",
         "model": "minimax-h3-image-to-video",
-        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "Seedance 6-Step Formula",
         "prompt": "Shot: {{shot}}. Subject: {{subject}}. Motion: {{motion}}. Camera: {{camera}}. Style: {{style}}. Audio: {{audio}}.",
         "model": "seedance-2.5-pro-omni-reference",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "FLUX 3 Native-Audio T2V",
         "prompt": "{{scene}}. Native synchronized ambient audio, cinematic, coherent, ultra-detailed.",
         "model": "flux-3-text-to-video",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "Wan 3.0 Native-Audio T2V",
         "prompt": "{{scene}}. Native synchronized audio, smooth motion, high fidelity.",
         "model": "wan-3.0-t2v",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "16:9"
+        }
       }
     ],
     "social": [
@@ -3004,19 +3115,34 @@
         "title": "Influencer Intro Reel",
         "prompt": "A virtual influencer waves to the camera and delivers a cheerful channel intro, bright studio background, energetic.",
         "model": "seedance-2.5-pro-omni-reference",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "9:16"
+        }
       },
       {
         "title": "Product Ad Short",
         "prompt": "A sleek product reveal with spinning hero shot and pulsing neon accents, upbeat music.",
         "model": "flux-3-text-to-video",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "9:16"
+        }
       },
       {
         "title": "Keyframe Story Reel",
         "prompt": "A cinematic transition that opens on a first frame and resolves on a last frame, smooth and emotional.",
         "model": "seedance-2.5-pro-first-last-frame",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "9:16"
+        }
       }
     ],
     "edit": [
@@ -3024,19 +3150,30 @@
         "title": "Seedance Video Edit",
         "prompt": "Restyle the input video into {{style}}, preserve motion and subjects, upgrade detail and color.",
         "model": "seedance-2.5-pro-video-edit",
-        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "Seedance Video Extend",
         "prompt": "Continue the input video naturally, matching style and motion, adding {{extra_scene}}.",
         "model": "seedance-2.5-pro-video-extend",
-        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "FLUX 3 Image Restyle",
         "prompt": "Edit the input image to {{style}}, maintain subject and composition.",
         "model": "flux-3-image-to-image",
-        "params": { "resolution": "1080p", "aspect_ratio": "1:1" }
+        "params": {
+          "resolution": "1080p",
+          "aspect_ratio": "1:1"
+        }
       }
     ],
     "workflow": [
@@ -3044,19 +3181,31 @@
         "title": "AI Influencer Pipeline",
         "prompt": "Create a consistent character from the reference sheet, then animate the character while preserving identity.",
         "model": "seedance-2.5-pro-create_character",
-        "params": { "aspect_ratio": "16:9" }
+        "params": {
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "First-Last Keyframe Pipeline",
         "prompt": "Generate a native-audio clip constrained to a first and last keyframe for precise shot control.",
         "model": "seedance-2.5-pro-first-last-frame",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "16:9"
+        }
       },
       {
         "title": "Omni-Reference Consistency Pipeline",
         "prompt": "Drive a video while referencing up to 20 images to lock character and style consistency.",
         "model": "seedance-2.5-pro-omni-reference",
-        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+        "params": {
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "aspect_ratio": "16:9"
+        }
       }
     ]
   }

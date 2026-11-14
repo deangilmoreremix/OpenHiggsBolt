@@ -20,7 +20,7 @@ export default function SkillsBrowser({ apiKey }) {
   const [activeCat, setActiveCat] = useState('all');
   const [view, setView] = useState('skills');
 
-  const skills = registry.skills || [];
+  const skills = (registry.skills || []).filter((s) => !s.hidden);
   const filtered =
     activeCat === 'all'
       ? skills
@@ -80,7 +80,7 @@ export default function SkillsBrowser({ apiKey }) {
             className="flex flex-col rounded-lg border border-white/10 bg-black/60 p-4 backdrop-blur transition hover:border-[#22d3ee]/40"
           >
             <div className="flex items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold text-white">{skill.name}</h3>
+              <h3 className="text-sm font-semibold text-white">{skill.title || skill.name}</h3>
               <span
                 className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
                   (skill.kind || 'recipe') === 'workflow'
