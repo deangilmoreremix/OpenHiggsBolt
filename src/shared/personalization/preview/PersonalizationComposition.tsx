@@ -1,4 +1,5 @@
 import { contractFor, layerZIndex, roleForLayer } from './mediaRoles'
+import { CutoutBackdrop } from './cutout/CutoutBackdrop'
 import { ownText, resolveLayerImageUrl, resolveLayerText } from './layerContent'
 import { endCardFrames } from './endCard'
 import { exitFactors, revealFactors } from './imageStyle'
@@ -290,7 +291,19 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     clearPreviewMediaFailure()
   }, [videoUrl])
 
+  const cutoutActive = Boolean(settings.cutout?.enabled && videoUrl && !isImageSource && !mediaFailed)
+
   const renderBackground = () => {
+    if (cutoutActive && videoUrl && settings.cutout) {
+      // The presenter is cut out of every frame and drawn over the chosen background by CutoutBackdrop.
+      // It draws pixels only, so the source's own sound is kept with an audio-only element.
+      return (
+        <>
+          <CutoutBackdrop videoUrl={videoUrl} cutout={settings.cutout} width={compW} height={compH} />
+          <Audio src={toPlayablePreviewMediaUrl(videoUrl)} />
+        </>
+      )
+    }
     if (isImageSource && !videoUrl) {
       if (!posterUrl) return null
       return (
