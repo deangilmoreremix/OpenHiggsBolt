@@ -21,6 +21,14 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type })
 }
 
+const SIGNED_IN_PROXY = '/api/personalization/download-image'
+const PUBLIC_PROXY = '/api/demo/download-image'
+let signedInProxyRefused = false
+/** Test hook: forget that the signed-in route refused this page load. */
+export function resetProxyChoiceForTests(): void {
+  signedInProxyRefused = false
+}
+
 /** Longest a direct (cross-origin) download may take, headers and body included. */
 export const DIRECT_DOWNLOAD_TIMEOUT_MS = 15_000
 /** Longest the same-origin proxy download may take. */
@@ -72,23 +80,36 @@ export async function loadImageBlob(
   }
   if (signal?.aborted) throw abortError()
 
-  const proxy = boundedSignal(signal, options.proxyTimeoutMs ?? PROXY_DOWNLOAD_TIMEOUT_MS)
-  try {
-    // Signed-out visitors cannot use the signed-in proxy (401): they get the public, rate-limited one.
-    const res = await fetch(options.anonymous ? '/api/demo/download-image' : '/api/personalization/download-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ urls: [url] }),
-      signal: proxy.signal,
-    })
-    const data = await res.json().catch(() => ({}))
-    const dataUrl = data?.results?.[0]?.ok ? data.results[0].dataUrl : null
-    if (res.ok && typeof dataUrl === 'string') return dataUrlToBlob(dataUrl)
-  } catch {
-    // reported below
-  } finally {
-    proxy.release()
+  // Which same-origin download route to use. Signed-in users have the personalization route; a visitor
+  // without a session gets 401 there and falls back to the public, rate-limited route. Once the signed-in
+  // route has refused this page load, later images go straight to the public one.
+  const endpoints =
+    options.anonymous || signedInProxyRefused
+      ? [PUBLIC_PROXY]
+      : [SIGNED_IN_PROXY, PUBLIC_PROXY]
+  for (const endpoint of endpoints) {
+    if (signal?.aborted) throw abortError()
+    const proxy = boundedSignal(signal, options.proxyTimeoutMs ?? PROXY_DOWNLOAD_TIMEOUT_MS)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ urls: [url] }),
+        signal: proxy.signal,
+      })
+      if (endpoint === SIGNED_IN_PROXY && (res.status === 401 || res.status === 403)) {
+        signedInProxyRefused = true
+        continue // try the public route
+      }
+      const data = await res.json().catch(() => ({}))
+      const dataUrl = data?.results?.[0]?.ok ? data.results[0].dataUrl : null
+      if (res.ok && typeof dataUrl === 'string') return dataUrlToBlob(dataUrl)
+    } catch {
+      // try the next route, else reported below
+    } finally {
+      proxy.release()
+    }
   }
   if (signal?.aborted) throw abortError()
   throw new Error('The image could not be loaded.')

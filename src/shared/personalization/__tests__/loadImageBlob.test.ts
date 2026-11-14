@@ -4,7 +4,7 @@
  * (OpenHiggsBolt's production CSP has no `data:` in connect-src).
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { loadImageBlob, dataUrlToBlob } from '../backgroundRemoval/loadImageBlob'
+import { loadImageBlob, dataUrlToBlob, resetProxyChoiceForTests } from '../backgroundRemoval/loadImageBlob'
 
 const read = (blob: Blob): Promise<string> =>
   // A Response's blob is a Node Blob (has .text()); jsdom's own Blob needs a FileReader.
@@ -16,7 +16,10 @@ const read = (blob: Blob): Promise<string> =>
     r.readAsText(blob)
   })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  resetProxyChoiceForTests()
+})
 
 describe('loadImageBlob', () => {
   it('decodes a base64 data URL without calling fetch', async () => {
@@ -72,6 +75,38 @@ describe('loadImageBlob', () => {
       '/api/demo/download-image',
       '/api/personalization/download-image',
     ])
+  })
+
+  it('a visitor without a sign-in session falls back to the public route, then skips the refused route', async () => {
+    const okBody = { ok: true, results: [{ ok: true, dataUrl: `data:image/jpeg;base64,${btoa('PUBLIC')}` }] }
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url === '/api/personalization/download-image') return new Response('{"error":"UNAUTHENTICATED"}', { status: 401 })
+      if (url === '/api/demo/download-image') return new Response(JSON.stringify(okBody), { status: 200 })
+      throw new TypeError('blocked by CSP')
+    }))
+    expect(await read(await loadImageBlob('https://shop.example/a.jpg'))).toBe('PUBLIC')
+    expect(await read(await loadImageBlob('https://shop.example/b.jpg'))).toBe('PUBLIC')
+    expect(calls.filter((u) => u.includes('/download-image'))).toEqual([
+      '/api/personalization/download-image', // first image: refused with 401
+      '/api/demo/download-image',             // ...so the public route answers
+      '/api/demo/download-image',             // second image goes straight to the public route
+    ])
+  })
+
+  it('a signed-in user never touches the public route', async () => {
+    const okBody = { ok: true, results: [{ ok: true, dataUrl: `data:image/jpeg;base64,${btoa('SIGNED')}` }] }
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url === '/api/personalization/download-image') return new Response(JSON.stringify(okBody), { status: 200 })
+      throw new TypeError('blocked by CSP')
+    }))
+    expect(await read(await loadImageBlob('https://shop.example/a.jpg'))).toBe('SIGNED')
+    expect(calls.some((u) => u === '/api/demo/download-image')).toBe(false)
   })
 
   describe('stalled hosts and cancellation', () => {
