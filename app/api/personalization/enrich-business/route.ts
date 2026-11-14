@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pLimit from 'p-limit'
+import { createLimiter } from '@/server/businessEnrichment/limit'
 import { clientIpFromHeaders } from '@/server/clientIp'
 import { createCorrelationId, logPersonalization } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const deadline = createStageDeadline('enrich-business', ROUTE_DEADLINE_MS - 2_000)
   const throttle = new DomainThrottle() // shared: two businesses on one host are paced together
   const breaker = new CircuitBreaker()
-  const gate = pLimit(BATCH_CONCURRENCY)
+  const gate = createLimiter(BATCH_CONCURRENCY)
 
   type Row =
     | { id?: string; website: string; ok: true; enrichment: Awaited<ReturnType<typeof enrichBusinessWebsite>> }
