@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeCutout } from './cutout/cutoutSettings'
 import { contractFor, roleForLayer } from './mediaRoles'
 import { IMAGE_ROLES, normalizeImageStyle, type ImageHints, type ImageRole } from './imageStyle'
 import type {
@@ -1142,6 +1143,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
   const zones = normalizeProtectedZones(raw.protectedZones)
   if (zones) out.protectedZones = zones
+  const cutout = normalizeCutout(raw.cutout)
+  if (cutout) out.cutout = cutout
   const hints = normalizeImageHints(raw.imageHints)
   if (hints) out.imageHints = hints
 
