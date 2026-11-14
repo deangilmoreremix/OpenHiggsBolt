@@ -66,3 +66,14 @@ describe('useBusinessEnrichment — list growth', () => {
     await waitFor(() => { expect(result.current.a?.status).toBe('done'); expect(result.current.b?.status).toBe('done') })
   })
 })
+
+describe('useBusinessEnrichment — StrictMode', () => {
+  it('still sends requests after React StrictMode\'s dev mount/unmount/mount cycle', async () => {
+    const React = await import('react')
+    stubFetch((b) => ({ json: { results: b.businesses.map((x: any) => ({ id: x.id, ok: true, enrichment: enr('x') })) } }))
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(React.StrictMode, null, children)
+    const { result } = renderHook(() => useBusinessEnrichment([biz('s1', 'https://s1.com')]), { wrapper })
+    await waitFor(() => expect(result.current.s1?.status).toBe('done'))
+    expect(calls.length).toBeGreaterThanOrEqual(1)
+  })
+})

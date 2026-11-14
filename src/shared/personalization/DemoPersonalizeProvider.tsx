@@ -4502,6 +4502,32 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       if (businesses.length === 0) {
         setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
       }
+
+      // The server stops widening when its time budget runs out and hands back a resume cursor. Show what we have
+      // right away, then carry on from that stage (at most twice) so the list grows toward 30 instead of ending short.
+      let resume = data?.backfill?.resume as { startStage?: number } | undefined
+      let held: BusinessDiscoveryRecord[] = businesses
+      for (let attempt = 0; attempt < 2 && resume && typeof resume.startStage === 'number' && held.length > 0; attempt++) {
+       try {
+        const follow = await fetch('/api/personalization/find-businesses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ niche, location, radiusMiles, resume: { startStage: resume.startStage, records: held } }),
+          credentials: 'same-origin',
+        })
+        if (stale()) return
+        if (!follow.ok) break // keep what is already on screen; a failed continuation must never wipe results
+        const more = await follow.json().catch(() => null)
+        if (stale()) return
+        const grown = Array.isArray(more?.businesses) ? (more.businesses as BusinessDiscoveryRecord[]) : []
+        if (grown.length < held.length) break
+        held = grown
+        setBusinessSearchResults(grown)
+        resume = more?.backfill?.resume
+       } catch {
+        break // a network error in the continuation keeps the results already shown
+       }
+      }
     } catch (err) {
       if (stale()) return
       const message = err instanceof Error ? err.message : 'Business search failed'

@@ -17,6 +17,19 @@ const ok = (website: string) => ({ website, emails: [], phones: [], addresses: [
 
 beforeEach(() => { limiter.allowed = true; vi.mocked(enrichBusinessWebsite).mockReset().mockImplementation(async (w: string) => ok(w) as never) })
 
+describe('POST /enrich-business — cache', () => {
+  it('serves a repeat lookup from cache without crawling again', async () => {
+    vi.mocked(enrichBusinessWebsite).mockImplementation(async (w: string) => ({ ...ok(w), pagesVisited: [w] }) as never)
+    await post({ websiteUrl: 'https://cache-test-site.com' })
+    await post({ websiteUrl: 'https://www.cache-test-site.com/' })
+    expect(vi.mocked(enrichBusinessWebsite)).toHaveBeenCalledTimes(1)
+  })
+  it('does not cache a crawl that visited nothing (unreachable site)', async () => {
+    await post({ websiteUrl: 'https://down-site.com' }); await post({ websiteUrl: 'https://down-site.com' })
+    expect(vi.mocked(enrichBusinessWebsite)).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('POST /enrich-business', () => {
   it('400 without a website', async () => { expect((await post({})).status).toBe(400) })
   it('429 when rate limited', async () => { limiter.allowed = false; expect((await post({ websiteUrl: 'https://a.com' })).status).toBe(429) })
