@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useReducedMotion } from './useReducedMotion';
 
 /* ── Global playback limiter ────────────────────────────────────────────────
@@ -126,8 +126,10 @@ export default function LazyVideo({
     }
   }, [shouldPlay, src]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     if (!toggleOnClick) return;
+    // The tap is for playback; keep it from reaching a clickable parent card.
+    event.stopPropagation();
     const el = ref.current;
     const willPin = !pinned;
     setPinned(willPin);
