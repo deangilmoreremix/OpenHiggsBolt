@@ -4,7 +4,7 @@
  * (OpenHiggsBolt's production CSP has no `data:` in connect-src).
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { loadImageBlob, dataUrlToBlob, resetProxyChoiceForTests } from '../backgroundRemoval/loadImageBlob'
+import { loadImageBlob, dataUrlToBlob, resetProxyChoiceForTests, SIGNED_IN_REFUSAL_MEMORY_MS } from '../backgroundRemoval/loadImageBlob'
 
 const read = (blob: Blob): Promise<string> =>
   // A Response's blob is a Node Blob (has .text()); jsdom's own Blob needs a FileReader.
@@ -94,6 +94,35 @@ describe('loadImageBlob', () => {
       '/api/demo/download-image',             // ...so the public route answers
       '/api/demo/download-image',             // second image goes straight to the public route
     ])
+  })
+
+  it('retries the signed-in route after the refusal memory expires (e.g. the visitor signed in meanwhile)', async () => {
+    vi.useFakeTimers()
+    try {
+      const okBody = { ok: true, results: [{ ok: true, dataUrl: `data:image/jpeg;base64,${btoa('X')}` }] }
+      let signedIn = false
+      const calls: string[] = []
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        calls.push(url)
+        if (url === '/api/personalization/download-image') {
+          return signedIn ? new Response(JSON.stringify(okBody), { status: 200 }) : new Response('{}', { status: 401 })
+        }
+        if (url === '/api/demo/download-image') return new Response(JSON.stringify(okBody), { status: 200 })
+        throw new TypeError('blocked by CSP')
+      }))
+      await loadImageBlob('https://shop.example/a.jpg') // 401, then public
+      signedIn = true
+      vi.advanceTimersByTime(SIGNED_IN_REFUSAL_MEMORY_MS + 1_000)
+      await loadImageBlob('https://shop.example/b.jpg') // signed-in route is tried again and works
+      expect(calls.filter((u) => u.includes('/download-image'))).toEqual([
+        '/api/personalization/download-image',
+        '/api/demo/download-image',
+        '/api/personalization/download-image',
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('a signed-in user never touches the public route', async () => {

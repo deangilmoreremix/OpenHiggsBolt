@@ -23,10 +23,14 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 
 const SIGNED_IN_PROXY = '/api/personalization/download-image'
 const PUBLIC_PROXY = '/api/demo/download-image'
-let signedInProxyRefused = false
-/** Test hook: forget that the signed-in route refused this page load. */
+/** How long to remember that the signed-in route refused us, so a visitor who signs in meanwhile is retried. */
+export const SIGNED_IN_REFUSAL_MEMORY_MS = 60_000
+let signedInProxyRefusedAt: number | null = null
+const signedInProxyRefused = () =>
+  signedInProxyRefusedAt !== null && Date.now() - signedInProxyRefusedAt < SIGNED_IN_REFUSAL_MEMORY_MS
+/** Test hook: forget that the signed-in route refused us. */
 export function resetProxyChoiceForTests(): void {
-  signedInProxyRefused = false
+  signedInProxyRefusedAt = null
 }
 
 /** Longest a direct (cross-origin) download may take, headers and body included. */
@@ -82,9 +86,9 @@ export async function loadImageBlob(
 
   // Which same-origin download route to use. Signed-in users have the personalization route; a visitor
   // without a session gets 401 there and falls back to the public, rate-limited route. Once the signed-in
-  // route has refused this page load, later images go straight to the public one.
+  // route has refused us (remembered for a minute, so a later sign-in is picked up), later images go straight to the public one.
   const endpoints =
-    options.anonymous || signedInProxyRefused
+    options.anonymous || signedInProxyRefused()
       ? [PUBLIC_PROXY]
       : [SIGNED_IN_PROXY, PUBLIC_PROXY]
   for (const endpoint of endpoints) {
@@ -99,7 +103,7 @@ export async function loadImageBlob(
         signal: proxy.signal,
       })
       if (endpoint === SIGNED_IN_PROXY && (res.status === 401 || res.status === 403)) {
-        signedInProxyRefused = true
+        signedInProxyRefusedAt = Date.now()
         continue // try the public route
       }
       const data = await res.json().catch(() => ({}))
