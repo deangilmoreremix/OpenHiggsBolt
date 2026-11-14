@@ -14,8 +14,10 @@ type AIVideoGalleryProps = {
   heading?: string;
   /** Subtext (defaults to the existing description). */
   subtext?: string;
-  /** Section id for anchor linking. */
+  /** Section id for anchor linking (also keys the filter highlight). */
   sectionId?: string;
+  /** False when a wrapper (NearViewport) carries the anchor id. */
+  withAnchor?: boolean;
 };
 
 /**
@@ -30,6 +32,7 @@ export default function AIVideoGallery({
   heading,
   subtext,
   sectionId = 'smartvideo-gallery',
+  withAnchor = true,
 }: AIVideoGalleryProps) {
   const allDemos = demos ?? MINIMAX_H3_DEMOS;
   const [category, setCategory] = useState<string>('All');
@@ -50,7 +53,7 @@ export default function AIVideoGallery({
   if (!allDemos.length) return null;
 
   return (
-    <section id={sectionId} className="border-y border-white/10 bg-[#030303] py-24">
+    <section id={withAnchor ? sectionId : undefined} className="border-y border-white/10 bg-[#030303] py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">

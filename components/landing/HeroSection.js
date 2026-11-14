@@ -114,7 +114,7 @@ export default function HeroSection() {
               phrases={HERO_ANIMATED_CREATION_TYPES}
               interval={HERO_CREATION_PHRASE_INTERVAL_MS}
               transition={HERO_PHRASE_TRANSITION_MS}
-              className="text-5xl md:text-7xl lg:text-8xl"
+              className="text-[2rem] sm:text-5xl md:text-7xl lg:text-8xl"
             />
           </span>
         </h1>

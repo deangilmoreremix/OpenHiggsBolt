@@ -15,6 +15,7 @@ import { type VideoDemo } from '@/data/types';
 import { NICHE_CONTENT } from '@/data/nicheContent';
 import NicheSection from './NicheSection';
 import IndustryNav from './IndustryNav';
+import NearViewport from './fx/NearViewport';
 
 const COMBINED_DEMOS: VideoDemo[] = [
   ...MINIMAX_H3_DEMOS,
@@ -39,22 +40,30 @@ export default function SmartVideoShowcase() {
         {/* Sticky industry jump bar scoped to the niche sections */}
         <div>
           <IndustryNav niches={NICHE_CONTENT} />
+          {/* Each industry mounts as the visitor nears it; the wrapper keeps the anchor id. */}
           {NICHE_CONTENT.map((niche) => (
-            <NicheSection key={niche.id} niche={niche} />
+            <NearViewport key={niche.id} id={`niche-${niche.id}`}>
+              <NicheSection niche={niche} withAnchor={false} />
+            </NearViewport>
           ))}
         </div>
 
         {/* Seedance 2.5 — BeatAPI curated cinematic demos */}
-        <AIVideoGallery
-          demos={SEEDANCE_25_DEMOS}
-          label="Full showcase"
-          heading="Every SmartVideo GO AI Demo, On Demand"
-          subtext="Browse the full library. Open any prompt or jump straight into the matching studio."
-          sectionId="smartvideo-gallery-25"
-        />
+        <NearViewport id="smartvideo-gallery-25">
+          <AIVideoGallery
+            demos={SEEDANCE_25_DEMOS}
+            label="Full showcase"
+            heading="Every SmartVideo GO AI Demo, On Demand"
+            subtext="Browse the full library. Open any prompt or jump straight into the matching studio."
+            sectionId="smartvideo-gallery-25"
+            withAnchor={false}
+          />
+        </NearViewport>
 
         {/* Seedance 1 — ZeroLu community prompts with proof clips */}
-        <Seedance1Reel />
+        <NearViewport placeholderClassName="min-h-[940px]">
+          <Seedance1Reel />
+        </NearViewport>
 
         {/* Seedance 2.0 — HuyLe82US community-curated prompts. Its gallery had no
             demos to show, so only the hero is rendered for now. */}
@@ -62,22 +71,28 @@ export default function SmartVideoShowcase() {
 
         {/* Visual Prompt Feed — curated AI video demos from x.com */}
         <PromptFeedHero />
-        <AIVideoGallery
-          demos={PROMPTFEED_DEMOS}
-          label="Visual prompt feed"
-          heading="AI Video Demos from the Community"
-          subtext="Real prompts, real results. Open any to see the full prompt or create your own."
-          sectionId="smartvideo-gallery-pf"
-        />
+        <NearViewport id="smartvideo-gallery-pf">
+          <AIVideoGallery
+            demos={PROMPTFEED_DEMOS}
+            label="Visual prompt feed"
+            heading="AI Video Demos from the Community"
+            subtext="Real prompts, real results. Open any to see the full prompt or create your own."
+            sectionId="smartvideo-gallery-pf"
+            withAnchor={false}
+          />
+        </NearViewport>
 
         {/* Combined gallery — all demos */}
-        <AIVideoGallery
-          demos={COMBINED_DEMOS}
-          label="All demos"
-          heading="Full Video Demo Library"
-          subtext="Browse every AI video demo across all sources. Open any prompt or jump straight into the matching studio."
-          sectionId="smartvideo-gallery-all"
-        />
+        <NearViewport id="smartvideo-gallery-all">
+          <AIVideoGallery
+            demos={COMBINED_DEMOS}
+            label="All demos"
+            heading="Full Video Demo Library"
+            subtext="Browse every AI video demo across all sources. Open any prompt or jump straight into the matching studio."
+            sectionId="smartvideo-gallery-all"
+            withAnchor={false}
+          />
+        </NearViewport>
       </div>
     </DemoPromptProvider>
   );

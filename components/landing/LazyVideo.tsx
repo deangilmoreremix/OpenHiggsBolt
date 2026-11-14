@@ -8,10 +8,18 @@ import { useReducedMotion } from './useReducedMotion';
  * video is paused. Keeps the page light and the network calm on mobile.
  */
 const MAX_ACTIVE = 6;
+/** Phones and tablets decode fewer videos at once. */
+const MAX_ACTIVE_TOUCH = 3;
 const registry = new Set<() => void>();
 
+function maxActive() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+    ? MAX_ACTIVE_TOUCH
+    : MAX_ACTIVE;
+}
+
 function requestPlay(stop: () => void) {
-  if (registry.size >= MAX_ACTIVE) {
+  if (registry.size >= maxActive()) {
     const oldest = registry.values().next().value as (() => void) | undefined;
     if (oldest) {
       oldest();

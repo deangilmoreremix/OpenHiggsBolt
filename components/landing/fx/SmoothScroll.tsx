@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import Lenis from 'lenis';
 import { gsap, ScrollTrigger } from './gsap';
 
@@ -17,23 +17,55 @@ export function headerHeight() {
 }
 
 /**
- * Scroll to an element, smoothly when Lenis is running and natively otherwise.
- * `extraOffset` is added on top of the header height (e.g. for another sticky bar).
+ * Fired before an in-page jump so sections deferred by NearViewport mount
+ * first; otherwise they would grow while the page scrolls past them and the
+ * jump would land in the wrong place.
  */
-export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement, extraOffset = 0) {
-  const el = typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-  if (!el) return;
+export const MOUNT_ALL_EVENT = 'landing:mount-all';
+
+function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
   // Resolve to a number ourselves: given an element, Lenis also subtracts its
   // scroll-margin-top (which main section[id] sets to the header height),
   // which would clear the header twice.
   const base = lenis ? lenis.animatedScroll : window.scrollY;
-  const top = el.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
-  if (lenis) {
-    lenis.scrollTo(top);
-  } else {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' });
-  }
+  return el.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
+}
+
+/**
+ * Scroll to an element, smoothly when Lenis is running and natively otherwise.
+ * `extraOffset` is added on top of the header height (e.g. for another sticky bar).
+ */
+export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement, extraOffset = 0) {
+  window.dispatchEvent(new Event(MOUNT_ALL_EVENT));
+  // Two frames: React renders the newly mounted sections, then layout settles.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const el = typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
+      if (!el) return;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (lenis) {
+        // Media inside the mounted sections can still change their height
+        // during the glide, so correct once at the end if the target moved.
+        lenis.scrollTo(targetTop(el, lenis, extraOffset), {
+          onComplete: () => {
+            const top = targetTop(el, lenis, extraOffset);
+            if (Math.abs(top - lenis.animatedScroll) > 4) lenis.scrollTo(top, { immediate: true });
+          },
+        });
+      } else {
+        window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'auto' : 'smooth' });
+        // Same end-of-scroll correction where the browser reports scrollend.
+        window.addEventListener(
+          'scrollend',
+          () => {
+            const top = targetTop(el, null, extraOffset);
+            if (Math.abs(top - window.scrollY) > 4) window.scrollTo({ top, behavior: 'auto' });
+          },
+          { once: true },
+        );
+      }
+    }),
+  );
 }
 
 /**
@@ -71,6 +103,27 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // In-page anchors (nav links, CTAs) on every device: land below the sticky
+  // header, after deferred sections have mounted. Handled here rather than
+  // with Lenis's `anchors` option because the header height isn't fixed.
+  const lenisRef = useRef<Lenis | null>(null);
+  lenisRef.current = lenis;
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const link = (e.target as Element | null)?.closest?.('a[href^="#"]');
+      const hash = link?.getAttribute('href');
+      if (!hash || hash === '#' || link?.closest('[role="dialog"], [data-lenis-prevent]')) return;
+      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (!target) return;
+      e.preventDefault();
+      scrollToTarget(lenisRef.current, target);
+      history.replaceState(null, '', hash);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, []);
+
   function start() {
     const instance = new Lenis({
       autoRaf: false,
@@ -101,26 +154,9 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
     syncLock();
 
-    // In-page anchors (nav links, CTAs): glide there and land below the
-    // sticky header. Handled here rather than with Lenis's `anchors` option
-    // because the header height isn't fixed.
-    const onClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const link = (e.target as Element | null)?.closest?.('a[href^="#"]');
-      const hash = link?.getAttribute('href');
-      if (!hash || hash === '#' || link?.closest('[role="dialog"], [data-lenis-prevent]')) return;
-      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
-      if (!target) return;
-      e.preventDefault();
-      scrollToTarget(instance, target);
-      history.replaceState(null, '', hash);
-    };
-    document.addEventListener('click', onClick);
-
     setLenis(instance);
 
     return () => {
-      document.removeEventListener('click', onClick);
       observer.disconnect();
       gsap.ticker.remove(tick);
       gsap.ticker.lagSmoothing(500, 33);

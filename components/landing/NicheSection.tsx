@@ -7,6 +7,8 @@ type NicheSectionProps = {
   niche: NicheConfig;
   /** Override: pass demos directly instead of looking them up. */
   demos?: import('@/data/types').VideoDemo[];
+  /** False when a wrapper (NearViewport) carries the `niche-…` anchor id. */
+  withAnchor?: boolean;
 };
 
 /**
@@ -14,11 +16,11 @@ type NicheSectionProps = {
  * swipeable carousel row ("View all" opens the grid). Personalization is
  * attached to each demo card.
  */
-export default function NicheSection({ niche, demos }: NicheSectionProps) {
+export default function NicheSection({ niche, demos, withAnchor = true }: NicheSectionProps) {
   const activeDemos = demos ?? getDemosForNiche(niche.id);
 
   return (
-    <section className="border-y border-white/10 bg-[#030303] py-24" id={`niche-${niche.id}`}>
+    <section className="border-y border-white/10 bg-[#030303] py-24" id={withAnchor ? `niche-${niche.id}` : undefined}>
       <div className="mx-auto max-w-7xl px-6">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
