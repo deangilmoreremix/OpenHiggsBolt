@@ -93,6 +93,7 @@ import { fitToModel, optionsForGeneration, resolveModelCapabilities, resolveAsse
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { isOwnedWebsite, nonOwnedWebsiteMessage } from './websiteClassification'
+import { enrichmentToAutoFill, type ContactSources } from './businessEnrichmentToClient'
 import { uploadPersonalizationAsset } from './assetUploadService'
 import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
@@ -892,6 +893,10 @@ export type DemoPersonalizeContextValue = {
   autoFilledKeys: Set<AutoFillKey>
   /** What finding the current business loaded, for the one-line summary. */
   businessLoadSummary: BusinessLoadSummary | null
+  /** Where each contact value found on the business's own website came from (for the "found on" tooltips). */
+  contactSources: ContactSources
+  /** Removes a found contact value from the profile (a wrong or unwanted one). */
+  clearContactValue: (key: 'email' | 'facebook' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok') => void
   /**
    * Finds a selected business's OWN website when OpenStreetMap lists only a
    * social page (or nothing). Resolves the verified URL or `null`.
@@ -1490,6 +1495,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Discovered-asset ids that were placed automatically for this business.
   const autoImportedDiscoveredIdsRef = useRef<Set<string>>(new Set())
   const [businessLoadSummary, setBusinessLoadSummary] = useState<BusinessLoadSummary | null>(null)
+  const [contactSources, setContactSources] = useState<ContactSources>({})
 
   // Saved client assets (persisted per-client library)
   const [savedClientAssets, setSavedClientAssets] = useState<ClientAssetLibrary>(() =>
@@ -4576,6 +4582,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const resolveBusinessWebsiteRef = useRef(resolveBusinessWebsite)
   resolveBusinessWebsiteRef.current = resolveBusinessWebsite
 
+  const clearContactValue = useCallback((key: 'email' | 'facebook' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok') => {
+    setClientForm((prev) => ({ ...prev, [key]: '' }))
+    setContactSources((prev) => { const next = { ...prev }; delete next[key]; return next })
+  }, [])
+
   const selectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
     businessSessionRef.current += 1
     setSelectedBusiness(business)
@@ -4601,6 +4612,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     removeAutoImportedAssets()
     autoImportPendingRef.current = false
     setBusinessLoadSummary(null)
+    setContactSources({})
     placeholderNameRef.current = business.id.startsWith('url:') ? business.name : ''
 
     // Populate client form from business, through the single shared mapping
@@ -4627,6 +4639,45 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       autoFilledRef.current = filled
       return next
     })
+
+    // Contact details the business published on its OWN website (email, social profiles, a missing phone).
+    // Looked up once for the chosen business and merged into EMPTY fields only: anything typed, or already filled
+    // from OpenStreetMap, wins. A pick that is no longer current when the answer arrives is dropped.
+    const enrichmentSession = businessSessionRef.current
+    if (isOwnedWebsite(business.website)) {
+      void (async () => {
+        try {
+          const res = await fetch('/api/personalization/enrich-business', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ businesses: [{ id: business.id, website: business.website }] }),
+          })
+          if (!res.ok) return
+          const body = (await res.json().catch(() => null)) as { results?: Array<{ ok?: boolean; enrichment?: Parameters<typeof enrichmentToAutoFill>[0] }> } | null
+          const enrichment = body?.results?.[0]?.ok ? body.results[0].enrichment : null
+          if (!enrichment || enrichmentSession !== businessSessionRef.current) return
+          const { values, sources } = enrichmentToAutoFill(enrichment)
+          if (!Object.keys(values).length) return
+          setClientForm((prev) => {
+            // EMPTY fields only. `mergeAutoFilledContent` would also replace a value an earlier auto-fill put there
+            // (e.g. the OpenStreetMap phone); website-found contacts must never displace that.
+            const emptyOnly: Record<string, string> = {}
+            for (const [k, v] of Object.entries(values)) {
+              if (!String((prev as Record<string, unknown>)[k] ?? '').trim()) emptyOnly[k] = v as string
+            }
+            const merged = mergeAutoFilledContent(prev, emptyOnly, autoFilledRef.current, { placeholderName: placeholderNameRef.current })
+            autoFilledRef.current = merged.autoFilled
+            return merged.form
+          })
+          // Sources are kept per found value; the UI shows one only while the profile still holds that exact value,
+          // so a value the user typed instead (or an OpenStreetMap one) never gets a "found on the website" label.
+          setContactSources((prev) => ({ ...prev, ...sources }))
+        } catch {
+          /* enrichment is a bonus: a failed lookup leaves the form exactly as it was */
+        }
+      })()
+    }
 
     // OpenStreetMap often lists only a Facebook/Instagram page. Look for the
     // business's own website in the background and fill the form when it is
@@ -6438,6 +6489,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     selectBusiness,
     autoFilledKeys,
     businessLoadSummary,
+    contactSources,
+    clearContactValue,
     resolveBusinessWebsite,
     websiteLookup,
     researchBusiness,
