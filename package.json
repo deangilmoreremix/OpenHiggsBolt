@@ -17,6 +17,7 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "build:help-index": "tsx scripts/build-help-index.ts",
+    "generate:niche-demos": "tsx scripts/generate-niche-demos.ts",
     "test:vfx": "vitest run tests/vfx-service.vitest.test.js tests/vfx-validation.vitest.test.js",
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
