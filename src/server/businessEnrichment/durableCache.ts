@@ -6,7 +6,6 @@
  * Strictly best-effort: every call is bounded by a short timeout and swallows its own errors, so a slow or
  * unavailable database can never slow down or fail an enrichment request. null / void always means "carry on".
  */
-import { createServerClient } from '@/lib/supabase'
 import { EnrichmentCache } from './cache'
 import type { BusinessEnrichment } from './types'
 
@@ -15,9 +14,14 @@ const DB_TIMEOUT_MS = 1_200
 
 interface RpcClient { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }> }
 
-function clientOrNull(client?: RpcClient): RpcClient | null {
+// Imported lazily and guarded: if the Supabase module or its environment is unavailable (tests, a misconfigured
+// deploy), the cache is simply off and the route behaves exactly as it did before the durable layer existed.
+async function clientOrNull(client?: RpcClient): Promise<RpcClient | null> {
   if (client) return client
-  try { return createServerClient() as unknown as RpcClient } catch { return null } // env not configured
+  try {
+    const { createServerClient } = await import('@/lib/supabase')
+    return createServerClient() as unknown as RpcClient
+  } catch { return null }
 }
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T | null> {
@@ -42,7 +46,7 @@ export function durableKeyFor(website: string): string | null {
 
 export async function durableGet(website: string, client?: RpcClient): Promise<BusinessEnrichment | null> {
   const key = durableKeyFor(website)
-  const c = key ? clientOrNull(client) : null
+  const c = key ? await clientOrNull(client) : null
   if (!key || !c) return null
   const res = await withTimeout(c.rpc('business_enrichment_cache_get', { p_host: key }), DB_TIMEOUT_MS)
   if (!res || res.error || !looksLikeEnrichment(res.data)) return null
@@ -51,7 +55,7 @@ export async function durableGet(website: string, client?: RpcClient): Promise<B
 
 export async function durablePut(website: string, value: BusinessEnrichment, client?: RpcClient): Promise<void> {
   const key = durableKeyFor(website)
-  const c = key ? clientOrNull(client) : null
+  const c = key ? await clientOrNull(client) : null
   if (!key || !c) return
   await withTimeout(c.rpc('business_enrichment_cache_put', { p_host: key, p_enrichment: value, p_ttl_seconds: DURABLE_TTL_SECONDS }), DB_TIMEOUT_MS)
 }
