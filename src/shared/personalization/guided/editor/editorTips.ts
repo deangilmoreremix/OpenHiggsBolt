@@ -41,6 +41,9 @@ export const EDITOR_TIPS = {
   layerLock: { text: 'Lock the position so dragging, resizing and automatic placement leave it alone.' },
   layerHide: { text: 'Hide this layer from the video. You can show it again from the layers list.', shortcut: 'Delete' },
 
+  keyframes: { text: 'Keyframes change a layer over time: move, resize, fade or tilt it between moments you choose. Add one at the playhead, add another later, and change a value. Your layer\'s own position and animation stay as they are.' },
+  keyframeDiamond: { text: 'A keyframe. Click to jump to it, drag to move it in time.', shortcut: 'Arrow keys: 1 frame · Shift: 10' },
+
   // ── timeline ─────────────────────────────────────────────────────────
   timelineBar: { text: 'Drag the bar to change when this layer is on screen. Drag an edge to trim it.', shortcut: 'Arrow keys: 1 frame · Shift: 10' },
 

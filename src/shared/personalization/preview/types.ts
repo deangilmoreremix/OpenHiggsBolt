@@ -54,6 +54,11 @@ export interface PreviewLayer {
    * Only text, CTA and image layers rotate (see `userRotatable` in mediaRoles).
    */
   rotation?: number
+  /**
+   * Values the layer takes at chosen moments (move, size, fade, tilt). Changes to the layer's own values, not
+   * absolutes, so a layout change still applies. Optional so saved projects restore unchanged.
+   */
+  keyframes?: import('./keyframes').LayerKeyframe[]
   /** Text content for text-bearing layers. */
   text?: string
   /** Accent/text color (hex). Falls back to brandColors.text. */

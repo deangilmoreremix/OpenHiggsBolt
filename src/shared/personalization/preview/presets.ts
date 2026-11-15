@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeKeyframes } from './keyframes'
 import { contractFor, roleForLayer } from './mediaRoles'
 import { IMAGE_ROLES, normalizeImageStyle, type ImageHints, type ImageRole } from './imageStyle'
 import type {
@@ -953,6 +954,8 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   if (raw.locked === true) normalized.locked = true
   const rotation = normalizeAngle(raw.rotation)
   if (rotation !== 0) normalized.rotation = rotation
+  const keyframes = normalizeKeyframes(raw.keyframes)
+  if (keyframes) normalized.keyframes = keyframes
   const imageStyle = normalizeImageStyle(raw.imageStyle)
   if (imageStyle) normalized.imageStyle = imageStyle
   if (typeof raw.imageRole === 'string' && (IMAGE_ROLES as readonly string[]).includes(raw.imageRole)) normalized.imageRole = raw.imageRole as ImageRole

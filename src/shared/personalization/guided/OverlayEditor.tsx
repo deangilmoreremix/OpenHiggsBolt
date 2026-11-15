@@ -14,6 +14,9 @@ import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
 import type { PlayerRef } from '@remotion/player'
 import { Timeline } from './editor/Timeline'
 import { EditorTour } from './editor/EditorTour'
+import { KeyframePanel } from './editor/KeyframePanel'
+import { moveKeyframe } from '../preview/keyframes'
+import { NEUTRAL_KEYFRAME_STATE, keyframeStateFor, keyframeTransformParts } from '../preview/keyframes'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
 import { isRotated, normalizeAngle, rotateCss, rotatedExtent } from '../preview/rotation'
 import type { EditorTipId } from './editor/editorTips'
@@ -777,6 +780,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 </>
               )
 
+              const kfState = isDesign ? NEUTRAL_KEYFRAME_STATE : keyframeStateFor(layer.keyframes, playFrame)
+              const boxTransform = [...keyframeTransformParts(kfState, compW * factor, compH * factor), rotateCss(layer.rotation)].filter(Boolean).join(' ')
               let toolbarTop = 0
               let rotateInside = false
               if (isSelected) {
@@ -815,10 +820,10 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     outlineOffset: 2,
                     // The selected layer's handles must stay grabbable even where another layer's box overlaps them.
                     ...(isSelected ? { zIndex: 3 } : {}),
-                    opacity: layer.opacity,
+                    opacity: layer.opacity * kfState.opacity,
                     userSelect: 'none',
-                    // The box turns with the layer (about its own center), and so do its handles.
-                    ...(isDesign || !rotateCss(layer.rotation) ? {} : { transform: rotateCss(layer.rotation), transformOrigin: 'center center' }),
+                    // The box follows the layer's keyframes at the playhead and turns with the layer (about its own center), and so do its handles.
+                    ...(isDesign || !boxTransform ? {} : { transform: boxTransform, transformOrigin: 'center center' }),
                   }}
                 >
                   {liveOn ? (
@@ -988,6 +993,10 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
           onSelect={setSelectedId}
           onChange={(id, patch) => updatePreviewLayer(id, patch)}
           playheadFrame={liveOn ? playFrame : undefined}
+          onKeyframeMove={(id, from, to) => {
+            const layer = settings.layers.find((l) => l.id === id)
+            if (layer) updatePreviewLayer(id, { keyframes: moveKeyframe(layer.keyframes, from, to, settings.durationInFrames) })
+          }}
           onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
         />
         </div>
@@ -1371,6 +1380,17 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   />
                 </div>
               </div>
+
+              {selected.kind !== 'design' && contractOf(selected).userMovable && (
+                <KeyframePanel
+                  layer={selected}
+                  playFrame={playFrame}
+                  fps={settings.fps}
+                  durationInFrames={settings.durationInFrames}
+                  onChange={(keyframes) => updatePreviewLayer(selected.id, { keyframes })}
+                  onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
+                />
+              )}
 
               </div>
 
