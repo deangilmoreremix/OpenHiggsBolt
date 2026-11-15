@@ -21,6 +21,7 @@
 
 'use client'
 
+import { cutoutAssetIds } from './backgroundRemoval/useAutoCutout'
 import { RECAST_MAX_SECONDS } from './recast/recastJob'
 import { logoQualityNotes } from './logoScoring'
 import {
@@ -4546,6 +4547,20 @@ function ConfigurationView(props: any) {
                     {batchVideoReady.running
                       ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
                       : '✨ Make Selected Video Ready'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ids = cutoutAssetIds(discoveredAssets)
+                      setDiscoveredAssets((prev) => prev.map((a) => (ids.includes(a.id) ? { ...a, selected: true } : a)))
+                      void importDiscoveredAssets({ ids })
+                    }}
+                    disabled={batchVideoReady.running || cutoutAssetIds(discoveredAssets).length === 0}
+                    title={cutoutAssetIds(discoveredAssets).length === 0 ? 'No cutouts are ready yet' : undefined}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+                  >
+                    {`Use All Cutouts (${cutoutAssetIds(discoveredAssets).length})`}
                   </button>
                   <button
                     type="button"
