@@ -64,7 +64,7 @@ test('modal enriches only visible, owned-website businesses, in batches of ≤5,
 
   // First page: 8 visible cards → one request, ≤5 per request, all with an owned website.
   await expect(dialog.getByTestId('pz-results-count')).toHaveText('Showing 8 of 30');
-  await expect.poll(() => enrichBodies.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => enrichBodies.flatMap((b) => b.businesses).length, { timeout: 15_000 }).toBe(8);
   const sentFirst = enrichBodies.flatMap((b) => b.businesses.map((x) => x.id));
   expect(sentFirst).toEqual(['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7']);
   expect(enrichBodies.every((b) => b.businesses.length <= 5)).toBe(true);
@@ -80,7 +80,8 @@ test('modal enriches only visible, owned-website businesses, in batches of ≤5,
   const before = enrichBodies.length;
   await dialog.getByTestId('pz-results-show-more').click();
   await expect(dialog.getByTestId('pz-results-count')).toHaveText('Showing 16 of 30');
-  await expect.poll(() => enrichBodies.length, { timeout: 15_000 }).toBeGreaterThan(before);
+  // Wait for ALL eight new businesses to have been requested (they go out in batches of 5 + 3).
+  await expect.poll(() => enrichBodies.slice(before).flatMap((b) => b.businesses).length, { timeout: 15_000 }).toBe(8);
   const sentSecond = enrichBodies.slice(before).flatMap((b) => b.businesses.map((x) => x.id));
   expect(sentSecond).toEqual(['b8', 'b9', 'b10', 'b11', 'b12', 'b13', 'b14', 'b15']);
   expect(sentSecond.some((id) => sentFirst.includes(id))).toBe(false);
@@ -113,4 +114,52 @@ test('a rate-limited enrichment (429) stops quietly: results stay, no error bann
   await expect(dialog.getByText(/Business Search Failed/i)).toHaveCount(0);
   await expect(dialog.getByText('Biz 0', { exact: true })).toBeVisible();
   expect(calls).toBe(1); // stopped after the first 429; the second batch was not attempted
+});
+
+test('choosing a business shows the contacts found on its website, with source, and they can be removed', async ({ page }) => {
+  await page.route('**/api/personalization/find-businesses', (r) =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, businesses: businesses.slice(0, 3), query: { niche: 'Restaurants / Food', location: 'Tampa, FL', radiusMiles: 15 } }) }));
+  const picked: string[] = [];
+  await page.route('**/api/personalization/enrich-business', async (r) => {
+    const body = JSON.parse(r.request().postData() || '{}');
+    const b = body.businesses[0];
+    picked.push(b.id);
+    await r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, results: body.businesses.map((x: { id: string; website: string }) => ({
+        id: x.id, website: x.website, ok: true,
+        enrichment: {
+          website: x.website, emails: [{ value: `owner@${x.id}.example.com`, sourceUrl: `${x.website}/contact`, confidence: 0.95, method: 'mailto' }],
+          phones: [], addresses: [], contactNames: [], pagesVisited: [x.website], pagesSkipped: [], robots: { checked: true, status: 'allow-all' }, jsRendered: false, notes: [],
+          socials: { instagram: { value: `https://instagram.com/${x.id}`, sourceUrl: x.website, confidence: 0.85, method: 'footer-link' } },
+        },
+      })) }),
+    });
+  });
+
+  const dialog = await openFinder(page);
+  await dialog.locator('#business-niche').selectOption('restaurants-food');
+  await dialog.locator('#business-location').fill('Tampa, FL');
+  await dialog.getByRole('button', { name: /15/ }).first().click();
+  await expect(dialog.getByText(/businesses found for/i).first()).toBeVisible({ timeout: 30_000 });
+
+  await dialog.getByText('Biz 1', { exact: true }).locator('xpath=ancestor::div[.//button[normalize-space()="Use This Business"]][1]').getByRole('button', { name: 'Use This Business' }).click();
+  const found = dialog.getByTestId('pz-found-contacts');
+  await expect(found).toBeVisible({ timeout: 20_000 });
+  await expect(found.getByText('Email: owner@b1.example.com')).toBeVisible();
+  // Socials are the brand icon, and it is a real link to the profile (not text).
+  const ig = found.locator('a[data-network="instagram"]');
+  await expect(ig).toBeVisible();
+  await expect(ig).toHaveAttribute('href', 'https://instagram.com/b1');
+  await expect(ig).toHaveAttribute('target', '_blank');
+  await expect(ig).toHaveAttribute('title', /found on https:\/\/site1\.example\.com \(footer-link, confidence 85%\)/);
+  await expect(found.getByText('https://instagram.com/b1')).toHaveCount(0); // no plain-text URL any more
+  await expect(found.getByText('Email: owner@b1.example.com').locator('xpath=..')).toHaveAttribute('title', /Found on https:\/\/site1\.example\.com\/contact \(mailto, confidence 95%\)/);
+
+  await found.getByRole('button', { name: 'Remove Email' }).click();
+  await expect(found.getByText('owner@b1.example.com')).toHaveCount(0);
+  await expect(ig).toBeVisible(); // only the removed one went
+
+  await found.getByRole('button', { name: 'Remove Instagram' }).click();
+  await expect(found.locator('a[data-network="instagram"]')).toHaveCount(0);
 });
