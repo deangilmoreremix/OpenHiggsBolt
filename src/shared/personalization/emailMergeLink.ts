@@ -10,6 +10,9 @@
  *
  * Tag syntax below follows each provider's documented merge-tag format.
  * Providers change these now and then — keep `fields` small and verified.
+ * Checked against provider docs (2026-11): Mailchimp, Salesforce MC (emailaddr), Constant Contact (first name only).
+ * Still unconfirmed, send a live test before relying on them: Campaign Monitor, GetResponse (`[[ ]]` vs `{{ }}`), Brevo,
+ * MailerLite, Kit, Constant Contact last name/email, Salesforce first name (needs the field in the sending data extension).
  */
 // OpenHiggsBolt has no tokenSchema; this small map covers the names that matter for email.
 const ALIASES: Record<string, string> = {
@@ -38,7 +41,7 @@ export interface EmailProvider {
 export const EMAIL_PROVIDERS: EmailProvider[] = [
   {
     key: 'mailchimp', label: 'Mailchimp', open: '*|', close: '|*',
-    fields: { firstName: 'FNAME', lastName: 'LNAME', email: 'EMAIL', fullName: 'FNAME', company: 'COMPANY', phone: 'PHONE' },
+    fields: { firstName: 'FNAME', lastName: 'LNAME', email: 'EMAIL', phone: 'PHONE' },
     custom: (k: string) => k.toUpperCase(),
   },
   {
@@ -58,7 +61,7 @@ export const EMAIL_PROVIDERS: EmailProvider[] = [
   },
   {
     key: 'constantcontact', label: 'Constant Contact', open: '[[', close: ']]',
-    fields: { firstName: 'FirstName', lastName: 'LastName', email: 'Email', company: 'CompanyName' },
+    fields: { firstName: 'FirstName' },
   },
   {
     key: 'brevo', label: 'Brevo (Sendinblue)', open: '{{ contact.', close: ' }}',
@@ -87,7 +90,7 @@ export const EMAIL_PROVIDERS: EmailProvider[] = [
   },
   {
     key: 'salesforcemc', label: 'Salesforce Marketing Cloud', open: '%%', close: '%%',
-    fields: { firstName: 'FirstName', lastName: 'LastName', email: 'EmailAddress', company: 'Company' },
+    fields: { firstName: 'FirstName', lastName: 'LastName', email: 'emailaddr' },
   },
   {
     // Generic: {{token}} with our own canonical names, for tools that map by name.
