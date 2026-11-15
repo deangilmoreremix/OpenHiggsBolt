@@ -44,6 +44,7 @@ import { fixFilm } from '../lib/filmFix';
 import { reviewSummary } from '../lib/filmReview';
 import { captureQuality, personalisesWithSite } from '../lib/captureQuality';
 import { filmPersonalization, summarizePersonalization, type AdaptationOutcome } from '../lib/personalization';
+import { silentFilm } from '../lib/silentFilm';
 import { completeStage, failStage, recoverRun, finalStatus, finalStatusLine, newRun, reviewCoverage, skipStage, startStage, stepsOf, STAGE_ORDER, type CreationMode, type ProductionRun, type ReviewRecord } from '../lib/productionRun';
 import { filmFingerprint } from '../lib/filmFingerprint';
 import { materialOf } from '../lib/material';
@@ -751,7 +752,7 @@ export function useFilmDirector(opts: {
       // Findings the program can repair safely are repaired once, and said.
       const fixedFilm = fixFilm(buildOut);
       // A silent film carries no sound clips at all (no music, no effects).
-      const project = runRef.current?.silent ? { ...fixedFilm.project, tracks: fixedFilm.project.tracks.map((t) => ({ ...t, clips: t.clips.filter((c) => c.cardId !== 'audio-clip') })) } : fixedFilm.project;
+      const project = runRef.current?.silent ? silentFilm(fixedFilm.project) : fixedFilm.project;
       const fixed = fixedFilm.fixed;
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image'), plan: storyboard.plan, videos: media.filter((m) => m.kind === 'video').length });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
@@ -909,7 +910,7 @@ export function useFilmDirector(opts: {
       const out = await buildFilmProject(plan, { noAi: pending.current?.template === 'local', ...(hints ? { hints } : {}), aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, reuse: { project: film.project, touchedStems }, signal: abort.signal, targetedCapture: false }, log);
       const fixed0 = fixFilm(out).project;
       // A silent film stays silent when a scene is rebuilt (the same filtering as the first build).
-      const project = runRef.current?.silent ? { ...fixed0, tracks: fixed0.tracks.map((t) => ({ ...t, clips: t.clips.filter((c) => c.cardId !== 'audio-clip') })) } : fixed0;
+      const project = runRef.current?.silent ? silentFilm(fixed0) : fixed0;
       const only = new Set(touchedStems);
       const checks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 45_000, signal: abort.signal, only }).catch(() => []);
       if (!live()) return true;
