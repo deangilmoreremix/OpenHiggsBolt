@@ -79,6 +79,11 @@ export function buildPreviewInput(
     imageHints[url] = { ...assetHints[url], ...measured }
   }
 
+  // A transparent logo's padding-trimmed copy (made once in the browser) replaces the original URL here, so every
+  // consumer — gallery, editor, preview and export — draws the same cropped logo.
+  const originalLogoUrl = firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url)
+  const logoUrl = (originalLogoUrl && imageHints[originalLogoUrl]?.trimmedUrl) || originalLogoUrl
+
   const videoUrl = previewVideo?.url || source?.sourceMedia || null
   const lumaSamples = source?.mediaType === 'image' ? null : getCachedSamples(videoUrl)
 
@@ -102,7 +107,7 @@ export function buildPreviewInput(
       ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction })
         ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction }) }
         : {}),
-      logoUrl: firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url),
+      logoUrl,
       productUrl: firstUrl(assets.products?.[0]?.uploadedUrl, assets.products?.[0]?.url),
       serviceUrl: firstUrl(
         assets.products?.[1]?.uploadedUrl,

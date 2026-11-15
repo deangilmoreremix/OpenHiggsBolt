@@ -63,7 +63,7 @@ import type {
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import type { ProtectedZone } from './preview/types'
-import { measureImageHints } from './preview/imageHintsLoader'
+import { measureImageHints, measureLogoTrim } from './preview/imageHintsLoader'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
 import {
   loadClients,
@@ -5853,10 +5853,30 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // No stale-result guard: the merge is idempotent, and a URL is only measured once.
     void measureImageHints(urls).then((measured) => {
       if (!Object.keys(measured).length) return
-      setPreviewSettings((prev) => ({ ...prev, imageHints: { ...(prev.imageHints ?? {}), ...measured } }))
+      // Merged per URL so a late measurement never drops a trimmed-logo copy that landed first.
+      setPreviewSettings((prev) => {
+        const merged = { ...(prev.imageHints ?? {}) }
+        for (const [u, hint] of Object.entries(measured)) merged[u] = { ...merged[u], ...hint }
+        return { ...prev, imageHints: merged }
+      })
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignedImageUrlsKey])
+
+  // A transparent logo with a lot of empty padding renders small. Make ONE trimmed copy (the original is untouched)
+  // and keep it as a hint, so the preview, the gallery and the export all draw the same cropped logo.
+  const logoSourceUrl = assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || ''
+  const trimmedLogoUrlsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const url = logoSourceUrl
+    if (!url || trimmedLogoUrlsRef.current.has(url) || previewSettings.imageHints?.[url]?.trimmedUrl) return
+    trimmedLogoUrlsRef.current.add(url)
+    void measureLogoTrim(url).then((trimmedUrl) => {
+      if (!trimmedUrl) return
+      setPreviewSettings((prev) => ({ ...prev, imageHints: { ...(prev.imageHints ?? {}), [url]: { ...(prev.imageHints?.[url] ?? {}), trimmedUrl } } }))
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoSourceUrl])
 
   const reorderPreviewLayers = useCallback((orderedIds: string[]) => {
     markSessionStarted()
