@@ -54,6 +54,8 @@ export interface PreviewLayer {
    * Only text, CTA and image layers rotate (see `userRotatable` in mediaRoles).
    */
   rotation?: number
+  /** Brightness, contrast, saturation, blur, glow and shadow for this layer. Optional so saved projects restore unchanged. */
+  effects?: import('./effects').LayerEffects
   /** Text content for text-bearing layers. */
   text?: string
   /** Accent/text color (hex). Falls back to brandColors.text. */
@@ -193,6 +195,8 @@ export interface PersonalizationPreviewSettings {
    * editor, preview and export — style the same image the same way.
    */
   imageHints?: Record<string, ImageHints>
+  /** A color and film look for the footage (not the brand overlays). Optional so saved projects restore unchanged. */
+  look?: import('./effects').LookSettings
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */
