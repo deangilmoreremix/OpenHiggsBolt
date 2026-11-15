@@ -176,3 +176,55 @@ export function tokensInText(text: string): string[] {
   }
   return out;
 }
+
+type LeadBusiness = { name?: string; email?: string; phone?: string; city?: string; region?: string; address?: string }
+const LEAD_TOKEN_SOURCES: Record<string, (b: LeadBusiness) => string | undefined> = {
+  firstName: () => '',
+  fullName: (b: LeadBusiness) => b.name,
+  company: (b: LeadBusiness) => b.name,
+  email: (b: LeadBusiness) => b.email,
+  phone: (b: LeadBusiness) => b.phone,
+  title: () => '',
+  location: (b: LeadBusiness) => b.city || b.region || b.address,
+};
+
+/** The value a saved lead (a business record) gives for one token, or '' when it has none. */
+export function leadTokenValue(business: LeadBusiness | null | undefined, tokenKey: string): string {
+  const key = canonicalTokenKey(tokenKey) || tokenKey;
+  const pick = LEAD_TOKEN_SOURCES[key];
+  return String((pick ? pick(business || {}) : '') ?? '').trim().slice(0, 200);
+}
+
+/**
+ * One personal link per lead: the base link plus the values that lead has for the video's tokens.
+ * Image tokens and tokens the lead has no value for are left out (the video shows its fallback).
+ * Returns [{ name, email, company, link }].
+ */
+export function leadLinks(
+  baseUrl: string,
+  tokens: string[] = [],
+  leads: Array<{ business?: LeadBusiness } | LeadBusiness> = [],
+): Array<{ name: string; email: string; company: string; link: string }> {
+  return leads.map((lead) => {
+    const b: LeadBusiness = (lead as { business?: LeadBusiness })?.business || (lead as LeadBusiness) || {};
+    const url = new URL(baseUrl);
+    for (const raw of tokens) {
+      const key = canonicalTokenKey(raw) || String(raw);
+      if (!key || isImageTokenKey(key)) continue;
+      const v = leadTokenValue(b, key);
+      if (v) url.searchParams.set(key, v);
+    }
+    return { name: b.name || '', email: b.email || '', company: b.name || '', link: url.toString() };
+  });
+}
+
+const csvCell = (v: unknown) => {
+  const s = String(v ?? '');
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** CSV of name, email, company, link, for email tools. */
+export function leadLinksCsv(rows: Array<{ name: string; email: string; company: string; link: string }>): string {
+  const head = ['Name', 'Email', 'Company', 'Link'];
+  return [head, ...rows.map((r) => [r.name, r.email, r.company, r.link])].map((r) => r.map(csvCell).join(',')).join('\r\n');
+}
