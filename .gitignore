@@ -88,3 +88,7 @@ supabase/.temp/
 netlify/lib/fast-discovery.cjs
 netlify/lib/motion-capture.cjs
 /public/motion-studio/sources/
+
+# Video Pages e2e scratch output
+scripts/e2e-video-pages/seed.json
+scripts/e2e-video-pages/next.log

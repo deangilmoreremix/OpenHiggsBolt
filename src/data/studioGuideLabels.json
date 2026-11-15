@@ -1247,6 +1247,26 @@
     "seconds per frame"
    ]
   },
+  "video-pages": {
+   "files": [
+    "src/apps/video-pages/VideoPagesStudio.tsx",
+    "src/apps/video-pages/NewPageFlow.tsx",
+    "src/apps/video-pages/PageEditor.tsx",
+    "src/apps/video-pages/AnalyticsTab.tsx"
+   ],
+   "labels": [
+    "Analytics",
+    "Choose a video file",
+    "Create page",
+    "Delete this page",
+    "Design",
+    "New page",
+    "Publish",
+    "Save",
+    "Use link",
+    "Video Pages"
+   ]
+  },
   "thumbnail-studio": {
    "files": [
     "src/apps/thumbnail-studio/ThumbnailStudio.tsx",
