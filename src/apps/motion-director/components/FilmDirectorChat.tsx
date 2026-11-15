@@ -79,7 +79,9 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
 
   const [audioNote, setAudioNote] = useState<string[]>([]);
   /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
-  const start = async (draft = false, withoutMusic = false) => {
+  /** Every version rendered this session (with music / without), so "both versions" leaves two downloads. */
+  const [versions, setVersions] = useState<{ url: string; noMusic: boolean; draft: boolean }[]>([]);
+  const start = async (draft = false, withoutMusic = false): Promise<boolean> => {
     abort.current = new AbortController();
     setRender({ status: 'running', progress: 0, draft });
     setAudioNote([]);
@@ -93,16 +95,24 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
         signal: abort.current.signal,
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
-      setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft, noMusic: withoutMusic });
+      const url = createDownloadUrl(result.blob);
+      setRender({ status: 'done', progress: 1, url, draft, noMusic: withoutMusic });
+      setVersions((v) => [...v.filter((x) => x.noMusic !== withoutMusic), { url, noMusic: withoutMusic, draft }]);
       onRendered?.();
       // Measure the sound of the file that was just made (the preview cannot show clipping).
       void measureRenderedAudio(result.blob).then((stats) => stats && setAudioNote(audioReport(stats)));
+      return true;
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
       setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : explainExportProblem(error) });
+      return false;
     } finally {
       releaseGuard();
     }
+  };
+  /** Upstream always delivers two versions of a film with music: with the music bed, and without it (sound effects kept) for the person's own music. */
+  const startBoth = async () => {
+    if (await start(false, false)) await start(false, true);
   };
 
   const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${render.draft ? '-draft-720p' : ''}${render.noMusic ? '-nobgm' : ''}.mp4`;
@@ -148,6 +158,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             <a href={render.url} download={fileName} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-download">
               Download MP4{render.draft ? ` (draft ${draftSize})` : ''}
             </a>
+            {versions.filter((v) => v.url !== render.url).map((v) => (
+              <a key={v.url} href={v.url} download={`${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${v.draft ? '-draft-720p' : ''}${v.noMusic ? '-nobgm' : ''}.mp4`} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-download-other">
+                Download {v.noMusic ? 'version without music' : 'version with music'}
+              </a>
+            ))}
             {project.spec && <SpecLink spec={project.spec} />}
             {audioNote.length > 0 && <div className="w-full text-[11px]" style={{ color: semantic.textSecondary }} data-testid="film-audio-check">{audioNote.join(' ')}</div>}
             {render.draft && (
@@ -171,6 +186,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             >
               Fast draft · {draftSize}
             </button>
+            {hasMusic && (
+              <button type="button" onClick={() => void startBoth()} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-render-both" title="Renders the film twice: with the music bed, then without it (sound effects kept)">
+                Render both versions
+              </button>
+            )}
             {hasMusic && (
               <button type="button" onClick={() => void start(false, true)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)} data-testid="film-render-nomusic" title="Same film without the music bed, sound effects kept: for your own music">
                 Render without music

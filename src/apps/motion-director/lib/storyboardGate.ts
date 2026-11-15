@@ -1,6 +1,7 @@
 import { MOTION_TEMPLATES, resolveMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog';
 import { isBrandScene, type DirectorPlan, type MappingRow } from './directorPlan';
 import { filmRuleViolations } from './shotRules';
+import { applyHoldBudget, holdViolations } from './holdBudget';
 import { recipeContract } from './recipeContract';
 import { needsOf, satisfies, suitableFor } from './recipeNeeds';
 import type { ProductBrief } from './productBrief';
@@ -75,10 +76,14 @@ export function gateStoryboard(
     if (!s.ok) failed.push(`${t.nameEn} (your pick): ${s.why}`);
   }
 
+  // Breathing room (upstream stage 3): opener and closing wordmark never get less than their hold budget.
+  const held = holdViolations(scenes);
+  if (held.length) scenes = applyHoldBudget(scenes);
   const out: DirectorPlan = { ...plan, scenes };
   const shots = scenes.filter((s) => s.kind === 'shot' && s.recipeId);
   items.push({ code: 'R', ok: !unknown.length, text: unknown.length ? `Not in the library: ${unknown.map((s) => s.recipeId).join(', ')}.` : `All ${shots.length} shots exist in the recipe library.` });
   items.push({ code: 'P4', ok: !failed.some((f) => /scene \d+/.test(f)), text: swaps.length ? `Swapped for the business: ${swaps.join('; ')}.` : 'Every shot suits the business and the material in hand.' });
+  items.push({ code: 'H1', ok: !holdViolations(scenes).length, text: held.length ? `Hold budget: ${held.map((h) => (h.rule === 'opener' ? 'opening' : 'closing')).join(' and ')} scene lengthened to ${held[0].needSec}s so the film can breathe.` : 'Opening and closing scenes keep their hold budget (3s each).' });
   const total = scenes.reduce((n, s) => n + s.durationSec, 0);
   const lenOk = Math.abs(total - ctx.durationSec) <= Math.max(3, ctx.durationSec * 0.2);
   items.push({ code: 'B1', ok: lenOk, text: lenOk ? `Length ${Math.round(total)}s for the ${ctx.durationSec}s asked.` : `Length ${Math.round(total)}s is far from the ${ctx.durationSec}s asked.` });

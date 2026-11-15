@@ -9,6 +9,7 @@
  * template" takes the validated template path. Plain data, no React, so the
  * same rules hold in the entry composer, the studio's Agent panel and tests.
  */
+import { classifyBusiness } from './productBrief';
 import {
   MOTION_TEMPLATES,
   MOTION_TEMPLATE_CARDS,
@@ -55,6 +56,19 @@ export const INK_PRESS_INTRO =
   'Use Ink Press? Or I can let the director pick shots from the whole library — or name the shot cards you want ' +
   '(e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product ' +
   'check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.';
+
+/**
+ * Upstream SKILL.md: before a mode is chosen, say which mode fits and why (Ink Press is not the default just because it is a template).
+ * Read from what the request says; the page itself is only captured after the person chooses.
+ */
+export function modeRecommendation(prompt: string, hasSite: boolean): string {
+  const { kind, evidence } = classifyBusiness(prompt);
+  const said = evidence.length ? ` (you mention ${evidence.slice(0, 3).join(', ')})` : '';
+  const withSite = hasSite ? ' Either way I capture your real site first, so its pages, logo and words are what the film shows.' : '';
+  if (kind === 'software') return `My recommendation: Ink Press. This reads as a software or web product${said}. Ink Press is built for product launches that show real pages, so little has to be re-chosen.${withSite}`;
+  if (kind === 'unknown') return `My recommendation: let the director pick shots. I cannot tell what kind of business this is from the request alone, and Ink Press assumes a product with pages to show, so choosing from the whole library is the safer fit.${withSite}`;
+  return `My recommendation: let the director pick shots. This reads as a ${kind.replace('-', ' ')} business${said}; Ink Press is tuned for software launches, so I would choose shots that suit your business instead.${withSite}`;
+}
 
 export type FilmTemplateChoice = 'inkpress' | 'director' | 'local';
 

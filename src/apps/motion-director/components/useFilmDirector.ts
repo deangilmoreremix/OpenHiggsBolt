@@ -9,6 +9,7 @@ import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_INTRO,
+  modeRecommendation,
   MAX_PICKED_SHOTS,
   isFilmRequest,
   isQuestion,
@@ -693,7 +694,7 @@ export function useFilmDirector(opts: {
       } else {
         offerReq.current = req;
         setStage('offer');
-        say('assistant', INK_PRESS_INTRO);
+        say('assistant', `${INK_PRESS_INTRO}\n\n${modeRecommendation(req.prompt, Boolean(req.siteUrl))}`);
       }
       return true;
     },

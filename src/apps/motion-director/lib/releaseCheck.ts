@@ -10,7 +10,7 @@ import { isBrandScene } from './directorPlan';
 import { filmRuleViolations, type Polarity } from './shotRules';
 
 export interface ReleaseItem {
-  code: 'F1' | 'P4' | 'R' | 'B3' | 'B1';
+  code: 'F1' | 'P4' | 'R' | 'B3' | 'B1' | 'H1';
   ok: boolean;
   text: string;
 }
