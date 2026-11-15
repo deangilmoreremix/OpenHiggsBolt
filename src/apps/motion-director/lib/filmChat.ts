@@ -10,6 +10,7 @@
  * same rules hold in the entry composer, the studio's Agent panel and tests.
  */
 import { classifyBusiness } from './productBrief';
+import { HOLD_BUDGET } from './holdBudget';
 import {
   MOTION_TEMPLATES,
   MOTION_TEMPLATE_CARDS,
@@ -693,7 +694,18 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
     if (drop < 0) break;
     scenes.splice(drop, 1);
   }
-  const spare = target - sum();
+  let spare = target - sum();
+  if (spare > 0.5) {
+    // Breathing room first (upstream stage 3): the opener and the closing scene get at least their hold budget out of the spare time.
+    for (const i of [0, scenes.length - 1]) {
+      const need = HOLD_BUDGET.openerSec - scenes[i].durationSec;
+      if (need > 0 && spare > 0) {
+        const add = Math.min(need, spare);
+        scenes[i].durationSec += add;
+        spare -= add;
+      }
+    }
+  }
   if (spare > 0.5) {
     // Longer holds, shared in proportion to what each can still take.
     const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * Math.max(0, holdGrowth - 1)));
