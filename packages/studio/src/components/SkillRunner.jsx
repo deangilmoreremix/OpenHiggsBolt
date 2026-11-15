@@ -1,6 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { runSkill } from '../lib/promptRecipes';
 import { uploadFile } from '../muapi.js';
+import {
+  describeWorkflowOutputs,
+  estimateWorkflowCost,
+  formatUsd,
+  staticCostNote,
+  summarizeWorkflowSteps,
+} from '../lib/workflowCost';
 
 const isVideoUrl = (url) => /\.(mp4|webm|mov)(\?|$)/i.test(url || '');
 
@@ -38,6 +45,41 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
   const [error, setError] = useState('');
   const [approval, setApproval] = useState(null);
   const abortRef = useRef(null);
+  const [liveCost, setLiveCost] = useState(null);
+  const [costLoading, setCostLoading] = useState(false);
+
+  const summary = summarizeWorkflowSteps(skill);
+  const hasVideo = summary.video > 0;
+  const textValuesKey = JSON.stringify(
+    Object.fromEntries(
+      (skill.inputs || []).filter((i) => i.type === 'text').map((i) => [i.name, values[i.name] ?? '']),
+    ),
+  );
+
+  // Live estimate from the estimate-cost endpoint; the static note is the fallback.
+  useEffect(() => {
+    if (!apiKey) {
+      setLiveCost(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setCostLoading(true);
+    const timer = setTimeout(async () => {
+      let cost = null;
+      try {
+        cost = await estimateWorkflowCost(apiKey, skill, JSON.parse(textValuesKey));
+      } catch {
+        cost = null;
+      }
+      if (cancelled) return;
+      setLiveCost(cost);
+      setCostLoading(false);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [apiKey, skill, textValuesKey]);
 
   const inputs = skill.inputs || [];
   const missing = inputs.filter((i) => i.required && !values[i.name]);
@@ -233,6 +275,29 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
             );
           })}
         </ol>
+
+        <div
+          data-testid="cost-note"
+          className={`mt-5 rounded-lg border p-3 text-sm ${
+            hasVideo
+              ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+              : 'border-white/10 bg-white/5 text-white/70'
+          }`}
+        >
+          <p>{describeWorkflowOutputs(summary)}</p>
+          <p className="mt-1">
+            {liveCost !== null ? (
+              <>
+                Estimated cost: <strong>{formatUsd(liveCost)}</strong> per run.
+              </>
+            ) : costLoading && apiKey ? (
+              'Estimating cost…'
+            ) : (
+              staticCostNote(summary)
+            )}
+          </p>
+          {hasVideo && <p className="mt-1">Each run spends credits from your account.</p>}
+        </div>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
