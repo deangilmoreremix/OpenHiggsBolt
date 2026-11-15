@@ -55,3 +55,30 @@ export function pickBestLogo<T extends DiscoveredAsset>(candidates: readonly T[]
   }
   return best
 }
+
+/**
+ * Plain-language notes about a chosen logo, from facts on the asset record only (size, format,
+ * transparency). Empty when nothing is wrong or unknown — never a guess about unseen pixels.
+ */
+export function logoQualityNotes(asset: {
+  name?: string
+  url?: string
+  mimeType?: string
+  width?: number
+  height?: number
+  hasTransparency?: boolean
+} | null | undefined): string[] {
+  if (!asset) return []
+  const notes: string[] = []
+  const { width, height } = asset
+  if (width && height && Math.max(width, height) < 300) {
+    notes.push(`This logo is only ${width}×${height}px and may look soft in the video. A larger file (or an SVG) will look sharper.`)
+  }
+  const kind = `${asset.mimeType ?? ''} ${asset.name ?? ''} ${asset.url ?? ''}`.toLowerCase()
+  const isSvg = /svg/.test(kind)
+  const isJpeg = /image\/jpe?g|\.jpe?g(\?|$|\s)/.test(kind)
+  if (isJpeg && !isSvg && !asset.hasTransparency) {
+    notes.push('A JPEG logo keeps its solid background box. If you have a transparent PNG or SVG, it will blend into the video better.')
+  }
+  return notes
+}

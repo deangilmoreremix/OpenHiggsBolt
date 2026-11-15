@@ -22,6 +22,7 @@
 'use client'
 
 import { RECAST_MAX_SECONDS } from './recast/recastJob'
+import { logoQualityNotes } from './logoScoring'
 import {
   useState,
   useRef,
@@ -3412,7 +3413,7 @@ function ConfigurationView(props: any) {
               <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5 }}>
                 {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
                 {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
-                <LeadInsightsPanel business={selectedBusiness} results={businessSearchResults} enrichment={enrichmentOf(selectedBusiness.id)} onPick={(b) => { void handleSelectBusiness(b) }} />
+                <LeadInsightsPanel showOutreach business={selectedBusiness} results={businessSearchResults} enrichment={enrichmentOf(selectedBusiness.id)} onPick={(b) => { void handleSelectBusiness(b) }} />
                 {foundContacts.length > 0 && (
                   <div data-testid="pz-found-contacts" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Found on the business's website</div>
@@ -3890,6 +3891,9 @@ function ConfigurationView(props: any) {
               </div>
             </div>
             <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" collapsed={assets.logos.length > 0} addLabel="+ Add another logo" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
+            {logoQualityNotes(assets.primaryLogo).map((note) => (
+              <p key={note} data-testid="pz-logo-note" style={{ margin: '8px 0 0', color: C.muted, fontSize: 10, lineHeight: 1.4 }}>⚠ {note}</p>
+            ))}
             <div
               className="logo-preview frame-preview"
               draggable
