@@ -1,128 +1,127 @@
-# Module 4: Scaling from Freelancer to Small Agency
+# Scaling from Freelancer to Small Agency
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Operational Standard Operating Procedures (SOPs), hiring offshore AI operators, protecting profit margins, and delegation frameworks for $20k+/month agencies.
+> **Time:** about 15 minutes. **You will finish with:** one written SOP, an operator job post, a team cost check and a 2-tier QC checklist.
 
 ---
 
-## 🚀 The Solo Bottleneck: Transitioning from Operator to CEO
+## Before you start
 
-When you start as a solo AI creator, you wear every hat: sales, prompt engineering, GPU rendering, video editing, invoice chasing, and customer support. 
+The lesson describes a Solo Bottleneck at around $8,000 to $10,000 a month (an example figure): your time goes into execution, outbound sales stops, and revenue flatlines because you cannot take client #6 without working 80 hours a week. To grow toward $25,000 to $50,000 a month (example figures, not guarantees) you shift from Prompt Operator to Creative Director and Account Executive, and delegate through written procedures, not verbal Slack instructions.
 
-At around **$8,000 to $10,000 / month**, you hit the **Solo Bottleneck**:
-* Your time is entirely consumed executing prompt runs and editing videos.
-* Outbound sales and lead generation stop because you are too busy fulfilling projects.
-* Revenue flatlines because you cannot take on client #6 without working 80 hours a week.
+You will need:
 
-```
-                           THE AGENCY SCALING MATRIX
-                                       │
-                         ┌─────────────┴─────────────┐
-                         ▼                           ▼
-                 Creative Director              Account Executive
-                    (Your Role)                    (Your Role)
-                         │                           │
-           ┌─────────────┴─────────────┐             │
-           ▼                           ▼             ▼
-     AI Prompt Operator          Video & Audio Editor    Client Onboarding & Support
-    (Offshore AI Tech)           (Post-Production Ops)       (Virtual Assistant)
-    $12 – $18 / Hour             $15 – $25 / Hour            $8 – $12 / Hour
-```
+* A project you will run soon, and a screen recorder such as Loom.
+* An Upwork or OnlineJobs.ph account, plus Slack and ClickUp.
+* About 15 minutes.
 
-To scale to **$25,000 – $50,000 / month**, you must shift your role from **Prompt Operator** to **Creative Director & Account Executive**.
+## Step by step
 
----
+### 1. Record your next project
 
-## 📜 Standard Operating Procedures (SOP) Blueprint
+Record your screen with Loom while you execute your next project, speaking your steps aloud.
 
-You cannot delegate tasks successfully by giving verbal instructions on Slack. You must build written and video-recorded Standard Operating Procedures (SOPs) for every step of your production pipeline.
+**You should see:** a video of one full production run.
 
-### Anatomy of an Agency SOP:
+**If not:** record one repeatable part (for example intake to export) instead of everything.
 
-```
-+-----------------------------------------------------------------------------+
-| SOP #HS-04: BATCH CORPORATE HEADSHOT GENERATION & UPSCALING                 |
-+-----------------------------------------------------------------------------+
-| 1. OBJECTIVE: Convert client raw selfie CSV roster into 8k studio headshots. |
-| 2. TOOLS REQUIRED: ComfyUI Node Graph #v4.2, FLUX 1.1 Pro API, Topaz Gigapixel|
-| 3. ESTIMATED TIME: 3 minutes per employee roster entry.                     |
-+-----------------------------------------------------------------------------+
+### 2. Write the SOP header
+
+Every SOP starts with an objective, required tools and estimated time. The lesson's example:
+
+```text
+SOP #HS-04: BATCH CORPORATE HEADSHOT GENERATION & UPSCALING
+1. OBJECTIVE: Convert client raw selfie CSV roster into 8k studio headshots.
+2. TOOLS REQUIRED: ComfyUI Node Graph #v4.2, FLUX 1.1 Pro API, Topaz Gigapixel
+3. ESTIMATED TIME: 3 minutes per employee roster entry.
 ```
 
-#### Step-by-Step Execution Sequence:
-1. **Intake Audit:** Open client Google Drive folder `01_Raw_Inputs`. Verify image resolution is at least 1080p.
-2. **Crop & Center:** Run Python auto-crop script `scratch/crop_headshots.py` to center facial bounding box at 1:1 ratio.
-3. **ComfyUI Ingestion:** Load JSON workflow `workflows/b2b_headshot_v4.json`. Set seed to `-1` and LoRA weight to `0.75`.
-4. **Quality Control Check:** Inspect rendered output against the 4 Quality Control Criteria:
-   - ✅ Eye reflection symmetry (no distorted pupils).
-   - ✅ Teeth count & alignment (no extra incisors).
-   - ✅ Skin texture preservation (no plastic blur).
-   - ✅ Background lighting contrast.
-5. **Upscale & Export:** Export approved renders into Topaz Gigapixel AI. Upscale 4x to 4500x4500px @ 300 DPI JPEG. Save in `02_Final_Delivery`.
+Replace the content with your own pipeline.
 
----
+**You should see:** a numbered header with objective, tools and time.
 
-## 💰 Hiring & Delegating Without Sacrificing Margins
+**If not:** write one sentence for each of the three parts.
 
-Hire specialized offshore talent (e.g., Philippines, Eastern Europe, LATAM) for prompt execution and post-production editing while maintaining an **80%+ Net Agency Profit Margin**:
+### 3. Write the execution steps
 
-### Offshore Team Cost Breakdown & Profit Margin Impact:
+Turn the recording into numbered steps. The example sequence:
 
-| Role | Target Hiring Region | Hourly Rate | Weekly Hours | Monthly Cost | Revenue Generated | Net Margin Contribution |
-|---|---|---|---|---|---|---|
-| **Offshore AI Prompt Operator** | Philippines / LATAM | $12 – $18 / hr | 20 hrs | $1,200 | $12,000 | **+$10,800 / mo** |
-| **Post-Production Video Editor** | Eastern Europe / India | $15 – $25 / hr | 15 hrs | $1,200 | $8,500 | **+$7,300 / mo** |
-| **Virtual Assistant / Account Admin** | Philippines | $8 – $12 / hr | 10 hrs | $400 | Operations Support | **Reclaims 40 Hrs / Mo** |
-| **Total Team Overhead** | — | — | **45 hrs** | **$2,800 / mo** | **$20,500 / mo** | **$17,700 Net Profit (86%)** |
-
----
-
-## ⚖️ Quality Control (QC) Gatekeeping Framework
-
-Delegating execution carries the risk that low-quality outputs reach the client. Protect your agency reputation by enforcing a **2-Tier QC Sign-Off**:
-
-```
-+------------------+      +------------------+      +------------------+      +------------------+
-|  OFFSHORE OPERATOR| ---> | INTERNAL QC AUDIT| ---> | CREATIVE DIRECTOR| ---> | CLIENT PROOFING  |
-|  (Prompt Run)    |      | (Pass/Fail SOP)  |      | (Final Sign-Off) |      | (Watermarked HD) |
-+------------------+      +------------------+      +------------------+      +------------------+
+```text
+1. Intake Audit: Open client Google Drive folder 01_Raw_Inputs. Verify image resolution is at least 1080p.
+2. Crop & Center: Run Python auto-crop script scratch/crop_headshots.py to center facial bounding box at 1:1 ratio.
+3. ComfyUI Ingestion: Load JSON workflow workflows/b2b_headshot_v4.json. Set seed to -1 and LoRA weight to 0.75.
+4. Quality Control Check: Inspect rendered output against the 4 Quality Control Criteria.
+5. Upscale & Export: Export approved renders into Topaz Gigapixel AI. Upscale 4x to 4500x4500px @ 300 DPI JPEG. Save in 02_Final_Delivery.
 ```
 
-### QC Checklist Requirements:
-- [ ] Facial symmetry and geometry verified.
-- [ ] Resolution meets 300 DPI print requirement.
-- [ ] No AI artifacts or distorted hands/fingers.
-- [ ] Color profile matches client brand guidelines (RGB/CMYK).
+**You should see:** each step names a folder, file or setting, so a stranger could follow it.
 
----
+**If not:** add the exact file names or values you used.
 
-## 🛠️ Step-by-Step Action Plan
+### 4. Add the QC criteria
 
-1. **Document Your First 3 SOPs:** Record your screen using Loom while executing your next project, then transcribe into written SOPs.
-2. **Post an Operator Job Listing:** Post a job description on Upwork or OnlineJobs.ph for an "AI Media Production Operator".
-3. **Set Up Agency Slack & ClickUp:** Create structured channels (`#sales-leads`, `#active-production`, `#qc-audit`, `#client-delivery`).
+The SOP's four quality criteria are: eye reflection symmetry (no distorted pupils), teeth count and alignment, skin texture preservation (no plastic blur), and background lighting contrast.
 
----
+**You should see:** four pass/fail checks inside the SOP.
 
-## 💡 Key Takeaways
-- Transition your personal role from Prompt Operator to Creative Director and Account Executive.
-- Build rigid, written SOPs for intake, GPU rendering, QC checks, and delivery.
-- Hire offshore operators ($12–$25/hr) to scale production while preserving an 80%+ net margin floor.
+**If not:** rewrite each as something that can be answered yes or no.
 
+### 5. Set up the 2-tier sign-off
 
----
+Quality control runs: offshore operator (prompt run), then internal QC audit (pass/fail against the SOP), then Creative Director final sign-off, then client proofing (watermarked HD). Write that order in your SOP. Then copy this checklist:
 
-## Produce this in SmartVideo GO AI
+```text
+[ ] Facial symmetry and geometry verified.
+[ ] Resolution meets 300 DPI print requirement.
+[ ] No AI artifacts or distorted hands/fingers.
+[ ] Color profile matches client brand guidelines (RGB/CMYK).
+```
 
-Apply this lesson directly inside SmartVideo GO AI:
+**You should see:** a checklist attached to the SOP.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**If not:** adapt items to your asset type (video needs motion checks).
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+### 6. Check the team economics
+
+The lesson's example team (illustrative): an offshore AI prompt operator at $12 to $18/hr, 20 hrs/week, about $1,200/mo; a post-production video editor at $15 to $25/hr, 15 hrs/week, about $1,200/mo; a virtual assistant at $8 to $12/hr, 10 hrs/week, about $400/mo. Total about 45 hrs and $2,800/mo against $20,500/mo of revenue, leaving $17,700 net profit (86%). Compute the same for your own planned hires, aiming for a net margin of 80% or more.
+
+**You should see:** your total monthly cost, revenue and margin percentage.
+
+**If not:** margin = (revenue - cost) / revenue; recheck the division.
+
+### 7. Post the operator job
+
+Post a listing on Upwork or OnlineJobs.ph for an "AI Media Production Operator". Attach your SOP so applicants can see the work.
+
+**You should see:** a live listing referencing your SOP.
+
+**If not:** start with a draft listing and refine it after reading your first applicants.
+
+### 8. Set up your workspace
+
+Create Slack and ClickUp channels: `#sales-leads`, `#active-production`, `#qc-audit`, `#client-delivery`.
+
+**You should see:** four channels matching your pipeline stages.
+
+**If not:** create the channels first and invite people later.
+
+## Check yourself
+
+* [ ] I have one written SOP with objective, tools, time and numbered steps.
+* [ ] My QC checklist is pass/fail.
+* [ ] I know the margin of my planned team.
+* [ ] An operator job listing and the four channels exist.
+
+## Common mistakes
+
+* **Delegating by chat message.** Without written or recorded SOPs, quality drifts.
+* **Skipping QC.** Two sign-offs protect your reputation.
+* **Hiring before documenting.** Write the SOP first.
+* **Treating example rates as fixed.** Rates vary; confirm with real applicants.
+
+## Go further
+
+**Role map.** Creative Director (you) and Account Executive, then AI Prompt Operator ($12 to $18/hr), Video and Audio Editor ($15 to $25/hr) and Client Onboarding and Support virtual assistant ($8 to $12/hr), as example rates.
+
+**Exercise.** Document your first 3 SOPs, one per production stage.
+
+Next: Building a portfolio that sells.

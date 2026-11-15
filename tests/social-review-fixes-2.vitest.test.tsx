@@ -57,7 +57,7 @@ describe('AI writing from an earlier publishing session', () => {
 });
 
 describe('Thumbnail step after Back/Next', () => {
-  it('opens the editor on the retained thumbnail without generating again', async () => {
+  it('keeps the retained thumbnail editable (Edit a region) without generating again', async () => {
     const { default: ThumbnailStep } = await import('@/components/social-publishing/steps/ThumbnailStep');
     render(
       <ThumbnailStep
@@ -67,8 +67,9 @@ describe('Thumbnail step after Back/Next', () => {
         copy={empty}
       />,
     );
-    expect(screen.getByTestId('thumbnail-editor')).toBeTruthy();
-    expect(screen.queryByText(/Generate or pick a thumbnail/)).toBeNull();
+    expect((screen.getByRole('button', { name: /Edit a region/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByTestId('thumbnail-editor')).toBeNull(); // the old standalone editor is gone
+    expect(mocks.thumbGen).not.toHaveBeenCalled();
   });
 
   it('keeps the concept panel mounted (hidden) while collapsed so a running generation is not dropped', async () => {

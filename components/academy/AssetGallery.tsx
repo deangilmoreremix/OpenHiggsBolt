@@ -3,7 +3,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { AcademyCard, Pill, cx } from './primitives';
+import { AcademyCard, CopyButton, Pill, cx } from './primitives';
 import type { AcademyAsset } from '@/data/academyAssets';
 import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 
@@ -141,7 +141,30 @@ const mdComponents = {
   code: (p: React.HTMLAttributes<HTMLElement>) => (
     <code className="rounded px-1 py-0.5 font-mono text-[12px] text-[#c4b5fd]" {...p} />
   ),
+  // fenced blocks (prompts, commands) get a one-click Copy button
+  pre: ({ children, node: _node, ...rest }: React.HTMLAttributes<HTMLPreElement> & { node?: unknown }) => {
+    const text = nodeText(children).replace(/\n$/, '');
+    return (
+      <div className="relative mb-3" data-testid="code-block">
+        <div className="absolute right-2 top-2">
+          <CopyButton text={text} />
+        </div>
+        <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border px-3 py-3 pr-16 text-[12px] leading-relaxed" style={{ borderColor: 'var(--border-color)', background: 'rgba(255,255,255,0.04)', color: semantic.textPrimary }} {...rest}>
+          {children}
+        </pre>
+      </div>
+    );
+  },
 };
+
+/** Plain text of a rendered markdown node (used to copy a code block exactly as written). */
+function nodeText(node: React.ReactNode): string {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (React.isValidElement(node)) return nodeText((node.props as { children?: React.ReactNode }).children);
+  return '';
+}
 
 export function LessonViewer({ markdown, track }: { markdown: string; track?: string }) {
   const processed = React.useMemo(() => {

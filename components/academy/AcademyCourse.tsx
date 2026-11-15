@@ -10,7 +10,10 @@ import type { AcademyTrack } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
 import studioKnowledgeBase from '@/data/studioKnowledgeBase.json';
 import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/shared/styles/designTokens';
-import { academyStudioUrl, academyTrackUrl, getStudioGuide } from '@/data/academyStudioGuides';
+import { academyStudioUrl, academyTrackUrl, getStudioGuide, BUILD_WITH_AI_TRACK } from '@/data/academyStudioGuides';
+import { LessonPlayer } from './player/LessonPlayer';
+import { useCourseProgress } from './useCourseProgress';
+import { courseContinueTarget, hasStarted, overallPercent } from '@/lib/academyCourseProgress';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -255,7 +258,20 @@ function TemplateModal({
   );
 }
 
-function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initial?: AcademyInitialState }) {
+type Course = ReturnType<typeof useCourseProgress>;
+
+const lessonKey = (track: string, slug: string) => `${track}/${slug}`;
+
+function SyncNote({ sync }: { sync: Course['sync'] }) {
+  const text =
+    sync === 'saved' ? 'Progress saved to your account'
+    : sync === 'syncing' ? 'Saving…'
+    : sync === 'offline' ? 'Could not reach your account yet. Your changes are kept in this browser and will sync when the connection returns.'
+    : 'Saved in this browser. Sign in to keep your progress on every device.';
+  return <span className="text-[11px]" style={{ color: semantic.textMuted }} aria-live="polite">{text}</span>;
+}
+
+function LearningPathsView({ tracks, initial, course }: { tracks: AcademyTrack[]; initial?: AcademyInitialState; course: Course }) {
   const seedTrack = tracks.find((t) => t.slug === initial?.track) ?? tracks[0];
   const seedLesson = seedTrack?.lessons.find((l) => l.slug === initial?.lesson) ?? seedTrack?.lessons[0];
   const [activeTrackSlug, setActiveTrackSlug] = React.useState(seedTrack?.slug ?? '');
@@ -263,23 +279,65 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
   const [step, setStep] = React.useState<Step>(initial?.step === 'see' || initial?.step === 'create' ? initial.step : 'learn');
   // keep the address bar in step with the open lesson (only after the learner navigates or arrived by a deep link)
   const touched = React.useRef(!!initial?.track);
+  // the step open inside the lesson (deep link `s=`); null lets the player resume from saved progress
+  const [lessonStepId, setLessonStepId] = React.useState<string | null>(initial?.s ?? null);
+  const [shownStepId, setShownStepId] = React.useState<string | null>(initial?.s ?? null);
   React.useEffect(() => {
-    if (touched.current) syncUrl({ track: activeTrackSlug, lesson: activeLessonSlug, step: step === 'learn' ? null : step });
-  }, [activeTrackSlug, activeLessonSlug, step]);
+    if (touched.current) syncUrl({ track: activeTrackSlug, lesson: activeLessonSlug, step: step === 'learn' ? null : step, s: step === 'learn' ? shownStepId : null });
+  }, [activeTrackSlug, activeLessonSlug, step, shownStepId]);
   React.useEffect(() => { touched.current = true; }, [activeTrackSlug, activeLessonSlug, step]);
   const [modalTemplate, setModalTemplate] = React.useState<{ slug: string; title: string } | null>(null);
 
   const activeTrack = tracks.find((t) => t.slug === activeTrackSlug) ?? tracks[0];
   const isUgc = activeTrack.slug === 'ugc';
+  // automatic "open where you left off" runs at most once, and never after the learner has navigated
+  const resumed = React.useRef(!!initial?.track);
 
-  const selectTrack = (slug: string) => {
-    const t = tracks.find((x) => x.slug === slug);
-    setActiveTrackSlug(slug);
-    setActiveLessonSlug(t?.lessons[0]?.slug ?? '');
+  const openLesson = (trackSlug: string, lessonSlug: string, stepId: string | null = null) => {
+    resumed.current = true; // an explicit choice (sidebar, track picker, link) always beats the automatic resume
+    setActiveTrackSlug(trackSlug);
+    setActiveLessonSlug(lessonSlug);
+    setLessonStepId(stepId);
+    setShownStepId(stepId);
     setStep('learn');
   };
+  const selectTrack = (slug: string) => {
+    const t = tracks.find((x) => x.slug === slug);
+    // opening a track resumes the lesson the learner was last on in it, else its first lesson
+    const last = course.progress.last[slug];
+    const resume = last ? last.lessonId.slice(slug.length + 1) : null;
+    const lesson = (resume && t?.lessons.find((l) => l.slug === resume)?.slug) || t?.lessons[0]?.slug || '';
+    openLesson(slug, lesson);
+  };
 
-  const { md: lessonMd, loading: lessonLoading } = useMarkdown(activeTrack.slug, activeLessonSlug, 'lesson');
+  const lessonIds = React.useMemo(() => tracks.flatMap((t) => t.lessons.map((l) => lessonKey(t.slug, l.slug))), [tracks]);
+  const describe = (id: string) => {
+    const [tr, ...rest] = id.split('/');
+    const t = tracks.find((x) => x.slug === tr);
+    const l = t?.lessons.find((x) => x.slug === rest.join('/'));
+    return t && l ? { track: t.title, lesson: l.title } : null;
+  };
+  const continueTo = (id: string, stepId: string | null) => {
+    const [tr, ...rest] = id.split('/');
+    openLesson(tr, rest.join('/'), stepId);
+  };
+  // the lesson after this one, in course order (crossing into the next track)
+  const nextLesson = (() => {
+    const i = lessonIds.indexOf(lessonKey(activeTrack.slug, activeLessonSlug));
+    const nextId = i >= 0 ? lessonIds[i + 1] : undefined;
+    const d = nextId ? describe(nextId) : null;
+    return nextId && d ? { title: d.lesson, go: () => continueTo(nextId, null) } : null;
+  })();
+
+  // Arriving with no deep link opens where the learner left off in Learning Paths (once their saved
+  // progress has loaded) instead of dropping them on the first lesson.
+  React.useEffect(() => {
+    if (resumed.current || !course.ready) return;
+    resumed.current = true;
+    const t = courseContinueTarget(course.progress, lessonIds);
+    if (t && hasStarted(course.progress, lessonIds)) continueTo(t.lessonId, t.stepId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.ready]);
 
   const ugcAssets: AcademyAsset[] = isUgc
     ? academyAssets
@@ -321,17 +379,21 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
                   }
                 >
                   {t.title}
-                  <span className="ml-1 text-[10px]" style={{ color: semantic.textMuted }}>{t.lessons.length}L · {t.templates.length}T</span>
+                  <span className="ml-1 text-[10px]" style={{ color: semantic.textMuted }}>
+                    {t.lessons.length}L · {t.templates.length}T
+                    {(() => {
+                      const n = t.lessons.filter((l) => course.progress.completedLessons.includes(lessonKey(t.slug, l.slug))).length;
+                      return n > 0 ? ` · ${n}/${t.lessons.length} done` : '';
+                    })()}
+                  </span>
                 </button>
                 {t.slug === activeTrackSlug && (
                   <div className="ml-2 mt-1 space-y-0.5 border-l border-white/10 pl-2">
                     {t.lessons.map((l, i) => (
                       <button
                         key={l.slug}
-                        onClick={() => {
-                          setActiveLessonSlug(l.slug);
-                          setStep('learn');
-                        }}
+                        onClick={() => openLesson(t.slug, l.slug)}
+                        aria-current={l.slug === activeLessonSlug ? 'page' : undefined}
                         className={cx(
                           'block w-full rounded px-2 py-1 text-left text-[12px] transition-colors',
                         )}
@@ -339,7 +401,9 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
                           color: l.slug === activeLessonSlug ? colors.primary : semantic.textMuted,
                         }}
                       >
-                        {i === 0 ? '★ ' : `${i} `}
+                        {course.progress.completedLessons.includes(lessonKey(t.slug, l.slug)) ? (
+                          <><span aria-hidden="true" style={{ color: '#34d399' }}>✓ </span><span className="sr-only">Completed: </span></>
+                        ) : i === 0 ? '★ ' : `${i} `}
                         {l.title}
                       </button>
                     ))}
@@ -352,12 +416,13 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
       </aside>
 
       {/* Main */}
-      <main className="p-4 md:p-6">
+      <main className="min-w-0 p-4 md:p-6">
         <div className="mb-4">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>{activeTrack.title}</p>
           <h2 className="text-xl font-extrabold">
             {activeTrack.lessons.find((l) => l.slug === activeLessonSlug)?.title ?? 'Lesson'}
           </h2>
+          <SyncNote sync={course.sync} />
         </div>
 
         {/* Step switcher */}
@@ -396,13 +461,19 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
         </div>
 
         {step === 'learn' && (
-          <AcademyCard>
-            {lessonLoading ? (
-              <div className="py-10 text-center text-sm" style={{ color: semantic.textSecondary }}>Loading lesson…</div>
-            ) : (
-              <LessonViewer markdown={lessonMd ?? ''} track={activeTrack.slug} />
-            )}
-          </AcademyCard>
+          <LessonPlayer
+            key={lessonKey(activeTrack.slug, activeLessonSlug)}
+            track={activeTrack.slug}
+            lessonSlug={activeLessonSlug}
+            lessonTitle={activeTrack.lessons.find((l) => l.slug === activeLessonSlug)?.title ?? 'Lesson'}
+            progress={course.progress}
+            ready={course.ready}
+            actions={course}
+            initialStepId={lessonStepId}
+            // keep the step the player resumes from in step with where the learner is, so leaving LEARN and coming back does not jump to the original deep link
+            onStepChange={(id) => { setShownStepId(id); setLessonStepId(id); }}
+            next={nextLesson}
+          />
         )}
 
         {step === 'see' && (
@@ -458,17 +529,174 @@ function LearningPathsView({ tracks, initial }: { tracks: AcademyTrack[]; initia
 }
 
 /* ------------------------------------------------------------------ */
+/*  Sub-component: "Build with AI" course (its own tab in the header)  */
+/* ------------------------------------------------------------------ */
+
+function BuildWithAiView({ track, initial, course, reopen = false }: { track: AcademyTrack; initial?: AcademyInitialState; course: Course; reopen?: boolean }) {
+  const lessons = track.lessons;
+  const ids = React.useMemo(() => lessons.map((l) => lessonKey(track.slug, l.slug)), [lessons, track.slug]);
+  // `reopen`: the learner came back to this tab within the same visit (header-tab switch), so
+  // return to the lesson and step they reached instead of the course home
+  const [reopenAt] = React.useState(() => {
+    const t = reopen && !initial?.lesson && hasStarted(course.progress, ids) ? courseContinueTarget(course.progress, ids) : null;
+    return t && lessons.some((l) => lessonKey(track.slug, l.slug) === t.lessonId) ? t : null;
+  });
+  const seed = reopenAt ? reopenAt.lessonId.slice(track.slug.length + 1) : initial?.lesson && lessons.some((l) => l.slug === initial.lesson) ? initial.lesson : null;
+  const seedStep = reopenAt ? reopenAt.stepId : seed ? initial?.s ?? null : null;
+  const [lessonSlug, setLessonSlug] = React.useState<string | null>(seed);
+  const [stepId, setStepId] = React.useState<string | null>(seedStep);
+  const [shownStepId, setShownStepId] = React.useState<string | null>(seedStep);
+  const [drawer, setDrawer] = React.useState(false);
+
+  React.useEffect(() => {
+    syncUrl({ view: 'build-with-ai', lesson: lessonSlug, s: lessonSlug ? shownStepId : null });
+  }, [lessonSlug, shownStepId]);
+
+  const open = (slug: string | null, step: string | null = null) => {
+    setLessonSlug(slug);
+    setStepId(step);
+    setShownStepId(step);
+    setDrawer(false);
+  };
+  const describe = (id: string) => {
+    const l = lessons.find((x) => lessonKey(track.slug, x.slug) === id);
+    return l ? { track: 'Build with AI', lesson: l.title } : null;
+  };
+  const continueTo = (id: string, step: string | null) => open(id.slice(track.slug.length + 1), step);
+  const idx = lessonSlug ? lessons.findIndex((l) => l.slug === lessonSlug) : -1;
+  const nextL = idx >= 0 ? lessons[idx + 1] : undefined;
+  const done = ids.filter((id) => course.progress.completedLessons.includes(id)).length;
+  const percent = overallPercent(course.progress, ids);
+  const started = hasStarted(course.progress, ids);
+  const target = courseContinueTarget(course.progress, ids);
+
+  const nav = (
+    <nav aria-label="Build with AI lessons" className="space-y-0.5">
+      <button
+        type="button"
+        onClick={() => open(null)}
+        aria-current={lessonSlug === null ? 'page' : undefined}
+        className="block w-full rounded px-2 py-1.5 text-left text-[12px] font-semibold"
+        style={{ color: lessonSlug === null ? colors.primary : semantic.textSecondary }}
+      >
+        Course home
+      </button>
+      {lessons.map((l, i) => {
+        const complete = course.progress.completedLessons.includes(lessonKey(track.slug, l.slug));
+        return (
+          <button
+            key={l.slug}
+            type="button"
+            onClick={() => open(l.slug)}
+            aria-current={l.slug === lessonSlug ? 'page' : undefined}
+            className="block w-full rounded px-2 py-1 text-left text-[12px] transition-colors"
+            style={{ color: l.slug === lessonSlug ? colors.primary : semantic.textMuted }}
+          >
+            {complete ? (
+              <><span aria-hidden="true" style={{ color: '#34d399' }}>✓ </span><span className="sr-only">Completed: </span></>
+            ) : `${i} `}
+            {l.title}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
+  return (
+    <div className="grid grid-cols-1 gap-0 md:grid-cols-[260px_1fr]" data-testid="build-with-ai">
+      <aside className="border-b border-white/10 p-3 md:max-h-[calc(100vh-57px)] md:overflow-y-auto md:border-b-0 md:border-r">
+        <button type="button" onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} className="mb-2 w-full rounded-lg border px-3 py-2 text-left text-xs font-semibold md:hidden" style={{ borderColor: 'var(--border-color)', color: semantic.textSecondary }}>
+          ☰ Lessons ({done}/{lessons.length} done)
+        </button>
+        <div className={drawer ? 'block' : 'hidden md:block'}>
+          <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>
+            Build with AI · {done}/{lessons.length} lessons
+          </p>
+          {nav}
+        </div>
+      </aside>
+
+      <main className="min-w-0 p-4 md:p-6">
+        {lessonSlug === null ? (
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: colors.primary }}>Self-paced course</p>
+            <h2 className="mb-2 text-2xl font-extrabold">Build and launch an app with Claude or ChatGPT</h2>
+            <p className="mb-3 max-w-3xl text-sm" style={{ color: semantic.textPrimary }}>
+              Open free Netlify, Clerk and Stripe accounts, connect Claude or ChatGPT to them, host your app, add sign-up with Clerk, take test payments with Stripe and go live. Every lesson takes under 20 minutes, goes one step at a time, and remembers where you left off.
+            </p>
+            <p className="mb-5 max-w-3xl text-sm" style={{ color: semantic.textSecondary }}>
+              The reseller apps already include Stripe payments, a database and Google sign-in. Netlify hosting and Clerk sign-in are changes your assistant makes in your own copy, on a separate branch, with your approval at each step.
+            </p>
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => (started && target ? continueTo(target.lessonId, target.stepId) : open(lessons[0]?.slug ?? null))}
+                className="rounded-lg px-6 py-2.5 text-sm font-bold text-black"
+                style={{ background: colors.primary }}
+              >
+                {started && target ? 'Continue where you left off →' : 'Start the course →'}
+              </button>
+              <span className="text-xs" style={{ color: semantic.textSecondary }}>{percent}% complete · <SyncNote sync={course.sync} /></span>
+            </div>
+            <ol className="max-w-3xl space-y-1.5">
+              {lessons.map((l, i) => {
+                const complete = course.progress.completedLessons.includes(lessonKey(track.slug, l.slug));
+                return (
+                  <li key={l.slug}>
+                    <button type="button" onClick={() => open(l.slug)} className="flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition-colors hover:border-[#22d3ee]/40" style={panels.card}>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold" style={complete ? { background: '#10b981', color: 'black' } : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+                        {complete ? '✓' : i}
+                      </span>
+                      <span className="text-white">{l.title}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-5 max-w-3xl text-xs" style={{ color: semantic.textSecondary }}>
+              Bought the reseller package? <a className="underline" style={{ color: colors.primary }} href="/academy/reseller/launch">The Reseller Setup Walkthrough (Module 13)</a> is the same course tied to the app you chose.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4">
+              <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>Build with AI · {idx > 0 ? `lesson ${idx} of ${lessons.length - 1}` : 'Overview'}</p>
+              <h2 className="text-xl font-extrabold">{lessons[idx]?.title}</h2>
+              <SyncNote sync={course.sync} />
+            </div>
+            <LessonPlayer
+              key={lessonKey(track.slug, lessonSlug)}
+              track={track.slug}
+              lessonSlug={lessonSlug}
+              lessonTitle={lessons[idx]?.title ?? 'Lesson'}
+              progress={course.progress}
+              ready={course.ready}
+              actions={course}
+              initialStepId={stepId}
+              onStepChange={(id) => { setShownStepId(id); setStepId(id); }}
+              next={nextL ? { title: nextL.title, go: () => open(nextL.slug) } : null}
+            />
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Sub-component: Studio Reference View                              */
 /* ------------------------------------------------------------------ */
 
 /** Initial navigation state, parsed from the URL by app/academy/page.tsx (deep links). */
 export interface AcademyInitialState {
-  view?: 'learning-paths' | 'studio-reference';
+  view?: 'learning-paths' | 'studio-reference' | 'build-with-ai';
   studio?: string;
   tab?: string;
   track?: string;
   lesson?: string;
   step?: string;
+  /** The lesson step to open (deep link). */
+  s?: string;
 }
 
 const VALID_TABS = new Set(['create', 'overview', 'getting-started', 'inputs-models', 'best-practices', 'use-cases', 'troubleshooting', 'business-related', 'glossary', 'academy-guidance']);
@@ -477,7 +705,7 @@ const VALID_TABS = new Set(['create', 'overview', 'getting-started', 'inputs-mod
 function syncUrl(params: Record<string, string | null | undefined>) {
   try {
     const u = new URL(window.location.href);
-    for (const k of ['view', 'studio', 'tab', 'track', 'lesson', 'step']) u.searchParams.delete(k);
+    for (const k of ['view', 'studio', 'tab', 'track', 'lesson', 'step', 's']) u.searchParams.delete(k);
     for (const [k, v] of Object.entries(params)) if (v) u.searchParams.set(k, v);
     window.history.replaceState(null, '', `${u.pathname}${u.search}`);
   } catch {
@@ -1118,14 +1346,41 @@ function EmptyState({ text }: { text: string }) {
 /*  Top-level AcademyCourse                                            */
 /* ------------------------------------------------------------------ */
 
-export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrack[]; initial?: AcademyInitialState }) {
-  const [view, setViewState] = React.useState<'learning-paths' | 'studio-reference'>(
-    initial?.view === 'studio-reference' || (initial?.studio && !initial?.track) ? 'studio-reference' : 'learning-paths',
+type AcademyView = 'learning-paths' | 'studio-reference' | 'build-with-ai';
+
+export default function AcademyCourse({ tracks, initial, userId = null }: { tracks: AcademyTrack[]; initial?: AcademyInitialState; userId?: string | null }) {
+  // The Build with AI course has its own tab; the other tracks are the Learning Paths.
+  const buildTrack = tracks.find((t) => t.slug === BUILD_WITH_AI_TRACK) ?? null;
+  const pathTracks = React.useMemo(() => tracks.filter((t) => t.slug !== BUILD_WITH_AI_TRACK), [tracks]);
+  const allLessonIds = React.useMemo(() => tracks.flatMap((t) => t.lessons.map((l) => lessonKey(t.slug, l.slug))), [tracks]);
+  // one progress store for the whole Academy, shared by every tab
+  const course = useCourseProgress(allLessonIds, true, userId);
+
+  const [view, setViewState] = React.useState<AcademyView>(
+    buildTrack && (initial?.view === 'build-with-ai' || initial?.track === BUILD_WITH_AI_TRACK)
+      ? 'build-with-ai'
+      : initial?.view === 'studio-reference' || (initial?.studio && !initial?.track) ? 'studio-reference' : 'learning-paths',
   );
-  const setView = (v: 'learning-paths' | 'studio-reference') => {
+  const setView = (v: AcademyView) => {
     setViewState(v);
-    syncUrl(v === 'studio-reference' ? { view: 'studio-reference' } : {});
+    // each tab writes its own address (the views sync it themselves once they open); clear stale params first
+    syncUrl(v === 'studio-reference' ? { view: 'studio-reference' } : v === 'build-with-ai' ? { view: 'build-with-ai' } : {});
   };
+  // The address the page was opened with (deep link to a track, lesson, step) applies ONCE. Header-tab
+  // switches unmount and remount the views, and a remounted view must resume from saved progress, not
+  // re-seed itself from the original link and jump back to the deep-linked step.
+  const deepLinkUsed = React.useRef(false);
+  React.useEffect(() => { deepLinkUsed.current = true; }, []);
+  const linked = deepLinkUsed.current ? undefined : initial;
+  // links to the Build with AI track from older addresses open the tab with the same lesson
+  const buildInitial: AcademyInitialState | undefined = linked?.track === BUILD_WITH_AI_TRACK ? { ...linked, view: 'build-with-ai' } : linked;
+  const learningInitial: AcademyInitialState | undefined = linked?.track === BUILD_WITH_AI_TRACK ? { ...linked, track: undefined, lesson: undefined } : linked;
+
+  const tabs: { id: AcademyView; label: string }[] = [
+    { id: 'learning-paths', label: 'Learning Paths' },
+    { id: 'studio-reference', label: 'Studio Reference' },
+    ...(buildTrack ? [{ id: 'build-with-ai' as const, label: 'Build with AI' }] : []),
+  ];
 
   return (
     <div className="min-h-screen" style={appWrapper}>
@@ -1138,39 +1393,29 @@ export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrac
             <div>
               <h1 className="text-sm font-extrabold leading-tight">SmartVideo GO AI Academy</h1>
               <p className="text-[11px]" style={{ color: semantic.textSecondary }}>
-                {tracks.length} course tracks · rebranded for SmartVideo GO AI
+                {pathTracks.length} course tracks · rebranded for SmartVideo GO AI
               </p>
             </div>
           </div>
 
           {/* View switcher */}
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
-            <button
-              onClick={() => setView('learning-paths')}
-              className={cx(
-                'rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
-              )}
-              style={
-                view === 'learning-paths'
-                  ? { background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.3)' }
-                  : { color: semantic.textMuted }
-              }
-            >
-              Learning Paths
-            </button>
-            <button
-              onClick={() => setView('studio-reference')}
-              className={cx(
-                'rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
-              )}
-              style={
-                view === 'studio-reference'
-                  ? { background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.3)' }
-                  : { color: semantic.textMuted }
-              }
-            >
-              Studio Reference
-            </button>
+          <div role="tablist" aria-label="Academy sections" className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={view === t.id}
+                onClick={() => setView(t.id)}
+                className={cx('rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors')}
+                style={
+                  view === t.id
+                    ? { background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.3)' }
+                    : { color: semantic.textMuted }
+                }
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
           <a
@@ -1185,9 +1430,11 @@ export default function AcademyCourse({ tracks, initial }: { tracks: AcademyTrac
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         {view === 'learning-paths' ? (
-          <LearningPathsView tracks={tracks} initial={initial} />
+          <LearningPathsView tracks={pathTracks} initial={learningInitial} course={course} />
+        ) : view === 'build-with-ai' && buildTrack ? (
+          <BuildWithAiView track={buildTrack} initial={buildInitial} course={course} reopen={deepLinkUsed.current} />
         ) : (
-          <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={initial} />
+          <StudioReferenceView onBack={() => setView('learning-paths')} tracks={tracks} initial={linked} />
         )}
       </div>
     </div>

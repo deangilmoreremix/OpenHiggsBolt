@@ -14,7 +14,9 @@ import type {
   PersonalizationSource,
 } from '../types'
 import type { ImageHints } from '../preview/imageStyle'
+import { endCardExtraLine } from '../preview/ctaSuggestions'
 import { imageRoleFromCategory } from '../preview/imagePresets'
+import { getCachedSamples } from '../preview/placement/frameSampler'
 import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
@@ -77,8 +79,12 @@ export function buildPreviewInput(
     imageHints[url] = { ...assetHints[url], ...measured }
   }
 
+  const videoUrl = previewVideo?.url || source?.sourceMedia || null
+  const lumaSamples = source?.mediaType === 'image' ? null : getCachedSamples(videoUrl)
+
   return {
-    videoUrl: previewVideo?.url || source?.sourceMedia || null,
+    videoUrl,
+    ...(lumaSamples && lumaSamples.length ? { lumaSamples } : {}),
     posterUrl: previewVideo?.poster || source?.poster || null,
     isImageSource: source?.mediaType === 'image',
     audioUrl: previewSettings.audio?.url ?? previewVideo?.audioUrl ?? null,
@@ -93,6 +99,9 @@ export function buildPreviewInput(
       cta: callToAction,
       phone: clientForm.phone || '',
       website,
+      ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction })
+        ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction }) }
+        : {}),
       logoUrl: firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url),
       productUrl: firstUrl(assets.products?.[0]?.uploadedUrl, assets.products?.[0]?.url),
       serviceUrl: firstUrl(

@@ -1,90 +1,53 @@
-# Track 3 — Faceless AI Channels
+# Faceless AI Channels
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+Run a YouTube or TikTok channel with no camera and no voice recording, as a repeatable business system. You build everything inside SmartVideo GO AI's Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
 
+## How it works
 
+Each lesson is a short guided walkthrough of 14-17 minutes with a result at the end. Lessons that need more time are split into two parts. Do them in order. Reusable templates are saved in [`templates/`](templates/).
 
-> A YouTube/TikTok channel with no camera or voice recording — running as a scalable business system.
+## Lessons
 
-Five modules, in order. Each is one markdown file — click straight in, no subfolders. Every module follows the same structure: Problem → Concept → Do It → Compare Tools → Launch It → Exercises.
-
-**"Templates" below** = the reusable template(s) each module produces (matrixes, script structures, calculators) — actual files you fill in and reuse, saved in [`templates/`](templates/).
-
-| # | Module | Time | Requires |
+| # | Lesson | Time | Requires |
 |:---:|---|:---:|---|
-| 1 | [Niche Selection & Script Pipeline](01-niche-and-script.md) | ~45 min | — |
-| 2 | [Duration-Matched Narration & Pacing](02-narration-and-pacing.md) | ~45 min | Module 1 |
-| 3 | [Honest RPM & Earnings Math](03-rpm-and-earnings.md) | ~35 min | Modules 1–2 |
-| 4 | [Scaling to Multiple Channels](04-scaling-channels.md) | ~40 min | Modules 1–3 |
-| 5 | [Monetization Ladder](05-monetization-ladder.md) | ~30 min | Modules 1, 3 |
+| 1 | [Niche Selection & Script Pipeline](01-niche-and-script.md) | ~15 min | none |
+| 1b | [Niche Selection & Script Pipeline, part 2](01-niche-and-script-part-2.md) | ~15 min | Lesson 1 |
+| 2 | [Duration-Matched Narration & Pacing](02-narration-and-pacing.md) | ~14 min | Lesson 1b |
+| 2b | [Duration-Matched Narration & Pacing, part 2](02-narration-and-pacing-part-2.md) | ~14 min | Lesson 2 |
+| 3 | [Honest RPM & Earnings Math](03-rpm-and-earnings.md) | ~17 min | Lessons 1-2b |
+| 4 | [Scaling to Multiple Channels](04-scaling-channels.md) | ~14 min | Lessons 1-2b |
+| 4b | [Scaling to Multiple Channels, part 2](04-scaling-channels-part-2.md) | ~15 min | Lesson 4 |
+| 5 | [Monetization Ladder](05-monetization-ladder.md) | ~15 min | Lessons 1b, 3 |
+| 5b | [Monetization Ladder, part 2](05-monetization-ladder-part-2.md) | ~15 min | Lesson 5 |
 
----
+## What you will be able to do
 
-### 1. [Niche Selection & Script Pipeline](01-niche-and-script.md)
+### Niche and scripts
 
-> If your niche has low CPM, your view count doesn't matter; if your script has low retention, YouTube won't show it to anyone.
+Choose a high-CPM niche and write conversational 60-second scripts under 180 words that hold retention. Templates: [`niche-evaluation-matrix.md`](templates/niche-evaluation-matrix.md), [`retention-script-template.md`](templates/retention-script-template.md).
 
-- Evaluate advertiser density and identify high-CPM niches (Finance, SaaS, Business).
-- Structure conversational scripts under a strict 180-word limit to maintain comfortable audio pacing.
-- Prompt text LLMs to output visually paced script segments rather than formal prose.
+### Narration and pacing
 
-**Templates:** [`niche-evaluation-matrix.md`](templates/niche-evaluation-matrix.md) · [`retention-script-template.md`](templates/retention-script-template.md)
+Generate voice first, log exact durations and cut visuals every 2.5-4.0 seconds. Template: [`narration-duration-log.md`](templates/narration-duration-log.md).
 
-### 2. [Duration-Matched Narration & Pacing](02-narration-and-pacing.md)
+### Earnings math
 
-> Visuals tell the story, but the audio duration controls the edit.
+Understand Shorts RPM of $0.02-$0.06 versus long-form RPM of $5-$25, calculate cost per video and design conversion so a small channel is profitable. Template: [`channel-profitability-calculator.md`](templates/channel-profitability-calculator.md).
 
-- Lay down voice narration audio tracks first to establish the spine of your editing timeline.
-- Measure and log exact audio clip durations to schedule visual cuts every 2–4 seconds.
-- Trim trailing pauses and silent frames to maintain rapid, drop-free pacing.
+### Scaling
 
-**Templates:** [`narration-duration-log.md`](templates/narration-duration-log.md)
+Batch production across a week, keep channels isolated in separate browser profiles and syndicate 9:16 videos to YouTube Shorts, TikTok and Instagram Reels. Template: [`production-schedule-tracker.md`](templates/production-schedule-tracker.md).
 
-### 3. [Honest RPM & Earnings Math](03-rpm-and-earnings.md)
+### Monetization
 
-> Views are vanity; profit margins are sanity.
+Build a funnel with an opt-in page and a checkout, pitch software affiliates and automate a welcome email sequence. Templates: [`funnel-setup-checklist.md`](templates/funnel-setup-checklist.md), [`affiliate-pitch-template.md`](templates/affiliate-pitch-template.md).
 
-- Demystify long-form vs. short-form AdSense payouts (Shorts RPM of $0.02-$0.06 vs. long-form RPM of $5-$25).
-- Audit API generation costs (scripting, text-to-speech, video credits) to calculate unit costs per video.
-- Design lead-generation conversion rates to make a small channel profitable from day one.
+## Produce it in SmartVideo GO AI
 
-**Templates:** [`channel-profitability-calculator.md`](templates/channel-profitability-calculator.md)
+* **Image Studio** for anchors, character sheets and product shots.
+* **Video Studio** for image-to-video motion and talking-head clips.
+* **AI Influencer Studio** for consistent recurring characters.
+* **Storyboard / Campaign Planner** for batch matrices and briefs.
+* **Lip-Sync Studio** for voice plus mouth-sync.
 
-### 4. [Scaling to Multiple Channels](04-scaling-channels.md)
-
-> One channel is a job; three channels is a system.
-
-- Establish temporal batch schedules (scripting on Mondays, voiceovers on Tuesdays, rendering on Wednesdays).
-- Run multiple channel accounts safely on a single computer using isolated browser profiles.
-- Syndicating 9:16 vertical videos simultaneously across YouTube Shorts, TikTok, and Instagram Reels.
-
-**Templates:** [`production-schedule-tracker.md`](templates/production-schedule-tracker.md)
-
-### 5. [Monetization Ladder](05-monetization-ladder.md)
-
-> Don't wait for a million views; build a ladder to sell to the first thousand.
-
-- Construct sales funnels using Carrd opt-in landing pages and Gumroad/Whop checkout portals.
-- Pitch SaaS tools in your niche to secure high-ticket monthly recurring affiliate commissions.
-- Integrate pinned comments and subtle CTAs to steer video viewers into automated welcome emails.
-
-**Templates:** [`funnel-setup-checklist.md`](templates/funnel-setup-checklist.md) · [`affiliate-pitch-template.md`](templates/affiliate-pitch-template.md)
-
----
-
-All templates live in [`templates/`](templates/). For status across the other 13 tracks, see [ROADMAP.md](../../ROADMAP.md).
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Start with Niche Selection & Script Pipeline.

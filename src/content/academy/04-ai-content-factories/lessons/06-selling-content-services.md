@@ -1,138 +1,83 @@
 # Selling Content-Factory Output as a Service
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 15 minutes. **You will finish with:** a priced package, a recurring-payment plan, and a ready-to-send retainer proposal.
 
+---
 
+## Before you start
 
-> Businesses don't want views; they want the consistency that builds views.
+Selling "per video" or "per hour" keeps your income at zero between jobs, and clients order three videos, pause, then ask for revisions weeks later. A **monthly retainer** locks in predictable income and weekly batch delivery (for example 7 videos every Friday). Costs are low: a $1,500 retainer costing about $30 in API credits is a **98% net profit margin**.
 
-**Track:** AI Content Factories  
-**Time:** ~30 minutes  
-**Prerequisites:** The Multi-Step Production Pipeline, Batching & Scheduling at Volume  
+You will need your pipeline and calendar from lessons 1 and 5, and a payment tool (Stripe, PayPal or Whop). Use your own accounts and never paste secret keys into any chat. You can produce sample work in SmartVideo GO AI's **Image Studio** and **Video Studio**.
 
-## The Problem
+## Step by step
 
-Most freelance video editors sell their services "per video" or "per hour." They charge $100 to edit a single clip. This pricing model forces you into a constant cycle of pitching: the moment you finish a project, your income drops to zero until you land the next client. You spend more time writing cold emails than actually editing.
+### 1. Define your tiers
 
-Furthermore, clients are unreliable. They will order 3 videos, pause for a month, and then ask for a revision three weeks later. This breaks your factory pipeline and clogs your editing schedules.
+Open [`templates/bulk-pricing-sheet.md`](templates/bulk-pricing-sheet.md) and pick your packages:
 
-To scale your income, you must stop selling one-off edits. Instead, package your factory output into a **monthly recurring retainer** (subscription agency model), selling consistent, predictable volume that keeps clients paying month after month.
-
-## The Concept
-
-The business model of a content factory agency is the **Subscription Content Retainer**:
-
-```
-Client Retainer ($1,500/mo)  ──►  Upfront Payment  ──►  Weekly Batch Delivery (7 Videos)
+```text
+Growth Factory ($1,500/mo): 30 vertical videos, custom thumbnails, SEO tagging.
+Syndication Network ($2,800/mo): 60 vertical videos, scheduled across YouTube, TikTok, and Instagram.
 ```
 
-By transitioning to monthly subscriptions, you lock in:
-* **Predictable Income:** You know exactly how much your agency will make next month, allowing you to hire assistants or invest in software.
-* **Pipeline Planning:** You deliver videos in predictable weekly batches (e.g. 7 videos every Friday), eliminating emergency editing requests.
-* **High Margins:** Because your factory utilizes fast AI generation tools, your cost per video is under $1. A $1,500 retainer costs you only $30 in API credits, yielding a **98% net profit margin**.
+**You should see:** at least one named package with a price and deliverables.
 
----
+**If not:** start with one tier; add a second later.
 
-## Do It
+### 2. Set up recurring billing
 
-### Step 1: Define Your Pricing Tiers
-Open the [`templates/bulk-pricing-sheet.md`](templates/bulk-pricing-sheet.md). Select the packages you will offer:
-* **Growth Factory ($1,500/mo):** 30 vertical videos, custom thumbnails, SEO tagging.
-* **Syndication Network ($2,800/mo):** 60 vertical videos, scheduled across YouTube, TikTok, and Instagram.
+Open a merchant account (Stripe, PayPal or Whop) and create a subscription product matching your package price. Bill upfront at the start of each 30-day cycle. Never produce before the invoice is paid.
 
-### Step 2: Set Up Recurring Invoicing
-Open a merchant account (Stripe, PayPal, or Whop). Set up a subscription product matching your package price. **Always bill clients upfront** at the start of the 30-day cycle. Never produce videos before the invoice is settled.
+**You should see:** a subscription product with a payment link.
 
-### Step 3: Target Your Ideal Clients
-Focus on businesses that have high marketing budgets but no time to create content:
-* Professional services (real estate brokers, law firms, accountants, private clinics).
-* High-ticket consultants, business coaches, and software founders.
-* E-commerce brand owners.
+**If not:** if setup needs identity checks, finish them in the tool itself; menus move, so follow the current screen.
 
-### Step 4: Send the Pitch Proposal
-Draft a clear proposal using the [`templates/agency-retainer-proposal.md`](templates/agency-retainer-proposal.md). Keep it simple: state the deliverables, the delivery schedule (weekly batches), and the upfront price. 
+### 3. Choose target clients
 
-### Step 5: Onboard & Set Up Shared Folders
-Upon payment, open a shared folder (Google Drive or Dropbox) with the client. Set up subfolders:
-* `[Raw_Assets_From_Client]`: For any logos, color books, or reference images they want you to use.
-* `[Weekly_Deliveries]`: Where you upload the weekly batch of 7 videos.
+List 10 prospects from: professional services (real estate brokers, law firms, accountants, private clinics), high-ticket consultants, business coaches and software founders, and e-commerce brand owners.
 
----
+**You should see:** a list of prospects with high marketing budgets and little time.
 
-## Worked Example
+**If not:** narrow to one niche you know best.
 
-<p align="center">
-<img src="templates/examples/agency-client-pitch.jpg" alt="Agency Pitch" width="280">
-<img src="templates/examples/agency-pitch-clip.gif" alt="Pitch Boardroom Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Agency Pitch Image (Left) ──► Image-to-Video Boardroom Presentation (Right) · Video File: <a href="templates/examples/agency-pitch-clip.mp4">templates/examples/agency-pitch-clip.mp4</a></sub></p>
+### 4. Write the proposal
 
-**Retainer Deal: "Apex Bookkeeping" Agency Agreement**
+Fill in [`templates/agency-retainer-proposal.md`](templates/agency-retainer-proposal.md): deliverables, delivery schedule (weekly batches) and upfront price. Add that revisions must be requested in a single batch within 48 hours of delivery.
 
+**You should see:** a one-page proposal with scope, schedule, price and revision cap.
 
+**If not:** keep it simple; cut anything that is not deliverables, schedule or price.
 
-* **The Client:** A local accounting firm wanting to grow their TikTok/Reels presence to source tax clients.
-* **The Deal Closed:** **$1,500/month retainer** for 30 short-form videos.
-* **Delivery Pacing:** 7 videos uploaded to their Google Drive folder every Friday.
-* **Agency Production Math:**
-  * **Time Spent:** 4 hours/month scripting, 4 hours/month editing and captioning. (Total: **8 hours/month**).
-  * **API Expense:** 30 videos @ $0.70/video = **$21.00/month**.
-  * **Gross Income:** **$1,500.00/month**.
-  * **Net Monthly Profit:** **$1,479.00**.
-  * **Hourly rate equivalent:** **$184.87 / hour**.
+### 5. Prepare onboarding
 
-**Why this works:** The client receives a high-quality video uploaded once a day, keeping their brand visible online. The agency makes a 98% profit margin by using a batched AI pipeline to deliver the assets.
+Plan a shared folder (Google Drive or Dropbox) with `[Raw_Assets_From_Client]` for logos, color books and reference images, and `[Weekly_Deliveries]` for the weekly batch of 7 videos.
 
----
+**You should see:** the two folders named and ready to share after payment.
 
-## Compare Tools
+**If not:** create them empty now; share only after the first payment clears.
 
-| Platform / Tool | Invoicing Capabilities | Re-billing Setup | Best for |
-|---|---|---|---|
-| **Stripe Billing / Invoicing** | Professional layout, auto-payment collection, cards storage, support for multiple currencies. | Auto-renewing subscriptions | Professional business clients and corporate accounts. |
-| **Whop Creator Portal** | Built-in affiliate tracking, custom access links, simple dashboard. | Subscription links | Influencer clients, courses, and creator communities. |
-| **DocuSign / PandaDoc** | Legally binding digital signatures, contract tracking. | N/A | Securing high-value corporate agency contracts. |
+## Check yourself
 
-For small agencies, Stripe Billing is the standard invoicing tool. Send your PDF proposal along with a Stripe subscription payment link. Once the payment clears, automate a welcome email onboarding sequence.
+* [ ] I have a package with a price and clear deliverables.
+* [ ] Billing is upfront and recurring.
+* [ ] My proposal states schedule and a 48-hour single-batch revision rule.
+* [ ] Onboarding folders are planned.
 
----
+## Common mistakes
 
-## Launch It
+* Selling per video or per hour.
+* Producing before the invoice is settled.
+* Allowing revisions to drag on for weeks.
 
-**How to scale your agency:**
-* **Limit Revisions:** In your agreement contract, specify that revisions must be requested in a single batch within 48 hours of delivery. This stops clients from dragging out project feedback over weeks.
-* **The Upload Add-on:** Sell an add-on service: you manage the posting and scheduling on their accounts for an extra **$300/month**. This makes the deal more valuable and creates a friction-free service for the client.
+## Go further
 
----
+**Worked example, "Apex Bookkeeping":** local accounting firm, **$1,500/month** for 30 short-form videos, 7 uploaded every Friday. Time: 4 hours scripting and 4 hours editing and captioning, so **8 hours/month**. API expense 30 videos at $0.70 = **$21.00/month**. Net **$1,479.00/month**, about **$184.87/hour**, roughly a 98% margin.
 
-## Exercises
+**Compare tools:** Stripe Billing (professional invoices, auto-collection, multiple currencies, auto-renewing subscriptions); Whop (affiliate tracking, access links, good for creators); DocuSign / PandaDoc (legally binding signatures for high-value contracts). Send your PDF proposal with a Stripe subscription link, then automate a welcome email on payment.
 
-1. **Easy:** Draft your own customized agency package pricing sheet.
-2. **Medium:** Fill out the Content Factory Retainer Proposal template with a mock client name, defining the weekly batch deliverables.
-3. **Hard:** Find three local professional service websites (e.g. accounting, local dentist, real estate broker) that have blank social media feeds. Draft a cold email pitch using your pricing tiers to offer them a 10-video test batch.
+**Scale up:** sell a posting and scheduling add-on for an extra **$300/month**.
 
----
+**Exercises:** Easy: draft your pricing sheet. Medium: fill the proposal with a mock client and weekly batch deliverables. Hard: find three local service sites with empty social feeds and draft a cold email offering a 10-video test batch.
 
-## Templates
-
-* [`templates/agency-retainer-proposal.md`](templates/agency-retainer-proposal.md) — a contract proposal template covering scope, schedule, and payment.
-* [`templates/bulk-pricing-sheet.md`](templates/bulk-pricing-sheet.md) — pricing ranges and margins for bulk reels/shorts.
-
----
-
-[← Batching & Scheduling at Volume](05-batching-and-scheduling.md) · [Track overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Templates:** [`templates/agency-retainer-proposal.md`](templates/agency-retainer-proposal.md), [`templates/bulk-pricing-sheet.md`](templates/bulk-pricing-sheet.md).

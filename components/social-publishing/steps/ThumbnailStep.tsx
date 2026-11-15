@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Wand2, Loader2, ChevronDown, ChevronUp, RefreshCw, Check, AlertCircle } from 'lucide-react';
+import { Image, Wand2, Loader2, ChevronDown, ChevronUp, RefreshCw, Check, AlertCircle, Paintbrush } from 'lucide-react';
 import type { ThumbnailStepProps, CopyState, ThumbnailState } from '../types';
 import { generateThumbnail, type ThumbnailGenerateResult } from '@/shared/api/thumbnailService';
 import { enhancePrompt } from '@/shared/api/openai';
@@ -10,8 +10,10 @@ import ExploreIdeas from '../thumbnail/ExploreIdeas';
 import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
-import ThumbnailEditor from '../thumbnail/ThumbnailEditor';
+import ThumbnailPlatformPreview from '../thumbnail/ThumbnailPlatformPreview';
 import ThumbnailConceptPanel from '../thumbnail/ThumbnailConceptPanel';
+import ThumbnailDesigner, { type DesignerResult } from '../thumbnail/designer/ThumbnailDesigner';
+import type { CanvasAdjustments } from '../thumbnail/thumbnailPrompt';
 
 const ASPECT_PRESETS = [
   { value: '16:9', label: 'YouTube 16:9', platforms: ['YouTube'] },
@@ -131,6 +133,10 @@ export default function ThumbnailStep({
   const [assetReferenceState, setAssetReferenceState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showConcepts, setShowConcepts] = useState(false)
+  const [designing, setDesigning] = useState(false)
+  /** Open the designer straight on its "Edit a region" panel. */
+  const [designerEditRegion, setDesignerEditRegion] = useState(false)
+  const [canvasAdjustments, setCanvasAdjustments] = useState<CanvasAdjustments | null>(null)
 
   const [headline, setHeadline] = useState(copy.headline || '')
   const [subheadline, setSubheadline] = useState(copy.subheadline || '')
@@ -272,6 +278,7 @@ export default function ThumbnailStep({
         onUpdateThumbnail({
           imageUrl: genResults[0].url,
           responseId: genResults[0].responseId,
+          design: undefined,
           templateId: selectedTemplateId,
           aspectRatio,
           references: references.length > 0 ? references : undefined,
@@ -295,6 +302,7 @@ export default function ThumbnailStep({
       onUpdateThumbnail({
         imageUrl: results[index].url,
         responseId: results[index].responseId,
+        design: undefined,
       })
     }
   }, [results, onUpdateThumbnail])
@@ -322,6 +330,7 @@ export default function ThumbnailStep({
       onUpdateThumbnail({
         imageUrl: refined[0].url,
         responseId: refined[0].responseId,
+        design: undefined,
       })
     }
   }, [onUpdateThumbnail])
@@ -329,11 +338,10 @@ export default function ThumbnailStep({
   // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
   const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
 
-  /** The editor produced (or restored) a version of the selected thumbnail. */
-  const handleEditorApply = useCallback((next: { url: string; responseId?: string; revisedPrompt?: string }) => {
-    setResults((prev) => prev.map((r, i) => (i === (selectedIndex ?? 0) ? { ...r, url: next.url, responseId: next.responseId ?? r.responseId, revisedPrompt: next.revisedPrompt ?? r.revisedPrompt } : r)))
-    onUpdateThumbnail({ imageUrl: next.url, responseId: next.responseId })
-  }, [selectedIndex, onUpdateThumbnail])
+  /** With a saved design, refinement must start from the exported picture (the layers), not the original. */
+  const refineSourceUrl = thumbnail.design && thumbnail.imageUrl ? thumbnail.imageUrl : activeImageUrl
+  /** The designer can only edit a region of a picture background. */
+  const canEditRegion = thumbnail.design ? thumbnail.design.background.mode === 'image' && !!thumbnail.design.background.imageSrc : !!activeImageUrl
 
   /** Concepts made by the concept panel replace the current results, like a normal generation. */
   const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
@@ -341,7 +349,8 @@ export default function ThumbnailStep({
     setResults(conceptResults)
     setSelectedIndex(conceptResults.length > 0 ? 0 : null)
     if (conceptResults.length > 0) {
-      onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio })
+      setAspectRatio(context.aspectRatio)
+      onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio, design: undefined })
     }
   }, [onUpdateThumbnail])
 
@@ -350,6 +359,19 @@ export default function ThumbnailStep({
     setGeneratingCount(pending)
     if (pending > 0) { setResults([]); setSelectedIndex(null) }
   }, [])
+
+  /** The designer exported a finished thumbnail: it becomes the one attached to the post (uploaded at publish time). */
+  const handleDesignDone = useCallback((result: DesignerResult) => {
+    onUpdateThumbnail({ imageUrl: result.dataUrl, responseId: undefined, design: result.project })
+    setDesigning(false)
+    setDesignerEditRegion(false)
+  }, [onUpdateThumbnail])
+
+  /** Back to the concept picture the design was built on. */
+  const handleRemoveDesign = useCallback(() => {
+    const original = (selectedIndex !== null && results[selectedIndex]?.url) || thumbnail.design?.background.imageSrc
+    onUpdateThumbnail({ imageUrl: original, design: undefined })
+  }, [selectedIndex, results, thumbnail.design, onUpdateThumbnail])
 
   const handleAutoFillFromWrite = useCallback(() => {
     const sourceHeadline = copy.headline || copy.title || ''
@@ -366,6 +388,20 @@ export default function ThumbnailStep({
 
   return (
     <div className="space-y-4" role="region" aria-label="Thumbnail creation step">
+      {designing && (
+        <ThumbnailDesigner
+          initialProject={thumbnail.design}
+          backgroundImageUrl={activeImageUrl}
+          aspectRatio={aspectRatio}
+          headline={headline || copy.headline || ''}
+          adjustments={canvasAdjustments}
+          model={selectedModel}
+          openEditRegion={designerEditRegion}
+          onDone={handleDesignDone}
+          onCancel={() => { setDesigning(false); setDesignerEditRegion(false) }}
+        />
+      )}
+      <div className="space-y-4" hidden={designing}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'var(--color-primary, #22d3ee)' }}>
@@ -451,6 +487,7 @@ export default function ThumbnailStep({
           onGeneratingChange={handleConceptGenerating}
           onResults={handleConceptResults}
           onError={setError}
+          onCanvasAdjustmentsChange={setCanvasAdjustments}
         />
       </div>
 
@@ -600,8 +637,28 @@ export default function ThumbnailStep({
 
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
-      <ThumbnailRefinement sourceImageUrl={activeImageUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
-      <ThumbnailEditor sourceImageUrl={activeImageUrl} model={selectedModel} aspectRatio={aspectRatio} disabled={generating} onApply={handleEditorApply} />
+      <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'rgba(34,211,238,0.04)', border: '1px solid rgba(34,211,238,0.2)' }} data-testid="thumbnail-design-entry">
+        {thumbnail.design && thumbnail.imageUrl && <img src={thumbnail.imageUrl} alt="Designed thumbnail" className="h-12 w-20 shrink-0 rounded-md object-cover" />}
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-white/80">{thumbnail.design ? 'Designed thumbnail attached to your post' : 'Customize the design'}</p>
+          <p className="text-[10px] text-white/40">{thumbnail.design ? 'Edit the text and layers again, or go back to the picture.' : activeImageUrl ? 'Add your headline, logo, subject and arrows on top of this picture.' : 'Generate or pick a thumbnail first, then design it here.'}</p>
+        </div>
+        {thumbnail.design && <button type="button" onClick={handleRemoveDesign} disabled={generating} className="shrink-0 text-[10px] text-white/40 transition-colors hover:text-red-400 disabled:opacity-50">Remove design</button>}
+        <button type="button" onClick={() => { setDesignerEditRegion(true); setDesigning(true) }} disabled={generating || !canEditRegion} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+          <Wand2 size={13} />Edit a region
+        </button>
+        <button type="button" onClick={() => { setDesignerEditRegion(false); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-all disabled:opacity-50" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }}>
+          <Paintbrush size={13} />{thumbnail.design ? 'Edit design' : 'Design this thumbnail'}
+        </button>
+      </div>
+
+      <ThumbnailRefinement sourceImageUrl={refineSourceUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      {(thumbnail.design || activeImageUrl) && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30">How it will look</p>
+          <ThumbnailPlatformPreview imageUrl={thumbnail.imageUrl ?? activeImageUrl} project={thumbnail.design ?? null} />
+        </div>
+      )}
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -609,6 +666,7 @@ export default function ThumbnailStep({
           <button type="button" onClick={() => { setSelectedTemplateId(undefined); onUpdateThumbnail({ templateId: undefined }) }} disabled={generating} className="text-[10px] text-white/30 hover:text-red-400 transition-colors disabled:opacity-50" aria-label="Clear template selection">Clear</button>
         </div>
       )}
+      </div>
     </div>
   )
 }

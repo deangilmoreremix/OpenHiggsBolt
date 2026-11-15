@@ -22,17 +22,20 @@ async function withFallback(models, run) {
       last = e;
     }
   }
-  throw last instanceof ZackDJobError ? last : new ZackDJobError(`Generation failed: ${String(last?.message || 'unknown error').slice(0, 140)}`, 'failed');
+  if (last instanceof ZackDJobError) throw last;
+  const detail = String(last?.message || 'unknown error').replace(/^Generation failed:\s*/i, '').slice(0, 140);
+  throw new ZackDJobError(/failed/i.test(detail) ? detail : `Generation failed: ${detail}`, 'failed');
 }
 
 export function createJobs(api, apiKey) {
   return {
-    image: ({ prompt, aspect = ASPECT_RATIO }) =>
-      withFallback(MODELS.image, (model) => api.generateImage(apiKey, { model, prompt, aspect_ratio: aspect })),
-    clip: ({ imageUrl, prompt }) =>
-      withFallback(MODELS.clip, (model) => api.generateI2V(apiKey, { model, prompt, image_url: imageUrl, aspect_ratio: ASPECT_RATIO, resolution: '720p' })),
-    narration: ({ text, voice, speed }) =>
-      withFallback([MODELS.tts], (model) => api.generateAudio(apiKey, { _modelId: model, ...ttsPayload({ text, voice, speed }) })),
+    // `onRequestId(id)` reports the MuAPI request id so the studio can resume the job after a reload.
+    image: ({ prompt, aspect = ASPECT_RATIO, onRequestId }) =>
+      withFallback(MODELS.image, (model) => api.generateImage(apiKey, { model, prompt, aspect_ratio: aspect, ...(onRequestId ? { onRequestId } : {}) })),
+    clip: ({ imageUrl, prompt, onRequestId }) =>
+      withFallback(MODELS.clip, (model) => api.generateI2V(apiKey, { model, prompt, image_url: imageUrl, aspect_ratio: ASPECT_RATIO, resolution: '720p', ...(onRequestId ? { onRequestId } : {}) })),
+    narration: ({ text, voice, speed, onRequestId }) =>
+      withFallback([MODELS.tts], (model) => api.generateAudio(apiKey, { _modelId: model, ...ttsPayload({ text, voice, speed }), ...(onRequestId ? { onRequestId } : {}) })),
     // Burned-in captions on an already-hosted (public https) video.
     captions: ({ videoUrl, language, theme }) => {
       if (!/^https:\/\/\S{4,2000}$/.test(String(videoUrl || ''))) return Promise.reject(new ZackDJobError('The video must be uploaded first (public https URL).', 'bad_input'));
@@ -42,8 +45,8 @@ export function createJobs(api, apiKey) {
         theme: CAPTION_THEMES.some((t) => t.value === theme) ? theme : DEFAULT_CAPTION_THEME,
       }));
     },
-    music: ({ prompt, duration }) =>
-      withFallback(['suno-create-music'], (model) => api.generateAudio(apiKey, { _modelId: model, prompt, duration: Math.min(Math.max(Number(duration) || 30, 10), 180) })),
+    music: ({ prompt, duration, onRequestId }) =>
+      withFallback(['suno-create-music'], (model) => api.generateAudio(apiKey, { _modelId: model, prompt, duration: Math.min(Math.max(Number(duration) || 30, 10), 180), ...(onRequestId ? { onRequestId } : {}) })),
   };
 }
 

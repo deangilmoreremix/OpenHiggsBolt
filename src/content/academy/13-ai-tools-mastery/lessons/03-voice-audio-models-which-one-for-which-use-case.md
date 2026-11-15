@@ -1,118 +1,112 @@
 # Voice/Audio Models — Which One for Which Use Case
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Select the right audio stack: ElevenLabs, Suno v3.5, Udio, Bark, and Whisper speech-to-text.
-
-**Track:** AI Tools Mastery  
-**Time:** ~35 minutes  
-**Prerequisites:** [01: Image Models](01-image-models-which-one-for-which-use-case.md), [02: Video Models](02-video-models-which-one-for-which-use-case.md)  
-
-## The Problem
-
-Audio quality makes or breaks video production. Studies show viewers tolerate mediocre video resolution, but immediately click away from bad audio or robotic voiceovers.
-
-Creators struggle with choosing audio AI models:
-* Using low-end TTS engines results in monotone, robotic voiceovers with unnatural pacing.
-* Generating full music tracks with vocals when the scene only needed ambient background instrumentals destroys dialogue clarity.
-* Attempting voice cloning without noise-cleaned reference audio produces distorted audio artifacts.
-
-You need an exact tool mapping strategy for voice synthesis, music generation, and audio stem isolation.
+> **Time:** about 15 minutes. **You will finish with:** an audio plan with a voice, a music prompt, a transcript step and a mix level for one video.
 
 ---
 
-## The Concept
+## Before you start
 
-The **Complete Audio Stack Pipeline** separates speech, music, and sound effects (SFX):
+Viewers tolerate mediocre resolution but click away from bad audio. Low-end TTS sounds robotic, full songs with vocals bury dialogue when the scene needed ambient instrumentals, and voice cloning without noise-cleaned reference audio gives distorted artifacts. The audio stack keeps speech, music and effects separate: Text Script, then ElevenLabs voice, then a Suno/Udio instrumental, then stem mix and mastering. Three pillars: voice synthesis and cloning (**ElevenLabs** / **Bark**), generative music (**Suno v3.5** / **Udio**), and speech-to-text (**Whisper**).
 
+You will need a short script for a video and the template [`templates/video-audio-stack-matrix.md`](templates/video-audio-stack-matrix.md). In SmartVideo GO AI you will use **Video Studio** and **Lip-Sync Studio** for voice and mouth-sync.
+
+## Step by step
+
+### 1. Open the stack matrix
+
+Open [`templates/video-audio-stack-matrix.md`](templates/video-audio-stack-matrix.md).
+
+**You should see:** voice parameter setups, music prompt structures and stem mixing checklists.
+
+**If not:** check the link path as written, or use the Compare Tools table in Go further.
+
+### 2. Map each audio need to a tool
+
+1. Narration and commercial voiceover: **ElevenLabs Multilingual v2** (high emotional dynamics, stability `0.45`, clarity `0.85`).
+2. Cinematic score or background beat: **Suno v3.5** (instrumental prompt mode) or **Udio**.
+3. Subtitles and transcripts: **OpenAI Whisper** (Large-v3 model).
+
+**You should see:** three lines, one tool per need.
+
+**If not:** if your video has no narration, skip line 1.
+
+### 3. Set the voice parameters
+
+In ElevenLabs set **Stability** to `0.40 - 0.50` for expressive, natural modulation and **Clarity + Similarity Boost** to `0.80` for clean studio presence.
+
+**You should see:** both values noted, then a voiceover generated from your script.
+
+**If not:** if the voice sounds monotone, lower stability slightly within the range. Menus move; follow the current screen.
+
+### 4. Write the music prompt
+
+Ask for an instrumental, not a song with vocals. Use this as a model:
+
+```text
+Ambient corporate piano, warm uplifting strings, 110 bpm
 ```
-Text Script ──► ElevenLabs Voice Synthesis ──► Suno/Udio Instrumental Track ──► Audio Stem Mix & Mastering
-```
 
-### The 3 Pillars of AI Audio:
+**You should see:** a background track with no vocals that fits your voiceover tempo.
 
-1. **Voice Synthesis & Cloning (ElevenLabs / Bark):** High-emotional-range voiceovers, voice cloning, and multilingual translation with natural breath pacing.
-2. **Generative Music & Score Composition (Suno v3.5 / Udio):** Full-length cinematic soundtracks, commercial background beats, and genre-specific music scores.
-3. **Speech-to-Text & Subtitle Automation (Whisper):** Highly accurate transcription, timestamp alignment, and automated open-caption generation.
+**If not:** if vocals appear, switch to instrumental prompt mode.
 
----
+### 5. Plan the transcript
 
-## Do It
+Run the finished voiceover through **OpenAI Whisper** to get timestamped subtitles (an SRT file).
 
-### Step 1: Match Audio Requirements to Brief
-Open [`templates/video-audio-stack-matrix.md`](templates/video-audio-stack-matrix.md). Map your audio needs:
-* **Narration & Commercial Voiceover:** **ElevenLabs Multilingual v2** (High emotional dynamics, stability `0.45`, clarity `0.85`).
-* **Cinematic Film Score / Background Beat:** **Suno v3.5** (Instrumental prompt mode) or **Udio**.
-* **Subtitle & Transcript Generation:** **OpenAI Whisper** (Large-v3 model).
+**You should see:** a transcript with timestamps.
 
-### Step 2: Configure Voice Synthesis Parameters
-In ElevenLabs:
-* Set **Stability** to `0.40 - 0.50` for expressive, natural voice modulation.
-* Set **Clarity + Similarity Boost** to `0.80` for clean studio presence.
+**If not:** if words are wrong, check the voiceover for background noise and re-run.
 
-### Step 3: Mix Dialogue & Music Stems
-Ensure background music is ducked by **-14dB** below the voiceover narration track during video editing.
+### 6. Mix the stems
 
----
+In your video editing, duck the background music **-14dB** below the voiceover track.
 
-## Worked Example
+**You should see:** dialogue clearly on top of the music.
 
-**Audio Production Pipeline for "Commercial Real Estate Ad"**
+**If not:** if you still strain to hear the speech, lower the music further.
 
-* **Voiceover:** ElevenLabs "Adam - Deep Corporate Narrator" (Stability `0.45`).
-* **Background Score:** Suno v3.5 Instrumental (`"Ambient corporate piano, warm uplifting strings, 110 bpm"`).
-* **Transcription:** OpenAI Whisper auto-generated SRT subtitles.
-* **Production Time:** 8 minutes total.
-* **Total Audio Cost:** **$0.12** credit cost vs. **$400** voice actor + stock music license.
+### 7. Note the voice-cloning rule
 
----
+If you ever clone a client voice, provide at least 3 minutes of background-noise-free, 44.1kHz studio WAV audio.
 
-## Compare Tools
+**You should see:** a note in your plan about clean reference audio.
 
-| Model / Platform | Primary Category | Strengths | Best For |
+**If not:** without clean reference audio, expect distorted artifacts and do not clone.
+
+## Check yourself
+
+* [ ] I mapped voice, music and transcript to separate tools.
+* [ ] ElevenLabs stability is `0.40 - 0.50` and clarity about `0.80`.
+* [ ] My music prompt asks for an instrumental.
+* [ ] Music sits -14dB under the voiceover.
+
+## Common mistakes
+
+* Using a low-end TTS engine, which sounds robotic and monotone.
+* Generating music with vocals under dialogue.
+* Cloning a voice from noisy reference audio.
+* Leaving music at full level under narration.
+
+## Go further
+
+**Worked example: "Commercial Real Estate Ad."** Voiceover: ElevenLabs "Adam - Deep Corporate Narrator" (stability `0.45`). Score: Suno v3.5 instrumental (`"Ambient corporate piano, warm uplifting strings, 110 bpm"`). Transcription: Whisper auto-generated SRT subtitles. Production time: 8 minutes. Audio cost: $0.12 credit cost vs. $400 for a voice actor plus stock music license.
+
+| Model / platform | Category | Strengths | Best for |
 |---|---|---|---|
-| **ElevenLabs** | Voice Synthesis & Cloning | Emotional dynamics, multi-speaker dialogue, voice cloning | Commercial voiceovers, audiobooks, podcasts |
-| **Suno v3.5** | Generative Music | Full song structure (Verses, Chorus), fast generation | Background music tracks, jingles, scores |
-| **Udio** | Generative Music | Superior fidelity and vocal mix control | High-fidelity music production & stems |
-| **Whisper (OpenAI)** | Speech-to-Text | 99%+ transcription accuracy across 50+ languages | Video subtitles, transcripts, closed captions |
+| **ElevenLabs** | Voice synthesis and cloning | Emotional dynamics, multi-speaker dialogue, voice cloning | Commercial voiceovers, audiobooks, podcasts |
+| **Suno v3.5** | Generative music | Full song structure (verses, chorus), fast generation | Background tracks, jingles, scores |
+| **Udio** | Generative music | Superior fidelity and vocal mix control | High-fidelity music production and stems |
+| **Whisper (OpenAI)** | Speech-to-text | 99%+ transcription accuracy across 50+ languages | Subtitles, transcripts, closed captions |
 
----
+Exercises:
 
-## Launch It
+1. **Easy:** generate a 30-second commercial voiceover script using ElevenLabs.
+2. **Medium:** create an instrumental track in Suno v3.5 matching your voiceover tempo.
+3. **Hard:** produce a complete mix (voiceover, music, subtitles) for a 60-second video ad.
 
-* **Always Use Clean Reference Audio for Voice Cloning:** Provide at least 3 minutes of background-noise-free, 44.1kHz studio WAV audio when creating custom client voice clones.
+Template: [`templates/video-audio-stack-matrix.md`](templates/video-audio-stack-matrix.md).
 
----
+Other SmartVideo GO AI studios that use this: Image Studio, AI Influencer Studio, Storyboard / Campaign Planner.
 
-## Exercises
-
-1. **Easy:** Generate a 30-second commercial voiceover script using ElevenLabs.
-2. **Medium:** Create an instrumental background track using Suno v3.5 matching your voiceover tempo.
-3. **Hard:** Produce a complete audio mix (Voiceover + Music + Subtitles) for a 60-second video ad.
-
----
-
-## Templates
-
-* [`templates/video-audio-stack-matrix.md`](templates/video-audio-stack-matrix.md) — Voice parameter setups, music prompt structures, and stem mixing checklists.
-
----
-
-[← Video Models](02-video-models-which-one-for-which-use-case.md) · Next: [API vs. Local: A Decision Framework →](04-api-vs-local-decision-framework.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: API vs. Local: A Decision Framework.

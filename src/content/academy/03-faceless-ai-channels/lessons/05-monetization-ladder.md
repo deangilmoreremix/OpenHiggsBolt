@@ -1,138 +1,76 @@
 # Monetization Ladder
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Don't wait for a million views; build a ladder to sell to the first thousand.
-
-**Track:** Faceless AI Channels  
-**Time:** ~30 minutes  
-**Prerequisites:** Niche Selection & Script Pipeline, Honest RPM & Earnings Math  
-
-## The Problem
-
-The reason 90% of faceless channels are abandoned within the first three months is that creators wait for AdSense to monetize. To get paid by YouTube, you must cross the Partner Program threshold: 1,000 subscribers and 4,000 watch hours (or 10 million Shorts views). For a new channel, reaching this can take 6 to 12 months of daily uploads.
-
-And when they finally qualify, they discover the payouts are small: a video with 20,000 views might only make $2.00 on Shorts.
-
-Successful creators treat views as **top-of-funnel traffic**, not the direct payout source. They build a monetization ladder that converts early, small-scale viewership into high-value revenue streams long before crossing the AdSense threshold.
-
-## The Concept
-
-The **Monetization Ladder** is a framework that matches your revenue products to the size and trust level of your audience:
-
-```
-Tier 4: Paid Community (5K+ Subs)  ──► Monthly Recurring Revenue ($47 - $97/mo)
-Tier 3: Digital Products (1K+ Subs) ──► Ebooks, Templates, Prompts ($10 - $49)
-Tier 2: High-Value Affiliates (100+ Subs) ──► Software/SaaS Recurring Commissions
-Tier 1: Lead Magnet & Email (0+ Subs) ──► Free Guide/Template, Building list
-```
-
-Instead of pitching a $100 product to a cold audience on day one, you lead with a **Free Lead Magnet** (Tier 1). This exchanges attention for an email address, allowing you to build a relationship and sell Tiers 2, 3, and 4 via email automation, where conversion rates are 10x higher than in video descriptions.
+> **Time:** about 15 minutes. **You will finish with:** a lead magnet idea, a live opt-in landing page and a checkout set up for your first paid offer.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Design a High-Value Lead Magnet
-Identify the single biggest friction point in your niche. Create a simple visual tool to solve it:
-* *SaaS Niche:* A pre-built automation template or a checklist of tools.
-* *Finance Niche:* A basic Google Sheets budget calculator.
-Ensure it is easy to deliver digitally as a link or PDF.
+Don't wait for a million views; build a ladder to sell to the first thousand. The YouTube Partner Program needs 1,000 subscribers and 4,000 watch hours (or 10 million Shorts views), which can take 6 to 12 months, and the payouts are small (a video with 20,000 views might make $2.00 on Shorts). The ladder matches products to audience size: Tier 1 Lead Magnet & Email (0+ subs), Tier 2 High-Value Affiliates (100+ subs), Tier 3 Digital Products (1K+ subs, $10-$49), Tier 4 Paid Community (5K+ subs, $47-$97/mo). You lead with a free lead magnet and sell the rest by email, where conversion is about 10x higher than in video descriptions.
 
-### Step 2: Set Up Your Opt-in Landing Page
-Use the [`templates/funnel-setup-checklist.md`](templates/funnel-setup-checklist.md) to set up your landing page. Keep it clean: a bold title, 3 bullet points of benefits, and an email entry form. Place the link in your channel bio, video descriptions, and pinned comments.
+You will need: [`templates/funnel-setup-checklist.md`](templates/funnel-setup-checklist.md), your niche, and free accounts with a page builder (for example Carrd) and a checkout (Gumroad, Whop or Stripe). SmartVideo GO AI's Image Studio can make the cover image for your lead magnet. This part builds Tier 1 and the checkout; part 2 adds affiliates and the email sequence.
 
-### Step 3: Set Up Your Checkout Portal
-Create a free merchant account on Gumroad, Whop, or Stripe. Set up your first premium offer:
-* Keep the price low (**$19–$29**) to reduce purchase friction.
-* Frame it as a continuation of your free lead magnet (e.g. if the free offer is a checklist, the paid offer is the complete video course/template library).
+## Step by step
 
-### Step 4: Secure Affiliate Agreements
-Identify the software tools you recommend in your videos. Pitch them for custom referral rates using the [`templates/affiliate-pitch-template.md`](templates/affiliate-pitch-template.md). Generate your affiliate tracking links.
+### 1. Design the lead magnet
 
-### Step 5: Automate Your Email Sequence
-Set up an automated workflow inside your email marketing software (e.g., ConvertKit, MailerLite):
-* **Email 1 (Day 0):** Deliver the free lead magnet.
-* **Email 2 (Day 2):** Send a high-value tip/case study related to the magnet.
-* **Email 3 (Day 4):** Introduce the premium product, showing before/after results.
+Find the single biggest friction point in your niche and make a simple tool to solve it. SaaS niche: a pre-built automation template or a checklist of tools. Finance niche: a basic Google Sheets budget calculator. It must be easy to deliver digitally as a link or PDF.
 
----
+**You should see:** one sentence describing your lead magnet and how it is delivered.
 
-## Worked Example
+**If not:** if you cannot name one friction point, re-read your best-performing script's "Problem" section.
 
-<p align="center">
-<img src="templates/examples/faceless-monetization.jpg" alt="Monetization Storefront" width="280">
-<img src="templates/examples/faceless-monetization-clip.gif" alt="Digital Product Launch Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Product Launch Image (Left) ──► Image-to-Video Storefront Motion (Right) · Video File: <a href="templates/examples/faceless-monetization-clip.mp4">templates/examples/faceless-monetization-clip.mp4</a></sub></p>
+### 2. Open the funnel checklist
 
-**Monetization of "Automate Smarter" at 2,500 Subscribers**
+Open [`templates/funnel-setup-checklist.md`](templates/funnel-setup-checklist.md) and fill in the lead magnet name and delivery link.
 
+**You should see:** the first rows of the checklist completed.
 
+**If not:** copy the checklist into your own document.
 
-* **Monthly Channel Views:** 60,000 views (Shorts)
-* **AdSense Status:** Not yet qualified (0 ad revenue)
-* **Funnel Conversions:**
-  * **Lead Magnet Opt-ins:** 0.5% conversion rate = **300 email signups**
-  * **Tier 2 (Affiliates):** 3% of signups click affiliate links and buy a $49/mo tool (recurring commission 30% = $14.70/user) -> 9 sales = **$132.30/month (recurring)**
-  * **Tier 3 (Digital Sales):** 2% of signups buy a $29 Invoice Parsing Template on Gumroad -> 6 sales = **$174.00/month**
-* **Total Non-AdSense Income:** **$306.30/month**
-* **API production cost:** 12 videos produced @ $0.70/video = **$8.40**
+### 3. Build the opt-in landing page
 
-**The Result:** The channel earns over **$300/month** on only 60k views without qualifying for AdSense. As the subscriber count grows, the recurring affiliate base accumulates, creating stable monthly income.
+Create a one-page site with a free builder such as Carrd. Keep it clean: a bold title, 3 bullet points of benefits and an email entry form.
 
----
+**You should see:** a published page with a title, three benefits and a form.
 
-## Compare Tools
+**If not:** menus move; follow the current screen. If the form will not connect, check which email tool you will use in part 2.
 
-| Funnel Tool | Capabilities | Setup Effort | Best for |
-|---|---|---|---|
-| **Gumroad / Whop** | Free to set up, handles payment processing, digital asset delivery, and basic affiliate management. Charges a flat transaction fee (5-10%). | Low | Selling PDF guides, template sheets, and community access slots. |
-| **ConvertKit / MailerLite** | Automated email tags, visual automation pathways, landing page hosting, and high delivery rates. | Medium | Managing email subscribers and running automated sales sequences. |
-| **Carrd** | Ultra-responsive, single-page website builder with easy form integrations. | Low | Creating high-converting custom opt-in pages. |
+### 4. Place the link where viewers look
 
-For beginners, the combination of Carrd (landing page), MailerLite (email automation), and Gumroad (checkout) provides a complete, professional sales funnel for under $10/month.
+Put the page link in your channel bio, video descriptions and pinned comments.
 
----
+**You should see:** the link live in all three places.
 
-## Launch It
+**If not:** if a platform strips links, check its link rules and use the bio link instead.
 
-**How to optimize your conversions:**
-* **Use Pinned Comments:** People read comments. A pinned comment reading *"Get the free budget sheet template here: [link]"* gets 3x more clicks than a link placed at the bottom of the video description box.
-* **Avoid the Hard Sell in Video:** Do not spend 20 seconds of a 60-second video explaining a paid product. Simply say: *"I put the template in the comments below."* Let the automated email sequence do the selling.
+### 5. Set up the checkout
 
----
+Create a free merchant account on Gumroad, Whop or Stripe. Set up your first premium offer at **$19-$29**, framed as a continuation of the free magnet (a free checklist leads to the complete video course or template library).
 
-## Exercises
+**You should see:** a live product page with a price and a buy button.
 
-1. **Easy:** Brainstorm one Free Lead Magnet and one Paid Digital Product idea for your chosen niche.
-2. **Medium:** Build a single-page landing page with an email opt-in form using a free builder like Carrd.
-3. **Hard:** Draft a 3-part email automation sequence (delivery, value, pitch) for your digital product, maintaining a helpful, non-spammy tone.
+**If not:** do not enter any secret keys or passwords in chat with an AI; set up the account only in the provider's own site.
 
----
+## Check yourself
 
-## Templates
+* [ ] I have a lead magnet that solves one friction point.
+* [ ] My landing page has a title, three benefits and an email form.
+* [ ] The link is in my bio, descriptions and pinned comment.
+* [ ] My first paid offer is priced at $19-$29.
 
-* [`templates/funnel-setup-checklist.md`](templates/funnel-setup-checklist.md) — a layout checklist to connect opt-in pages, welcome emails, and merchant payment portals.
-* [`templates/affiliate-pitch-template.md`](templates/affiliate-pitch-template.md) — a cold email template to secure custom referral structures.
+## Common mistakes
 
----
+* Pitching a $100 product to a cold audience on day one.
+* A cluttered landing page.
+* A paid offer unrelated to the free magnet.
 
-[← Scaling to Multiple Channels](04-scaling-channels.md) · [Track overview](README.md)
+## Go further
 
+**Compare tools.** Gumroad / Whop: free to set up, handle payments, delivery and basic affiliate management, flat transaction fee of 5-10%; low effort; best for PDFs, templates and community access. ConvertKit / MailerLite: tags, visual automations, landing pages; medium effort. Carrd: low effort, single-page opt-in builder. For beginners, Carrd + MailerLite + Gumroad gives a full funnel for under $10/month.
 
----
+**Exercises.** Easy: brainstorm one free lead magnet and one paid product idea. Medium: build a Carrd landing page with an opt-in form.
 
-## Produce this in SmartVideo GO AI
+**Templates.** [`templates/funnel-setup-checklist.md`](templates/funnel-setup-checklist.md).
 
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Monetization Ladder, part 2.

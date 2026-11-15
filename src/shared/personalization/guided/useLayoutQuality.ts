@@ -13,6 +13,9 @@ import {
   recommendPlacement,
   recommendRestoredPlacement,
   sampleFrames,
+  getCachedSamples,
+  hasCachedSamples,
+  setCachedSamples,
   type LumaSample,
   type PlacementInput,
   type ProtectedZone,
@@ -25,9 +28,6 @@ import {
   rightsNeedConfirmation,
   type SourceProfile,
 } from '../preview/sourceProfile'
-
-/** Frame measurements are expensive (they seek the video), so they are cached per URL. */
-const SAMPLE_CACHE = new Map<string, LumaSample[] | null>()
 
 /** Event the overlay editor listens to, to select a layer from outside (Layout Quality "Show"). */
 export const SELECT_LAYER_EVENT = 'personalization:select-layer'
@@ -75,13 +75,13 @@ export function useLayoutQuality(inputProps: PreviewInputProps): LayoutQualitySt
   useEffect(() => {
     let live = true
     if (!videoUrl || isImageSource) { setSamples([]); setSampling('idle'); return }
-    if (SAMPLE_CACHE.has(videoUrl)) {
-      const cached = SAMPLE_CACHE.get(videoUrl) ?? null
+    if (hasCachedSamples(videoUrl)) {
+      const cached = getCachedSamples(videoUrl)
       setSamples(cached ?? []); setSampling(cached ? 'done' : 'unavailable'); return
     }
     setSampling('measuring')
     void sampleFrames(videoUrl).then((res) => {
-      SAMPLE_CACHE.set(videoUrl, res?.samples ?? null)
+      setCachedSamples(videoUrl, res?.samples ?? null)
       if (!live) return
       setSamples(res?.samples ?? []); setSampling(res ? 'done' : 'unavailable')
     })

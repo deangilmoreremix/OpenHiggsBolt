@@ -1,141 +1,99 @@
 # Honest RPM & Earnings Math
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Views are vanity; profit margins are sanity.
-
-**Track:** Faceless AI Channels  
-**Time:** ~35 minutes  
-**Prerequisites:** Niche Selection & Script Pipeline, Duration-Matched Narration & Pacing  
-
-## The Problem
-
-Social media is full of "gurus" sharing screenshots of YouTube dashboards showing $10,000/month in earnings from faceless channels. What they rarely show are the operational costs behind those earnings: the money spent on AI API credits, video editing subscriptions, thumbnail design, and the fact that most of their views are on Shorts, which pay pennies.
-
-If you jump in blindly, you might build a channel that generates 1 million views a month but only earns $50 in AdSense because it is in a low-value niche (like meme compilations). If your monthly subscription costs for ElevenLabs, Canva, and video generators total $120, **you are running a business at a loss** despite having millions of views.
-
-To run a channel like a real business, you need to understand the exact math behind RPM (Revenue Per Mille), factor in generation expenses, and target monetization funnels that don't rely solely on AdSense payouts.
-
-## The Concept
-
-The financial health of your channel is determined by two main factors: **RPM** and **COGS (Cost of Goods Sold)**.
-
-### 1. The RPM Discrepancy:
-* **CPM (Cost Per Mille):** The amount advertisers pay to show ads on your videos per 1,000 views.
-* **RPM (Revenue Per Mille):** The net amount *you* receive per 1,000 views after the platform takes its cut. YouTube takes **45%** of long-form ad revenue and **55%** of Shorts ad revenue.
-* **Format Impact:** Long-form videos (videos over 8 minutes) allow mid-roll ads, pushing RPMs to $5–$25. Short-form videos (Shorts/Reels) draw from a shared creator pool, resulting in a microscopic RPM of **$0.02 to $0.06** per 1,000 views.
-
-### 2. The COGS of AI Video:
-Every video you generate carries a marginal cost:
-```
-Cost per Video = LLM Script Cost + TTS Audio Cost + Video Generator Credit Cost
-```
-If you spend $0.50 in API credits to produce a Short, and it gets 5,000 views on YouTube Shorts earning $0.04 RPM, the video earns $0.20. You have lost $0.30 on that upload. To turn a profit on low-RPM short-form video, you must convert those views into **direct sales** (affiliate link clicks, newsletter signups, or digital product sales).
+> **Time:** about 17 minutes. **You will finish with:** a filled-in Channel Profitability Calculator showing your cost per video, expected earnings and net monthly profit.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Research Real CPM Ranges
-Go to Google Keyword Planner. Type in keywords related to your niche. Look at the "Top of Page Bid" range.
-* High bids (e.g. $5.00+ CPC for "Business Liability Insurance") mean high CPM.
-* Low bids (e.g. $0.10 CPC for "Funny cats") mean low CPM.
+Views are vanity; profit margins are sanity. A channel can get 1 million views a month and earn only $50 from AdSense in a low-value niche, while subscriptions of $120 mean it runs at a loss. CPM is what advertisers pay per 1,000 views; RPM is what you receive per 1,000 views after the platform's cut (YouTube takes 45% of long-form ad revenue and 55% of Shorts ad revenue). Long-form videos over 8 minutes allow mid-roll ads and RPMs of $5-$25; Shorts draw from a shared pool at about $0.02-$0.06 RPM. Cost per Video = LLM Script Cost + TTS Audio Cost + Video Generator Credit Cost.
 
-### Step 2: Establish Your Monthly Operational Budget
-List all your monthly recurring subscriptions and API credit packages. Log them in the [`templates/channel-profitability-calculator.md`](templates/channel-profitability-calculator.md). Keep your software stack lean during the startup phase.
+You will need: [`templates/channel-profitability-calculator.md`](templates/channel-profitability-calculator.md), your chosen niche, a list of your monthly subscriptions, and Google Keyword Planner. Your usage records in SmartVideo GO AI and your TTS tool give you real production costs.
 
-### Step 3: Calculate Your Production Cost per Video
-Track your actual API consumption. For a 60-second video:
-* **Script (LLM):** ~0.05 credits
-* **Narration (TTS):** ElevenLabs text generation (~1,000 characters) = ~$0.15
-* **Video Generation:** muapi video generation credits (e.g. Seedance 2) = ~$0.50
-* **Total Cost per Video:** **$0.70**
+## Step by step
 
-### Step 4: Map Your Monetization Ladder
-Calculate how many views you need to secure a digital product conversion. If you convert **0.1%** of viewers into email subscribers (1 in 1,000 views), and you convert **2%** of subscribers into a $27 product sale (1 in 50 subscribers), then every 50,000 views yields one digital sale ($27) plus some AdSense. This is the math that makes channels profitable.
+### 1. Research CPC bids for your niche
 
----
+In Google Keyword Planner, type keywords for your niche and read the "Top of Page Bid" range. High bids (for example $5.00+ CPC for "Business Liability Insurance") mean high CPM; low bids (for example $0.10 for "Funny cats") mean low CPM.
 
-## Worked Example
+**You should see:** a bid range for at least three keywords.
+
+**If not:** menus move; follow the current screen. If Keyword Planner is not available to you, use the advertiser check from lesson 1 as a rougher guide.
+
+### 2. List your monthly operating budget
+
+Open [`templates/channel-profitability-calculator.md`](templates/channel-profitability-calculator.md). List every recurring subscription and API credit package. Keep the stack lean while you start.
+
+**You should see:** a total monthly expense number in the calculator.
+
+**If not:** if you are unsure of a cost, use the last invoice or your account's billing page.
+
+### 3. Calculate production cost per video
+
+For a 60-second video, use your actual consumption. The example figures are: script (LLM) about 0.05 credits, narration (ElevenLabs, about 1,000 characters) about $0.15, video generation (muapi credits, for example Seedance 2) about $0.50, so total cost per video is **$0.70**.
+
+**You should see:** a per-video cost entered in the calculator.
+
+**If not:** if your numbers differ, use yours; the example is only a reference.
+
+### 4. Test a Short against its cost
+
+Check: a Short that costs $0.50 and gets 5,000 views at $0.04 RPM earns 5,000 / 1000 * 0.04 = $0.20, a loss of $0.30. Do the same with your own numbers.
+
+**You should see:** whether one video of yours earns more than it costs from AdSense alone.
+
+**If not:** a loss is normal for Shorts. That is why the next step matters.
+
+### 5. Map views to direct sales
+
+If 0.1% of viewers become email subscribers (1 in 1,000 views) and 2% of subscribers buy a $27 product (1 in 50), every 50,000 views yields one $27 sale plus AdSense. Enter your own conversion assumptions in the calculator.
+
+**You should see:** an estimated number of sales and income from direct conversions.
+
+**If not:** if the result is zero, raise views or conversion assumptions only if you can justify them; do not guess optimistically.
+
+### 6. Compute net monthly profit
+
+Enter views, RPM, direct sales and expenses. Net profit = AdSense + direct sales - expenses.
+
+**You should see:** a single net monthly number, positive or negative.
+
+**If not:** if it is negative, look at the Scenario B example in Go further: fewer views with a funnel beat many views with none.
+
+## Check yourself
+
+* [ ] I know my niche's rough CPC range.
+* [ ] I know my cost per video.
+* [ ] My calculator includes direct sales, not only AdSense.
+* [ ] I know my net monthly profit or loss.
+
+## Common mistakes
+
+* Chasing views in a low-RPM niche.
+* Counting Shorts as if they paid long-form RPM.
+* Ignoring tool subscriptions and API credits.
+* Skipping affiliate disclosures in descriptions.
+
+## Go further
+
+**Worked example.**
 
 <p align="center">
 <img src="templates/examples/faceless-finance-niche.jpg" alt="Finance Niche Studio" width="280">
 <img src="templates/examples/faceless-finance-clip.gif" alt="Finance Channel Video Motion (I2V)" width="280">
 </p>
-<p align="center"><sub>High-RPM Finance Studio Image (Left) ──► Image-to-Video Motion (Right) · Video File: <a href="templates/examples/faceless-finance-clip.mp4">templates/examples/faceless-finance-clip.mp4</a></sub></p>
 
-**Profitability Comparison: Niche & Format Optimization**
+* Scenario A, gaming Shorts only: 1,000,000 views at $0.04 RPM = $40 AdSense; expenses $75; net -$35.
+* Scenario B, SaaS automation Shorts plus funnel: 100,000 views at $0.05 RPM = $5 AdSense; 100 signups leading to 5 sales of a $27 template = $135; expenses $45; net $95.
 
+Even with 10 times fewer views, B is profitable because the niche converts into high-margin digital sales. Video file: [templates/examples/faceless-finance-clip.mp4](templates/examples/faceless-finance-clip.mp4).
 
+**Accounting setup.** Open a separate bank or PayPal account for the channel; route affiliate and product income there and pay API credits from it. Add a disclosure in descriptions: "Disclosure: Some links in this description are affiliate links, meaning I earn a commission at no extra cost to you."
 
-### Scenario A: General Gaming Channel (Shorts-Only)
-* **Monthly Views:** 1,000,000 views (Shorts)
-* **Niche RPM:** $0.04
-* **AdSense Earnings:** `(1,000,000 / 1000) * 0.04` = **$40**
-* **Expenses:** ElevenLabs + CapCut + Video credits = **$75**
-* **Net Monthly Profit:** **-$35** (Loss)
+**Compare tools.** Google AdSense Analytics: real-time RPM and country breakdowns, but ad revenue only. Whop/Gumroad dashboards: conversion tracking, gross sales and net payouts after roughly 5-10% fees. Muapi Wallet Log: credit-by-credit usage per generation. Combine all three with Stripe/PayPal payouts in the calculator.
 
-### Scenario B: SaaS Automation Channel (Shorts + Digital Funnel)
-* **Monthly Views:** 100,000 views (Shorts)
-* **Niche RPM:** $0.05
-* **AdSense Earnings:** `(100,000 / 1000) * 0.05` = **$5**
-* **Direct Sales (Lead Magnet funnel):** 100 signups -> 5 sales of a $27 automation template = **$135**
-* **Expenses:** LLM script + ElevenLabs + muapi Video credits = **$45**
-* **Net Monthly Profit:** **$95** (Profit)
+**Exercises.** Easy: compare CPC bids for three Finance keywords and three Humour/Meme keywords. Medium: fill the calculator for 50,000 views, 15 videos a month and one $47 product. Hard: project a move from Shorts-only to 2 long-form videos and 15 Shorts a month and see how RPM changes net profit.
 
-**The Lesson:** Even with 10 times fewer views, Scenario B is profitable because the niche demographic converts into high-margin digital product sales, overriding low short-form AdSense payouts.
+**Template.** [`templates/channel-profitability-calculator.md`](templates/channel-profitability-calculator.md).
 
----
-
-## Compare Tools
-
-| Platform / Tool | Cost Reporting Capabilities | Best for |
-|---|---|---|
-| **Google AdSense Analytics** | Real-time AdSense RPM reporting, country breakdowns, and ad type performance. | Tracking long-form ad earnings. |
-| **Whop / Gumroad Dashboard** | Conversion rate tracking, email capture, gross sales, and net payouts after transaction fees (approx. 5-10%). | Tracking digital product and community sales. |
-| **Muapi Wallet Log** | Precise credit-by-credit usage logging per generation task. | Tracking exact production costs. |
-
-AdSense analytics show only ad revenue. To run a profitable business, you must combine AdSense data, merchant account payouts (Stripe/PayPal), and API expense logs into a single master spreadsheet like the profitability calculator template.
-
----
-
-## Launch It
-
-**How to set up your accounting:**
-* **Separate Wallet:** Open a separate bank or PayPal account specifically for your channel. Route all affiliate and digital product income there, and pay for all API credits from the same account. This makes tracking your net monthly margins simple.
-* **Affiliate Disclosures:** Platforms require clear disclosures. In your video description, add: *"Disclosure: Some links in this description are affiliate links, meaning I earn a commission at no extra cost to you."*
-
----
-
-## Exercises
-
-1. **Easy:** Research the CPC bids for three keywords in the Finance niche and three keywords in the Humour/Meme niche. Write down the difference.
-2. **Medium:** Fill out the Channel Profitability Calculator for a hypothetical channel getting 50,000 views, producing 15 videos a month, and selling one $47 digital product.
-3. **Hard:** Project the financial layout for a channel transition from Shorts-only to a hybrid layout (2 long-form videos per month, 15 Shorts). Calculate how the change in RPM affects net profit margins.
-
----
-
-## Templates
-
-* [`templates/channel-profitability-calculator.md`](templates/channel-profitability-calculator.md) — a monthly audit sheet for views, direct sales, software costs, and net margins.
-
----
-
-[← Duration-Matched Narration & Pacing](02-narration-and-pacing.md) · Next: [Scaling to Multiple Channels →](04-scaling-channels.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Scaling to Multiple Channels.

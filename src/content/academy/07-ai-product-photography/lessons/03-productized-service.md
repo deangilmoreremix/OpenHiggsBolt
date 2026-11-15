@@ -1,133 +1,105 @@
 # Selling as a Productized Service
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Don't sell "AI images"; sell conversion rate uplifts.
-
-**Track:** AI Product Photography & E-commerce  
-**Time:** ~35 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-Most creative agencies fail to scale because they sell custom services billed by the hour. They spend days writing custom proposals for every client, dealing with scope creep, and negotiating prices.
-
-If you pitch clients by saying *"We generate AI backgrounds for your products"*, they will view you as cheap labor and worry about copyright or quality issues. Brands don't care about the AI tools you use; they care about their business metrics.
-
-To build a highly profitable visual agency, you must turn your skills into a **Productized Service**—packaging your work into a defined scope, with a fixed price and clear turnaround time, pitched directly around conversion rate increases.
-
-## The Concept
-
-The economics of a productized agency rely on **Fixed Scopes**, **Value-Based Pricing**, and **Automated Onboarding**:
-
-```
-Client Lands on Pricing ──► Fixed Fee Checkout ──► Automated Intake Form ──► Raw File Upload ──► 3-Day Delivery
-```
-
-* **Value-Based Pitching:** Instead of comparing your prices to cheap freelancers, compare your pricing to the cost of a physical studio shoot. A standard studio shoot costs $3,000 + shipping + models. Your productized service delivers 10 lifestyle photos for $499 in 3 days, saving them time and money.
-* **Scope Locking:** Prevent scope creep by explicitly defining what is included in each package. Specify the exact number of revisions allowed (e.g. *"2 rounds of text edits"*) and the format of the output deliverables.
-* **Frictionless Onboarding:** Avoid scheduling multiple sales calls. Once a client checks out, an automated form immediately collects their brand assets, product photos, style guidelines, and output aspect ratios.
+> **Time:** about 16 minutes. **You will finish with:** a priced service offer, an intake form plan, a free-sample pitch and a delivery board outline.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Standardize Your Service Tiers
-Open [`templates/productized-service-offer.md`](templates/productized-service-offer.md). Customize the pricing packages to fit your agency goals:
-* *Example:* Pack A ($499 one-time for listing launch visuals) and Pack B ($999/month subscription for infinite studio asset testing).
+Agencies that bill by the hour struggle to scale: custom proposals, scope creep and price haggling. Pitch "AI backgrounds" and clients see cheap labour. A **Productized Service** packages work into a defined scope, fixed price and clear turnaround, pitched around conversion increases. Compare your price with a physical studio shoot (about $3,000 plus shipping and models), not with freelancers: for example, 10 lifestyle photos for $499 in 3 days. Lock scope (e.g. "2 rounds of text edits", defined output formats) and automate onboarding so no sales calls are needed.
 
-### Step 2: Set Up Your Client Intake Portal
-Build an onboarding form (using Typeform or Google Forms) that links to a shared drive folder (Google Drive or Dropbox). Configure the form to collect:
-* High-resolution, transparent PNG product photos.
-* Brand colors, aesthetic vibe preferences (minimalist, tropical, dark), and logo files.
-* Bounding box guidelines (e.g. Amazon 85% fill rule).
+You need [`templates/productized-service-offer.md`](templates/productized-service-offer.md), a form tool (Typeform or Google Forms), a shared drive (Google Drive or Dropbox), a task board (Asana or Trello), and the module 1 workflow, using **Image Studio** in SmartVideo GO AI for visuals.
 
-### Step 3: Create Your Lead Magnet Pitch
-Instead of cold emailing a generic portfolio, use the **Free Sample Loop**:
-* Find a local Shopify brand with weak product listing photos.
-* Download one of their product images.
-* Remove the background, composite it onto a premium travertine slab using the Module 1 workflow, and add a soft shadow.
-* Email the brand owner the "Before" vs. "After" side-by-side comparison.
+## Step by step
 
-### Step 4: Automate the Delivery Board
-Create a client delivery board (in Asana or Trello). When a client checks out, automatically generate a task cards outline detailing each stage: `Intake Received` -> `Backdrop Design` -> `Composite Audit` -> `Final Delivery`.
+### 1. Define your tiers
 
-### Step 5: Master and Package Renders
-Deliver the final WebP assets to the client within the promised timeframe. Include a copy of the [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md) to encourage them to split-test the assets and upgrade to a monthly retainer package.
+Open [`templates/productized-service-offer.md`](templates/productized-service-offer.md) and customize the packages. Example: Pack A at $499 one-time for listing launch visuals, and Pack B at $999/month for ongoing studio asset testing.
 
----
+**You should see:** two packages, each with price, deliverables, turnaround and revision count.
 
-## Worked Example
+**If not:** if a package says "unlimited" anything, replace it with a number.
 
-<p align="center">
-<img src="templates/examples/product-agency-studio.jpg" alt="Commercial Studio" width="280">
-<img src="templates/examples/product-agency-studio-clip.gif" alt="Product Photography Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Commercial Product Studio Image (Left) ──► Image-to-Video Studio Lighting Motion (Right) · Video File: <a href="templates/examples/product-agency-studio-clip.mp4">templates/examples/product-agency-studio-clip.mp4</a></sub></p>
+### 2. Build the intake form
 
-**Scaling MRR for an E-commerce Visual Agency**
+Create a form that links to a shared folder. Collect: high-resolution transparent PNG product photos; brand colours, style preference (minimalist, tropical, dark) and logo files; and bounding box guidelines (for example the Amazon 85% fill rule). Never ask clients to send passwords or secret keys.
 
+**You should see:** a form with those three sections and an upload destination.
 
+**If not:** if the form cannot take large files, ask for a shared-folder link instead.
 
-* **Agency Offer:** Packaged visual service sold as: *"E-commerce Conversion Booster Pack — 10 Lifestyle Scenes in 3 Days for $499."*
-* **Acquisition Strategy:** Found 50 skincare stores on Shopify using basic product images. Sent personalized before/after renders to their founders via email.
-* **Results:**
-  * 8 store owners responded.
-  * 3 purchased the $499 pack immediately.
-  * 1 upgraded to the $999/month "Infinite Retainer" to refresh their catalog assets for seasonal promotions.
-* **Operational Efficiency:** Total production time for $2,496 in billings was under 8 hours, utilizing templates to generate and composite the backdrops.
+### 3. Make the free sample
 
----
+Find a local Shopify brand with weak product photos. Download one product image, remove the background, composite it onto a premium travertine slab with a soft shadow (module 1), and make a before/after side by side.
 
-## Compare Tools
+**You should see:** one clear before/after image.
 
-| Platform / Tool | Management Purpose | Retainer Capability | Best for |
+**If not:** if the product edge looks rough, choose a different product image.
+
+### 4. Write the pitch email
+
+Email the owner the side-by-side. Lead with the result, then the fixed offer.
+
+**You should see:** a short email with the image, the pack and the price.
+
+**If not:** cut any sentence about tools; brands care about metrics.
+
+### 5. Set up the delivery board
+
+In Asana or Trello create a card outline with the stages: `Intake Received` -> `Backdrop Design` -> `Composite Audit` -> `Final Delivery`.
+
+**You should see:** four columns or stages ready for a new client card.
+
+**If not:** build them manually; automation can come later.
+
+### 6. Plan delivery and contract basics
+
+Plan to deliver WebP assets within the promised time, include a copy of [`templates/conversion-audit-checklist.md`](templates/conversion-audit-checklist.md) to encourage split-testing and a retainer upgrade. In your agreement, state that the client owns the final composites, and charge upfront before any design work.
+
+**You should see:** three written rules: ownership, upfront payment, delivery checklist.
+
+**If not:** add them to the offer template.
+
+## Check yourself
+
+* [ ] My offer states price, scope, turnaround and revisions.
+* [ ] My intake form collects photos, brand style and fill rules.
+* [ ] I have one before/after sample ready to send.
+* [ ] My contract terms say client owns the images and payment comes first.
+
+## Common mistakes
+
+* Selling "AI images" instead of conversion results.
+* Leaving scope open, so revisions never end.
+* Starting work before payment.
+* Booking sales calls instead of using an automated intake.
+
+## Go further
+
+**Worked example: e-commerce conversion booster.** Offer: "E-commerce Conversion Booster Pack, 10 Lifestyle Scenes in 3 Days for $499." Found 50 skincare stores with basic images and emailed personalized before/afters. 8 owners responded, 3 bought the $499 pack, 1 upgraded to the $999/month "Infinite Retainer". About $2,496 billed in under 8 hours of production using templates.
+
+**Exercises.** Easy: adapt the offer template to a niche such as luxury watches or pet supplies. Medium: build a before/after email pitch for a weak live listing. Hard: set up a mock Stripe checkout link connected to an onboarding questionnaire that creates upload folders.
+
+**Compare tools.**
+
+| Tool | Purpose | Retainer capability | Best for |
 |---|---|---|---|
-| **Stripe / Stripe Billing** | Package checkout and subscription billing | High (Supports automated monthly recurring billing) | Standardizing pricing checkouts. |
-| **Typeform / Google Forms** | Onboarding intake | Low | Collecting brand assets and image formats automatically. |
-| **Trello / Asana** | Client project management | High | Tracking pipeline delivery stages for bulk client catalogs. |
+| Stripe / Stripe Billing | Checkout and subscriptions | High (recurring billing) | Standardized pricing checkouts |
+| Typeform / Google Forms | Intake | Low | Collecting brand assets and formats |
+| Trello / Asana | Project management | High | Tracking delivery stages |
 
-Stripe Billing is the industry standard for managing monthly design subscriptions. Combine it with Trello to coordinate the design workflow. This keeps your communication clean, organized, and scalable without needing manual invoices.
+Stripe Billing plus Trello keeps communication organized without manual invoices.
 
----
+**Template:** [`templates/productized-service-offer.md`](templates/productized-service-offer.md) covers package specs, intakes, style guides and delivery checklists.
 
-## Launch It
+**SmartVideo GO AI studios** (generic list, same for every lesson):
 
-**How to structure contracts:**
-* **Lock client IP:** Clearly state in your service agreement that the client holds full ownership rights to all final composite photos delivered. This builds professional trust and protects brands when running commercial advertisements.
-* **Charge upfront:** Never start design work without receiving payment first. Productized services function like e-commerce transactions—payment occurs before delivery.
+* **Image Studio**: anchors, character sheets, product and brand shots
+* **Video Studio**: UGC ads, talking-head clips, image-to-video motion
+* **AI Influencer Studio**: consistent recurring on-brand characters
+* **Storyboard / Campaign Planner**: batch matrices, ad briefs and test plans
+* **Lip-Sync Studio**: voice + mouth-sync for avatar performances
 
----
+The workflow is the same everywhere in SmartVideo GO AI: **Learn, See Example, Use Template, Generate.**
 
-## Exercises
-
-1. **Easy:** Customize the [`templates/productized-service-offer.md`](templates/productized-service-offer.md) pricing structure to align with a niche category (e.g. luxury watches or pet supplies).
-2. **Medium:** Find a weak e-commerce product photo on a live listing. Build a before/after email pitch deck showcasing how you would upgrade their listing aesthetics.
-3. **Hard:** Set up a mock Stripe checkout link and connect it to a client onboarding questionnaire that automatically creates folders for product photo uploads.
-
----
-
-## Templates
-
-* [`templates/productized-service-offer.md`](templates/productized-service-offer.md) — package specifications, client intakes, brand style guides, and delivery checklists.
-
----
-
-[← Before/After Conversion Case Studies](02-conversion-case-studies.md) · Next: [Batch Workflows for Catalogs →](04-batch-workflows.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Batch Workflows for Catalogs.

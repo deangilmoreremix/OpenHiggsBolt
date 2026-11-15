@@ -1,139 +1,132 @@
 # Empty Room → Staged Room Pipeline
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Transform vacant properties into high-converting luxury homes in minutes using depth-aware AI inpainting.
-
-**Track:** AI Real Estate (Virtual Staging)  
-**Time:** ~40 minutes  
-**Prerequisites:** Basic understanding of image generation prompts  
-
-## The Problem
-
-Vacant real estate listings suffer from a major buyer perception gap: empty rooms feel smaller, colder, and harder to visualize than furnished spaces. According to the National Association of Realtors (NAR), **81% of buyers find it easier to visualize a property as a future home when it is staged**, and staged homes sell for **up to 20% more** than empty properties.
-
-However, traditional physical staging is extremely expensive and slow:
-* **Cost:** Renting physical furniture and hiring interior design crews costs **$2,500 to $5,000+ per month** per listing.
-* **Turnaround:** Scheduling movers and assembling furniture takes **3 to 7 days**, delaying listing launches.
-* **Risk:** Physical furniture risks scratching floors or damaging walls during transport.
-
-If you attempt basic image editing or low-end 3D rendering, the furniture looks flat, out of scale, and unnaturally floating above the flooring, destroying buyer trust. You need a fast, photorealistic AI workflow that preserves room geometry while seamlessly populating spaces with trendy interior decor.
+> **Time:** about 18 minutes. **You will finish with:** one staged room photo, `staged-living-room.jpg`, made from a vacant room with its perspective and floor intact.
 
 ---
 
-## The Concept
+## Before you start
 
-The AI virtual staging pipeline relies on **Perspective-Locked Inpainting** and **Depth-Aware Furniture Placement**:
+Empty rooms feel smaller and colder, and buyers struggle to picture living there. The National Association of Realtors (NAR) reports that **81% of buyers find it easier to visualize a property as a future home when it is staged**, and staged homes sell for **up to 20% more**. Physical staging costs **$2,500 to $5,000+ per month** and takes **3 to 7 days**. Careless editing makes furniture look flat or floating. This lesson uses perspective-locked, depth-aware inpainting: depth mask, perspective alignment, furniture inpainting, then shadow checking.
 
+You will need: a vacant room photo (your own, or a stock photo of an empty room), basic comfort with image prompts, and **Image Studio** in SmartVideo GO AI (menus move; follow the current screen). Keep [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md) open.
+
+## Step by step
+
+### 1. Pick the source photograph
+
+1. Choose a high-resolution wide-angle photo of a vacant room. Real estate lenses are 16-24mm.
+2. It should be straight (level horizon, vertical walls) and lit by natural daylight.
+3. Save it as `empty-room-source.jpg`.
+
+**You should see:** a bright, level photo of an empty room with a clear floor and windows.
+
+**If not:** if walls lean or the horizon tilts, choose another photo. Furniture will look skewed if perspective is off.
+
+### 2. Mask the floor area
+
+1. Open your photo editor or the inpainting interface.
+2. Paint a mask over the open floor where furniture will sit, covering **60-70% of the open floor space**.
+3. Keep windows, fireplaces, support columns and structural walls untouched.
+
+**You should see:** a mask layer on the floor only, with structural features outside it.
+
+**If not:** if the mask touches windows or walls, erase those parts. Otherwise the AI may alter them.
+
+### 3. Choose a style from the brief
+
+Open [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md). Pick one style preset. Examples:
+
+* **Modern Scandinavian:** light oak, neutral linen sofas, minimalist coffee tables, potted monstera plants.
+* **Contemporary Luxury:** velvet sectionals, marble coffee tables, brass accent lighting, plush area rugs.
+* **Coastal Modern:** light textiles, rattan accents, soft blues, woven jute rugs, warm natural sunlight.
+
+**You should see:** one style chosen, with its furniture list in front of you.
+
+**If not:** if unsure, use Contemporary Luxury, which matches the prompt in the next step.
+
+### 4. Paste the staging prompt
+
+Add the prompt in Image Studio. It starts with architectural and lighting anchor words that match the original photo:
+
+```text
+High-end modern luxury living room virtual staging. A sleek cream fabric L-shaped sectional sofa with plush pillows resting on a soft beige area rug, low-profile oval wood coffee table, potted fiddle-leaf fig in ceramic planter, natural sunlight casting soft shadows, interior design magazine style, 8k photorealistic resolution, perfectly aligned to floor plane.
 ```
-Empty Room Photo ──► Depth Mask Generation ──► Perspective Alignment ──► Inpainting Furniture ──► Shadow & Reflection Matching
+
+Then add the negative prompt:
+
+```text
+warped floor, distorted furniture legs, floating objects, cartoon, low resolution, blurry, altered windows, altered walls, 3d render look, oversaturated.
 ```
 
-### Core Technical Pillars:
+**You should see:** both prompts entered in their own fields.
 
-1. **Perspective & Vanishing Point Locking:** Real estate photography uses wide-angle lenses (16–24mm) with distinct architectural vanishing points. To prevent furniture from appearing distorted or skewed, the AI model must respect the existing horizon line and vertical wall angles.
-2. **Floor & Wall Depth Preserving:** When populating an empty room, the AI model must detect floor planes, baseboards, and window light sources. Using ControlNet Depth or depth-masking ensures sofa legs resting on the floor align perfectly with wall bases without altering structural windows, doors, or flooring textures.
-3. **Interior Style Presets:** High-performing virtual staging targets specific buyer demographics through curated aesthetic themes:
-   * **Modern Scandinavian:** Light oak, neutral linen sofas, minimalist coffee tables, potted monstera plants.
-   * **Contemporary Luxury:** Velvet sectionals, marble coffee tables, brass accent lighting, plush area rugs.
-   * **Coastal Modern:** Light textiles, rattan accents, soft blues, woven jute rugs, warm natural sunlight.
+**If not:** if there is no negative prompt field, look for "avoid" or "exclude"; menus move, so follow the current screen.
 
----
+### 5. Run the inpainting with depth reference
 
-## Do It
+1. Give the tool `empty-room-source.jpg` and your mask. Models used in this course include FLUX Inpainting and muapi `/nano-banana-2` in inpainting mode.
+2. Set ControlNet Depth weight to `0.75` so floor geometry is enforced while the model still builds 3D furniture.
+3. Generate.
 
-### Step 1: Capture & Select the Source Photograph
-Obtain a high-resolution wide-angle photograph of the vacant room. Ensure the photo is straight (horizontally level and vertically plumb) and well-lit with natural daylight. Save as `empty-room-source.jpg`.
+**You should see:** a staged image with furniture inside the masked floor area.
 
-### Step 2: Define the Staging Mask Area
-Open your photo editor or inpainting interface. Select the floor area where furniture should sit while keeping structural features (windows, fireplaces, support columns, structural walls) untouched. Create an inpainting mask layer covering 60–70% of the open floor space.
+**If not:** if furniture floats or warps, raise the depth weight slightly and run again.
 
-### Step 3: Write the Depth-Aware Staging Prompt
-Assemble a prompt using your interior style specifications from [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md). Prepend architectural and lighting anchor tokens matching the original photo:
+### 6. Check contact shadows at 100% zoom
 
-* **Prompt:**  
-  > `"High-end modern luxury living room virtual staging. A sleek cream fabric L-shaped sectional sofa with plush pillows resting on a soft beige area rug, low-profile oval wood coffee table, potted fiddle-leaf fig in ceramic planter, natural sunlight casting soft shadows, interior design magazine style, 8k photorealistic resolution, perfectly aligned to floor plane."`
-* **Negative Prompt:**  
-  > `"warped floor, distorted furniture legs, floating objects, cartoon, low resolution, blurry, altered windows, altered walls, 3d render look, oversaturated."`
+1. Zoom to 100%.
+2. **Floor contact:** sofa and table legs should touch the floor with dark, tight contact shadows (ambient occlusion).
+3. **Light source:** highlights on the furniture should match the window sunlight direction.
 
-### Step 4: Execute Inpainting with ControlNet / Depth Reference
-Pass `empty-room-source.jpg` and your mask into the model (e.g., FLUX Inpainting or muapi `/nano-banana-2` inpainting mode). Set ControlNet Depth weight to `0.75` to enforce structural floor geometry while allowing the model to generate 3D furniture volumes.
+**You should see:** grounded furniture with shadows consistent with the window light.
 
-### Step 5: Composite & Verify Contact Shadows
-Inspect the output at 100% zoom:
-* **Floor Contact:** Verify sofa and table legs touch the floor naturally with dark, tight contact shadows (ambient occlusion).
-* **Light Source Consistency:** Confirm furniture highlights match window sunlight direction.
-* Save the final staged image as `staged-living-room.jpg`.
+**If not:** regenerate. Check that the prompt still says "perfectly aligned to floor plane".
 
----
+### 7. Save the result
 
-## Worked Example
+Save the final image as `staged-living-room.jpg`. Keep it next to `empty-room-source.jpg` for lessons 2 and 3.
 
-<p align="center">
-<img src="templates/examples/staged-living-room.jpg" alt="Staged Living Room AI Image" width="320">
-<img src="templates/examples/living-room-staging-motion.gif" alt="Staged Living Room Motion Loop (I2V)" width="320">
-</p>
-<p align="center"><sub>AI Staged Living Room Image (Left) ──► Image-to-Video Walkthrough Loop (Right) · Video File: <a href="templates/examples/living-room-staging-motion.mp4">templates/examples/living-room-staging-motion.mp4</a></sub></p>
+**You should see:** both files in your folder.
 
-**Staging Execution Breakdown for "Oakridge Listing"**
+**If not:** if the export is small, re-export at the highest resolution available.
 
-* **Source Property:** Empty 450 sq ft living room with hardwood floors and large sunlit windows.
-* **Target Buyer:** Young professional couple seeking modern luxury styling.
-* **Selected Furniture Pack:** Scandinavian Luxury (Cream Sectional, Oak Coffee Table, Textured Rug, Indoor Botanicals).
-* **Render Settings:** Denoising strength `0.65`, Depth weight `0.80`, 16:9 aspect ratio matching camera output.
-* **Turnaround Time:** 4 minutes total processing time.
-* **Cost:** **$0.06** AI generation cost vs. **$3,200** traditional physical staging quote.
+## Check yourself
 
----
+* [ ] My source photo was straight and well lit.
+* [ ] The mask covered the floor, not windows or walls.
+* [ ] I used the prompt, the negative prompt and depth weight `0.75`.
+* [ ] Furniture legs have contact shadows and the light matches the window.
+* [ ] I saved `staged-living-room.jpg`.
 
-## Compare Tools
+## Common mistakes
 
-| Platform / Method | Turnaround Time | Cost per Photo | Realism & Control | Best For |
-|---|---|---|---|---|
-| **FLUX / muapi Inpainting API** | < 1 minute | $0.05 - $0.15 | **Extremely High** — Custom depth control, exact furniture styling | High-volume real estate agencies and automated staging workflows |
-| **Specialized Staging SaaS (BoxBrownie, VirtualStagingAI)** | 24 - 48 hours | $20 - $35 | **High** — Manual designer review or fixed 3D catalog | One-off residential listings with fixed budget |
-| **Traditional Physical Staging** | 3 - 7 days | $2,500 - $5,000+ | **Physical Reality** — Actual furniture in house | Ultra-luxury mega-mansions ($5M+) with in-person open houses |
+* Using a tilted photo, which skews furniture.
+* Masking windows, doors or walls, which lets the AI alter them.
+* Skipping the negative prompt, which allows floating objects and warped floors.
+* Judging the result only at thumbnail size instead of 100% zoom.
 
----
+## Go further
 
-## Launch It
+**Worked example, "Oakridge Listing":** an empty 450 sq ft living room with hardwood floors and large sunlit windows, for a young professional couple wanting modern luxury. Furniture pack: Scandinavian Luxury (cream sectional, oak coffee table, textured rug, indoor botanicals). Settings: denoising strength `0.65`, depth weight `0.80`, 16:9 aspect ratio to match the camera. Result: 4 minutes processing, **$0.06** AI cost versus a **$3,200** physical staging quote. Example files: `templates/examples/staged-living-room.jpg` and `templates/examples/living-room-staging-motion.gif` (video: `templates/examples/living-room-staging-motion.mp4`), an image-to-video walkthrough loop made in **Video Studio**.
 
-**How to price & package this service:**
-* **Single Room Staging:** **$35 – $50** per photo.
-* **Full House Listing Package (5 Rooms):** **$149 – $199** package price (includes Living Room, Master Bedroom, Kitchen/Dining, Guest Bedroom, Patio).
-* **Delivery Specs:** Deliver high-resolution JPEGs (3000px+ wide) optimized for MLS (Multiple Listing Service) and Zillow/Redfin uploads within 24 hours.
+**Compare tools:**
 
----
+| Method | Turnaround | Cost per photo | Best for |
+|---|---|---|---|
+| FLUX / muapi Inpainting API | < 1 minute | $0.05 - $0.15 | High-volume agencies; custom depth control |
+| Staging SaaS (BoxBrownie, VirtualStagingAI) | 24 - 48 hours | $20 - $35 | One-off listings with a fixed budget |
+| Traditional physical staging | 3 - 7 days | $2,500 - $5,000+ | Ultra-luxury $5M+ homes with in-person open houses |
 
-## Exercises
+**Delivery and pricing preview:** single room **$35 - $50** per photo; 5-room package (living room, master bedroom, kitchen/dining, guest bedroom, patio) **$149 - $199**. Deliver JPEGs 3000px+ wide for MLS, Zillow and Redfin within 24 hours.
 
-1. **Easy:** Photograph an empty room in your home or download a vacant room stock photo. Identify the primary vanishing point and window light source.
-2. **Medium:** Use an inpainting tool to place a modern sofa and coffee table into the empty room while preserving original flooring and wall textures.
-3. **Hard:** Perform a multi-style staging test on the same empty room: render one version in **Modern Scandinavian** and a second version in **Industrial Loft**, ensuring lighting and perspective match in both renders.
+**Exercises:**
 
----
+1. Easy: photograph or download an empty room; find the main vanishing point and window light source.
+2. Medium: place a modern sofa and coffee table while preserving the flooring and wall textures.
+3. Hard: stage the same room in **Modern Scandinavian** and **Industrial Loft**, keeping lighting and perspective matched.
 
-## Templates
+**Studios in SmartVideo GO AI:** Image Studio (staging), Video Studio (image-to-video motion), AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio. Workflow: Learn → See Example → Use Template → Generate.
 
-* [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md) — Interior design style guides, prompt frameworks, and quality control checklists.
+Template: [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md).
 
----
-
-[Track Overview](README.md) · Next: [Pricing Against Traditional Staging →](02-pricing-against-traditional-staging.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Pricing Against Traditional Staging.

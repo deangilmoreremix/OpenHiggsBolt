@@ -1,146 +1,121 @@
 # Building a Consistent AI Character
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 18 minutes. **You will finish with:** a locked master portrait of your character, one face-swapped scene render, and a plan for a 9-post launch batch.
 
+---
 
+## Before you start
 
-> A virtual influencer needs a locked face, not a random prompt.
-
-**Track:** AI Avatars & Influencers  
-**Time:** ~45 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-The single biggest hurdle in building a virtual influencer or a consistent brand spokesperson is **face drift**. If you write a prompt for a character in a bedroom, and then in an office, text-to-image models (like Midjourney or DALL-E) will output two different-looking people. The hair length changes, the facial symmetry shifts, and the clothing varies. 
-
-If your character looks like a different person in every post, your audience will not build an emotional connection. The illusion of a real person is broken, and you cannot sell brand sponsorships. (Think of it this way: if a real influencer changed their hair colour, eye colour, and face shape between every Instagram post, you'd assume it was a different account entirely — AI characters suffer the same trust collapse.)
-
-To build a viable virtual influencer, you must implement a structured prompting system and face-conditioning pipeline that locks in your character's facial features, hair, and wardrobe across multiple scenes.
-
-## The Concept
-
-Character consistency in generative AI relies on three core techniques:
-
-### 1. The Description Anchor (Prompt Tokens):
-Instead of typing a generic prompt (e.g. *"a beautiful woman"*), you must write a highly detailed, rigid description of the face, hair, and styling. Use unique tokens (e.g. *"textured crop brown hair, oval face, green eyes, slight freckles"*). Repeating these exact tokens in every prompt establishes a visual anchor.
-
-### 2. The Wardrobe Anchor:
-Keep your character's clothing constant. Do not change their outfit in every scene. Virtual characters (and cartoon characters) are recognized by their signature wardrobe. Lock down one or two clothing tags (e.g., *"wearing a dark blue crewneck sweater"*) and keep it identical across all renders.
-
-### 3. Face-Swapping & Reference Conditioning (InsightFace / cref):
-Even with locked prompts, minor facial details will shift based on lighting and camera angles. You resolve this by taking a high-quality master portrait of your character and using a face-swapping engine (like `z-image-p` via muapi) to project the master face onto any newly generated scene.
+A virtual influencer lives or dies on **face drift**. If you prompt a character in a bedroom and again in an office, text-to-image models give you two different people: hair length, facial symmetry and clothing all change. Audiences do not bond with a face that keeps changing, and you cannot sell sponsorships to an account that looks like several different accounts. The fix is three anchors: a **description anchor** (the same face and hair tokens in every prompt), a **wardrobe anchor** (one or two clothing tags that never change) and a **master face** projected onto every new scene with a face swap.
 
 ```
 Master Face Portrait  ──►  New Scene Generation  ──►  Face Swap Layer  ──►  Consistent Render
 ```
 
----
+You need: the [character style guide template](templates/character-style-guide.md), and these SmartVideo GO AI studios: **Image Studio** (anchors, character sheets) and **AI Influencer Studio** (consistent recurring characters). No prerequisites.
 
-## Do It
+## Step by step
 
-### Step 1: Define Your Character Profile
-Open the [`templates/character-style-guide.md`](templates/character-style-guide.md). Write down your character's visual features, clothing style, and signature colors.
+### 1. Define your character profile
 
-### Step 2: Generate the Master Portrait
-Use `nano-banana-2` (aspect ratio set to `1:1`) to generate a clean, front-facing headshot of your character in soft, neutral lighting.
-* *Example prompt:* `"Front portrait of Emma, a 28-year-old female influencer with a short textured brown bob, oval face, slight freckles on her nose, looking at the camera. Soft neutral studio lighting, clean gray background, photorealistic, 8k."`
-Save the best render as your **Master Reference Face** (e.g., `emma-master.jpg`).
+1. Open [`templates/character-style-guide.md`](templates/character-style-guide.md).
+2. Write down the face, hair, clothing style and signature colors. Use unique tokens, for example: textured crop brown hair, oval face, green eyes, slight freckles. Pick one or two wardrobe tags, for example: a dark blue crewneck sweater.
 
-### Step 3: Generate New Scene Backgrounds
-Write prompts for your character in new locations (e.g. at a cafe table, in an office). Keep the face descriptions, hair details, and wardrobe tags **100% identical** to your master prompt:
-* *New prompt:* `"Emma, a 28-year-old female influencer with a short textured brown bob, oval face, slight freckles, wearing a dark blue crewneck sweater, sitting at a wooden cafe table holding a coffee cup. Minimalist cafe background, warm morning light, photorealistic, 8k."`
+**You should see:** a filled-in profile with a face description, hair, and a wardrobe line you will not change.
 
-### Step 4: Run the Face-Swap Pipeline
-If the face in the cafe generation drifts slightly from the master, use the `/z-image-p` (or InsightFace face swap) endpoint:
-* **Source Image (Reference):** Upload your `emma-master.jpg`.
-* **Target Image:** Upload your new cafe generation.
-* The engine will align and swap the facial features, preserving the lighting and head angle of the target image while locking in Emma's exact nose, eyes, and cheek structure.
+**If not:** if the description is vague ("a beautiful woman"), add concrete details until two people would picture the same face.
 
----
+### 2. Generate the master portrait
 
-## Worked Example
+1. In **Image Studio**, use `nano-banana-2` with aspect ratio `1:1`.
+2. Paste this example prompt (swap in your own description):
 
-<p align="center">
-<img src="templates/examples/emma-master.jpg" alt="Master Profile: Emma" width="220">
-<img src="templates/examples/emma-cafe-consistent.jpg" alt="Face-Swapped Consistent Render" width="220">
-<img src="templates/examples/emma-cafe-motion.gif" alt="Avatar Character Motion Loop (I2V)" width="220">
-</p>
-<p align="center"><sub>Master Avatar (Left) ──► Face-Swapped Output (Center) ──► Image-to-Video Motion (Right) · Video File: <a href="templates/examples/emma-cafe-motion.mp4">templates/examples/emma-cafe-motion.mp4</a></sub></p>
+```text
+Front portrait of Emma, a 28-year-old female influencer with a short textured brown bob, oval face, slight freckles on her nose, looking at the camera. Soft neutral studio lighting, clean gray background, photorealistic, 8k.
+```
 
-**Creating "Emma" (Tech Influencer Avatar)**
+3. Generate a few and save the best as your **Master Reference Face**, for example `emma-master.jpg`.
 
+**You should see:** a clean, front-facing, evenly lit headshot with a plain background.
 
+**If not:** if the face is turned away or the lighting is dramatic, regenerate; the master must be neutral and front-facing.
 
-* **Master Reference Profile:** 28s, short textured brown bob, oval face, freckles, wearing a dark blue crewneck sweater. Master portrait saved to local folder.
-* **Scene 1 (Office):** Generated Emma sitting at a corporate desk. Face swapped with Master.
-* **Scene 2 (Home):** Generated Emma standing in a modern living room. Face swapped with Master.
-* **Scene 3 (Studio):** Generated Emma speaking with professional studio microphones. Face swapped with Master.
+### 3. Generate a new scene with identical tokens
 
-**The Result:** Across three distinct scenes with varying lighting and backgrounds, Emma's face, hair, and sweater remain perfectly consistent. The character is ready to be animated into video.
+Keep face, hair and wardrobe wording **100% identical** to the master prompt and change only the location:
 
-**The comparison below is real, not a mockup** — showing Emma's Master Portrait side-by-side with her consistent cafe render (the master face was projected onto the target cafe scene via `ai-image-face-swap`):
+```text
+Emma, a 28-year-old female influencer with a short textured brown bob, oval face, slight freckles, wearing a dark blue crewneck sweater, sitting at a wooden cafe table holding a coffee cup. Minimalist cafe background, warm morning light, photorealistic, 8k.
+```
 
-<p align="center">
-  <img src="templates/examples/emma-master.jpg" alt="Emma Master Portrait (1:1)" width="200">
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="templates/examples/emma-cafe-consistent.jpg" alt="Emma consistent cafe scene (9:16)" width="158">
-</p>
+**You should see:** a cafe scene with someone who looks similar to your master, possibly with small differences.
 
-*How this was actually produced via the muapi API:*
-1. Generated the master 1:1 square avatar portrait with **`nano-banana-2`** ($0.06/image).
-2. Generated the 9:16 vertical cafe background with **`nano-banana-2`** using identical character prompt tokens.
-3. Uploaded both files and submitted them to **`ai-image-face-swap`** ($0.03/swap) to align Emma's facial features onto the cafe scene.
+**If not:** if the clothing or hair changed a lot, compare your prompt to the master line by line and restore the exact tokens.
 
----
+### 4. Run the face swap
 
-## Compare Tools
+If the face drifted, use the `/z-image-p` (or InsightFace face swap) endpoint, or `ai-image-face-swap`:
 
-| Platform / Tool | Consistency Capabilities | Payout / Credit Cost | Best for |
+1. **Source Image (Reference):** upload `emma-master.jpg`.
+2. **Target Image:** upload your new cafe generation.
+3. Run it. The engine keeps the target's lighting and head angle while locking in the master's nose, eyes and cheek structure.
+
+**You should see:** the cafe scene with the master's exact facial features.
+
+**If not:** if the result looks pasted or the angle is extreme, regenerate the scene with a more frontal pose and swap again.
+
+### 5. Compare against the master
+
+Put the master and the swapped render side by side.
+
+**You should see:** the same nose, eyes, freckles, hair and sweater in both.
+
+**If not:** if any feature differs, swap again, or generate a new scene with the anchor tokens repeated word for word.
+
+### 6. Plan the launch batch
+
+Create dedicated Instagram and TikTok accounts for the character. Write a normal, humanized bio (for example: "Sharing automation hacks and tech reviews"); do not label it "AI Generated" in the main bio header. Then list **9 scene prompts** (office, home, studio, cafe, and so on), all reusing your anchors, so the grid looks cohesive when a new viewer lands on the profile.
+
+**You should see:** a list of at least 9 scene prompts, each starting with the same character description and wardrobe tag.
+
+**If not:** if you are short of ideas, vary only location and lighting.
+
+## Check yourself
+
+* [ ] My style guide has face, hair and wardrobe anchors.
+* [ ] I saved a front-facing master portrait.
+* [ ] My swapped scene matches the master's facial features.
+* [ ] I have a list of 9 scene prompts for the launch batch.
+
+## Common mistakes
+
+* Typing a generic prompt ("a beautiful woman") instead of rigid description tokens.
+* Changing the outfit in every scene.
+* Skipping the face swap and trusting the prompt alone.
+* Publishing before there are at least 9 consistent posts.
+
+## Go further
+
+**Worked example, "Emma" (tech influencer):** master profile is a 28-year-old with a short textured brown bob, oval face, freckles, dark blue crewneck sweater. Scene 1 office desk, Scene 2 modern living room, Scene 3 studio with professional microphones; each is face-swapped with the master. Across three scenes with different lighting, face, hair and sweater stay consistent. Reference images: [master](templates/examples/emma-master.jpg), [consistent cafe render](templates/examples/emma-cafe-consistent.jpg), [motion clip](templates/examples/emma-cafe-motion.mp4).
+
+How the real example was made via muapi: master 1:1 with `nano-banana-2` ($0.06/image); 9:16 cafe scene with `nano-banana-2` using identical tokens; both uploaded to `ai-image-face-swap` ($0.03/swap).
+
+**Compare tools:**
+
+| Tool | Consistency | Cost | Best for |
 |---|---|---|---|
-| **muapi `/ai-image-face-swap`** (Face Swap) | High (Preserves facial features across any angle or lighting) | ~$0.03 per swap | Fast, bulk face-swapping for image feeds. |
-| **Midjourney `--cref`** | High (Character reference flag locks face and hair, but can struggle with precise clothing details) | Subscription-based | Generating initial background variations and poses. |
-| **Stable Diffusion (IP-Adapter)** | Ultra-High (Unrestricted control over face and pose weight nodes) | Free (Runs locally on GPU) | Professional agencies building custom virtual models. |
+| muapi `/ai-image-face-swap` | High, any angle or lighting | ~$0.03 per swap | Fast, bulk face swaps for image feeds |
+| Midjourney `--cref` | High; can struggle with precise clothing | Subscription | Background variations and poses |
+| Stable Diffusion (IP-Adapter) | Ultra-high, full control | Free (local GPU) | Agencies building custom models |
 
-For content creators starting out, using Midjourney or `nano-banana-2` to generate the background scene, followed by a quick pass through muapi's `/ai-image-face-swap` face swapper, is the fastest and most cost-effective pipeline to deliver client work.
+Fastest starter pipeline: Midjourney or `nano-banana-2` for the scene, then a muapi face swap.
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: write a detailed physical description, generate three headshots, pick the master.
+2. Medium: generate two scene variations (walking in a city, sitting in a park) with identical anchors.
+3. Hard: project your master face onto a third-party stock photo scene, matching lighting and angle, and verify features hold.
 
-**How to start the brand:**
-* **Set Up a Business Profile:** Create a dedicated Instagram and TikTok account for your character. Do not label it as "AI Generated" in the main bio header — write a normal, humanized bio (e.g. *"Sharing automation hacks and tech reviews"*).
-* **The Launch Batch:** Before publishing, generate at least **9 consistent posts** so that when a new viewer clicks your profile, they see a cohesive, professional image grid.
+**Template:** [`templates/character-style-guide.md`](templates/character-style-guide.md) holds prompt anchors and seed lists.
 
----
-
-## Exercises
-
-1. **Easy:** Write a detailed physical description for an AI character. Generate three front-facing headshots. Select the best master portrait.
-2. **Medium:** Take your master portrait and generate two scene variations (e.g. walking in a city, sitting in a park) using identical prompt anchors.
-3. **Hard:** Use a face-swapping engine to project your master character face onto a third-party stock photo scene, aligning the lighting and angles, and verify that the face features are held consistent.
-
----
-
-## Templates
-
-* [`templates/character-style-guide.md`](templates/character-style-guide.md) — a profile directory to lock in prompt anchors and seed lists.
-
----
-
-[← Track overview](README.md) · Next: [Character to Content Pipeline →](02-character-content-pipeline.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Character to Content Pipeline.

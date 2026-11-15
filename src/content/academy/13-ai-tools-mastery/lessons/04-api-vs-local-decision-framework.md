@@ -1,125 +1,108 @@
 # API vs. Local: A Decision Framework
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Determine when to use Cloud APIs (muapi, Replicate) vs. Local Open-Source GPUs (ComfyUI, Automatic1111) based on cost, scale, and privacy requirements.
-
-**Track:** AI Tools Mastery  
-**Time:** ~40 minutes  
-**Prerequisites:** [01: Image Models](01-image-models-which-one-for-which-use-case.md), [02: Video Models](02-video-models-which-one-for-which-use-case.md), [03: Voice & Audio Models](03-voice-audio-models-which-one-for-which-use-case.md)  
-
-## The Problem
-
-Creators face a critical architectural decision: **Should you run AI models via Cloud APIs or build a Local GPU Workstation?**
-
-Making the wrong choice burns capital:
-* **Over-investing in Hardware Early:** Buying a $3,500 RTX 4090 GPU workstation when you only render 20 images a week takes years to break even.
-* **Scaling Cloud APIs at High Volume:** Running 10,000 monthly high-res renders on pay-per-request cloud APIs costs $600+/month, destroying gross profit margins compared to local GPU rendering.
-* **Ignoring Data Privacy & Compliance:** Sending confidential enterprise client assets over public cloud APIs violates NDA agreements.
-
-You need a clear mathematical decision matrix to select the optimal hosting architecture for your business stage.
+> **Time:** about 15 minutes. **You will finish with:** a monthly API cost, a payback period for a local GPU and a written hosting decision.
 
 ---
 
-## The Concept
+## Before you start
 
-The **API vs. Local Decision Matrix** balances hardware amortization, volume scale, and data security:
+Buying a $3,500 RTX 4090 workstation for 20 images a week takes years to break even, while 10,000 monthly high-res renders on pay-per-request APIs cost $600+/month. Confidential client assets sent over a public cloud API may also break NDA agreements. Two formulas decide it:
 
-```
-Monthly Volume & Privacy Needs ──► Cost Payback Calculation ──► Cloud API vs. Local GPU Choice
-```
+* Monthly Cloud API Cost = Renders per Month x Cost per Render
+* Local GPU Amortization Period = GPU Workstation Cost / Monthly Savings vs. API
 
-### Architectural Comparison:
+Cloud APIs (muapi / Replicate) cost $0 upfront and suit low volume ($5-$20/mo); a local GPU (ComfyUI / RTX 4090) costs $1,500 - $4,500 but has $0 marginal cost per render (only electricity) and 100% offline privacy. It also needs Python, VRAM management (VRAM = Video RAM, the dedicated memory on your GPU that holds the AI model during generation) and CUDA drivers (CUDA = NVIDIA's software layer that lets your GPU run AI workloads).
 
-$$\text{Monthly Cloud API Cost} = \text{Renders per Month} \times \text{Cost per Render}$$
+You will need a calculator and the template [`templates/api-cost-calculator.md`](templates/api-cost-calculator.md). Lessons 1-3 give you your render types.
 
-$$\text{Local GPU Amortization Period} = \frac{\text{GPU Workstation Cost}}{\text{Monthly Savings vs. API}}$$
+## Step by step
 
-| Dimension | Cloud APIs (muapi / Replicate) | Local GPU (ComfyUI / RTX 4090) |
-|---|---|---|
-| **Upfront Cost** | **$0** (Pay-as-you-go credit model) | **$1,500 – $4,500** hardware investment |
-| **Low-Volume Efficiency** | **Superior** ($5-$20/mo total spend) | Poor (Long payback period) |
-| **High-Volume Economics** | Cost scales linearly with renders | **$0 marginal cost per render** (only electricity) |
-| **Setup Complexity** | Zero infrastructure setup (Simple HTTP POST) | Requires Python, VRAM management (VRAM = Video RAM, the dedicated memory on your GPU that holds the AI model during generation), and CUDA drivers (CUDA = NVIDIA's software layer that lets your GPU run AI workloads) |
-| **Data Privacy & Security** | Data processed on cloud servers | **100% Offline Air-Gapped Privacy** |
+### 1. Open the calculator
 
----
+Open [`templates/api-cost-calculator.md`](templates/api-cost-calculator.md).
 
-## Do It
+**You should see:** API cost formulas, GPU payback calculators and hardware VRAM decision trees.
 
-### Step 1: Run the Hardware Payback Calculator
-Open [`templates/api-cost-calculator.md`](templates/api-cost-calculator.md). Input your monthly render volume:
-* **Scenario A (Freelancer / Small Studio):** 300 renders/month @ $0.06 avg API cost = **$18/month API cost**.
-  * *Recommendation:* **Stay on Cloud APIs (muapi)**. Building a $2,500 local GPU machine takes 138 months to break even.
-* **Scenario B (High-Volume Agency / Stock Creator):** 10,000 renders/month @ $0.06 avg API cost = **$600/month API cost**.
-  * *Recommendation:* **Invest in Local GPU (RTX 4090)**. The $2,500 workstation pays for itself in under 4.5 months.
+**If not:** check the link path as written; the two formulas above are enough to continue.
 
-### Step 2: Evaluate Client Privacy Constraints
-If handling NDA corporate headshots or unreleased product prototypes, enforce **Local GPU Air-Gapped Rendering** regardless of volume.
+### 2. Enter your monthly volume
 
-### Step 3: Implement Hybrid Workflows
-Use **Cloud APIs** for rapid mobile client intake and burst processing, while using **Local ComfyUI** for heavy offline batch fine-tuning and LoRA training.
+Write down how many renders you make per month and your average cost per render.
 
----
+**You should see:** two numbers.
 
-## Worked Example
+**If not:** if you do not know your average cost, use $0.06 as in the examples.
 
-**Agency Infrastructure Decision: "Scale Studio Rebrand"**
+### 3. Calculate the API cost
 
-* **Monthly Output:** 6,500 image renders & 200 short video clips.
-* **Cloud API Estimate:** $390 image credits + $150 video credits = **$540 / month**.
-* **Local Workstation Build:** Dual RTX 4090 24GB VRAM Rig = **$3,800**.
-* **Payback Period:** $3,800 / $540 = **7.0 Months**.
-* **Outcome:** Agency purchased the local workstation, saving **$6,480/year** after month 7.
+Multiply renders by cost per render. For reference: Scenario A, 300 renders at $0.06 = **$18/month**. Scenario B, 10,000 renders at $0.06 = **$600/month**.
 
----
+**You should see:** a monthly API cost in dollars.
 
-## Compare Tools
+**If not:** recheck that both numbers are monthly, not weekly.
 
-| Hosting Option | Flexibility | Scaling Speed | Best For |
+### 4. Calculate the payback
+
+Divide the workstation cost by the monthly API cost. Scenario A: a $2,500 machine takes 138 months to break even, so stay on **Cloud APIs (muapi)**. Scenario B: the $2,500 workstation pays for itself in under 4.5 months, so invest in a **Local GPU (RTX 4090)**.
+
+**You should see:** a payback period in months for your numbers.
+
+**If not:** if your monthly savings are near zero, the payback is effectively never; stay on the API.
+
+### 5. Apply the privacy test
+
+If you handle NDA corporate headshots or unreleased product prototypes, enforce **Local GPU Air-Gapped Rendering** regardless of volume.
+
+**You should see:** a yes/no answer on privacy for each client type.
+
+**If not:** if unsure, check the client contract before sending assets to any cloud service.
+
+### 6. Consider the middle ground
+
+Renting cloud GPUs on RunPod at $0.44/hour gives ComfyUI node control without buying hardware.
+
+**You should see:** a note on whether renting fits better than buying.
+
+**If not:** prices change; check the current rate on the provider's page.
+
+### 7. Write your decision
+
+Pick one: Cloud API only, local GPU, rented GPU, or a hybrid. A hybrid uses **Cloud APIs** for rapid mobile client intake and burst processing, and **Local ComfyUI** for heavy offline batch fine-tuning and LoRA training.
+
+**You should see:** a one-paragraph infrastructure plan with the numbers behind it.
+
+**If not:** if the numbers and privacy point different ways, privacy wins for those clients.
+
+## Check yourself
+
+* [ ] I calculated my monthly API cost.
+* [ ] I calculated a payback period in months.
+* [ ] I checked privacy needs for each client.
+* [ ] I wrote down my hosting decision.
+
+## Common mistakes
+
+* Buying hardware early when volume is low.
+* Staying on pay-per-request APIs at very high volume.
+* Sending NDA assets over a public cloud API.
+* Ignoring setup work (Python, VRAM, CUDA drivers) in a local build.
+
+## Go further
+
+**Worked example: "Scale Studio Rebrand."** Output: 6,500 image renders and 200 short video clips per month. Cloud API estimate: $390 image credits + $150 video credits = $540/month. Local build: dual RTX 4090 24GB VRAM rig = $3,800. Payback: $3,800 / $540 = 7.0 months. Outcome: the agency bought the workstation and saved $6,480/year after month 7.
+
+| Hosting option | Flexibility | Scaling speed | Best for |
 |---|---|---|---|
-| **muapi Cloud API** | High (Access to FLUX, Seedance, InstantID via HTTP) | Instant (No VRAM limits) | Startups, freelancers, mobile app backends |
-| **Local ComfyUI** | **Unlimited Node Control** | Fixed to GPU VRAM | High-volume agencies, custom LoRA trainers, NDA projects |
-| **RunPod / Vast.ai (Cloud GPU)** | High (Rent cloud RTX 4090 per hour) | High | Burst processing 5,000 images over a weekend |
+| **muapi Cloud API** | High (FLUX, Seedance, InstantID via HTTP) | Instant (no VRAM limits) | Startups, freelancers, mobile app backends |
+| **Local ComfyUI** | Unlimited node control | Fixed to GPU VRAM | High-volume agencies, custom LoRA trainers, NDA projects |
+| **RunPod / Vast.ai (cloud GPU)** | High (rent a cloud RTX 4090 per hour) | High | Burst processing 5,000 images over a weekend |
 
----
+Exercises:
 
-## Launch It
+1. **Easy:** calculate your monthly API spend with the formula in `api-cost-calculator.md`.
+2. **Medium:** rent a cloud GPU on RunPod and launch a ComfyUI web interface.
+3. **Hard:** build a hybrid plan combining Cloud API mobile submission with local GPU batch processing.
 
-* **Use RunPod Cloud GPUs as a Middle Ground:** Renting cloud GPUs at $0.44/hour on RunPod gives you ComfyUI node control without buying hardware upfront.
+Templates: [`templates/api-cost-calculator.md`](templates/api-cost-calculator.md) for cost formulas, payback calculators and VRAM decision trees; [`templates/tool-evaluation-framework.md`](templates/tool-evaluation-framework.md) for a 5-point checklist for testing new AI models before production.
 
----
-
-## Exercises
-
-1. **Easy:** Calculate your monthly API spend using the formula in `api-cost-calculator.md`.
-2. **Medium:** Rent a cloud GPU instance on RunPod and launch a ComfyUI web interface.
-3. **Hard:** Build a hybrid infrastructure plan combining Cloud API mobile submission with Local GPU batch processing.
-
----
-
-## Templates
-
-* [`templates/api-cost-calculator.md`](templates/api-cost-calculator.md) — API cost formulas, GPU payback calculators, and hardware VRAM decision trees.
-* [`templates/tool-evaluation-framework.md`](templates/tool-evaluation-framework.md) — A 5-point evaluation checklist for testing new AI models before integrating them into production workflows.
-
----
-
-[← Voice & Audio Models](03-voice-audio-models-which-one-for-which-use-case.md) · [Track Overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Other SmartVideo GO AI studios that use this: Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio.

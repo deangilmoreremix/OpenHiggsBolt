@@ -1,114 +1,113 @@
-# Module 5: Building a Portfolio That Sells
+# Building a Portfolio That Sells
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Designing ROI-driven client case studies, before/after metrics, interactive demo portals, and social proof frameworks that close high-ticket retainers.
+> **Time:** about 14 minutes. **You will finish with:** one 4-part commercial case study with a metrics table, and a plan for a before/after demo portal.
 
 ---
 
-## 🎯 Portfolio Mistake: Art Gallery vs. Business Problem Solver
+## Before you start
 
-Most freelance creators build portfolios like art galleries—showing pretty AI pictures, sci-fi renders, and stylized portraits without any commercial business context.
+Many creators build portfolios like art galleries: pretty images with no client or numbers. Corporate buyers (CMOs, VPs of Marketing, E-Commerce Directors) do not buy art; they buy solutions to expensive business problems. A headline like "How We Saved a 120-Person Remote SaaS Team $22,000 and 3 Weeks in Headshot Production" does more than "Check out my cool fantasy renders". Dollar figures here are the lesson's examples; use your own real, truthful numbers.
 
-High-ticket corporate clients (CMOs, VPs of Marketing, E-Commerce Directors) **do not buy art**. They buy **solutions to expensive business problems**:
+You will need:
 
-### Art Gallery Portfolio vs. Commercial Case Study:
+* One past project (with client permission to share) and its numbers.
+* `templates/case-study-portfolio-template.md` from this track.
+* About 14 minutes.
 
-```
-❌ TRADITIONAL CREATOR PORTFOLIO (Fails to Close B2B Clients)
---------------------------------------------------------------------------
-• Headline: "Check out my cool Midjourney fantasy renders!"
-• Content: Grid of 20 random AI images without client names or metrics.
-• Result: Client thinks: "This looks cool, but how does this help me sell more SaaS?"
---------------------------------------------------------------------------
+## Step by step
 
-✅ AGENCY COMMERCIAL CASE STUDY (Closes $5,000+ Retainers)
---------------------------------------------------------------------------
-• Headline: "How We Saved a 120-Person Remote SaaS Team $22,000 & 3 Weeks in Headshot Production"
-• Content: Problem Breakdown -> AI Pipeline Solution -> Hard ROI Metrics Table -> Testimonial
-• Result: Client thinks: "They can save us $20,000 on our upcoming rebrand. Let's hire them."
---------------------------------------------------------------------------
-```
+### 1. Pick a project to reframe
 
----
+Choose your best past project. If you have none, build a clearly labelled sample project instead; never invent a client.
 
-## 📐 The 4-Part Case Study Architecture
+**You should see:** one project chosen.
 
-Structure every portfolio project using this proven 4-part commercial case study framework:
+**If not:** pick the one where you can name the problem it solved.
 
-```
-+-----------------------------------------------------------------------------+
-|                      THE 4-PART CASE STUDY ARCHITECTURE                     |
-+-----------------------------------------------------------------------------+
-| 1. THE CLIENT & CHALLENGE  | Traditional costs, slow timelines, & pain points|
-| 2. THE AI PIPELINE         | Custom prompt architecture & identity locking  |
-| 3. QUANTIFIABLE ROI METRICS| Exact dollars saved, speedup factor, gross ROI  |
-| 4. CLIENT TESTIMONIAL      | Verified quote & interactive before/after demo  |
-+-----------------------------------------------------------------------------+
-```
+### 2. Open the template and write the Client and Challenge
 
----
+Part 1 covers the client, traditional costs, slow timelines and pain points.
 
-## 📊 Hard Metrics & Social Proof Showcase
+**You should see:** a paragraph naming who the client was and what the old way cost or delayed.
 
-Present clear, quantifiable data tables in your case studies to prove financial return:
+**If not:** ask the client or estimate, labelling estimates.
 
-### Sample Metric Breakdown — Corporate Headshot Campaign:
+### 3. Write the AI Pipeline
 
-| Performance Metric | Traditional Production | AI Agency Pipeline | Measurable Client Benefit |
-|---|---|---|---|
-| **Total Campaign Cost** | $24,500 | $6,000 | **$18,500 Direct Savings (75.5%)** |
-| **Delivery Turnaround** | 25 Business Days | 24 Hours | **25x Faster Execution** |
-| **Employee Downtime** | 3.5 Hours / Employee | 2 Minutes (Selfie Upload) | **420 Productive Hours Saved** |
-| **Usage Rights** | 2-Year Limited License | Full Commercial IP Transfer | **Perpetual Global Asset Rights** |
+Part 2 describes your custom prompt architecture and identity locking: what you built and why it beat the traditional method.
 
----
+**You should see:** a short description of the pipeline in plain business terms.
 
-## 🌐 Building Interactive Demo Portals
+**If not:** explain the result before the tools.
 
-Static PNG images don't convey the quality of state-of-the-art 8k AI renders. Build live interactive web demo portals (using Notion, Webflow, Framer (a no-code website builder with built-in interactive components), or simple HTML) featuring **interactive before/after comparison sliders**:
+### 4. Build the ROI metrics table
 
-```
-+-----------------------------------------------------------------------------+
-| [ BEFORE: Raw Selfie ]   <========== SLIDER ==========>   [ AFTER: AI Headshot ]|
-|   Smartphone photo          Interactive Comparison          Studio Rembrandt|
-|   Unfocused lighting                                        8k Commercial Grade |
-+-----------------------------------------------------------------------------+
+Part 3 is hard numbers. Use this layout (the lesson's sample figures):
+
+```text
+Metric | Traditional | AI Pipeline | Client benefit
+Total Campaign Cost | $24,500 | $6,000 | $18,500 direct savings (75.5%)
+Delivery Turnaround | 25 business days | 24 hours | 25x faster
+Employee Downtime | 3.5 hours per employee | 2 minutes (selfie upload) | 420 productive hours saved
+Usage Rights | 2-year limited license | Full commercial IP transfer | Perpetual global asset rights
 ```
 
-### Key Elements of a High-Converting Demo Portal:
-1. **Interactive Image Sliders:** Let clients drag back and forth between raw input photos and final 8k AI renders.
-2. **Video Motion Clips:** Display embedded Image-to-Video walkthrough loops showcasing lighting motion and camera pans.
-3. **Downloadable Sample Asset Bundles:** Provide a downloadable zip file of 5 uncompressed 8k sample files for the client's design team to inspect.
+Calculate your own exact savings and speed-up numbers.
 
----
+**You should see:** a table with traditional, AI and benefit columns for your project.
 
-## 🛠️ Step-by-Step Action Plan
+**If not:** savings % = (traditional - AI) / traditional; check against the example (18,500 / 24,500 is about 75.5%).
 
-1. **Re-frame Existing Projects:** Convert your past 3 best projects into 4-part commercial case studies using [`templates/case-study-portfolio-template.md`](templates/case-study-portfolio-template.md).
-2. **Add Concrete Dollar Metrics:** Calculate exact estimated cost savings and turnaround speedup numbers for each project.
-3. **Collect Video Testimonials:** Request a 30-second smartphone video testimonial from satisfied clients to embed directly on your portfolio site.
+### 5. Request a testimonial
 
----
+Part 4 is a verified quote. Ask the client for a 30-second smartphone video testimonial to embed on your site.
 
-## 💡 Key Takeaways
-- Stop building visual art galleries; build commercial case studies focused on ROI and business problem-solving.
-- Structure every portfolio piece using the 4-Part Case Study Framework (Challenge → Pipeline → Metrics → Testimonial).
-- Use interactive before/after image sliders and video motion loops to demonstrate production quality live on sales calls.
+**You should see:** a sent request.
 
+**If not:** ask for a written quote instead and follow up in a week.
 
----
+### 6. Plan the demo portal
 
-## Produce this in SmartVideo GO AI
+Build an interactive page (Notion, Webflow, Framer, or simple HTML) with a before/after slider: raw selfie on one side, AI headshot on the other.
 
-Apply this lesson directly inside SmartVideo GO AI:
+**You should see:** a sketch listing slider, motion clips and sample download.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**If not:** start with a plain two-image page; add the slider later.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+### 7. Add the three portal elements
+
+1. Interactive image sliders between inputs and final renders.
+2. Embedded image-to-video loops showing lighting motion and camera pans.
+3. A downloadable zip of 5 uncompressed 8k sample files for the client's design team.
+
+**You should see:** a checklist of the three elements on your portal plan.
+
+**If not:** include at least the slider first.
+
+### 8. Repeat for three projects
+
+Convert your 3 best projects into case studies using the template.
+
+**You should see:** a list of three titled case studies.
+
+**If not:** finish one fully before starting the next.
+
+## Check yourself
+
+* [ ] My case study follows Challenge, Pipeline, Metrics, Testimonial.
+* [ ] Every number is real or clearly labelled as an estimate.
+* [ ] I have a plan for a before/after demo portal.
+* [ ] I asked for a testimonial.
+
+## Common mistakes
+
+* **Art-gallery grids.** No client, no metrics, no sale.
+* **Vague outcomes.** State dollars saved and time saved.
+* **Static images only.** Sliders and motion show quality better.
+* **Invented results.** Never fabricate clients or figures.
+
+## Go further
+
+**Headline formula.** "How We Saved a [size] [type] Team $[amount] and [time] in [deliverable]" using your real numbers.
+
+**Exercise.** Show the demo portal on your next discovery call during the live-demo minutes.
