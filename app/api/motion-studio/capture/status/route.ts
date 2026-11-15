@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CAPTURE_BUCKET, CaptureStorageError, readCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
+import { CAPTURE_BUCKET, CaptureStorageError, readCaptureJob, readLocalCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
 import { requireMotionStudioUser } from '../../lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
   const user = await requireMotionStudioUser(req)
   if (!user.ok) return user.response
   const jobId = req.nextUrl.searchParams.get('jobId') ?? ''
+  // Local development: a job started in this process (see POST /api/motion-studio/capture) is read from memory.
+  const local = readLocalCaptureJob(user.userId, jobId)
+  if (local) return NextResponse.json(local, { headers: { 'Cache-Control': 'no-store' } })
   let job
   try {
     const { createServerClient } = await import('@/lib/supabase')

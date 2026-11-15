@@ -157,3 +157,55 @@ export async function readCaptureJob(storage: CaptureStorage, userId: string, jo
     return null
   }
 }
+
+// ── Local development capture jobs ─────────────────────────────────────────
+//
+// On the host the capture is a background function and the client polls a job record (above). In local development there
+// is no background function and no storage, and a capture that runs INSIDE the request is cut off at ~30 s by the dev server,
+// while a heavy real site needs longer. So development uses the same job protocol with the job held in this process.
+
+const LOCAL_JOB_TTL_MS = 15 * 60_000
+const LOCAL_JOB_MAX = 20
+const localCaptureJobs = new Map<string, { userId: string; at: number; job: CaptureJob }>()
+
+/** Development only: the job lives in this process, never in production. */
+export const localCaptureJobsEnabled = (): boolean => process.env.NODE_ENV === 'development'
+
+function pruneLocalJobs(now = Date.now()) {
+  for (const [id, entry] of localCaptureJobs) if (now - entry.at > LOCAL_JOB_TTL_MS) localCaptureJobs.delete(id)
+  while (localCaptureJobs.size > LOCAL_JOB_MAX) {
+    const oldest = localCaptureJobs.keys().next().value
+    if (oldest === undefined) break
+    localCaptureJobs.delete(oldest)
+  }
+}
+
+/**
+ * Start a capture without waiting for it: returns the job id at once. `run` produces the finished capture response, or
+ * throws an Error that may carry `code` (e.g. CAPTURE_FAILED). The whole job gets the same watchdog as the host's worker.
+ */
+export function startLocalCaptureJob(userId: string, run: () => Promise<ReturnType<typeof buildCaptureResponse>>, randomId: () => string): string | null {
+  if (!localCaptureJobsEnabled()) return null
+  pruneLocalJobs()
+  const jobId = randomId()
+  localCaptureJobs.set(jobId, { userId, at: Date.now(), job: { state: 'running', startedAt: new Date().toISOString() } })
+  const settle = (job: CaptureJob) => localCaptureJobs.set(jobId, { userId, at: Date.now(), job })
+  const watchdog = setTimeout(() => settle({ state: 'error', finishedAt: new Date().toISOString(), code: 'CAPTURE_TIMEOUT', error: 'The capture took too long' }), WORKER_WATCHDOG_MS)
+  void run()
+    .then((capture) => settle({ state: 'done', finishedAt: new Date().toISOString(), capture }))
+    .catch((err: unknown) => settle({ state: 'error', finishedAt: new Date().toISOString(), code: (err as { code?: string })?.code || 'CAPTURE_FAILED', error: err instanceof Error ? err.message : 'The page could not be captured' }))
+    .finally(() => clearTimeout(watchdog))
+  return jobId
+}
+
+/** The local job, or null when this user has no such job (another user's job is "no such capture"). */
+export function readLocalCaptureJob(userId: string, jobId: string): CaptureJob | null {
+  if (!localCaptureJobsEnabled() || !CAPTURE_JOB_ID.test(jobId)) return null
+  pruneLocalJobs()
+  const entry = localCaptureJobs.get(jobId)
+  return entry && entry.userId === userId ? entry.job : null
+}
+
+/** For tests. */
+export const clearLocalCaptureJobs = () => localCaptureJobs.clear()
+
