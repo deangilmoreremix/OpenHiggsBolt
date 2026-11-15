@@ -835,6 +835,8 @@ export function useFilmDirector(opts: {
       })
         .then((report) => {
           if (!live()) return;
+          // The film was rebuilt (a scene edit) while this review ran: its answer is about the old film and is not recorded on the new one.
+          if (lastFilm.current !== built) return;
           // The reviewer answered: record what it found, with the shot and the second, and whether it passed.
           // A reviewer that returned no checks did not review anything: that is "did not run", never "passed".
           if (!report.items.length) {
@@ -881,6 +883,8 @@ export function useFilmDirector(opts: {
         .catch((error) => {
           // No key or no answer: the program's checks above stand, but say the review did not happen.
           if (!live()) return;
+          // Same rule as the answer: a review of a film that was since rebuilt says nothing about the new one.
+          if (lastFilm.current !== built) return;
           log(`Final review skipped: ${error instanceof Error ? error.message : 'no answer'}`, 'error');
           upd((r) => completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [], note: error instanceof Error ? error.message.slice(0, 80) : 'no answer' } }));
           say('assistant', `The independent review did not run (${error instanceof Error ? error.message : 'no answer'}), so this film is a draft that passed the technical checks, not a reviewed film. ${runRef.current ? finalStatusLine(runRef.current) : ''}`);
