@@ -6,6 +6,7 @@
 
 'use client'
 
+import { pickBestLogo } from './logoScoring'
 import {
   createContext,
   useCallback,
@@ -713,7 +714,7 @@ export function pickAutoImportAssets(discovered: DiscoveredAsset[], library: Ass
   const ranked = [...usable].sort((a, b) => discoveredAssetRank(b) - discoveredAssetRank(a))
   const picked: DiscoveredAsset[] = []
   if (library.logos.length === 0) {
-    const logo = ranked.find((asset) => asset.category === 'logo')
+    const logo = pickBestLogo(ranked.filter((asset) => asset.category === 'logo'))
     if (logo) picked.push({ ...logo, assignedSection: 'logo' })
   }
   const cards: Array<{ section: 'products' | 'brand'; empty: boolean }> = [

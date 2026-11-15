@@ -1,0 +1,51 @@
+import { describe, expect, it } from 'vitest'
+import { buildCtaSuggestions, instagramHandle } from '../ctaSuggestions'
+
+describe('instagramHandle', () => {
+  it('extracts a handle from a profile URL', () => {
+    expect(instagramHandle('https://www.instagram.com/joes_pizza/')).toBe('joes_pizza')
+    expect(instagramHandle('instagram.com/joes.pizza?hl=en')).toBe('joes.pizza')
+    expect(instagramHandle('@joes_pizza')).toBe('joes_pizza')
+  })
+  it('rejects non-profile paths and junk', () => {
+    expect(instagramHandle('https://instagram.com/p/AbC123/')).toBeNull()
+    expect(instagramHandle('https://instagram.com/explore/')).toBeNull()
+    expect(instagramHandle('not a url with spaces')).toBeNull()
+    expect(instagramHandle('')).toBeNull()
+    expect(instagramHandle(undefined)).toBeNull()
+  })
+})
+
+describe('buildCtaSuggestions', () => {
+  it('returns nothing when no contact data exists (never invents)', () => {
+    expect(buildCtaSuggestions({})).toEqual([])
+  })
+  it('builds one suggestion per real field with its source', () => {
+    const s = buildCtaSuggestions({
+      phone: '(813) 555-0100',
+      website: 'https://www.joes.com/',
+      email: 'hi@joes.com',
+      instagram: 'https://instagram.com/joes_pizza',
+      openingHours: 'Mo-Sa 09:00-17:00',
+    })
+    const byId = Object.fromEntries(s.map((x) => [x.id, x]))
+    expect(byId.call.text).toBe('Call (813) 555-0100')
+    expect(byId.visit.text).toBe('Visit joes.com')
+    expect(byId.email.text).toBe('Email hi@joes.com')
+    expect(byId.instagram.text).toBe('Follow @joes_pizza')
+    expect(byId.hours.text).toBe('Open Mo-Sa 09:00-17:00')
+    expect(s.every((x) => x.source.length > 0)).toBe(true)
+  })
+  it('puts the strongest local-business call first', () => {
+    const s = buildCtaSuggestions({ website: 'joes.com', phone: '555-0100' })
+    expect(s[0].id).toBe('call')
+  })
+  it('drops overlong or script-like values', () => {
+    const s = buildCtaSuggestions({
+      email: 'a'.repeat(80) + '@x.com',
+      openingHours: 'x'.repeat(200),
+      phone: 'call me maybe',
+    })
+    expect(s).toEqual([])
+  })
+})
