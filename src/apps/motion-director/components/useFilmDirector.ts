@@ -115,6 +115,8 @@ const secs = (p: { scenes: { durationSec: number }[] }) => Math.round(p.scenes.r
 
 export function useFilmDirector(opts: {
   settings: () => FilmSettings;
+  /** The signed-in account: a stored run is offered only to the account that made it. `null` = not known yet (nothing is loaded or saved); `undefined` = no account scoping. */
+  ownerId?: string | null;
   /** Mirror of every message (e.g. into the studio session). */
   onMessage?: (m: FilmChatMessage) => void;
   /** Called when a film is built (the Agent panel installs it straight into the workbench). */
@@ -182,9 +184,10 @@ export function useFilmDirector(opts: {
   useEffect(() => { sbRef.current = storyboard; if (storyboard) checkpointRef.current(); }, [storyboard]);
   checkpointRef.current = () => {
     const r = runRef.current;
-    if (!r) return;
+    if (!r || optsRef.current.ownerId === null) return;
     const sb = sbRef.current;
     saveCheckpoint({
+      owner: optsRef.current.ownerId || undefined,
       run: r,
       request: { prompt: pending.current?.req.prompt ?? r.request, aspectRatio: String(pending.current?.req.aspectRatio ?? optsRef.current.settings().aspectRatio), template: pending.current?.template === 'inkpress' ? 'inkpress' : pending.current?.template === 'local' ? 'local' : 'director' },
       ...(sb ? { storyboard: { plan: sb.plan, capture: sb.capture, source: sb.source, note: sb.note, videos: sb.videos, media: sb.media, mapping: sb.mapping, release: sb.release, direction: sb.direction, brief: sb.brief, decisions: sb.decisions, gate: sb.gate } } : {}),
@@ -192,13 +195,15 @@ export function useFilmDirector(opts: {
     });
   };
   // On mount: an interrupted production in storage is recovered and offered (Resume / Start over), never silently restarted or dropped.
+  const ownerId = opts.ownerId;
   useEffect(() => {
-    const cp = loadCheckpoint();
-    if (!cp) return;
+    if (ownerId === null) return; // the account is not known yet
+    const cp = loadCheckpoint(undefined, ownerId || undefined);
+    if (!cp) { setResumeOffer(null); return; }
     const action = decideResume(cp);
     if (action.kind !== 'none') setResumeOffer({ action, cp });
     else if (cp.run.stages.build.status === 'completed') { /* a built film is the Workbench's project; the slot is kept for its run record */ }
-  }, []);
+  }, [ownerId]);
   const offerReq = useRef<FilmRequest | null>(null);
   const guided = useRef<GuidedState | null>(null);
   const optsRef = useRef(opts);

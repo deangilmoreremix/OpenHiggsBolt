@@ -107,3 +107,22 @@ describe('adapted shots survive a resume', () => {
     expect(t.kept).toBe(1);
   });
 });
+
+describe('a stored run belongs to the account that made it', () => {
+  it('another account never gets it, and the slot is cleared', () => {
+    const s = mem();
+    saveCheckpoint(cp({ owner: 'user_a' }), s);
+    expect(loadCheckpoint(s, 'user_b')).toBeNull();
+    expect(s.m.has(RUN_STORE_KEY)).toBe(false);
+  });
+  it('the same account gets it back; a signed-out run is only for signed-out use', () => {
+    const s = mem();
+    saveCheckpoint(cp({ owner: 'user_a' }), s);
+    expect(loadCheckpoint(s, 'user_a')?.owner).toBe('user_a');
+    saveCheckpoint(cp(), s);
+    expect(loadCheckpoint(s, 'user_a')).toBeNull();
+    saveCheckpoint(cp(), s);
+    expect(loadCheckpoint(s)?.run.request).toBe('make a film');
+  });
+});
+

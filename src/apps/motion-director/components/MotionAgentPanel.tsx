@@ -1,5 +1,6 @@
 'use client';
 
+import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { semantic } from "@/shared/styles/designTokens";
@@ -112,7 +113,10 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
     return created.id;
   }, [sessionId, recipeId, recipeName]);
 
+  const { accessState, isLoading: accessLoading } = useSmartVideoAccess();
   const director = useFilmDirector({
+    // A stored run is offered only to the account that made it; null until the account is known.
+    ownerId: accessLoading ? null : accessState?.clerkUserId || undefined,
     settings: () => {
       const state = useStore.getState();
       const session = state.activeSessionId ? state.sessions.find((s) => s.id === state.activeSessionId) : null;
