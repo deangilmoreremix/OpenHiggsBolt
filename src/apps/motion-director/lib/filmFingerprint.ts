@@ -37,7 +37,7 @@ export function hash128(text: string): string {
 }
 
 /** One clip: what it is, when it plays, and everything it is given. */
-export const clipFingerprint = (c: ClipData): string => hash128(canon({ cardId: c.cardId, start: c.start, duration: c.duration, label: (c as { label?: string }).label ?? null, props: c.props ?? {}, inOffset: (c as { inOffset?: number }).inOffset ?? 0 }));
+export const clipFingerprint = (c: ClipData): string => hash128(canon({ cardId: c.cardId, start: c.start, duration: c.duration, label: (c as { label?: string }).label ?? null, props: c.props ?? {}, inOffset: (c as { inOffset?: number }).inOffset ?? 0, speed: c.speed ?? 1, opacity: c.opacity ?? 1, scale: c.scale ?? 1, x: c.x ?? 0, y: c.y ?? 0 }));
 
 /** Everything about the film except the production record itself (the record is about the film, not part of it). */
 export function filmFingerprint(project: ProjectData): string {

@@ -98,3 +98,11 @@ describe('the run is saved with the project and a Workbench edit invalidates the
     expect(finalStatus(run, filmFingerprint(edit(p)))).toBe('review-pending');
   });
 });
+
+describe('render-affecting clip properties are part of the fingerprint', () => {
+  const withProp = (k: string, v: number) => film([{ ...clip('a', 'demo:RowEmbed', 0), [k]: v } as ClipData]);
+  it.each([['speed', 1.5], ['opacity', 0.5], ['scale', 1.2], ['x', 40], ['y', -30]])('editing a clip\'s %s changes the fingerprint', (k, v) => {
+    expect(filmFingerprint(withProp(k, v))).not.toBe(filmFingerprint(film([clip('a', 'demo:RowEmbed', 0)])));
+  });
+});
+
