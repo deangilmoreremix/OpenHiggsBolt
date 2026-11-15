@@ -159,6 +159,14 @@ export default function ResellerAcademyView({
           <AccessPendingPanel />
         ) : entitled ? (
           <>
+            {/* Additive entry point to the separate guided launch course. */}
+            <a
+              href="/academy/reseller/launch"
+              className="mb-6 block rounded-2xl border px-5 py-4 text-sm font-semibold"
+              style={{ borderColor: 'rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.08)', color: colors.primary }}
+            >
+              Reseller Setup Walkthrough — 12 guided modules from choosing an app to your first customers →
+            </a>
             {/* Reuse the existing Academy course UI and primitives. The
                 course view needs at least one track; an entitled caller
                 with no published tracks still sees the honest pending

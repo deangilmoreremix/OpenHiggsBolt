@@ -1,146 +1,138 @@
 # Pricing Against Traditional Staging
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Frame AI virtual staging not as a cheap compromise, but as a high-ROI velocity engine for real estate agents.
-
-**Track:** AI Real Estate (Virtual Staging)  
-**Time:** ~35 minutes  
-**Prerequisites:** [01: Empty Room → Staged Room Pipeline](01-empty-room-to-staged-room.md)  
-
-## The Problem
-
-Most creators entering virtual staging fall into a commodity pricing trap: they charge **$5 to $10 per photo** on freelance platforms like Fiverr, competing against low-quality overseas editors who use outdated 3D clip-art.
-
-At the same time, real estate agents and brokers routinely spend **$2,500 to $6,000** for physical furniture staging on a single property. When you pitch AI virtual staging at $10/photo, agents assume the output is cheap, low quality, and unsuitable for high-end MLS listings.
-
-If you don't know how to articulate the economic trade-offs between physical staging, low-end 3D rendering, and photorealistic AI staging, you lose high-ticket clients who have big budgets and recurring listing volume.
+> **Time:** about 16 minutes. **You will finish with:** a filled pricing sheet, three packages, a margin calculation and a one-page comparison deck outline.
 
 ---
 
-## The Concept
+## Before you start
 
-Winning high-margin virtual staging contracts requires shifting the sales conversation from *cost per image* to **speed, market velocity, and listing ROI**.
+Beginners fall into a commodity trap, charging **$5 to $10 per photo** against low-quality editors. Agents spend **$2,500 to $6,000** on physical staging, so a $10 offer looks cheap and unfit for high-end MLS listings. The fix is to sell speed and listing ROI: Listing ROI = (Perceived Property Value Increase - Staging Cost) / Days on Market (DOM). Each vacant day costs the seller or realtor mortgage carrying costs, HOA fees and taxes, averaging **$100 to $250/day**. Anchor against a $3,000 physical quote: a 5-room package at **$199** is a **93% cost savings** with 95%+ of the visual impact.
 
-```
-Physical Staging ($3,500 + 5 Days Wait) ──► AI Virtual Staging ($199 + 24 Hour Turnaround) ──► Agent Savings: $3,301 & 4 Days Faster Listing
-```
+You will need: lesson 1 finished ([Empty Room → Staged Room Pipeline](01-empty-room-to-staged-room.md)), [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md), and Canva or Google Slides for the deck. **Image Studio** and **Video Studio** produce the deliverables.
 
-### The ROI Equation for Real Estate Agents:
+## Step by step
 
-$$\text{Listing ROI} = \frac{\text{Perceived Property Value Increase} - \text{Staging Cost}}{\text{Days on Market (DOM)}}$$
+### 1. Benchmark local physical staging costs
 
-1. **Days on Market (DOM) Reduction:** Every extra day a home sits vacant costs the seller/realtor mortgage carrying costs, HOA fees, and property taxes (averaging **$100 to $250/day**). AI virtual staging allows a property to go live on MLS within 24 hours of photography.
-2. **Anchor Pricing Strategy:** Never pitch against other $10 freelancers. Anchor your pricing against the **$3,000 physical staging quote**. Offering a full-home 5-room AI staging package for **$199** represents a **93% cost savings** while delivering 95%+ of the visual impact.
-3. **High-Margin Add-on Services:**
-   * **Virtual Decluttering / Furniture Removal:** Removing old tenant furniture before staging (**+$25/photo**).
-   * **Virtual Twilight Conversion:** Converting daytime exterior photos into dramatic sunset dusk shots (**+$30/photo**).
-   * **Staging Motion Clips (I2V Video Walkthroughs):** Animating static staged photos into smooth 5-second video clips for Instagram Reels and TikTok listings (**+$40/clip**).
+1. Search physical staging companies in your target city.
+2. Note their rates. Typical figures: setup fee **$1,500 - $2,500**; monthly furniture rental **$1,000 - $2,000/month**.
+3. Enter them in the sales comparison matrix in [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md).
 
----
+**You should see:** a comparison matrix with your local competitor figures.
 
-## Do It
+**If not:** if you find no local quotes, use the typical figures above and mark them as estimates.
 
-### Step 1: Benchmark Local Physical Staging Costs
-Research physical staging companies in your target city. Note their typical rates:
-* **Initial setup fee:** $1,500 – $2,500.
-* **Monthly furniture rental:** $1,000 – $2,000/month.
-* Use these figures to fill in your sales comparison matrix in [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md).
+### 2. Set up three productized packages
 
-### Step 2: Establish Productized Tiered Packages
-Structure your offers into 3 clear packages to eliminate client hesitation:
+Write these into your pricing sheet:
 
-```
-┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────┐
-│   Essential Package     │  │    Full House Tier      │  │   Luxury Agency Pass    │
-│        $99              │  │        $199             │  │        $399             │
-├─────────────────────────┤  ├─────────────────────────┤  ├─────────────────────────┤
-│ • 3 Staged Rooms        │  │ • 6 Staged Rooms        │  │ • 8 Staged Rooms        │
-│ • 1 Style Revision      │  │ • 2 Style Variations    │  │ • Virtual Decluttering  │
-│ • 24h Turnaround        │  │ • Virtual Twilight Shot │  │ • 2 Motion Video Clips  │
-│ • High-Res MLS Specs    │  │ • 24h Turnaround        │  │ • Same-Day Turnaround   │
-└─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
+```text
+Essential Package - $99
+- 3 Staged Rooms
+- 1 Style Revision
+- 24h Turnaround
+- High-Res MLS Specs
+
+Full House Tier - $199
+- 6 Staged Rooms
+- 2 Style Variations
+- Virtual Twilight Shot
+- 24h Turnaround
+
+Luxury Agency Pass - $399
+- 8 Staged Rooms
+- Virtual Decluttering
+- 2 Motion Video Clips
+- Same-Day Turnaround
 ```
 
-### Step 3: Calculate Your Gross Margin & Unit Economics
-Calculate your API and production costs per package:
-* **Generation Cost (muapi / FLUX):** ~$0.06 per room render × 6 rooms = **$0.36**.
-* **Storage & Delivery:** $0.05.
-* **Labor / Prompting Time:** 15 minutes = ~$10 labor equivalent.
-* **Package Revenue ($199) - Production Cost ($0.41) = $198.59 Gross Profit (99.8% Margin).**
+**You should see:** three clear tiers in your sheet.
 
-### Step 4: Build the "Staging Comparison Deck"
-Create a 1-page visual PDF comparison sheet showing:
-* **Left Side:** Physical Staging ($3,500, 5-day setup, 1 static style).
-* **Right Side:** Your AI Virtual Staging ($199, 24h delivery, 3 style choices: Modern, Scandinavian, Luxury).
+**If not:** if the layout is messy, a simple list per package is fine.
 
----
+### 3. Price the add-ons
 
-## Worked Example
+Add these to the sheet:
 
-<p align="center">
-<img src="templates/examples/staged-bedroom-luxury.jpg" alt="Staged Luxury Bedroom AI Image" width="320">
-<img src="templates/examples/bedroom-staging-motion.gif" alt="Staged Master Bedroom Motion Loop (I2V)" width="320">
-</p>
-<p align="center"><sub>AI Staged Master Bedroom (Left) ──► Image-to-Video Motion Walkthrough (Right) · Video File: <a href="templates/examples/bedroom-staging-motion.mp4">templates/examples/bedroom-staging-motion.mp4</a></sub></p>
+* Virtual Decluttering / Furniture Removal (removing old tenant furniture before staging): **+$25/photo**.
+* Virtual Twilight Conversion (daytime exterior to dusk): **+$30/photo**.
+* Staging Motion Clips (5-second image-to-video walkthroughs for Reels and TikTok): **+$40/clip**.
 
-**Proposal Breakdown for Century 21 Premier Real Estate**
+**You should see:** three add-ons with prices.
 
-* **Property Address:** 442 Highland Ave (3-bed, 2-bath vacant home).
-* **Quoted Physical Staging:** $3,800 for 1 month rental.
-* **Your AI Staging Offer:** Full House Package ($199) + 2 Motion Clips ($80) = **$279 Total**.
-* **Outcome:** Agent approved within 2 hours. Delivered 6 staged photos + 2 Reel video clips in 18 hours.
-* **Client Result:** Listing went live on Zillow Friday morning, received 4 offers over asking price by Sunday, saving the seller **$3,521** in staging costs.
+**If not:** keep the prices above, then adjust them for your market later.
 
----
+### 4. Calculate gross margin for the Full House Tier
 
-## Compare Tools
+Work through the unit economics:
 
-| Pricing & Proposal Tools | Primary Function | Setup Time | Best For |
-|---|---|---|---|
-| **Canva / Google Slides** | Proposal deck & before/after PDF generation | 15 mins | Creating visual pitch decks for local agents |
-| **Stripe Invoicing / Wave** | Automated credit card payment collection & recurring billing | 10 mins | Collecting payment upfront before delivering high-res files |
-| **Dropbox / Google Drive** | Client proofing and high-res asset delivery | 5 mins | Organizing final MLS-compliant JPEG downloads |
+1. Generation cost (muapi / FLUX): about $0.06 per room x 6 rooms = **$0.36**.
+2. Storage and delivery: **$0.05**.
+3. Production cost: **$0.41** (the 15 minutes of prompting time is about $10 labor equivalent, not counted here).
+4. Package revenue $199 - $0.41 = **$198.59 gross profit (99.8% margin)**.
 
----
+**You should see:** your sheet showing $198.59 gross profit.
 
-## Launch It
+**If not:** recheck that 6 rooms x $0.06 = $0.36, then add $0.05.
 
-**Key rules for contract negotiation:**
-* **Require 100% Upfront Payment:** Real estate moves fast; always collect credit card payment via Stripe before releasing unwatermarked high-resolution MLS files.
-* **Limit Revision Cycles:** Include **1 free style revision** per photo (e.g., swapping Scandinavian oak for Industrial black metal). Charge **$15 per photo** for subsequent style changes to protect your time.
+### 5. Build the Staging Comparison Deck
 
----
+Make a 1-page visual PDF in Canva or Google Slides:
 
-## Exercises
+1. **Left side:** Physical Staging ($3,500, 5-day setup, 1 static style).
+2. **Right side:** your AI Virtual Staging ($199, 24h delivery, 3 style choices: Modern, Scandinavian, Luxury).
+3. Add the savings line: $3,301 saved and 4 days faster.
 
-1. **Easy:** Fill out your pricing sheet in [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md) with custom prices tailored to your local real estate market.
-2. **Medium:** Calculate the profit margin on a $299 agency package that includes 8 staged photos, 1 virtual twilight conversion, and 2 motion clips.
-3. **Hard:** Create a 1-page before/after comparison PDF pitching a luxury realtor on why AI virtual staging is superior to empty listing photos.
+**You should see:** a one-page two-column comparison.
 
----
+**If not:** if it is crowded, cut to the three numbers: price, days, styles.
 
-## Templates
+### 6. Write your negotiation rules
 
-* [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md) — Package structures, margin calculators, and service agreement terms.
+Add two rules to your sheet:
 
----
+* **100% upfront payment.** Real estate moves fast; collect card payment (for example via Stripe invoicing) before releasing unwatermarked high-res MLS files.
+* **Limit revisions.** Include **1 free style revision** per photo (for example Scandinavian oak to Industrial black metal), then charge **$15 per photo**.
 
-[← Empty Room → Staged Room Pipeline](01-empty-room-to-staged-room.md) · Next: [Selling to Realtors & Agencies →](03-selling-to-realtors-and-agencies.md)
+**You should see:** both rules written in your terms.
 
+**If not:** rules that sit only in your head will not hold, so write them on the sheet.
 
----
+## Check yourself
 
-## Produce this in SmartVideo GO AI
+* [ ] I know my local physical staging price and quote it as the anchor.
+* [ ] I have three packages at $99, $199 and $399 plus add-ons.
+* [ ] I can explain the 99.8% margin on the $199 package.
+* [ ] My comparison deck shows $3,500 versus $199.
+* [ ] My terms say 100% upfront and 1 free revision.
 
-Apply this lesson directly inside SmartVideo GO AI:
+## Common mistakes
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+* Competing at $5 to $10 per photo against clip-art editors.
+* Pitching cost per image instead of speed and days on market.
+* Releasing files before payment.
+* Offering unlimited revisions.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+## Go further
+
+**Worked example, Century 21 Premier Real Estate:** 442 Highland Ave, a vacant 3-bed, 2-bath home, quoted **$3,800** for one month of physical staging. Offer: Full House Package ($199) + 2 Motion Clips ($80) = **$279**. The agent approved within 2 hours, and delivery of 6 staged photos plus 2 Reel clips took 18 hours. The listing went live Friday, drew 4 over-asking offers by Sunday, and the seller saved **$3,521**. Example files: `templates/examples/staged-bedroom-luxury.jpg`, `templates/examples/bedroom-staging-motion.gif` (video: `templates/examples/bedroom-staging-motion.mp4`).
+
+**Tools:**
+
+| Tool | Function | Setup |
+|---|---|---|
+| Canva / Google Slides | Proposal deck and before/after PDF | 15 mins |
+| Stripe Invoicing / Wave | Payment collection, recurring billing | 10 mins |
+| Dropbox / Google Drive | Proofing and high-res delivery | 5 mins |
+
+**Exercises:**
+
+1. Easy: fill out [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md) with prices tailored to your market.
+2. Medium: calculate the margin on a $299 agency package with 8 staged photos, 1 virtual twilight conversion and 2 motion clips.
+3. Hard: make a 1-page before/after PDF pitching a luxury realtor on AI virtual staging versus empty photos.
+
+**Studios in SmartVideo GO AI:** Image Studio, Video Studio, AI Influencer Studio, Storyboard / Campaign Planner, Lip-Sync Studio. Workflow: Learn → See Example → Use Template → Generate.
+
+Template: [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md).
+
+Next: Selling to Realtors & Agencies.

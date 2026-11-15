@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -27,6 +28,8 @@ type SocialPublishContextValue = {
 
 type SocialPublishState = {
   open: boolean;
+  /** Changes every time publishing is opened for an asset; late results from an older one are dropped. */
+  sessionId: number;
   currentStep: number;
   asset: Asset | null;
   writeCopy: WriteCopyState;
@@ -66,12 +69,17 @@ export const SocialPublishContext = createContext<SocialPublishContextValue | nu
 export function SocialPublishProvider({
   apiKey,
   children,
+  onRequestApiKey,
 }: {
   apiKey: string | null;
   children: ReactNode;
+  /** Opens the API keys modal (AI writing needs the customer's OpenAI key). */
+  onRequestApiKey?: () => void;
 }) {
+  const sessionRef = useRef(0);
   const [state, setState] = useState<SocialPublishState>({
     open: false,
+    sessionId: 0,
     currentStep: 0,
     asset: null,
     writeCopy: EMPTY_WRITE_COPY,
@@ -84,8 +92,10 @@ export function SocialPublishProvider({
   const openPublish = useCallback((opts: SocialPublishOptions) => {
     const title = opts.title || '';
     const caption = opts.caption || '';
+    sessionRef.current += 1;
     setState({
       open: true,
+      sessionId: sessionRef.current,
       currentStep: 0,
       asset: {
         id: `asset-${Date.now()}`,
@@ -109,8 +119,10 @@ export function SocialPublishProvider({
   }, []);
 
   const openSocialPublisher = useCallback((opts: { asset: Asset }) => {
+    sessionRef.current += 1;
     setState({
       open: true,
+      sessionId: sessionRef.current,
       currentStep: 0,
       asset: opts.asset,
       writeCopy: { ...EMPTY_WRITE_COPY },
@@ -147,7 +159,10 @@ export function SocialPublishProvider({
     setState((s) => ({ ...s, destinations }));
   }, []);
 
-  const updatePublishResults = useCallback((publishResults: PublishResult[]) => {
+  // A publish started for an earlier asset can finish after the modal was reopened for another one.
+  // Its results belong to that earlier session, so they are ignored here.
+  const updatePublishResults = useCallback((publishResults: PublishResult[], forSession?: number) => {
+    if (forSession !== undefined && forSession !== sessionRef.current) return;
     setState((s) => ({ ...s, publishResults }));
   }, []);
 
@@ -175,11 +190,13 @@ export function SocialPublishProvider({
         thumbnail={state.thumbnail}
         destinations={state.destinations}
         publishResults={state.publishResults}
+        sessionId={state.sessionId}
         updateWriteCopy={updateWriteCopy}
         updateSocialCopy={updateSocialCopy}
         updateThumbnail={updateThumbnail}
         updateDestinations={updateDestinations}
         updatePublishResults={updatePublishResults}
+        onRequestApiKey={onRequestApiKey}
       />
     </SocialPublishContext.Provider>
   );

@@ -59,6 +59,7 @@
       "description": "Follow the launch resources to prepare your product, configure payments, and market your service."
     }
   },
+  "walkthroughLink": "Reseller Setup Walkthrough",
   "card": {
     "github": "GitHub",
     "demo": "Try Live Demo",
@@ -68,6 +69,8 @@
     "vercelDeploy": "Deploy on Vercel",
     "repoUnpublished": "Repository not yet published",
     "vercelDeployUnavailable": "Deploy unavailable — this app's source repository is not published as a deployable template.",
+    "learnToLaunch": "Learn How to Launch This App",
+    "learnToLaunchLabel": "Learn how to launch {app} — opens the Reseller Academy workshop",
     "details": "View App Details",
     "templateFallback": "App",
     "thumbnailLoading": "Loading preview",

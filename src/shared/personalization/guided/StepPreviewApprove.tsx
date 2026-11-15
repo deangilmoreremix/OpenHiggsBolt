@@ -1,5 +1,6 @@
 'use client'
 
+import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -7,6 +8,11 @@ import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
+import { Tip } from './editor/Tip'
+import { RemoveBrandingControl } from './RemoveBrandingControl'
+import { videoBeforeRecast } from '../DemoPersonalizeProvider'
+import { LayoutQualityPanel } from './LayoutQualityPanel'
+import { useLayoutQuality } from './useLayoutQuality'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
@@ -22,6 +28,9 @@ import { chooseFinalOutputPath } from '../finalOutput'
  * The branded render and AI generation are separate operations and the UI never
  * implies otherwise. Nothing in the preview itself calls MuAPI or OpenAI.
  */
+/** Title of the preview video produced by "Remove branding", so the original can be offered back. */
+const BRANDING_REMOVED_TITLE = 'Branding removed'
+
 export function StepPreviewApprove(): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
@@ -31,6 +40,8 @@ export function StepPreviewApprove(): React.JSX.Element {
     assets,
     previewSettings,
     previewVideo,
+    setPreviewVideo,
+    restoreOriginalVideo,
     updatePreviewComposition,
     setPreviewLayout,
     remotionDesignTemplates = [],
@@ -54,6 +65,12 @@ export function StepPreviewApprove(): React.JSX.Element {
   const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
+  const quality = useLayoutQuality(inputProps)
+  // Only a CONFIRMED critical rendering failure blocks the branded render; layout
+  // judgments (Needs adjustment / Review required) only warn.
+  const exportBlocked = quality.report.blocksExport
+  const [rightsConfirmed, setRightsConfirmed] = useState(false)
+  const rightsGate = quality.rightsNeedConfirmation && !rightsConfirmed
   // Overlay-only personalizations render locally; AI modes keep the generation
   // pipeline. The active path is the primary action; the other stays visible
   // (and disabled) so the two operations are never conflated.
@@ -143,21 +160,15 @@ export function StepPreviewApprove(): React.JSX.Element {
         </div>
         {remotionDesignTemplates.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ ...labelStyle, marginBottom: 6 }}>Designs</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {remotionDesignTemplates.map((design) => (
-                <button
-                  key={design.id}
-                  type="button"
-                  onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
-                  aria-pressed={activeRemotionDesignId === design.id}
-                  title={design.description}
-                  style={chipStyle(activeRemotionDesignId === design.id)}
-                >
-                  {design.name}
-                </button>
-              ))}
-            </div>
+            <DesignRecommendations
+              designs={remotionDesignTemplates}
+              aspectRatio={previewSettings.aspectRatio}
+              activeDesignId={activeRemotionDesignId}
+              available={{ logo: Boolean(assets?.primaryLogo), product: (assets?.products?.length || 0) > 0, service: (assets?.products?.length || 0) > 0 }}
+              onSelectDesign={setRemotionDesign}
+              onAddDesign={ctx.addRemotionDesign}
+              onSelectLayout={setPreviewLayout}
+            />
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
                 {fixedSvgIdWarning}
@@ -224,7 +235,12 @@ export function StepPreviewApprove(): React.JSX.Element {
       </div>
 
       {/* ── Direct on-video overlay editing ─────────────────────────────── */}
-      <OverlayEditor inputProps={inputProps} />
+      {/* The layout quality check sits directly under the video (no scrolling). */}
+      <OverlayEditor
+        inputProps={inputProps}
+        liveStage
+        belowStage={<LayoutQualityPanel compact quality={quality} layers={previewSettings.layers} />}
+      />
 
       {/* ── Approve & create ────────────────────────────────────────────── */}
       <div style={{ ...panelStyle, border: `1px solid ${previewApproved ? 'rgba(40,201,139,.45)' : C.border}` }}>
@@ -261,12 +277,13 @@ export function StepPreviewApprove(): React.JSX.Element {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Tip id="renderBranded" side="top">
                 <button
                   type="button"
                   onClick={handleCreate}
                   // The render uses exactly what was approved.
-                  disabled={generating || !isBrandedPath || !previewApproved}
-                  title={isBrandedPath && !previewApproved ? 'Approve the preview first' : undefined}
+                  disabled={generating || !isBrandedPath || !previewApproved || exportBlocked || rightsGate}
+                  title={isBrandedPath && !previewApproved ? 'Approve the preview first' : exportBlocked ? 'Fix the critical layout problem first' : rightsGate ? 'Confirm you may use this clip' : undefined}
                   aria-pressed={isBrandedPath}
                   style={{
                     ...(isBrandedPath ? primaryButtonStyle : secondaryButtonStyle),
@@ -281,10 +298,12 @@ export function StepPreviewApprove(): React.JSX.Element {
                     ? `Rendering… ${generation?.progress || 0}%`
                     : 'Render branded video'}
                 </button>
+                </Tip>
+                <Tip id="generateAi" side="top">
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={generating || isBrandedPath}
+                  disabled={generating || isBrandedPath || rightsGate}
                   aria-pressed={!isBrandedPath}
                   style={{
                     ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
@@ -299,7 +318,30 @@ export function StepPreviewApprove(): React.JSX.Element {
                     ? `Generating… ${generation?.progress || 0}%`
                     : 'Generate with AI'}
                 </button>
+                </Tip>
               </div>
+              <RemoveBrandingControl
+                apiKey={apiKey}
+                videoUrl={inputProps.videoUrl}
+                blocked={rightsGate}
+                canRestore={previewVideo?.kind === 'recast' && previewVideo.title === BRANDING_REMOVED_TITLE}
+                onApply={(url) => setPreviewVideo?.({ url, poster: null, title: BRANDING_REMOVED_TITLE, kind: 'recast', beforeRecast: videoBeforeRecast(previewVideo) })}
+                onRestore={() => restoreOriginalVideo?.()}
+              />
+              {quality.rightsNeedConfirmation && (
+                <label data-testid="guided-rights-confirm" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: C.text, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} style={{ marginTop: 2 }} />
+                  <span>
+                    {quality.profile.rightsNote} I confirm I have the right to use this video commercially in my own
+                    personalized video.
+                  </span>
+                </label>
+              )}
+              {exportBlocked && (
+                <p data-testid="guided-export-blocked" style={{ ...hintStyle, color: C.danger }}>
+                  The render is blocked: {quality.report.issues.filter((i) => i.severity === 'critical').map((i) => i.message).join(' ')}
+                </p>
+              )}
               {isBrandedPath && !previewApproved && !generating && (
                 <p data-testid="guided-render-needs-approval" style={{ ...hintStyle, color: '#fcd34d' }}>
                   Approve the preview first — the render uses exactly what you approve.

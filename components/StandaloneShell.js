@@ -10,6 +10,8 @@ import { useClerk, useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
+import HelpAgent from '@/components/help/HelpAgent';
+import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
@@ -886,6 +888,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
                  )}
                </Link>
+               {getStudioGuide(activeTab) && (
+                 <Link
+                   href={academyStudioUrl(activeTab)}
+                   title={`Step-by-step guide for ${getStudioGuide(activeTab).label}`}
+                   className="relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full text-[#22d3ee]/80 hover:text-[#22d3ee]"
+                 >
+                   <span className="relative z-10">{getStudioGuide(activeTab).label} guide</span>
+                 </Link>
+               )}
              </nav>
             
             {/* Fade Right Overlay */}
@@ -926,7 +937,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
       {/* Studio Content */}
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
-      <SocialPublishProvider apiKey={apiKey}>
+      <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))}>
       <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
@@ -947,7 +958,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
-         {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} templateData={active ? templateData : null} />)}
+         {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
@@ -961,6 +972,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
+
+      {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
+      <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))} />
 
       {/* Global generation activity and notification stack */}
       {(activeGenerations.length > 0 || notifications.length > 0) && (

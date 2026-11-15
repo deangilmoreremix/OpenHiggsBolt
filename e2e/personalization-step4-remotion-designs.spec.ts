@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { artifactDir } from './helpers/artifactDir';
 
 /**
  * Phase 1 — Remotion designs inside Simple Mode Step 4.
@@ -15,7 +16,7 @@ import path from 'node:path';
  * `docs/REMOTION_PHASE_1_REPORT.md`.
  */
 
-const SHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-1-step4');
+const SHOT_DIR = artifactDir('docs', 'screenshots', 'phase-1-step4');
 
 const LAYOUT_PILLS = [
   'Business Introduction',

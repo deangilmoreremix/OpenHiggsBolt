@@ -43,6 +43,8 @@ import {
   Share2,
   SlidersHorizontal,
 } from 'lucide-react'
+import { SocialIcons } from './SocialIcons'
+import { useBusinessEnrichment, mergeCardContacts } from './useBusinessEnrichment'
 import { DEFAULT_ADVANCED_SECTIONS, useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { AutoFillKey } from './businessContentFromResearch'
 import type { AdvancedEditingSections, AdvancedEditingTab } from './types'
@@ -706,6 +708,7 @@ export default function PersonalizationModal() {
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
     revertDiscoveredAssetEdit,
+    autoCutout,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -742,6 +745,7 @@ export default function PersonalizationModal() {
     setOutputType,
     mode,
     setMode,
+    creationMethod,
     genOptions,
     updateGenOptions,
     generation,
@@ -1675,7 +1679,7 @@ export default function PersonalizationModal() {
               updateGenOptions={updateGenOptions}
                generate={generate}
                closePersonalize={closePersonalize}
-               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) && !blockingRequirement}
+               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode || creationMethod === 'browser')) && !blockingRequirement}
                requirements={projectRequirements}
                effectiveModelId={effectiveModelId}
                recommendedModelId={recommendedModelId}
@@ -1732,6 +1736,7 @@ export default function PersonalizationModal() {
                 deleteLibraryAsset={deleteLibraryAsset}
                 revertLibraryAssetToOriginal={revertLibraryAssetToOriginal}
                 revertDiscoveredAssetEdit={revertDiscoveredAssetEdit}
+                autoCutout={autoCutout}
               />
           )}
         </main>
@@ -1776,8 +1781,8 @@ export default function PersonalizationModal() {
             <button
               // Videos go through createFinalVideo, so the on-video layers from
               // Create › Overlays end up in the file (not only in the preview).
-              onClick={outputType === 'prompt' ? handlePersonalize : outputType === 'image' || !isVideo ? generate : () => { void ctx.createFinalVideo() }}
-              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || Boolean(blockingRequirement) || personalizationInProgress}
+              onClick={outputType === 'prompt' ? handlePersonalize : outputType === 'image' || !isVideo ? generate : () => { void ctx.createFinalVideo({ approveNow: true }) }}
+              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode || creationMethod === 'browser')) || Boolean(blockingRequirement) || personalizationInProgress}
               title={blockingRequirement ? blockingRequirement.message : undefined}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{
@@ -2072,6 +2077,8 @@ function ConfigurationView(props: any) {
     advancedSections: ctxAdvancedSections,
     setAdvancedSection: ctxSetAdvancedSection,
     previewVideo: ctxPreviewVideo,
+    creationMethod: ctxCreationMethod,
+    setCreationMethod: ctxSetCreationMethod,
     moveDiscoveredAssetToSection: ctxMoveDiscoveredAssetToSection,
     previewSettings: ctxPreviewSettings,
     promptNotice,
@@ -2197,6 +2204,7 @@ function ConfigurationView(props: any) {
     deleteLibraryAsset,
     revertLibraryAssetToOriginal,
     revertDiscoveredAssetEdit,
+    autoCutout,
   } = props
 
   // ── Access mode ────────────────────────────────────────────────────────────
@@ -2400,6 +2408,7 @@ function ConfigurationView(props: any) {
   // Long result lists show a page at a time so the section stays short.
   const [shownResultCount, setShownResultCount] = useState(RESULTS_PAGE)
   useEffect(() => { setShownResultCount(RESULTS_PAGE) }, [businessSearchResults])
+  const enrichStates = useBusinessEnrichment(businessSearchResults.slice(0, shownResultCount))
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -2547,7 +2556,6 @@ function ConfigurationView(props: any) {
 
     batchVideoReadyRunningRef.current = true
     setBatchVideoReady({ running: true, current: 0, total: selected.length, label: 'Preparing assets', error: null })
-    let nextAssets = [...discoveredAssets]
     const failures: string[] = []
 
     for (let index = 0; index < selected.length; index += 1) {
@@ -2574,7 +2582,8 @@ function ConfigurationView(props: any) {
           },
         )
 
-        nextAssets = nextAssets.map((asset: DiscoveredAsset) => (
+        // Merge into the latest list: automatic cutouts may have finished while the AI request ran.
+        setDiscoveredAssets((latest) => latest.map((asset: DiscoveredAsset) => (
           asset.id === item.id
             ? {
                 ...asset,
@@ -2593,8 +2602,7 @@ function ConfigurationView(props: any) {
                 visionValidation: result.visionValidation,
               }
             : asset
-        ))
-        setDiscoveredAssets(nextAssets)
+        )))
       } catch (error) {
         failures.push(
           item.category.replace(/_/g, ' ') + ': ' +
@@ -3060,7 +3068,9 @@ function ConfigurationView(props: any) {
               </div>
               {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
-                {businessSearchResults.slice(0, shownResultCount).map((business) => (
+                {businessSearchResults.slice(0, shownResultCount).map((business) => {
+                  const contacts = mergeCardContacts(business, enrichStates[business.id])
+                  return (
                   <div
                     key={business.id}
                     style={{
@@ -3099,11 +3109,12 @@ function ConfigurationView(props: any) {
                           ) : (
                             <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
                           )}
-                          {business.instagram && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Instagram</span>
+                          {contacts.email && (
+                            <span title={contacts.email.title} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Email</span>
                           )}
-                          {business.facebook && (
-                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Facebook</span>
+                          <SocialIcons name={business.name} links={contacts.links} titles={contacts.titles} />
+                          {contacts.loading && (
+                            <span style={{ fontSize: 9, fontWeight: 600, color: C.muted2 }} aria-live="polite">Looking up contacts…</span>
                           )}
                         </div>
                       </div>
@@ -3155,7 +3166,7 @@ function ConfigurationView(props: any) {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
                 {businessSearchResults.length > shownResultCount && (
                   <button
                     type="button"
@@ -3163,8 +3174,15 @@ function ConfigurationView(props: any) {
                     onClick={() => setShownResultCount((count) => count + RESULTS_PAGE)}
                     style={{ minHeight: 34, borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan, fontSize: 11, fontWeight: 800 }}
                   >
-                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more of {businessSearchResults.length - shownResultCount}
+                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more
                   </button>
+                )}
+                {businessSearchResults.length > RESULTS_PAGE && (
+                  <p data-testid="pz-results-count" style={{ margin: 0, textAlign: 'center', color: C.muted2, fontSize: 10 }}>
+                    {businessSearchResults.length > shownResultCount
+                      ? `Showing ${shownResultCount} of ${businessSearchResults.length}`
+                      : `Showing all ${businessSearchResults.length}`}
+                  </p>
                 )}
               </div>
               )}
@@ -4521,6 +4539,8 @@ function ConfigurationView(props: any) {
             onCategoryChange={updateDiscoveredAssetCategory}
             onEdit={onEditDiscovered || undefined}
             onRevert={revertDiscoveredAssetEdit}
+            cutout={autoCutout}
+            onSaveToAssets={isAnonymous ? undefined : (id) => importDiscoveredAssets({ ids: [id] })}
             onRemoveFromSection={removeDiscoveredAssetFromSection}
             onRestoreAll={() => setDiscoveredAssets((prev) => prev.map((a) => ({ ...a, rejected: false })))}
             onDragStart={(asset, e) => handleAssetDragStart({
@@ -4763,7 +4783,34 @@ function ConfigurationView(props: any) {
 
       {/* ── PERSONALIZATION MODE ──────────────────────────────
           Same entitlement gate as the output selector above. */}
-      {showModes && !isAnonymous && (
+      {/* ── HOW TO CREATE ──────────────────────────────────────
+          Without AI: a free, local render of the approved overlays on the chosen video. With AI: the generation modes below. */}
+      {showModes && !isAnonymous && outputType !== 'prompt' && (
+        <section id="pz-creation-method" className="break-inside-avoid" style={{ padding: '20px 0', borderBottom: `1px solid ${C.border}` }}>
+          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>How should the video be made?</h2>
+          <div role="group" aria-label="Creation method" className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 14, gap: 12 }}>
+            {([
+              { id: 'browser', label: 'Create without AI', note: 'Free · no credits. Your overlays, text and assets are rendered on the video you chose, in this browser.' },
+              { id: 'ai', label: 'Generate with AI', note: 'Uses credits. Changes the people or scenes in the video (face, full body, recreate, complete).' },
+            ] as const).map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                data-testid={`pz-method-${o.id}`}
+                aria-pressed={ctxCreationMethod === o.id}
+                onClick={() => ctxSetCreationMethod(o.id)}
+                className="text-left rounded-[12px] border"
+                style={{ padding: 14, borderColor: ctxCreationMethod === o.id ? C.cyan : C.borderStrong, background: ctxCreationMethod === o.id ? 'rgba(41,211,242,.045)' : C.panelSoft }}
+              >
+                <h4 style={{ margin: '0 0 6px', fontSize: 12, textTransform: 'uppercase' }}>{o.label}</h4>
+                <p style={{ margin: 0, color: C.muted, fontSize: 10, lineHeight: 1.45 }}>{o.note}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {showModes && !isAnonymous && ctxCreationMethod === 'ai' && (
         <section id="pz-mode" data-pz-focus="mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>

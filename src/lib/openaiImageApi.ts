@@ -107,14 +107,37 @@ export function upstreamError(res: Response, payload: OpenAiImageResponse) {
   return errorJson(res.status === 401 ? 'Your OpenAI API key was rejected. Update it in Settings.' : message, status);
 }
 
-export async function edits(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, images: ImagePart[]) {
+/** Extra controls beyond prompt/size/quality (all optional; see src/lib/openaiImageOptions.ts). */
+export interface ExtraImageOptions {
+  size?: string;
+  complexity?: string;
+  background?: string;
+  outputFormat?: string;
+  outputCompression?: number;
+}
+
+/** Fields shared by generations (JSON) and edits (multipart). `complexity` exists only on Images 2.6. */
+export function extraFields(model: string, extra?: ExtraImageOptions): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  if (!extra) return out;
+  if (extra.complexity && /^gpt-image-2\.6-/.test(model)) out.complexity = extra.complexity;
+  if (extra.background) out.background = extra.background;
+  if (extra.outputFormat) out.output_format = extra.outputFormat;
+  if (extra.outputCompression !== undefined) out.output_compression = extra.outputCompression;
+  return out;
+}
+
+export async function edits(key: string, model: string, prompt: string, aspectRatio: string, n: number, quality: string, images: ImagePart[], mask?: ImagePart, extra?: ExtraImageOptions) {
   const form = new FormData();
   form.append('model', model);
   form.append('prompt', prompt);
   form.append('n', String(n));
-  form.append('size', gptImageSize(aspectRatio));
+  form.append('size', extra?.size || gptImageSize(aspectRatio));
   form.append('quality', quality);
+  for (const [k, v] of Object.entries(extraFields(model, extra))) form.append(k, String(v));
   for (const image of images) form.append('image[]', image.blob, image.filename);
+  // Transparent pixels in the mask mark the region to repaint.
+  if (mask) form.append('mask', mask.blob, mask.filename);
 
   const res = await fetch(`${OPENAI_BASE}/images/edits`, {
     method: 'POST',

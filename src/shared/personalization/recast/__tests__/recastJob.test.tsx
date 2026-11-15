@@ -112,6 +112,20 @@ describe('useRecastJob', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('never starts a second paid recast while one is running (double click / two panels)', async () => {
+    muapi.processMotionControl.mockClear()
+    let resolveRun!: (value: unknown) => void
+    muapi.processMotionControl.mockImplementation((_key: string, params: { onRequestId: (id: string) => void }) => {
+      params.onRequestId('req-dup')
+      return new Promise((resolve) => { resolveRun = resolve })
+    })
+    const { result } = renderHook(() => useRecastJob({ apiKey: 'k', sourceId: 'demo-1', ownerKey: OWNER, onDone: vi.fn() }))
+    act(() => { void result.current.start(INPUT) })
+    await waitFor(() => expect(result.current.job?.status).toBe('running'))
+    await act(async () => { await result.current.start(INPUT) })
+    expect(muapi.processMotionControl).toHaveBeenCalledTimes(1)
+    await act(async () => { resolveRun({ url: 'https://cdn.example.com/out.mp4' }) })
+  })
   it('resumes a stored running job after a reload, by its request id', async () => {
     saveRecastJob(storedJob())
     muapi.resumeGeneration.mockResolvedValue({ url: 'https://cdn.example.com/out.mp4' })

@@ -88,6 +88,9 @@ describe('createFinalVideo with an AI mode', () => {
     // result says the saved copy lacks the layers.
     expect(result.metadata.layersMissing).toBe(true)
     expect(String(result.metadata.layersNote)).toMatch(/saved copy/)
+    // Independent outcomes: the render worked, only the stored copy failed (the download is still valid).
+    expect(result.metadata.exportStatus).toEqual({ generation: 'ok', render: 'ok', cloudSave: 'failed' })
+    expect(result.metadata.publishUrl).toBe('')
   })
 
   it('falls back to the watermark and says why when the browser cannot render', async () => {
@@ -102,6 +105,10 @@ describe('createFinalVideo with an AI mode', () => {
     const result = getCtx(ref).result
     expect(result.url).toBe('https://cdn.example/watermarked.mp4')
     expect(String(result.metadata.layersNote)).toMatch(/couldn't be added/)
+    // The layers the customer approved are missing: this clip is never offered for publishing, and the failure is the render's.
+    expect(result.metadata.layersMissing).toBe(true)
+    expect(result.metadata.publishUrl).toBe('')
+    expect(result.metadata.exportStatus).toEqual({ generation: 'ok', render: 'failed', cloudSave: 'not-needed' })
   })
 
   it('the watermark fallback still gets the CTA end card', async () => {

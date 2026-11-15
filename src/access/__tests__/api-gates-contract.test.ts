@@ -39,6 +39,8 @@ const PAID_PATHS: string[] = [
   'app/api/vfx/upload/route.ts',
   // photo-studio
   'app/api/photo-studio/route.ts',
+  // Ask SmartVideo help assistant: gated by SMARTVIDEO_GO, runs on the customer's own OpenAI key
+  'app/api/help/chat/route.ts',
   // proxy/*
   'app/api/proxy/openai-image/route.ts',
   'app/api/proxy/openai-enhance/route.ts',

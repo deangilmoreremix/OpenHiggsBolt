@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { shouldBypassClerkForE2e } from './lib/e2eAuthBypass.js';
 
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
@@ -22,11 +23,13 @@ const isAuthRoute = createRouteMatcher([
 // pages blank. Middleware-set response headers are not rewritten by Next.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app https://*.clerk.accounts.dev",
+  // cdn.jsdelivr.net: Transformers.js loads its ONNX Runtime WASM loader from there
+  // (on-device background removal, @bg0/browser).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://cdn.jsdelivr.net",
   "style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro",
+  "connect-src 'self' blob: https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net",
   "font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com",
   "worker-src 'self' blob:",
   "frame-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://challenges.cloudflare.com",
@@ -42,7 +45,7 @@ function applyResponseHeaders(response, locale) {
   return response;
 }
 
-export default clerkMiddleware(async (auth, request) => {
+const clerkHandler = clerkMiddleware(async (auth, request) => {
   // ── Production-env guard ──────────────────────────────────────────────
   // Prevent the app from running in production mode with test/development
   // Clerk keys. This stops the "development mode" banner from appearing
@@ -123,6 +126,18 @@ export default clerkMiddleware(async (auth, request) => {
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   return applyResponseHeaders(response, locale);
 });
+
+// Local-only E2E bypass: must run BEFORE clerkMiddleware, because Clerk issues
+// its handshake redirect before any handler code. It only fires when every
+// condition in lib/e2eAuthBypass.js holds (development + E2E_TEST_AUTH_BYPASS
+// + cookie value + loopback host + no forwarding headers + allow-listed page).
+// See docs/e2e-auth-bypass.md. Never active in production.
+export default function middleware(request, event) {
+  if (shouldBypassClerkForE2e(request)) {
+    return applyResponseHeaders(NextResponse.next(), localeFromPathname());
+  }
+  return clerkHandler(request, event);
+}
 
 export const config = {
   matcher: [

@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { layoutLayerGeometry } from '../preview/presets'
 
 vi.mock('studio/src/muapi', () => ({ uploadFile: vi.fn() }))
 
@@ -351,9 +352,15 @@ describe('DemoPersonalizeProvider Restore default layout end-to-end', () => {
     expect(after.previewSettings.brandColors.primary).toBe('#abcdef')
     expect(after.previewSettings.brandColors.accent).toBe('#fedcba')
     // Text was re-seeded from the form/asset context, not from the dragged
-    // headline (the dragged headline was at x=0.5, y=0.85; the seed is default).
-    expect(restoredHeadline.x).toBe(0.08)
-    expect(restoredHeadline.y).toBe(0.4)
+    // headline (the dragged headline was at x=0.5, y=0.85); geometry is the
+    // layout's own default for the current aspect ratio.
+    const expectedHeadline = layoutLayerGeometry(
+      after.previewSettings.layout,
+      'headline',
+      after.previewSettings.aspectRatio,
+    ) ?? { x: 0.08, y: 0.4 }
+    expect(restoredHeadline.x).toBe(expectedHeadline.x)
+    expect(restoredHeadline.y).toBe(expectedHeadline.y)
   })
 })
 

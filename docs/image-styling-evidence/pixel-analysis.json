@@ -1,0 +1,114 @@
+[
+ {
+  "file": "seedance1-cat-16x9",
+  "frame": [
+   1134,
+   370,
+   574,
+   384
+  ],
+  "frame_aspect": 1.495,
+  "corners_rounded": "4/4",
+  "subject_aspect": 1.0,
+  "subject_height_ratio": 0.938,
+  "shadow_delta": -4.08
+ },
+ {
+  "file": "seedance1-cat-1x1",
+  "frame": [
+   324,
+   570,
+   432,
+   286
+  ],
+  "frame_aspect": 1.51,
+  "corners_rounded": "4/4",
+  "subject_aspect": 1.007,
+  "subject_height_ratio": 0.944,
+  "shadow_delta": 14.32
+ },
+ {
+  "file": "seedance1-cat-4x5",
+  "frame": [
+   312,
+   714,
+   454,
+   300
+  ],
+  "frame_aspect": 1.513,
+  "corners_rounded": "4/4",
+  "subject_aspect": 0.993,
+  "subject_height_ratio": 0.953,
+  "shadow_delta": 15.18
+ },
+ {
+  "file": "seedance1-cat-9x16",
+  "frame": [
+   292,
+   1084,
+   496,
+   330
+  ],
+  "frame_aspect": 1.503,
+  "corners_rounded": "4/4",
+  "subject_aspect": 0.997,
+  "subject_height_ratio": 0.948,
+  "shadow_delta": 0.16
+ },
+ {
+  "file": "serum-portrait-16x9",
+  "frame": [
+   1134,
+   370,
+   574,
+   384
+  ],
+  "frame_aspect": 1.495,
+  "corners_rounded": "4/4",
+  "subject_aspect": 0.995,
+  "subject_height_ratio": 0.948,
+  "shadow_delta": -0.67
+ },
+ {
+  "file": "serum-portrait-1x1",
+  "frame": [
+   324,
+   570,
+   432,
+   286
+  ],
+  "frame_aspect": 1.51,
+  "corners_rounded": "4/4",
+  "subject_aspect": 1.007,
+  "subject_height_ratio": 0.944,
+  "shadow_delta": 15.11
+ },
+ {
+  "file": "serum-portrait-4x5",
+  "frame": [
+   314,
+   714,
+   452,
+   300
+  ],
+  "frame_aspect": 1.507,
+  "corners_rounded": "4/4",
+  "subject_aspect": 0.997,
+  "subject_height_ratio": 0.96,
+  "shadow_delta": -75.27
+ },
+ {
+  "file": "serum-portrait-9x16",
+  "frame": [
+   292,
+   1084,
+   496,
+   330
+  ],
+  "frame_aspect": 1.503,
+  "corners_rounded": "4/4",
+  "subject_aspect": 1.0,
+  "subject_height_ratio": 0.952,
+  "shadow_delta": 2.65
+ }
+]
