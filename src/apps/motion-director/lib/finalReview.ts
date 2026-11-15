@@ -60,7 +60,7 @@ export function reviewShots(project: ProjectData): Array<{ clip: ClipData; name:
     });
 }
 
-export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps, budgetMs = 120_000): Promise<{ items: FinalReviewItem[]; summary: string; shots: number; total: number; seams: number }> {
+export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps, budgetMs = 120_000): Promise<{ items: FinalReviewItem[]; summary: string; shots: number; total: number; seams: number; filmReviewed: boolean }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
   const fps = project.fps;
@@ -116,7 +116,8 @@ export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps
     const summary = answers.map((a) => a?.summary).filter(Boolean)[answers.length - 1] ?? answers.map((a) => a?.summary).find(Boolean) ?? '';
     // Scenes count as reviewed only when their batch was answered: a batch that failed (timeout, rate limit) reviewed nothing.
     const reviewed = groups.reduce((n, g, i) => (answers[i] ? n + g.length : n), 0);
-    return { items, summary, shots: reviewed, total: all.length, seams: seams.length };
+    // The film-level request (arc, seams, repeated lines) is its own part of the review: when it failed, those checks never ran.
+    return { items, summary, shots: reviewed, total: all.length, seams: seams.length, filmReviewed: Boolean(answers[groups.length]) };
   } finally {
     clearTimeout(timer);
   }

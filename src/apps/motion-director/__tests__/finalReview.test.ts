@@ -115,5 +115,19 @@ describe('the review covers every scene', () => {
     expect(report.total).toBe(14);
     expect(report.shots).toBe(11); // 14 scenes in batches of 3: one batch of 3 failed
   });
+  it('a failed film-level request leaves the review incomplete even when every shot batch answered', async () => {
+    const project = { ...planToProject(many, { aspectRatio: '16:9' } as never), spec: { brief: 'b' } as never };
+    const deps: FinalReviewDeps = {
+      frame: vi.fn(async () => 'data:image/jpeg;base64,x'),
+      reference: vi.fn(async () => []),
+      request: vi.fn(async (body) => {
+        if (body.part === 'film') throw new Error('timeout');
+        return { items: [{ id: 'S2', ok: true, seconds: [1], text: 'ok', stage: 'none' as const }], summary: '' };
+      }),
+    };
+    const report = await runFinalReview(project, deps);
+    expect(report.shots).toBe(report.total);
+    expect(report.filmReviewed).toBe(false);
+  });
 });
 

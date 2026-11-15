@@ -844,7 +844,7 @@ export function useFilmDirector(opts: {
           }
           const fails = report.items.filter((i) => !i.ok);
           const cover = reviewCoverage(report.items);
-          const record: ReviewRecord = { ran: true, schemaValid: true, criteria: report.items.map((i) => ({ id: i.id, ok: i.ok })), coversRequired: cover.coversRequired, missingGroups: cover.missingGroups, filmFingerprint: filmFingerprint(project), state: fails.length ? 'failed' : cover.coversRequired && report.shots >= report.total ? 'passed' : 'incomplete', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
+          const record: ReviewRecord = { ran: true, schemaValid: true, criteria: report.items.map((i) => ({ id: i.id, ok: i.ok })), coversRequired: cover.coversRequired, missingGroups: cover.missingGroups, filmFingerprint: filmFingerprint(project), state: fails.length ? 'failed' : cover.coversRequired && report.shots >= report.total && report.filmReviewed ? 'passed' : 'incomplete', findings: fails.map((i) => ({ frame: i.seconds.length ? Math.round(i.seconds[0] * project.fps) : undefined, text: `${i.id}: ${i.text}`, severity: 'fix' as const })) };
           upd((r) => completeStage(r, { stage: 'review', review: record }, { fails: fails.length, checks: report.items.length }));
           const { project: repaired0, fixed } = applyReviewFixes(project, report.items);
           const repaired = { ...repaired0, run: runRef.current ?? undefined };
@@ -859,7 +859,7 @@ export function useFilmDirector(opts: {
             optsRef.current.onBuilt?.(next);
           }
           const notes = !fixed.length ? [] : unchanged ? ['Fixed from the review:', ...fixed.map((f) => `- ${f}`)] : ['The film was edited while the review ran, so I left it as it is. To apply the review:', ...fixed.map((f) => `- ${f.replace(' is a plain cut now (the reviewer failed it).', ': make it a plain cut in the Transitions track.')}`)];
-          say('assistant', [...finalReviewLines(report), ...(cover.coversRequired ? [] : [`The review did not cover ${cover.missingGroups.join(', ')}, so it cannot certify the film.`]), ...(report.shots < report.total ? [`The review covered ${report.shots} of ${report.total} scenes, so it cannot certify the film.`] : []), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current, curFp())}.` : ''].filter(Boolean).join('\n'));
+          say('assistant', [...finalReviewLines(report), ...(cover.coversRequired ? [] : [`The review did not cover ${cover.missingGroups.join(', ')}, so it cannot certify the film.`]), ...(report.shots < report.total ? [`The review covered ${report.shots} of ${report.total} scenes, so it cannot certify the film.`] : []), ...(report.filmReviewed ? [] : ['The film-level checks (arc, seams, repeated lines) did not run, so the review cannot certify the film.']), ...notes, runRef.current ? `Status: ${finalStatusLine(runRef.current, curFp())}.` : ''].filter(Boolean).join('\n'));
           // Correction loop: a shot the reviewer failed (stage 5) is rebuilt on its own with the reviewer's note as its starting problem;
           // the rest of the film is kept. One pass only; the film then needs a new review (status: review pending).
           const shotFails = report.items.filter((i) => !i.ok && i.stage === '5' && i.seconds.length);
@@ -1029,6 +1029,8 @@ export function useFilmDirector(opts: {
 
   const reset = useCallback(() => {
     gen.current++;
+    // A switch of session ends the work for the old one: no more adaptation calls or frame checks on its prompt.
+    buildController.current?.abort();
     clearCheckpoint();
     setResumeOffer(null);
     // The previous film's run must not overlay its progress onto the new conversation's steps.
