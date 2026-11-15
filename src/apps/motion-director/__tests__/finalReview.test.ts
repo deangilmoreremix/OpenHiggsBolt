@@ -72,3 +72,32 @@ describe('a late review never throws away edits', () => {
     expect(reviewStillApplies({ installed: { project: {} }, reviewed: built, project })).toBe(false);
   });
 });
+
+describe('the review covers every scene', () => {
+  const many: DirectorPlan = {
+    ...plan,
+    scenes: Array.from({ length: 14 }, (_, i) => ({ kind: 'shot' as const, recipeId: id(i % 2 ? 'RowEmbed' : 'DeckDealFlyin'), durationSec: 3, headline: 'h', caption: `c${i}`, transition: 'cut' as const })),
+  };
+  it('a 14-scene film is reviewed in full, not cut at 12', async () => {
+    const project = { ...planToProject(many, { aspectRatio: '16:9' } as never), spec: { brief: 'b' } as never };
+    const deps: FinalReviewDeps = {
+      frame: vi.fn(async () => 'data:image/jpeg;base64,x'),
+      reference: vi.fn(async () => []),
+      request: vi.fn(async () => ({ items: [{ id: 'S2', ok: true, seconds: [1], text: 'ok', stage: 'none' as const }], summary: '' })),
+    };
+    const report = await runFinalReview(project, deps);
+    expect(report.total).toBe(14);
+    expect(report.shots).toBe(14);
+  });
+  it('reports how many were reviewed when a frame budget cuts it short', async () => {
+    const project = { ...planToProject(many, { aspectRatio: '16:9' } as never), spec: { brief: 'b' } as never };
+    const deps: FinalReviewDeps = {
+      // Each frame takes a macrotask, so the (zero) budget runs out part-way through the film.
+      frame: vi.fn(async () => { await new Promise((r) => setTimeout(r, 1)); return 'data:image/jpeg;base64,x'; }),
+      reference: vi.fn(async () => []),
+      request: vi.fn(async () => ({ items: [], summary: '' })),
+    };
+    const report = await runFinalReview(project, deps, 0);
+    expect(report.shots).toBeLessThan(report.total);
+  });
+});

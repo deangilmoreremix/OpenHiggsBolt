@@ -60,7 +60,7 @@ export function reviewShots(project: ProjectData): Array<{ clip: ClipData; name:
     });
 }
 
-export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps, budgetMs = 120_000): Promise<{ items: FinalReviewItem[]; summary: string; shots: number; seams: number }> {
+export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps, budgetMs = 120_000): Promise<{ items: FinalReviewItem[]; summary: string; shots: number; total: number; seams: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
   const fps = project.fps;
@@ -68,7 +68,9 @@ export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps
   try {
     const shots: ReviewShot[] = [];
     const filmFrames: Array<{ second: number; image: string }> = [];
-    for (const s of reviewShots(project).slice(0, 12)) {
+    const all = reviewShots(project);
+    // Every scene is reviewed (a plan holds up to 14); one that could not be (budget, frame failure) makes the review incomplete, see `total`.
+    for (const s of all) {
       if (controller.signal.aborted) break;
       const rendered: ReviewShot['rendered'] = [];
       for (const m of REVIEW_MOMENTS) {
@@ -112,7 +114,7 @@ export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps
     }
     items.sort((a, b) => Number(a.ok) - Number(b.ok));
     const summary = answers.map((a) => a?.summary).filter(Boolean)[answers.length - 1] ?? answers.map((a) => a?.summary).find(Boolean) ?? '';
-    return { items, summary, shots: shots.length, seams: seams.length };
+    return { items, summary, shots: shots.length, total: all.length, seams: seams.length };
   } finally {
     clearTimeout(timer);
   }
