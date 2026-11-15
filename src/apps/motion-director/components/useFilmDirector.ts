@@ -115,8 +115,8 @@ const secs = (p: { scenes: { durationSec: number }[] }) => Math.round(p.scenes.r
 
 export function useFilmDirector(opts: {
   settings: () => FilmSettings;
-  /** The signed-in account: a stored run is offered only to the account that made it. `null` = not known yet (nothing is loaded or saved); `undefined` = no account scoping. */
-  ownerId?: string | null;
+  /** The signed-in account, when known: a stored run is offered only to the account that made it. Saving never waits for it. */
+  ownerId?: string;
   /** Mirror of every message (e.g. into the studio session). */
   onMessage?: (m: FilmChatMessage) => void;
   /** Called when a film is built (the Agent panel installs it straight into the workbench). */
@@ -186,7 +186,7 @@ export function useFilmDirector(opts: {
   useEffect(() => { sbRef.current = storyboard; if (storyboard) checkpointRef.current(); }, [storyboard]);
   checkpointRef.current = () => {
     const r = runRef.current;
-    if (!r || optsRef.current.ownerId === null) return;
+    if (!r) return;
     const sb = sbRef.current;
     saveCheckpoint({
       owner: optsRef.current.ownerId || undefined,
@@ -199,7 +199,6 @@ export function useFilmDirector(opts: {
   // On mount: an interrupted production in storage is recovered and offered (Resume / Start over), never silently restarted or dropped.
   const ownerId = opts.ownerId;
   useEffect(() => {
-    if (ownerId === null) return; // the account is not known yet
     const cp = loadCheckpoint(undefined, ownerId || undefined);
     if (!cp) { setResumeOffer(null); return; }
     const action = decideResume(cp);

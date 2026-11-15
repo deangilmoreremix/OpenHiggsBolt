@@ -176,7 +176,7 @@ export default function MotionStudioEntry() {
   const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
-  const { requireEntitlement, accessState, isLoading: accessLoading } = useSmartVideoAccess();
+  const { requireEntitlement, accessState } = useSmartVideoAccess();
   // The Personalization context exposes clients + an asset library (not a singular "person").
   // We use the dedicated adapter to derive a typed PersonalizationPerson payload
   // for the entry — this keeps the mapping logic in one place and keeps this
@@ -235,8 +235,8 @@ export default function MotionStudioEntry() {
   }, [activeClient]);
 
   const director = useFilmDirector({
-    // A stored run is offered only to the account that made it; null until the account is known.
-    ownerId: accessLoading ? null : accessState?.clerkUserId || undefined,
+    // A stored run is offered only to the account that made it (once the account is known).
+    ownerId: accessState?.clerkUserId || undefined,
     settings: () => ({
       aspectRatio,
       durationSec: DEFAULT_DURATION_SEC,

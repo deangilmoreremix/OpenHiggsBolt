@@ -53,9 +53,13 @@ export function loadCheckpoint(store: Store | null = defaultStore(), owner?: str
     if (!raw) return null;
     const cp = JSON.parse(raw) as RunCheckpoint;
     if (!cp || cp.v !== VERSION || !cp.run || !cp.run.stages || !cp.request) return null;
-    // Another account's run (its request, storyboard and pictures) is never handed over: it is removed, not just hidden.
-    if ((cp.owner || undefined) !== (owner || undefined)) { store.removeItem(RUN_STORE_KEY); return null; }
-    return cp;
+    // Another account's run (its request, storyboard and pictures) is never handed over. When BOTH accounts are known and differ,
+    // the stored run is removed; when either side is unknown (signed out, or the account has not loaded yet) it is only withheld.
+    const mine = owner || undefined;
+    const theirs = cp.owner || undefined;
+    if (mine === theirs) return cp;
+    if (mine && theirs) store.removeItem(RUN_STORE_KEY);
+    return null;
   } catch { return null; }
 }
 

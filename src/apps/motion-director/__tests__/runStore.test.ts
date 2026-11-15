@@ -115,14 +115,19 @@ describe('a stored run belongs to the account that made it', () => {
     expect(loadCheckpoint(s, 'user_b')).toBeNull();
     expect(s.m.has(RUN_STORE_KEY)).toBe(false);
   });
-  it('the same account gets it back; a signed-out run is only for signed-out use', () => {
+  it('the same account gets it back', () => {
     const s = mem();
     saveCheckpoint(cp({ owner: 'user_a' }), s);
     expect(loadCheckpoint(s, 'user_a')?.owner).toBe('user_a');
-    saveCheckpoint(cp(), s);
+  });
+  it('a run saved before the account was known is only withheld from a known account, not deleted, and vice versa', () => {
+    const s = mem();
+    saveCheckpoint(cp(), s); // owner unknown
     expect(loadCheckpoint(s, 'user_a')).toBeNull();
-    saveCheckpoint(cp(), s);
+    expect(s.m.has(RUN_STORE_KEY)).toBe(true);
     expect(loadCheckpoint(s)?.run.request).toBe('make a film');
+    saveCheckpoint(cp({ owner: 'user_a' }), s);
+    expect(loadCheckpoint(s)).toBeNull(); // an unknown viewer never gets an account's run
+    expect(s.m.has(RUN_STORE_KEY)).toBe(true); // ...and does not delete it
   });
 });
-
