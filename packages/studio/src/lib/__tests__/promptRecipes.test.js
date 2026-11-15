@@ -51,6 +51,17 @@ describe('runSkill', () => {
     }
   });
 
+  it('runs a character step through the image-to-image dispatch so its reference is forwarded', async () => {
+    muapi.generateI2I.mockResolvedValue({ url: 'https://x/char.mp4' });
+    const character = {
+      steps: [{ type: 'character', endpoint: 'seedance-2-character', prompt: 'x', references: ['{{ref}}'] }],
+    };
+    await runSkill('key', character, { ref: 'https://x/sheet.png' }, () => {});
+    expect(muapi.generateI2I).toHaveBeenCalledTimes(1);
+    expect(muapi.generateI2I.mock.calls[0][1].images_list).toEqual(['https://x/sheet.png']);
+    expect(muapi.generateI2V).not.toHaveBeenCalled();
+  });
+
   it('pauses at approval and stops when declined', async () => {
     muapi.generateI2I.mockResolvedValue({ url: 'https://x/a.png' });
     muapi.generateImage.mockResolvedValue({ url: 'https://x/a.png' });

@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('../PromptLibrary', () => ({ default: () => null }));
 vi.mock('../../muapi.js', () => ({ uploadFile: vi.fn() }));
+// Keep the real helpers (buildParams etc.) but let tests observe/control runSkill.
+vi.mock('../../lib/promptRecipes.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  runSkill: vi.fn(() => new Promise(() => {})),
+}));
 // Live price per model, as returned by the estimate-cost endpoint.
 vi.mock('../../lib/costEstimate.js', () => ({
   estimateModelCost: vi.fn(async (_key, model) => (String(model).includes('image-to-video') ? 0.75 : 0.0165)),
@@ -13,6 +18,8 @@ vi.mock('../../lib/costEstimate.js', () => ({
 
 import SkillsBrowser from '../SkillsBrowser.jsx';
 import registry from '../../skills/registry.json';
+import { runSkill } from '../../lib/promptRecipes.js';
+import { uploadFile } from '../../muapi.js';
 
 beforeEach(() => {
   cleanup();
@@ -81,6 +88,70 @@ describe('Skills browser (page behind the Recipes button)', () => {
     openWorkflow('3D Logo Animation');
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  const runLogoWorkflow = () => {
+    const view = render(<SkillsBrowser apiKey="k" />);
+    const dialog = openWorkflow('3D Logo Animation');
+    fireEvent.change(screen.getByPlaceholderText('…or paste a URL'), { target: { value: 'https://x/logo.png' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Run workflow' }));
+    return view;
+  };
+
+  it('sends the displayed defaults (not empty strings) to runSkill', () => {
+    runSkill.mockClear();
+    runLogoWorkflow();
+    const values = runSkill.mock.calls[0][2];
+    expect(values.material_style).toBe('glossy glass and chrome');
+    expect(values.logo_image).toBe('https://x/logo.png');
+  });
+
+  it('aborts the run and releases a pending approval when the runner unmounts mid-run', () => {
+    runSkill.mockClear();
+    let approvalResult;
+    runSkill.mockImplementationOnce((_k, _s, _v, _onStep, options) => {
+      options.onApproval(1, {}).then((ok) => {
+        approvalResult = ok;
+      });
+      return new Promise(() => {});
+    });
+    const { unmount } = runLogoWorkflow();
+    const { signal } = runSkill.mock.calls[0][4];
+    expect(signal.aborted).toBe(false);
+    unmount();
+    expect(signal.aborted).toBe(true);
+    return Promise.resolve().then(() => expect(approvalResult).toBe(false));
+  });
+
+  it('disables a source field while its upload is running', async () => {
+    let finish;
+    uploadFile.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    render(<SkillsBrowser apiKey="k" />);
+    openWorkflow('3D Logo Animation');
+    const fileInput = document.querySelector('input[type="file"]');
+    const urlInput = screen.getByPlaceholderText('…or paste a URL');
+    fireEvent.change(fileInput, { target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] } });
+    expect(fileInput.disabled).toBe(true);
+    expect(urlInput.disabled).toBe(true);
+    finish('https://x/uploaded.png');
+    await screen.findByDisplayValue('https://x/uploaded.png');
+    expect(fileInput.disabled).toBe(false);
+  });
+
+  it('moves focus into the dialog, keeps Tab inside it, and restores focus on close', () => {
+    render(<SkillsBrowser apiKey="" />);
+    const card = screen.getByRole('heading', { level: 3, name: '3D Logo Animation' }).closest('div.flex-col');
+    const opener = card.querySelector('button');
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    const focusable = dialog.querySelectorAll('button:not([disabled]), input:not([disabled])');
+    focusable[focusable.length - 1].focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(focusable[0]);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.activeElement).toBe(opener);
   });
 
   it('workflow recipes open the runner instead of a studio', () => {

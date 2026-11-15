@@ -14,10 +14,12 @@ const NON_MODEL_STEP_TYPES = new Set(['script', 'approval', 'upload']);
 async function collectKnownIds() {
   const ids = new Set();
   const kinds = new Map(); // id -> Set('image' | 'video')
+  const defs = new Map(); // id -> model definition (for parameter checks)
   const addList = (list, kind) => {
     for (const m of list) {
       if (!m?.id) continue;
       ids.add(m.id);
+      if (!defs.has(m.id)) defs.set(m.id, m);
       if (!kinds.has(m.id)) kinds.set(m.id, new Set());
       kinds.get(m.id).add(kind);
     }
@@ -30,6 +32,7 @@ async function collectKnownIds() {
     }
   }
   ids.kinds = kinds;
+  ids.defs = defs;
   return ids;
 }
 
@@ -46,6 +49,23 @@ function typeMismatch(type, endpoint) {
   const have = known.kinds.get(endpoint);
   return Boolean(want && have && !have.has(want));
 }
+// A video step's aspect ratio and duration must be values the model declares; an
+// unsupported value would only fail after earlier (paid) steps have run.
+function paramProblem(step, endpoint) {
+  if (step.type !== 'i2v' && step.type !== 't2v') return '';
+  const inputs = known.defs.get(endpoint)?.inputs;
+  if (!inputs) return '';
+  const problems = [];
+  const ar = inputs.aspect_ratio?.enum;
+  if (step.aspectRatio && Array.isArray(ar) && !ar.map(String).includes(String(step.aspectRatio))) {
+    problems.push(`aspectRatio ${step.aspectRatio} not in [${ar.join(', ')}]`);
+  }
+  const dur = inputs.duration?.enum;
+  if (step.duration !== undefined && Array.isArray(dur) && !dur.map(String).includes(String(step.duration))) {
+    problems.push(`duration ${step.duration} not in [${dur.join(', ')}]`);
+  }
+  return problems.join('; ');
+}
 const rows = [];
 const hidden = registry.skills.filter((s) => s.hidden);
 for (const skill of registry.skills.filter((s) => !s.hidden)) {
@@ -60,18 +80,19 @@ for (const skill of registry.skills.filter((s) => !s.hidden)) {
       endpoint: endpoint || '(none)',
       ok: Boolean(endpoint) && (known.has(endpoint) || (step.type === 'clipping' && serviceEndpoints.has(endpoint))),
       mismatch: typeMismatch(step.type, endpoint),
+      param: paramProblem(step, endpoint),
     });
   });
 }
 
-const bad = rows.filter((r) => !r.ok || r.mismatch);
+const bad = rows.filter((r) => !r.ok || r.mismatch || r.param);
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ checked: rows.length, unresolved: bad }, null, 2));
 } else {
   console.log(`Checked ${rows.length} recipe steps against ${known.size} known model ids/endpoints.`);
   for (const r of bad) {
-    const why = r.ok ? 'WRONG KIND (step type does not match the model)' : 'UNRESOLVED';
-    console.log(`${why}  ${r.slug} [${r.studio}] step ${r.step} (${r.type}): ${r.endpoint}`);
+    const why = !r.ok ? 'UNRESOLVED' : r.mismatch ? 'WRONG KIND (step type does not match the model)' : 'BAD PARAM';
+    console.log(`${why}  ${r.slug} [${r.studio}] step ${r.step} (${r.type}): ${r.endpoint}${r.param ? ` — ${r.param}` : ''}`);
   }
   console.log(`${bad.length} unresolved. ${hidden.length} recipes hidden from the browser:`);
   for (const h of hidden) console.log(`  hidden  ${h.slug}: ${h.hiddenReason || ''}`);

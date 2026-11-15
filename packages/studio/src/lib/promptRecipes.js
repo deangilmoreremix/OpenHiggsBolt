@@ -120,8 +120,10 @@ export async function runSkill(apiKey, skill, inputValues, onStep, options = {})
       } else if (step.type === 'audio') {
         result = await muapi.generateAudio(apiKey, params);
       } else if (step.type === 'character') {
-        // generateCharacterVideo is a stub; character steps run as image-to-video.
-        result = await muapi.generateI2V(apiKey, params);
+        // generateCharacterVideo is a stub. The character model (seedance-2-character)
+        // is registered as an image-to-image model, and generateI2V would not find it
+        // and would drop the reference images, so dispatch through generateI2I.
+        result = await muapi.generateI2I(apiKey, params);
       } else if (step.type === 'clipping') {
         result = await muapi.runClipping(apiKey, params);
       } else {

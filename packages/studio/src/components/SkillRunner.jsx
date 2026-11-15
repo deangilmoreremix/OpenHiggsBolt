@@ -45,14 +45,28 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
   const [error, setError] = useState('');
   const [approval, setApproval] = useState(null);
   const abortRef = useRef(null);
+  const approvalRef = useRef(null);
+  const uploadSeq = useRef({});
+  const panelRef = useRef(null);
   const [liveCost, setLiveCost] = useState(null);
   const [costLoading, setCostLoading] = useState(false);
 
   const summary = summarizeWorkflowSteps(skill);
   const hasVideo = summary.video > 0;
+
+  // Defaults shown in the fields count as values, so a prompt never silently
+  // loses a field the user left at its displayed default.
+  const effectiveValues = {
+    ...Object.fromEntries(
+      (skill.inputs || []).filter((i) => i.default).map((i) => [i.name, i.default]),
+    ),
+    ...values,
+  };
   const textValuesKey = JSON.stringify(
     Object.fromEntries(
-      (skill.inputs || []).filter((i) => i.type === 'text').map((i) => [i.name, values[i.name] ?? '']),
+      (skill.inputs || [])
+        .filter((i) => i.type === 'text')
+        .map((i) => [i.name, effectiveValues[i.name] ?? '']),
     ),
   );
 
@@ -82,7 +96,7 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
   }, [apiKey, skill, textValuesKey]);
 
   const inputs = skill.inputs || [];
-  const missing = inputs.filter((i) => i.required && !values[i.name]);
+  const missing = inputs.filter((i) => i.required && !effectiveValues[i.name]);
   const busy = Object.values(uploading).some(Boolean);
 
   const setValue = (name, v) => setValues((cur) => ({ ...cur, [name]: v }));
@@ -90,14 +104,17 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
   async function handleFile(input, file) {
     if (!file) return;
     setError('');
+    // Only the most recent upload for a field may apply its result.
+    const id = (uploadSeq.current[input.name] || 0) + 1;
+    uploadSeq.current[input.name] = id;
     setUploading((u) => ({ ...u, [input.name]: true }));
     try {
       const url = await uploadFile(apiKey, file);
-      setValue(input.name, url);
+      if (uploadSeq.current[input.name] === id) setValue(input.name, url);
     } catch (e) {
-      setError(`Upload failed: ${e?.message || e}`);
+      if (uploadSeq.current[input.name] === id) setError(`Upload failed: ${e?.message || e}`);
     } finally {
-      setUploading((u) => ({ ...u, [input.name]: false }));
+      if (uploadSeq.current[input.name] === id) setUploading((u) => ({ ...u, [input.name]: false }));
     }
   }
 
@@ -114,24 +131,30 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
       await runSkill(
         apiKey,
         skill,
-        values,
+        effectiveValues,
         (i, patch) => setSteps((cur) => ({ ...cur, [i]: { ...cur[i], ...patch } })),
         {
           signal: abortRef.current.signal,
           onApproval: (i) =>
-            new Promise((resolve) => setApproval({ index: i, resolve })),
+            new Promise((resolve) => {
+              const pending = { index: i, resolve };
+              approvalRef.current = pending;
+              setApproval(pending);
+            }),
         },
       );
     } catch (e) {
       setError(e?.message || String(e));
     } finally {
       setRunning(false);
+      approvalRef.current = null;
       setApproval(null);
     }
   }
 
   function decide(ok) {
     approval?.resolve(ok);
+    approvalRef.current = null;
     setApproval(null);
   }
 
@@ -139,6 +162,48 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
     abortRef.current?.abort();
     approval?.resolve(false);
     onClose();
+  }
+
+  // If the runner is removed while a run is active (e.g. navigation), stop the
+  // run so no further paid steps start, and release a pending approval.
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      approvalRef.current?.resolve(false);
+    },
+    [],
+  );
+
+  // Focus: move into the dialog on open, restore to the opener on close.
+  useEffect(() => {
+    const opener = typeof document !== 'undefined' ? document.activeElement : null;
+    panelRef.current?.focus();
+    return () => {
+      if (opener && typeof opener.focus === 'function') opener.focus();
+    };
+  }, []);
+
+  // Keep Tab inside the dialog.
+  function trapTab(e) {
+    if (e.key !== 'Tab' || !panelRef.current) return;
+    const focusable = panelRef.current.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) {
+      e.preventDefault();
+      panelRef.current.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === panelRef.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   // Escape closes the modal, like the Close button.
@@ -163,12 +228,16 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label={skill.title || skill.name}
+      onKeyDown={trapTab}
       onMouseDown={(e) => {
         // Backdrop click (not a click inside the panel) closes the modal.
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#0b0b0b] p-6">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#0b0b0b] p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-white">{skill.title || skill.name}</h2>
@@ -200,7 +269,7 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
                       <input
                         type="file"
                         accept={input.type === 'video_url' ? 'video/*' : 'image/*'}
-                        disabled={running}
+                        disabled={running || Boolean(uploading[input.name])}
                         onChange={(e) => handleFile(input, e.target.files?.[0])}
                         className="block w-full text-xs text-white/70"
                       />
@@ -208,7 +277,7 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
                         type="url"
                         placeholder="…or paste a URL"
                         value={values[input.name] || ''}
-                        disabled={running}
+                        disabled={running || Boolean(uploading[input.name])}
                         onChange={(e) => setValue(input.name, e.target.value)}
                         className="w-full rounded-md border border-white/10 bg-black/40 px-3 py-2 text-sm text-white"
                       />

@@ -688,7 +688,7 @@
           "type": "i2v",
           "model": "seedance-2-image-to-video-fast",
           "endpoint": "seedance-2-image-to-video-fast",
-          "aspectRatio": "4:5",
+          "aspectRatio": "3:4",
           "duration": 5,
           "prompt": "Animate the character through this story: {{story_premise}}. Gentle camera push-in, expressive Pixar-style 3D motion, cinematic lighting.",
           "references": [
