@@ -114,3 +114,19 @@ test('choosing a business shows the website check, similar businesses and neares
   await expect(panel.getByTestId('lookalikes')).not.toContainText('Biz 3'); // a plumber is not a look-alike
   await expect(panel.getByTestId('competitors')).toContainText(/Biz \d.*mi/);
 });
+
+test('an outreach draft is built from the facts found, editable, and sends nothing', async ({ page }) => {
+  const dialog = await setup(page);
+  await search(dialog);
+  await expect(card(dialog, 'Biz 1').getByTestId('chip-form')).toBeVisible({ timeout: 15_000 });
+  await card(dialog, 'Biz 1').getByRole('button', { name: 'Use This Business' }).click();
+  const panel = dialog.getByTestId('lead-insights');
+  await expect(panel).toBeVisible({ timeout: 20_000 });
+  await panel.getByTestId('outreach-toggle').click();
+  await expect(panel.getByTestId('outreach-facts')).toContainText('Homepage has no mobile viewport tag');
+  const text = panel.getByTestId('outreach-text');
+  await expect(text).toHaveValue(/Biz 1/);
+  await expect(text).toHaveValue(/\[link to your sample video\]/);
+  await text.fill('Hello, edited by me');
+  await expect(text).toHaveValue('Hello, edited by me');
+});
