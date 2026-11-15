@@ -63,7 +63,8 @@
     "gen:demo-texts": "node scripts/gen-demo-texts.mjs",
     "gen:shot-facts": "node scripts/gen-shot-facts.mjs",
     "gen:sfx-peaks": "node scripts/gen-sfx-peaks.mjs",
-    "gen:legacy-index": "node scripts/gen-legacy-index.mjs"
+    "gen:legacy-index": "node scripts/gen-legacy-index.mjs",
+    "e2e:video-pages": "bash scripts/e2e-video-pages/run.sh"
   },
   "build": {
     "appId": "ai.generative.open",
