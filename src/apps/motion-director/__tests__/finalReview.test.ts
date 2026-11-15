@@ -100,4 +100,20 @@ describe('the review covers every scene', () => {
     const report = await runFinalReview(project, deps, 0);
     expect(report.shots).toBeLessThan(report.total);
   });
+  it('a shot batch that fails reviews nothing: its scenes are not counted', async () => {
+    const project = { ...planToProject(many, { aspectRatio: '16:9' } as never), spec: { brief: 'b' } as never };
+    let n = 0;
+    const deps: FinalReviewDeps = {
+      frame: vi.fn(async () => 'data:image/jpeg;base64,x'),
+      reference: vi.fn(async () => []),
+      request: vi.fn(async (body) => {
+        if (body.part === 'shots' && n++ === 1) throw new Error('429');
+        return { items: [{ id: 'S2', ok: true, seconds: [1], text: 'ok', stage: 'none' as const }], summary: '' };
+      }),
+    };
+    const report = await runFinalReview(project, deps);
+    expect(report.total).toBe(14);
+    expect(report.shots).toBe(11); // 14 scenes in batches of 3: one batch of 3 failed
+  });
 });
+

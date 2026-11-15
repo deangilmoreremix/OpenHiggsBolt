@@ -114,7 +114,9 @@ export async function runFinalReview(project: ProjectData, deps: FinalReviewDeps
     }
     items.sort((a, b) => Number(a.ok) - Number(b.ok));
     const summary = answers.map((a) => a?.summary).filter(Boolean)[answers.length - 1] ?? answers.map((a) => a?.summary).find(Boolean) ?? '';
-    return { items, summary, shots: shots.length, total: all.length, seams: seams.length };
+    // Scenes count as reviewed only when their batch was answered: a batch that failed (timeout, rate limit) reviewed nothing.
+    const reviewed = groups.reduce((n, g, i) => (answers[i] ? n + g.length : n), 0);
+    return { items, summary, shots: reviewed, total: all.length, seams: seams.length };
   } finally {
     clearTimeout(timer);
   }
