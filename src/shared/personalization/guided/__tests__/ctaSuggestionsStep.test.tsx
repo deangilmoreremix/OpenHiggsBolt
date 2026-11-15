@@ -1,0 +1,67 @@
+// @vitest-environment jsdom
+/** Step 3 offers call-to-action lines built only from real contact details. */
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { PREVIEW_LAYOUTS } from '../../preview/presets'
+
+const ctx: Record<string, unknown> = {}
+vi.mock('../../DemoPersonalizeProvider', () => ({ useDemoPersonalize: () => ctx }))
+
+vi.mock('../PersonalizationTemplateBrowser', () => ({ PersonalizationTemplateBrowser: () => null }))
+vi.mock('../AssetUsagePanel', () => ({ AssetUsagePanel: () => null }))
+
+import { StepPersonalize } from '../StepPersonalize'
+
+let root: Root | null = null
+let container: HTMLDivElement | null = null
+
+async function render(overrides: Record<string, unknown>) {
+  const layout = PREVIEW_LAYOUTS[0]
+  Object.keys(ctx).forEach((k) => delete ctx[k])
+  Object.assign(ctx, {
+    clientForm: {},
+    selectedBusiness: null,
+    updateClientForm: vi.fn(),
+    assets: { logos: [], products: [], primaryLogo: null },
+    previewSettings: { layout: layout.id, layers: [], brandColors: { primary: '#000', accent: '#111', text: '#fff', backgroundDim: 0 } },
+    setPreviewLayout: vi.fn(),
+    setRemotionDesign: vi.fn(),
+    updatePreviewLayer: vi.fn(),
+    updatePreviewBrandColors: vi.fn(),
+    updatePreviewComposition: vi.fn(),
+    ...overrides,
+  })
+  container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => root!.render(<StepPersonalize />))
+  return container
+}
+
+afterEach(() => {
+  act(() => root?.unmount())
+  container?.remove()
+  root = null
+  container = null
+})
+
+describe('Step 3 call-to-action suggestions', () => {
+  it('shows nothing when the business has no contact details', async () => {
+    const view = await render({})
+    expect(view.querySelector('[data-testid="pz-cta-suggestions"]')).toBeNull()
+  })
+
+  it('builds chips from the selected business and fills the CTA on click', async () => {
+    const view = await render({
+      clientForm: { phone: '(813) 555-0100' },
+      selectedBusiness: { website: 'https://joes.com', email: 'hi@joes.com', instagram: 'https://instagram.com/joes_pizza', openingHours: 'Mo-Sa 09:00-17:00' },
+    })
+    const chips = view.querySelectorAll('[data-testid^="pz-cta-suggestion-"]')
+    expect(Array.from(chips).map((c) => c.textContent)).toEqual([
+      'Call (813) 555-0100', 'Visit joes.com', 'Email hi@joes.com', 'Follow @joes_pizza', 'Open Mo-Sa 09:00-17:00',
+    ])
+    await act(async () => (view.querySelector('[data-testid="pz-cta-suggestion-visit"]') as HTMLButtonElement).click())
+    expect(ctx.updateClientForm).toHaveBeenCalledWith(expect.objectContaining({ callToAction: 'Visit joes.com' }))
+  })
+})
