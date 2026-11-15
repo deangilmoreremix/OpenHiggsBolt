@@ -22,6 +22,7 @@ test('Export all 4 shapes renders four correctly-shaped videos with no AI reques
     URL.createObjectURL = (obj: Blob | MediaSource) => { try { if (obj instanceof Blob) blobs.push(obj); } catch { /* ignore */ } return original(obj); };
     (window as unknown as { __blobs: Blob[] }).__blobs = blobs;
   });
+  await page.context().addCookies([{ name: '__e2e_auth_bypass', value: '1', url: process.env.DEMO_BASE_URL || 'http://localhost:3111' }]);
   await page.goto('/personalization-demo?test=true', { timeout: 60_000 });
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
