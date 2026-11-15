@@ -59,7 +59,7 @@ describe('Step 3 call-to-action suggestions', () => {
     })
     const chips = view.querySelectorAll('[data-testid^="pz-cta-suggestion-"]')
     expect(Array.from(chips).map((c) => c.textContent)).toEqual([
-      'Call (813) 555-0100', 'Visit joes.com', 'Email hi@joes.com', 'Follow @joes_pizza', 'Open Mo-Sa 09:00-17:00',
+      'Call (813) 555-0100', 'Visit joes.com', 'Email hi@joes.com', 'Follow @joes_pizza', 'Open Mon–Sat 9 am–5 pm',
     ])
     await act(async () => (view.querySelector('[data-testid="pz-cta-suggestion-visit"]') as HTMLButtonElement).click())
     expect(ctx.updateClientForm).toHaveBeenCalledWith(expect.objectContaining({ callToAction: 'Visit joes.com' }))

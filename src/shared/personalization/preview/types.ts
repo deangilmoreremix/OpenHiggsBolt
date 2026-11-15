@@ -209,6 +209,8 @@ export interface PreviewInputProps {
     cta: string
     phone: string
     website: string
+    /** Optional extra end-card line (email / @handle) built from found contact details. */
+    contactExtra?: string
     logoUrl: string | null
     productUrl: string | null
     serviceUrl: string | null

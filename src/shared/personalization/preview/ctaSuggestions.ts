@@ -5,6 +5,8 @@
  * and tests share one source of truth.
  */
 
+import { describeHours } from '../../../server/businessEnrichment/openingHours'
+
 export interface CtaInput {
   phone?: string
   website?: string
@@ -75,7 +77,22 @@ export function buildCtaSuggestions(input: CtaInput): CtaSuggestion[] {
   if (handle) out.push({ id: 'instagram', label: 'Instagram', text: `Follow @${handle}`, source: 'Instagram profile' })
   const hours = input.openingHours?.trim()
   if (hours && hours.length <= MAX_HOURS && !/[<>]/.test(hours)) {
-    out.push({ id: 'hours', label: 'Opening hours', text: `Open ${hours}`, source: 'Opening hours' })
+    // Readable wording when the hours parse cleanly; otherwise the business's own text, unchanged.
+    const readable = describeHours(hours)
+    out.push({ id: 'hours', label: 'Opening hours', text: readable ? `Open ${readable}` : `Open ${hours}`, source: 'Opening hours' })
   }
   return out
+}
+
+/**
+ * Extra end-card contact line: email and @handle, only when present and valid.
+ * Reuses the same validators as the CTA suggestions so both agree on what is real.
+ */
+export function endCardExtraLine(input: { email?: string; instagram?: string }): string {
+  const parts: string[] = []
+  const email = input.email?.trim()
+  if (email && email.length <= MAX_EMAIL && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) parts.push(email)
+  const handle = instagramHandle(input.instagram)
+  if (handle) parts.push(`@${handle}`)
+  return parts.join('   ·   ')
 }

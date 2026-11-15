@@ -128,3 +128,41 @@ export function openStatus(raw: string | undefined, region: string | undefined, 
   const open = today === true || yesterdaySpill === true
   return { state: open ? 'open' : 'closed' }
 }
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const clock = (min: number): string => {
+  const h24 = Math.floor(min / 60) % 24
+  const m = min % 60
+  const h = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h24 < 12 ? 'am' : 'pm'}`
+}
+function dayLabel(days: number[]): string {
+  const set = [...new Set(days)].sort((a, b) => a - b)
+  if (set.length === 7) return 'daily'
+  // Mon-first ordering so Mon–Sat reads as a range.
+  const order = set.map((d) => (d + 6) % 7).sort((a, b) => a - b)
+  const contiguous = order.every((d, i) => i === 0 || d === order[i - 1] + 1)
+  const name = (monFirst: number) => DAY_NAMES[(monFirst + 1) % 7]
+  if (order.length > 2 && contiguous) return `${name(order[0])}–${name(order[order.length - 1])}`
+  return order.map(name).join(', ')
+}
+
+/**
+ * Short human wording for published hours, e.g. "Mon–Sat 9 am–5 pm". Returns null
+ * whenever the hours can't be parsed or are too complex to summarise faithfully
+ * (callers then show nothing rather than a guess).
+ */
+export function describeHours(raw: string | undefined): string | null {
+  const parsed = parseOpeningHours(raw)
+  if (!parsed) return null
+  if (parsed === '24/7') return 'open 24/7'
+  const open = parsed.filter((r) => r.ranges !== 'off')
+  if (open.length === 0 || open.length > 2) return null
+  const parts: string[] = []
+  for (const rule of open) {
+    if (rule.ranges === 'off' || rule.ranges.length !== 1) return null
+    const [a, b] = rule.ranges[0]
+    parts.push(`${dayLabel(rule.days)} ${clock(a)}–${clock(b)}`)
+  }
+  return parts.join(', ')
+}

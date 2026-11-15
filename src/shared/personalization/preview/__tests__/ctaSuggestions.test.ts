@@ -33,7 +33,7 @@ describe('buildCtaSuggestions', () => {
     expect(byId.visit.text).toBe('Visit joes.com')
     expect(byId.email.text).toBe('Email hi@joes.com')
     expect(byId.instagram.text).toBe('Follow @joes_pizza')
-    expect(byId.hours.text).toBe('Open Mo-Sa 09:00-17:00')
+    expect(byId.hours.text).toBe('Open Mon–Sat 9 am–5 pm')
     expect(s.every((x) => x.source.length > 0)).toBe(true)
   })
   it('puts the strongest local-business call first', () => {
@@ -47,5 +47,27 @@ describe('buildCtaSuggestions', () => {
       phone: 'call me maybe',
     })
     expect(s).toEqual([])
+  })
+})
+
+import { endCardExtraLine } from '../ctaSuggestions'
+describe('endCardExtraLine', () => {
+  it('joins a valid email and handle, drops junk, and is empty with nothing', () => {
+    expect(endCardExtraLine({ email: 'hi@joes.com', instagram: 'https://instagram.com/joes_pizza' })).toBe('hi@joes.com   ·   @joes_pizza')
+    expect(endCardExtraLine({ email: 'nope', instagram: 'https://instagram.com/p/xyz' })).toBe('')
+    expect(endCardExtraLine({})).toBe('')
+  })
+})
+
+import { describeHours } from '../../../../server/businessEnrichment/openingHours'
+describe('describeHours', () => {
+  it('summarises simple hours and refuses complex ones', () => {
+    expect(describeHours('Mo-Sa 09:00-17:00')).toBe('Mon–Sat 9 am–5 pm')
+    expect(describeHours('24/7')).toBe('open 24/7')
+    expect(describeHours('Mo-Fr 08:30-12:00; Sa 10:00-14:00')).toBe('Mon–Fri 8:30 am–12 pm, Sat 10 am–2 pm')
+    expect(describeHours('Mo-Su 09:00-17:00')).toBe('daily 9 am–5 pm')
+    expect(describeHours('Mo-Fr 09:00-12:00,13:00-17:00')).toBeNull()
+    expect(describeHours('Mo-Su sunrise-sunset')).toBeNull()
+    expect(describeHours('')).toBeNull()
   })
 })

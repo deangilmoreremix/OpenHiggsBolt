@@ -217,6 +217,25 @@ const EndCard: React.FC<{
           {contactLine}
         </div>
       ) : null}
+      {brand.contactExtra ? (
+        <div
+          data-testid="pz-endcard-extra"
+          style={{
+            fontFamily: fontStackById(),
+            color: onPrimary,
+            fontSize: Math.round(settings.height * 0.028),
+            fontWeight: 600,
+            lineHeight: 1.2,
+            letterSpacing: '0.02em',
+            textAlign: 'center',
+            width: '90%',
+            wordBreak: 'break-word',
+            ...item(2),
+          }}
+        >
+          {brand.contactExtra}
+        </div>
+      ) : null}
       {ctaText ? (
         <div style={{ width: '100%', textAlign: 'center', ...item(3) }}>
           <span
