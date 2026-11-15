@@ -2,6 +2,7 @@ import { useState } from 'react';
 import registry from '../skills/registry.json';
 import { useRouter } from 'next/navigation';
 import { setPendingRecipe } from '../lib/skillStore';
+import SkillRunner from './SkillRunner';
 import PromptLibrary from './PromptLibrary';
 
 const CATEGORIES = ['all', 'visual', 'motion', 'social', 'edit', 'workflow'];
@@ -18,6 +19,7 @@ const CATEGORY_LABELS = {
 export default function SkillsBrowser({ apiKey }) {
   const router = useRouter();
   const [activeCat, setActiveCat] = useState('all');
+  const [runnerSkill, setRunnerSkill] = useState(null);
   const [view, setView] = useState('skills');
 
   const skills = (registry.skills || []).filter((s) => !s.hidden);
@@ -103,7 +105,14 @@ export default function SkillsBrowser({ apiKey }) {
             </div>
 
             <div className="mt-auto pt-4">
-              {(
+              {skill.kind === 'workflow' ? (
+                <button
+                  onClick={() => setRunnerSkill(skill)}
+                  className="w-full rounded-md border border-[#22d3ee]/40 bg-[#22d3ee]/10 px-3 py-2 text-sm font-semibold text-[#22d3ee] transition hover:bg-[#22d3ee]/20"
+                >
+                  Run workflow
+                </button>
+              ) : (
                 <button
                   onClick={() => {
                     setPendingRecipe(skill.slug, skill.studio);
@@ -119,6 +128,13 @@ export default function SkillsBrowser({ apiKey }) {
         ))}
       </div>
 
+      {runnerSkill && (
+        <SkillRunner
+          skill={runnerSkill}
+          apiKey={apiKey}
+          onClose={() => setRunnerSkill(null)}
+        />
+      )}
         </>
       )}
     </div>

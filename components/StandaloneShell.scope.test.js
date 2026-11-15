@@ -22,6 +22,18 @@ describe('SmartVideo parity scope', () => {
     expect(index).toContain('AppsStudio');
   });
 
+  it('routes the studios\' Recipes button (/studio/skills) to the Skills browser', () => {
+    const shell = fs.readFileSync(shellPath, 'utf8');
+    const index = fs.readFileSync(indexPath, 'utf8');
+    const image = fs.readFileSync(path.resolve(process.cwd(), 'packages/studio/src/components/ImageStudio.jsx'), 'utf8');
+
+    expect(image).toContain('router.push("/studio/skills")');
+    expect(shell).toMatch(/SLUG_TO_TAB[\s\S]*?\bskills: 'skills'/);
+    expect(shell).toContain("loadStudio('SkillsBrowser')");
+    expect(shell).toContain("activeTab === 'skills'");
+    expect(index).toContain('SkillsBrowser');
+  });
+
   it('keeps tenant branding logic out of active SmartVideo surfaces', () => {
     const shell = fs.readFileSync(shellPath, 'utf8').toLowerCase();
     const designAgent = fs.readFileSync(designAgentPath, 'utf8').toLowerCase();

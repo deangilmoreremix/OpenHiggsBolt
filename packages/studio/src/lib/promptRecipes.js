@@ -53,6 +53,14 @@ export function buildParams(step, inputValues, stepOutputs) {
     return { url: resolveRef(ref.url, inputValues, stepOutputs), role: ref.role || null };
   });
   const urls = refs.map((r) => r.url).filter(Boolean);
+  if (step.type === 'clipping') {
+    // The clipping service takes a single source video, not an images_list.
+    return {
+      video_url: urls[0],
+      aspect_ratio: step.aspectRatio || '9:16',
+      num_highlights: step.numHighlights,
+    };
+  }
   if (urls.length > 0) {
     params.images_list = urls;
   }
@@ -72,13 +80,22 @@ function getUrl(result) {
   );
 }
 
-export async function runSkill(apiKey, skill, inputValues, onStep) {
+export async function runSkill(apiKey, skill, inputValues, onStep, options = {}) {
+  const { onApproval, signal } = options;
   const stepOutputs = [];
   for (let i = 0; i < skill.steps.length; i++) {
     const step = skill.steps[i];
+    if (signal?.aborted) throw new Error('Run cancelled');
     onStep(i, { status: 'running' });
     try {
-      if (step.type === 'approval' || step.type === 'script') {
+      if (step.type === 'approval') {
+        // Pause until the person approves the previous output; false = stop here.
+        const approved = onApproval ? await onApproval(i, step) : true;
+        if (!approved) throw new Error('Run stopped at approval step');
+        onStep(i, { status: 'done', note: step.note || '' });
+        continue;
+      }
+      if (step.type === 'script') {
         onStep(i, { status: 'done', note: step.note || '' });
         continue;
       }
@@ -103,13 +120,13 @@ export async function runSkill(apiKey, skill, inputValues, onStep) {
       } else if (step.type === 'audio') {
         result = await muapi.generateAudio(apiKey, params);
       } else if (step.type === 'character') {
-        result = await muapi.generateCharacterVideo(apiKey, params);
+        // generateCharacterVideo is a stub; character steps run as image-to-video.
+        result = await muapi.generateI2V(apiKey, params);
+      } else if (step.type === 'clipping') {
+        result = await muapi.runClipping(apiKey, params);
       } else {
-        // edit / clipping
-        result =
-          typeof muapi.runClipping === 'function'
-            ? await muapi.runClipping(apiKey, params)
-            : await muapi.generateI2I(apiKey, params);
+        // edit and any other step: image-to-image
+        result = await muapi.generateI2I(apiKey, params);
       }
       const url = getUrl(result);
       stepOutputs[i] = { url };

@@ -16,7 +16,6 @@ async function collectKnownIds() {
   const addList = (list) => {
     for (const m of list) {
       if (m?.id) ids.add(m.id);
-      if (m?.endpoint) ids.add(m.endpoint);
     }
   };
   const files = fs.readdirSync(srcDir).filter((f) => /Models\.js$/.test(f) || f === 'models.js');
@@ -29,6 +28,8 @@ async function collectKnownIds() {
   return ids;
 }
 
+// Recipes must use catalog model ids: the studios look recipes up by id, so an
+// endpoint-only name (e.g. gpt-image-2-image-to-image vs id gpt-image-2-edit) would not preselect a model.
 const known = await collectKnownIds();
 // Non-model service endpoints the studios call directly (e.g. submitAndPoll("ai-clipping", ...)).
 const muapiSrc = fs.readFileSync(path.join(srcDir, 'muapi.js'), 'utf8');

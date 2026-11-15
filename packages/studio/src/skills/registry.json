@@ -216,8 +216,8 @@
       "steps": [
         {
           "type": "i2v",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "16:9",
           "prompt": "Character reference sheet of {{character_description}}. Three views — front, 3/4, profile — on a neutral grey backdrop. Studio lighting, full body, no text overlays, photoreal. Asymmetric identifying details preserved on the correct side. {{style_direction}}.",
           "references": []
@@ -277,8 +277,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "ai-product-photography",
-          "endpoint": "ai-product-photography",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
           "aspectRatio": "1:1",
           "prompt": "Professional Amazon main listing hero image of {{product_name}}. Pure white background #FFFFFF. Product centered, perfectly lit with soft studio lighting, no shadows. High resolution, commercial product photography, sharp focus on all details, 2000x2000px equivalent quality.",
           "references": []
@@ -428,8 +428,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "16:9",
           "prompt": "publication_style",
           "references": []
@@ -483,8 +483,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "1:1",
           "prompt": "\"Minimalist logo for '{{brand_name}}', {{industry}} brand, {{personality}} personality. Clean vector-style, white background, professional. {{color_preference}}\".",
           "references": []
@@ -549,8 +549,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt4o-edit",
-          "endpoint": "gpt4o-edit",
+          "model": "gpt-image-2-edit",
+          "endpoint": "gpt-image-2-edit",
           "aspectRatio": "2:3",
           "prompt": "Professional {{format}} brochure FRONT COVER for {{brand_name}} — {{topic}}. {{style}} design, {{color_scheme}} color scheme. Bold headline area, hero image, brand name prominently displayed, luxury print-quality design. A4 portrait format, high resolution, commercial print ready. Clean professional layout.",
           "references": []
@@ -679,8 +679,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-image-to-image",
-          "endpoint": "gpt-image-2-image-to-image",
+          "model": "gpt-image-2-edit",
+          "endpoint": "gpt-image-2-edit",
           "aspectRatio": "9:16",
           "prompt": "person_image",
           "references": []
@@ -739,8 +739,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-image-to-image",
-          "endpoint": "gpt-image-2-image-to-image",
+          "model": "gpt-image-2-edit",
+          "endpoint": "gpt-image-2-edit",
           "aspectRatio": "16:9",
           "prompt": "person_image",
           "references": []
@@ -1248,8 +1248,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "4:3",
           "prompt": "A professional wide-angle photograph of a completely empty {{room_type}} with {{design_style}} architecture. Large windows with natural light, clean wooden or tiled flooring, white or neutral-colored walls, no furniture, high ceiling. High-quality architectural photography, cinematic look.",
           "references": []
@@ -1575,8 +1575,8 @@
       "steps": [
         {
           "type": "i2v",
-          "model": "ai-product-photography",
-          "endpoint": "ai-product-photography",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
           "aspectRatio": "1:1",
           "prompt": "{{product_name}} — perfectly centered FRONT VIEW, eye-level angle. {{background_style}} background. {{lighting}}. Sharp focus, commercial product photography, ultra detailed, no props.",
           "references": []
@@ -2295,8 +2295,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "9:16",
           "prompt": "A natural, candid UGC-style photo of the influencer from the first reference image holding and showcasing the product from the second reference image. Smiling genuinely at the camera, natural indoor lighting, lifestyle aesthetic, high quality.",
           "references": [
@@ -2515,8 +2515,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt4o-edit",
-          "endpoint": "gpt4o-edit",
+          "model": "gpt-image-2-edit",
+          "endpoint": "gpt-image-2-edit",
           "aspectRatio": "9:16",
           "prompt": "Professional UI/UX redesign of a {{page_type}} for the website at {{url}}. {{redesign_style}} design. Modern web design, 2025 aesthetic. Includes: hero section with clear headline and CTA button, features/benefits section, social proof, clean footer. Pixel-perfect, Figma-quality mockup. Desktop viewport, 1440px width design.",
           "references": []
@@ -2569,7 +2569,7 @@
       "inputs": [
         {
           "name": "source_video",
-          "type": "image_url",
+          "type": "video_url",
           "required": true,
           "default": "",
           "label": "Video URL"
@@ -2626,8 +2626,8 @@
       "steps": [
         {
           "type": "image",
-          "model": "gpt-image-2-text-to-image",
-          "endpoint": "gpt-image-2-text-to-image",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
           "aspectRatio": "16:9",
           "prompt": "channel_style",
           "references": []
