@@ -99,8 +99,8 @@ export function buildPreviewInput(
       cta: callToAction,
       phone: clientForm.phone || '',
       website,
-      ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram })
-        ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram }) }
+      ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction })
+        ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction }) }
         : {}),
       logoUrl: firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url),
       productUrl: firstUrl(assets.products?.[0]?.uploadedUrl, assets.products?.[0]?.url),

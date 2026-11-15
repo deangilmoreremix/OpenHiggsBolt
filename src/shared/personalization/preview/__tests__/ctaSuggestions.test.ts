@@ -82,3 +82,13 @@ describe('ratingLine', () => {
     expect(ratingLine(null)).toBe('')
   })
 })
+
+describe('endCardExtraLine does not repeat the call to action', () => {
+  it('drops the email / handle the CTA already shows', () => {
+    const input = { email: 'hi@joes.com', instagram: '@joes_pizza' }
+    expect(endCardExtraLine({ ...input, cta: 'Email hi@joes.com' })).toBe('@joes_pizza')
+    expect(endCardExtraLine({ ...input, cta: 'Follow @JOES_PIZZA' })).toBe('hi@joes.com')
+    expect(endCardExtraLine({ ...input, cta: 'Email hi@joes.com Follow @joes_pizza' })).toBe('')
+    expect(endCardExtraLine({ ...input, cta: 'Call 555-0100' })).toBe('hi@joes.com   ·   @joes_pizza')
+  })
+})

@@ -88,12 +88,14 @@ export function buildCtaSuggestions(input: CtaInput): CtaSuggestion[] {
  * Extra end-card contact line: email and @handle, only when present and valid.
  * Reuses the same validators as the CTA suggestions so both agree on what is real.
  */
-export function endCardExtraLine(input: { email?: string; instagram?: string }): string {
+export function endCardExtraLine(input: { email?: string; instagram?: string; cta?: string }): string {
+  const cta = (input.cta ?? '').toLowerCase()
   const parts: string[] = []
   const email = input.email?.trim()
-  if (email && email.length <= MAX_EMAIL && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) parts.push(email)
+  if (email && email.length <= MAX_EMAIL && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !cta.includes(email.toLowerCase())) parts.push(email)
   const handle = instagramHandle(input.instagram)
-  if (handle) parts.push(`@${handle}`)
+  // Not repeated when the call to action already says it (e.g. "Follow @handle").
+  if (handle && !cta.includes(`@${handle}`.toLowerCase())) parts.push(`@${handle}`)
   return parts.join('   ·   ')
 }
 
