@@ -1,6 +1,5 @@
 'use client';
 import { useRef } from 'react';
-import Link from 'next/link';
 import LazyVideo from './LazyVideo';
 import Magnetic from './fx/Magnetic';
 import { useCinematicHero } from './fx/useCinematicHero';
@@ -75,12 +74,12 @@ export default function SeedancePromptsHero() {
               </a>
             </Magnetic>
             <Magnetic className="w-full sm:w-auto">
-              <Link
+              <a
                 href="#smartvideo-gallery-all"
                 className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto"
               >
                 Watch More
-              </Link>
+              </a>
             </Magnetic>
           </div>
         </div>

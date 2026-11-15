@@ -31,6 +31,39 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
   return el.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
 }
 
+/** How long after landing a jump keeps the target aligned while sections settle. */
+const SETTLE_MS = 2000;
+
+/**
+ * After a jump lands, freshly mounted sections above the target can still
+ * change height for a moment (media, carousels measuring themselves), which
+ * would push the target off its spot. Re-align it until things settle, and
+ * stop as soon as the visitor scrolls, touches, clicks or types.
+ */
+function keepAligned(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
+  const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+    stopEvents.forEach((ev) => window.removeEventListener(ev, stop));
+  };
+  stopEvents.forEach((ev) => window.addEventListener(ev, stop, { passive: true }));
+  const end = performance.now() + SETTLE_MS;
+  const check = () => {
+    if (stopped) return;
+    if (performance.now() > end) return stop();
+    const top = targetTop(el, lenis, extraOffset);
+    const current = lenis ? lenis.animatedScroll : window.scrollY;
+    if (Math.abs(top - current) > 4) {
+      // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
+      if (lenis) lenis.scrollTo(top, { immediate: true });
+      else window.scrollTo({ top, behavior: 'instant' });
+    }
+    window.setTimeout(check, 150);
+  };
+  check();
+}
+
 /**
  * Scroll to an element, smoothly when Lenis is running and natively otherwise.
  * `extraOffset` is added on top of the header height (e.g. for another sticky bar).
@@ -44,25 +77,18 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
       if (!el) return;
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (lenis) {
-        // Media inside the mounted sections can still change their height
-        // during the glide, so correct once at the end if the target moved.
-        lenis.scrollTo(targetTop(el, lenis, extraOffset), {
-          onComplete: () => {
-            const top = targetTop(el, lenis, extraOffset);
-            if (Math.abs(top - lenis.animatedScroll) > 4) lenis.scrollTo(top, { immediate: true });
-          },
-        });
+        lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el, lenis, extraOffset) });
       } else {
-        window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'auto' : 'smooth' });
-        // Same end-of-scroll correction where the browser reports scrollend.
-        window.addEventListener(
-          'scrollend',
-          () => {
-            const top = targetTop(el, null, extraOffset);
-            if (Math.abs(top - window.scrollY) > 4) window.scrollTo({ top, behavior: 'auto' });
-          },
-          { once: true },
-        );
+        window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'instant' : 'smooth' });
+        // Where the browser doesn't report scrollend, start after a typical glide.
+        let started = false;
+        const start = () => {
+          if (started) return;
+          started = true;
+          keepAligned(el, null, extraOffset);
+        };
+        window.addEventListener('scrollend', start, { once: true });
+        window.setTimeout(start, reduced ? 0 : 1200);
       }
     }),
   );
