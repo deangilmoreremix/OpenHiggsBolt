@@ -37,3 +37,31 @@ export function parseTemplateId(templateId: string): { sourceRepo: string; slug:
   if (!sourceRepo || !slug) return undefined;
   return { sourceRepo, slug };
 }
+
+// The industry sections also show demos from the Seedance 2.0 prompt catalog,
+// which is too large to bundle here. Their records are in the generated
+// niche file; load it on demand (its own chunk) only when a lookup misses the
+// core catalogs above.
+let extraIndex: Promise<{ byId: Map<string, VideoDemo>; bySlug: Map<string, VideoDemo> }> | null = null;
+function loadExtraIndex() {
+  extraIndex ??= import('./nicheDemos.generated').then(({ NICHE_DEMOS }) => {
+    const byId = new Map<string, VideoDemo>();
+    const bySlug = new Map<string, VideoDemo>();
+    for (const demo of Object.values(NICHE_DEMOS).flat()) {
+      byId.set(`${demo.sourceRepo}|${demo.slug}`, demo);
+      if (demo.slug && !bySlug.has(demo.slug)) bySlug.set(demo.slug, demo);
+    }
+    return { byId, bySlug };
+  });
+  return extraIndex;
+}
+
+/** Like findDemoBySlug, but also resolves the industry sections' extra demos. */
+export async function resolveDemoBySlug(slug: string): Promise<VideoDemo | undefined> {
+  return findDemoBySlug(slug) ?? (await loadExtraIndex()).bySlug.get(slug);
+}
+
+/** Like findDemoById, but also resolves the industry sections' extra demos. */
+export async function resolveDemoById(templateId: string): Promise<VideoDemo | undefined> {
+  return findDemoById(templateId) ?? (await loadExtraIndex()).byId.get(templateId);
+}

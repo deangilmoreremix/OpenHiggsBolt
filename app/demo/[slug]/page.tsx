@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { findDemoBySlug } from '@/data/demoLookup';
+import { findDemoBySlug, resolveDemoBySlug } from '@/data/demoLookup';
 import type { VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from '@/components/landing/VideoCreateTargetPicker';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization';
@@ -24,7 +24,22 @@ function DemoDetailPageInner() {
   const router = useRouter();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
 
-  const demo = slug ? findDemoBySlug(slug) : null;
+  // Core catalogs resolve immediately; the industry sections' extra demos
+  // load on demand (undefined = still looking, null = not found).
+  const coreDemo = slug ? findDemoBySlug(slug) : undefined;
+  const [extraDemo, setExtraDemo] = useState<VideoDemo | null | undefined>(undefined);
+  useEffect(() => {
+    if (coreDemo || !slug) return;
+    let live = true;
+    resolveDemoBySlug(slug).then((d) => {
+      if (live) setExtraDemo(d ?? null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [slug, coreDemo]);
+  const demo = coreDemo ?? extraDemo ?? null;
+  const resolving = !coreDemo && !!slug && extraDemo === undefined;
 
   const [showCreatePicker, setShowCreatePicker] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -83,6 +98,14 @@ function DemoDetailPageInner() {
       document.body.style.overflow = prevOverflow;
     };
   }, [demo]);
+
+  if (resolving) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505]" aria-busy="true">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
+      </div>
+    );
+  }
 
   if (!demo) {
     return (
