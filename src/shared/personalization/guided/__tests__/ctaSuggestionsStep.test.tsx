@@ -64,4 +64,13 @@ describe('Step 3 call-to-action suggestions', () => {
     await act(async () => (view.querySelector('[data-testid="pz-cta-suggestion-visit"]') as HTMLButtonElement).click())
     expect(ctx.updateClientForm).toHaveBeenCalledWith(expect.objectContaining({ callToAction: 'Visit joes.com' }))
   })
+
+  it('prefers the email and Instagram found on the business website (profile) over the listing', async () => {
+    const view = await render({
+      clientForm: { email: 'found@joes.com', instagram: 'https://instagram.com/found_joes' },
+      selectedBusiness: { email: 'listing@joes.com', instagram: 'https://instagram.com/listing_joes' },
+    })
+    const texts = Array.from(view.querySelectorAll('[data-testid^="pz-cta-suggestion-"]')).map((c) => c.textContent)
+    expect(texts).toEqual(['Email found@joes.com', 'Follow @found_joes'])
+  })
 })

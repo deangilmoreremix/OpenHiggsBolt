@@ -134,8 +134,8 @@ export function StepPersonalize({
   const ctaSuggestions = buildCtaSuggestions({
     phone: clientForm.phone || selectedBusiness?.phone,
     website: clientForm.website || selectedBusiness?.website,
-    email: selectedBusiness?.email,
-    instagram: selectedBusiness?.instagram,
+    email: clientForm.email || selectedBusiness?.email,
+    instagram: clientForm.instagram || selectedBusiness?.instagram,
     openingHours: selectedBusiness?.openingHours,
   })
 
