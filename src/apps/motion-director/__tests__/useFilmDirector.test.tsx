@@ -44,6 +44,8 @@ vi.mock('../lib/directorClient', async (orig) => {
 let guidedOn = true;
 
 import { useFilmDirector } from '../components/useFilmDirector';
+import { completeStage, newRun, startStage } from '../lib/productionRun';
+import { saveCheckpoint } from '../lib/runStore';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
@@ -234,6 +236,21 @@ describe('useFilmDirector', () => {
     expect(result.current.stage).toBe('idle');
     expect(result.current.storyboard).toBeNull();
     expect(result.current.messages).toEqual([]);
+  });
+
+  it('reset (session switch) clears a pending resume offer', async () => {
+    let r = newRun('make a film', 'autonomous', 1000);
+    r = completeStage(r, { stage: 'brief', productName: 'Acme', kind: 'software', features: ['x'], objective: 'sell' });
+    r = completeStage(r, { stage: 'direction', chosen: 'Ink' });
+    r = completeStage(r, { stage: 'mapping', rows: [{ feature: 'f', firstShot: 's' }] });
+    r = completeStage(r, { stage: 'storyboard', scenes: 3, failedChecks: [] });
+    r = startStage(r, 'assets');
+    saveCheckpoint({ run: r, request: { prompt: 'p', aspectRatio: '16:9', template: 'director' }, storyboard: { plan: { title: 't', scenes: [{ recipeId: 'x' }] } as never, capture: null, source: 'director', media: [] }, adapted: [] } as never);
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    await flush();
+    expect(result.current.resumeOffer).not.toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.resumeOffer).toBeNull();
   });
 
   it('revising a one-shot film swaps the shot', async () => {

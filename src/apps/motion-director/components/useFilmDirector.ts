@@ -1023,6 +1023,7 @@ export function useFilmDirector(opts: {
   const reset = useCallback(() => {
     gen.current++;
     clearCheckpoint();
+    setResumeOffer(null);
     adaptedRef.current = [];
     resumeJob.current = null;
     pending.current = null;
