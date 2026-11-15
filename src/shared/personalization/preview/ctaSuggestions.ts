@@ -96,3 +96,14 @@ export function endCardExtraLine(input: { email?: string; instagram?: string }):
   if (handle) parts.push(`@${handle}`)
   return parts.join('   ·   ')
 }
+
+/**
+ * "4.8 ★ · 120 reviews" from a rating the business's own page publishes (normalised to a 5-star scale).
+ * Returns '' for anything implausible, so no line is ever shown from bad data.
+ */
+export function ratingLine(rating: { value: number; count: number; best: number } | null | undefined): string {
+  if (!rating || !(rating.best > 0) || !(rating.value > 0) || rating.value > rating.best) return ''
+  if (!Number.isInteger(rating.count) || rating.count < 1) return ''
+  const stars = Math.round((rating.value / rating.best) * 5 * 10) / 10
+  return `${stars.toFixed(1)} ★ · ${rating.count} ${rating.count === 1 ? 'review' : 'reviews'}`
+}

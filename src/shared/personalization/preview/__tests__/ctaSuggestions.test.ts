@@ -71,3 +71,14 @@ describe('describeHours', () => {
     expect(describeHours('')).toBeNull()
   })
 })
+
+import { ratingLine } from '../ctaSuggestions'
+describe('ratingLine', () => {
+  it('formats on a 5-star scale and refuses bad data', () => {
+    expect(ratingLine({ value: 4.8, count: 120, best: 5 })).toBe('4.8 ★ · 120 reviews')
+    expect(ratingLine({ value: 9, count: 1, best: 10 })).toBe('4.5 ★ · 1 review')
+    expect(ratingLine({ value: 6, count: 10, best: 5 })).toBe('')
+    expect(ratingLine({ value: 4, count: 0, best: 5 })).toBe('')
+    expect(ratingLine(null)).toBe('')
+  })
+})

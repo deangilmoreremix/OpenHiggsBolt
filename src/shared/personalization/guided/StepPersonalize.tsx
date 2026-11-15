@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
-import { buildCtaSuggestions } from '../preview/ctaSuggestions'
+import { buildCtaSuggestions, ratingLine } from '../preview/ctaSuggestions'
 import { designPrimarySlotUpdates } from '../preview/designSlots'
 import { C, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
 import { ColorField } from './editor/ColorField'
@@ -139,6 +139,9 @@ export function StepPersonalize({
     openingHours: selectedBusiness?.openingHours,
   })
 
+  const foundRating = ctx.foundSignals?.rating
+  const foundRatingLine = ratingLine(foundRating)
+
   const setField = (field: keyof ClientProfile, value: string, layerKind: PreviewLayerKind) => {
     updateClientForm({ ...clientForm, [field]: value })
     const layer = layers.find((item) => item.kind === layerKind)
@@ -228,6 +231,17 @@ export function StepPersonalize({
               style={inputStyle}
             />
             <p style={hintStyle}>Optional — leave it empty if you would rather not show one.</p>
+            {foundRatingLine && foundRating && (
+              <button
+                type="button"
+                data-testid="pz-rating-chip"
+                title={`Published on ${foundRating.sourceUrl}`}
+                onClick={() => setField('brandDescription', foundRatingLine, 'tagline')}
+                style={{ ...softPanelStyle, cursor: 'pointer', padding: '3px 9px', fontSize: 11, color: C.text, marginTop: 4 }}
+              >
+                Use “{foundRatingLine}” — from their website
+              </button>
+            )}
           </div>
           <div>
             <label style={labelStyle} htmlFor="guided-offer">Offer (optional)</label>

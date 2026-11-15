@@ -73,4 +73,15 @@ describe('Step 3 call-to-action suggestions', () => {
     const texts = Array.from(view.querySelectorAll('[data-testid^="pz-cta-suggestion-"]')).map((c) => c.textContent)
     expect(texts).toEqual(['Email found@joes.com', 'Follow @found_joes'])
   })
+
+  it('offers the site-published rating as the tagline, and nothing without one', async () => {
+    const without = await render({})
+    expect(without.querySelector('[data-testid="pz-rating-chip"]')).toBeNull()
+    act(() => root?.unmount()); container?.remove()
+    const view = await render({ foundSignals: { rating: { value: 4.76, count: 120, best: 5, sourceUrl: 'https://joes.com/' } } })
+    const chip = view.querySelector('[data-testid="pz-rating-chip"]') as HTMLButtonElement
+    expect(chip.textContent).toContain('4.8 ★ · 120 reviews')
+    await act(async () => chip.click())
+    expect(ctx.updateClientForm).toHaveBeenCalledWith(expect.objectContaining({ brandDescription: '4.8 ★ · 120 reviews' }))
+  })
 })

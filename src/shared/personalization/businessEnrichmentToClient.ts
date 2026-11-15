@@ -41,6 +41,8 @@ export function enrichmentToAutoFill(enrichment: BusinessEnrichment | null | und
 export interface FoundSignals {
   booking?: { sourceUrl: string; provider?: string }
   hasVideo?: boolean
+  /** The rating the business's own page publishes. */
+  rating?: { value: number; count: number; best: number; sourceUrl: string }
 }
 
 export function foundSignalsOf(enrichment: BusinessEnrichment | null | undefined): FoundSignals {
@@ -49,5 +51,6 @@ export function foundSignalsOf(enrichment: BusinessEnrichment | null | undefined
   const out: FoundSignals = {}
   if (sig.booking) out.booking = { sourceUrl: sig.booking.sourceUrl, ...(sig.booking.provider ? { provider: sig.booking.provider } : {}) }
   if (sig.video) out.hasVideo = true
+  if (sig.rating) out.rating = { ...sig.rating }
   return out
 }
