@@ -97,6 +97,7 @@ import { isOwnedWebsite, nonOwnedWebsiteMessage } from './websiteClassification'
 import { enrichmentToAutoFill, foundSignalsOf, type ContactSources, type FoundSignals } from './businessEnrichmentToClient'
 import { uploadPersonalizationAsset } from './assetUploadService'
 import { cancelActiveExport } from './webExport'
+import { ALL_ASPECT_RATIOS, exportAllAspects } from './exportAllAspects'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
@@ -744,6 +745,17 @@ export interface ImportDiscoveredAssetsOptions {
   section?: AssignedSection
 }
 
+export interface ShapeExportItem {
+  aspect: string
+  status: 'waiting' | 'rendering' | 'done' | 'failed' | 'cancelled'
+  progress: number
+  error?: string
+}
+export interface ShapeExportState {
+  status: 'idle' | 'running' | 'finished'
+  items: ShapeExportItem[]
+}
+
 export type DemoPersonalizeContextValue = {
   // Modal
   isOpen: boolean
@@ -1062,6 +1074,10 @@ export type DemoPersonalizeContextValue = {
    /** Why the last `setRemotionDesign` call failed, or null. */
    remotionDesignError: string | null
    previewApproved: boolean
+  /** One-click export of every video shape (16:9, 9:16, 1:1, 4:5) in the browser. */
+  shapeExport: ShapeExportState
+  exportAllShapes: () => Promise<void>
+  cancelShapeExport: () => void
   /** The approval was cleared by a later change (approve again). */
   approvalStale?: boolean
    approvePersonalization: () => void
@@ -1872,6 +1888,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [assets.presenterVideos, preRecastVideo, source?.sourceMedia, fitPreviewLengthToVideo])
   const [previewApproved, setPreviewApproved] = useState(false)
+  const [shapeExport, setShapeExport] = useState<ShapeExportState>({ status: 'idle', items: [] })
+  const shapeExportAbortRef = useRef<AbortController | null>(null)
   /** True when an approval was cleared because something changed after it. */
   const [approvalStale, setApprovalStale] = useState(false)
   /** Shown under the prompt when it was filled in without the AI. */
@@ -5991,6 +6009,43 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [previewApproved, approvalSignature])
 
+  const cancelShapeExport = useCallback(() => {
+    shapeExportAbortRef.current?.abort()
+    cancelActiveExport()
+  }, [])
+
+  const exportAllShapes = useCallback(async () => {
+    if (!previewApproved || shapeExportAbortRef.current) return
+    const controller = new AbortController()
+    shapeExportAbortRef.current = controller
+    const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
+    const items: ShapeExportItem[] = ALL_ASPECT_RATIOS.map((aspect) => ({ aspect, status: 'waiting', progress: 0 }))
+    const update = (aspect: string, patch: Partial<ShapeExportItem>) =>
+      setShapeExport((prev) => ({ ...prev, items: prev.items.map((i) => (i.aspect === aspect ? { ...i, ...patch } : i)) }))
+    setShapeExport({ status: 'running', items })
+    try {
+      const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
+      const stamp = Date.now().toString(36)
+      await exportAllAspects({
+        inputProps,
+        signal: controller.signal,
+        exportOne: (props, onProgress) => exportPersonalizedVideo({ inputProps: props, onProgress, signal: controller.signal }),
+        onProgress: ({ aspect, progress }) => update(aspect, { status: 'rendering', progress }),
+        onResult: ({ aspect, result }) => {
+          if (result.ok) {
+            downloadWebExportBlob(result.blob, `personalized-${aspect.replace(':', 'x')}-${stamp}.${result.extension}`)
+            update(aspect, { status: 'done', progress: 1 })
+          } else {
+            update(aspect, { status: result.reason === 'cancelled' ? 'cancelled' : 'failed', error: result.error })
+          }
+        },
+      })
+    } finally {
+      shapeExportAbortRef.current = null
+      setShapeExport((prev) => ({ status: 'finished', items: prev.items.map((i) => (i.status === 'waiting' ? { ...i, status: 'cancelled' } : i)) }))
+    }
+  }, [previewApproved, source, previewSettings, previewVideo, clientForm, assets])
+
   const createFinalVideo = useCallback(async (options?: { approveNow?: boolean }) => {
     lastRunWasFinalVideoRef.current = true
     const approved = previewApproved || options?.approveNow === true
@@ -6590,6 +6645,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     canRedoPreview: historyRef.current.future.length > 0,
     remotionDesignError,
     previewApproved,
+    shapeExport,
+    exportAllShapes,
+    cancelShapeExport,
     approvalStale,
     approvePersonalization,
      createFinalVideo,

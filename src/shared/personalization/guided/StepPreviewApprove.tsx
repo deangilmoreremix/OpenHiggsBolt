@@ -1,5 +1,6 @@
 'use client'
 
+import { ShapeExportPanel } from './ShapeExportPanel'
 import { suggestGoal } from '../templates/recommendations'
 import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
@@ -56,6 +57,9 @@ export function StepPreviewApprove(): React.JSX.Element {
     setAdvancedTab,
     setAdvancedSection,
     createFinalVideo,
+    shapeExport = { status: 'idle', items: [] },
+    exportAllShapes = async () => {},
+    cancelShapeExport = () => {},
     cancelExport,
     apiKey,
     generation,
@@ -396,6 +400,14 @@ export function StepPreviewApprove(): React.JSX.Element {
             </div>
           )}
         </div>
+        {isBrandedPath && previewApproved && (
+          <ShapeExportPanel
+            state={shapeExport}
+            disabled={generating || exportBlocked || rightsGate}
+            onStart={() => { void exportAllShapes() }}
+            onCancel={cancelShapeExport}
+          />
+        )}
         {generating && generation?.progressMessage && (
           <p style={{ ...hintStyle, marginTop: 8, color: C.cyan }}>{generation.progressMessage}</p>
         )}
