@@ -978,6 +978,8 @@ export function normalizeImageHints(raw: unknown): Record<string, ImageHints> | 
       if (h[k] === true) hint[k] = true
     }
     if (['product', 'service', 'portrait', 'property', 'portfolio', 'logo', 'general'].includes(h.role as string)) hint.role = h.role as ImageHints['role']
+    // A derived, padding-trimmed logo copy: only a bounded PNG data URL is accepted (never a remote or script URL).
+    if (typeof h.trimmedUrl === 'string' && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(h.trimmedUrl) && h.trimmedUrl.length <= 200_000) hint.trimmedUrl = h.trimmedUrl
     if (Object.keys(hint).length) out[url] = hint
   }
   return Object.keys(out).length ? out : undefined
