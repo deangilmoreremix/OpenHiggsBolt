@@ -2,6 +2,20 @@ import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog'
 import { BRAND_SCENES, isBrandScene, type DirectorPlan } from './directorPlan';
 import { isMusicTrack, projectEndFrame, type ClipData, type ProjectData } from '../types';
 
+/** A clip that is one of the storyboard's scenes: a recipe, the title card, or a brand scene. */
+export const isSceneCard = (cardId: string): boolean => cardId.startsWith('demo:') || cardId === 'inkpress-title-card' || Object.values(BRAND_SCENES).some((b) => b.cardId === cardId);
+
+/** The track the storyboard's scenes were built on: the one holding the most scene clips (a film of brand scenes only has no `demo:` clip). */
+export function sceneTrackOf(project: ProjectData): ProjectData['tracks'][number] | undefined {
+  let best: ProjectData['tracks'][number] | undefined;
+  let bestN = 0;
+  for (const t of project.tracks) {
+    const n = t.clips.filter((c) => isSceneCard(c.cardId)).length;
+    if (n > bestN) { best = t; bestN = n; }
+  }
+  return best;
+}
+
 /**
  * Does the built film match the storyboard that was approved? Returns the problems (empty when it does):
  * the same shots in the same order, one scene per storyboard scene, shots back to back, a seam where the storyboard
@@ -12,7 +26,7 @@ export function checkAssembly(project: ProjectData, plan: DirectorPlan, opts: { 
   const warnings: string[] = [];
   const clips = project.tracks.flatMap((t) => t.clips);
   const isShot = (c: ClipData) => c.cardId.startsWith('demo:') || c.cardId === 'inkpress-title-card' || c.cardId === 'video-clip' || Object.values(BRAND_SCENES).some((b) => b.cardId === c.cardId);
-  const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:') || c.cardId === 'inkpress-title-card'));
+  const shotTrack = sceneTrackOf(project);
   const shots = (shotTrack?.clips ?? []).filter(isShot).sort((a, b) => a.start - b.start);
 
   // One scene per storyboard scene (attached videos add their own).

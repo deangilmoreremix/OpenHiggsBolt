@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { planToProject } from '../lib/buildFilm';
-import { checkAssembly } from '../lib/filmAssembly';
+import { checkAssembly, sceneTrackOf } from '../lib/filmAssembly';
 import type { DirectorPlan } from '../lib/directorPlan';
 import type { ProjectData } from '../types';
 
@@ -58,5 +58,24 @@ describe('the built film is the storyboard that was approved', () => {
     const audio = p.tracks.flatMap((t) => t.clips).find((c) => c.cardId === 'audio-clip')!;
     audio.duration += 5000;
     expect(checkAssembly(p, plan).issues.join(' ')).toMatch(/run past the end/);
+  });
+});
+
+describe('a film of brand scenes only', () => {
+  const brandPlan: DirectorPlan = {
+    title: 'b', summary: '', palette,
+    scenes: [
+      { kind: 'shot', recipeId: 'brand/url-scan', durationSec: 4, headline: 'a', caption: 'b', transition: 'flash' },
+      { kind: 'shot', recipeId: 'brand/hub', durationSec: 4, headline: 'a', caption: 'b', transition: 'cut' },
+      { kind: 'shot', recipeId: 'brand/logo-reveal', durationSec: 3, headline: 'a', caption: 'b', transition: 'cut' },
+    ],
+  };
+  const p = planToProject(brandPlan, { aspectRatio: '16:9' });
+  it('the scene track is the one holding the brand scenes, not the transitions track', () => {
+    const t = sceneTrackOf(p)!;
+    expect(t.clips.map((c) => c.cardId)).toEqual(['brand-url-scan', 'brand-hub', 'brand-logo-reveal']);
+  });
+  it('is not reported as missing its scenes', () => {
+    expect(checkAssembly(p, brandPlan).issues.join(' ')).not.toMatch(/missing/);
   });
 });

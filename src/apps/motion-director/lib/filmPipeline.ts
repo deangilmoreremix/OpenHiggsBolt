@@ -19,7 +19,7 @@ import { t } from '../i18n';
 import { planToProject, unresolvedScenes, type FilmCapture } from './buildFilm';
 import { personalisesWithSite, captureQuality } from './captureQuality';
 import { layoutFromCapture } from './customerLayout';
-import { checkAssembly } from './filmAssembly';
+import { checkAssembly, sceneTrackOf } from './filmAssembly';
 import type { AdaptationOutcome } from './personalization';
 import { captureSite, fetchRecipeCard, requestDirections, requestFrameReview, requestMapping, requestPlan, requestRetext, DirectorError, type SiteCapture } from './directorClient';
 import { releaseCheck, releaseLine, type ReleaseItem } from './releaseCheck';
@@ -712,7 +712,7 @@ export async function checkFilmFrames(project: ProjectData, log: ActivityLog, bu
   } catch {
     return { checked: 0, failed: [], total: 0 };
   }
-  const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
+  const shotTrack = sceneTrackOf(project) ?? project.tracks[0];
   const frames = new Set<number>();
   // Upstream's three checks per shot: entering, at the peak, settled; plus the film's first and last frame.
   for (const c of shotTrack?.clips ?? []) {
