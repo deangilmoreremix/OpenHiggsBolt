@@ -31,7 +31,9 @@ if (process.env.HTTPS_PROXY) {
   );
 }
 
-const API = 'https://api.muapi.ai';
+// Existence checks and balance use this base; override with MUAPI_API_URL (the
+// generation helpers imported from muapi.js use their own base URL).
+const API = process.env.MUAPI_API_URL || 'https://api.muapi.ai';
 const KEY = opt('--key', process.env.MUAPI_API_KEY || 'proxy-injected');
 const MAX_SPEND = Number(opt('--max-spend', '1.5'));
 const generate = flag('--generate-images');

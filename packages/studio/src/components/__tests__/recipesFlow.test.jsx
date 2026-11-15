@@ -70,6 +70,19 @@ describe('Skills browser (page behind the Recipes button)', () => {
     expect(note.className).not.toContain('amber');
   });
 
+  it('closes the runner on Escape and on a backdrop click, but not on a click inside the panel', () => {
+    render(<SkillsBrowser apiKey="" />);
+    const dialog = openWorkflow('3D Logo Animation');
+    fireEvent.mouseDown(screen.getByTestId('cost-note')); // inside the panel
+    expect(screen.queryByRole('dialog')).not.toBeNull();
+    fireEvent.mouseDown(dialog); // backdrop
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    openWorkflow('3D Logo Animation');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('workflow recipes open the runner instead of a studio', () => {
     render(<SkillsBrowser apiKey="k" />);
     fireEvent.click(screen.getAllByText('Run workflow')[0]);

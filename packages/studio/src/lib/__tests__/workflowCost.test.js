@@ -49,6 +49,13 @@ describe('estimateWorkflowCost', () => {
     expect(await estimateWorkflowCost('key', skill('muapi-3d-logo-animation'), {}, estimate)).toBeNull();
   });
 
+  it('returns null when an estimate call hangs past the timeout', async () => {
+    const hang = vi.fn(() => new Promise(() => {}));
+    const started = Date.now();
+    expect(await estimateWorkflowCost('key', skill('muapi-3d-logo-animation'), {}, hang, 30)).toBeNull();
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it('returns null without an API key and for clipping workflows', async () => {
     const estimate = vi.fn();
     expect(await estimateWorkflowCost('', skill('muapi-3d-logo-animation'), {}, estimate)).toBeNull();

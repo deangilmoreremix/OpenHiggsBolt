@@ -141,6 +141,17 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
     onClose();
   }
 
+  // Escape closes the modal, like the Close button.
+  const closeRef = useRef(handleClose);
+  closeRef.current = handleClose;
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const previousUrl = (index) => {
     for (let i = index - 1; i >= 0; i--) if (steps[i]?.url) return steps[i].url;
     return '';
@@ -152,6 +163,10 @@ export default function SkillRunner({ skill, apiKey, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-label={skill.title || skill.name}
+      onMouseDown={(e) => {
+        // Backdrop click (not a click inside the panel) closes the modal.
+        if (e.target === e.currentTarget) handleClose();
+      }}
     >
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-[#0b0b0b] p-6">
         <div className="flex items-start justify-between gap-4">

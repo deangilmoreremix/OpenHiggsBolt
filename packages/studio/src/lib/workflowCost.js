@@ -49,7 +49,13 @@ export function formatUsd(amount) {
  * Returns null when any step cannot be estimated, so a partial sum is never
  * presented as the total.
  */
-export async function estimateWorkflowCost(apiKey, skill, values = {}, estimate = estimateModelCost) {
+export const ESTIMATE_TIMEOUT_MS = 8000;
+
+// A slow or hung estimate call must not leave the modal on "Estimating cost…".
+const withTimeout = (promise, ms) =>
+  Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+
+export async function estimateWorkflowCost(apiKey, skill, values = {}, estimate = estimateModelCost, timeoutMs = ESTIMATE_TIMEOUT_MS) {
   if (!apiKey) return null;
   // Clipping is billed by video length and has no per-model estimate: fall back to the static note.
   if ((skill?.steps || []).some((s) => s.type === 'clipping')) return null;
@@ -61,7 +67,7 @@ export async function estimateWorkflowCost(apiKey, skill, values = {}, estimate 
     const params = buildParams({ ...step, references: [] }, { ...values }, []);
     const { model: _model, ...payload } = params;
     if (!payload.prompt) payload.prompt = 'estimate';
-    const cost = await estimate(apiKey, modelId, { ...payload, _modelId: modelId });
+    const cost = await withTimeout(estimate(apiKey, modelId, { ...payload, _modelId: modelId }), timeoutMs);
     if (typeof cost !== 'number' || Number.isNaN(cost)) return null;
     total += cost;
   }
