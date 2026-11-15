@@ -1026,6 +1026,9 @@ export function useFilmDirector(opts: {
     gen.current++;
     clearCheckpoint();
     setResumeOffer(null);
+    // The previous film's run must not overlay its progress onto the new conversation's steps.
+    runRef.current = null;
+    setRun(null);
     adaptedRef.current = [];
     resumeJob.current = null;
     pending.current = null;

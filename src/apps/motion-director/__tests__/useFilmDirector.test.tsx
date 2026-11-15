@@ -238,6 +238,16 @@ describe('useFilmDirector', () => {
     expect(result.current.messages).toEqual([]);
   });
 
+  it('reset clears the previous film\'s run so its progress does not show in the next conversation', async () => {
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.run).not.toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.run).toBeNull();
+    expect(result.current.status).toBeNull();
+  });
+
   it('reset (session switch) clears a pending resume offer', async () => {
     let r = newRun('make a film', 'autonomous', 1000);
     r = completeStage(r, { stage: 'brief', productName: 'Acme', kind: 'software', features: ['x'], objective: 'sell' });
