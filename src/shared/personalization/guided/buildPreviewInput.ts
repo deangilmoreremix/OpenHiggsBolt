@@ -14,6 +14,7 @@ import type {
   PersonalizationSource,
 } from '../types'
 import type { ImageHints } from '../preview/imageStyle'
+import { endCardExtraLine } from '../preview/ctaSuggestions'
 import { imageRoleFromCategory } from '../preview/imagePresets'
 import { getCachedSamples } from '../preview/placement/frameSampler'
 import type {
@@ -98,6 +99,9 @@ export function buildPreviewInput(
       cta: callToAction,
       phone: clientForm.phone || '',
       website,
+      ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction })
+        ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction }) }
+        : {}),
       logoUrl: firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url),
       productUrl: firstUrl(assets.products?.[0]?.uploadedUrl, assets.products?.[0]?.url),
       serviceUrl: firstUrl(
