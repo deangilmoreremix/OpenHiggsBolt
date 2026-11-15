@@ -151,6 +151,8 @@ export function useFilmDirector(opts: {
   const [film, setFilm] = useState<BuiltFilm | null>(null);
   // The film this hook last installed, to tell whether a late review is still about the film on screen.
   const lastFilm = useRef<BuiltFilm | null>(null);
+  /** Bumped whenever a build or rebuild starts: a review started for an earlier film is stale (its answer is about a film that is being replaced). */
+  const filmEpoch = useRef(0);
   useEffect(() => {
     lastFilm.current = film;
   }, [film]);
@@ -742,6 +744,7 @@ export function useFilmDirector(opts: {
     // Stop aborts this: shot adaptation and frame QA run on it, so they end instead of running on unseen.
     const buildAbort = new AbortController();
     buildController.current = buildAbort;
+    filmEpoch.current++;
     setStage('building');
     mark('animate', 'active', 'Building the Remotion project');
     // A storyboard from an earlier session has no run in memory: start one so the build is recorded like any other.
@@ -828,6 +831,7 @@ export function useFilmDirector(opts: {
         say('assistant', `AI creative review: not performed (this film was created without AI, no model was called). ${runRef.current ? finalStatusLine(runRef.current) : ''} It can still be previewed, edited in the Workbench and exported as an MP4.`);
         return;
       }
+      const reviewEpoch = filmEpoch.current;
       void runFinalReview(project, {
         frame: async (p, f, signal) => stillToJpeg((await (await import('../webRenderer')).renderStillOnWebExport(p, f, signal, 0.25)).blob, 480),
         reference: fetchReferenceFrames,
@@ -836,7 +840,7 @@ export function useFilmDirector(opts: {
         .then((report) => {
           if (!live()) return;
           // The film was rebuilt (a scene edit) while this review ran: its answer is about the old film and is not recorded on the new one.
-          if (lastFilm.current !== built) return;
+          if (lastFilm.current !== built || reviewEpoch !== filmEpoch.current) return;
           // The reviewer answered: record what it found, with the shot and the second, and whether it passed.
           // A reviewer that returned no checks did not review anything: that is "did not run", never "passed".
           if (!report.items.length) {
@@ -884,7 +888,7 @@ export function useFilmDirector(opts: {
           // No key or no answer: the program's checks above stand, but say the review did not happen.
           if (!live()) return;
           // Same rule as the answer: a review of a film that was since rebuilt says nothing about the new one.
-          if (lastFilm.current !== built) return;
+          if (lastFilm.current !== built || reviewEpoch !== filmEpoch.current) return;
           log(`Final review skipped: ${error instanceof Error ? error.message : 'no answer'}`, 'error');
           upd((r) => completeStage(r, { stage: 'review', review: { ran: false, state: 'unavailable', findings: [], note: error instanceof Error ? error.message.slice(0, 80) : 'no answer' } }));
           say('assistant', `The independent review did not run (${error instanceof Error ? error.message : 'no answer'}), so this film is a draft that passed the technical checks, not a reviewed film. ${runRef.current ? finalStatusLine(runRef.current) : ''}`);
@@ -908,6 +912,7 @@ export function useFilmDirector(opts: {
     const media = storyboard.media ?? s.media;
     const abort = new AbortController();
     buildController.current = abort;
+    filmEpoch.current++;
     setStage('building');
     mark('animate', 'active', 'Rebuilding the changed scenes');
     upd((r) => startStage(r, 'build'));
