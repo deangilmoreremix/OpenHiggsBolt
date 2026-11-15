@@ -17,3 +17,36 @@ Method: upstream cloned and compared file-by-file with the vendored skill and `d
 | Remotion project export | NOT IMPLEMENTED | browser MP4 export only |
 
 Open: live AI behaviour (BLOCKED - NO AUTHORIZED KEY); the four README prompts were not each re-driven through the chat in this pass.
+
+---
+# Step-by-step comparison with the upstream workflow (SKILL.md + references/pipeline.md, read in full)
+
+Basis: upstream `SKILL.md` (286 lines) and `references/pipeline.md` (382 lines) were read in full; the vendored copy is byte-identical to upstream HEAD 6700db2. Our side was checked in code (greps and earlier rounds' tests). "Not run live" means the AI path (no OpenAI key here).
+
+## Modes (SKILL.md)
+| Upstream rule | Ours | Status |
+|---|---|---|
+| Three modes: Ink Press / autonomous / co-creation; do not merge them | `inkpress`, `autonomous`, `cocreate` (+ `single`, + our extra `local` = no AI) | MATCH (+1 extra mode) |
+| Naming Ink Press = mode already chosen, no question | "make a launch film ... with the Ink Press template" goes straight to Ink Press | MATCH |
+| Naming shot cards = shot constraint, only ask autonomous vs co-creation | user-named recipes are kept by the storyboard gate; single shot goes direct | MATCH in code, not re-run live |
+| Without a mode: read-only product check, then recommend a mode with reasons and ask | chat shows an offer stage with Ink Press / director / no-AI choices; the recommendation text is lighter than upstream's (no per-mode fit reasons) | PARTIAL |
+| Co-creation: confirmations at brief, decisions, direction, mapping, storyboard; "you decide" switches to autonomous | real approval boundaries; "you decide" switches mode keeping the brief | MATCH (tested offline) |
+
+## Stages 0-7 (pipeline.md)
+| Stage | Upstream | Ours | Status |
+|---|---|---|---|
+| 0 product understanding | brief + requirement-to-decision table, data-safety rules | `productBrief.ts` (business kind, decision table); real sites captured; no sensitive-data handling beyond the site's public pages | MATCH (AI brief not run live; deterministic fallback tested) |
+| 1 direction + HTML styleframes (<=3 directions, motion-personality tokens) | directions + styleframes rendered before mapping | `styleframes.ts`, direction stage recorded | MATCH structure; the brand-to-motion preset table (6 presets) is not a coded lookup |
+| 2 feature -> shot map, one technique used once as hero | `requestMapping`, release check | MATCH (AI map not run live) |
+| 3 storyboard, hold/rest budgets (wordmark hold >=1 s, 0.5 s rest, opener >=3 s), `sequences/` bridge templates, energy arc | `shotRules` (R4 whole-frame hits capped at 3, arc order), `fitNativeLengths` | PARTIAL: hit cap and arc exist; I found no explicit hold-budget rule and no use of `references/sequences` templates in code |
+| 4 final asset capture: 2x full page, element cutouts, layout.json, empty backplate | capture route returns screens, crops, layout, empty plate, logo, brand, assets (real run on connections.com) | MATCH |
+| 5 per shot: read card + exact demo TSX, keep tuned values, stills at 2 frames, deterministic, workbench manifest | cards + sources fetched and given to adaptation, `adaptLoop` gate, scene QA at entering/peak/settled (stricter than 2 frames), plain recipes keep upstream motion code untouched | MATCH (adaptation not run live); no `workbench.ts` parity script needed (Workbench is our own) |
+| 6 sound: Freesound SFX per project, relative pinned frames, BGM with/without versions | bundled SFX/BGM library, cues pinned to events (`soundRecord`), beat sync for supplied music | PARTIAL: no Freesound sourcing or credits file; with/without-music export exists as a user choice, upstream always delivers both |
+| 7 independent review in a clean context with brief, mapping, storyboard, frames; fixes loop back to stage 3/5/6 | `finalReview` + `filmFix`; a missing reviewer = `needs-review`, never "passed"; fingerprint ties review to the film | MATCH by design; not run live |
+| Delivery: open Workbench first | "Open in Motion Workbench" | MATCH |
+| Delivery: JianYing export, publishing, author/showcase prompts | not built | NOT IMPLEMENTED (optional upstream extras) |
+
+## Verdict
+For the steps that need no model, ours follows upstream (capture, library, Ink Press, single shot, storyboard rules, Workbench, MP4 specs). Real gaps against upstream's own text: (1) hold/rest frame budgets and `sequences/` templates are not enforced by code, (2) the mode-recommendation step is thinner, (3) sound is the bundled library not Freesound, (4) one-click two-version (with/without BGM) delivery, (5) JianYing/publishing. Everything model-driven (stages 0-2 AI, adaptation, review) is the same method but **not verified live**.
+
+Suggested follow-ups, only if you want them (not started): enforce the hold budgets in the storyboard gate with a unit test; fill the mode-recommendation text from the capture; add a one-click "export both versions".
