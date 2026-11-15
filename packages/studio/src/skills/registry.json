@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-13T15:29:22.206Z",
-  "skillCount": 57,
+  "skillCount": 56,
   "skills": [
     {
       "slug": "muapi-3d-logo-animation",
@@ -8,7 +8,7 @@
       "description": "Transform a 2D logo into a premium 3D version and animate it with professional cinematic effects.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "logo_image",
@@ -25,12 +25,25 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana-2-edit",
           "endpoint": "nano-banana-2-edit",
           "aspectRatio": "1:1",
           "prompt": "Transform this 2D logo into a premium, high-quality 3D version. The logo should have depth and be made of {{material_style}}. Smooth edges, realistic reflections, and professional studio lighting. The logo is centered on a clean, minimal, out-of-focus background. High-end graphic design aesthetic, 8k resolution.",
-          "references": []
+          "references": [
+            "{{logo_image}}"
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "1:1",
+          "duration": 5,
+          "prompt": "Slow cinematic orbit around the 3D logo, glossy reflections and soft studio light sweeping across the surface, shallow depth of field.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -174,7 +187,7 @@
       "description": "Generate a high-cut-density action / fight scene by first composing a 16-cell storyboard image, then driving Seedance 2.0 image-to-video off that storyboard. Stacks GPT-Image-2 (character sheet + storyboard), Nano-Banana-2 (environment concept), and Seedance 2.0 i2v.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "character_description",
@@ -215,12 +228,23 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "gpt-image-2",
           "endpoint": "gpt-image-2",
           "aspectRatio": "16:9",
           "prompt": "Character reference sheet of {{character_description}}. Three views — front, 3/4, profile — on a neutral grey backdrop. Studio lighting, full body, no text overlays, photoreal. Asymmetric identifying details preserved on the correct side. {{style_direction}}.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "16:9",
+          "duration": 5,
+          "prompt": "{{action_script}}. {{style_direction}}. High-cut-density action sequence following the storyboard, {{environment_description}}.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -302,7 +326,7 @@
       "description": "Create a hilarious and ultra-realistic video of an anthropomorphic animal acting like a human vlogger in a real-world setting.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "animal_type",
@@ -331,12 +355,23 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana",
           "endpoint": "nano-banana",
           "aspectRatio": "9:16",
           "prompt": "Ultra-realistic, cinematic portrait of an expressive {{animal_type}} wearing {{clothing}}, holding a selfie stick on the {{location}}. The {{animal_type}} is anthropomorphic, walking upright, and looks like a believable vlogger. Sweating slightly in the heat, highly detailed, photorealistic. Background shows a bustling street, people eating at stalls, vibrant urban details.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "9:16",
+          "duration": 5,
+          "prompt": "The {{animal_type}} talks straight to the camera like a vlogger, saying: {{script}}. Handheld selfie motion, natural head and mouth movement, realistic lighting.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -619,7 +654,7 @@
       "description": "Create a multi-part animated story video by first establishing a consistent character and then generating sequential scenes and animating them.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "character_description",
@@ -642,12 +677,23 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana-pro",
           "endpoint": "nano-banana-pro",
           "aspectRatio": "4:5",
           "prompt": "{{character_description}}, introducing the main character, cinematic lighting, highly detailed, Pixar 3D animation style.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "4:5",
+          "duration": 5,
+          "prompt": "Animate the character through this story: {{story_premise}}. Gentle camera push-in, expressive Pixar-style 3D motion, cinematic lighting.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -1074,7 +1120,7 @@
       "description": "Create a dramatic \"Giant Product\" visual where a regular item is showcased as a massive, building-sized object next to a person, then optionally animate the scene.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "product_image",
@@ -1091,12 +1137,25 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana-2-edit",
           "endpoint": "nano-banana-2-edit",
           "aspectRatio": "3:4",
           "prompt": "A professional commercial photograph featuring a massive, giant-sized version of the product from the reference image. The product is the size of a person and is standing on a clean, modern floor. Next to the giant product, {{person_description}} is leaning against it or standing nearby, highlighting the enormous scale. High-end product photography, soft studio lighting, realistic reflections, 8k resolution.",
-          "references": []
+          "references": [
+            "{{product_image}}"
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "3:4",
+          "duration": 5,
+          "prompt": "Slow camera pull-back revealing the giant product towering over the person, dramatic cinematic motion, realistic scale and shadows.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -1191,18 +1250,20 @@
         {
           "name": "room_photo",
           "type": "image_url",
-          "required": false,
+          "required": true,
           "default": ""
         }
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "flux-kontext-pro-i2i",
           "endpoint": "flux-kontext-pro-i2i",
           "aspectRatio": "16:9",
           "prompt": "Professional interior design visualization of a {{room_type}}. Style: {{design_style}}. Color palette: {{color_palette}}. {{specific_elements}}. Cinematic lighting, architectural photography style, wide angle lens, 8k resolution, photorealistic textures. High-end interior design magazine quality.",
-          "references": []
+          "references": [
+            "{{room_photo}}"
+          ]
         }
       ],
       "triggers": [
@@ -1271,7 +1332,7 @@
       "description": "Create a luxury jewelry advertisement with high-end commercial cinematography and detailed macro animation.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "jewelry_description",
@@ -1288,12 +1349,23 @@
       ],
       "steps": [
         {
-          "type": "i2v",
-          "model": "nano-banana-2-edit",
-          "endpoint": "nano-banana-2-edit",
+          "type": "image",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
           "aspectRatio": "1:1",
           "prompt": "Style: Luxury product ad, high-end commercial feel. Scene: {{jewelry_description}} resting on {{surface_description}}. A soft, warm light highlights the diamond, creating subtle highlights on the metal. 100mm macro lens photography, shallow DOF, incredible detail, elegant and minimal composition.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "1:1",
+          "duration": 5,
+          "prompt": "Slow macro dolly across the jewelry, light glints sweeping over the stones, shallow depth of field, luxury commercial feel.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -1550,7 +1622,7 @@
         {
           "name": "product_image",
           "type": "image_url",
-          "required": false,
+          "required": true,
           "default": ""
         },
         {
@@ -1574,12 +1646,14 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana-2-edit",
           "endpoint": "nano-banana-2-edit",
           "aspectRatio": "1:1",
           "prompt": "{{product_name}} — perfectly centered FRONT VIEW, eye-level angle. {{background_style}} background. {{lighting}}. Sharp focus, commercial product photography, ultra detailed, no props.",
-          "references": []
+          "references": [
+            "{{product_image}}"
+          ]
         }
       ],
       "triggers": [
@@ -1646,7 +1720,9 @@
         "song visualization"
       ],
       "promptFormula": "",
-      "title": "Music Video"
+      "title": "Music Video",
+      "hidden": true,
+      "hiddenReason": "needs N keyframes plus generated music; the single scraped step has no usable prompt"
     },
     {
       "slug": "muapi-nano-banana",
@@ -1760,7 +1836,7 @@
       "description": "Cinematic 5–10s product ad from a product photo + brand brief.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "product_image",
@@ -1783,12 +1859,25 @@
       ],
       "steps": [
         {
-          "type": "i2v",
-          "model": "nano-banana-2",
-          "endpoint": "nano-banana-2",
+          "type": "image",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
           "aspectRatio": "16:9",
-          "prompt": "product_image",
-          "references": []
+          "prompt": "Cinematic product advertisement photo of the product in the reference image. {{brand_brief}} Premium studio lighting, hero angle, clean background.",
+          "references": [
+            "{{product_image}}"
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "16:9",
+          "duration": 5,
+          "prompt": "Slow cinematic push-in on the product with a soft light sweep, hero angle, premium advertising look. {{brand_brief}}",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -1901,7 +1990,7 @@
       "description": "Create a high-end cinematic product video advertisement starting from a simple product photo.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "product_image",
@@ -1918,12 +2007,25 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "flux-2-pro-edit",
           "endpoint": "flux-2-pro-edit",
           "aspectRatio": "1:1",
           "prompt": "A high-end, professional commercial photograph of the product from the reference image, {{scene_description}}. Soft studio lighting, realistic reflections, cinematic depth of field, sharp focus on the product. 8k resolution, elegant and minimal composition.",
-          "references": []
+          "references": [
+            "{{product_image}}"
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "1:1",
+          "duration": 5,
+          "prompt": "Smooth cinematic product reveal: slow push-in, soft light sweep across the product, premium commercial feel. {{scene_description}}",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -2043,12 +2145,14 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana-2-edit",
           "endpoint": "nano-banana-2-edit",
           "aspectRatio": "9:16",
           "prompt": "POV: close up shot, A realistic photo of the person (don't change the person's original clothes) holding a black iPhone 16 to take a picture with the main actor from the movie \"{{movie_name}}\" on a movie set with movie scene background. Behind-the-scenes atmosphere, including film equipment, film cameras, filled with props, and busy crew members. Sharp focus on the characters. bright scene. Aspect ratio 9:16.",
-          "references": []
+          "references": [
+            "{{user_image}}"
+          ]
         }
       ],
       "triggers": [
@@ -2194,12 +2298,23 @@
           "note": "Write a shot list / storyboard for: {{topic}}."
         },
         {
-          "type": "i2v",
-          "model": "seedance-2-omni-reference",
-          "endpoint": "seedance-2-omni-reference",
+          "type": "image",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
           "aspectRatio": "16:9",
-          "prompt": "Cinematic cooking sequence: {{topic}}. Smooth camera moves, appetizing lighting.",
+          "prompt": "Opening keyframe for a cooking video: {{topic}}. Appetizing close-up, warm natural light, rich colour, shallow depth of field.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "16:9",
+          "prompt": "Cinematic cooking sequence: {{topic}}. Smooth camera moves, steam and sizzle, appetizing lighting.",
+          "references": [
+            "{{phase1.output}}"
+          ],
+          "duration": 5
         }
       ],
       "triggers": [
@@ -2224,7 +2339,7 @@
       "description": "Create a viral-style video of a talking baby with custom costumes and scripts.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
+      "kind": "workflow",
       "inputs": [
         {
           "name": "baby_costume",
@@ -2247,12 +2362,23 @@
       ],
       "steps": [
         {
-          "type": "i2v",
+          "type": "image",
           "model": "nano-banana",
           "endpoint": "nano-banana",
           "aspectRatio": "9:16",
           "prompt": "{{baby_description}} sitting and wearing {{baby_costume}}. High-quality photography, soft natural lighting, adorable expression, detailed fabric textures, shallow depth of field, Pixar-like charm but realistic.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "9:16",
+          "duration": 5,
+          "prompt": "The baby looks at the camera and says: {{dialogue}}. Natural lip movement and head tilts, soft lighting, viral social-video feel.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
       "triggers": [
@@ -2334,7 +2460,7 @@
       "name": "muapi-ugc-lifestyle-try-on",
       "description": "Generate UGC-style (User Generated Content) lifestyle photos of a person wearing or using your product — authentic, relatable, social-media-native imagery.",
       "category": "motion",
-      "studio": "video",
+      "studio": "image",
       "kind": "recipe",
       "inputs": [
         {
@@ -2370,12 +2496,14 @@
       ],
       "steps": [
         {
-          "type": "i2v",
-          "model": "ai-dress-change",
-          "endpoint": "ai-dress-change",
+          "type": "image",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
           "aspectRatio": "4:5",
           "prompt": "{{model_description}} wearing the product naturally in a {{setting}} environment. Authentic UGC-style photo, candid pose, natural expression.",
-          "references": []
+          "references": [
+            "{{product_image}}"
+          ]
         }
       ],
       "triggers": [

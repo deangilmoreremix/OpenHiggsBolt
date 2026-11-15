@@ -50,6 +50,16 @@ describe('SmartVideo parity scope', () => {
     expect(sync).toContain('packages/studio/src/components/McpCliStudio.jsx');
     expect(sync).toContain('components/StandaloneShell.js');
     expect(sync).toContain('src/apps/');
+    // SmartVideo-owned Recipes / Skills surfaces must survive upstream syncs.
+    for (const owned of [
+      'packages/studio/src/components/SkillsBrowser.jsx',
+      'packages/studio/src/components/SkillRunner.jsx',
+      'packages/studio/src/skills/registry.json',
+      'packages/studio/src/lib/promptRecipes.js',
+      'scripts/audit-recipes.mjs',
+    ]) {
+      expect(sync).toContain(owned);
+    }
   });
 
   it('does not include Chinese localization in SmartVideo GO', () => {

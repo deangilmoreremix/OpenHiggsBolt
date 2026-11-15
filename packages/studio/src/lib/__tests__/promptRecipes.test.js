@@ -29,6 +29,28 @@ describe('runSkill', () => {
     expect(events).toContainEqual([1, 'done']);
   });
 
+  it('runs a converted image-then-video recipe, feeding the upload and the still into the video step', async () => {
+    muapi.generateI2I.mockResolvedValue({ url: 'https://x/logo3d.png' });
+    muapi.generateI2V.mockResolvedValue({ url: 'https://x/logo.mp4' });
+    const logo = skill('muapi-3d-logo-animation');
+    expect(logo.kind).toBe('workflow');
+    expect(logo.steps.map((s) => s.type)).toEqual(['image', 'i2v']);
+    await runSkill('key', logo, { logo_image: 'https://x/logo2d.png', material_style: 'chrome' }, () => {});
+    expect(muapi.generateI2I.mock.calls[0][1].images_list).toEqual(['https://x/logo2d.png']);
+    const video = muapi.generateI2V.mock.calls[0][1];
+    expect(video.model).toBe('seedance-2-image-to-video-fast');
+    expect(video.images_list).toEqual(['https://x/logo3d.png']);
+  });
+
+  it('every video-promising workflow ends in a video step fed by the previous output', () => {
+    for (const s of registry.skills.filter((k) => !k.hidden && k.kind === 'workflow')) {
+      const video = s.steps.filter((st) => st.type === 'i2v' || st.type === 't2v');
+      for (const st of video) {
+        if (st.type === 'i2v') expect(st.references?.length, s.slug).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('pauses at approval and stops when declined', async () => {
     muapi.generateI2I.mockResolvedValue({ url: 'https://x/a.png' });
     muapi.generateImage.mockResolvedValue({ url: 'https://x/a.png' });
