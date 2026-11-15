@@ -2,6 +2,7 @@ import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 import { DEMO_TEXTS } from '../demosrc/_generated/demoTexts';
 import { motionTemplateTitle } from '@/data/motionRecipeCatalog';
+import { isDocumentUsable, type DocumentContent } from './documentContent';
 import type { ClipData, ProjectData } from '../types';
 
 /**
@@ -45,6 +46,7 @@ export function shotPersonalization(clip: ClipData): ShotPersonalization | null 
   const props = clip.props ?? {};
   const base = { clipId: clip.id, stem, name };
   if (props.adaptedCode) return { ...base, state: 'adapted', reason: 'its source was rewritten for your product' };
+  if (stem === 'DocumentTypewriterReveal' && isDocumentUsable(props.documentContent as DocumentContent | undefined)) return { ...base, state: 'parameterized', reason: 'it types your own document' };
   const pictures = count(props.screens) + count(props.crops);
   const lines = DEMO_TEXTS[stem]?.length ?? 0;
   const replaced = Math.min(textCount(props.texts), lines || Infinity);

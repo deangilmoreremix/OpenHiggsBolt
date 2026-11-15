@@ -212,7 +212,7 @@ export async function storyboardFilm(
 
   // Stage 0: the product brief and the requirements → decisions table. Every later stage reads them (the business kind
   // decides which recipes may be chosen, the feature list is what the map must cover).
-  const material = materialOf(capture, opts.media ?? [], { brandLogo: Boolean(opts.brandKit?.logo) });
+  const material = materialOf(capture, opts.media ?? [], { brandLogo: Boolean(opts.brandKit?.logo), prompt: req.prompt });
   const brief = buildProductBrief({ prompt: req.prompt, productName, content: capture?.content, siteTitle: capture?.title, durationSec: opts.durationSec, aspectRatio: opts.aspectRatio, material, brandKitName: opts.brandKit?.businessName, hasSite });
   const decisions = decisionTable(brief);
   for (const line of briefLines(brief)) log(`Product brief · ${line}`, 'done');
@@ -587,7 +587,7 @@ export async function buildFilmProject(
     log(`Shot adaptation skipped: ${reason}`, 'done');
     opts.onAdaptation?.({ kind: 'skipped', reason });
   };
-  const material = materialOf(opts.capture, opts.media, { brandLogo: Boolean(opts.logo) });
+  const material = materialOf(opts.capture, opts.media, { brandLogo: Boolean(opts.logo), prompt: opts.prompt });
   if (opts.noAi) skip('created without AI: the original recipes are personalised through their own supported inputs, no source is rewritten');
   else if (opts.adaptShots === false) skip('turned off');
   else if (!material.pages && !material.images) skip('no site page was captured and no images were supplied, so there is nothing to adapt the shots to');

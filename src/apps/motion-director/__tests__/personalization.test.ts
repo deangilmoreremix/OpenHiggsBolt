@@ -71,3 +71,11 @@ describe('demo names and claims become the person\'s own, nothing is invented', 
     expect(neutralTexts(['REAL PAGE CAPTURES'], 'Acme', { sitePages: true, hasPictures: true })).toEqual({});
   });
 });
+
+describe('a structured document is personalization', () => {
+  const doc = { title: 'Weekly', sections: [{ heading: 'A', items: ['1', '2', '3'] }, { heading: 'B', items: ['4', '5', '6'] }], sideLeft: [], sideRight: [], history: [], meta: {} };
+  it('DocumentTypewriterReveal with a usable documentContent is parameterized, not unmodified', () => {
+    expect(shotPersonalization(clip('DocumentTypewriterReveal', { documentContent: doc }))?.state).toBe('parameterized');
+    expect(shotPersonalization(clip('DocumentTypewriterReveal', {}))?.state).toBe('unmodified');
+  });
+});

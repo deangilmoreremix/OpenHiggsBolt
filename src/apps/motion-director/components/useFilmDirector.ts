@@ -319,7 +319,7 @@ export function useFilmDirector(opts: {
           else if (['pending', 'running'].includes(x.stages.mapping.status)) x = skipStage(x, 'mapping', mode === 'inkpress' ? 'the Ink Press scenes are the map' : mode === 'single' ? 'a single shot' : 'the director did not produce a feature map');
           // Failures the gate could not repair block the storyboard from being called clean; a pick of the person's own is reported, not blocking.
           x = completeStage(startStage(x, 'storyboard'), { stage: 'storyboard', scenes: result.plan.scenes.length, failedChecks: (result.gate?.failed ?? []).filter((f) => !/your pick/.test(f)) }, { release: result.release?.filter((i) => !i.ok).length ?? 0 });
-          return completeStage(startStage(x, 'assets'), { stage: 'assets', scenes: sceneRecords(result.plan, materialOf(result.capture, media)) });
+          return completeStage(startStage(x, 'assets'), { stage: 'assets', scenes: sceneRecords(result.plan, materialOf(result.capture, media, { prompt: req.prompt })) });
         });
         result.videos = videos;
         result.media = media;
@@ -771,7 +771,7 @@ export function useFilmDirector(opts: {
       glog('Checking each shot on its own against the plain recipe', 'running');
       const sceneChecks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 60_000, signal: buildAbort.signal }).catch(() => []);
       if (!live()) return;
-      const material = materialOf(storyboard.capture, media, { brandLogo: Boolean(s.brandKit?.logo) });
+      const material = materialOf(storyboard.capture, media, { brandLogo: Boolean(s.brandKit?.logo), prompt: runRef.current?.request });
       const scenes = recordScenes(sceneRecords(storyboard.plan, material), project, sceneChecks);
       upd((r) => completeStage(r, { stage: 'build', scenes }, { adapted: made.adapted, parameterized: made.parameterized, unmodified: made.unmodified }));
       const snd = soundRecord(project, { plan: storyboard.plan, silent: Boolean(runRef.current?.silent) });
@@ -913,7 +913,7 @@ export function useFilmDirector(opts: {
       const checks = await validateShotScenes(project, { pixels: browserPixels }, { budgetMs: 45_000, signal: abort.signal, only }).catch(() => []);
       if (!live()) return true;
       const prior = runRef.current?.scenes ?? [];
-      const fresh = recordScenes(sceneRecords(plan, materialOf(storyboard.capture, media)), project, checks);
+      const fresh = recordScenes(sceneRecords(plan, materialOf(storyboard.capture, media, { prompt: runRef.current?.request })), project, checks);
       // Scenes the edit did not touch keep the record they had earned; only the touched ones are re-checked.
       // ...and only while the shot is byte-for-byte the shot that earned it (its fingerprint covers all its props, timing and source).
       const scenes = fresh.map((rec, i) => (touched.includes(i) || !prior[i] || !prior[i].fingerprint || prior[i].fingerprint !== rec.fingerprint ? rec : prior[i]));

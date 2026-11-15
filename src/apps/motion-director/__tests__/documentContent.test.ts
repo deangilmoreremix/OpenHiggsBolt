@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { materialOf } from '../lib/material';
 import { DOCUMENT_MIN_BLOCKS, documentBlockCount, documentFromCapture, documentFromText, fillSlots, isDocumentUsable } from '../lib/documentContent';
 
 const content = {
@@ -48,4 +49,12 @@ describe('a document made from the person\'s own text', () => {
     expect(isDocumentUsable(d)).toBe(true);
   });
   it('a one-line request is not a document', () => { expect(documentFromText('make me a promo video')).toBeNull(); });
+});
+
+describe('a document in the request counts as material', () => {
+  const text = ['Quarterly update', '# Highlights', '- Revenue grew 12%', '- Two new offices opened', '# Risks', 'Hiring is slower than planned. Costs rose in March.', '# Next steps', '- Launch the mobile app', '- Close the Series B', '- Hire a head of sales'].join('\n');
+  it('a text-only request with a long enough document has document blocks; without the prompt it has none', () => {
+    expect(materialOf(null, [], { prompt: text }).documentBlocks).toBeGreaterThanOrEqual(DOCUMENT_MIN_BLOCKS);
+    expect(materialOf(null, []).documentBlocks).toBe(0);
+  });
 });
