@@ -20,7 +20,7 @@ E2E_TEST_AUTH_BYPASS=true NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<dummy pk_test_ valu
   npx next dev -H 127.0.0.1 --port 3111
 ```
 
-Bind to loopback (`-H 127.0.0.1`) so the server is not reachable from other machines.
+Bind to loopback so the server is not reachable from other machines. If the browser tests that call real API routes (for example the Motion Director capture) hang or return 500 with `Failed to proxy http://localhost:… socket hang up` in the server log, start the server with `-H localhost` instead of `-H 127.0.0.1`: Clerk rewrites API requests to `http://localhost:<port>`, and the dev server proxies that to itself. `localhost` is loopback too, so the condition above still holds. (Seen in the Linux sandbox this was tested in; page routes were not affected.)
 
 ## Why production cannot activate it
 
