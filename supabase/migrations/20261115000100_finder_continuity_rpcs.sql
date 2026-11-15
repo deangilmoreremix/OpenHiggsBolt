@@ -1,9 +1,15 @@
--- PROPOSED — NOT APPLIED. Needs the owner's yes before it is applied.
+-- Finder continuity (E8): server RPCs for the three finder-continuity tables.
+-- APPLIED to the project via the Supabase tool as migration `finder_continuity_rpcs` (2026-11-15),
+-- approved by the owner as written in PR #184. Recorded here so the repo matches the database.
 --
--- Server RPCs for the three finder-continuity tables, in the same style as lead_finder_leads_*:
--- SECURITY DEFINER, identity set as the app.clerk_user_id GUC in the same transaction, search_path pinned,
--- execute revoked from public/anon/authenticated and granted to service_role only (the Next route is the only caller).
--- Per-user caps are enforced here, not only in the route: 25 saved searches, 500 feedback rows.
+-- Same style as lead_finder_leads_*: SECURITY DEFINER, identity set as the app.clerk_user_id GUC in the same
+-- transaction, search_path pinned, execute revoked from public/anon/authenticated and granted to service_role only.
+-- Per-user caps are enforced here: 25 saved searches, 500 feedback rows.
+--
+-- Rollback (functions only; tables untouched):
+--   drop function if exists public.finder_saved_searches_list(text), public.finder_saved_searches_save(text, text, text, text, integer, boolean),
+--     public.finder_saved_searches_delete(text, uuid), public.finder_lead_feedback_list(text), public.finder_lead_feedback_add(text, text, text, text),
+--     public.finder_lead_feedback_delete(text, text, text), public.business_enrichment_cache_get(text), public.business_enrichment_cache_put(text, jsonb, integer);
 
 -- ---------------------------------------------------------------- saved searches
 create or replace function public.finder_saved_searches_list(p_clerk_user_id text)
@@ -168,8 +174,3 @@ grant execute on function public.finder_lead_feedback_add(text, text, text, text
 grant execute on function public.finder_lead_feedback_delete(text, text, text) to service_role;
 grant execute on function public.business_enrichment_cache_get(text) to service_role;
 grant execute on function public.business_enrichment_cache_put(text, jsonb, integer) to service_role;
-
--- ROLLBACK (functions only; the tables are untouched):
--- drop function if exists public.finder_saved_searches_list(text), public.finder_saved_searches_save(text, text, text, text, integer, boolean),
---   public.finder_saved_searches_delete(text, uuid), public.finder_lead_feedback_list(text), public.finder_lead_feedback_add(text, text, text, text),
---   public.finder_lead_feedback_delete(text, text, text), public.business_enrichment_cache_get(text), public.business_enrichment_cache_put(text, jsonb, integer);
