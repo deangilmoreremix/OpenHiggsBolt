@@ -66,7 +66,9 @@ export default function SeedancePromptsHero() {
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Magnetic className="w-full sm:w-auto">
               <a
-                href={getCreateUrl(hero ?? ({ slug: 'placeholder', sourceRepo: 'seedance2prompt' } as any))}
+                // No hero demo in the catalog: open the Video Studio rather than a
+                // template id that matches nothing.
+                href={hero ? getCreateUrl(hero) : '/studio/video'}
                 className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-7 py-3.5 text-sm font-bold text-black shadow-glow transition sm:w-auto fx-shine"
               >
                 Start Creating
