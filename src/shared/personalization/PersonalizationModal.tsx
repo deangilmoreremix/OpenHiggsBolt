@@ -2076,6 +2076,8 @@ function ConfigurationView(props: any) {
   const {
     autoFilledKeys,
     businessLoadSummary,
+    contactSources,
+    clearContactValue,
     advancedTab: ctxAdvancedTab,
     setAdvancedTab: ctxSetAdvancedTab,
     advancedSections: ctxAdvancedSections,
@@ -2438,6 +2440,15 @@ function ConfigurationView(props: any) {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSearchResults, enrichStates])
+  // Contact values found on the business's own website that are STILL what the profile holds (a value the user
+  // typed over, or an OpenStreetMap one, is never labelled as "found on the website").
+  const foundContacts = (['email', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok'] as const).flatMap((key) => {
+    const source = contactSources[key]
+    const value = clientForm[key]
+    return source && value && value === source.value
+      ? [{ key, label: key === 'email' ? 'Email' : key[0].toUpperCase() + key.slice(1), value, source }]
+      : []
+  })
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -3402,6 +3413,26 @@ function ConfigurationView(props: any) {
                 {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
                 {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
                 <LeadInsightsPanel business={selectedBusiness} results={businessSearchResults} enrichment={enrichmentOf(selectedBusiness.id)} onPick={(b) => { void handleSelectBusiness(b) }} />
+                {foundContacts.length > 0 && (
+                  <div data-testid="pz-found-contacts" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Found on the business's website</div>
+                    {foundContacts.filter((c) => c.key === 'email').map((c) => (
+                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`Found on ${c.source.sourceUrl} (${c.source.method}, confidence ${Math.round(c.source.confidence * 100)}%)`}>
+                        <span style={{ color: C.text }}>Email: <a href={`mailto:${c.value}`} style={{ color: C.cyan }}>{c.value}</a></span>
+                        <button type="button" aria-label="Remove Email" onClick={() => clearContactValue('email')} style={{ background: 'transparent', border: 0, color: C.muted2, cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                    {foundContacts.some((c) => c.key !== 'email') && (
+                      <SocialIcons
+                        size={16}
+                        name={selectedBusiness.name}
+                        links={Object.fromEntries(foundContacts.filter((c) => c.key !== 'email').map((c) => [c.key, c.value]))}
+                        titles={Object.fromEntries(foundContacts.filter((c) => c.key !== 'email').map((c) => [c.key, `found on ${c.source.sourceUrl} (${c.source.method}, confidence ${Math.round(c.source.confidence * 100)}%)`]))}
+                        onRemove={(n) => clearContactValue(n)}
+                      />
+                    )}
+                  </div>
+                )}
                 <div>
                   <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Website</label>
                   <input
