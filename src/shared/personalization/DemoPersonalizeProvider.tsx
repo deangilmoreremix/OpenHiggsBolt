@@ -94,7 +94,7 @@ import { fitToModel, optionsForGeneration, resolveModelCapabilities, resolveAsse
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { isOwnedWebsite, nonOwnedWebsiteMessage } from './websiteClassification'
-import { enrichmentToAutoFill, type ContactSources } from './businessEnrichmentToClient'
+import { enrichmentToAutoFill, foundSignalsOf, type ContactSources, type FoundSignals } from './businessEnrichmentToClient'
 import { uploadPersonalizationAsset } from './assetUploadService'
 import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
@@ -896,6 +896,8 @@ export type DemoPersonalizeContextValue = {
   businessLoadSummary: BusinessLoadSummary | null
   /** Where each contact value found on the business's own website came from (for the "found on" tooltips). */
   contactSources: ContactSources
+  /** What the business's own site publishes (booking link, video) — used only to suggest a video goal. */
+  foundSignals: FoundSignals
   /** Removes a found contact value from the profile (a wrong or unwanted one). */
   clearContactValue: (key: 'email' | 'facebook' | 'instagram' | 'linkedin' | 'youtube' | 'tiktok') => void
   /**
@@ -1497,6 +1499,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const autoImportedDiscoveredIdsRef = useRef<Set<string>>(new Set())
   const [businessLoadSummary, setBusinessLoadSummary] = useState<BusinessLoadSummary | null>(null)
   const [contactSources, setContactSources] = useState<ContactSources>({})
+  const [foundSignals, setFoundSignals] = useState<FoundSignals>({})
 
   // Saved client assets (persisted per-client library)
   const [savedClientAssets, setSavedClientAssets] = useState<ClientAssetLibrary>(() =>
@@ -4614,6 +4617,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     autoImportPendingRef.current = false
     setBusinessLoadSummary(null)
     setContactSources({})
+    setFoundSignals({})
     placeholderNameRef.current = business.id.startsWith('url:') ? business.name : ''
 
     // Populate client form from business, through the single shared mapping
@@ -4658,6 +4662,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           const body = (await res.json().catch(() => null)) as { results?: Array<{ ok?: boolean; enrichment?: Parameters<typeof enrichmentToAutoFill>[0] }> } | null
           const enrichment = body?.results?.[0]?.ok ? body.results[0].enrichment : null
           if (!enrichment || enrichmentSession !== businessSessionRef.current) return
+          setFoundSignals(foundSignalsOf(enrichment))
           const { values, sources } = enrichmentToAutoFill(enrichment)
           if (!Object.keys(values).length) return
           setClientForm((prev) => {
@@ -6491,6 +6496,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     autoFilledKeys,
     businessLoadSummary,
     contactSources,
+    foundSignals,
     clearContactValue,
     resolveBusinessWebsite,
     websiteLookup,

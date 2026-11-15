@@ -47,3 +47,12 @@ describe('merging enrichment into the client form (empty fields only)', () => {
     expect(cleared.instagram).toBe('https://instagram.com/typed')
   })
 })
+
+import { foundSignalsOf } from '../businessEnrichmentToClient'
+describe('foundSignalsOf', () => {
+  it('extracts booking and video only when the site published them', () => {
+    expect(foundSignalsOf(null)).toEqual({})
+    expect(foundSignalsOf({ siteSignals: { booking: { sourceUrl: 'https://x.com/', href: 'https://x.com/book', provider: 'Calendly' }, video: { sourceUrl: 'https://x.com/', kinds: ['youtube'] } } } as never)).toEqual({ booking: { sourceUrl: 'https://x.com/', provider: 'Calendly' }, hasVideo: true })
+    expect(foundSignalsOf({ siteSignals: {} } as never)).toEqual({})
+  })
+})

@@ -1,5 +1,6 @@
 'use client'
 
+import { suggestGoal } from '../templates/recommendations'
 import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
@@ -168,6 +169,7 @@ export function StepPreviewApprove(): React.JSX.Element {
               onSelectDesign={setRemotionDesign}
               onAddDesign={ctx.addRemotionDesign}
               onSelectLayout={setPreviewLayout}
+              suggestion={suggestGoal({ hasOffer: Boolean(clientForm.offer?.trim()), hasProductImages: (assets?.products?.length || 0) > 0, booking: ctx.foundSignals?.booking })}
             />
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>

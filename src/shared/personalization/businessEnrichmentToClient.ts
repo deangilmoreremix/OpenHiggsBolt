@@ -36,3 +36,18 @@ export function enrichmentToAutoFill(enrichment: BusinessEnrichment | null | und
   }
   return { values, sources }
 }
+
+/** What the business's own site publishes that helps choose a video goal. Absent = not found (never "no"). */
+export interface FoundSignals {
+  booking?: { sourceUrl: string; provider?: string }
+  hasVideo?: boolean
+}
+
+export function foundSignalsOf(enrichment: BusinessEnrichment | null | undefined): FoundSignals {
+  const sig = enrichment?.siteSignals
+  if (!sig) return {}
+  const out: FoundSignals = {}
+  if (sig.booking) out.booking = { sourceUrl: sig.booking.sourceUrl, ...(sig.booking.provider ? { provider: sig.booking.provider } : {}) }
+  if (sig.video) out.hasVideo = true
+  return out
+}
