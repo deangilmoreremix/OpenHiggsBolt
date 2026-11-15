@@ -5,7 +5,8 @@
  * ids through regexes, URLs through the https-only checks.
  */
 import { sanitizeConfig, safeImageUrl, PUBLIC_TOKEN_KEYS } from '../templates.js';
-import { PAGE_ID_RE, CONTACT_ID_RE, PAGE_EVENT_KINDS, makeSlug } from '../ids.js';
+import { PAGE_ID_RE, CONTACT_ID_RE, PAGE_EVENT_KINDS, makeSlug, makeContactId } from '../ids.js';
+import { CONTACT_FIELDS, MAX_CONTACTS_PER_IMPORT } from '../csv.js';
 
 export const OWNER_COLUMNS = 'id, title, video_url, poster_url, duration, source, config, published, view_count, created_at, updated_at';
 export const PUBLIC_COLUMNS = 'id, title, video_url, poster_url, duration, config, updated_at';
@@ -136,4 +137,60 @@ export async function pageStats(db, userId, id) {
   const row = Array.isArray(data) ? data[0] : data;
   const n = (v) => Number(v) || 0;
   return { views: n(row?.views), plays: n(row?.plays), completes: n(row?.completes), ctaClicks: n(row?.cta_clicks), leads: n(row?.leads), uniqueContacts: n(row?.unique_contacts), likes: n(row?.likes) };
+}
+
+// ------------------------------------------------------------------ contacts (personal links)
+
+const CONTACT_COLUMNS = 'id, page_id, fields, external, created_at';
+const cleanFields = (raw) => {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const k of CONTACT_FIELDS) {
+    const v = typeof raw[k] === 'string' ? raw[k].trim().slice(0, 200) : '';
+    if (v) out[k] = v;
+  }
+  if (out.companylogo && !/^https:\/\/\S+$/i.test(out.companylogo)) delete out.companylogo;
+  return out;
+};
+
+export async function listContacts(db, userId, pageId) {
+  await getOwnedPage(db, userId, pageId);
+  const { data, error } = await db.from('landing_page_contacts').select(CONTACT_COLUMNS).eq('page_id', pageId).eq('clerk_user_id', userId).order('created_at', { ascending: false }).limit(5000);
+  dbFail(error, 'Could not load the contacts');
+  return data || [];
+}
+
+/** Adds up to MAX_CONTACTS_PER_IMPORT contacts to a page the caller owns; returns the stored rows with their ids. */
+export async function addContacts(db, userId, pageId, contacts) {
+  await getOwnedPage(db, userId, pageId);
+  if (!Array.isArray(contacts) || !contacts.length) throw bad('NO_CONTACTS', 'Add at least one contact');
+  if (contacts.length > MAX_CONTACTS_PER_IMPORT) throw bad('TOO_MANY', `Import at most ${MAX_CONTACTS_PER_IMPORT} contacts at a time`);
+  const rows = contacts
+    .map((c) => cleanFields(c?.fields))
+    .filter((f) => Object.keys(f).length)
+    .map((fields) => ({ id: makeContactId(), page_id: pageId, clerk_user_id: userId, fields }));
+  if (!rows.length) throw bad('NO_CONTACTS', 'None of the contacts had usable fields');
+  const stored = [];
+  for (let i = 0; i < rows.length; i += 200) {
+    const { data, error } = await db.from('landing_page_contacts').insert(rows.slice(i, i + 200)).select(CONTACT_COLUMNS);
+    dbFail(error, 'Could not save the contacts');
+    stored.push(...(data || []));
+  }
+  return stored;
+}
+
+export async function removeContact(db, userId, pageId, contactId) {
+  await getOwnedPage(db, userId, pageId);
+  if (typeof contactId !== 'string' || !CONTACT_ID_RE.test(contactId)) throw bad('BAD_CONTACT', 'Bad contact id');
+  const { error } = await db.from('landing_page_contacts').delete().eq('id', contactId).eq('page_id', pageId).eq('clerk_user_id', userId);
+  dbFail(error, 'Could not remove the contact');
+}
+
+/** Per-contact activity for a page the caller owns. */
+export async function contactStats(db, userId, pageId) {
+  await getOwnedPage(db, userId, pageId);
+  const { data, error } = await db.rpc('landing_page_events_by_contact', { p_page_id: pageId });
+  dbFail(error, 'Could not load the activity');
+  const n = (v) => Number(v) || 0;
+  return (data || []).map((r) => ({ contactId: r.contact_id, views: n(r.views), plays: n(r.plays), maxProgress: n(r.max_progress), completes: n(r.completes), ctaClicks: n(r.cta_clicks), leads: n(r.leads), lastSeen: r.last_seen || null }));
 }

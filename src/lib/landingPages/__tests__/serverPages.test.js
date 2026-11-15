@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { listPages, getOwnedPage, createPage, updatePage, deletePage, getPublishedPage, getContactTokens, recordEvent, submitLead, pageStats, HttpError } from '../server/pages.js';
+import { listPages, getOwnedPage, createPage, updatePage, deletePage, getPublishedPage, getContactTokens, recordEvent, submitLead, pageStats, addContacts, listContacts, removeContact, contactStats, HttpError } from '../server/pages.js';
 import { defaultConfig } from '../templates.js';
 
 /** Minimal in-memory stand-in for the supabase-js query builder (only what the data layer uses). */
 function fakeDb(seed = {}) {
   const tables = { landing_pages: [], landing_page_contacts: [], landing_page_leads: [], ...seed };
+  const asRows = (p) => (Array.isArray(p) ? p : [p]);
   const rpcCalls = [];
   const builder = (name) => {
     let rows = tables[name];
@@ -12,7 +13,7 @@ function fakeDb(seed = {}) {
     const filters = [];
     const run = () => {
       let out = rows.filter((r) => filters.every(([k, v]) => r[k] === v));
-      if (op === 'insert') { const row = { ...payload, view_count: 0, created_at: 'now', updated_at: 'now' }; tables[name].push(row); out = [row]; }
+      if (op === 'insert') { const made = asRows(payload).map((p) => ({ ...p, view_count: 0, created_at: 'now', updated_at: 'now' })); tables[name].push(...made); out = made; }
       if (op === 'update') { out.forEach((r) => Object.assign(r, payload)); }
       if (op === 'delete') { tables[name] = tables[name].filter((r) => !out.includes(r)); out = []; }
       if (single || maybe) return { data: out[0] || null, error: single && !out[0] ? { message: 'no rows' } : null };
@@ -30,7 +31,7 @@ function fakeDb(seed = {}) {
     };
     return api;
   };
-  return { tables, rpcCalls, from: builder, rpc: async (fn, args) => { rpcCalls.push([fn, args]); return { data: fn === 'landing_page_stats' ? [{ views: '5', plays: 3, completes: 1, cta_clicks: 2, leads: 1, unique_contacts: 4, likes: 2 }] : null, error: null }; } };
+  return { tables, rpcCalls, from: builder, rpc: async (fn, args) => { rpcCalls.push([fn, args]); const data = fn === 'landing_page_stats' ? [{ views: '5', plays: 3, completes: 1, cta_clicks: 2, leads: 1, unique_contacts: 4, likes: 2 }] : fn === 'landing_page_events_by_contact' ? [{ contact_id: 'abcdef123456', views: 2, plays: 1, max_progress: 50, completes: 0, cta_clicks: 1, leads: 0, last_seen: 't' }] : null; return { data, error: null }; } };
 }
 const input = (extra = {}) => ({ title: 'Demo', videoUrl: 'https://cdn.x.io/v.mp4', config: defaultConfig('puck-starter'), ...extra });
 const rejects = async (p, status, code) => { try { await p; } catch (e) { expect(e).toBeInstanceOf(HttpError); expect(e.status).toBe(status); if (code) expect(e.code).toBe(code); return; } throw new Error('expected to reject'); };
@@ -117,5 +118,25 @@ describe('landing pages server data layer', () => {
     const a = await createPage(db, 'user_a', input());
     expect(await pageStats(db, 'user_a', a.id)).toMatchObject({ views: 5, plays: 3, likes: 2, uniqueContacts: 4 });
     await rejects(pageStats(db, 'user_b', a.id), 404);
+  });
+  it('contacts: owner-only, cleaned fields, personal ids, activity per contact', async () => {
+    const db = fakeDb();
+    const a = await createPage(db, 'user_a', input());
+    const added = await addContacts(db, 'user_a', a.id, [{ fields: { firstname: ' Maya ', company: 'Brightline', email: 'm@x.io', evil: 'x', companylogo: 'http://nope' } }, { fields: {} }, { fields: { firstname: 'Sam' } }]);
+    expect(added).toHaveLength(2);
+    expect(added[0].fields).toEqual({ firstname: 'Maya', company: 'Brightline', email: 'm@x.io' });
+    expect(added[0].id).toMatch(/^[A-Za-z0-9_-]{6,40}$/);
+    expect((await listContacts(db, 'user_a', a.id))).toHaveLength(2);
+    await rejects(listContacts(db, 'user_b', a.id), 404);
+    await rejects(addContacts(db, 'user_b', a.id, [{ fields: { firstname: 'X' } }]), 404);
+    await rejects(addContacts(db, 'user_a', a.id, []), 400, 'NO_CONTACTS');
+    await rejects(addContacts(db, 'user_a', a.id, [{ fields: { zzz: 'x' } }]), 400, 'NO_CONTACTS');
+    await rejects(addContacts(db, 'user_a', a.id, Array.from({ length: 1001 }, () => ({ fields: { firstname: 'x' } }))), 400, 'TOO_MANY');
+    await rejects(removeContact(db, 'user_b', a.id, added[0].id), 404);
+    await rejects(removeContact(db, 'user_a', a.id, '../x'), 400, 'BAD_CONTACT');
+    await removeContact(db, 'user_a', a.id, added[0].id);
+    expect((await listContacts(db, 'user_a', a.id))).toHaveLength(1);
+    expect(await contactStats(db, 'user_a', a.id)).toEqual([{ contactId: 'abcdef123456', views: 2, plays: 1, maxProgress: 50, completes: 0, ctaClicks: 1, leads: 0, lastSeen: 't' }]);
+    await rejects(contactStats(db, 'user_b', a.id), 404);
   });
 });

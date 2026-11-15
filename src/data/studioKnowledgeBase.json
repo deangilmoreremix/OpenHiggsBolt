@@ -8071,6 +8071,7 @@
         "Choose images from the image library inside the editor",
         "Publish to a public link and copy an embed code",
         "Lead form on the page with leads saved to your account",
+        "Personal links: import a CSV and every contact gets their own link that greets them by name and shows you who watched",
         "Analytics: views, plays, play rate, completions, button clicks, leads and likes",
         "Warns before publishing if sample names, quotes or numbers are still on the page"
       ],
@@ -8082,7 +8083,8 @@
         "Click any text on the page to edit it. Use the left panel to add, remove and reorder sections.",
         "Replace the sample names, quotes and numbers with your own.",
         "Click Save, then Publish, and copy the link or embed code.",
-        "Open the Analytics tab to see views, plays, button clicks and leads."
+        "Open the Analytics tab to see views, plays, button clicks and leads.",
+        "Open the Personal links tab, import a CSV of contacts, and send each person their own link."
       ],
       "gettingStarted": [
         "Make or upload a video first.",

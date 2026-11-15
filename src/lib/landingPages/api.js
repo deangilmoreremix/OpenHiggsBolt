@@ -40,3 +40,9 @@ export async function recordPageEvent(pageId, { kind, contactId = null }) {
 }
 /** @param {{ pageId: string, contactId?: string | null, data: Record<string, string> }} lead */
 export const submitPageLead = ({ pageId, contactId = null, data }) => call(`/${encodeURIComponent(pageId)}/lead`, { method: 'POST', body: { contactId, data } });
+
+// contacts (owner)
+export const listContacts = async (pageId) => (await call(`/${encodeURIComponent(pageId)}/contacts`)).contacts;
+export const addContacts = async (pageId, contacts) => (await call(`/${encodeURIComponent(pageId)}/contacts`, { method: 'POST', body: { contacts } })).contacts;
+export const removeContact = (pageId, contactId) => call(`/${encodeURIComponent(pageId)}/contacts?contactId=${encodeURIComponent(contactId)}`, { method: 'DELETE' });
+export const fetchContactStats = async (pageId) => (await call(`/${encodeURIComponent(pageId)}/contacts/stats`)).stats;

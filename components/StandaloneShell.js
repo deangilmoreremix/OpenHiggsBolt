@@ -23,6 +23,7 @@ import PreviewModeBadge from '@/access/PreviewModeBadge';
 import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
+import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -1063,6 +1064,16 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                       >
                         {notificationCopy.open}
                       </button>
+                      {notif.resultUrl && normalizeVideo({ url: notif.resultUrl }) && (
+                        <button
+                          type="button"
+                          data-action="create-landing-page"
+                          onClick={() => { if (openVideoPageFor({ url: notif.resultUrl, studio: notif.tabId }, { navigate: () => handleTabChange('video-pages') })) dismissNotification(notif.id); }}
+                          className="ml-3 mt-1.5 text-[11px] font-bold text-cyan-600 transition-colors hover:text-cyan-700"
+                        >
+                          Create landing page
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
