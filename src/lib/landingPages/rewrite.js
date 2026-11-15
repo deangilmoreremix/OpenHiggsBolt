@@ -50,6 +50,7 @@ export function sectionList(puckData) {
 }
 
 /** Every rewritable text: [{id, path, section, role, text}]. `section` limits to one top-level item. */
+/** @param {any} puckData @param {{ section?: number | null }} [opts] */
 export function collectTexts(puckData, { section = null } = {}) {
   const out = [];
   const walk = (node, path, top, key) => {
@@ -110,6 +111,7 @@ export async function rewriteBatch(items, { instruction = '', context = '', fetc
  * Rewrite a page (or one section). Returns the proposed changes WITHOUT applying them:
  *   { changes: [{ ...item, after }], skipped: n }
  */
+/** @param {any} puckData @param {{ section?: number | null, instruction?: string, context?: string, fetchImpl?: any, signal?: any }} [opts] */
 export async function proposeRewrite(puckData, { section = null, instruction, context, fetchImpl, signal } = {}) {
   const items = collectTexts(puckData, { section });
   if (!items.length) return { changes: [], skipped: 0 };

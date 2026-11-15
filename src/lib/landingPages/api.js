@@ -46,3 +46,17 @@ export const listContacts = async (pageId) => (await call(`/${encodeURIComponent
 export const addContacts = async (pageId, contacts) => (await call(`/${encodeURIComponent(pageId)}/contacts`, { method: 'POST', body: { contacts } })).contacts;
 export const removeContact = (pageId, contactId) => call(`/${encodeURIComponent(pageId)}/contacts?contactId=${encodeURIComponent(contactId)}`, { method: 'DELETE' });
 export const fetchContactStats = async (pageId) => (await call(`/${encodeURIComponent(pageId)}/contacts/stats`)).stats;
+
+// MailerLite sync (owner; the key lives on the server)
+const SYNC = '/api/landing-pages/sync';
+async function sync(method, body) {
+  const res = await fetch(SYNC, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data?.error || `Request failed (${res.status})`), { status: res.status, code: data?.code });
+  return data;
+}
+export const syncStatus = () => sync('GET');
+export const syncConnect = (apiKey) => sync('PUT', { apiKey });
+export const syncDisconnect = () => sync('DELETE');
+export const syncGroups = async () => (await sync('POST', { action: 'groups' })).groups;
+export const syncPush = (pageId, groupId, offset = 0) => sync('POST', { action: 'push', pageId, groupId: groupId || null, offset });

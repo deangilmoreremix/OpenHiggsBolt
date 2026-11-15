@@ -8073,7 +8073,9 @@
         "Lead form on the page with leads saved to your account",
         "Personal links: import a CSV and every contact gets their own link that greets them by name and shows you who watched",
         "Analytics: views, plays, play rate, completions, button clicks, leads and likes",
-        "Warns before publishing if sample names, quotes or numbers are still on the page"
+        "Warns before publishing if sample names, quotes or numbers are still on the page",
+        "Rewrite with AI: rewrite the whole page or one section on your own OpenAI key. Only the words change, you review every change first, and you can undo",
+        "MailerLite sync: send contacts with their personal link to your MailerLite account"
       ],
       "howToUse": "Open /studio/video-pages, click New page, choose a video and a design, then edit the page, click Save and Publish to get your link.",
       "howToSteps": [
@@ -8084,7 +8086,8 @@
         "Replace the sample names, quotes and numbers with your own.",
         "Click Save, then Publish, and copy the link or embed code.",
         "Open the Analytics tab to see views, plays, button clicks and leads.",
-        "Open the Personal links tab, import a CSV of contacts, and send each person their own link."
+        "Open the Personal links tab, import a CSV of contacts, and send each person their own link.",
+        "Optional: open Rewrite with AI above the editor to rewrite the words, or connect MailerLite on the Personal links tab to send your contacts."
       ],
       "gettingStarted": [
         "Make or upload a video first.",

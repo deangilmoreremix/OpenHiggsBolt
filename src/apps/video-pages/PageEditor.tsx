@@ -14,6 +14,7 @@ import { deletePage, updatePage } from '@/src/lib/landingPages/api.js'
 import { embedCode, pageUrl } from '@/src/lib/landingPages/ids.js'
 import AnalyticsTab from './AnalyticsTab'
 import ContactsTab from './ContactsTab'
+import AiRewritePanel from './AiRewritePanel'
 import { ui } from './ui'
 import type { PageRow } from './VideoPagesStudio'
 
@@ -28,6 +29,14 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const data = useRef<any>(page.config?.puck)
+  // Puck keeps its own copy of the data: when the AI rewrite (or undo) changes it, the editor is remounted on the new data.
+  const [initial, setInitial] = useState<any>(page.config?.puck)
+  const [rev, setRev] = useState(0)
+  const applyData = (next: any) => {
+    const clean = sanitizePuck(next)
+    if (!clean) return
+    data.current = clean; setInitial(clean); setRev((r) => r + 1); setDirty(true); setSampleCount(countSamples(clean))
+  }
   const [sampleCount, setSampleCount] = useState(0)
 
   const tpl = getTemplate(page.config?.template)
@@ -100,11 +109,13 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
           <div className="flex flex-col gap-3">
             {sampleCount ? <div className="text-xs text-amber-300 font-bold">{sampleCount} section{sampleCount === 1 ? '' : 's'} still use sample content (made-up names, numbers, quotes). Replace before sharing.</div> : null}
             <p className="text-xs text-white/40">Click any text on the page to edit it. Use the left panel to add, remove and reorder sections, then Save.</p>
+            <AiRewritePanel getData={() => data.current} applyData={applyData} context={`${title} (${page.config?.template || ''})`} />
             <div className="hb-puck rounded-2xl border border-white/10 overflow-hidden" style={{ height: '76vh' }}>
               <PageContext.Provider value={{ page, tokens: SAMPLE_TOKENS, handlers: {}, preview: true }}>
                 <Puck
+                  key={rev}
                   config={puckConfig as any}
-                  data={page.config?.puck}
+                  data={initial}
                   onChange={(d) => { const next = sanitizePuck(d); if (!next) return; data.current = next; setDirty(true); setSampleCount(countSamples(next)) }}
                   onPublish={() => void save()}
                 />

@@ -5,6 +5,7 @@ import { Copy, Download, ExternalLink, Trash2, Upload } from 'lucide-react'
 import { addContacts, fetchContactStats, listContacts, removeContact } from '@/src/lib/landingPages/api.js'
 import { buildContacts, CONTACT_FIELDS, contactLabel, exportLinksCsv, guessMapping, MAX_CONTACTS_PER_IMPORT, parseCsv } from '@/src/lib/landingPages/csv.js'
 import { personalUrl } from '@/src/lib/landingPages/ids.js'
+import SyncPanel from './SyncPanel'
 import { ui } from './ui'
 
 type Contact = { id: string; fields: Record<string, string>; created_at: string }
@@ -130,6 +131,8 @@ export default function ContactsTab({ pageId, published }: { pageId: string; pub
           <button type="button" className={`${ui.ghost} mt-2`} disabled={busy || !(one.firstname || one.company || one.email)} onClick={() => void addOne()}>Add contact</button>
         </div>
       </div>
+
+      <SyncPanel pageId={pageId} contactsWithEmail={(contacts || []).filter((c) => c.fields.email).length} />
 
       <div className={ui.panel}>
         <div className="flex items-center justify-between mb-3">
