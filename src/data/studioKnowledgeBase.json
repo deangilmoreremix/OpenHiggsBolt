@@ -8058,6 +8058,272 @@
       }
     },
     {
+      "id": "video-pages",
+      "name": "Video Pages",
+      "route": "/studio/video-pages",
+      "description": "Turns any video into a shareable landing page with a call to action, a lead form and analytics. Choose a video from your library, upload one or paste a link, pick one of 34 designs, then edit every word, image, link and section.",
+      "shortDescription": "Turn a video into an editable, shareable landing page with a lead form, personal links and view analytics.",
+      "fullDescription": "Video Pages builds a public landing page around one of your videos. You pick the video (from your library, an upload or a link) and a design, and the page opens in a visual editor where you click any text to change it, swap images, edit links and add, remove or reorder sections. Publishing gives you a link at /p/<page id> that anyone can open without signing in; viewers can play the video, press the call-to-action buttons and fill in the lead form, and you see views, plays, completions, button clicks and leads on the Analytics tab. Names, quotes and figures in the designs are sample content you replace before sharing.",
+      "keyFeatures": [
+        "34 responsive landing page designs, each fully editable",
+        "Pick the video from your library, upload a file or paste an https link",
+        "Visual editor: click text to edit, add, remove and reorder sections, change images and links",
+        "Choose images from the image library inside the editor",
+        "Publish to a public link and copy an embed code",
+        "Lead form on the page with leads saved to your account",
+        "Analytics: views, plays, play rate, completions, button clicks, leads and likes",
+        "Warns before publishing if sample names, quotes or numbers are still on the page"
+      ],
+      "howToUse": "Open /studio/video-pages, click New page, choose a video and a design, then edit the page, click Save and Publish to get your link.",
+      "howToSteps": [
+        "Open /studio/video-pages and click New page.",
+        "Choose the video: pick one from your library, upload a file or paste a permanent https link to a video.",
+        "Choose a design and click Create page.",
+        "Click any text on the page to edit it. Use the left panel to add, remove and reorder sections.",
+        "Replace the sample names, quotes and numbers with your own.",
+        "Click Save, then Publish, and copy the link or embed code.",
+        "Open the Analytics tab to see views, plays, button clicks and leads."
+      ],
+      "gettingStarted": [
+        "Make or upload a video first.",
+        "Start from a design close to your offer.",
+        "Replace sample content before publishing."
+      ],
+      "tips": [
+        "Use a short video; the page keeps the viewer on the video, then the button.",
+        "Keep the headline to one clear promise.",
+        "Publish only after the sample-content warning is clear."
+      ],
+      "bestPractices": [
+        "Use https video links that do not expire.",
+        "Check the page on a phone before sharing.",
+        "Put one main call to action on the page."
+      ],
+      "inputs": [
+        "Video (library, upload or link)",
+        "Design",
+        "Page title",
+        "Page text, images, links and sections"
+      ],
+      "requiredInputs": [
+        "Video"
+      ],
+      "optionalInputs": [
+        "Poster image",
+        "Logo",
+        "Custom text, images and links"
+      ],
+      "outputs": [
+        "A public landing page link and embed code"
+      ],
+      "limitations": [
+        "The video must be an https link that stays available.",
+        "Uploads up to 100MB.",
+        "Sample content in the designs must be replaced by you."
+      ],
+      "troubleshooting": [
+        "If the video will not play, check that its link opens in a browser tab.",
+        "If Save is greyed out, make a change first.",
+        "If the page shows not found, make sure it is published."
+      ],
+      "faqs": [
+        {
+          "question": "Can I edit everything on the page?",
+          "answer": "Yes. Every text, image, link and section is editable in the visual editor."
+        },
+        {
+          "question": "Do viewers need to sign in?",
+          "answer": "No. Published pages are public."
+        },
+        {
+          "question": "Where do leads go?",
+          "answer": "Leads from the form are saved to your account for that page."
+        }
+      ],
+      "relatedStudios": [
+        "video",
+        "thumbnail-studio"
+      ],
+      "sourceFiles": [
+        "src/apps/video-pages/VideoPagesStudio.tsx",
+        "src/apps/video-pages/PageEditor.tsx",
+        "app/p/[slug]/page.tsx",
+        "app/api/landing-pages/route.ts"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Read VideoPagesStudio.tsx, NewPageFlow.tsx, PageEditor.tsx, AnalyticsTab.tsx, app/p/[slug]/page.tsx and app/api/landing-pages/* on 2026-11-15.",
+        "verifiedAt": "2026-11-15",
+        "verifiedBy": "Code review 2026-11-15"
+      },
+      "inputDetails": [
+        {
+          "name": "Video",
+          "description": "The video the page is built around: pick one from your library, upload a file (mp4, webm or mov, up to 100MB) or paste an https link.",
+          "required": true,
+          "whenToUse": "When you create a page",
+          "restrictions": "It must be a permanent https link."
+        },
+        {
+          "name": "Design",
+          "description": "One of the 34 landing page designs shown as cards on the New page screen.",
+          "required": true,
+          "whenToUse": "When you create a page",
+          "restrictions": "You can restyle later in the editor."
+        },
+        {
+          "name": "Page title",
+          "description": "The name shown in your page list and in the browser tab.",
+          "required": false,
+          "whenToUse": "Any time",
+          "restrictions": "Up to 200 characters."
+        }
+      ],
+      "generationModes": [],
+      "modeExplanations": [
+        {
+          "mode": "Design",
+          "description": "The visual editor where you change the page text, images, links and sections."
+        },
+        {
+          "mode": "Analytics",
+          "description": "Shows views, plays, play rate, completions, button clicks, leads, likes and the number of people reached by personal links."
+        }
+      ],
+      "modelCapabilities": "",
+      "modelExplanations": "Video Pages does not use an AI model to build pages. It uses the video and images you choose.",
+      "advancedFeatures": [],
+      "advancedFeatureExplanations": [
+        {
+          "feature": "Personalisation tokens",
+          "explanation": "Text like {{firstname|there}} is replaced with the viewer's name when a link carries it, and falls back to the text after the bar when it does not.",
+          "whyToUse": "Greet each viewer by name.",
+          "inputRequired": "A link with the viewer's details",
+          "restrictions": "Only name, company, role and city style fields are used."
+        },
+        {
+          "feature": "Sample content warning",
+          "explanation": "Before publishing, the studio counts sections that still use the design's made-up names, quotes and numbers and asks you to confirm.",
+          "whyToUse": "Avoid sending a page with placeholder content.",
+          "inputRequired": "None",
+          "restrictions": "The warning is a prompt, not a block."
+        }
+      ],
+      "featureExplanations": [
+        {
+          "feature": "34 landing page designs",
+          "explanation": "Each design is a real responsive page: a hero with your video and a form, proof sections, features, steps, questions and a footer, depending on the design.",
+          "whyToUse": "Start from a layout that already looks finished instead of a blank page.",
+          "inputRequired": "A choice of design",
+          "restrictions": "Names, quotes and figures in the designs are sample content you must replace."
+        },
+        {
+          "feature": "Visual page editor",
+          "explanation": "Click any text to edit it, change images and links in the right panel, and add, remove or reorder sections from the left panel.",
+          "whyToUse": "Make the page say exactly what you want without code.",
+          "inputRequired": "None",
+          "restrictions": "Click Save to keep your changes."
+        },
+        {
+          "feature": "Image library picker",
+          "explanation": "Every image field has a Choose from my library button that lists images made in any studio.",
+          "whyToUse": "Use your generated images on the page without downloading and re-uploading them.",
+          "inputRequired": "At least one image in your library",
+          "restrictions": "Only https images are offered."
+        },
+        {
+          "feature": "Publish and share",
+          "explanation": "Publishing makes the page public at /p/ followed by its id, with a copy link and an embed code.",
+          "whyToUse": "Share the page by link or put it on another site.",
+          "inputRequired": "A saved page",
+          "restrictions": "Unpublish to take it offline."
+        }
+      ],
+      "outputDetails": [
+        {
+          "outputType": "Landing page",
+          "description": "A public page at /p/<page id> with your video, the page content, a lead form and tracking.",
+          "postGenerationActions": "Copy the link, copy the embed code, open the page, view analytics, unpublish or delete."
+        }
+      ],
+      "limitationDetails": [
+        {
+          "limitation": "Videos must be permanent https links",
+          "impact": "A link that expires will stop playing on the published page.",
+          "workaround": "Upload the file or pick it from your library."
+        }
+      ],
+      "troubleshootingSteps": [
+        {
+          "issue": "The video does not play on the page",
+          "steps": [
+            "Open the video link in a browser tab to check it works.",
+            "Use a permanent https link; links that expire stop working.",
+            "Upload the file instead of pasting a link."
+          ]
+        }
+      ],
+      "commonProblems": [
+        {
+          "problem": "Save is disabled",
+          "whyItHappens": "Nothing has changed since the last save.",
+          "howToFix": "Make an edit, then click Save."
+        },
+        {
+          "problem": "The page says not found",
+          "whyItHappens": "The page is still a draft or was deleted.",
+          "howToFix": "Open the page in the studio and click Publish."
+        }
+      ],
+      "exampleWorkflows": [
+        {
+          "title": "Share a video with a lead form",
+          "steps": [
+            "Open /studio/video-pages and click New page.",
+            "Pick a video from your library and a design.",
+            "Edit the headline, button and form text.",
+            "Replace the sample names, quotes and numbers.",
+            "Click Save, then Publish, and copy the link."
+          ]
+        }
+      ],
+      "useCases": [],
+      "whenToUse": [
+        "Turning a finished video into a page you can share with a call to action and a lead form",
+        "Sending a personal video page to a prospect or customer",
+        "Collecting leads from a video without building a website"
+      ],
+      "whenToUseAnother": [
+        "Use Video Studio or Cinema Studio to make the video itself",
+        "Use the Edit studio to cut or change a video before you publish it",
+        "Use Social Publishing to post a video straight to social platforms"
+      ],
+      "bestFor": "Marketers, agencies and sellers who want a branded landing page around a video, with editable copy, a lead form and view analytics.",
+      "targetCustomers": [],
+      "contentTypes": [],
+      "businessValue": "",
+      "competitivePositioning": "",
+      "relatedStudioGuidance": [
+        {
+          "studio": "Video Studio",
+          "relationship": "Makes the video you put on the page",
+          "whenToMove": "When you do not have a video yet",
+          "why": "Video Pages builds the page; it does not generate videos."
+        }
+      ],
+      "academyGuidance": [
+        {
+          "resource": "SmartVideo GO Academy (/academy)",
+          "whatYouLearn": "Lessons on finding clients and selling video work that pair well with a landing page."
+        }
+      ],
+      "glossary": {
+        "Draft": "A page that is saved but not public.",
+        "Published": "A page anyone with the link can open.",
+        "Embed code": "A snippet that shows the page inside another website."
+      }
+    },
+    {
       "id": "ai-influencer",
       "name": "AI Influencer Studio",
       "route": "/studio/ai-influencer",
@@ -12951,7 +13217,7 @@
     }
   ],
   "meta": {
-    "totalStudios": 26,
+    "totalStudios": 27,
     "generatedAt": "2026-11-11T00:00:00Z",
     "application": "SmartVideo GO",
     "note": "Every entry re-verified against current component code on 2026-11-11 (see docs/studio-guides-refresh.md). UI labels quoted in guides are checked by tests/studio-guide-labels.vitest.test.ts against src/data/studioGuideLabels.json."
