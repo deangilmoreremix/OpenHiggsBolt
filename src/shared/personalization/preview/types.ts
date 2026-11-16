@@ -183,6 +183,14 @@ export interface PersonalizationPreviewSettings {
   /** Customer-selected audio track, or null when none is chosen. */
   audio: PreviewAudioSelection | null
   /**
+   * The audio mix: tracks (music, voiceover) with volume, fades, start and trim, plus the video's own sound.
+   * Optional so projects saved before the mix existed restore unchanged; `audio` above keeps working as one track.
+   */
+  audioTracks?: import('./audioMix').AudioTrack[]
+  videoVolume?: number
+  videoMuted?: boolean
+  audioSolo?: string
+  /**
    * Id of the Remotion design currently applied to the preview, or null.
    *
    * Optional so projects saved before the design registry existed still

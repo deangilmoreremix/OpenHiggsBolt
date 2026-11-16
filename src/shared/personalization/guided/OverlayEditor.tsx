@@ -19,6 +19,7 @@ import { moveKeyframe } from '../preview/keyframes'
 import { NEUTRAL_KEYFRAME_STATE, keyframeStateFor, keyframeTransformParts } from '../preview/keyframes'
 import { lookFilter, lookOverlays, vignetteStops } from '../preview/effects'
 import { LookPanel } from './LookPanel'
+import { AudioPanel } from './AudioPanel'
 import { LayerEffectsControls } from './editor/LayerEffectsControls'
 import { CutoutPanel } from './CutoutPanel'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
@@ -1026,6 +1027,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
         {/* ── Layer list + controls ─────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <LookPanel inputProps={inputProps} />
+          <AudioPanel />
           <CutoutPanel inputProps={inputProps} />
           <div style={labelStyle}>Layers</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>

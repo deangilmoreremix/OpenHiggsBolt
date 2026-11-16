@@ -1,9 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createPage } from '@/src/lib/landingPages/api.js'
+import { createPage, updatePage, addContacts } from '@/src/lib/landingPages/api.js'
 import { defaultConfig, TEMPLATES } from '@/src/lib/landingPages/templates.js'
 import { normalizeVideo } from '@/src/lib/landingPages/handoff.js'
+import { applyCustomerToPuck, brandForConfig, toContactFields } from '@/src/lib/landingPages/customerProfile.js'
+import CustomerPanel, { useCustomerChoice } from './CustomerPanel'
+import { useCustomers } from './useCustomers'
+import DesignPreview from './DesignPreview'
 import { ui } from './ui'
 
 type Video = { url: string; posterUrl: string | null; title: string; source: Record<string, unknown> }
@@ -17,6 +21,8 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const { customers, activeId, loading: customersLoading } = useCustomers()
+  const choice = useCustomerChoice(customers, activeId)
 
   useEffect(() => {
     let live = true
@@ -28,8 +34,8 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
   }, [])
 
   const useLink = () => {
-    const v = normalizeVideo({ url: link.trim(), kind: 'video' })
-    if (!v) { setError('Paste a permanent https link to a video file (.mp4, .webm, .mov).'); return }
+    const v = normalizeVideo({ url: link.trim(), kind: 'video' }, { allowImage: true })
+    if (!v) { setError('Paste a permanent https link to a video file (.mp4, .webm, .mov) or a picture (.png, .jpg, .webp).'); return }
     setError(''); setVideo(v)
   }
 
@@ -51,8 +57,16 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
     if (!video) return
     setBusy('Creating…'); setError('')
     try {
-      const config = defaultConfig(template, { title: video.title })
-      const page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
+      const one = choice.selected.length === 1 ? choice.selected[0] : null
+      const withBrand = !!one && choice.brand
+      const config = defaultConfig(template, { title: video.title, ...(withBrand ? { brand: brandForConfig(one) } : {}) })
+      if (withBrand && config.puck) config.puck = applyCustomerToPuck(config.puck, one).data
+      let page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
+      const rows = choice.selected.map(toContactFields).filter(Boolean).map((fields: any) => ({ fields }))
+      if (rows.length) {
+        // the editor previews as the first of them; a failure here must not lose the page
+        try { await addContacts(page.id, rows) } catch { /* the Personal links tab can add them again */ }
+      }
       onCreated(page)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create the page')
@@ -101,7 +115,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
                 <button type="button" className={ui.ghost} disabled={!!busy} onClick={() => fileRef.current?.click()}>Choose a video file</button>
               </div>
               <div className={ui.panel}>
-                <div className="text-xs font-bold text-white/70 mb-2">Paste a video link</div>
+                <div className="text-xs font-bold text-white/70 mb-2">Paste a video or picture link</div>
                 <input className={ui.input} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…/video.mp4" />
                 <button type="button" className={`${ui.ghost} mt-2`} onClick={useLink}>Use link</button>
               </div>
@@ -113,18 +127,20 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
       <section className="mb-8">
         <div className={`${ui.label} mb-2`}>2. Choose a design</div>
         <p className="text-xs text-white/40 mb-3">Every design is a real, responsive landing page. After you create it you can change every word, image, link and section.</p>
-        <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {TEMPLATES.map((t: any) => (
             <button key={t.id} type="button" aria-pressed={template === t.id} onClick={() => setTemplate(t.id)} className={`${ui.card} text-left transition-colors ${template === t.id ? 'border-primary bg-primary/10' : 'hover:border-white/20'}`}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.bg }} />
-                <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.accent }} />
-              </div>
+              <div className="mb-2"><DesignPreview data={t.puckData} label={t.name} /></div>
               <div className="text-xs font-bold text-white leading-tight">{t.name}</div>
               <div className="text-[10px] text-white/40 mt-1 line-clamp-2">{t.description}</div>
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="mb-8">
+        <div className={`${ui.label} mb-2`}>3. Who is it for?</div>
+        <CustomerPanel customers={customers} loading={customersLoading} choice={choice} />
       </section>
 
       <button type="button" className={ui.primary} disabled={!video || !!busy} onClick={() => void create()}>

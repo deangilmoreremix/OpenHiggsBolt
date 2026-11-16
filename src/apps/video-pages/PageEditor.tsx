@@ -10,7 +10,7 @@ import { puckConfig } from '@/src/lib/landingPages/puck/config.jsx'
 import { PageContext } from '@/src/lib/landingPages/puck/context.js'
 import { getTemplate, sanitizePuck } from '@/src/lib/landingPages/templates.js'
 import { sampleSections } from '@/src/lib/landingPages/sampleContent.js'
-import { deletePage, updatePage } from '@/src/lib/landingPages/api.js'
+import { deletePage, updatePage, listContacts } from '@/src/lib/landingPages/api.js'
 import { embedCode, pageUrl } from '@/src/lib/landingPages/ids.js'
 import AnalyticsTab from './AnalyticsTab'
 import ContactsTab from './ContactsTab'
@@ -39,6 +39,16 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
   }
   const [sampleCount, setSampleCount] = useState(0)
 
+  // Preview as the page's first personal-link contact (the customer it was made for); the sample person when it has none.
+  const [contactTokens, setContactTokens] = useState<Record<string, string> | null>(null)
+  useEffect(() => {
+    let live = true
+    listContacts(page.id).then((rows: any[]) => {
+      const f = rows?.[0]?.fields
+      if (live && f) setContactTokens(Object.fromEntries(['firstname', 'lastname', 'company', 'companylogo', 'role', 'city'].filter((k) => f[k]).map((k) => [k, String(f[k])])))
+    }).catch(() => {})
+    return () => { live = false }
+  }, [page.id])
   const tpl = getTemplate(page.config?.template)
   const countSamples = useCallback((d: any) => sampleSections(d, tpl.puckData, tpl.sampleTypes || []).length, [tpl])
   useEffect(() => { setSampleCount(countSamples(data.current)) }, [countSamples])
@@ -111,7 +121,7 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
             <p className="text-xs text-white/40">Click any text on the page to edit it. Use the left panel to add, remove and reorder sections, then Save.</p>
             <AiRewritePanel getData={() => data.current} applyData={applyData} context={`${title} (${page.config?.template || ''})`} />
             <div className="hb-puck rounded-2xl border border-white/10 overflow-hidden" style={{ height: '76vh' }}>
-              <PageContext.Provider value={{ page, tokens: SAMPLE_TOKENS, handlers: {}, preview: true }}>
+              <PageContext.Provider value={{ page, tokens: contactTokens && Object.keys(contactTokens).length ? contactTokens : SAMPLE_TOKENS, handlers: {}, preview: true }}>
                 <Puck
                   key={rev}
                   config={puckConfig as any}
