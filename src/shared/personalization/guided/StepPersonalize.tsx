@@ -94,7 +94,10 @@ export function StepPersonalize({
   const activeDesign = activeRemotionDesignId
     ? remotionDesignTemplates.find((design) => design.id === activeRemotionDesignId) ?? null
     : null
-  const activeTemplate = activeDesign ?? activeLayout
+  // A design ADDED on top keeps the layout's own layers; only Replace leaves nothing but design layers.
+  const layoutOnVideo = layers.some((item) => item.kind !== 'design')
+  const showingLayout = layoutOnVideo || !activeDesign
+  const activeTemplate = showingLayout ? activeLayout : (activeDesign ?? activeLayout)
 
   // Auto-apply a compatible layout on mount, and again while nothing was chosen
   // explicitly (e.g. a product photo imported later). The ref guard keeps it to
@@ -324,7 +327,7 @@ export function StepPersonalize({
           designs can be added in the next step.
         </p>
         <LayoutThumbnails
-          activeLayoutId={activeDesign ? null : previewSettings.layout}
+          activeLayoutId={showingLayout ? previewSettings.layout : null}
           onChoose={(layoutId) => {
             setLocalChosenByUser(true)
             onChooseLayout?.()
@@ -339,7 +342,7 @@ export function StepPersonalize({
           What will be placed on your video
         </h3>
         <p style={{ ...hintStyle, marginTop: 0, marginBottom: 10 }}>
-          Based on the {activeTemplate.name} {activeDesign ? 'design' : 'layout'} — the preview updates as you edit.
+          Based on the {activeTemplate.name} {showingLayout ? 'layout' : 'design'} — the preview updates as you edit.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 8 }}>
           {layers.map((layer) => {
