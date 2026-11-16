@@ -1,0 +1,9 @@
+/* Brand tokens: OpenHiggsBolt (cyan on near-black). */
+:root {
+  --primary: #22d3ee; --primary-hover: #06b6d4; --on-primary: #030303;
+  --bg-app: #030303; --bg-panel: #0a0a0a; --bg-card: #111111;
+  --text: #f4f4f5; --text-secondary: #a1a1aa; --text-muted: #52525b;
+  --border: #1f1f23; --danger: #ff5c5c; --ok: #4ade80;
+  --glow: 0 0 20px rgba(34, 211, 238, 0.4);
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
