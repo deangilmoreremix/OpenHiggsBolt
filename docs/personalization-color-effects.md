@@ -51,6 +51,6 @@ unchanged.
 ## Known limits
 
 - Layer effects (and the look) are shown in the still preview (Live off) only for the footage; turn Live on to see layer effects.
-- The look applies to the footage. If a presenter cut-out (separate PR) is on, the filter must be applied to that canvas too;
-  that is wired when both are merged.
+- The look applies to the footage, including the presenter cut-out: the filter is set on the cut-out canvas itself. Verified in a
+  real export (`e2e/personalization-presenter-background.spec.ts`): with Black and white on, the presenter's red shirt exports gray.
 - Filters are drawn per element in the export, so a look on a very large video adds render time.

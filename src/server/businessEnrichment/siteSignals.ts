@@ -15,6 +15,8 @@ export interface SiteSignals {
   booking?: { sourceUrl: string; href: string; provider?: string }
   /** Video the business itself embeds: YouTube/Vimeo/Wistia iframes, a <video> tag, or an og:video. */
   video?: { sourceUrl: string; kinds: Array<'youtube' | 'vimeo' | 'wistia' | 'video-tag' | 'og-video'> }
+  /** The rating the business's OWN page publishes (JSON-LD aggregateRating on a business). Never a third-party review site. */
+  rating?: { value: number; count: number; best: number; sourceUrl: string }
   /** Technical quality hints from the homepage. */
   quality?: {
     sourceUrl: string
@@ -37,6 +39,39 @@ const BOOKING_HOSTS: Array<[RegExp, string]> = [
   [/(^|\.)tock\.com$/, 'Tock'], [/(^|\.)toasttab\.com$/, 'Toast'], [/(^|\.)zocdoc\.com$/, 'Zocdoc'], [/(^|\.)glossgenius\.com$/, 'GlossGenius'],
 ]
 const BOOKING_TEXT = /\b(book (now|online|an? appointment|a table)|schedule( an? (appointment|visit|service))?|reserve( a table)?|request an? (quote|estimate|appointment))\b/i
+const NOT_A_BUSINESS_TYPE = /^(Product|Recipe|Book|Movie|Course|SoftwareApplication|MobileApplication|Event|CreativeWork|Article|Review|Game|MusicRecording|Offer)$/i
+
+function typesOf(node: Record<string, unknown>): string[] {
+  const t = node['@type']
+  return (Array.isArray(t) ? t : [t]).filter((x): x is string => typeof x === 'string')
+}
+
+/** Finds an aggregateRating attached to a business-like JSON-LD node. Pure; ignores malformed JSON. */
+export function extractRating(jsonLdBlocks: string[], pageUrl: string): SiteSignals['rating'] | undefined {
+  const visit = (node: unknown, depth: number): SiteSignals['rating'] | undefined => {
+    if (!node || typeof node !== 'object' || depth > 6) return undefined
+    if (Array.isArray(node)) { for (const n of node) { const r = visit(n, depth + 1); if (r) return r } return undefined }
+    const obj = node as Record<string, unknown>
+    const types = typesOf(obj)
+    const agg = obj.aggregateRating
+    if (agg && typeof agg === 'object' && !types.some((t) => NOT_A_BUSINESS_TYPE.test(t))) {
+      const a = agg as Record<string, unknown>
+      const value = Number(a.ratingValue)
+      const best = a.bestRating === undefined ? 5 : Number(a.bestRating)
+      const count = Number(a.reviewCount ?? a.ratingCount)
+      if (Number.isFinite(value) && Number.isFinite(best) && best > 0 && value > 0 && value <= best && Number.isInteger(count) && count >= 1) {
+        return { value: Math.round(value * 10) / 10, count, best, sourceUrl: pageUrl }
+      }
+    }
+    for (const v of Object.values(obj)) { const r = visit(v, depth + 1); if (r) return r }
+    return undefined
+  }
+  for (const block of jsonLdBlocks) {
+    try { const r = visit(JSON.parse(block), 0); if (r) return r } catch { /* malformed JSON-LD is ignored */ }
+  }
+  return undefined
+}
+
 const BOOKING_PATH = /\/(book(ing)?(-online|-now|-appointment|-a-table)?|appointments?|schedule(-online)?|reservations?|reserve|request-(a-)?(quote|estimate))(\/|$|\?)/i
 
 export function extractSiteSignals(html: string, pageUrl: string, opts: { isHomepage?: boolean; nowYear?: number } = {}): SiteSignals {
@@ -67,6 +102,10 @@ export function extractSiteSignals(html: string, pageUrl: string, opts: { isHome
       out.booking = { sourceUrl: pageUrl, href: abs.toString(), ...(provider ? { provider } : {}) }
     }
   })
+
+  // The rating the business itself publishes.
+  const rating = extractRating($('script[type="application/ld+json"]').map((_, el) => $(el).contents().text()).get(), pageUrl)
+  if (rating) out.rating = rating
 
   // The business's own video.
   const kinds = new Set<NonNullable<SiteSignals['video']>['kinds'][number]>()
@@ -106,6 +145,7 @@ export function mergeSiteSignals(list: SiteSignals[]): SiteSignals {
   for (const s of list) {
     if (s.contactForm && !out.contactForm) out.contactForm = s.contactForm
     if (s.booking && !out.booking) out.booking = s.booking
+    if (s.rating && !out.rating) out.rating = s.rating
     if (s.quality && !out.quality) out.quality = s.quality
     if (s.video) {
       out.video = out.video

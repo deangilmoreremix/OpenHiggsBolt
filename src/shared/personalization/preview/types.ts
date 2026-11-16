@@ -197,6 +197,11 @@ export interface PersonalizationPreviewSettings {
   imageHints?: Record<string, ImageHints>
   /** A color and film look for the footage (not the brand overlays). Optional so saved projects restore unchanged. */
   look?: import('./effects').LookSettings
+  /**
+   * Presenter background removal. Optional so projects saved before it existed restore unchanged.
+   * Settings only: the measured masks live in memory (preview/cutout/maskStore.ts), never in the project.
+   */
+  cutout?: import('./cutout/cutoutSettings').CutoutSettings
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */
@@ -213,6 +218,8 @@ export interface PreviewInputProps {
     cta: string
     phone: string
     website: string
+    /** Optional extra end-card line (email / @handle) built from found contact details. */
+    contactExtra?: string
     logoUrl: string | null
     productUrl: string | null
     serviceUrl: string | null

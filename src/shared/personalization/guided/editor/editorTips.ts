@@ -55,6 +55,13 @@ export const EDITOR_TIPS = {
   lookOverlay: { text: 'Pick a color and a strength to wash over the video, or use it for a glow around a layer.' },
   lookBlur: { text: 'Softens the whole video, for example behind a busy headline.' },
   layerEffects: { text: 'Effects for this layer only: brighten, darken, recolor, blur, or add a drop shadow or colored glow. Reset effects removes them.' },
+  // ── presenter background ─────────────────────────────────────────────
+  cutoutRemove: { text: 'Cut the person out of your video so they can stand on a different background. It runs in your browser, uses no credits, and your original video is kept.', free: true },
+  cutoutRestore: { text: 'Go back to your original video, background included. Your background choices are kept if you turn it on again.' },
+  cutoutBackground: { text: 'What appears behind the presenter: nothing, a color, a blurred copy of the video, one of your images, or another video.' },
+  cutoutPresenter: { text: 'Where the presenter stands in the frame and how big they are. Use a preset or fine-tune the size, position and tilt.' },
+  cutoutEdge: { text: 'Clean up the outline. Soften blends the edge; Edge shrinks it to remove a halo or grows it to bring back hair.' },
+  cutoutColor: { text: 'Pick the background color.' },
 
   // ── layout quality check ─────────────────────────────────────────────
   qualityReview: { text: 'Open the full layout check: every problem found, with buttons to show it on the video or fix it.' },

@@ -33,3 +33,16 @@ describe('design recommendations', () => {
     expect(intro.every((r) => r.design.category !== 'full-scene')).toBe(true)
   })
 })
+
+import { suggestGoal } from '../recommendations'
+describe('suggestGoal', () => {
+  it('uses only known facts, in priority order', () => {
+    const booking = { sourceUrl: 'https://x.com/book', provider: 'Calendly' }
+    expect(suggestGoal({ hasOffer: true, hasProductImages: true, booking }).goal).toBe('promote-offer')
+    const b = suggestGoal({ hasOffer: false, hasProductImages: true, booking })
+    expect(b.goal).toBe('promote-offer')
+    expect(b.reason).toContain('Calendly')
+    expect(suggestGoal({ hasOffer: false, hasProductImages: true }).goal).toBe('show-product')
+    expect(suggestGoal({ hasOffer: false, hasProductImages: false }).goal).toBe('introduce')
+  })
+})

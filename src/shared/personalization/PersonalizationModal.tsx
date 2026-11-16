@@ -21,7 +21,9 @@
 
 'use client'
 
+import { cutoutAssetIds } from './backgroundRemoval/useAutoCutout'
 import { RECAST_MAX_SECONDS } from './recast/recastJob'
+import { logoQualityNotes } from './logoScoring'
 import {
   useState,
   useRef,
@@ -73,6 +75,8 @@ import { modelForGeneration, resolveModelCapabilities } from './modelCapabilityR
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
 import { BUSINESS_NICHES } from './businessNiches'
+import { useFinderContinuity, type SavedSearch } from './useFinderContinuity'
+import { HiddenBar, LooksWrongMenu, SavedSearchesPanel } from './FinderContinuityUi'
 import ImageEditorModal, {
   type ImageEditorApplyResult,
   type PersonalizationImageEditorAsset,
@@ -2076,6 +2080,8 @@ function ConfigurationView(props: any) {
   const {
     autoFilledKeys,
     businessLoadSummary,
+    contactSources,
+    clearContactValue,
     advancedTab: ctxAdvancedTab,
     setAdvancedTab: ctxSetAdvancedTab,
     advancedSections: ctxAdvancedSections,
@@ -2218,6 +2224,7 @@ function ConfigurationView(props: any) {
   // affordances exist — the modal never renders a paid action the server has not
   // granted.
   const isAnonymous = access !== 'authenticated'
+  const cutoutIds = cutoutAssetIds(discoveredAssets)
   // Face only / Full presenter models set their own resolution and quality.
   const modelSetsQuality = mode === 'face_only' || mode === 'full_body'
   // Saved clients are picked one way at a time: the cards (customer audience)
@@ -2281,6 +2288,17 @@ function ConfigurationView(props: any) {
     setSearchRadius(radiusMiles)
     findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
   }, [findBusinesses, searchLocation, searchNiche])
+
+  // Runs a saved search: fills the form with it and searches (same guard as a normal search).
+  const runSavedSearch = useCallback((saved: SavedSearch) => {
+    if (businessSearchInFlightRef.current) return
+    setSearchNiche(saved.niche)
+    setSearchLocation(saved.location)
+    setSearchRadius(saved.radius_miles)
+    businessSearchInFlightRef.current = true
+    setBusinessSearchInFlight(true)
+    findBusinesses(saved.niche, saved.location, saved.radius_miles)
+  }, [findBusinesses])
 
   // ── Saved Leads (lead finder shortlist) ────────────────────────────────────
   // Per-user shortlist behind /api/personalization/leads (Clerk-authenticated).
@@ -2415,14 +2433,23 @@ function ConfigurationView(props: any) {
   // "Open now first" reorders the list (stable; unknown hours sit between open and closed). The enrichment lookups
   // follow whatever order is on screen, so the visible cards are the ones that get looked up.
   const [openFirst, setOpenFirst] = useState(false)
+  // Saved searches + the user's own "looks wrong" flags (signed-in only). Flagged businesses are hidden for this
+  // user, never deleted, and can be shown again or un-flagged from the bar above the list.
+  const continuity = useFinderContinuity(!isAnonymous)
+  const [showFlagged, setShowFlagged] = useState(false)
+  const hiddenCount = useMemo(() => businessSearchResults.filter((b) => continuity.isFlagged(b)).length, [businessSearchResults, continuity.isFlagged])
+  const listedResults = useMemo(
+    () => (showFlagged ? businessSearchResults : businessSearchResults.filter((b) => !continuity.isFlagged(b))),
+    [businessSearchResults, continuity.isFlagged, showFlagged],
+  )
   const orderedResults = useMemo(() => {
-    if (!openFirst) return businessSearchResults
+    if (!openFirst) return listedResults
     const rank = (b: BusinessDiscoveryRecord) => {
       const st = b.openingHours ? openStatus(b.openingHours, b.region).state : 'unknown'
       return st === 'open' ? 0 : st === 'unknown' ? 1 : 2
     }
-    return businessSearchResults.map((b, i) => ({ b, i, r: rank(b) })).sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.b)
-  }, [businessSearchResults, openFirst])
+    return listedResults.map((b, i) => ({ b, i, r: rank(b) })).sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.b)
+  }, [listedResults, openFirst])
   const enrichStates = useBusinessEnrichment(orderedResults.slice(0, shownResultCount))
   const enrichmentOf = (id: string) => { const st = enrichStates[id]; return st && st.status === 'done' ? st.data : null }
   // Businesses already shown in an EARLIER search this session (by website / phone / name+address).
@@ -2438,6 +2465,15 @@ function ConfigurationView(props: any) {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSearchResults, enrichStates])
+  // Contact values found on the business's own website that are STILL what the profile holds (a value the user
+  // typed over, or an OpenStreetMap one, is never labelled as "found on the website").
+  const foundContacts = (['email', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok'] as const).flatMap((key) => {
+    const source = contactSources[key]
+    const value = clientForm[key]
+    return source && value && value === source.value
+      ? [{ key, label: key === 'email' ? 'Email' : key[0].toUpperCase() + key.slice(1), value, source }]
+      : []
+  })
   const brandRunInFlightRef = useRef(false)
 
   const handleFindMyBrand = useCallback(async () => {
@@ -2997,6 +3033,18 @@ function ConfigurationView(props: any) {
                   ))}
                 </div>
               </div>
+              {!isAnonymous && (
+                <SavedSearchesPanel
+                  current={searchFormReady ? { niche: searchNiche, location: searchLocation.trim(), radiusMiles: searchRadius } : null}
+                  defaultName={`${BUSINESS_NICHES.find((n) => n.key === searchNiche)?.label ?? 'Search'} · ${searchLocation.trim()}`.slice(0, 80)}
+                  searches={continuity.searches}
+                  nicheLabel={(key) => BUSINESS_NICHES.find((n) => n.key === key)?.label ?? key}
+                  onSave={(name) => continuity.saveSearch({ name, niche: searchNiche, location: searchLocation.trim(), radiusMiles: searchRadius })}
+                  onRun={runSavedSearch}
+                  onDelete={continuity.deleteSearch}
+                  disabled={isSearchingBusinesses}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => runBusinessSearch(searchRadius)}
@@ -3118,6 +3166,14 @@ function ConfigurationView(props: any) {
                   </button>
                 </div>
               </div>
+              {!isAnonymous && (
+                <HiddenBar
+                  hiddenCount={hiddenCount}
+                  showing={showFlagged}
+                  onToggle={() => setShowFlagged((v) => !v)}
+                  onUndoAll={() => { void continuity.unflagAll(businessSearchResults.filter((b) => continuity.isFlagged(b))) }}
+                />
+              )}
               {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
                 {orderedResults.slice(0, shownResultCount).map((business) => {
@@ -3184,6 +3240,13 @@ function ConfigurationView(props: any) {
                           </div>
                         </div>
                         {!isAnonymous && (
+                          <LooksWrongMenu
+                            businessName={business.name}
+                            flagged={continuity.isFlagged(business)}
+                            onFlag={(reason) => continuity.flag(business, reason)}
+                          />
+                        )}
+                        {!isAnonymous && (
                           <button
                             type="button"
                             disabled={leadSaveState[business.id] === 'saving'}
@@ -3220,21 +3283,21 @@ function ConfigurationView(props: any) {
                     </div>
                   </div>
                 )})}
-                {businessSearchResults.length > shownResultCount && (
+                {orderedResults.length > shownResultCount && (
                   <button
                     type="button"
                     data-testid="pz-results-show-more"
                     onClick={() => setShownResultCount((count) => count + RESULTS_PAGE)}
                     style={{ minHeight: 34, borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan, fontSize: 11, fontWeight: 800 }}
                   >
-                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more
+                    Show {Math.min(RESULTS_PAGE, orderedResults.length - shownResultCount)} more
                   </button>
                 )}
-                {businessSearchResults.length > RESULTS_PAGE && (
+                {orderedResults.length > RESULTS_PAGE && (
                   <p data-testid="pz-results-count" style={{ margin: 0, textAlign: 'center', color: C.muted2, fontSize: 10 }}>
-                    {businessSearchResults.length > shownResultCount
-                      ? `Showing ${shownResultCount} of ${businessSearchResults.length}`
-                      : `Showing all ${businessSearchResults.length}`}
+                    {orderedResults.length > shownResultCount
+                      ? `Showing ${shownResultCount} of ${orderedResults.length}`
+                      : `Showing all ${orderedResults.length}`}
                   </p>
                 )}
               </div>
@@ -3401,7 +3464,27 @@ function ConfigurationView(props: any) {
               <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5 }}>
                 {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
                 {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
-                <LeadInsightsPanel business={selectedBusiness} results={businessSearchResults} enrichment={enrichmentOf(selectedBusiness.id)} onPick={(b) => { void handleSelectBusiness(b) }} />
+                <LeadInsightsPanel showOutreach business={selectedBusiness} results={businessSearchResults} enrichment={enrichmentOf(selectedBusiness.id)} onPick={(b) => { void handleSelectBusiness(b) }} />
+                {foundContacts.length > 0 && (
+                  <div data-testid="pz-found-contacts" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Found on the business's website</div>
+                    {foundContacts.filter((c) => c.key === 'email').map((c) => (
+                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`Found on ${c.source.sourceUrl} (${c.source.method}, confidence ${Math.round(c.source.confidence * 100)}%)`}>
+                        <span style={{ color: C.text }}>Email: <a href={`mailto:${c.value}`} style={{ color: C.cyan }}>{c.value}</a></span>
+                        <button type="button" aria-label="Remove Email" onClick={() => clearContactValue('email')} style={{ background: 'transparent', border: 0, color: C.muted2, cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                    {foundContacts.some((c) => c.key !== 'email') && (
+                      <SocialIcons
+                        size={16}
+                        name={selectedBusiness.name}
+                        links={Object.fromEntries(foundContacts.filter((c) => c.key !== 'email').map((c) => [c.key, c.value]))}
+                        titles={Object.fromEntries(foundContacts.filter((c) => c.key !== 'email').map((c) => [c.key, `found on ${c.source.sourceUrl} (${c.source.method}, confidence ${Math.round(c.source.confidence * 100)}%)`]))}
+                        onRemove={(n) => clearContactValue(n)}
+                      />
+                    )}
+                  </div>
+                )}
                 <div>
                   <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Website</label>
                   <input
@@ -3859,6 +3942,9 @@ function ConfigurationView(props: any) {
               </div>
             </div>
             <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" collapsed={assets.logos.length > 0} addLabel="+ Add another logo" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
+            {logoQualityNotes(assets.primaryLogo).map((note) => (
+              <p key={note} data-testid="pz-logo-note" style={{ margin: '8px 0 0', color: C.muted, fontSize: 10, lineHeight: 1.4 }}>⚠ {note}</p>
+            ))}
             <div
               className="logo-preview frame-preview"
               draggable
@@ -4511,6 +4597,20 @@ function ConfigurationView(props: any) {
                     {batchVideoReady.running
                       ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
                       : '✨ Make Selected Video Ready'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const idSet = new Set(cutoutIds)
+                      setDiscoveredAssets((prev) => prev.map((a) => (idSet.has(a.id) ? { ...a, selected: true } : a)))
+                      void importDiscoveredAssets({ ids: cutoutIds })
+                    }}
+                    disabled={batchVideoReady.running || discoveryStatus === 'importing' || cutoutIds.length === 0}
+                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : 'Adds every cutout to your assets. The video uses your logo and first 2 products.'}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+                  >
+                    {`Add All Cutouts to Assets (${cutoutIds.length})`}
                   </button>
                   <button
                     type="button"
