@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import DemoCarousel from './DemoCarousel';
+import { useReducedMotion } from './useReducedMotion';
 import { MINIMAX_H3_DEMOS, DEMO_CATEGORIES } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
 
@@ -36,6 +37,7 @@ export default function AIVideoGallery({
 }: AIVideoGalleryProps) {
   const allDemos = demos ?? MINIMAX_H3_DEMOS;
   const [category, setCategory] = useState<string>('All');
+  const reduced = useReducedMotion();
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -89,7 +91,7 @@ export default function AIVideoGallery({
                     <motion.span
                       layoutId={`${sectionId}-filter`}
                       className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"
-                      transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+                      transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 34 }}
                     />
                   )}
                   <span className="relative">

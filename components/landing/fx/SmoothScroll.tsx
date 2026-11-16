@@ -34,61 +34,75 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
 /** How long after landing a jump keeps the target aligned while sections settle. */
 const SETTLE_MS = 2000;
 
-/**
- * After a jump lands, freshly mounted sections above the target can still
- * change height for a moment (media, carousels measuring themselves), which
- * would push the target off its spot. Re-align it until things settle, and
- * stop as soon as the visitor scrolls, touches, clicks or types.
- */
-function keepAligned(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
-  const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
-  let stopped = false;
-  const stop = () => {
-    stopped = true;
-    stopEvents.forEach((ev) => window.removeEventListener(ev, stop));
-  };
-  stopEvents.forEach((ev) => window.addEventListener(ev, stop, { passive: true }));
-  const end = performance.now() + SETTLE_MS;
-  const check = () => {
-    if (stopped) return;
-    if (performance.now() > end) return stop();
-    const top = targetTop(el, lenis, extraOffset);
-    const current = lenis ? lenis.animatedScroll : window.scrollY;
-    if (Math.abs(top - current) > 4) {
-      // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
-      if (lenis) lenis.scrollTo(top, { immediate: true });
-      else window.scrollTo({ top, behavior: 'instant' });
-    }
-    window.setTimeout(check, 150);
-  };
-  check();
-}
+/** Cancels the jump in progress, if any (its glide wait, alignment and listeners). */
+let cancelActiveJump: (() => void) | null = null;
 
 /**
  * Scroll to an element, smoothly when Lenis is running and natively otherwise.
  * `extraOffset` is added on top of the header height (e.g. for another sticky bar).
+ *
+ * After landing, freshly mounted sections above the target can still change
+ * height for a moment (media, carousels measuring themselves), which would
+ * push the target off its spot, so it is kept aligned until things settle.
+ * The jump is cancelled as soon as the visitor scrolls, touches, clicks or
+ * types, or another jump starts, so it never pulls the page back.
  */
 export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement, extraOffset = 0) {
+  cancelActiveJump?.();
+  const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
+  const timers: number[] = [];
+  let cancelled = false;
+  let onScrollEnd: (() => void) | null = null;
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    stopEvents.forEach((ev) => window.removeEventListener(ev, cancel));
+    timers.forEach((t) => window.clearTimeout(t));
+    if (onScrollEnd) window.removeEventListener('scrollend', onScrollEnd);
+    if (cancelActiveJump === cancel) cancelActiveJump = null;
+  };
+  cancelActiveJump = cancel;
+  stopEvents.forEach((ev) => window.addEventListener(ev, cancel, { passive: true }));
+
+  const keepAligned = (el: HTMLElement) => {
+    const end = performance.now() + SETTLE_MS;
+    const check = () => {
+      if (cancelled) return;
+      if (performance.now() > end) return cancel();
+      const top = targetTop(el, lenis, extraOffset);
+      const current = lenis ? lenis.animatedScroll : window.scrollY;
+      if (Math.abs(top - current) > 4) {
+        // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
+        if (lenis) lenis.scrollTo(top, { immediate: true });
+        else window.scrollTo({ top, behavior: 'instant' });
+      }
+      timers.push(window.setTimeout(check, 150));
+    };
+    check();
+  };
+
   window.dispatchEvent(new Event(MOUNT_ALL_EVENT));
   // Two frames: React renders the newly mounted sections, then layout settles.
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
+      if (cancelled) return;
       const el = typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-      if (!el) return;
+      if (!el) return cancel();
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (lenis) {
-        lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el, lenis, extraOffset) });
+        lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el) });
       } else {
         window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'instant' : 'smooth' });
         // Where the browser doesn't report scrollend, start after a typical glide.
         let started = false;
         const start = () => {
-          if (started) return;
+          if (started || cancelled) return;
           started = true;
-          keepAligned(el, null, extraOffset);
+          keepAligned(el);
         };
+        onScrollEnd = start;
         window.addEventListener('scrollend', start, { once: true });
-        window.setTimeout(start, reduced ? 0 : 1200);
+        timers.push(window.setTimeout(start, reduced ? 0 : 1200));
       }
     }),
   );
@@ -134,6 +148,22 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   // with Lenis's `anchors` option because the header height isn't fixed.
   const lenisRef = useRef<Lenis | null>(null);
   lenisRef.current = lenis;
+
+  // Opening the page with a #fragment: the browser lands on the section while
+  // the deferred sections above it are still placeholders, so align once the
+  // page (and Lenis, where it runs) has started.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hash === '#') return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (target) scrollToTarget(lenisRef.current, target);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Stop a jump in progress when the landing page unmounts.
+  useEffect(() => () => cancelActiveJump?.(), []);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
