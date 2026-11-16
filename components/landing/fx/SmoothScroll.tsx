@@ -35,11 +35,17 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
   return anchor.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
 }
 
-/** How long after landing a jump keeps the target aligned while sections settle. */
-const SETTLE_MS = 2000;
+/**
+ * How long after landing a jump keeps the target aligned: until the layout
+ * has been still for SETTLE_MS, but never longer than SETTLE_MAX_MS.
+ */
+const SETTLE_MS = 1500;
+const SETTLE_MAX_MS = 8000;
 
 /** Cancels the jump in progress, if any (its glide wait, alignment and listeners). */
 let cancelActiveJump: (() => void) | null = null;
+/** Counts jumps, so a pending one (the #fragment on load) can tell a newer one started. */
+let jumpCount = 0;
 
 /**
  * Scroll to an element, smoothly when Lenis is running and natively otherwise.
@@ -52,6 +58,7 @@ let cancelActiveJump: (() => void) | null = null;
  * types, or another jump starts, so it never pulls the page back.
  */
 export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement, extraOffset = 0) {
+  jumpCount += 1;
   cancelActiveJump?.();
   const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
   const timers: number[] = [];
@@ -69,13 +76,24 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
   stopEvents.forEach((ev) => window.addEventListener(ev, cancel, { passive: true }));
 
   const keepAligned = (el: HTMLElement) => {
-    const end = performance.now() + SETTLE_MS;
+    const hardEnd = performance.now() + SETTLE_MAX_MS;
+    let end = performance.now() + SETTLE_MS;
+    let lastHeight = document.body.scrollHeight;
     const check = () => {
       if (cancelled) return;
-      if (performance.now() > end) return cancel();
+      const now = performance.now();
+      if (now > end || now > hardEnd) return cancel();
+      // Content still changing height (or a ScrollTrigger refresh moving the
+      // page): keep watching until it has been still for SETTLE_MS.
+      const height = document.body.scrollHeight;
+      if (height !== lastHeight) {
+        lastHeight = height;
+        end = now + SETTLE_MS;
+      }
       const top = targetTop(el, lenis, extraOffset);
       const current = lenis ? lenis.animatedScroll : window.scrollY;
       if (Math.abs(top - current) > 4) {
+        end = now + SETTLE_MS;
         // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
         if (lenis) lenis.scrollTo(top, { immediate: true });
         else window.scrollTo({ top, behavior: 'instant' });
@@ -97,16 +115,21 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
         lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el) });
       } else {
         window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'instant' : 'smooth' });
-        // Where the browser doesn't report scrollend, start after a typical glide.
         let started = false;
         const start = () => {
           if (started || cancelled) return;
           started = true;
           keepAligned(el);
         };
-        onScrollEnd = start;
-        window.addEventListener('scrollend', start, { once: true });
-        timers.push(window.setTimeout(start, reduced ? 0 : 1200));
+        if (reduced) start();
+        else if ('onscrollend' in window) {
+          // Start once the glide has really finished, not on a guess.
+          onScrollEnd = start;
+          window.addEventListener('scrollend', start, { once: true });
+        } else {
+          // Where the browser doesn't report scrollend, start after a typical glide.
+          timers.push(window.setTimeout(start, 1200));
+        }
       }
     }),
   );
@@ -160,18 +183,33 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash || hash === '#') return;
-    // The demo showcase loads after the page, so its sections may not exist
-    // yet: look for the target for up to 10s.
     const id = decodeURIComponent(hash.slice(1));
+    const startCount = jumpCount;
+    const lenisExpected = window.matchMedia('(prefers-reduced-motion: no-preference) and (pointer: fine)').matches;
+    // Give up if the visitor starts scrolling or jumping elsewhere first.
+    const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
     let timer = 0;
     let tries = 0;
+    const stop = () => {
+      window.clearTimeout(timer);
+      stopEvents.forEach((ev) => window.removeEventListener(ev, stop));
+    };
+    stopEvents.forEach((ev) => window.addEventListener(ev, stop, { passive: true }));
+    // The demo showcase loads after the page, so its sections may not exist
+    // yet, and Lenis (where it runs) starts after the first render: wait up
+    // to 10s for both.
     const find = () => {
+      if (jumpCount !== startCount) return stop();
       const target = document.getElementById(id);
-      if (target) scrollToTarget(lenisRef.current, target);
-      else if (++tries < 50) timer = window.setTimeout(find, 200);
+      const ready = target && (!lenisExpected || lenisRef.current);
+      if (ready) {
+        stop();
+        scrollToTarget(lenisRef.current, target);
+      } else if (++tries < 50) timer = window.setTimeout(find, 200);
+      else stop();
     };
     timer = window.setTimeout(find, 300);
-    return () => window.clearTimeout(timer);
+    return stop;
   }, []);
 
   // Stop a jump in progress when the landing page unmounts.

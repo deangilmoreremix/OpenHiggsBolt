@@ -44,15 +44,22 @@ export function parseTemplateId(templateId: string): { sourceRepo: string; slug:
 // core catalogs above.
 let extraIndex: Promise<{ byId: Map<string, VideoDemo>; bySlug: Map<string, VideoDemo> }> | null = null;
 function loadExtraIndex() {
-  extraIndex ??= import('./nicheDemos.generated').then(({ NICHE_DEMOS }) => {
-    const byId = new Map<string, VideoDemo>();
-    const bySlug = new Map<string, VideoDemo>();
-    for (const demo of Object.values(NICHE_DEMOS).flat()) {
-      byId.set(`${demo.sourceRepo}|${demo.slug}`, demo);
-      if (demo.slug && !bySlug.has(demo.slug)) bySlug.set(demo.slug, demo);
-    }
-    return { byId, bySlug };
-  });
+  extraIndex ??= import('./nicheDemos.generated').then(
+    ({ NICHE_DEMOS }) => {
+      const byId = new Map<string, VideoDemo>();
+      const bySlug = new Map<string, VideoDemo>();
+      for (const demo of Object.values(NICHE_DEMOS).flat()) {
+        byId.set(`${demo.sourceRepo}|${demo.slug}`, demo);
+        if (demo.slug && !bySlug.has(demo.slug)) bySlug.set(demo.slug, demo);
+      }
+      return { byId, bySlug };
+    },
+    (err) => {
+      // Don't keep a failed download (e.g. offline): the next lookup retries.
+      extraIndex = null;
+      throw err;
+    },
+  );
   return extraIndex;
 }
 

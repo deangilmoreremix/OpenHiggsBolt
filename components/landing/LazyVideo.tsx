@@ -67,18 +67,21 @@ export default function LazyVideo({
 }: LazyVideoProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const activeRef = useRef(false);
+  const [errored, setErrored] = useState(false);
+  const reduced = useReducedMotion();
+  const [inView, setInView] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
   // One stable stop function per video, so the playback limiter's registry
   // can find it again to release it. Being evicted also gives up the slot:
   // otherwise a tap could resume this video past the cap without asking.
   const stopRef = useRef<() => void>(() => {
     ref.current?.pause();
     activeRef.current = false;
+    // A tapped-to-play video that gets evicted is no longer pinned, so a
+    // single tap plays it again.
+    setPinned(false);
   });
-  const [errored, setErrored] = useState(false);
-  const reduced = useReducedMotion();
-  const [inView, setInView] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [pinned, setPinned] = useState(false);
 
   // Mark the video as errored when the source fails to load (e.g. 404).
   // The browser will continue showing the poster attribute; we just stop
