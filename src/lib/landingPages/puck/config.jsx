@@ -20,6 +20,7 @@ import * as x9 from './extensions/10-neon.jsx';
 import * as x10 from './extensions/31-results.jsx';
 import * as x11 from './extensions/32-realtor.jsx';
 import * as x12 from './extensions/33-dreamhome.jsx';
+import { slotFields, SLOT_DEFAULTS } from './slotFields.js';
 
 // Designs may ship extra components (puck/extensions/NN-name.jsx exporting `components`), merged in automatically.
 const EXT = [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12];
@@ -86,6 +87,7 @@ export const puckConfig = {
         buttons: buttonArray,
         chip: T('Label on the video'),
         photo: T('Placeholder image before the video plays (https link)'),
+        ...slotFields(),
         showForm: { type: 'radio', label: 'Lead form', options: [{ label: 'Show', value: 'yes' }, { label: 'Hide', value: 'no' }] },
         formTitle: T('Form title'),
         formSubtitle: T('Form subtitle'),
@@ -96,7 +98,7 @@ export const puckConfig = {
       defaultProps: {
         variant: 'copy-video-form', eyebrow: 'A video made for you', headline: 'Hi {{firstname|there}}, here is a smarter way to [[grow your business.]]',
         subhead: 'Press play for a short video, then tell us what you think.', bullets: [{ text: 'Made for {{company|your team}}' }, { text: 'Takes two minutes' }],
-        buttons: [], chip: 'Hi {{firstname|there}}!', photo: '', showForm: 'yes', formTitle: 'Want to talk it through?', formSubtitle: 'Leave your details and we will be in touch.',
+        buttons: [], chip: 'Hi {{firstname|there}}!', photo: '', ...SLOT_DEFAULTS, showForm: 'yes', formTitle: 'Want to talk it through?', formSubtitle: 'Leave your details and we will be in touch.',
         formFields: HERO_FIELDS, submitLabel: 'Send', privacy: '',
       },
       render: (p) => <C.Hero {...p} />,
