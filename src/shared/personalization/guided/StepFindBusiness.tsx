@@ -560,7 +560,8 @@ export function StepFindBusiness({
                   <button
                     type="button"
                     onClick={() => {
-                      setDiscoveredAssets((prev) => prev.map((a) => (cutoutIds.includes(a.id) ? { ...a, selected: true } : a)))
+                      const idSet = new Set(cutoutIds)
+                      setDiscoveredAssets((prev) => prev.map((a) => (idSet.has(a.id) ? { ...a, selected: true } : a)))
                       void importDiscoveredAssets({ ids: cutoutIds })
                     }}
                     disabled={cutoutIds.length === 0 || discoveryStatus === 'importing'}

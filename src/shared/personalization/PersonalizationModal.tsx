@@ -2222,6 +2222,7 @@ function ConfigurationView(props: any) {
   // affordances exist — the modal never renders a paid action the server has not
   // granted.
   const isAnonymous = access !== 'authenticated'
+  const cutoutIds = cutoutAssetIds(discoveredAssets)
   // Face only / Full presenter models set their own resolution and quality.
   const modelSetsQuality = mode === 'face_only' || mode === 'full_body'
   // Saved clients are picked one way at a time: the cards (customer audience)
@@ -4551,16 +4552,16 @@ function ConfigurationView(props: any) {
                   <button
                     type="button"
                     onClick={() => {
-                      const ids = cutoutAssetIds(discoveredAssets)
-                      setDiscoveredAssets((prev) => prev.map((a) => (ids.includes(a.id) ? { ...a, selected: true } : a)))
-                      void importDiscoveredAssets({ ids })
+                      const idSet = new Set(cutoutIds)
+                      setDiscoveredAssets((prev) => prev.map((a) => (idSet.has(a.id) ? { ...a, selected: true } : a)))
+                      void importDiscoveredAssets({ ids: cutoutIds })
                     }}
-                    disabled={batchVideoReady.running || cutoutAssetIds(discoveredAssets).length === 0}
-                    title={cutoutAssetIds(discoveredAssets).length === 0 ? 'No cutouts are ready yet' : undefined}
+                    disabled={batchVideoReady.running || discoveryStatus === 'importing' || cutoutIds.length === 0}
+                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : undefined}
                     className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                     style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
                   >
-                    {`Use All Cutouts (${cutoutAssetIds(discoveredAssets).length})`}
+                    {`Use All Cutouts (${cutoutIds.length})`}
                   </button>
                   <button
                     type="button"
