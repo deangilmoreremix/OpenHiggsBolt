@@ -112,3 +112,18 @@ describe('maskStore', () => {
     expect(hasMasks('blob:clear')).toBe(false)
   })
 })
+
+describe('presenter bounds in the store', () => {
+  it('are measured with the masks, null before, and cleared with them', async () => {
+    const { getPresenterBounds } = await import('../maskStore')
+    expect(getPresenterBounds('blob:bounds')).toBeNull()
+    const seg = { calls: 0, segment() { this.calls++; const data = new Uint8ClampedArray(16 * 16); for (let y = 4; y < 12; y++) for (let x = 2; x < 6; x++) data[y * 16 + x] = 255; return { w: 16, h: 16, data } }, close: vi.fn() }
+    await ensureMasks('blob:bounds', { segmenterFactory: async () => seg, frameSourceFactory: async () => source(0.5), createCanvas: fakeCanvas })
+    const found = getPresenterBounds('blob:bounds')!
+    expect(found.bounds.x).toBeCloseTo(2 / 16, 6)
+    expect(found.bounds.h).toBeCloseTo(8 / 16, 6)
+    expect(found.aspect).toBeGreaterThan(0)
+    clearMasks('blob:bounds')
+    expect(getPresenterBounds('blob:bounds')).toBeNull()
+  })
+})

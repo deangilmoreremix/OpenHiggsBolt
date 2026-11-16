@@ -93,3 +93,14 @@ MP4 the logo's left edge goes from 5% to 32% of the frame width between 0.9 s an
 
 Known limits: scale, tilt and fade pivot about the layer's estimated center (text height is an estimate, so a tall wrapped text
 may pivot slightly off its true center); "Restore default layout" resets layers and therefore removes keyframes.
+
+
+## Layout keeps off the presenter (cut-out on)
+
+With the cut-out on and its masks measured, the presenter's bounding box (over the whole clip, after the same contain-fit and
+presenter position / size / tilt the cut-out is drawn with, plus a margin with extra head-room above) is added to the layout check
+as a protected zone `cutout-presenter` (`preview/cutout/presenterZone.ts`, used by `useLayoutQuality`). It is recomputed, never
+saved. The existing rules then apply: the quality bar flags a logo or text over the presenter, and the automatic placement moves
+layers that are not hand-placed or locked off them (Undo works). Verified in a real browser: with the presenter standing under the
+default top-left logo, the logo overlapped them by 63% of its area without this and under 5% with it; a locked logo does not move.
+The zone is the presenter's whole-clip bounds, so a presenter who walks across the frame protects the whole path.
