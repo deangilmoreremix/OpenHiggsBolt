@@ -6,7 +6,7 @@ import { act } from 'react'
 
 vi.hoisted(() => { (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true })
 const createPage = vi.hoisted(() => vi.fn())
-vi.mock('@puckeditor/core', () => ({ Puck: (p: any) => <div data-testid="puck" onClick={() => p.onChange?.(p.data)} /> }))
+vi.mock('@puckeditor/core', () => ({ Render: () => null, Puck: (p: any) => <div data-testid="puck" onClick={() => p.onChange?.(p.data)} /> }))
 vi.mock('@puckeditor/core/no-external.css', () => ({}))
 vi.mock('@/src/lib/landingPages/puck/designCss.js', () => ({}))
 vi.mock('@/src/styles/landing-pages/studio-puck-theme.css', () => ({}))

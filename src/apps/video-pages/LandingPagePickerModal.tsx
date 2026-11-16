@@ -13,6 +13,7 @@ import { TEMPLATES, defaultConfig, sanitizePuck } from '@/src/lib/landingPages/t
 import { sampleSections } from '@/src/lib/landingPages/sampleContent.js'
 import { createPage, updatePage } from '@/src/lib/landingPages/api.js'
 import { pageUrl } from '@/src/lib/landingPages/ids.js'
+import DesignPreview from './DesignPreview'
 import { ui } from './ui'
 import type { PickedPage } from './LandingPagePicker'
 
@@ -139,10 +140,7 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {list.map((t: any) => (
                 <button key={t.id} type="button" onClick={() => choose(t.id)} className={`${ui.card} text-left hover:border-primary/50 transition-colors`}>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.bg }} />
-                    <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.accent }} />
-                  </div>
+                  <div className="mb-2"><DesignPreview data={t.puckData} label={t.name} /></div>
                   <div className="text-xs font-bold text-white leading-tight">{t.name}</div>
                   <div className="text-[10px] text-white/40 mt-1 line-clamp-2">{t.description}</div>
                 </button>

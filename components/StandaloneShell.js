@@ -120,6 +120,7 @@ const TABS = [
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
   { id: 'edit',    label: 'Edit' },
+  { id: 'video-pages', label: 'Video Pages' }, // near the front: the tab bar scrolls sideways and a tab at the far end is easy to miss
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
@@ -139,7 +140,6 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
-  { id: 'video-pages', label: 'Video Pages' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 

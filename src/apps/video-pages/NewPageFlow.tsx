@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPage } from '@/src/lib/landingPages/api.js'
 import { defaultConfig, TEMPLATES } from '@/src/lib/landingPages/templates.js'
 import { normalizeVideo } from '@/src/lib/landingPages/handoff.js'
+import DesignPreview from './DesignPreview'
 import { ui } from './ui'
 
 type Video = { url: string; posterUrl: string | null; title: string; source: Record<string, unknown> }
@@ -113,13 +114,10 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
       <section className="mb-8">
         <div className={`${ui.label} mb-2`}>2. Choose a design</div>
         <p className="text-xs text-white/40 mb-3">Every design is a real, responsive landing page. After you create it you can change every word, image, link and section.</p>
-        <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {TEMPLATES.map((t: any) => (
             <button key={t.id} type="button" aria-pressed={template === t.id} onClick={() => setTemplate(t.id)} className={`${ui.card} text-left transition-colors ${template === t.id ? 'border-primary bg-primary/10' : 'hover:border-white/20'}`}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.bg }} />
-                <span className="h-4 w-4 rounded-full border border-white/20" style={{ background: t.theme?.accent }} />
-              </div>
+              <div className="mb-2"><DesignPreview data={t.puckData} label={t.name} /></div>
               <div className="text-xs font-bold text-white leading-tight">{t.name}</div>
               <div className="text-[10px] text-white/40 mt-1 line-clamp-2">{t.description}</div>
             </button>
