@@ -140,26 +140,30 @@ export function Timeline({
                     onPointerDown={(e) => begin(e, layer, 'end')} onKeyDown={(e) => key(e, layer, 'end')} style={{ ...handle, right: 0 }} />
                 </div>
                 {(layer.keyframes ?? []).map((k) => (
-                  <Tip key={k.frame} id="keyframeDiamond" side="top">
-                    <button
-                      type="button"
-                      data-testid="timeline-keyframe"
-                      data-frame={k.frame}
-                      aria-label={`${name} keyframe at ${formatSeconds(k.frame, fps)}`}
-                      onPointerDown={(e) => {
-                        e.preventDefault(); e.stopPropagation()
-                        onSelect(layer.id)
-                        onSeek?.(k.frame)
-                        if (onKeyframeMove) kfDrag.current = { id: layer.id, frame: k.frame, startX: e.clientX, startFrame: k.frame }
-                      }}
-                      onKeyDown={(e) => {
-                        if (!onKeyframeMove || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
-                        e.preventDefault()
-                        onKeyframeMove(layer.id, k.frame, k.frame + (e.shiftKey ? 10 : 1) * (e.key === 'ArrowLeft' ? -1 : 1))
-                      }}
-                      style={{ position: 'absolute', top: 4, left: `${frameToFraction(k.frame, duration) * 100}%`, width: 12, height: 12, marginLeft: -6, padding: 0, background: '#facc15', border: '1px solid #422006', transform: 'rotate(45deg)', cursor: 'grab', zIndex: 4, touchAction: 'none' }}
-                    />
-                  </Tip>
+                  // The absolutely positioned wrapper must be OUTSIDE the tooltip: Tip wraps its child in its own relatively
+                  // positioned span, so a positioned child inside it would be placed against that span, not the track.
+                  <span key={k.frame} style={{ position: 'absolute', top: 4, left: `${frameToFraction(k.frame, duration) * 100}%`, width: 12, height: 12, marginLeft: -6, zIndex: 4 }}>
+                    <Tip id="keyframeDiamond" side="top">
+                      <button
+                        type="button"
+                        data-testid="timeline-keyframe"
+                        data-frame={k.frame}
+                        aria-label={`${name} keyframe at ${formatSeconds(k.frame, fps)}`}
+                        onPointerDown={(e) => {
+                          e.preventDefault(); e.stopPropagation()
+                          onSelect(layer.id)
+                          onSeek?.(k.frame)
+                          if (onKeyframeMove) kfDrag.current = { id: layer.id, frame: k.frame, startX: e.clientX, startFrame: k.frame }
+                        }}
+                        onKeyDown={(e) => {
+                          if (!onKeyframeMove || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
+                          e.preventDefault()
+                          onKeyframeMove(layer.id, k.frame, k.frame + (e.shiftKey ? 10 : 1) * (e.key === 'ArrowLeft' ? -1 : 1))
+                        }}
+                        style={{ display: 'block', width: 12, height: 12, padding: 0, background: '#facc15', border: '1px solid #422006', transform: 'rotate(45deg)', cursor: 'grab', touchAction: 'none' }}
+                      />
+                    </Tip>
+                  </span>
                 ))}
                 {playheadFrame !== undefined && <div aria-hidden data-testid="timeline-playhead" style={{ position: 'absolute', top: 0, bottom: 0, left: `${frameToFraction(playheadFrame, duration) * 100}%`, width: 2, marginLeft: -1, background: '#ff4fd8', pointerEvents: 'none', zIndex: 3 }} />}
               </div>
