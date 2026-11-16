@@ -12,7 +12,7 @@ vi.mock('../../muapi.js', () => ({
 
 import * as muapi from '../../muapi.js';
 import registry from '../../skills/registry.json';
-import { runSkill, buildParams } from '../promptRecipes.js';
+import { runSkill, buildParams, recipePromptValues, fillTemplate } from '../promptRecipes.js';
 
 const skill = (slug) => registry.skills.find((s) => s.slug === slug);
 
@@ -99,6 +99,83 @@ describe('runSkill', () => {
     const ctl = new AbortController();
     ctl.abort();
     await expect(runSkill('key', skill('muapi-social-pack'), { product_name: 'P' }, () => {}, { signal: ctl.signal })).rejects.toThrow(/cancelled/);
+  });
+});
+
+describe('rebuilt recipes (Logo Creator, UI Design, Nano Banana, Cinema Director)', () => {
+  const REBUILT = ['muapi-logo-creator', 'muapi-ui-design', 'muapi-nano-banana', 'muapi-cinema-director'];
+
+  it('are visible, have real models and no leftover CLI placeholders', () => {
+    for (const slug of REBUILT) {
+      const s = skill(slug);
+      expect(s.hidden, slug).toBeFalsy();
+      expect(s.inputs.length, slug).toBeGreaterThan(0);
+      for (const step of s.steps) expect(step.endpoint, slug).not.toMatch(/\.(sh|md)$/);
+    }
+  });
+
+  it('every {{placeholder}} in a rebuilt recipe is a declared input (or the previous step)', () => {
+    for (const slug of REBUILT) {
+      const s = skill(slug);
+      const names = new Set(s.inputs.map((i) => i.name));
+      for (const step of s.steps) {
+        for (const m of `${step.prompt} ${(step.references || []).join(' ')}`.matchAll(/\{\{(\w+(?:\.\w+)?)\}\}/g)) {
+          const ok = names.has(m[1]) || /^phase\d+\.output$/.test(m[1]);
+          expect(ok, `${slug}: {{${m[1]}}} is not an input`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('Logo Creator opens in a studio with defaults filled and a visible placeholder for the brand', () => {
+    const logo = skill('muapi-logo-creator');
+    const prompt = fillTemplate(logo.steps[0].prompt, recipePromptValues(logo));
+    expect(prompt).toContain('[Brand name]');
+    expect(prompt).toContain('minimalist geometric');
+    expect(prompt).not.toMatch(/\{\{|\bfor , /);
+  });
+
+  it('Cinema Director runs establishing frame then a camera-move video fed by that frame', async () => {
+    muapi.generateImage.mockResolvedValue({ url: 'https://x/frame.png' });
+    muapi.generateI2V.mockResolvedValue({ url: 'https://x/shot.mp4' });
+    const cinema = skill('muapi-cinema-director');
+    expect(cinema.kind).toBe('workflow');
+    await runSkill('key', cinema, { scene: 'a lighthouse in a storm', camera_move: 'slow orbit', lens_and_lighting: '50mm', mood: 'lonely' }, () => {});
+    expect(muapi.generateImage.mock.calls[0][1].prompt).toContain('a lighthouse in a storm');
+    const video = muapi.generateI2V.mock.calls[0][1];
+    expect(video.prompt).toContain('Camera: slow orbit');
+    expect(video.images_list).toEqual(['https://x/frame.png']);
+    expect(video.duration).toBe(5);
+  });
+});
+
+describe('fillTemplate', () => {
+  it('leaves no stray spaces when an optional input is empty', () => {
+    const nano = skill('muapi-nano-banana');
+    const prompt = fillTemplate(nano.steps[0].prompt, { subject: 'A red fox', action: '', context: 'a forest', composition: 'wide', lighting: 'dawn' });
+    expect(prompt).toBe('A red fox. Setting: a forest. Composition: wide. Lighting: dawn. Highly detailed, photorealistic, sharp focus.');
+    const logo = skill('muapi-logo-creator');
+    const p2 = fillTemplate(logo.steps[0].prompt, { brand_name: 'Northwind', industry: 'gear', style: 'minimal', color_palette: 'green', symbol_idea: '' });
+    expect(p2).not.toMatch(/ {2,}| [.,;!?]/);
+    expect(p2).toContain('green. The wordmark reads exactly "Northwind"');
+  });
+
+  it('does not touch prompts that have no placeholders', () => {
+    expect(fillTemplate('keep  this  spacing .', {})).toBe('keep  this  spacing .');
+  });
+});
+
+describe('recipePromptValues', () => {
+  it('uses defaults, a [Label] for required inputs without one, and blanks otherwise', () => {
+    const vals = recipePromptValues({
+      inputs: [
+        { name: 'a', default: 'x' },
+        { name: 'b', required: true, label: 'Brand name' },
+        { name: 'c_d', required: true },
+        { name: 'e' },
+      ],
+    });
+    expect(vals).toEqual({ a: 'x', b: '[Brand name]', c_d: '[c d]', e: '' });
   });
 });
 

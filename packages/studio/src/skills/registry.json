@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-13T15:29:22.206Z",
-  "skillCount": 56,
+  "skillCount": 60,
   "skills": [
     {
       "slug": "muapi-3d-logo-animation",
@@ -746,26 +746,70 @@
     {
       "slug": "muapi-cinema-director",
       "name": "muapi-cinema-director",
-      "description": "Direct high-fidelity cinematic video with AI — translates creative intent into technical cinematographic directives for Veo3, Kling, and Luma video models via SmartVideo Go",
+      "description": "Direct a short cinematic shot: describe the scene and the camera move, get an establishing frame, then animate it with that move.",
       "category": "motion",
       "studio": "video",
-      "kind": "recipe",
-      "inputs": [],
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": "",
+          "label": "Scene"
+        },
+        {
+          "name": "camera_move",
+          "type": "text",
+          "required": false,
+          "default": "slow dolly in",
+          "label": "Camera move"
+        },
+        {
+          "name": "lens_and_lighting",
+          "type": "text",
+          "required": false,
+          "default": "35mm anamorphic lens, cinematic lighting",
+          "label": "Lens and lighting"
+        },
+        {
+          "name": "mood",
+          "type": "text",
+          "required": false,
+          "default": "tense, atmospheric",
+          "label": "Mood"
+        }
+      ],
       "steps": [
         {
           "type": "image",
-          "model": "generate-film.sh",
-          "endpoint": "generate-film.sh",
-          "aspectRatio": "",
-          "prompt": "Dolly In/Out",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "16:9",
+          "prompt": "Cinematic establishing frame: {{scene}}. {{lens_and_lighting}}, {{mood}}. Film still, widescreen composition, rich detail.",
           "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "16:9",
+          "duration": 5,
+          "prompt": "{{scene}}. Camera: {{camera_move}}. {{lens_and_lighting}}. {{mood}}. Smooth, physically plausible motion, a single continuous shot with no cuts.",
+          "references": [
+            "{{phase0.output}}"
+          ]
         }
       ],
-      "triggers": [],
-      "promptFormula": "",
-      "title": "Cinema Director",
-      "hidden": true,
-      "hiddenReason": "steps are a CLI script name, no model"
+      "triggers": [
+        "cinematic shot",
+        "camera move",
+        "dolly",
+        "film shot",
+        "movie scene"
+      ],
+      "promptFormula": "Scene + Camera move + Lens and lighting + Mood",
+      "title": "Cinema Director"
     },
     {
       "slug": "muapi-color-analysis-board",
@@ -1479,26 +1523,66 @@
     {
       "slug": "muapi-logo-creator",
       "name": "muapi-logo-creator",
-      "description": "Engineer professional-grade brand logos using geometric primitives and negative space — generates minimalist, scalable vector-style marks via SmartVideo Go",
+      "description": "Design a clean, scalable brand logo built from simple geometric shapes and negative space, with your brand name as the wordmark.",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": "",
+          "label": "Brand name"
+        },
+        {
+          "name": "industry",
+          "type": "text",
+          "required": false,
+          "default": "technology",
+          "label": "Industry"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "minimalist geometric",
+          "label": "Style"
+        },
+        {
+          "name": "color_palette",
+          "type": "text",
+          "required": false,
+          "default": "two colors, high contrast",
+          "label": "Colors"
+        },
+        {
+          "name": "symbol_idea",
+          "type": "text",
+          "required": false,
+          "default": "",
+          "label": "Symbol idea (optional)"
+        }
+      ],
       "steps": [
         {
           "type": "image",
-          "model": "create-logo.sh",
-          "endpoint": "create-logo.sh",
-          "aspectRatio": "",
-          "prompt": "Color Theory",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
+          "aspectRatio": "1:1",
+          "prompt": "Professional brand logo for {{brand_name}}, a {{industry}} brand. A {{style}} mark built from simple geometric shapes and clever negative space, {{color_palette}}. {{symbol_idea}} The wordmark reads exactly \"{{brand_name}}\" in a clean sans-serif typeface beneath the symbol. Flat vector style, scalable, centered on a plain white background, no gradients, no mockup.",
           "references": []
         }
       ],
-      "triggers": [],
-      "promptFormula": "",
-      "title": "Logo Creator",
-      "hidden": true,
-      "hiddenReason": "steps are a CLI script name, no model"
+      "triggers": [
+        "logo",
+        "brand logo",
+        "logo design",
+        "wordmark",
+        "brand mark"
+      ],
+      "promptFormula": "Brand + Industry + Style + Colors + Symbol",
+      "title": "Logo Creator"
     },
     {
       "slug": "muapi-logo-generator",
@@ -1727,26 +1811,65 @@
     {
       "slug": "muapi-nano-banana",
       "name": "muapi-nano-banana",
-      "description": "Reasoning-driven image generation using structured creative briefs (Gemini 3 style) — generates high-fidelity images via SmartVideo Go with logic-based prompting",
+      "description": "Reasoning-style image generation from a structured brief: subject, action, context, composition and lighting.",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": true,
+          "default": "",
+          "label": "Subject"
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": false,
+          "default": "",
+          "label": "Action"
+        },
+        {
+          "name": "context",
+          "type": "text",
+          "required": false,
+          "default": "a quiet city street at dusk",
+          "label": "Context / setting"
+        },
+        {
+          "name": "composition",
+          "type": "text",
+          "required": false,
+          "default": "rule of thirds, shallow depth of field",
+          "label": "Composition"
+        },
+        {
+          "name": "lighting",
+          "type": "text",
+          "required": false,
+          "default": "soft golden-hour light",
+          "label": "Lighting"
+        }
+      ],
       "steps": [
         {
           "type": "image",
-          "model": "generate-nano-art.sh",
-          "endpoint": "generate-nano-art.sh",
-          "aspectRatio": "",
-          "prompt": "Subject + Action + Context + Composition + Lighting",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "4:3",
+          "prompt": "{{subject}} {{action}}. Setting: {{context}}. Composition: {{composition}}. Lighting: {{lighting}}. Highly detailed, photorealistic, sharp focus.",
           "references": []
         }
       ],
-      "triggers": [],
+      "triggers": [
+        "structured prompt",
+        "creative brief",
+        "detailed image",
+        "photorealistic image"
+      ],
       "promptFormula": "Subject + Action + Context + Composition + Lighting",
-      "title": "Nano Banana",
-      "hidden": true,
-      "hiddenReason": "steps are a CLI script name, no model"
+      "title": "Nano Banana"
     },
     {
       "slug": "muapi-one-shot-video",
@@ -2580,26 +2703,66 @@
     {
       "slug": "muapi-ui-design",
       "name": "muapi-ui-design",
-      "description": "Generate high-fidelity UI/UX mockups for mobile and web apps using Atomic Design principles — creates wireframes and design systems via SmartVideo Go",
+      "description": "Generate a high-fidelity UI mockup of an app or web screen with consistent components, clear hierarchy and readable interface text.",
       "category": "visual",
       "studio": "image",
       "kind": "recipe",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "app_idea",
+          "type": "text",
+          "required": true,
+          "default": "",
+          "label": "What is the app or site?"
+        },
+        {
+          "name": "platform",
+          "type": "text",
+          "required": false,
+          "default": "mobile app",
+          "label": "Platform"
+        },
+        {
+          "name": "screen",
+          "type": "text",
+          "required": false,
+          "default": "home screen",
+          "label": "Screen"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "clean and modern, consistent spacing and typography",
+          "label": "Design style"
+        },
+        {
+          "name": "brand_color",
+          "type": "text",
+          "required": false,
+          "default": "indigo",
+          "label": "Primary color"
+        }
+      ],
       "steps": [
         {
           "type": "image",
-          "model": "generate-mockup.sh",
-          "endpoint": "generate-mockup.sh",
-          "aspectRatio": "",
-          "prompt": "Typography",
+          "model": "gpt-image-2",
+          "endpoint": "gpt-image-2",
+          "aspectRatio": "3:4",
+          "prompt": "High-fidelity UI design mockup of the {{screen}} of a {{platform}}: {{app_idea}}. {{style}}. Primary color {{brand_color}}. Built from consistent reusable components (buttons, cards, navigation, inputs) with a clear visual hierarchy and real, legible interface text. Flat screen presentation, no device frame clutter.",
           "references": []
         }
       ],
-      "triggers": [],
-      "promptFormula": "",
-      "title": "UI Design",
-      "hidden": true,
-      "hiddenReason": "steps are a CLI script name, no model"
+      "triggers": [
+        "ui design",
+        "app mockup",
+        "wireframe",
+        "ux mockup",
+        "screen design"
+      ],
+      "promptFormula": "App + Platform + Screen + Style + Color",
+      "title": "UI Design"
     },
     {
       "slug": "muapi-url-to-design",

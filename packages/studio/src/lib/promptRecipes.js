@@ -1,7 +1,30 @@
 import * as muapi from '../muapi.js';
 
 export function fillTemplate(prompt, values) {
-  return prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => (values && values[key]) || '');
+  let hadPlaceholder = false;
+  const filled = prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    hadPlaceholder = true;
+    return (values && values[key]) || '';
+  });
+  if (!hadPlaceholder) return filled;
+  // An empty optional input leaves a stray double space or a space before the
+  // punctuation ("A red fox ." / "contrast.  The"); tidy only what filling can cause.
+  return filled.replace(/[ \t]{2,}/g, ' ').replace(/ +([.,;!?])/g, '$1');
+}
+
+/**
+ * Values used to pre-fill a recipe's prompt when it opens in a studio: each input's
+ * default, or a visible "[Label]" placeholder for a required input with no default,
+ * so the person sees what to replace instead of a silent blank.
+ */
+export function recipePromptValues(skill) {
+  const vals = {};
+  for (const input of skill?.inputs || []) {
+    if (input.default) vals[input.name] = input.default;
+    else if (input.required) vals[input.name] = `[${input.label || input.name.replace(/_/g, ' ')}]`;
+    else vals[input.name] = '';
+  }
+  return vals;
 }
 
 export const SKILL_CAMERA_CHIPS = [
