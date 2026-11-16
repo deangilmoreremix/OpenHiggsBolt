@@ -75,6 +75,8 @@ import { modelForGeneration, resolveModelCapabilities } from './modelCapabilityR
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
 import { BUSINESS_NICHES } from './businessNiches'
+import { useFinderContinuity, type SavedSearch } from './useFinderContinuity'
+import { HiddenBar, LooksWrongMenu, SavedSearchesPanel } from './FinderContinuityUi'
 import ImageEditorModal, {
   type ImageEditorApplyResult,
   type PersonalizationImageEditorAsset,
@@ -2287,6 +2289,17 @@ function ConfigurationView(props: any) {
     findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
   }, [findBusinesses, searchLocation, searchNiche])
 
+  // Runs a saved search: fills the form with it and searches (same guard as a normal search).
+  const runSavedSearch = useCallback((saved: SavedSearch) => {
+    if (businessSearchInFlightRef.current) return
+    setSearchNiche(saved.niche)
+    setSearchLocation(saved.location)
+    setSearchRadius(saved.radius_miles)
+    businessSearchInFlightRef.current = true
+    setBusinessSearchInFlight(true)
+    findBusinesses(saved.niche, saved.location, saved.radius_miles)
+  }, [findBusinesses])
+
   // ── Saved Leads (lead finder shortlist) ────────────────────────────────────
   // Per-user shortlist behind /api/personalization/leads (Clerk-authenticated).
   // Anonymous sessions never render the save affordance or the panel: the API
@@ -2420,14 +2433,23 @@ function ConfigurationView(props: any) {
   // "Open now first" reorders the list (stable; unknown hours sit between open and closed). The enrichment lookups
   // follow whatever order is on screen, so the visible cards are the ones that get looked up.
   const [openFirst, setOpenFirst] = useState(false)
+  // Saved searches + the user's own "looks wrong" flags (signed-in only). Flagged businesses are hidden for this
+  // user, never deleted, and can be shown again or un-flagged from the bar above the list.
+  const continuity = useFinderContinuity(!isAnonymous)
+  const [showFlagged, setShowFlagged] = useState(false)
+  const hiddenCount = useMemo(() => businessSearchResults.filter((b) => continuity.flaggedIds.has(b.id)).length, [businessSearchResults, continuity.flaggedIds])
+  const listedResults = useMemo(
+    () => (showFlagged ? businessSearchResults : businessSearchResults.filter((b) => !continuity.flaggedIds.has(b.id))),
+    [businessSearchResults, continuity.flaggedIds, showFlagged],
+  )
   const orderedResults = useMemo(() => {
-    if (!openFirst) return businessSearchResults
+    if (!openFirst) return listedResults
     const rank = (b: BusinessDiscoveryRecord) => {
       const st = b.openingHours ? openStatus(b.openingHours, b.region).state : 'unknown'
       return st === 'open' ? 0 : st === 'unknown' ? 1 : 2
     }
-    return businessSearchResults.map((b, i) => ({ b, i, r: rank(b) })).sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.b)
-  }, [businessSearchResults, openFirst])
+    return listedResults.map((b, i) => ({ b, i, r: rank(b) })).sort((x, y) => x.r - y.r || x.i - y.i).map((x) => x.b)
+  }, [listedResults, openFirst])
   const enrichStates = useBusinessEnrichment(orderedResults.slice(0, shownResultCount))
   const enrichmentOf = (id: string) => { const st = enrichStates[id]; return st && st.status === 'done' ? st.data : null }
   // Businesses already shown in an EARLIER search this session (by website / phone / name+address).
@@ -3011,6 +3033,18 @@ function ConfigurationView(props: any) {
                   ))}
                 </div>
               </div>
+              {!isAnonymous && (
+                <SavedSearchesPanel
+                  current={searchFormReady ? { niche: searchNiche, location: searchLocation.trim(), radiusMiles: searchRadius } : null}
+                  defaultName={`${BUSINESS_NICHES.find((n) => n.key === searchNiche)?.label ?? 'Search'} · ${searchLocation.trim()}`.slice(0, 80)}
+                  searches={continuity.searches}
+                  nicheLabel={(key) => BUSINESS_NICHES.find((n) => n.key === key)?.label ?? key}
+                  onSave={(name) => continuity.saveSearch({ name, niche: searchNiche, location: searchLocation.trim(), radiusMiles: searchRadius })}
+                  onRun={runSavedSearch}
+                  onDelete={continuity.deleteSearch}
+                  disabled={isSearchingBusinesses}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => runBusinessSearch(searchRadius)}
@@ -3132,6 +3166,14 @@ function ConfigurationView(props: any) {
                   </button>
                 </div>
               </div>
+              {!isAnonymous && (
+                <HiddenBar
+                  hiddenCount={hiddenCount}
+                  showing={showFlagged}
+                  onToggle={() => setShowFlagged((v) => !v)}
+                  onUndoAll={() => { for (const b of businessSearchResults) if (continuity.flaggedIds.has(b.id)) void continuity.unflag(b.id) }}
+                />
+              )}
               {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
                 {orderedResults.slice(0, shownResultCount).map((business) => {
@@ -3198,6 +3240,13 @@ function ConfigurationView(props: any) {
                           </div>
                         </div>
                         {!isAnonymous && (
+                          <LooksWrongMenu
+                            businessName={business.name}
+                            flagged={continuity.flaggedIds.has(business.id)}
+                            onFlag={(reason) => continuity.flag(business.id, reason)}
+                          />
+                        )}
+                        {!isAnonymous && (
                           <button
                             type="button"
                             disabled={leadSaveState[business.id] === 'saving'}
@@ -3234,21 +3283,21 @@ function ConfigurationView(props: any) {
                     </div>
                   </div>
                 )})}
-                {businessSearchResults.length > shownResultCount && (
+                {orderedResults.length > shownResultCount && (
                   <button
                     type="button"
                     data-testid="pz-results-show-more"
                     onClick={() => setShownResultCount((count) => count + RESULTS_PAGE)}
                     style={{ minHeight: 34, borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan, fontSize: 11, fontWeight: 800 }}
                   >
-                    Show {Math.min(RESULTS_PAGE, businessSearchResults.length - shownResultCount)} more
+                    Show {Math.min(RESULTS_PAGE, orderedResults.length - shownResultCount)} more
                   </button>
                 )}
-                {businessSearchResults.length > RESULTS_PAGE && (
+                {orderedResults.length > RESULTS_PAGE && (
                   <p data-testid="pz-results-count" style={{ margin: 0, textAlign: 'center', color: C.muted2, fontSize: 10 }}>
-                    {businessSearchResults.length > shownResultCount
-                      ? `Showing ${shownResultCount} of ${businessSearchResults.length}`
-                      : `Showing all ${businessSearchResults.length}`}
+                    {orderedResults.length > shownResultCount
+                      ? `Showing ${shownResultCount} of ${orderedResults.length}`
+                      : `Showing all ${orderedResults.length}`}
                   </p>
                 )}
               </div>
