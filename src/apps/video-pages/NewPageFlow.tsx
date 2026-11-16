@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createPage } from '@/src/lib/landingPages/api.js'
+import { createPage, updatePage, addContacts } from '@/src/lib/landingPages/api.js'
 import { defaultConfig, TEMPLATES } from '@/src/lib/landingPages/templates.js'
 import { normalizeVideo } from '@/src/lib/landingPages/handoff.js'
+import { applyCustomerToPuck, brandForConfig, toContactFields } from '@/src/lib/landingPages/customerProfile.js'
+import CustomerPanel, { useCustomerChoice } from './CustomerPanel'
+import { useCustomers } from './useCustomers'
 import DesignPreview from './DesignPreview'
 import { ui } from './ui'
 
@@ -18,6 +21,8 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const { customers, activeId, loading: customersLoading } = useCustomers()
+  const choice = useCustomerChoice(customers, activeId)
 
   useEffect(() => {
     let live = true
@@ -52,8 +57,16 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
     if (!video) return
     setBusy('Creating…'); setError('')
     try {
-      const config = defaultConfig(template, { title: video.title })
-      const page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
+      const one = choice.selected.length === 1 ? choice.selected[0] : null
+      const withBrand = !!one && choice.brand
+      const config = defaultConfig(template, { title: video.title, ...(withBrand ? { brand: brandForConfig(one) } : {}) })
+      if (withBrand && config.puck) config.puck = applyCustomerToPuck(config.puck, one).data
+      let page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
+      const rows = choice.selected.map(toContactFields).filter(Boolean).map((fields: any) => ({ fields }))
+      if (rows.length) {
+        // the editor previews as the first of them; a failure here must not lose the page
+        try { await addContacts(page.id, rows) } catch { /* the Personal links tab can add them again */ }
+      }
       onCreated(page)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create the page')
@@ -123,6 +136,11 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="mb-8">
+        <div className={`${ui.label} mb-2`}>3. Who is it for?</div>
+        <CustomerPanel customers={customers} loading={customersLoading} choice={choice} />
       </section>
 
       <button type="button" className={ui.primary} disabled={!video || !!busy} onClick={() => void create()}>

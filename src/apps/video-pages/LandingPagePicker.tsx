@@ -4,10 +4,13 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 import dynamic from 'next/dynamic'
 import { normalizeVideo } from '@/src/lib/landingPages/handoff.js'
 
-export type PickedPage = { id: string; url: string; published: boolean; page: any }
+export type PickedPage = { id: string; url: string; published: boolean; page: any; contacts?: any[]; contactError?: string }
 export type PickerRequest = {
   /** The video to attach: anything normalizeVideo accepts (url + optional name/thumbnail_url/studio). */
   video?: Record<string, unknown> | null
+  /** People you already have (e.g. imported contacts); listed first as customers. */
+  customers?: any[]
+  preselect?: 'active' | 'all'
   /** Called once the user saved a page from a design. */
   onPick?: (picked: PickedPage) => void
   onClose?: () => void
@@ -28,7 +31,7 @@ export function LandingPagePickerProvider({ children, openStudio }: { children: 
   return (
     <PickerContext.Provider value={value}>
       {children}
-      {req ? <Modal video={normalizeVideo({ kind: 'video', ...(req.video || {}) })} onPick={req.onPick} onClose={close} openStudio={openStudio} /> : null}
+      {req ? <Modal video={normalizeVideo({ kind: 'video', ...(req.video || {}) })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={openStudio} /> : null}
     </PickerContext.Provider>
   )
 }
