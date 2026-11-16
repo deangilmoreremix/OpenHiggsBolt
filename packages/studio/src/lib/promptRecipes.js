@@ -1,7 +1,15 @@
 import * as muapi from '../muapi.js';
 
 export function fillTemplate(prompt, values) {
-  return prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => (values && values[key]) || '');
+  let hadPlaceholder = false;
+  const filled = prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    hadPlaceholder = true;
+    return (values && values[key]) || '';
+  });
+  if (!hadPlaceholder) return filled;
+  // An empty optional input leaves a stray double space or a space before the
+  // punctuation ("A red fox ." / "contrast.  The"); tidy only what filling can cause.
+  return filled.replace(/[ \t]{2,}/g, ' ').replace(/ +([.,;!?])/g, '$1');
 }
 
 /**

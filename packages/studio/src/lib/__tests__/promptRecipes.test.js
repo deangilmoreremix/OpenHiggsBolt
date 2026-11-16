@@ -149,6 +149,22 @@ describe('rebuilt recipes (Logo Creator, UI Design, Nano Banana, Cinema Director
   });
 });
 
+describe('fillTemplate', () => {
+  it('leaves no stray spaces when an optional input is empty', () => {
+    const nano = skill('muapi-nano-banana');
+    const prompt = fillTemplate(nano.steps[0].prompt, { subject: 'A red fox', action: '', context: 'a forest', composition: 'wide', lighting: 'dawn' });
+    expect(prompt).toBe('A red fox. Setting: a forest. Composition: wide. Lighting: dawn. Highly detailed, photorealistic, sharp focus.');
+    const logo = skill('muapi-logo-creator');
+    const p2 = fillTemplate(logo.steps[0].prompt, { brand_name: 'Northwind', industry: 'gear', style: 'minimal', color_palette: 'green', symbol_idea: '' });
+    expect(p2).not.toMatch(/ {2,}| [.,;!?]/);
+    expect(p2).toContain('green. The wordmark reads exactly "Northwind"');
+  });
+
+  it('does not touch prompts that have no placeholders', () => {
+    expect(fillTemplate('keep  this  spacing .', {})).toBe('keep  this  spacing .');
+  });
+});
+
 describe('recipePromptValues', () => {
   it('uses defaults, a [Label] for required inputs without one, and blanks otherwise', () => {
     const vals = recipePromptValues({
