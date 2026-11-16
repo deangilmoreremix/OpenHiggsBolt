@@ -85,7 +85,7 @@ const PERSONALIZE_TRIGGER_CLASS_OVERLAY =
   'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all';
 
 // Every studio that shows Personalize also offers "Landing page": the picker opens with this video attached.
-const landingVideo = (options) => ({ url: options?.media?.url, name: options?.title, thumbnail_url: options?.media?.poster, studio: options?.originStudio });
+const landingVideo = (options) => ({ url: options?.media?.url, kind: options?.media?.mediaType === 'image' ? 'image' : 'video', name: options?.title, thumbnail_url: options?.media?.poster, studio: options?.originStudio });
 const LANDING_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
 const LANDING_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
 const LANDING_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[19.5rem]');
