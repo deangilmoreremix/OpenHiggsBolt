@@ -220,4 +220,56 @@ test.describe('Presenter background removal on real footage', () => {
     const colorfulness = sum / (raw.length / 3);
     expect(colorfulness, `shirt-area colorfulness ${colorfulness} (a red shirt is > 40; black and white is ~0)`).toBeLessThan(8);
   });
+
+  test('the logo and text keep off the presenter: turning the cut-out on moves a logo that sat on their head', async ({ page }) => {
+    test.setTimeout(420_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await seed(page, PERSON);
+    const dialog = page.getByRole('dialog');
+    const logo = dialog.getByRole('button', { name: 'Move Logo' });
+    await dialog.getByTestId('editor-live-player').scrollIntoViewIfNeeded();
+    const before = (await logo.boundingBox())!;
+
+    await removeBackground(page);
+    // No background so the canvas is transparent outside the presenter: the alpha bounds are the presenter.
+    await dialog.getByTestId('cutout-bg-none').click();
+    // Stand the presenter at the far left, right under the default top-left logo.
+    await dialog.locator('#cutout-x').fill('0.12');
+    await expect(dialog.getByTestId('cutout-canvas').first()).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(2500);
+
+    const presenter = await page.evaluate(() => {
+      const c = document.querySelector('[data-testid="editor-live-player"] [data-testid="cutout-canvas"]') as HTMLCanvasElement | null;
+      if (!c) return null;
+      const g = c.getContext('2d')!;
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) if (d[(y * c.width + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const r = c.getBoundingClientRect();
+      const sx = r.width / c.width, sy = r.height / c.height;
+      return x1 < 0 ? null : { x: r.left + x0 * sx, y: r.top + y0 * sy, w: (x1 - x0) * sx, h: (y1 - y0) * sy };
+    });
+    expect(presenter, 'the presenter was drawn').not.toBeNull();
+    const after = (await logo.boundingBox())!;
+    const overlap = (a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; w: number; h: number }) =>
+      Math.max(0, Math.min(a.x + a.width, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.h) - Math.max(a.y, b.y));
+    const area = after.width * after.height;
+    expect(overlap(after, presenter!) / area, `logo overlaps the presenter by ${(overlap(after, presenter!) / area * 100).toFixed(0)}% of its area`).toBeLessThan(0.05);
+    expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y), 'the logo was moved off the presenter').toBeGreaterThan(8);
+    await page.screenshot({ path: path.join(OUT, 'logo-off-presenter.png') });
+
+    // A hand-placed layer is never moved: lock it, switch preset, it stays. Positions are measured inside the stage, so scrolling
+    // the page while the inspector opens cannot look like movement.
+    const stage = dialog.getByTestId('overlay-stage-column');
+    const inStage = async () => { const l = (await logo.boundingBox())!; const st = (await stage.boundingBox())!; return { x: l.x - st.x, y: l.y - st.y }; };
+    await logo.click();
+    await dialog.getByTestId('inspector-tab-layout').click();
+    await dialog.getByTestId('overlay-lock-position').check();
+    const locked = await inStage();
+    await dialog.getByTestId('cutout-preset-right').click();
+    await page.waitForTimeout(2000);
+    const stillLocked = await inStage();
+    expect(Math.abs(stillLocked.x - locked.x) + Math.abs(stillLocked.y - locked.y), 'a locked logo does not move').toBeLessThan(2);
+  });
 });
