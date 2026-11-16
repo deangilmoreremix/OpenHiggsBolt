@@ -114,6 +114,8 @@ test.describe('Workbench loop', () => {
     await createFilm(page, { adapt: false });
     await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 10 * 60_000 });
     await openWorkbench(page);
+    // The project is saved a moment after the Workbench opens: wait for it, then read it.
+    await expect.poll(async () => Boolean(await saved(page)), { timeout: 30_000 }).toBe(true);
     const before = await saved(page);
     const tracksBefore = before.tracks.map((t: { name: string; clips: Clip[] }) => [t.name, t.clips.length]);
     const mpBefore = clipsOf(before).find((c) => c.cardId === 'demo:MultiplaneReal')!;
