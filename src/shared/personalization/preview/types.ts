@@ -193,6 +193,11 @@ export interface PersonalizationPreviewSettings {
    * editor, preview and export — style the same image the same way.
    */
   imageHints?: Record<string, ImageHints>
+  /**
+   * Presenter background removal. Optional so projects saved before it existed restore unchanged.
+   * Settings only: the measured masks live in memory (preview/cutout/maskStore.ts), never in the project.
+   */
+  cutout?: import('./cutout/cutoutSettings').CutoutSettings
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

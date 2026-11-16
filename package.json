@@ -183,6 +183,7 @@
     "@fontsource/poppins": "^5.3.0",
     "@fontsource/sora": "^5.3.0",
     "@lottiefiles/dotlottie-react": "0.20.0",
+    "@mediapipe/tasks-vision": "0.10.17",
     "@netlify/plugin-nextjs": "^5.15.12",
     "@octokit/rest": "^22.0.1",
     "@puckeditor/core": "^0.24.0",

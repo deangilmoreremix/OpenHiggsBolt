@@ -130,6 +130,9 @@ importers:
       '@lottiefiles/dotlottie-react':
         specifier: 0.20.0
         version: 0.20.0(react@19.3.0)
+      '@mediapipe/tasks-vision':
+        specifier: 0.10.17
+        version: 0.10.17
       '@netlify/plugin-nextjs':
         specifier: ^5.15.12
         version: 5.16.2
