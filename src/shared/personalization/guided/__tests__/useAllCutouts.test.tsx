@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * "Use all cutouts": places every found asset that holds a finished on-device
+ * "Add all cutouts": places every found asset that holds a finished on-device
  * cutout, and nothing else.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -70,9 +70,9 @@ afterEach(() => {
   root = null
   container = null
 })
-const find = (v: HTMLElement) => Array.from(v.querySelectorAll('button')).find((b) => /use all cutouts/i.test(b.textContent || ''))
+const find = (v: HTMLElement) => Array.from(v.querySelectorAll('button')).find((b) => /add all cutouts/i.test(b.textContent || ''))
 
-describe('StepFindBusiness: Use all cutouts', () => {
+describe('StepFindBusiness: Add all cutouts', () => {
   it('imports exactly the cutout ids and selects them', async () => {
     const importFn = vi.fn()
     const setAssets = vi.fn()

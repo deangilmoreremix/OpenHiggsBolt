@@ -4557,11 +4557,11 @@ function ConfigurationView(props: any) {
                       void importDiscoveredAssets({ ids: cutoutIds })
                     }}
                     disabled={batchVideoReady.running || discoveryStatus === 'importing' || cutoutIds.length === 0}
-                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : undefined}
+                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : 'Adds every cutout to your assets. The video uses your logo and first 2 products.'}
                     className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                     style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
                   >
-                    {`Use All Cutouts (${cutoutIds.length})`}
+                    {`Add All Cutouts to Assets (${cutoutIds.length})`}
                   </button>
                   <button
                     type="button"

@@ -565,14 +565,14 @@ export function StepFindBusiness({
                       void importDiscoveredAssets({ ids: cutoutIds })
                     }}
                     disabled={cutoutIds.length === 0 || discoveryStatus === 'importing'}
-                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : undefined}
+                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : 'Adds every cutout to your assets. The video uses your logo and first 2 products.'}
                     style={{
                       ...secondaryButtonStyle,
                       minHeight: 34,
                       opacity: cutoutIds.length === 0 || discoveryStatus === 'importing' ? 0.5 : 1,
                     }}
                   >
-                    {`Use all cutouts (${cutoutIds.length})`}
+                    {`Add all cutouts to assets (${cutoutIds.length})`}
                   </button>
                 )}
               </div>
