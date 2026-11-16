@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeCaptions } from './captions'
 import { normalizeAudioTracks, normalizeVideoVolume } from './audioMix'
 import { normalizeKeyframes } from './keyframes'
 import { normalizeLayerEffects, normalizeLook } from './effects'
@@ -1160,6 +1161,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
   if (zones) out.protectedZones = zones
   const look = normalizeLook(raw.look)
   if (look) out.look = look
+  const captions = normalizeCaptions(raw.captions)
+  if (captions) out.captions = captions
   const cutout = normalizeCutout(raw.cutout)
   if (cutout) out.cutout = cutout
   const hints = normalizeImageHints(raw.imageHints)
