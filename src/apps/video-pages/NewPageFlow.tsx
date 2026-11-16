@@ -34,8 +34,8 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
   }, [])
 
   const useLink = () => {
-    const v = normalizeVideo({ url: link.trim(), kind: 'video' })
-    if (!v) { setError('Paste a permanent https link to a video file (.mp4, .webm, .mov).'); return }
+    const v = normalizeVideo({ url: link.trim(), kind: 'video' }, { allowImage: true })
+    if (!v) { setError('Paste a permanent https link to a video file (.mp4, .webm, .mov) or a picture (.png, .jpg, .webp).'); return }
     setError(''); setVideo(v)
   }
 
@@ -115,7 +115,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
                 <button type="button" className={ui.ghost} disabled={!!busy} onClick={() => fileRef.current?.click()}>Choose a video file</button>
               </div>
               <div className={ui.panel}>
-                <div className="text-xs font-bold text-white/70 mb-2">Paste a video link</div>
+                <div className="text-xs font-bold text-white/70 mb-2">Paste a video or picture link</div>
                 <input className={ui.input} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…/video.mp4" />
                 <button type="button" className={`${ui.ghost} mt-2`} onClick={useLink}>Use link</button>
               </div>
