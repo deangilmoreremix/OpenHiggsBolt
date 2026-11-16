@@ -82,6 +82,18 @@ test('keyframes move a layer in the timeline, the live editor and the exported v
   const late = dialog.locator('[data-testid="keyframe-row"][data-frame="90"]');
   await late.getByTestId('keyframe-dx').fill('30');
   await expect(dialog.getByTestId('timeline-keyframe')).toHaveCount(2);
+  // The diamonds sit where their keyframes are on the timeline: inside the logo's own track, the second 90/149 of the way along it.
+  const diamonds = dialog.getByTestId('timeline-keyframe');
+  const d0 = (await diamonds.nth(0).boundingBox())!;
+  const d1 = (await diamonds.nth(1).boundingBox())!;
+  const track = (await dialog.locator('[data-testid="timeline-track"]:has([data-testid="timeline-keyframe"])').first().boundingBox())!;
+  const cy = d0.y + d0.height / 2; // the diamond is turned 45 degrees, so judge it by its center
+  expect(cy, 'diamond is inside the logo\'s own track').toBeGreaterThan(track.y);
+  expect(cy, 'diamond is inside the logo\'s own track').toBeLessThan(track.y + track.height);
+  expect(Math.abs(d1.y - d0.y), 'both diamonds are on the same row').toBeLessThan(2);
+  const frac = (d1.x + d1.width / 2 - (d0.x + d0.width / 2)) / track.width;
+  expect(frac, `second diamond ${frac} of the track to the right of the first (expect ${90 / 149})`).toBeGreaterThan(90 / 149 - 0.03);
+  expect(frac).toBeLessThan(90 / 149 + 0.03);
 
   // The live box follows: further right at 3 s than at the start.
   const xAt = async (frame: string) => {
