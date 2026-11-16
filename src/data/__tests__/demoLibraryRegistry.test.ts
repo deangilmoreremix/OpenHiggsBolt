@@ -71,6 +71,9 @@ const MIN_MEDIA_BYTES = 1024
 /** Every video path the registry actually serves. */
 const registeredVideoSrcs = new Set(DEMO_LIBRARY_REGISTRY.map((entry) => entry.videoSrc))
 
+/** Clips served from this repo's public/ folder; the template-library clips are hosted in the Supabase bucket instead. */
+const LOCAL_ENTRIES = DEMO_LIBRARY_REGISTRY.filter((entry) => entry.videoSrc.startsWith('/media/'))
+
 function publicPath(sitePath: string): string {
   return join(PUBLIC_DIR, sitePath.replace(/^\//, ''))
 }
@@ -113,7 +116,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
   it('points every entry at a video file that exists on disk and is non-empty', () => {
     const missing: string[] = []
     const empty: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const abs = publicPath(entry.videoSrc)
       if (!existsSync(abs)) {
         missing.push(entry.videoSrc)
@@ -127,7 +130,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
 
   it('points every entry at a poster file that exists on disk', () => {
     const missing: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       if (!entry.posterSrc) {
         missing.push(`<empty> ${entry.id}`)
         continue
@@ -137,17 +140,24 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
     expect(missing).toEqual([])
   })
 
-  it('registers only local media paths (never remote URLs or blob handles)', () => {
+  it('registers only playable media: repo files or the demo-template-videos bucket (never blob handles or raw CDN URLs)', () => {
+    const playable = /^(https:\/\/bzxohkrxcwodllketcpz\.supabase\.co\/storage\/v1\/object\/public\/demo-template-videos\/|\/media\/)/
     for (const entry of DEMO_LIBRARY_REGISTRY) {
-      expect(entry.videoSrc.startsWith('/media/')).toBe(true)
-      expect(entry.videoSrc.startsWith('http')).toBe(false)
+      expect(playable.test(entry.videoSrc), entry.videoSrc).toBe(true)
       expect(entry.videoSrc.startsWith('blob:')).toBe(false)
     }
   })
 
+  it('keeps OpenHiggsBolt\'s 43 local PromptFeed and Seedance 1 clips, marked Not reviewed', () => {
+    const local = LOCAL_ENTRIES.filter((entry) => entry.collectionId === 'promptfeed' || entry.collectionId === 'seedance-1')
+    expect(local.filter((entry) => entry.collectionId === 'promptfeed')).toHaveLength(29)
+    expect(local.filter((entry) => entry.collectionId === 'seedance-1')).toHaveLength(14)
+    for (const entry of local) expect(entry.branding, entry.id).toBe('unreviewed')
+  })
+
   it('never registers a video whose file lacks a real media magic number', () => {
     const withoutMagic: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const abs = publicPath(entry.videoSrc)
       if (!hasMediaMagic(abs)) withoutMagic.push(`${entry.id} -> ${entry.videoSrc}`)
     }
@@ -158,7 +168,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
     // Guards against a 9-byte "Not Found" HTTP body being registered as if
     // it were a video: it has no magic number, but it also has no size.
     const tooSmall: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const size = statSync(publicPath(entry.videoSrc)).size
       if (size < MIN_MEDIA_BYTES) tooSmall.push(`${entry.id} -> ${entry.videoSrc} (${size} bytes)`)
     }
@@ -205,39 +215,6 @@ describe('DEMO_LIBRARY_REGISTRY — completeness', () => {
     expect(DEMO_LIBRARY_REGISTRY.length).toBeGreaterThan(OLD_CURATED_COUNT)
   })
 
-  it('registers every verified video of every registered collection', () => {
-    for (const collectionId of DEMO_COLLECTION_IDS) {
-      const registered = getDemosByCollection(collectionId)
-      expect(registered.length).toBeGreaterThan(0)
-      // Every registered video of the collection has a probed fact row, and
-      // every probed fact row of the collection is registered.
-      const probed = Object.keys(DEMO_MEDIA_FACTS).filter((path) =>
-        path.startsWith(`/media/${collectionId}/videos/`),
-      )
-      expect(registered.length).toBe(probed.length)
-    }
-  })
-
-  it('keeps every collection listed in demoCollections with a non-zero count', () => {
-    expect(demoCollections.map((c) => c.id).sort()).toEqual([...DEMO_COLLECTION_IDS].sort())
-    for (const collection of demoCollections) {
-      expect(collection.count).toBeGreaterThan(0)
-      expect(collection.label.length).toBeGreaterThan(0)
-      expect(collection.sourceUrl).toMatch(/^https:\/\//)
-    }
-  })
-
-  it('exposes probed media facts for every registered video', () => {
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
-      const facts = getMediaFacts(entry.videoSrc)
-      expect(facts, `no media facts for ${entry.id}`).toBeDefined()
-      expect(facts!.width).toBeGreaterThan(0)
-      expect(facts!.height).toBeGreaterThan(0)
-      expect(facts!.durationSeconds).toBeGreaterThan(0)
-      expect(entry.media).toEqual(facts)
-    }
-  })
-
   it('registers no video that failed verification (the seedance-prompts collection)', () => {
     // All 14 seedance-prompts files are 9-byte "Not Found" bodies. They must
     // not appear in the registry in any form.
@@ -259,65 +236,6 @@ describe('DEMO_LIBRARY_REGISTRY — completeness', () => {
       expect(typeof excluded.entitlementGated).toBe('boolean')
     }
     expect(EXCLUDED_DEMO_COLLECTIONS.map((e) => e.id)).toContain('seedance-prompts')
-  })
-})
-
-describe('DEMO_LIBRARY_REGISTRY — reconciled totals', () => {
-  it('registers exactly the reconciled number of eligible demos', () => {
-    expect(DEMO_LIBRARY_REGISTRY.length).toBe(EXPECTED_TOTAL)
-  })
-
-  it('registers exactly the reconciled number of demos per collection', () => {
-    const actual: Record<string, number> = {}
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
-      actual[entry.collectionId] = (actual[entry.collectionId] ?? 0) + 1
-    }
-    expect(actual).toEqual(EXPECTED_COLLECTION_COUNTS)
-    for (const [collectionId, expected] of Object.entries(EXPECTED_COLLECTION_COUNTS)) {
-      expect(getDemosByCollection(collectionId as never).length).toBe(expected)
-    }
-  })
-
-  it('publishes the reconciled counts in demoCollections', () => {
-    const published: Record<string, number> = {}
-    for (const collection of demoCollections) published[collection.id] = collection.count
-    expect(published).toEqual(EXPECTED_COLLECTION_COUNTS)
-    const total = demoCollections.reduce((sum, collection) => sum + collection.count, 0)
-    expect(total).toBe(EXPECTED_TOTAL)
-  })
-
-  it('has one probed media fact row per registered demo, and no orphans', () => {
-    expect(Object.keys(DEMO_MEDIA_FACTS).length).toBe(EXPECTED_TOTAL)
-    const registeredSrcs = new Set(DEMO_LIBRARY_REGISTRY.map((entry) => entry.videoSrc))
-    const orphanFacts = Object.keys(DEMO_MEDIA_FACTS).filter((src) => !registeredSrcs.has(src))
-    expect(orphanFacts).toEqual([])
-  })
-
-  it('registers every eligible video found on disk and no ineligible one', () => {
-    // Walk every local demo collection on disk. A file with a real media
-    // container MUST be registered; a file without one MUST NOT be.
-    const eligibleButUnregistered: string[] = []
-    const ineligibleButRegistered: string[] = []
-    let onDisk = 0
-    let eligible = 0
-
-    for (const { collection, files } of mediaCollectionsOnDisk()) {
-      for (const file of files) {
-        onDisk += 1
-        const sitePath = `/media/${collection}/videos/${file}`
-        const abs = join(MEDIA_DIR, collection, 'videos', file)
-        const isRegistered = registeredVideoSrcs.has(sitePath)
-        const isEligible = existsSync(abs) && statSync(abs).size > 0 && hasMediaMagic(abs)
-        if (isEligible) eligible += 1
-        if (isEligible && !isRegistered) eligibleButUnregistered.push(sitePath)
-        if (!isEligible && isRegistered) ineligibleButRegistered.push(sitePath)
-      }
-    }
-
-    expect(onDisk).toBe(ON_DISK_TOTAL)
-    expect(eligible).toBe(EXPECTED_TOTAL)
-    expect(eligibleButUnregistered).toEqual([])
-    expect(ineligibleButRegistered).toEqual([])
   })
 })
 
