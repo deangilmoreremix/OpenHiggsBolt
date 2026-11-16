@@ -37,10 +37,11 @@ import PROVIDER_DATA from './emailProviders.json'
  * A token with no entry becomes a custom field named by `custom` ({ case: 'upper'|'lower'|'as-is', prefix }),
  * and the caller is told via `unmapped` so the UI can say "create this field in <provider>".
  */
-type CustomSpec = { case?: 'upper' | 'lower' | 'as-is'; prefix?: string }
+type CustomSpec = { case?: 'upper' | 'lower' | 'snake' | 'as-is'; prefix?: string; suffix?: string }
 const customName = (spec?: CustomSpec) => (k: string) => {
-  const base = spec?.case === 'upper' ? k.toUpperCase() : spec?.case === 'lower' ? k.toLowerCase() : k;
-  return `${spec?.prefix || ''}${base}`;
+  const snake = (x: string) => x.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  const base = spec?.case === 'upper' ? k.toUpperCase() : spec?.case === 'lower' ? k.toLowerCase() : spec?.case === 'snake' ? snake(k) : k;
+  return `${spec?.prefix || ''}${base}${spec?.suffix || ''}`;
 };
 
 export const EMAIL_PROVIDERS: EmailProvider[] = (PROVIDER_DATA as Array<Omit<EmailProvider, 'custom'> & { custom?: CustomSpec }>).map((p) => ({ ...p, custom: customName(p.custom) }));
@@ -49,6 +50,8 @@ export interface EmailProvider {
   key: string; label: string; open: string; close: string
   fields: Record<string, string>
   recipientId?: string
+  recipientUnverified?: boolean
+  tags?: Record<string, string>
   custom?: (k: string) => string
 }
 
@@ -58,6 +61,8 @@ export const emailProviderByKey = (key: string): EmailProvider | null => EMAIL_P
 /** The merge tag a provider uses for one token, and whether it is a built-in field. */
 export function mergeTagFor(provider: EmailProvider, tokenKey: string) {
   const key = canonicalTokenKey(tokenKey) || tokenKey;
+  const literal = provider.tags?.[key];
+  if (literal) return { tag: literal, mapped: true };
   const mapped = provider.fields?.[key];
   const field = mapped ?? (provider.custom ? provider.custom(key) : key);
   return { tag: `${provider.open}${field}${provider.close}`, mapped: mapped != null };
