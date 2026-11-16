@@ -66,6 +66,10 @@ export const EDITOR_TIPS = {
   cutoutEdge: { text: 'Clean up the outline. Soften blends the edge; Edge shrinks it to remove a halo or grows it to bring back hair.' },
   cutoutColor: { text: 'Pick the background color.' },
 
+  // ── audio mix ────────────────────────────────────────────────────────
+  audioVideoSound: { text: 'The sound that is already in your video. Turn it down to let music or a voiceover come through, mute it, or solo it to hear only the video.' },
+  audioAdd: { text: 'Add your own music or a voiceover. Each track has its own volume, fades, start time and mute and solo. Free, no credits.', free: true },
+
   // ── layout quality check ─────────────────────────────────────────────
   qualityReview: { text: 'Open the full layout check: every problem found, with buttons to show it on the video or fix it.' },
   qualityFixAll: { text: 'Apply the recommended placement. Layers you placed by hand or locked are never moved.', free: true },

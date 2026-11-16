@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeAudioTracks, normalizeVideoVolume } from './audioMix'
 import { normalizeKeyframes } from './keyframes'
 import { normalizeLayerEffects, normalizeLook } from './effects'
 import { normalizeCutout } from './cutout/cutoutSettings'
@@ -1145,6 +1146,12 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    }
 
    out.audio = normalizePreviewAudio(raw.audio) ?? null
+  const audioTracks = normalizeAudioTracks(raw.audioTracks)
+  if (audioTracks) out.audioTracks = audioTracks
+  const videoVolume = normalizeVideoVolume(raw.videoVolume)
+  if (videoVolume !== undefined) out.videoVolume = videoVolume
+  if (raw.videoMuted === true) out.videoMuted = true
+  if (typeof raw.audioSolo === 'string' && raw.audioSolo) out.audioSolo = raw.audioSolo
 
    // The applied Remotion design. Absent in projects saved before the design
    // registry existed, so it falls back to null instead of throwing.
