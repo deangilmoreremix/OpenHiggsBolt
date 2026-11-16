@@ -2437,10 +2437,10 @@ function ConfigurationView(props: any) {
   // user, never deleted, and can be shown again or un-flagged from the bar above the list.
   const continuity = useFinderContinuity(!isAnonymous)
   const [showFlagged, setShowFlagged] = useState(false)
-  const hiddenCount = useMemo(() => businessSearchResults.filter((b) => continuity.flaggedIds.has(b.id)).length, [businessSearchResults, continuity.flaggedIds])
+  const hiddenCount = useMemo(() => businessSearchResults.filter((b) => continuity.isFlagged(b)).length, [businessSearchResults, continuity.isFlagged])
   const listedResults = useMemo(
-    () => (showFlagged ? businessSearchResults : businessSearchResults.filter((b) => !continuity.flaggedIds.has(b.id))),
-    [businessSearchResults, continuity.flaggedIds, showFlagged],
+    () => (showFlagged ? businessSearchResults : businessSearchResults.filter((b) => !continuity.isFlagged(b))),
+    [businessSearchResults, continuity.isFlagged, showFlagged],
   )
   const orderedResults = useMemo(() => {
     if (!openFirst) return listedResults
@@ -3171,7 +3171,7 @@ function ConfigurationView(props: any) {
                   hiddenCount={hiddenCount}
                   showing={showFlagged}
                   onToggle={() => setShowFlagged((v) => !v)}
-                  onUndoAll={() => { for (const b of businessSearchResults) if (continuity.flaggedIds.has(b.id)) void continuity.unflag(b.id) }}
+                  onUndoAll={() => { void continuity.unflagAll(businessSearchResults.filter((b) => continuity.isFlagged(b))) }}
                 />
               )}
               {!savedLeadsOpen && (
@@ -3242,8 +3242,8 @@ function ConfigurationView(props: any) {
                         {!isAnonymous && (
                           <LooksWrongMenu
                             businessName={business.name}
-                            flagged={continuity.flaggedIds.has(business.id)}
-                            onFlag={(reason) => continuity.flag(business.id, reason)}
+                            flagged={continuity.isFlagged(business)}
+                            onFlag={(reason) => continuity.flag(business, reason)}
                           />
                         )}
                         {!isAnonymous && (

@@ -10,6 +10,9 @@ afterEach(() => { document.body.innerHTML = '' })
 type Api = ReturnType<typeof useFinderContinuity>
 let api: Api
 function Harness({ enabled }: { enabled: boolean }) { api = useFinderContinuity(enabled); return null }
+import { flagKeyFor } from '../finderFlagKeys'
+const shop = (id: string, over: Record<string, unknown> = {}) => ({ id, name: "Joe's Pizza", address: '1 Main St', city: 'Tampa', region: 'FL', phone: '(813) 555-0100', osmType: 'node', osmId: id, ...over }) as never
+const NA = flagKeyFor(shop('a'), 'closed')
 const search = { id: 's1', name: 'Tampa pizza', niche: 'restaurants-food', location: 'Tampa, FL', radius_miles: 25, include_chains: false }
 const json = (status: number, body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }))
 
@@ -19,7 +22,7 @@ beforeEach(() => {
   calls.length = 0
   routes = {
     'GET /api/personalization/saved-searches': () => json(200, { ok: true, searches: [search] }),
-    'GET /api/personalization/lead-feedback': () => json(200, { ok: true, flags: [{ business_id: 'b9', reason: 'closed' }] }),
+    'GET /api/personalization/lead-feedback': () => json(200, { ok: true, flags: [{ business_id: NA, reason: 'closed' }] }),
   }
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
@@ -40,7 +43,8 @@ describe('useFinderContinuity', () => {
     await mount()
     expect(api.loaded).toBe(true)
     expect(api.searches).toHaveLength(1)
-    expect(api.flaggedIds.has('b9')).toBe(true)
+    expect(api.isFlagged(shop('a-different-result-id'))).toBe(true) // same business, new id
+    expect(api.isFlagged(shop('z', { name: 'Other Shop', address: '9 Elm St', phone: '(727) 555-0000', osmId: 'z' }))).toBe(false)
     expect(calls.filter((c) => c.method === 'GET')).toHaveLength(2)
   })
   it('does nothing at all when signed out', async () => {
@@ -75,36 +79,51 @@ describe('useFinderContinuity', () => {
     expect(api.searches).toEqual([])
     expect(calls.find((c) => c.method === 'DELETE')!.url).toContain('id=s1')
   })
-  it('flags optimistically and keeps it when the server accepts', async () => {
+  it('flags optimistically under the identity key and keeps it when the server accepts', async () => {
     routes['POST /api/personalization/lead-feedback'] = () => json(200, { ok: true, flag: {} })
     await mount()
-    await act(async () => { await api.flag('b1', 'is_a_chain') })
-    expect(api.flaggedIds.has('b1')).toBe(true)
-    expect(JSON.parse(calls.find((c) => c.method === 'POST')!.body!)).toEqual({ businessId: 'b1', reason: 'is_a_chain' })
+    const b = shop('b1', { name: 'New Place', address: '5 Pine St', phone: undefined, osmId: 'b1' })
+    await act(async () => { await api.flag(b, 'is_a_chain') })
+    expect(api.isFlagged(b)).toBe(true)
+    expect(api.isFlagged(shop('other-id', { name: 'New Place', address: '5 Pine St', phone: undefined, osmId: 'other' }))).toBe(true)
+    const sent = JSON.parse(calls.find((c) => c.method === 'POST')!.body!)
+    expect(sent.reason).toBe('is_a_chain')
+    expect(sent.businessId).toBe(flagKeyFor(b, 'is_a_chain'))
+    expect(sent.businessId).not.toBe('b1')
   })
   it('rolls the flag back when the server refuses or the network fails', async () => {
     routes['POST /api/personalization/lead-feedback'] = () => json(409, { error: 'limit' })
     await mount()
+    const b2 = shop('b2', { name: 'Two', address: '2 Two St', phone: undefined })
+    const b3 = shop('b3', { name: 'Three', address: '3 Three St', phone: undefined })
     let r: Awaited<ReturnType<Api['flag']>> | undefined
-    await act(async () => { r = await api.flag('b2', 'closed') })
+    await act(async () => { r = await api.flag(b2, 'closed') })
     expect(r!.ok).toBe(false)
-    expect(api.flaggedIds.has('b2')).toBe(false)
+    expect(api.isFlagged(b2)).toBe(false)
     routes['POST /api/personalization/lead-feedback'] = () => Promise.reject(new Error('offline'))
-    await act(async () => { r = await api.flag('b3', 'closed') })
+    await act(async () => { r = await api.flag(b3, 'closed') })
     expect(r).toEqual({ ok: false, error: 'Could not save the flag. Check your connection.' })
-    expect(api.flaggedIds.has('b3')).toBe(false)
+    expect(api.isFlagged(b3)).toBe(false)
   })
-  it('un-flags every reason for a business, restoring them if the server fails', async () => {
+  it('un-flags every stored flag that applies, deleting each once', async () => {
     routes['DELETE /api/personalization/lead-feedback'] = () => json(200, { ok: true })
     await mount()
-    await act(async () => { await api.unflag('b9') })
-    expect(api.flaggedIds.has('b9')).toBe(false)
-    expect(calls.find((c) => c.method === 'DELETE')!.url).toContain('businessId=b9&reason=closed')
+    // two result ids for the same business + a second business: still only one stored flag to delete
+    await act(async () => { await api.unflagAll([shop('a'), shop('a-again'), shop('q', { name: 'Not Flagged', address: '8 Zed St', phone: undefined })]) })
+    expect(api.isFlagged(shop('a'))).toBe(false)
+    const dels = calls.filter((c) => c.method === 'DELETE')
+    expect(dels).toHaveLength(1)
+    expect(dels[0].url).toContain(`businessId=${encodeURIComponent(NA)}&reason=closed`)
   })
   it('restores the flag when the undo request fails', async () => {
     routes['DELETE /api/personalization/lead-feedback'] = () => json(502, { error: 'x' })
     await mount()
-    await act(async () => { await api.unflag('b9') })
-    expect(api.flaggedIds.has('b9')).toBe(true)
+    await act(async () => { await api.unflagAll([shop('a')]) })
+    expect(api.isFlagged(shop('a'))).toBe(true)
+  })
+  it('un-flagging nothing sends nothing', async () => {
+    await mount()
+    await act(async () => { await api.unflagAll([shop('nobody', { name: 'Nobody', address: '0 Void St', phone: undefined })]) })
+    expect(calls.filter((c) => c.method === 'DELETE')).toEqual([])
   })
 })

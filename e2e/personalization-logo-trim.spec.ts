@@ -8,6 +8,7 @@ import path from 'node:path';
  */
 const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3111';
 const OUT = process.env.PHASE5_OUT_DIR ?? path.join(process.cwd(), 'test-results', 'logo-trim');
+const RATIO = process.env.LOGO_TRIM_RATIO ?? '16:9';
 
 test('a padded transparent logo is drawn trimmed in the real export', async ({ page }) => {
   test.setTimeout(400_000);
@@ -48,6 +49,7 @@ test('a padded transparent logo is drawn trimmed in the real export', async ({ p
   await page.waitForTimeout(1500);
   await dialog.getByRole('button', { name: /Step 4/i }).click();
   await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
+  if (RATIO !== '16:9') await dialog.getByLabel(/video shape/i).selectOption(RATIO);
   await dialog.getByRole('button', { name: /Approve this personalization|^Approved$/i }).click({ timeout: 30_000 });
   const rights = page.getByTestId('guided-rights-confirm').locator('input');
   if (await rights.count()) await rights.check();
@@ -59,7 +61,7 @@ test('a padded transparent logo is drawn trimmed in the real export', async ({ p
     let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
     return btoa(bin);
   });
-  const file = path.join(OUT, `${process.env.LOGO_TRIM_LABEL ?? 'after'}.mp4`);
+  const file = path.join(OUT, `${process.env.LOGO_TRIM_LABEL ?? RATIO.replace(':', 'x')}.mp4`);
   fs.writeFileSync(file, Buffer.from(b64, 'base64'));
   expect(fs.statSync(file).size).toBeGreaterThan(10_000);
 });

@@ -11,10 +11,11 @@ const biz = (i: number) => ({
   verificationStatus: 'unverified', ownership: 'independent', website: `https://site${i}.example.com`,
 });
 const list = [biz(0), biz(1), biz(2)];
+const withIds = (prefix: string) => list.map((b, i) => ({ ...b, id: `${prefix}${i}`, osmId: `${prefix}${200 + i}` }));
 
 async function setup(page: Page) {
-  const state = { searches: [] as Array<Record<string, unknown>>, flags: [] as Array<{ business_id: string; reason: string }>, findCalls: 0, posted: [] as unknown[] };
-  await page.route('**/api/personalization/find-businesses', (r) => { state.findCalls++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, businesses: list, query: { niche: 'Restaurants / Food', location: 'Tampa, FL', radiusMiles: 15 } }) }); });
+  const state = { searches: [] as Array<Record<string, unknown>>, flags: [] as Array<{ business_id: string; reason: string }>, findCalls: 0, posted: [] as unknown[], idPrefix: 'b' };
+  await page.route('**/api/personalization/find-businesses', (r) => { state.findCalls++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, businesses: state.idPrefix === 'b' ? list : withIds(state.idPrefix), query: { niche: 'Restaurants / Food', location: 'Tampa, FL', radiusMiles: 15 } }) }); });
   await page.route('**/api/personalization/enrich-business', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, results: [] }) }));
   await page.route('**/api/personalization/saved-searches*', async (r) => {
     const m = r.request().method();
@@ -72,7 +73,8 @@ test('"Looks wrong" hides a business with a count, can show it again, and undo r
   await expect(card(dialog, 'Biz 1')).toHaveCount(0);
   await expect(card(dialog, 'Biz 0')).toBeVisible();
   await expect(dialog.getByTestId('hidden-bar')).toContainText('1 hidden');
-  expect(state.flags).toEqual([{ business_id: 'b1', reason: 'is_a_chain' }]);
+  // stored under the business's identity (its website domain), not the result id
+  expect(state.flags).toEqual([{ business_id: 'domain:site1.example.com', reason: 'is_a_chain' }]);
 
   await dialog.getByTestId('hidden-toggle').click();
   await expect(card(dialog, 'Biz 1')).toBeVisible();
@@ -83,4 +85,31 @@ test('"Looks wrong" hides a business with a count, can show it again, and undo r
   await expect(card(dialog, 'Biz 1')).toBeVisible();
   await expect(dialog.getByTestId('hidden-bar')).toHaveCount(0);
   expect(state.flags).toEqual([]);
+});
+
+test('a flagged business stays hidden when it comes back under a different result id; a closed flag hides only that location', async ({ page }) => {
+  const { dialog, state } = await setup(page);
+  await dialog.locator('#business-niche').selectOption('restaurants-food');
+  await dialog.locator('#business-location').fill('Tampa, FL');
+  await dialog.getByRole('button', { name: /15/ }).first().click();
+  await expect(dialog.getByText(/businesses found for/i).first()).toBeVisible({ timeout: 30_000 });
+  await card(dialog, 'Biz 2').getByTestId('looks-wrong-open').click();
+  await dialog.getByTestId('looks-wrong-closed').click();
+  await expect(card(dialog, 'Biz 2')).toHaveCount(0);
+  expect(state.flags).toHaveLength(1);
+  expect(state.flags[0].reason).toBe('closed');
+  expect(state.flags[0].business_id).toMatch(/^na:/); // a location flag never uses the shared website domain
+
+  // Same three businesses again, but every result id is new.
+  state.idPrefix = 'n';
+  await dialog.getByRole('button', { name: 'New Search', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Find Local Business', exact: true }).click();
+  await dialog.locator('#business-niche').selectOption('restaurants-food');
+  await dialog.locator('#business-location').fill('Tampa, FL');
+  await dialog.getByRole('button', { name: /15/ }).first().click();
+  await expect(dialog.getByText(/businesses found for/i).first()).toBeVisible({ timeout: 30_000 });
+  await expect(card(dialog, 'Biz 0')).toBeVisible();
+  await expect(card(dialog, 'Biz 1')).toBeVisible();
+  await expect(card(dialog, 'Biz 2')).toHaveCount(0);
+  await expect(dialog.getByTestId('hidden-bar')).toContainText('1 hidden');
 });
