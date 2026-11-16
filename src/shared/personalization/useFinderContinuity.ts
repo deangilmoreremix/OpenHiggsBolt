@@ -8,7 +8,9 @@
  * behaves exactly as before and the error is surfaced as a short message. Flags are the user's own; they only hide
  * a business for that user and never change anything shared.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { flagKeyFor, flagMatches } from './finderFlagKeys'
+import type { BusinessDiscoveryRecord } from './types'
 
 export const FLAG_REASONS = [
   { key: 'is_a_chain', label: 'It is a chain / franchise' },
@@ -21,7 +23,9 @@ export const FLAG_REASONS = [
 export type FlagReason = (typeof FLAG_REASONS)[number]['key']
 
 export interface SavedSearch { id: string; name: string; niche: string; location: string; radius_miles: number; include_chains: boolean }
+/** `business_id` is a stable identity key (domain / name+address / phone), see finderFlagKeys.ts — not a result id. */
 export interface LeadFlag { business_id: string; reason: FlagReason }
+type FlaggableBusiness = Pick<BusinessDiscoveryRecord, 'id'> & Partial<BusinessDiscoveryRecord>
 
 export interface SaveSearchInput { name: string; niche: string; location: string; radiusMiles: number; includeChains?: boolean }
 type Outcome = { ok: true } | { ok: false; error: string }
@@ -85,31 +89,38 @@ export function useFinderContinuity(enabled: boolean) {
   }, [])
 
   // Flags apply at once (optimistic) and roll back if the server refuses, so the list never lies about what is saved.
-  const flag = useCallback(async (businessId: string, reason: FlagReason): Promise<Outcome> => {
-    setFlags((prev) => (prev.some((f) => f.business_id === businessId && f.reason === reason) ? prev : [{ business_id: businessId, reason }, ...prev]))
-    const rollback = () => setFlags((prev) => prev.filter((f) => !(f.business_id === businessId && f.reason === reason)))
+  // A flag is stored under the business's identity key, so the same business is still hidden if it comes back under a
+  // different result id.
+  const flag = useCallback(async (business: FlaggableBusiness, reason: FlagReason): Promise<Outcome> => {
+    const key = flagKeyFor(business, reason)
+    setFlags((prev) => (prev.some((f) => f.business_id === key && f.reason === reason) ? prev : [{ business_id: key, reason }, ...prev]))
+    const rollback = () => setFlags((prev) => prev.filter((f) => !(f.business_id === key && f.reason === reason)))
     try {
       const res = await fetch('/api/personalization/lead-feedback', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-        body: JSON.stringify({ businessId, reason }),
+        body: JSON.stringify({ businessId: key, reason }),
       })
       if (!res.ok) { rollback(); return { ok: false, error: await errorOf(res, 'Could not save the flag') } }
       return { ok: true }
     } catch { rollback(); return { ok: false, error: 'Could not save the flag. Check your connection.' } }
   }, [])
 
-  const unflag = useCallback(async (businessId: string): Promise<Outcome> => {
-    const mine = flags.filter((f) => f.business_id === businessId)
+  const isFlagged = useCallback((business: FlaggableBusiness): boolean => flags.some((f) => flagMatches(f, business)), [flags])
+
+  /** Removes every flag that applies to any of these businesses (each stored flag is deleted once). */
+  const unflagAll = useCallback(async (businesses: FlaggableBusiness[]): Promise<Outcome> => {
+    const mine = flags.filter((f) => businesses.some((b) => flagMatches(f, b)))
     if (!mine.length) return { ok: true }
-    setFlags((prev) => prev.filter((f) => f.business_id !== businessId))
+    const same = (a: LeadFlag, b: LeadFlag) => a.business_id === b.business_id && a.reason === b.reason
+    setFlags((prev) => prev.filter((f) => !mine.some((m) => same(m, f))))
+    const restore = () => setFlags((prev) => [...mine.filter((m) => !prev.some((f) => same(m, f))), ...prev])
     try {
       const results = await Promise.all(mine.map((f) =>
-        fetch(`/api/personalization/lead-feedback?businessId=${encodeURIComponent(businessId)}&reason=${f.reason}`, { method: 'DELETE', credentials: 'same-origin' })))
-      if (results.some((r) => !r.ok && r.status !== 404)) { setFlags((prev) => [...mine, ...prev]); return { ok: false, error: 'Could not undo the flag.' } }
+        fetch(`/api/personalization/lead-feedback?businessId=${encodeURIComponent(f.business_id)}&reason=${f.reason}`, { method: 'DELETE', credentials: 'same-origin' })))
+      if (results.some((r) => !r.ok && r.status !== 404)) { restore(); return { ok: false, error: 'Could not undo the flag.' } }
       return { ok: true }
-    } catch { setFlags((prev) => [...mine, ...prev]); return { ok: false, error: 'Could not undo the flag. Check your connection.' } }
+    } catch { restore(); return { ok: false, error: 'Could not undo the flag. Check your connection.' } }
   }, [flags])
 
-  const flaggedIds = useMemo(() => new Set(flags.map((f) => f.business_id)), [flags])
-  return { enabled, loaded, error, searches, flags, flaggedIds, saveSearch, deleteSearch, flag, unflag }
+  return { enabled, loaded, error, searches, flags, saveSearch, deleteSearch, flag, isFlagged, unflagAll }
 }
