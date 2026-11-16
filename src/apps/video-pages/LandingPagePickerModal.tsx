@@ -22,10 +22,10 @@ const SAMPLE_TOKENS = { firstname: 'Alex', lastname: 'Rivera', company: 'Brightl
 const CHIPS: { id: string; label: string; match: (id: string) => boolean }[] = [
   { id: 'all', label: 'All', match: () => true },
   { id: 'saas', label: 'SaaS & outreach', match: (id) => /^puck-(starter|leadiq|lead|reach|mono|poster|enterprise|neon|pb-(pro|agency|enterprise|analytics|creator))$/.test(id) },
-  { id: 'local', label: 'Local business', match: (id) => /^puck-(local|persona|spark|pb-(eats|auto|health|shop)|pa-(bistro|motors|local|spa|fitness))$/.test(id) },
+  { id: 'local', label: 'Local business', match: (id) => /^puck-(local|persona|spark|pb-(eats|auto|health|shop)|pa-(bistro|motors|local|spa|fitness)|pd-restaurant)$/.test(id) },
   { id: 'real', label: 'Property & travel', match: (id) => /^puck-(pb-agent|pa-(estate|travel)|realtor|dreamhome)$/.test(id) },
   { id: 'trades', label: 'Home services', match: (id) => /^puck-pc-(plumbing|pest|landscape|cleaning|moving|solar)$/.test(id) },
-  { id: 'care', label: 'Health, pets & kids', match: (id) => /^puck-pc-(vet|vision|preschool)$/.test(id) },
+  { id: 'care', label: 'Health, beauty & kids', match: (id) => /^puck-pc-(vet|vision|preschool)$/.test(id) || /^puck-pd-(dental|chiro|medspa|salon)$/.test(id) },
   { id: 'more', label: 'Other', match: (id) => /^puck-(pa-(business|learn|creative)|results|pc-insurance)$/.test(id) },
 ]
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])'

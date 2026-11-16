@@ -45,3 +45,8 @@ import '../../../styles/landing-pages/puck/40-pc-insurance.css';
 import '../../../styles/landing-pages/puck/41-pc-preschool.css';
 import '../../../styles/landing-pages/puck/42-pc-moving.css';
 import '../../../styles/landing-pages/puck/43-pc-solar.css';
+import '../../../styles/landing-pages/puck/44-pd-dental.css';
+import '../../../styles/landing-pages/puck/45-pd-chiro.css';
+import '../../../styles/landing-pages/puck/46-pd-medspa.css';
+import '../../../styles/landing-pages/puck/47-pd-salon.css';
+import '../../../styles/landing-pages/puck/48-pd-restaurant.css';

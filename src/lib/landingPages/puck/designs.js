@@ -41,6 +41,11 @@ import d39 from './designs/40-pc-insurance.js';
 import d40 from './designs/41-pc-preschool.js';
 import d41 from './designs/42-pc-moving.js';
 import d42 from './designs/43-pc-solar.js';
+import d43 from './designs/44-pd-dental.js';
+import d44 from './designs/45-pd-chiro.js';
+import d45 from './designs/46-pd-medspa.js';
+import d46 from './designs/47-pd-salon.js';
+import d47 from './designs/48-pd-restaurant.js';
 
 /**
  * Editable-page templates: plain data (no React) so templates.js can list them.
@@ -98,6 +103,6 @@ const STARTER = [
 ];
 
 // One file per converted design (puck/designs/NN-name.js, default export = a template object).
-const EXTRA = [d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22, d23, d24, d25, d26, d27, d28, d29, d30, d31, d32, d33, d34, d35, d36, d37, d38, d39, d40, d41, d42].filter(Boolean);
+const EXTRA = [d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22, d23, d24, d25, d26, d27, d28, d29, d30, d31, d32, d33, d34, d35, d36, d37, d38, d39, d40, d41, d42, d43, d44, d45, d46, d47].filter(Boolean);
 
 export const PUCK_TEMPLATES = [...STARTER, ...EXTRA];
