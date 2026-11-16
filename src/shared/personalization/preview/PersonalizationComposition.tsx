@@ -25,6 +25,7 @@ import {
   emitPreviewMediaFailure,
   previewMediaLabel,
 } from './previewMediaEvents'
+import { CaptionsLayer } from './CaptionsLayer'
 import { getRemotionDesignTemplate, subscribeRemotionDesignRegistry } from '../templates'
 import type {
   RemotionDesignComponentProps,
@@ -674,6 +675,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             </AbsoluteFill>
           )
         })}
+        <CaptionsLayer captions={settings.captions} videoUrl={videoUrl ?? null} settings={settings} width={compW} height={compH} />
         {settings.showEndCard ? (
           <Sequence from={endCardStart} durationInFrames={endCardLen}>
             <EndCard settings={settings} brand={brand} />

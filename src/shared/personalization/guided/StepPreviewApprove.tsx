@@ -1,5 +1,6 @@
 'use client'
 
+import { CaptionsPanel } from './CaptionsPanel'
 import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
@@ -320,6 +321,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                   The render is blocked: {quality.report.issues.filter((i) => i.severity === 'critical').map((i) => i.message).join(' ')}
                 </p>
               )}
+              {isBrandedPath && previewApproved && !inputProps.isImageSource && <CaptionsPanel videoUrl={inputProps.videoUrl} disabled={generating} />}
               {isBrandedPath && !previewApproved && !generating && (
                 <p data-testid="guided-render-needs-approval" style={{ ...hintStyle, color: '#fcd34d' }}>
                   Approve the preview first — the render uses exactly what you approve.
