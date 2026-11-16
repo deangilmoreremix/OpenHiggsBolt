@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeKeyframes } from './keyframes'
 import { normalizeLayerEffects, normalizeLook } from './effects'
 import { normalizeCutout } from './cutout/cutoutSettings'
 import { contractFor, roleForLayer } from './mediaRoles'
@@ -955,6 +956,8 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   if (raw.locked === true) normalized.locked = true
   const rotation = normalizeAngle(raw.rotation)
   if (rotation !== 0) normalized.rotation = rotation
+  const keyframes = normalizeKeyframes(raw.keyframes)
+  if (keyframes) normalized.keyframes = keyframes
   const effects = normalizeLayerEffects(raw.effects)
   if (effects) normalized.effects = effects
   const imageStyle = normalizeImageStyle(raw.imageStyle)
