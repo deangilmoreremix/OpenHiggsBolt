@@ -1002,6 +1002,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
           onSelect={setSelectedId}
           onChange={(id, patch) => updatePreviewLayer(id, patch)}
           playheadFrame={liveOn ? playFrame : undefined}
+          audio={(settings.audioTracks ?? []).map((t) => ({ id: t.id, name: t.name, start: t.start, length: t.length, muted: t.muted }))}
+          onAudioChange={(id, patch) => updatePreviewComposition({ audioTracks: (settings.audioTracks ?? []).map((t) => (t.id === id ? { ...t, start: patch.start, length: patch.length } : t)) })}
           onKeyframeMove={(id, from, to) => {
             const layer = settings.layers.find((l) => l.id === id)
             if (layer) updatePreviewLayer(id, { keyframes: moveKeyframe(layer.keyframes, from, to, settings.durationInFrames) })

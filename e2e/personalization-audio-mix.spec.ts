@@ -150,3 +150,35 @@ test('mute leaves only the video\'s sound, solo leaves only the track', async ({
   const soloDb = meanDb(soloExport, 0.5, 3);
   expect(Math.abs(soloDb - toneDb), `solo: export ${soloDb} dB vs the tone's ${toneDb} dB`).toBeLessThan(3);
 });
+
+test('"Play for" stops a track after that long, and its timeline lane shows it', async ({ page }) => {
+  test.setTimeout(420_000);
+  fs.mkdirSync(OUT, { recursive: true });
+  const tone660 = path.join(OUT, 'tone660.wav');
+  tone(tone660, 660);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await seed(page);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByTestId('audio-toggle-panel').scrollIntoViewIfNeeded();
+  await dialog.getByTestId('audio-toggle-panel').click();
+  await dialog.getByTestId('audio-video-volume').fill('0');
+  await addTrack(page, 'music', tone660);
+  const track = dialog.getByTestId('audio-track').first();
+  const id = (await track.getAttribute('data-track-id'))!;
+  await track.getByTestId('audio-track-volume').fill('1');
+  await dialog.getByTestId(`audio-start-${id}`).fill('1');
+  await dialog.getByTestId(`audio-length-${id}`).fill('2');
+
+  // The lane on the main timeline is exactly seconds 1 to 3 of the 5 second video.
+  const bar = dialog.getByTestId('timeline-audio-bar');
+  await expect(bar).toHaveAttribute('data-start', '30');
+  await expect(bar).toHaveAttribute('data-end', '89');
+  await dialog.getByTestId('timeline').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'audio-lane.png') });
+
+  const file = await renderMp4(page, 'length');
+  const during = meanDb(file, 1.2, 1.5);
+  const after = meanDb(file, 3.3, 1.2);
+  expect(during, `playing between 1 s and 3 s (${during} dB)`).toBeGreaterThan(-35);
+  expect(after, `silent after 3 s (${after} dB)`).toBeLessThan(-55);
+});

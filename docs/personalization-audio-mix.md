@@ -34,9 +34,16 @@ normalized, so saved projects are unchanged. A track whose upload has not finish
 
 ## Known limits
 
-- **Trim end** (cut the tail of a track) is not a control: a track plays until the file or the video ends. The data model supports a
-  `length`, and fades are measured to the end of the video.
-- **Timeline lanes**: the track's position is shown on its waveform strip in the Audio card, not as a lane in the main timeline.
+- Fade-out is measured to where the track stops (its **Play for** length, or the end of the video).
 - Volume is 0 to 100%; there is no boost above the file's level and no volume automation curve beyond the two fades.
 - The waveform is decoded in the browser; an undecodable file shows no waveform but still plays if the browser can play it.
 - Tracks use the browser's audio decoder and are mixed by the exporter; preview playback with several long tracks may use more CPU.
+
+## Play for (trim end) and timeline lanes
+
+- **Play for (s)** on each track: how long it plays from its start; empty means until its file or the video ends. Fades follow it.
+- Each track is also a **lane in the main timeline**, under the layers: a bar from its start for as long as it plays. Drag the bar to
+  move it, drag its right edge to set how long it plays (dragging to the last frame makes it open-ended again); the arrow keys work
+  too (Shift = 10 frames). The Audio card's waveform strip stays.
+- Verified in a real export: a track set to start at 1 s and play for 2 s measures steady loudness between 1 and 3 s and silence
+  (below -55 dB) after 3 s; its lane reads exactly frames 30 to 89.
