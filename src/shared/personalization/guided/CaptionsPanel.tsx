@@ -3,6 +3,8 @@ import { Captions, Plus, Trash2 } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { ColorField } from './editor/ColorField'
 import { Tip } from './editor/Tip'
+import { SavedStylesBar } from './SavedStylesBar'
+import { applyCaptionStyle, captureCaptionStyle } from '../preview/textStyles'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle } from './tokens'
 import {
   CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, newCue,
@@ -99,6 +101,16 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
               {caps.style.box && (
                 <ColorField id="captions-box-color" label="Box color" ariaLabel="Caption box color" tipId="textColor" value={caps.style.boxColor} onChange={(hex) => setStyle({ boxColor: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
               )}
+
+              <SavedStylesBar
+                kind="captions"
+                idPrefix="captions"
+                styles={previewSettings.textStyles ?? []}
+                onStylesChange={(next) => updatePreviewComposition({ textStyles: next.length ? next : undefined })}
+                capture={() => captureCaptionStyle(caps.style, brand)}
+                onApply={(s) => { if (s.kind === 'captions') set({ style: applyCaptionStyle(s.style, brand), enabled: true }) }}
+                defaultName="Caption style"
+              />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Tip id="captionsLines" side="top"><div style={labelStyle}>Lines</div></Tip>
