@@ -56,7 +56,8 @@ export function useCaptions(videoUrl: string | null): Captions {
     start([...(captions?.cues ?? []), { startMs, endMs: startMs + 2000, text: 'New line' }])
   }, [captions, start])
   const importFile = useCallback((file: Pick<File, 'name' | 'size'>, text: string) => {
-    if (file.size > MAX_CAPTION_FILE_CHARS * 4) { setNote('That file is too big to be a caption file.'); return }
+    // Compare characters with characters: the parser only reads the first MAX_CAPTION_FILE_CHARS, so a longer file would be cut silently.
+    if (text.length > MAX_CAPTION_FILE_CHARS) { setNote('That file is too big to be a caption file.'); return }
     const cues = parseCaptionFile(text)
     if (!cues.length) { setNote(`No captions were found in ${file.name || 'that file'}. Use an .srt or .vtt file.`); return }
     setNote(`Loaded ${cues.length} line${cues.length === 1 ? '' : 's'} from ${file.name || 'the file'}.`)

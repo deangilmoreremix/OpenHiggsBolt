@@ -112,4 +112,10 @@ describe('CaptionsPanel (file import)', () => {
     const { el } = mount(); await upload(el, SRT)
     expect(q(el, 'captions-srt')).toBeTruthy(); expect(q(el, 'captions-vtt')).toBeTruthy(); expect(q(el, 'captions-copy')).toBeTruthy()
   })
+  it('refuses a file longer than the limit instead of silently using only its start', async () => {
+    const { el } = mount()
+    await upload(el, SRT + '\n' + 'x'.repeat(400_100)) // one valid cue first, then more than the limit of plain text
+    expect(stored()).toBeUndefined()
+    expect(q(el, 'captions-note')?.textContent).toMatch(/too big/)
+  })
 })
