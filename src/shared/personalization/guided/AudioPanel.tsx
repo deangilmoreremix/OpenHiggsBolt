@@ -80,7 +80,14 @@ export function AudioPanel(): React.JSX.Element {
                   <option value="voiceover">Voiceover</option>
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
+                <label htmlFor={`audio-length-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 9, color: C.muted2 }}>
+                  Play for (s)
+                  <input id={`audio-length-${t.id}`} data-testid={`audio-length-${t.id}`} type="number" aria-label="Play for seconds (empty means until the end)" min={0.1} step={0.1} placeholder="to end"
+                    value={t.length === undefined ? '' : Math.round(t.length * 100) / 100}
+                    onChange={(e) => setTrack(t.id, { length: e.target.value.trim() === '' ? undefined : Math.max(0.1, Number(e.target.value)) })}
+                    style={{ ...inputStyle, minHeight: 26, padding: '0 6px', fontSize: 11 }} />
+                </label>
                 {num(`audio-start-${t.id}`, 'Start (s)', t.start, 0, Math.max(0, durationSec - 0.1), 0.1, (v) => setTrack(t.id, { start: v }))}
                 {num(`audio-trim-${t.id}`, 'Skip (s)', t.trimStart, 0, 3600, 0.1, (v) => setTrack(t.id, { trimStart: v }))}
                 {num(`audio-fadein-${t.id}`, 'Fade in (s)', t.fadeIn, 0, 30, 0.1, (v) => setTrack(t.id, { fadeIn: v }))}
