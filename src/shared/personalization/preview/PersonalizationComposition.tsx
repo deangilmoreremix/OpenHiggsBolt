@@ -23,6 +23,7 @@ import { rotateCss, rotatedExtent } from './rotation'
 import { isNeutralKeyframeState, keyframeStateFor, keyframeTransformParts } from './keyframes'
 import { layerEffectsFilter, lookFilter } from './effects'
 import { LookLayers } from './LookLayers'
+import { CaptionsLayer } from './CaptionsLayer'
 import { effectiveTracks, isAudible, trackGainAt, trackWindow, videoGain } from './audioMix'
 import { accentRuleStyle, ctaPillStyle, endCardBackground, isSingleLineBox, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimPeakAt, scrimStyle } from './scrim'
@@ -782,6 +783,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             </React.Fragment>
           )
         })()))}
+        <CaptionsLayer captions={settings.captions} compH={compH} />
         {settings.showEndCard ? (
           <Sequence from={endCardStart} durationInFrames={endCardLen}>
             <EndCard settings={settings} brand={brand} />

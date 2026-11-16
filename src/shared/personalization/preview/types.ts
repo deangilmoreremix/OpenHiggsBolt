@@ -210,6 +210,8 @@ export interface PersonalizationPreviewSettings {
   imageHints?: Record<string, ImageHints>
   /** A color and film look for the footage (not the brand overlays). Optional so saved projects restore unchanged. */
   look?: import('./effects').LookSettings
+  /** Timed captions over the video, with the spoken word highlighted. Optional so saved projects restore unchanged. */
+  captions?: import('./captions').CaptionSettings
   /**
    * Presenter background removal. Optional so projects saved before it existed restore unchanged.
    * Settings only: the measured masks live in memory (preview/cutout/maskStore.ts), never in the project.
