@@ -28,7 +28,11 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
   // scroll-margin-top (which main section[id] sets to the header height),
   // which would clear the header twice.
   const base = lenis ? lenis.animatedScroll : window.scrollY;
-  return el.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
+  // A section pinned by ScrollTrigger (the Workflow story) stays put on screen
+  // while the page scrolls through its pin, so measure the pin-spacer that
+  // holds its place in the layout instead.
+  const anchor = el.parentElement?.classList.contains('pin-spacer') ? el.parentElement : el;
+  return anchor.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
 }
 
 /** How long after landing a jump keeps the target aligned while sections settle. */
@@ -150,15 +154,23 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   lenisRef.current = lenis;
 
   // Opening the page with a #fragment: the browser lands on the section while
-  // the deferred sections above it are still placeholders, so align once the
-  // page (and Lenis, where it runs) has started.
+  // the deferred sections above it are still placeholders (or the section has
+  // not loaded at all), so align once the page, Lenis where it runs, and the
+  // target are ready.
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash || hash === '#') return;
-    const timer = window.setTimeout(() => {
-      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    // The demo showcase loads after the page, so its sections may not exist
+    // yet: look for the target for up to 10s.
+    const id = decodeURIComponent(hash.slice(1));
+    let timer = 0;
+    let tries = 0;
+    const find = () => {
+      const target = document.getElementById(id);
       if (target) scrollToTarget(lenisRef.current, target);
-    }, 300);
+      else if (++tries < 50) timer = window.setTimeout(find, 200);
+    };
+    timer = window.setTimeout(find, 300);
     return () => window.clearTimeout(timer);
   }, []);
 
