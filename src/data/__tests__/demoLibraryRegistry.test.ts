@@ -1,22 +1,20 @@
 /**
  * Contract tests for the demo library registry.
  *
- * The registry replaced a hardcoded 12-slug allowlist that was the reason
- * only 12 of the shipped demo videos ever reached the UI. These tests lock
- * the guarantees that make the full library safe to render:
+ * The registry offers the template library (clips hosted in the public
+ * demo-template-videos bucket) plus this repo's own local PromptFeed and
+ * Seedance 1 clips. These tests lock the guarantees that make it safe to render:
  *
- *  1. Every registered entry points at a video file that REALLY exists on
- *     disk under `public/` and is non-empty.
- *  2. Every registered entry's poster REALLY exists on disk.
- *  3. Every id is unique, and the id is source-qualified (no bare slug, no
- *     numeric index), so no two collections can collide.
+ *  1. Every LOCAL entry points at a video file that REALLY exists on disk under
+ *     `public/` (a real media container, non-empty), and its poster exists.
+ *  2. Every entry is playable media: a repo file or the demo-template-videos
+ *     bucket, never a blob handle or a raw CDN URL.
+ *  3. Every id is unique and source-qualified, so no two collections collide.
  *  4. The registry is strictly larger than the old 12-entry allowlist.
- *  5. Every registered video has probed media facts (the verification
- *     allowlist), so an unverified file can never be registered.
- *  6. The registry is RECONCILED against the disk: every video file under
- *     `public/media/<collection>/videos` that has a real media container is registered,
- *     and every file that does NOT is excluded. This is the test that fails
- *     when a new collection lands on disk but is never wired up.
+ *  5. The broken `seedance-prompts` collection stays excluded.
+ *
+ * The library merge, the three logo states and the lookup are covered in
+ * `templateVideoLibraryRegistry.test.ts`.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -26,14 +24,10 @@ import { getCreateUrl } from '../types'
 import { findDemoById } from '../demoLookup'
 import {
   DEMO_LIBRARY_REGISTRY,
-  DEMO_MEDIA_FACTS,
   DEMO_COLLECTION_IDS,
   DEMO_CATEGORIES,
-  demoCollections,
   getDemoById,
-  getDemosByCollection,
   getDemosByCategory,
-  getMediaFacts,
   toVideoDemo,
   deriveAspectRatio,
   EXCLUDED_DEMO_COLLECTIONS,
@@ -52,14 +46,6 @@ const OLD_CURATED_COUNT = 12
  * `seedance-prompts` collection — are 9-byte "Not Found" error bodies with no
  * media container, so 123 videos are eligible and all 123 are registered.
  */
-const EXPECTED_COLLECTION_COUNTS: Record<string, number> = {
-  'minimax-h3': 30,
-  promptfeed: 29,
-  'seedance-1': 14,
-  'seedance-25': 50,
-}
-const EXPECTED_TOTAL = 123
-const ON_DISK_TOTAL = 137
 const INVALID_ON_DISK = 14
 
 /** WebM magic `1a 45 df a3`; MP4 magic is the `ftyp` box at offset 4. */
@@ -67,9 +53,6 @@ const WEBM_MAGIC = Buffer.from([0x1a, 0x45, 0xdf, 0xa3])
 
 /** A real media container is never this small; a 9-byte error body is. */
 const MIN_MEDIA_BYTES = 1024
-
-/** Every video path the registry actually serves. */
-const registeredVideoSrcs = new Set(DEMO_LIBRARY_REGISTRY.map((entry) => entry.videoSrc))
 
 /** Clips served from this repo's public/ folder; the template-library clips are hosted in the Supabase bucket instead. */
 const LOCAL_ENTRIES = DEMO_LIBRARY_REGISTRY.filter((entry) => entry.videoSrc.startsWith('/media/'))
@@ -92,20 +75,6 @@ function hasMediaMagic(absPath: string): boolean {
   return (
     head.subarray(0, 4).equals(WEBM_MAGIC) || head.subarray(4, 8).toString('latin1') === 'ftyp'
   )
-}
-
-/** Every video file under `public/media/<collection>/videos/`. */
-function mediaCollectionsOnDisk(): Array<{ collection: string; files: string[] }> {
-  if (!existsSync(MEDIA_DIR)) return []
-  return readdirSync(MEDIA_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => ({
-      collection: entry.name,
-      files: readdirSync(join(MEDIA_DIR, entry.name, 'videos')).filter((file) =>
-        /\.(mp4|webm|mov|m4v)$/i.test(file),
-      ),
-    }))
-    .filter((entry) => entry.files.length > 0)
 }
 
 describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
