@@ -1,0 +1,67 @@
+/* Dark OpenHiggsBolt skin for the page editor's own chrome (sidebars, fields, buttons).
+   Scoped to .hb-puck so it never touches the landing pages themselves (they keep their own designs). */
+.hb-puck {
+  --puck-color-white: #0a0a0a;
+  --puck-color-black: #ffffff;
+  --puck-color-grey-01: #fafafa;
+  --puck-color-grey-02: #e4e4e7;
+  --puck-color-grey-03: #d4d4d8;
+  --puck-color-grey-04: #a1a1aa;
+  --puck-color-grey-05: #71717a;
+  --puck-color-grey-06: #52525b;
+  --puck-color-grey-07: #3f3f46;
+  --puck-color-grey-08: #2a2a2e;
+  --puck-color-grey-09: #232326;
+  --puck-color-grey-10: #1a1a1d;
+  --puck-color-grey-11: #141414;
+  --puck-color-grey-12: #0f0f10;
+  --puck-color-azure-01: #cffafe;
+  --puck-color-azure-02: #a5f3fc;
+  --puck-color-azure-03: #67e8f9;
+  --puck-color-azure-04: #22d3ee;
+  --puck-color-azure-05: #06b6d4;
+  --puck-color-azure-06: #0891b2;
+  --puck-color-azure-07: #0e7490;
+  --puck-color-azure-08: #155e75;
+  --puck-color-azure-09: #164e63;
+  --puck-color-azure-10: #0f3a47;
+  --puck-color-azure-11: #0b2a33;
+  --puck-color-azure-12: #08202a;
+  --puck-color-interactive: #22d3ee;
+  --puck-color-interactive-hover: #67e8f9;
+  --puck-color-interactive-active: #a5f3fc;
+  --puck-color-focus-ring: #22d3ee;
+  --puck-color-rose-07: #a855f7;
+  --puck-color-highlight: #a855f7;
+  /* Puck resolves its semantic tokens at :root, so they are set here directly. */
+  --puck-color-surface: #0a0a0a;
+  --puck-color-surface-muted: #141414;
+  --puck-color-surface-subtle: #0f0f10;
+  --puck-color-surface-inverse: #fafafa;
+  --puck-color-border: #232326;
+  --puck-color-border-hover: #52525b;
+  --puck-color-border-muted: #1a1a1d;
+  --puck-color-border-inverse: #52525b;
+  --puck-color-text: #fafafa;
+  --puck-color-text-primary: #22d3ee;
+  --puck-color-text-secondary: #a1a1aa;
+  --puck-color-text-muted: #71717a;
+  --puck-color-text-subtle: #52525b;
+  --puck-color-text-inverse: #050505;
+  --puck-color-text-disabled: #52525b;
+  --puck-color-bg-disabled: #27272a;
+  --puck-color-interactive-subtle: rgba(34, 211, 238, 0.15);
+  --puck-color-interactive-soft: rgba(34, 211, 238, 0.08);
+  --puck-color-interactive-soft-hover: rgba(34, 211, 238, 0.14);
+  --puck-color-interactive-neutral-hover: #1a1a1d;
+  --puck-color-interactive-inverse-hover: #0891b2;
+  --puck-color-interactive-inverse-active: #0e7490;
+  --puck-color-selection-bg: rgba(34, 211, 238, 0.18);
+  --puck-color-selection-border: #22d3ee;
+  --puck-color-line-placeholder: #22d3ee;
+  --puck-color-overlay-backdrop: rgba(0, 0, 0, 0.75);
+  --puck-font-family: 'Inter', system-ui, sans-serif;
+  color: #fafafa;
+  background: #0a0a0a;
+}
+.hb-puck button[type="submit"], .hb-puck [class*="Button--primary"] { color: #050505; font-weight: 800; }
