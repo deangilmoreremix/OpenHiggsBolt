@@ -142,6 +142,16 @@
 
 **Expected**: Publish integration works with the final post-processed URL.
 
+## Test I — Burned-in Captions (free, no API key)
+1. Go through the guided flow with a video clip and approve the preview (Step 4).
+2. In **Captions**, click "Load a caption file" and choose an `.srt` or `.vtt` file. Expect "Loaded N lines" and a list of editable lines.
+3. Scrub the preview: the line for the current time is drawn on the video; nothing is drawn between lines or over the end card.
+4. Try Bold / Bar / Clean, a few of the "More looks" (e.g. Hormozi, Crimson Pop, Karaoke) and Top / Middle / Bottom.
+5. Edit a line's words, clear another line (it is deleted), use "Add a line", then "Download .srt" and "Download .vtt".
+6. Export the video and play the file: the captions are burned in, with the chosen look and place.
+7. Choose a different video: the captions are no longer shown (they belong to the video they were made for).
+8. Load a text file that is not a caption file: expect "No captions were found" and the existing captions kept.
+
 ## Manual Verification Checklist
 - [ ] All 7 asset types upload and return durable URLs
 - [ ] Prompt personalization includes client-specific data
