@@ -22,6 +22,18 @@ describe('SmartVideo parity scope', () => {
     expect(index).toContain('AppsStudio');
   });
 
+  it('routes the studios\' Recipes button (/studio/skills) to the Skills browser', () => {
+    const shell = fs.readFileSync(shellPath, 'utf8');
+    const index = fs.readFileSync(indexPath, 'utf8');
+    const image = fs.readFileSync(path.resolve(process.cwd(), 'packages/studio/src/components/ImageStudio.jsx'), 'utf8');
+
+    expect(image).toContain('router.push("/studio/skills")');
+    expect(shell).toMatch(/SLUG_TO_TAB[\s\S]*?\bskills: 'skills'/);
+    expect(shell).toContain("loadStudio('SkillsBrowser')");
+    expect(shell).toContain("activeTab === 'skills'");
+    expect(index).toContain('SkillsBrowser');
+  });
+
   it('keeps tenant branding logic out of active SmartVideo surfaces', () => {
     const shell = fs.readFileSync(shellPath, 'utf8').toLowerCase();
     const designAgent = fs.readFileSync(designAgentPath, 'utf8').toLowerCase();
@@ -38,6 +50,16 @@ describe('SmartVideo parity scope', () => {
     expect(sync).toContain('packages/studio/src/components/McpCliStudio.jsx');
     expect(sync).toContain('components/StandaloneShell.js');
     expect(sync).toContain('src/apps/');
+    // SmartVideo-owned Recipes / Skills surfaces must survive upstream syncs.
+    for (const owned of [
+      'packages/studio/src/components/SkillsBrowser.jsx',
+      'packages/studio/src/components/SkillRunner.jsx',
+      'packages/studio/src/skills/registry.json',
+      'packages/studio/src/lib/promptRecipes.js',
+      'scripts/audit-recipes.mjs',
+    ]) {
+      expect(sync).toContain(owned);
+    }
   });
 
   it('does not include Chinese localization in SmartVideo GO', () => {

@@ -23,6 +23,7 @@ import PreviewModeBadge from '@/access/PreviewModeBadge';
 import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
+import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -44,6 +45,7 @@ const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 const AppsStudio = loadStudio('AppsStudio');
+const SkillsBrowser = loadStudio('SkillsBrowser');
 const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -53,6 +55,7 @@ const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/Mo
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -121,6 +124,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'video-pages', label: 'Video Pages' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
@@ -147,12 +151,14 @@ const SLUG_TO_TAB = {
   storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
   'go-ai-viral': 'go-ai-viral',
   apps: 'apps',
+  // Reached from the Recipes button in the studios; not a top-level tab.
+  skills: 'skills',
 };
 
 // Upstream-matching studios that stay mounted (hidden) after their first visit,
@@ -959,6 +965,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
+         {activeTab === 'video-pages' && <VideoPagesStudio />}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
@@ -968,6 +975,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
+          {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
@@ -1060,6 +1068,16 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                       >
                         {notificationCopy.open}
                       </button>
+                      {notif.resultUrl && normalizeVideo({ url: notif.resultUrl }) && (
+                        <button
+                          type="button"
+                          data-action="create-landing-page"
+                          onClick={() => { if (openVideoPageFor({ url: notif.resultUrl, studio: notif.tabId }, { navigate: () => handleTabChange('video-pages') })) dismissNotification(notif.id); }}
+                          className="ml-3 mt-1.5 text-[11px] font-bold text-cyan-600 transition-colors hover:text-cyan-700"
+                        >
+                          Create landing page
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

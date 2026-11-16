@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { isRemotionDesignTemplateSupported } from '../templates'
-import { DESIGN_GOALS, recommendDesigns, type DesignGoalId } from '../templates/recommendations'
+import { DESIGN_GOALS, recommendDesigns, type DesignGoalId, type GoalSuggestion } from '../templates/recommendations'
 import type { RemotionDesignTemplate } from '../templates/types'
 import type { PreviewAspectRatio } from '../preview/types'
 import { PersonalizationTemplateBrowser } from './PersonalizationTemplateBrowser'
@@ -21,6 +21,7 @@ export function DesignRecommendations({
   onSelectDesign,
   onAddDesign,
   onSelectLayout,
+  suggestion,
 }: {
   designs: readonly RemotionDesignTemplate[]
   aspectRatio: PreviewAspectRatio
@@ -30,8 +31,13 @@ export function DesignRecommendations({
   /** Adds a design on top of the current layout (keeps the customer's layers). When omitted, only Replace is offered. */
   onAddDesign?: (designId: string) => void
   onSelectLayout: (layoutId: string) => void
+  /** Preselects the goal and says why (only from facts we actually have). */
+  suggestion?: GoalSuggestion
 }): React.JSX.Element {
-  const [goal, setGoal] = useState<DesignGoalId>('introduce')
+  // Follows the suggestion until the customer picks a goal themselves.
+  const [pickedGoal, setPickedGoal] = useState<DesignGoalId | null>(null)
+  const goal: DesignGoalId = pickedGoal ?? suggestion?.goal ?? 'introduce'
+  const setGoal = (id: DesignGoalId) => setPickedGoal(id)
   const [browseAll, setBrowseAll] = useState(false)
   // Replace swaps the whole layout for the design; Add keeps the layout and puts the design on top.
   const [how, setHow] = useState<'replace' | 'add'>('replace')
@@ -53,6 +59,9 @@ export function DesignRecommendations({
           </button>
         ))}
       </div>
+      {suggestion && pickedGoal === null && (
+        <p data-testid="design-goal-reason" style={{ ...hintStyle, margin: '0 0 8px' }}>Suggested: {suggestion.reason}</p>
+      )}
       {onAddDesign && (
         <div role="group" aria-label="When I pick a design" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ ...hintStyle, margin: 0 }}>When I pick a design:</span>

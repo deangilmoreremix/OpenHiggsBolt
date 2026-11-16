@@ -1,5 +1,7 @@
 'use client'
 
+import { ShapeExportPanel } from './ShapeExportPanel'
+import { suggestGoal } from '../templates/recommendations'
 import { DesignRecommendations } from './DesignRecommendations'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
@@ -55,6 +57,9 @@ export function StepPreviewApprove(): React.JSX.Element {
     setAdvancedTab,
     setAdvancedSection,
     createFinalVideo,
+    shapeExport = { status: 'idle', items: [] },
+    exportAllShapes = async () => {},
+    cancelShapeExport = () => {},
     cancelExport,
     apiKey,
     generation,
@@ -168,6 +173,7 @@ export function StepPreviewApprove(): React.JSX.Element {
               onSelectDesign={setRemotionDesign}
               onAddDesign={ctx.addRemotionDesign}
               onSelectLayout={setPreviewLayout}
+              suggestion={suggestGoal({ hasOffer: Boolean(clientForm.offer?.trim()), hasProductImages: (assets?.products?.length || 0) > 0, booking: ctx.foundSignals?.booking })}
             />
             {fixedSvgIdWarning ? (
               <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
@@ -394,6 +400,14 @@ export function StepPreviewApprove(): React.JSX.Element {
             </div>
           )}
         </div>
+        {isBrandedPath && previewApproved && (
+          <ShapeExportPanel
+            state={shapeExport}
+            disabled={generating || exportBlocked || rightsGate}
+            onStart={() => { void exportAllShapes() }}
+            onCancel={cancelShapeExport}
+          />
+        )}
         {generating && generation?.progressMessage && (
           <p style={{ ...hintStyle, marginTop: 8, color: C.cyan }}>{generation.progressMessage}</p>
         )}

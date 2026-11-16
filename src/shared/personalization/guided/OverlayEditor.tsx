@@ -17,6 +17,10 @@ import { EditorTour } from './editor/EditorTour'
 import { KeyframePanel } from './editor/KeyframePanel'
 import { moveKeyframe } from '../preview/keyframes'
 import { NEUTRAL_KEYFRAME_STATE, keyframeStateFor, keyframeTransformParts } from '../preview/keyframes'
+import { lookFilter, lookOverlays, vignetteStops } from '../preview/effects'
+import { LookPanel } from './LookPanel'
+import { LayerEffectsControls } from './editor/LayerEffectsControls'
+import { CutoutPanel } from './CutoutPanel'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
 import { isRotated, normalizeAngle, rotateCss, rotatedExtent } from '../preview/rotation'
 import type { EditorTipId } from './editor/editorTips'
@@ -632,13 +636,17 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
             <img
               src={inputProps.posterUrl}
               alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: lookFilter(settings.look) }}
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>
               Your video
             </div>
           )}
+          {lookOverlays(settings.look).map((o) => <div key={o.key} aria-hidden style={{ position: 'absolute', inset: 0, background: o.color, pointerEvents: 'none' }} />)}
+          {settings.look && settings.look.vignette > 0 ? (
+            <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,${vignetteStops(settings.look.vignette)[2].alpha}) 100%)` }} />
+          ) : null}
           <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: settings.brandColors.backgroundDim, pointerEvents: 'none' }} />
             </>
           )}
@@ -1003,6 +1011,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
 
         {/* ── Layer list + controls ─────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <LookPanel inputProps={inputProps} />
+          <CutoutPanel inputProps={inputProps} />
           <div style={labelStyle}>Layers</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>
           <SortableContext items={[...settings.layers].reverse().map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -1292,6 +1302,15 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   style={{ width: '100%', accentColor: C.cyan }}
                 />
               </div>
+
+              {selected.kind !== 'design' && (
+                <LayerEffectsControls
+                  layer={selected}
+                  onChange={(effects) => updatePreviewLayer(selected.id, { effects })}
+                  brand={settings.brandColors}
+                  posterUrl={inputProps.posterUrl}
+                />
+              )}
 
               {contractOf(selected).userRotatable && selected.kind !== 'design' && (
                 <div>
