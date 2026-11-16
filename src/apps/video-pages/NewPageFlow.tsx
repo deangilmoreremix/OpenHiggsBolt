@@ -60,7 +60,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
       const one = choice.selected.length === 1 ? choice.selected[0] : null
       const withBrand = !!one && choice.brand
       const config = defaultConfig(template, { title: video.title, ...(withBrand ? { brand: brandForConfig(one) } : {}) })
-      if (withBrand && config.puck) config.puck = applyCustomerToPuck(config.puck, one).data
+      if (withBrand && config.puck) config.puck = applyCustomerToPuck(config.puck, one, { useImage: choice.image }).data
       let page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
       const rows = choice.selected.map(toContactFields).filter(Boolean).map((fields: any) => ({ fields }))
       if (rows.length) {

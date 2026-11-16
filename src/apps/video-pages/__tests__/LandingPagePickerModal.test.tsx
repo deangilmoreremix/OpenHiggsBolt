@@ -149,4 +149,16 @@ describe('personalizing for a customer', () => {
     mount(<Modal video={video} onClose={() => {}} />)
     expect(document.body.querySelector('[data-customer-panel]')?.textContent).toContain('No customer found yet')
   })
+
+  it('puts the customer\'s personalized picture in the video slot, and lets you switch that off', async () => {
+    customersState.value = { customers: [{ ...C1, image: 'https://cdn.test/personal.png' }, C2], activeId: 'c1', loading: false }
+    mount(<Modal video={video} onClose={() => {}} />)
+    expect((document.body.querySelector('[data-customer-image]') as HTMLInputElement).checked).toBe(true)
+    click(design()); await flush()
+    expect(JSON.stringify(puckProps.last.data)).toContain('"slotImage":"https://cdn.test/personal.png"')
+    click(Array.from(document.body.querySelectorAll('button')).find((b) => b.textContent?.includes('All pages')) as HTMLElement); await flush()
+    click(document.body.querySelector('[data-customer-image]')); await flush()
+    click(design()); await flush()
+    expect(JSON.stringify(puckProps.last.data)).not.toContain('personal.png')
+  })
 })

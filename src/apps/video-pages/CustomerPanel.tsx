@@ -8,11 +8,13 @@ import { ui } from './ui'
 export function useCustomerChoice(customers: Customer[], activeId: string, preselect: 'active' | 'all' = 'active') {
   const [touched, setTouched] = useState<Set<string> | null>(null)
   const [brandOn, setBrandOn] = useState(true)
+  const [imageOn, setImageOn] = useState(true)
   const chosen = useMemo(() => touched ?? new Set(preselect === 'all' ? customers.map((c) => c.id) : activeId ? [activeId] : customers.length === 1 ? [customers[0].id] : []), [touched, preselect, customers, activeId])
   const selected = useMemo(() => customers.filter((c) => chosen.has(c.id)), [customers, chosen])
   return {
     chosen, selected,
     brand: brandOn && selected.length === 1, brandOn, setBrandOn,
+    image: imageOn, imageOn, setImageOn,
     clear: () => setTouched(new Set()),
     toggle: (id: string) => { const next = new Set(chosen); if (next.has(id)) next.delete(id); else next.add(id); setTouched(next) },
   }
@@ -44,6 +46,13 @@ export default function CustomerPanel({ customers, loading, choice }: { customer
           <label className={`flex items-center gap-2 text-xs mt-2 cursor-pointer ${n === 1 ? '' : 'opacity-50'}`}>
             <input type="checkbox" data-customer-brand disabled={n !== 1} checked={choice.brand} onChange={(e) => choice.setBrandOn(e.target.checked)} /> Write their logo, colour, name and details into the page
           </label>
+          {n === 1 && choice.selected[0]?.image ? (
+            <label className="flex items-center gap-2 text-xs mt-2 cursor-pointer">
+              <input type="checkbox" data-customer-image checked={choice.imageOn} onChange={(e) => choice.setImageOn(e.target.checked)} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={choice.selected[0].image} alt="" className="h-7 w-7 rounded object-cover" /> Use their personalized image in the video slot
+            </label>
+          ) : null}
           <div className={`${ui.label} mt-1 normal-case tracking-normal`}>
             {n === 0 ? 'The design is used as is.' : n === 1 ? 'A personal link is made for them, so their name, company and city fill in on the page.' : `One page, ${n} personal links (their own name, company and city on each). The page itself stays generic.`}
           </div>

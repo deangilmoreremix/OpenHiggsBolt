@@ -92,7 +92,7 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
     const withBrand = !!one && choice.brand && !plain
     let cfg = defaultConfig(id, { title: video?.title || '', ...(withBrand ? { brand: brandForConfig(one) } : {}) })
     let applied: string[] = []
-    if (withBrand) { const r = applyCustomerToPuck(cfg.puck, one); cfg = { ...cfg, puck: r.data }; applied = r.applied }
+    if (withBrand) { const r = applyCustomerToPuck(cfg.puck, one, { useImage: choice.image }); cfg = { ...cfg, puck: r.data }; applied = r.applied }
     data.current = cfg.puck || t?.puckData
     setSession((prev) => ({ cfg, applied, plain, n: (prev?.n || 0) + 1 }))
     setTemplateId(id); setError(''); setView('edit')
