@@ -183,4 +183,41 @@ test.describe('Presenter background removal on real footage', () => {
     expect(mean, `exported audio mean volume ${mean} dB`).toBeGreaterThan(-45);
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', '1', '-i', file, '-frames:v', '1', path.join(OUT, 'export-audio-frame.png')]);
   });
+
+  test('the color look applies to the cut-out presenter too (Black and white removes the red shirt\'s color in the export)', async ({ page }) => {
+    test.setTimeout(420_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await seed(page, PERSON);
+    const dialog = page.getByRole('dialog');
+    await removeBackground(page);
+    await dialog.getByTestId('cutout-bg-color').click();
+    await dialog.getByTestId('look-toggle-panel').scrollIntoViewIfNeeded();
+    await dialog.getByTestId('look-toggle-panel').click();
+    await dialog.getByTestId('look-preset-bw').click();
+    await dialog.getByRole('button', { name: /Approve this personalization|^Approved$/i }).click({ timeout: 30_000 });
+    const rights = page.getByTestId('guided-rights-confirm').locator('input');
+    if (await rights.count()) await rights.check();
+    const before = await page.evaluate(() => (window as unknown as { __blobs: Blob[] }).__blobs.filter((b) => /^video\//.test(b.type)).length);
+    await dialog.getByRole('button', { name: 'Render branded video' }).click({ timeout: 60_000 });
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __blobs: Blob[] }).__blobs.filter((b) => /^video\//.test(b.type)).length), { timeout: 300_000, intervals: [1000] })
+      .toBeGreaterThan(before);
+    const b64 = await page.evaluate(async () => {
+      const blobs = (window as unknown as { __blobs: Blob[] }).__blobs.filter((b) => /^video\//.test(b.type));
+      const bytes = new Uint8Array(await blobs[blobs.length - 1].arrayBuffer());
+      let s = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+      return btoa(s);
+    });
+    const file = path.join(OUT, 'export-cutout-bw.mp4');
+    fs.writeFileSync(file, Buffer.from(b64, 'base64'));
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', '1', '-i', file, '-frames:v', '1', path.join(OUT, 'export-cutout-bw-frame.png')]);
+    // The presenter's red shirt is around the middle of a 1920x1080 frame (see the export frame of the first test).
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-ss', '1', '-i', file, '-frames:v', '1', '-vf', 'scale=1920:1080,crop=160:160:880:300', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+    let sum = 0;
+    for (let i = 0; i < raw.length; i += 3) { const m = (raw[i] + raw[i + 1] + raw[i + 2]) / 3; sum += Math.abs(raw[i] - m) + Math.abs(raw[i + 1] - m) + Math.abs(raw[i + 2] - m); }
+    const colorfulness = sum / (raw.length / 3);
+    expect(colorfulness, `shirt-area colorfulness ${colorfulness} (a red shirt is > 40; black and white is ~0)`).toBeLessThan(8);
+  });
 });

@@ -20,6 +20,8 @@ import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import { entranceFor, exitFor, itemEntrance, usesWordEntrance, wordEntrance } from './motion'
 import { rotateCss, rotatedExtent } from './rotation'
+import { layerEffectsFilter, lookFilter } from './effects'
+import { LookLayers } from './LookLayers'
 import { accentRuleStyle, ctaPillStyle, endCardBackground, isSingleLineBox, layerTextStyle, textAlignFor, type TextStyleKind } from './textStyle'
 import { hasTextScrim, scrimForBox, scrimPeakAt, scrimStyle } from './scrim'
 import { layerBoxMetrics } from '../guided/overlayGeometry'
@@ -310,6 +312,8 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     clearPreviewMediaFailure()
   }, [videoUrl])
 
+  // The footage's look: a filter on the picture itself, plus color overlays and a vignette drawn over it (LookLayers).
+  const lookCss = lookFilter(settings.look)
   const cutoutActive = Boolean(settings.cutout?.enabled && videoUrl && !isImageSource && !mediaFailed)
 
   const renderBackground = () => {
@@ -318,7 +322,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       // It draws pixels only, so the source's own sound is kept with an audio-only element.
       return (
         <>
-          <CutoutBackdrop videoUrl={videoUrl} cutout={settings.cutout} width={compW} height={compH} />
+          <CutoutBackdrop videoUrl={videoUrl} cutout={settings.cutout} width={compW} height={compH} filter={lookCss} />
           <Audio src={toPlayablePreviewMediaUrl(videoUrl)} />
         </>
       )
@@ -328,7 +332,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       return (
         <Img
           src={posterUrl}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', filter: lookCss }}
         />
       )
     }
@@ -346,7 +350,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
           src={toPlayablePreviewMediaUrl(videoUrl)}
           muted={false}
           onError={handleMediaError}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', filter: lookCss }}
         />
       )
     }
@@ -354,7 +358,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       return (
         <Img
           src={posterUrl}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', filter: lookCss }}
         />
       )
     }
@@ -428,6 +432,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
     <AbsoluteFill style={{ background: '#05070a' }}>
       {renderBackground()}
+      <LookLayers look={settings.look} />
       {audioUrl ? <Audio src={toPlayablePreviewMediaUrl(audioUrl)} /> : null}
       <AbsoluteFill
           style={{
@@ -495,6 +500,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             transform: transformParts.length > 0 ? transformParts.join(' ') : undefined,
             opacity: layer.opacity * entrance.opacity * exit.opacity,
             pointerEvents: 'none',
+            filter: layerEffectsFilter(layer.effects),
           }
 
           if (isDesign) {

@@ -1051,7 +1051,7 @@ export type DemoPersonalizeContextValue = {
    */
   applyPreviewPlacements: (items: { layerId: string; x: number; y: number; scale?: number }[], options?: { overrideManual?: boolean }) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
-   updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard' | 'cutout'>>) => void
+   updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard' | 'look' | 'cutout'>>) => void
    resetPreviewLayout: () => void
    /**
     * Every registered Remotion design, in registration order. Empty when no
@@ -5941,7 +5941,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [])
 
   const updatePreviewComposition = useCallback(
-    (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard' | 'cutout'>>) => {
+    (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard' | 'look' | 'cutout'>>) => {
       markSessionStarted()
       setPreviewSettings((prev) => {
         let next = { ...prev, ...patch }

@@ -6,6 +6,7 @@
  * every x/y pair describes the CENTER of a layer box.
  */
 
+import { normalizeLayerEffects, normalizeLook } from './effects'
 import { normalizeCutout } from './cutout/cutoutSettings'
 import { contractFor, roleForLayer } from './mediaRoles'
 import { IMAGE_ROLES, normalizeImageStyle, type ImageHints, type ImageRole } from './imageStyle'
@@ -954,6 +955,8 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   if (raw.locked === true) normalized.locked = true
   const rotation = normalizeAngle(raw.rotation)
   if (rotation !== 0) normalized.rotation = rotation
+  const effects = normalizeLayerEffects(raw.effects)
+  if (effects) normalized.effects = effects
   const imageStyle = normalizeImageStyle(raw.imageStyle)
   if (imageStyle) normalized.imageStyle = imageStyle
   if (typeof raw.imageRole === 'string' && (IMAGE_ROLES as readonly string[]).includes(raw.imageRole)) normalized.imageRole = raw.imageRole as ImageRole
@@ -1145,6 +1148,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
   const zones = normalizeProtectedZones(raw.protectedZones)
   if (zones) out.protectedZones = zones
+  const look = normalizeLook(raw.look)
+  if (look) out.look = look
   const cutout = normalizeCutout(raw.cutout)
   if (cutout) out.cutout = cutout
   const hints = normalizeImageHints(raw.imageHints)

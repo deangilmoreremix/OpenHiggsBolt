@@ -36,7 +36,7 @@ async function loadAssets(cutout: CutoutSettings): Promise<BackgroundAssets> {
  * based drawing, so what is previewed is what is exported. Until the masks are measured it shows the
  * original footage unchanged.
  */
-export const CutoutBackdrop: React.FC<{ videoUrl: string; cutout: CutoutSettings; width: number; height: number }> = ({ videoUrl, cutout, width, height }) => {
+export const CutoutBackdrop: React.FC<{ videoUrl: string; cutout: CutoutSettings; width: number; height: number; /** CSS filter for the picture (the video look), set on the canvas itself because the exporter filters each element on its own. */ filter?: string }> = ({ videoUrl, cutout, width, height, filter }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const version = useSyncExternalStore(subscribeMasks, masksVersion, masksVersion)
@@ -73,7 +73,7 @@ export const CutoutBackdrop: React.FC<{ videoUrl: string; cutout: CutoutSettings
 
   return (
     <AbsoluteFill>
-      <canvas ref={canvasRef} data-testid="cutout-canvas" width={width} height={height} style={{ width: "100%", height: "100%" }} />
+      <canvas ref={canvasRef} data-testid="cutout-canvas" width={width} height={height} style={{ width: "100%", height: "100%", filter }} />
     </AbsoluteFill>
   )
 }
