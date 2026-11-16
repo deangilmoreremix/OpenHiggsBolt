@@ -24,6 +24,7 @@ import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
 import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
+import { LandingPagePickerProvider, LandingPageAction } from '../src/apps/video-pages/LandingPagePicker';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -82,22 +83,37 @@ const PERSONALIZE_TRIGGER_CLASS =
 const PERSONALIZE_TRIGGER_CLASS_OVERLAY =
   'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all';
 
+// Every studio that shows Personalize also offers "Landing page": the picker opens with this video attached.
+const landingVideo = (options) => ({ url: options?.media?.url, name: options?.title, thumbnail_url: options?.media?.poster, studio: options?.originStudio });
+const LANDING_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
+const LANDING_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
+const LANDING_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[19.5rem]');
+
 const renderPersonalizeAction = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS}>Landing page</LandingPageAction>
+  </>
 );
 
 const renderPersonalizeActionVideo = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_VIDEO}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_VIDEO}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_VIDEO}>Landing page</LandingPageAction>
+  </>
 );
 
 const renderPersonalizeActionOverlay = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_OVERLAY}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_OVERLAY}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_OVERLAY}>Landing page</LandingPageAction>
+  </>
 );
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -942,6 +958,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))}>
       <DemoPersonalizeProvider apiKey={apiKey}>
+      <LandingPagePickerProvider openStudio={() => handleTabChange('video-pages')}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
          {persistentStudio('video', (active) => <VideoStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionVideo} {...generationCallbacks['video']} />)}
@@ -973,6 +990,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>
+      </LandingPagePickerProvider>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
