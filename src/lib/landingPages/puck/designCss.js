@@ -54,3 +54,4 @@ import '../../../styles/landing-pages/puck/49-pc-roofing.css';
 import '../../../styles/landing-pages/puck/50-pc-hvac.css';
 import '../../../styles/landing-pages/puck/51-pc-detailing.css';
 import '../../../styles/landing-pages/puck/52-pc-realestate.css';
+import '../../../styles/landing-pages/puck/53-pc-gym.css';
