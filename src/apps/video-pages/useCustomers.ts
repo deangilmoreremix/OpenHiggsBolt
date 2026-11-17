@@ -33,7 +33,7 @@ export function useCustomers(contacts?: any[]) {
       .then((d) => { if (live) setLeads(Array.isArray(d?.leads) ? d.leads : []) })
       .catch(() => {})
     // the customer's saved Personalization projects hold their generated (personalized) pictures
-    const projectsReq = fetch('/api/personalization/project', { credentials: 'same-origin' })
+    const projectsReq = fetch('/api/personalization/project?list=true', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : ({} as { projects?: any[] })))
       .then((d) => { if (live) setProjects(Array.isArray(d?.projects) ? d.projects : []) })
       .catch(() => {})
