@@ -142,14 +142,14 @@ const nextConfig = {
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
-  // Mailkiln studio: client-side routes of the embedded dashboard (public/mailkiln-app) serve its own index.html, and Help
-  // pages (public/mailkiln-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
+  // SmartKiln studio: client-side routes of the embedded dashboard (public/smartkiln-app) serve its own index.html, and Help
+  // pages (public/smartkiln-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
   async rewrites() {
     return {
       afterFiles: [
-        { source: '/mailkiln-app/:path*', destination: '/mailkiln-app/index.html' },
-        { source: '/mailkiln-help', destination: '/mailkiln-help/index.html' },
-        { source: '/mailkiln-help/:path*', destination: '/mailkiln-help/:path*/index.html' },
+        { source: '/smartkiln-app/:path*', destination: '/smartkiln-app/index.html' },
+        { source: '/smartkiln-help', destination: '/smartkiln-help/index.html' },
+        { source: '/smartkiln-help/:path*', destination: '/smartkiln-help/:path*/index.html' },
       ],
     };
   },

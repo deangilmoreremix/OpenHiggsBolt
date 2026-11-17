@@ -97,12 +97,12 @@ Contains the `t2iModels` array.
 - **In-painting/Out-painting:** Add canvas editing tools.
 - **User Accounts:** Move beyond local storage for history.
 
-## Mailkiln studio (vendored upstream dashboard)
+## SmartKiln studio (vendored upstream dashboard)
 
-The Mailkiln studio tab embeds the open-source Warmbly dashboard, rebranded at build time. Rules for working on it:
+The SmartKiln studio tab embeds the open-source Warmbly dashboard, rebranded at build time. Rules for working on it:
 
-- **Never edit vendored upstream files** (`apps/warmbly-web/**`, `apps/mailkiln-help/content/**`, `apps/mailkiln-help/upstream/**`). The only allowed differences are listed in `apps/warmbly-web/UPSTREAM.md`. Run `pnpm run verify:upstream -- <path to an upstream clone at the commit in apps/mailkiln-brand/brand.json>` after any change there.
-- **Branding lives in one place:** `apps/mailkiln-brand/brand.json`, applied at build time by `rebrand-plugin.mjs`, `apps/mailkiln-help/build.mjs` and `agent-docs.mjs`. Never rewrite lowercase technical identifiers (`warmbly` commands, `WARMBLY_*`, API paths, storage keys): a real backend depends on them.
-- **Build:** `pnpm run build:mailkiln` (dashboard to `public/mailkiln-app`, Help site to `public/mailkiln-help`; also run from `prebuild`). Tests: `pnpm run test:mailkiln-help`, `components/MailkilnStudio.test.jsx`, and `cd apps/warmbly-web && pnpm exec vitest run src/lib/demo`.
+- **Never edit vendored upstream files** (`apps/warmbly-web/**`, `apps/smartkiln-help/content/**`, `apps/smartkiln-help/upstream/**`). The only allowed differences are listed in `apps/warmbly-web/UPSTREAM.md`. Run `pnpm run verify:upstream -- <path to an upstream clone at the commit in apps/smartkiln-brand/brand.json>` after any change there.
+- **Branding lives in one place:** `apps/smartkiln-brand/brand.json`, applied at build time by `rebrand-plugin.mjs`, `apps/smartkiln-help/build.mjs` and `agent-docs.mjs`. Never rewrite lowercase technical identifiers (`warmbly` commands, `WARMBLY_*`, API paths, storage keys): a real backend depends on them.
+- **Build:** `pnpm run build:smartkiln` (dashboard to `public/smartkiln-app`, Help site to `public/smartkiln-help`; also run from `prebuild`). Tests: `pnpm run test:smartkiln-help`, `components/SmartKilnStudio.test.jsx`, and `cd apps/warmbly-web && pnpm exec vitest run src/lib/demo`.
 - **Demo data:** with no backend the dashboard answers from `apps/warmbly-web/src/lib/demo/fixtures.json`. Add a recorded response there when a view reports "no recorded demo data"; to use a real backend build without `VITE_DEMO` and set `WARMBLY_API_URL`.
-- Upstream's own agent rules and skills are kept, rebranded, in `apps/mailkiln-help/agent/` and published in the Help site under "Developers & agents".
+- Upstream's own agent rules and skills are kept, rebranded, in `apps/smartkiln-help/agent/` and published in the Help site under "Developers & agents".
