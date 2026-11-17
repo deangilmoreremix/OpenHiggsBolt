@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { act } from 'react';
 import React from 'react';
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
@@ -203,5 +205,44 @@ describe('DemoMediaCard', () => {
 
     expect(screen.queryByText('Video Studio')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('opens the demo page when the card body is clicked', async () => {
+    const { container } = render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    await act(async () => {
+      within(container).getByText(demo.useCase).click();
+    });
+
+    expect(push).toHaveBeenCalledWith(`/demo/${demo.slug}`);
+  });
+
+  it('links the title to the demo page', () => {
+    const { container } = render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    expect(within(container).getByRole('link', { name: demo.title }).getAttribute('href')).toBe(`/demo/${demo.slug}`);
+  });
+
+  it('does not open the demo page from the video or the action buttons', async () => {
+    const { container } = render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    await act(async () => {
+      (container.querySelector('video')!.parentElement as HTMLElement).click();
+      within(container).getByText('Create This Style').click();
+    });
+
+    expect(push).not.toHaveBeenCalled();
   });
 });
