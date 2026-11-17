@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { Client } from '../../packages/studio-mcp-core/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js';
@@ -66,6 +67,12 @@ describe('SmartVideo GO MCP', () => {
     const wrong = await mcp.callTool({ name: 'smartvideo_image_generate', arguments: { model: v, inputs: { prompt: 'x' } } });
     expect(wrong.isError).toBe(true);
     expect(gw.calls.length).toBe(0);
+  });
+
+  it('enforces the required inputs the studios enforce (e.g. an edit needs a source image)', () => {
+    const edit = entries.find((e) => e.kind === 'i2i' && !e.inputs.image_url?.enum && Object.values(e.inputs).some((d) => d.required));
+    expect(edit, 'catalog carries required flags').toBeTruthy();
+    expect(() => catalog.buildRequest(edit.key, { prompt: 'x' })).toThrow(/required/);
   });
 
   it('scrubs upstream names from gateway errors and reports a missing key', async () => {

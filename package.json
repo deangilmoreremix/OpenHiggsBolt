@@ -68,7 +68,7 @@
     "e2e:video-pages": "bash scripts/e2e-video-pages/run.sh",
     "mcp:catalog": "node --no-warnings scripts/build-mcp-catalog.mjs",
     "mcp:start": "node mcp/index.js",
-    "test:mcp": "npm --prefix packages/studio-mcp-core install --workspaces=false --no-audit --no-fund && npm --prefix packages/studio-mcp-core exec -- vitest run"
+    "test:mcp": "vitest run tests/mcp"
   },
   "build": {
     "appId": "ai.generative.open",

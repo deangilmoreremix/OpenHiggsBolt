@@ -1,0 +1,136 @@
+{
+ "supported": {
+  "image": {
+   "tools": [
+    "image_generate",
+    "image_edit"
+   ],
+   "kinds": [
+    "t2i",
+    "i2i"
+   ]
+  },
+  "video": {
+   "tools": [
+    "video_generate",
+    "video_from_image",
+    "video_to_video"
+   ],
+   "kinds": [
+    "t2v",
+    "i2v",
+    "v2v"
+   ]
+  },
+  "edit": {
+   "tools": [
+    "image_edit",
+    "video_to_video"
+   ],
+   "kinds": [
+    "i2i",
+    "v2v"
+   ]
+  },
+  "audio": {
+   "tools": [
+    "audio_generate"
+   ],
+   "kinds": [
+    "audio"
+   ]
+  },
+  "clipping": {
+   "tools": [
+    "clip_video"
+   ],
+   "kinds": [
+    "clipping"
+   ]
+  },
+  "vibe-motion": {
+   "tools": [
+    "motion_graphics"
+   ],
+   "kinds": [
+    "graphics"
+   ]
+  },
+  "motion-control": {
+   "tools": [
+    "motion_control"
+   ],
+   "kinds": [
+    "motion"
+   ]
+  },
+  "lipsync": {
+   "tools": [
+    "lipsync"
+   ],
+   "kinds": [
+    "lipsync"
+   ]
+  },
+  "cinema": {
+   "tools": [
+    "image_generate",
+    "video_generate",
+    "video_from_image"
+   ],
+   "kinds": [
+    "t2i",
+    "t2v",
+    "i2v"
+   ]
+  },
+  "marketing": {
+   "tools": [
+    "marketing_ad"
+   ],
+   "kinds": [
+    "ad"
+   ]
+  },
+  "recast": {
+   "tools": [
+    "recast"
+   ],
+   "kinds": [
+    "recast"
+   ]
+  },
+  "layers": {
+   "tools": [
+    "image_edit"
+   ],
+   "kinds": [
+    "i2i"
+   ]
+  },
+  "ai-influencer": {
+   "tools": [
+    "image_generate",
+    "image_edit"
+   ],
+   "kinds": [
+    "t2i",
+    "i2i"
+   ]
+  }
+ },
+ "unsupported": {
+  "brand-studio": "Runs on Netlify/Supabase functions with its own contracts; not exposed yet.",
+  "video-pages": "Own app with a client-side renderer (Remotion); out of scope for v1.",
+  "zackd": "Own app and backend; out of scope for v1.",
+  "motion-director": "Own app with a client-side renderer (Remotion); out of scope for v1.",
+  "storyboard": "Own /api/storyboard backend (not the catalog generation routes); not exposed yet.",
+  "workflows": "Runs on the workflow/agent API with a different contract; not exposed yet.",
+  "agents": "Runs on the workflow/agent API with a different contract; not exposed yet.",
+  "vfx-studio": "Own /api/vfx routes with separate validation and rate limits; not exposed yet.",
+  "design-agent": "Own app and agent backend; not exposed yet.",
+  "thumbnail-studio": "Own app with a separate generation pipeline; not exposed yet.",
+  "go-ai-viral": "Own app and backend; out of scope for v1.",
+  "apps": "Non-generative UI (hub for other studios)."
+ }
+}
