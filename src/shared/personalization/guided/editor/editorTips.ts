@@ -79,6 +79,10 @@ export const EDITOR_TIPS = {
   qualityReview: { text: 'Open the full layout check: every problem found, with buttons to show it on the video or fix it.' },
   qualityFixAll: { text: 'Apply the recommended placement. Layers you placed by hand or locked are never moved.', free: true },
 
+  // ── saved styles ─────────────────────────────────────────────────────
+  savedStyles: { text: 'Save how this text looks (color, font, size, effects, animation) under a name and apply it to other text in one click. The words and position are never changed.', free: true },
+  savedStylesBrowser: { text: 'Styles saved in this browser from other projects. Add one to this project to use it here. Brand colors follow this project.' },
+
   // ── making the video ─────────────────────────────────────────────────
   renderBranded: { text: 'Burns your approved overlays (logo, text, call to action, end card) onto the selected video in your browser.', free: true },
   removeBranding: { text: 'Uses AI to erase logos, watermarks and captions that are already part of the video. It asks you to confirm the cost first and keeps your original video.', paid: true },

@@ -1,5 +1,7 @@
 'use client'
 
+import { SavedStylesBar } from './SavedStylesBar'
+import { applyTextStyle, captureTextStyle } from '../preview/textStyles'
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Move, Pause, Play, RotateCcw, Unlock } from 'lucide-react'
 import { ImageCollage, SplitPanel, StyledBusinessImage } from '../preview/StyledBusinessImage'
@@ -1239,6 +1241,19 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                   </div>
                   )}
                 </>
+              )}
+
+              {TEXT_KINDS.includes(selected.kind) && selected.kind !== 'design' && (
+                <SavedStylesBar
+                  kind="text"
+                  idPrefix="layer"
+                  styles={settings.textStyles ?? []}
+                  onStylesChange={(next) => updatePreviewComposition({ textStyles: next.length ? next : undefined })}
+                  capture={() => captureTextStyle(selected, settings.brandColors)}
+                  applyDisabled={Boolean(selected.locked)}
+                  defaultName={`${LAYER_LABELS[selected.kind]} style`}
+                  onApply={(s) => { if (s.kind === 'text') updatePreviewLayer(selected.id, applyTextStyle(s.style, settings.brandColors)) }}
+                />
               )}
 
               {isImageLayerKind(selected.kind) && (

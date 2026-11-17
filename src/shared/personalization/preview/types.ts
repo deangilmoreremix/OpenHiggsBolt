@@ -212,6 +212,8 @@ export interface PersonalizationPreviewSettings {
   look?: import('./effects').LookSettings
   /** Timed captions over the video, with the spoken word highlighted. Optional so saved projects restore unchanged. */
   captions?: import('./captions').CaptionSettings
+  /** Named looks for text layers and captions, saved with the project. Optional so saved projects restore unchanged. */
+  textStyles?: import('./textStyles').SavedTextStyle[]
   /**
    * Presenter background removal. Optional so projects saved before it existed restore unchanged.
    * Settings only: the measured masks live in memory (preview/cutout/maskStore.ts), never in the project.

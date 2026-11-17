@@ -7,6 +7,7 @@
  */
 
 import { normalizeCaptions } from './captions'
+import { normalizeTextStyles } from './textStyles'
 import { normalizeAudioTracks, normalizeVideoVolume } from './audioMix'
 import { normalizeKeyframes } from './keyframes'
 import { normalizeLayerEffects, normalizeLook } from './effects'
@@ -1166,6 +1167,8 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
   if (look) out.look = look
   const captions = normalizeCaptions(raw.captions)
   if (captions) out.captions = captions
+  const textStyles = normalizeTextStyles(raw.textStyles)
+  if (textStyles) out.textStyles = textStyles
   const cutout = normalizeCutout(raw.cutout)
   if (cutout) out.cutout = cutout
   const hints = normalizeImageHints(raw.imageHints)
