@@ -13,6 +13,15 @@ Step 4, **Captions** card (right column, above Layers). Free: nothing is listene
   to their length, so the highlight moves along the line.
 - Captions are saved with the project (`settings.captions`, optional and normalized, so existing projects are unchanged).
 
+## More looks (27)
+
+Under the brand presets, **More looks** offers 27 ready-made caption looks in four groups (trending, pop and expressive, clean and tech, editorial and
+film): their own font, outline, shadow and colours, and how the spoken word is picked out (highlight, scale, pop, bounce, glow, a box around the word,
+or a karaoke wipe that keeps spoken words lit). A look is saved as `settings.captions.style.look` (optional; an unknown id is dropped when a project is
+read back) and keeps following the controls above: position, size, caps, bold, and the text and highlight colors. Picking a brand preset replaces it.
+The data and CSS helpers are pure (`captions/capiteStyles.ts`); the layer draws them with the same single component as every other caption.
+Each look names a font; it shows only if that font is installed on the device, otherwise the studio font is used (no font is downloaded).
+
 ## How it works
 
 `preview/captions.ts` is pure (parsing, timing, which line and word are active at a frame, normalizing); `preview/CaptionsLayer.tsx` draws the

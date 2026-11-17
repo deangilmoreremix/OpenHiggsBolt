@@ -1,5 +1,6 @@
 import React from 'react'
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
+import { capiteStyleById, capiteTextCss, capiteWordCss } from '../captions/capiteStyles'
 import { activeCue, captionWords, cueEntrance, type CaptionSettings } from './captions'
 import { TEXT_SHADOW } from './textStyle'
 import { fontStackById } from './presets'
@@ -19,6 +20,10 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
   const st = captions.style
   const fontSize = Math.round(compH * st.size)
   const words = captionWords(cue, frame, fps, st.highlight)
+  // One of the 27 Capite looks: its font, outline and word animation, still following the person's own colour, caps, weight and box controls.
+  const base = capiteStyleById(st.look)
+  const look = base ? { ...base, primaryColor: st.color, highlightColor: st.highlightColor } : undefined
+  const activeIdx = words.findIndex((w) => w.active)
   const { opacity, rise } = cueEntrance(cue, frame, fps)
   const edge = Math.round(compH * 0.07)
   const place: React.CSSProperties =
@@ -38,6 +43,7 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
             letterSpacing: st.uppercase ? '0.02em' : '-0.005em',
             color: st.color,
             textShadow: st.box ? 'none' : TEXT_SHADOW,
+            ...(look ? { ...(capiteTextCss(look, fontSize, fontStackById(fontFamily)) as React.CSSProperties), fontWeight: st.bold ? 800 : 500, textTransform: st.uppercase ? 'uppercase' : 'none', textShadow: st.box ? 'none' : (capiteTextCss(look, fontSize, fontStackById(fontFamily)).textShadow as string | undefined) } : {}),
             ...(st.box
               ? { background: hexWithAlpha(st.boxColor, st.boxOpacity), padding: '0.25em 0.6em', borderRadius: '0.6em' }
               : {}),
@@ -46,7 +52,9 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
           {words.map((w, i) => (
             <React.Fragment key={i}>
               {i > 0 ? ' ' : null}
-              <span data-testid="caption-word" data-active={w.active ? '1' : '0'} style={{ color: w.active ? st.highlightColor : st.color, textTransform: st.uppercase ? 'uppercase' : undefined }}>
+              <span data-testid="caption-word" data-active={w.active ? '1' : '0'} style={look
+                ? { color: st.color, textTransform: st.uppercase ? 'uppercase' : undefined, ...(capiteWordCss(look, st.highlight === 'none' ? 'idle' : w.active ? 'active' : activeIdx >= 0 && i < activeIdx ? 'spoken' : 'idle', fontSize) as React.CSSProperties) }
+                : { color: w.active ? st.highlightColor : st.color, textTransform: st.uppercase ? 'uppercase' : undefined }}>
                 {w.text}
               </span>
             </React.Fragment>

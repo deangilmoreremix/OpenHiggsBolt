@@ -1,3 +1,4 @@
+import { CAPITE_CAPTION_STYLES, CAPITE_CATEGORIES, capiteStyleById } from '../captions/capiteStyles'
 import { useState } from 'react'
 import { Captions, Plus, Trash2 } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -7,7 +8,7 @@ import { SavedStylesBar } from './SavedStylesBar'
 import { applyCaptionStyle, captureCaptionStyle } from '../preview/textStyles'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle } from './tokens'
 import {
-  CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, newCue,
+  CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, capiteLook, captionPreset, cuesFromText, newCue,
   type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
 import type { PreviewInputProps } from '../preview/types'
@@ -80,6 +81,18 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
                     <button key={p.id} type="button" data-testid={`captions-preset-${p.id}`} aria-pressed={caps.style.preset === p.id} onClick={() => set({ style: captionPreset(p.id, brand)!, enabled: true })} style={{ ...chipStyle(caps.style.preset === p.id), minHeight: 28, fontSize: 10 }}>{p.label}</button>
                   ))}
                 </div>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+                  <span style={{ ...hintStyle, margin: 0 }}>More looks:</span>
+                  <select data-testid="captions-look-select" aria-label="More caption looks" value={capiteStyleById(caps.style.look) ? caps.style.look : ''} onChange={(e) => { const st = e.target.value ? capiteLook(e.target.value) : undefined; if (st) set({ style: st, enabled: true }) }} style={{ ...inputStyle, width: 'auto', minHeight: 28, fontSize: 11, padding: '0 8px' }}>
+                    <option value="">Choose one of {CAPITE_CAPTION_STYLES.length}…</option>
+                    {CAPITE_CATEGORIES.map((cat) => (
+                      <optgroup key={cat.id} label={cat.label}>
+                        {CAPITE_CAPTION_STYLES.filter((l) => l.category === cat.id).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+                {capiteStyleById(caps.style.look) && <p data-testid="captions-look-hint" style={{ ...hintStyle, margin: '4px 0 0' }}>{capiteStyleById(caps.style.look)!.description}. Its own font shows only if it is installed on this device.</p>}
               </div>
 
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>

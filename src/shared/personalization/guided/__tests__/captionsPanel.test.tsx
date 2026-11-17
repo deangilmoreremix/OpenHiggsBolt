@@ -99,4 +99,29 @@ describe('CaptionsPanel', () => {
     open(caps())
     expect(screen.getByTestId('captions-preset-clean')).toBeTruthy()
   })
+
+  describe('Capite looks', () => {
+    it('lists all 27 in a grouped picker and applies the chosen one with captions on', () => {
+      open(caps({ enabled: false }))
+      const select = screen.getByTestId('captions-look-select') as HTMLSelectElement
+      expect(select.querySelectorAll('option[value]:not([value=""])')).toHaveLength(27)
+      expect(select.querySelectorAll('optgroup')).toHaveLength(4)
+      fireEvent.change(select, { target: { value: 'hormozi' } })
+      const c = last()!
+      expect(c.enabled).toBe(true)
+      expect(c.style).toMatchObject({ preset: 'capite-hormozi', look: 'hormozi' })
+      expect(c.cues).toHaveLength(2) // the lines are kept
+    })
+    it('shows the current look in the picker, and a brand preset clears it', () => {
+      open(caps({ style: { ...caps().style, preset: 'capite-hormozi', look: 'hormozi' } }))
+      expect((screen.getByTestId('captions-look-select') as HTMLSelectElement).value).toBe('hormozi')
+      fireEvent.click(screen.getByTestId('captions-preset-boxed'))
+      expect(last()!.style.look).toBeUndefined()
+    })
+    it('keeps the look when the person changes position or caps', () => {
+      open(caps({ style: { ...caps().style, preset: 'capite-hormozi', look: 'hormozi' } }))
+      fireEvent.click(screen.getByTestId('captions-pos-top'))
+      expect(last()!.style).toMatchObject({ position: 'top', look: 'hormozi' })
+    })
+  })
 })

@@ -1,6 +1,7 @@
+import { CAPITE_CAPTION_STYLES } from '../../captions/capiteStyles'
 import { describe, expect, it } from 'vitest'
 import {
-  CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, activeCue, captionPreset, captionWords, cueEntrance, cuesFromText, normalizeCaptions, normalizeCues,
+  CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, activeCue, capiteLook, captionPreset, captionWords, cueEntrance, cuesFromText, normalizeCaptions, normalizeCues,
   parseSubtitles, scriptToCues,
 } from '../captions'
 import { normalizePreviewSettings } from '../presets'
@@ -122,5 +123,31 @@ describe('presets', () => {
       const s = captionPreset(p.id, brand)!
       expect(normalizeCaptions({ enabled: true, cues: [], style: s })!.style).toEqual(s)
     }
+  })
+})
+
+describe('Capite looks', () => {
+  const brand = { primary: '#112233', accent: '#ddeeff', text: '#ffffff' }
+  it('capiteLook builds a valid style for each of the 27 looks and round-trips through normalize', () => {
+    expect(CAPITE_CAPTION_STYLES).toHaveLength(27)
+    for (const l of CAPITE_CAPTION_STYLES) {
+      const s = capiteLook(l.id)!
+      expect(s.look, l.id).toBe(l.id)
+      expect(s.preset, l.id).toBe(`capite-${l.id}`)
+      expect(s.color, l.id).toBe(l.primaryColor)
+      expect(s.highlightColor, l.id).toBe(l.highlightColor)
+      expect(normalizeCaptions({ enabled: true, cues: [], style: s })!.style, l.id).toEqual(s)
+    }
+    expect(capiteLook('nope')).toBeUndefined()
+  })
+  it('box looks use the per-word highlight box, not a bar behind the whole line', () => {
+    const box = CAPITE_CAPTION_STYLES.find((l) => l.animationType === 'box')!
+    expect(capiteLook(box.id)!.box).toBe(false)
+  })
+  it('an unknown look id is dropped when saved data is read back, brand presets are unaffected', () => {
+    const base = { enabled: true, cues: [] as never[] }
+    expect(normalizeCaptions({ ...base, style: { look: 'mrbeast' } })!.style.look).toBe('mrbeast')
+    expect(normalizeCaptions({ ...base, style: { look: 'nope' } })!.style.look).toBeUndefined()
+    expect(captionPreset('karaoke', brand)!.look).toBeUndefined()
   })
 })

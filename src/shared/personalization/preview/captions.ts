@@ -3,6 +3,8 @@
  * the customer pastes a script or subtitles (SRT) and the lines are timed for them, then they can adjust each one. The state at any
  * frame is a pure function, so the live Player and the browser export agree.
  */
+import { capiteStyleById, isCapiteStyleId } from '../captions/capiteStyles'
+
 export interface CaptionCue {
   id: string
   /** Seconds. */
@@ -32,6 +34,8 @@ export interface CaptionStyle {
   uppercase: boolean
   /** Use the brand's font weight/shadow look: bold with a soft shadow. */
   bold: boolean
+  /** One of the 27 Capite looks (captions/capiteStyles.ts): its font, outline and how the spoken word is picked out. Optional; kept while the person tweaks the controls. */
+  look?: string
 }
 
 export interface CaptionSettings {
@@ -64,6 +68,16 @@ export const CAPTION_PRESETS: CaptionPresetDef[] = [
 export function captionPreset(id: string, brand: { primary: string; accent: string; text: string }): CaptionStyle | undefined {
   const p = CAPTION_PRESETS.find((x) => x.id === id)
   return p ? { preset: p.id, ...p.build(brand) } : undefined
+}
+
+/** A Capite look as a caption style. Colours, caps and weight come from the look; a box look uses its per-word highlight box, not a bar behind the line. */
+export function capiteLook(id: string): CaptionStyle | undefined {
+  const l = capiteStyleById(id)
+  if (!l) return undefined
+  return {
+    preset: `capite-${l.id}`, look: l.id, position: 'bottom', size: 0.055, highlight: 'word',
+    color: l.primaryColor, highlightColor: l.highlightColor, box: false, boxColor: '#000000', boxOpacity: 0.5, uppercase: true, bold: l.bold,
+  }
 }
 
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = { preset: 'karaoke', ...CAPTION_PRESETS[1].build({ primary: '#29d3f2', accent: '#facc15', text: '#ffffff' }) }
@@ -102,6 +116,7 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
     boxOpacity: finite(s.boxOpacity) ? clamp(s.boxOpacity, 0, 1) : d.boxOpacity,
     uppercase: s.uppercase === true || (s.uppercase === undefined && d.uppercase),
     bold: s.bold !== false,
+    ...(isCapiteStyleId(s.look) ? { look: s.look as string } : {}),
   }
   return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style }
 }
