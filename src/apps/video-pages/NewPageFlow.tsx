@@ -26,8 +26,14 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
 
   useEffect(() => {
     let live = true
+    // Everything a studio saved that can become a page: videos and pictures, newest first.
     import('studio/src/lib/assetStore.js')
-      .then((m) => (m.listAssets as (o: { kind?: string; limit?: number }) => Promise<any[]>)({ kind: 'video', limit: 60 }))
+      .then(async (m) => {
+        const list = m.listAssets as (o: { kind?: string; limit?: number }) => Promise<any[]>
+        const [videos, images] = await Promise.all([list({ kind: 'video', limit: 60 }).catch(() => []), list({ kind: 'image', limit: 60 }).catch(() => [])])
+        const when = (a: any) => String(a?.created_at || a?.createdAt || '')
+        return [...(videos || []).map((a) => ({ ...a, kind: 'video' })), ...(images || []).map((a) => ({ ...a, kind: 'image' }))].sort((a, b) => when(b).localeCompare(when(a)))
+      })
       .then((rows) => { if (live) setLibrary(rows || []) })
       .catch(() => { if (live) setLibrary([]) })
     return () => { live = false }
@@ -45,8 +51,8 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
     try {
       const { saveUploadedFile } = await import('studio/src/lib/assetStore.js')
       const asset = await saveUploadedFile(file)
-      const v = asset ? normalizeVideo({ ...asset, kind: 'video' }) : null
-      if (!v) throw new Error('Could not upload that file. Videos up to 100MB (mp4, webm, mov) work best.')
+      const v = asset ? normalizeVideo(asset, { allowImage: true }) : null
+      if (!v) throw new Error('Could not upload that file. Videos up to 100MB (mp4, webm, mov) or pictures (png, jpg, webp) work best.')
       setVideo(v)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
@@ -99,12 +105,14 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
             <div className={ui.panel}>
               <div className="text-xs font-bold text-white/70 mb-2">From your library</div>
               {library === null ? <div className="text-xs text-white/40">Loading…</div> : null}
-              {library && !library.length ? <div className="text-xs text-white/40">No videos yet. Make one in any studio, or upload or paste a link.</div> : null}
+              {library && !library.length ? <div className="text-xs text-white/40">Nothing yet. Make a video or picture in any studio, or upload or paste a link.</div> : null}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
                 {(library || []).map((a) => (
-                  <button key={a.id} type="button" onClick={() => { const v = normalizeVideo({ ...a, kind: 'video' }); if (v) setVideo(v) }} className="rounded-lg overflow-hidden border border-white/10 hover:border-primary/50 bg-black">
-                    <video src={a.url} className="h-20 w-full object-cover" muted preload="metadata" />
-                    <div className="px-2 py-1 text-[10px] text-white/60 truncate text-left">{a.name || 'Video'}</div>
+                  <button key={a.id} type="button" onClick={() => { const v = normalizeVideo(a, { allowImage: true }); if (v) setVideo(v) }} className="rounded-lg overflow-hidden border border-white/10 hover:border-primary/50 bg-black">
+                    {a.kind === 'image'
+                      ? <img src={a.url} alt={a.name || ''} className="h-20 w-full object-cover" loading="lazy" />
+                      : <video src={a.url} className="h-20 w-full object-cover" muted preload="metadata" />}
+                    <div className="px-2 py-1 text-[10px] text-white/60 truncate text-left">{a.name || (a.kind === 'image' ? 'Picture' : 'Video')}</div>
                   </button>
                 ))}
               </div>
@@ -112,7 +120,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
             <div className="flex flex-col gap-3">
               <div className={ui.panel}>
                 <div className="text-xs font-bold text-white/70 mb-2">Upload a file</div>
-                <input ref={fileRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden" onChange={(e) => void upload(e.target.files?.[0])} />
+                <input ref={fileRef} type="file" accept="video/mp4,video/webm,video/quicktime,image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => void upload(e.target.files?.[0])} />
                 <button type="button" className={ui.ghost} disabled={!!busy} onClick={() => fileRef.current?.click()}>Choose a video file</button>
               </div>
               <div className={ui.panel}>
