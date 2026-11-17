@@ -361,6 +361,26 @@ const APPS = [
   }
 ];
 
+
+// Collab Suite is a separate application; this catalog only links out to it.
+// Unset NEXT_PUBLIC_COLLAB_SUITE_URL hides the entries.
+const COLLAB_SUITE_URL = (process.env.NEXT_PUBLIC_COLLAB_SUITE_URL || "").replace(/\/+$/, "");
+const COLLAB_APPS = COLLAB_SUITE_URL
+  ? [
+      ["teamchat", "Teamchat", "Channels and team messaging."],
+      ["calendar", "Calendar", "Plan events and schedules."],
+      ["contacts", "Contacts", "People and companies."],
+      ["meetings", "Meetings", "Video calls."],
+      ["email", "Email", "Compose and manage mail."],
+      ["signatures", "Signatures", "Draw and save your signature."],
+    ].map(([id, name, description]) => ({
+      id: `collab-${id}`, name, description, category: "Collaboration",
+      hosted: `${COLLAB_SUITE_URL}/#/${id}`,
+    }))
+  : [];
+
+APPS.push(...COLLAB_APPS);
+
 const CATEGORIES = ["All", ...Array.from(new Set(APPS.map(app => app.category)))];
 
 /**
