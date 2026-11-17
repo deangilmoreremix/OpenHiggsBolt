@@ -5,7 +5,7 @@ import { TEXT_SHADOW } from './textStyle'
 import { fontStackById } from './presets'
 import { hexWithAlpha } from './effects'
 import { ACTIVE_WORD, visibleWordRange } from './capite/activeWord'
-import { displayScale, scriptFor } from '../captions/scripts'
+import { displayScale, scriptFor, withScriptFonts } from '../captions/scripts'
 
 /**
  * The caption line on screen at this frame, with the spoken word highlighted. Plain text, a rounded box and a text shadow, which
@@ -39,7 +39,7 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
           style={{
             maxWidth: '100%',
             textAlign: 'center',
-            fontFamily: script.id === 'latin' ? fontStackById(fontFamily) : `${script.fallbackStack}, ${fontStackById(fontFamily)}`,
+            fontFamily: withScriptFonts(fontStackById(fontFamily), script),
             ...(script.rtl ? { direction: 'rtl' as const } : {}),
             fontSize,
             fontWeight: st.bold ? 800 : 500,
