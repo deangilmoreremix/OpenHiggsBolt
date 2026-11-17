@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ENTITLEMENTS } from '@/access/entitlements'
-import { entitlementForbiddenResponse, requireApiEntitlement } from '@/access/apiRequireEntitlement'
 import { encryptMuapiKey, decryptMuapiKey } from '@/src/lib/muapiKeyCrypto'
 import { getOwnedPage, listContacts, HttpError } from '@/src/lib/landingPages/server/pages.js'
 import { checkKey, listGroups, MAX_CONTACTS, ProviderError, pushContacts, validGroupId } from '@/src/lib/landingPages/server/mailerlite.js'
@@ -23,8 +21,6 @@ export const runtime = 'nodejs'
 async function gate() {
   const userId = await signedInUser()
   if (!userId) return { res: unauthenticated() }
-  const g = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!g.allowed) return { res: g.status === 401 ? unauthenticated() : entitlementForbiddenResponse(g.entitlement) }
   return { userId }
 }
 

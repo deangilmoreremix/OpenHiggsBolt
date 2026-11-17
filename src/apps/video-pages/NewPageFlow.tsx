@@ -127,7 +127,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
 
       <section className="mb-8">
         <div className={`${ui.label} mb-2`}>2. Choose a design</div>
-        <p className="text-xs text-white/40 mb-3">Every design is a real, responsive landing page. After you create it you can change every word, image, link and section.</p>
+        <p className="text-xs text-white/40 mb-3">Video Pages are free for every video and picture you create. Every design is a real, responsive landing page: after you create it you can change every word, image, link and section.</p>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {TEMPLATES.map((t: any) => (
             <button key={t.id} type="button" aria-pressed={template === t.id} onClick={() => setTemplate(t.id)} className={`${ui.card} text-left transition-colors ${template === t.id ? 'border-primary bg-primary/10' : 'hover:border-white/20'}`}>

@@ -22,7 +22,7 @@ export default function SyncPanel({ pageId, contactsWithEmail }: { pageId: strin
       if (s.connected) setGroups(await syncGroups().catch(() => []))
     } catch (err) {
       setStatus({ connected: false, masked: '' })
-      if ((err as { status?: number }).status === 403) setNote({ kind: 'error', text: 'MailerLite sync needs SmartVideo GO access.' })
+      setNote({ kind: 'error', text: err instanceof Error && err.message ? err.message : 'Could not load the MailerLite connection.' })
     }
   }, [])
   useEffect(() => { void load() }, [load])
