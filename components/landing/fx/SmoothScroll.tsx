@@ -23,6 +23,15 @@ export function headerHeight() {
  */
 export const MOUNT_ALL_EVENT = 'landing:mount-all';
 
+/** The element id in a #fragment, or null for a malformed one such as "#%". */
+function fragmentId(hash: string) {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return null;
+  }
+}
+
 function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
   // Resolve to a number ourselves: given an element, Lenis also subtracts its
   // scroll-margin-top (which main section[id] sets to the header height),
@@ -42,6 +51,9 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
 const SETTLE_MS = 1500;
 const SETTLE_MAX_MS = 8000;
 
+// Jump state is module-level on purpose: there is one page scroll and one
+// SmoothScroll (the landing page's root), so jumps from anywhere (nav links,
+// IndustryNav, the #fragment on load) must cancel each other.
 /** Cancels the jump in progress, if any (its glide wait, alignment and listeners). */
 let cancelActiveJump: (() => void) | null = null;
 /** Counts jumps, so a pending one (the #fragment on load) can tell a newer one started. */
@@ -183,7 +195,8 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash || hash === '#') return;
-    const id = decodeURIComponent(hash.slice(1));
+    const id = fragmentId(hash);
+    if (!id) return;
     const startCount = jumpCount;
     const lenisExpected = window.matchMedia('(prefers-reduced-motion: no-preference) and (pointer: fine)').matches;
     // Give up if the visitor starts scrolling or jumping elsewhere first.
@@ -220,7 +233,8 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       const link = (e.target as Element | null)?.closest?.('a[href^="#"]');
       const hash = link?.getAttribute('href');
       if (!hash || hash === '#' || link?.closest('[role="dialog"], [data-lenis-prevent]')) return;
-      const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+      const id = fragmentId(hash);
+      const target = id ? document.getElementById(id) : null;
       if (!target) return;
       e.preventDefault();
       scrollToTarget(lenisRef.current, target);
