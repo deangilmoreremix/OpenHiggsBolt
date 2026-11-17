@@ -142,6 +142,10 @@ const nextConfig = {
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
+  // Client-side routes of the embedded Warmbly dashboard (public/warmbly-app) serve its own index.html; real files win.
+  async rewrites() {
+    return { afterFiles: [{ source: '/warmbly-app/:path*', destination: '/warmbly-app/index.html' }] };
+  },
   async redirects() {
     return [
       { source: '/studio/motion-studio', destination: '/studio/motion-director', permanent: false },
