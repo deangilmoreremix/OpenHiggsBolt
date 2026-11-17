@@ -1,5 +1,5 @@
 import { generateAss, cuesToWords, type AssAnimation, type AssStyle, type AssWord } from '../captions/assExport'
-import { detectScript, representativeLanguage } from '../captions/scripts'
+import { inferLanguage } from '../captions/scripts'
 import { CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
 import { visibleWordRange } from './capite/activeWord'
 import type { CaptionSettings } from './captions'
@@ -14,7 +14,7 @@ const REFERENCE_HEIGHT = 1920
 
 export function captionsToAss(c: CaptionSettings, o: { width: number; height: number }): string {
   // A caption's language: the saved one, else read from its own letters (so English next to Japanese keeps its own font).
-  const lang = (text: string) => c.language ?? representativeLanguage(detectScript(text))
+  const lang = (text: string) => c.language ?? inferLanguage(text)
   const words: AssWord[] = c.cues.flatMap((cue, group) => cuesToWords([cue]).map((w) => ({ ...w, group, language: lang(cue.text) })))
   if (!words.length) return ''
   const st = c.style
@@ -42,5 +42,5 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
     background: st.box ? { color: st.boxColor, opacity: st.boxOpacity } : undefined,
   }
   const language = lang(c.cues.map((x) => x.text).join(' '))
-  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original', sizing: 'preview', visibleRange: st.windowed ? visibleWordRange : undefined })
+  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original', sizing: 'preview', visibleRange: st.windowed ? (st.highlight === 'none' ? (count) => visibleWordRange(count, -1) : visibleWordRange) : undefined })
 }

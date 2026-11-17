@@ -89,6 +89,18 @@ describe('captionsToAss', () => {
       expect(Math.max(...dialogues(captionsToAss(one(true), opts)).map(count))).toBeLessThanOrEqual(5)
       expect(Math.max(...dialogues(captionsToAss(one(false), opts)).map(count))).toBe(8)
     })
+    it('keeps the window still when "Highlight word" is off, as the preview does (no word is active)', () => {
+      const style = { ...DEFAULT_CAPTION_STYLE, windowed: true, highlight: 'none' as const, uppercase: false }
+      const d = dialogues(captionsToAss(caps({ cues: [{ id: 'x', start: 0, end: 8, text: 'a b c d e f g h' }], style }), opts))
+      const shown = (line: string) => line.replace(/\{[^}]*\}/g, '').split(',,').pop()!.trim()
+      expect(new Set(d.map(shown)).size).toBe(1)
+    })
+    it('sizes text in a script the table does not list (Greek) as wide script when no language is saved', () => {
+      const size = (ass: string) => Number(ass.split('\n').find((l) => l.startsWith('Style: '))!.split(',')[2])
+      const greek = size(captionsToAss(caps({ cues: [{ id: 'g', start: 0, end: 1, text: 'Καλημέρα κόσμε' }] }), opts))
+      const latin = size(captionsToAss(caps({ cues: [{ id: 'l', start: 0, end: 1, text: 'Hello world' }] }), opts))
+      expect(greek).toBeLessThan(latin)
+    })
     it('styles an English caption and a Japanese caption each for its own script when no language is saved', () => {
       const ass = captionsToAss(caps({ cues: [{ id: 'a', start: 0, end: 1, text: 'Hello' }, { id: 'b', start: 2, end: 3, text: 'こんにちは' }] }), opts)
       expect(ass.match(/^Style: /gm)).toHaveLength(2)
