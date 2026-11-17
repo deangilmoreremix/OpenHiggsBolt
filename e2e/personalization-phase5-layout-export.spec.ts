@@ -78,26 +78,17 @@ test.describe('Phase 5 — layout templates: card vs editor vs preview vs export
         await dialog.getByRole('button', { name: /Step 4/i }).click();
         await dialog.getByLabel(/video shape/i).selectOption(ratio);
 
-        // 1) Template card (Step 3): select the layout and capture its player.
+        // 1) Layout thumbnail (Step 3). Step 3 shows a plain layout picker (not live template players), so the
+        // thumbnail is what is captured and clicked.
         await dialog.getByRole('button', { name: /Step 3/i }).click();
-        const card = dialog.locator('[data-testid="personalization-template-card"]', { hasText: layout }).first();
-        await card.scrollIntoViewIfNeeded();
-        // The gallery tints the CURRENTLY SELECTED card, so select a different
-        // layout first; the target card is then captured untinted.
-        const other = LAYOUTS.find((l) => l !== layout)!;
-        await dialog
-          .locator('[data-testid="personalization-template-card"]', { hasText: other })
-          .first()
-          .locator('[data-testid="personalization-template-use"]')
-          .click();
+        const picker = dialog.getByTestId('layout-picker');
+        await picker.scrollIntoViewIfNeeded();
+        const thumb = picker.locator('[data-testid^="layout-thumb-"]', { hasText: layout }).first();
+        await expect(thumb).toBeVisible();
         await page.waitForTimeout(1500);
-        await card.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(2500);
-        // Capture the card BEFORE applying it: right after "Use this template" the
-        // card shows a transient selected/applying overlay.
-        const player = card.locator('[data-testid="personalization-template-player"]').first();
-        await player.screenshot({ path: path.join(OUT, `${slug}-1-card.png`) });
-        await card.locator('[data-testid="personalization-template-use"]').click();
+        await thumb.screenshot({ path: path.join(OUT, `${slug}-1-card.png`) });
+        await thumb.click();
+        await expect(thumb).toHaveAttribute('aria-pressed', 'true');
         await page.waitForTimeout(1500);
 
         // 2) Step 4: editor stage and live preview.

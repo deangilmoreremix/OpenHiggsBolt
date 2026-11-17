@@ -3,6 +3,10 @@
  * the customer pastes a script or subtitles (SRT) and the lines are timed for them, then they can adjust each one. The state at any
  * frame is a pure function, so the live Player and the browser export agree.
  */
+import { CAPTION_STYLES, CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import type { CaptionStyleConfig } from './capite/types'
+import { transcriptToSrt, transcriptToVtt } from './capite/subtitleExport'
+
 export interface CaptionCue {
   id: string
   /** Seconds. */
@@ -32,7 +36,25 @@ export interface CaptionStyle {
   uppercase: boolean
   /** Use the brand's font weight/shadow look: bold with a soft shadow. */
   bold: boolean
+  /** From Capite's styles (see ./capite): how the spoken word is emphasised. Absent = the plain colour highlight. */
+  animation?: CaptionAnimation
+  italic?: boolean
+  /** Outline around the letters, in em, and its colour. */
+  outline?: { size: number; color: string }
+  /** Drop shadow under the letters: depth in em, 0..1 opacity, colour. */
+  shadow?: { depth: number; alpha: number; color: string }
+  /** Extra letter spacing in em. */
+  letterSpacing?: number
+  /** Extra space between words in em. */
+  wordSpacing?: number
+  /** Show only a few words around the spoken one (Capite's five-word window). */
+  windowed?: boolean
+  /** Grouping for the style chips. */
+  category?: string
 }
+
+export type CaptionAnimation = 'highlight' | 'karaoke' | 'pop' | 'bounce' | 'scale' | 'glow' | 'box'
+export const CAPTION_ANIMATIONS: CaptionAnimation[] = ['highlight', 'karaoke', 'pop', 'bounce', 'scale', 'glow', 'box']
 
 export interface CaptionSettings {
   enabled: boolean
@@ -61,8 +83,54 @@ export const CAPTION_PRESETS: CaptionPresetDef[] = [
   { id: 'headline', label: 'Big middle', build: (b) => ({ position: 'middle', size: 0.085, highlight: 'word', color: b.text, highlightColor: b.accent, box: false, boxColor: '#000000', boxOpacity: 0.5, uppercase: true, bold: true }) },
 ]
 
+/**
+ * Capite's numbers are ASS subtitle units on a 1080x1920 frame: font size in px, outline and shadow in px, letter spacing in px,
+ * word spacing as a percentage (100 = normal), shadow alpha 0..255. They are turned into fractions of the frame height and ems.
+ */
+const CAPITE_REFERENCE_HEIGHT = 1920
+export function captionStyleFromCapite(c: CaptionStyleConfig): Omit<CaptionStyle, 'preset'> {
+  const fs = Math.max(1, c.fontSize)
+  return {
+    position: 'bottom',
+    size: clamp(c.fontSize / CAPITE_REFERENCE_HEIGHT, 0.025, 0.14),
+    highlight: 'word',
+    color: c.primaryColor,
+    highlightColor: c.highlightColor,
+    box: false,
+    boxColor: '#000000',
+    boxOpacity: 0.5,
+    // Capite upper-cases every caption unless told otherwise (video-overlay-player.tsx `transformWordText`).
+    uppercase: true,
+    bold: c.bold,
+    animation: c.animationType,
+    italic: c.italic,
+    outline: { size: clamp(c.outlineSize / fs, 0, 0.2), color: c.outlineColor },
+    shadow: { depth: clamp(c.shadowDepth / fs, 0, 0.2), alpha: clamp(c.shadowAlpha / 255, 0, 1), color: c.shadowColor },
+    letterSpacing: clamp(c.letterSpacing / fs, -0.05, 0.3),
+    wordSpacing: clamp(((c.wordSpacing - 100) / 100) * 0.3, 0, 1),
+    windowed: true,
+    category: c.category ?? 'trending',
+  }
+}
+
+export interface CaptionPresetDef2 extends CaptionPresetDef { category: string }
+
+/** Capite's 27 styles as presets (fixed colours, not brand colours). See ./capite/captionStyles.ts. */
+export const CAPITE_PRESETS: CaptionPresetDef2[] = CAPTION_STYLES.map((id) => {
+  const c = CAPTION_STYLE_CONFIGS[id]
+  return { id: `capite-${id}`, label: c.name, category: c.category ?? 'trending', build: () => captionStyleFromCapite(c) }
+})
+export const CAPTION_PRESET_CATEGORIES: { id: string; label: string }[] = [
+  { id: 'brand', label: 'Your brand' },
+  { id: 'trending', label: 'Trending' },
+  { id: 'pop-expressive', label: 'Pop' },
+  { id: 'editorial-film', label: 'Film' },
+  { id: 'clean-tech', label: 'Clean' },
+]
+export const ALL_CAPTION_PRESETS: CaptionPresetDef[] = [...CAPTION_PRESETS, ...CAPITE_PRESETS]
+
 export function captionPreset(id: string, brand: { primary: string; accent: string; text: string }): CaptionStyle | undefined {
-  const p = CAPTION_PRESETS.find((x) => x.id === id)
+  const p = ALL_CAPTION_PRESETS.find((x) => x.id === id)
   return p ? { preset: p.id, ...p.build(brand) } : undefined
 }
 
@@ -103,6 +171,14 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
     uppercase: s.uppercase === true || (s.uppercase === undefined && d.uppercase),
     bold: s.bold !== false,
   }
+  if (typeof s.animation === 'string' && (CAPTION_ANIMATIONS as string[]).includes(s.animation)) style.animation = s.animation as CaptionAnimation
+  if (s.italic === true) style.italic = true
+  if (isRecord(s.outline) && finite(s.outline.size) && s.outline.size > 0) style.outline = { size: clamp(s.outline.size, 0, 0.2), color: hex(s.outline.color, '#000000') }
+  if (isRecord(s.shadow) && finite(s.shadow.depth) && finite(s.shadow.alpha) && s.shadow.alpha > 0) style.shadow = { depth: clamp(s.shadow.depth, 0, 0.2), alpha: clamp(s.shadow.alpha, 0, 1), color: hex(s.shadow.color, '#000000') }
+  if (finite(s.letterSpacing) && s.letterSpacing !== 0) style.letterSpacing = clamp(s.letterSpacing, -0.05, 0.3)
+  if (finite(s.wordSpacing) && s.wordSpacing > 0) style.wordSpacing = clamp(s.wordSpacing, 0, 1)
+  if (s.windowed === true) style.windowed = true
+  if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
   return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style }
 }
 
@@ -171,6 +247,10 @@ export function activeCue(cues: readonly CaptionCue[], frame: number, fps: numbe
 export interface CaptionWord {
   text: string
   active: boolean
+  /** Seconds since this word became the spoken one (0 when it is not). */
+  elapsed?: number
+  /** 0..1 through the spoken word (used by the karaoke wipe). */
+  progress?: number
 }
 
 /** The words of a cue, with the one being spoken at `frame` marked. Words share the line's time in proportion to their length. */
@@ -182,11 +262,19 @@ export function captionWords(cue: CaptionCue, frame: number, fps: number, highli
   const total = weights.reduce((a, b) => a + b, 0)
   let acc = 0
   let activeIdx = words.length - 1
+  let wordStart = 0
+  let wordEnd = 1
   for (let i = 0; i < words.length; i++) {
+    const before = acc
     acc += weights[i] / total
-    if (progress < acc) { activeIdx = i; break }
+    if (progress < acc) { activeIdx = i; wordStart = before; wordEnd = acc; break }
+    wordStart = before; wordEnd = acc
   }
-  return words.map((text, i) => ({ text, active: i === activeIdx }))
+  const span = Math.max(0.0001, wordEnd - wordStart)
+  const cueSec = Math.max(0.001, cue.end - cue.start)
+  return words.map((text, i) => (i === activeIdx
+    ? { text, active: true, elapsed: Math.max(0, (progress - wordStart) * cueSec), progress: clamp((progress - wordStart) / span, 0, 1) }
+    : { text, active: false }))
 }
 
 /** Entrance of a line: rises and fades in over the first few frames. */
@@ -199,3 +287,8 @@ export function cueEntrance(cue: CaptionCue, frame: number, fps: number): { opac
 export function newCue(start: number, end: number, text = 'New line'): CaptionCue {
   return { id: `cue_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, start, end, text }
 }
+
+// ── subtitle files (Capite's exporter, fed with our lines) ───────────────────────────────────────────────────────
+const toTranscript = (cues: readonly CaptionCue[]) => ({ language: 'en', segments: cues.map((c) => ({ id: c.id, start: c.start, end: c.end, text: c.text, words: [] })) })
+export const cuesToSrt = (cues: readonly CaptionCue[]): string => transcriptToSrt(toTranscript(cues))
+export const cuesToVtt = (cues: readonly CaptionCue[]): string => transcriptToVtt(toTranscript(cues))

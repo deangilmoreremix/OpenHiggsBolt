@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Captions, Plus, Trash2 } from 'lucide-react'
+import { downloadBlob } from '../preview/capite/subtitleExport'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { ColorField } from './editor/ColorField'
 import { Tip } from './editor/Tip'
@@ -7,8 +8,8 @@ import { SavedStylesBar } from './SavedStylesBar'
 import { applyCaptionStyle, captureCaptionStyle } from '../preview/textStyles'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle } from './tokens'
 import {
-  CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, newCue,
-  type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
+  ALL_CAPTION_PRESETS, CAPTION_ANIMATIONS, CAPTION_PRESET_CATEGORIES, CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, cuesToSrt, cuesToVtt, newCue,
+  type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
 import type { PreviewInputProps } from '../preview/types'
 
@@ -17,6 +18,8 @@ import type { PreviewInputProps } from '../preview/types'
  * pick a style (the presets take your brand colors), a position and size, a word highlight and a box. Free: nothing is
  * transcribed or generated, the words are yours. Drawn live and in the exported video by the same code.
  */
+const downloadText = (content: string, name: string, mime: string) => downloadBlob(content, name, mime)
+
 export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps }): React.JSX.Element {
   const { previewSettings, updatePreviewComposition } = useDemoPersonalize()
   const [open, setOpen] = useState(false)
@@ -64,6 +67,12 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
                 <button type="button" data-testid="captions-enabled" aria-pressed={caps.enabled} onClick={() => set({ enabled: !caps.enabled })} style={{ ...chipStyle(caps.enabled), minHeight: 30, fontSize: 11 }}>{caps.enabled ? 'Captions on' : 'Captions off'}</button>
               )}
               {caps.cues.length > 0 && (
+                <button type="button" data-testid="captions-download-srt" onClick={() => downloadText(cuesToSrt(caps.cues), 'captions.srt', 'application/x-subrip')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Download .srt</button>
+              )}
+              {caps.cues.length > 0 && (
+                <button type="button" data-testid="captions-download-vtt" onClick={() => downloadText(cuesToVtt(caps.cues), 'captions.vtt', 'text/vtt')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Download .vtt</button>
+              )}
+              {caps.cues.length > 0 && (
                 <button type="button" data-testid="captions-clear" onClick={() => updatePreviewComposition({ captions: undefined })} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Remove captions</button>
               )}
             </div>
@@ -75,9 +84,24 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
             <>
               <div>
                 <Tip id="captionsStyle" side="top"><div style={labelStyle}>Style</div></Tip>
+                {CAPTION_PRESET_CATEGORIES.map((cat) => {
+                  const list = ALL_CAPTION_PRESETS.filter((p) => ('category' in p ? (p as { category: string }).category : 'brand') === cat.id)
+                  if (list.length === 0) return null
+                  return (
+                    <div key={cat.id} style={{ marginBottom: 6 }}>
+                      <div style={{ ...hintStyle, margin: '0 0 3px' }}>{cat.label}</div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {list.map((p) => (
+                          <button key={p.id} type="button" data-testid={`captions-preset-${p.id}`} aria-pressed={caps.style.preset === p.id} onClick={() => set({ style: captionPreset(p.id, brand)!, enabled: true })} style={{ ...chipStyle(caps.style.preset === p.id), minHeight: 28, fontSize: 10 }}>{p.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div style={{ ...hintStyle, margin: '4px 0 3px' }}>Word animation</div>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                  {CAPTION_PRESETS.map((p) => (
-                    <button key={p.id} type="button" data-testid={`captions-preset-${p.id}`} aria-pressed={caps.style.preset === p.id} onClick={() => set({ style: captionPreset(p.id, brand)!, enabled: true })} style={{ ...chipStyle(caps.style.preset === p.id), minHeight: 28, fontSize: 10 }}>{p.label}</button>
+                  {(['none', ...CAPTION_ANIMATIONS] as (CaptionAnimation | 'none')[]).map((a) => (
+                    <button key={a} type="button" data-testid={`captions-anim-${a}`} aria-pressed={(caps.style.animation ?? 'none') === a} onClick={() => setStyle({ animation: a === 'none' ? undefined : a, windowed: a === 'none' ? undefined : true })} style={{ ...chipStyle((caps.style.animation ?? 'none') === a), minHeight: 26, fontSize: 10 }}>{a === 'none' ? 'Plain' : a[0].toUpperCase() + a.slice(1)}</button>
                   ))}
                 </div>
               </div>
