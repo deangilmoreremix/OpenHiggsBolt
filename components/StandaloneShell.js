@@ -13,6 +13,7 @@ import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import HelpAgent from '@/components/help/HelpAgent';
 import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
+import CaptionStudioAction from '@/components/CaptionStudioAction';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
 import { saveOpenAIKey, deleteOpenAIKey } from '@/shared/api/openaiKey';
@@ -90,12 +91,25 @@ const LANDING_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
 const LANDING_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
 const LANDING_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[19.5rem]');
 
+// Free, on-device captions: the same Caption Studio from every video studio, offered next to Personalize / Landing page. Image sources get nothing.
+const CAPTION_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
+const CAPTION_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
+const CAPTION_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[27rem]');
+const captionAction = (options, className) => {
+  const url = options?.media?.mediaType === 'video' ? options.media.url : null;
+  return url ? <CaptionStudioAction videoUrl={url} className={className}>Free captions</CaptionStudioAction> : null;
+};
+// For studios that show their own results (Clipping Studio's clips): they pass the clip and the icon to put in the button.
+const renderCaptionAction = ({ videoUrl, className, children } = {}) =>
+  (videoUrl ? <CaptionStudioAction videoUrl={videoUrl} className={className}>{children}</CaptionStudioAction> : null);
+
 const renderPersonalizeAction = (options) => (
   <>
     <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
       Personalize
     </PersonalizeVideoAction>
     <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS)}
   </>
 );
 
@@ -105,6 +119,7 @@ const renderPersonalizeActionVideo = (options) => (
       Personalize
     </PersonalizeVideoAction>
     <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_VIDEO}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS_VIDEO)}
   </>
 );
 
@@ -114,6 +129,7 @@ const renderPersonalizeActionOverlay = (options) => (
       Personalize
     </PersonalizeVideoAction>
     <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_OVERLAY}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS_OVERLAY)}
   </>
 );
 const TABS = [
@@ -965,7 +981,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
          {persistentStudio('video', (active) => <VideoStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionVideo} {...generationCallbacks['video']} />)}
-         {persistentStudio('clipping', (active) => <ClippingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['clipping']} />)}
+         {persistentStudio('clipping', (active) => <ClippingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} renderCaptionAction={renderCaptionAction} {...generationCallbacks['clipping']} />)}
          {persistentStudio('vibe-motion', (active) => <VibeMotionStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['vibe-motion']} />)}
          {persistentStudio('motion-control', (active) => <MotionControlStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['motion-control']} />)}
          {persistentStudio('lipsync', (active) => <LipSyncStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['lipsync']} />)}

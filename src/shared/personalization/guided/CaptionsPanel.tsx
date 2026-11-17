@@ -11,12 +11,14 @@ import {
   ALL_CAPTION_PRESETS, CAPTION_ANIMATIONS, CAPTION_PRESET_CATEGORIES, CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, cuesToSrt, cuesToVtt, newCue,
   type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
+import { captionsToStudioInput, studioToCaptionSettings, STUDIO_FONTS } from '../preview/captionsFromStudio'
 import type { PreviewInputProps } from '../preview/types'
 
 /**
- * Captions (Step 4): paste a script or subtitles and the lines are timed across the video; adjust each line's words and times,
- * pick a style (the presets take your brand colors), a position and size, a word highlight and a box. Free: nothing is
- * transcribed or generated, the words are yours. Drawn live and in the exported video by the same code.
+ * Captions (Step 4): write them from the video's speech with the free on-device Caption Studio (Whisper runs in the browser, every word is
+ * timed), or paste a script or subtitles and the lines are timed across the video. Adjust each line's words and times, pick a style (the
+ * presets take your brand colors), a position and size, a word highlight and a box. Free either way. Drawn live and in the exported video
+ * by the same code.
  */
 const downloadText = (content: string, name: string, mime: string) => downloadBlob(content, name, mime)
 
@@ -31,6 +33,34 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
   const set = (patch: Partial<CaptionSettings>) => updatePreviewComposition({ captions: { ...caps, ...patch } })
   const setStyle = (patch: Partial<CaptionStyle>) => set({ style: { ...caps.style, ...patch, preset: patch.preset ?? 'custom' } })
   const setCue = (id: string, patch: Partial<CaptionCue>) => set({ cues: caps.cues.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
+
+  const videoUrl = inputProps.videoUrl && !inputProps.isImageSource ? inputProps.videoUrl : null
+  /** Opens the Caption Studio on this video; what it makes becomes the captions (lines with exact word times, plus its look). */
+  const openStudio = async () => {
+    if (!videoUrl) { setNotice('Add a video first. The Caption Studio writes captions from its speech.'); return }
+    try {
+      const [{ openCaptionStudio }, { studioPayload }] = await Promise.all([import('../../captionStudio/modal.js'), import('../../captionStudio/studioData.js')])
+      const start = captionsToStudioInput(caps)
+      openCaptionStudio({
+        videoUrl,
+        // Remotion's convention: every word but the first starts with a space.
+        captions: start.words.map((w, i) => ({ text: (i ? ' ' : '') + w.text, startMs: w.startMs, endMs: w.endMs })),
+        style: start.style,
+        fonts: STUDIO_FONTS,
+        accentColor: C.cyan,
+        applyLabel: 'Use these captions in the video',
+        onApply: ({ captions, captionStyle }: { captions: unknown[]; captionStyle: Record<string, unknown> }) => {
+          const { settings, truncated } = studioToCaptionSettings(studioPayload(captions, captionStyle), brand)
+          if (settings.cues.length === 0) { setNotice('No captions were made, so nothing was changed.'); return }
+          updatePreviewComposition({ captions: settings })
+          setNotice(`${settings.cues.length} line${settings.cues.length > 1 ? 's' : ''} written from the video’s speech${truncated ? `. A project keeps at most ${MAX_CUES} lines, so the rest were left out` : ''}. Adjust them below.`)
+        },
+        onError: (err: Error) => setNotice(err?.message || 'The Caption Studio could not open.'),
+      })
+    } catch (err) {
+      setNotice((err as Error)?.message || 'The Caption Studio could not open.')
+    }
+  }
 
   const apply = () => {
     const cues = cuesFromText(script, durationSec).slice(0, MAX_CUES)
@@ -59,6 +89,13 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
+            <button type="button" data-testid="captions-open-studio" disabled={!videoUrl} onClick={() => void openStudio()} title={videoUrl ? undefined : 'Add a video first'}
+              style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px', borderColor: C.cyan, opacity: videoUrl ? 1 : 0.5 }}>
+              ✨ {caps.cues.length ? 'Edit in the Caption Studio' : 'Write captions from the video’s speech'}
+            </button>
+            <p style={{ ...hintStyle, margin: '6px 0 0' }}>Free, on this device: the speech is turned into text in your browser, every word is timed, and nothing is uploaded. Or paste your own words below.</p>
+          </div>
+          <div>
             <Tip id="captionsScript" side="top"><label style={labelStyle} htmlFor="captions-script">Your words</label></Tip>
             <textarea id="captions-script" data-testid="captions-script" rows={3} value={script} onChange={(e) => setScript(e.target.value)} placeholder="Paste a script, or subtitles in SRT format…" style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -77,7 +114,7 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
               )}
             </div>
             {notice && <div role="status" data-testid="captions-notice" style={{ ...hintStyle, margin: '6px 0 0' }}>{notice}</div>}
-            <p style={{ ...hintStyle, margin: '6px 0 0' }}>Free. Nothing is listened to or generated: the lines are timed evenly across the video, then you can adjust each one.</p>
+            <p style={{ ...hintStyle, margin: '6px 0 0' }}>Pasted words are timed evenly across the video, then you can adjust each one.</p>
           </div>
 
           {caps.cues.length > 0 && (

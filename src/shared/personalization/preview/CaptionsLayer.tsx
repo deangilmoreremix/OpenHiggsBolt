@@ -26,7 +26,9 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
   const { opacity, rise } = cueEntrance(cue, frame, fps)
   const edge = Math.round(compH * 0.07)
   const place: React.CSSProperties =
-    st.position === 'top' ? { top: edge } : st.position === 'middle' ? { top: '50%', marginTop: -fontSize } : { bottom: edge }
+    typeof st.positionY === 'number'
+      ? { top: `${(st.positionY * 100).toFixed(2)}%`, transform: 'translateY(-50%)' } // a dragged height: the captions are centred on it
+      : st.position === 'top' ? { top: edge } : st.position === 'middle' ? { top: '50%', marginTop: -fontSize } : { bottom: edge }
   return (
     <AbsoluteFill style={{ zIndex: 900, pointerEvents: 'none', opacity, transform: rise ? `translateY(${rise * compH}px)` : undefined }} data-testid="captions-layer">
       <div style={{ position: 'absolute', left: '5%', right: '5%', display: 'flex', justifyContent: 'center', ...place }}>
