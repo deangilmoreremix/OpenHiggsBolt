@@ -69,7 +69,7 @@ import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { readStoryboardHandoff } from "../storyboardHandoff.js";
 import registry from "../skills/registry.json";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
-import { fillTemplate } from "../lib/promptRecipes";
+import { fillTemplate, recipePromptValues } from "../lib/promptRecipes";
 import { useTemplateData } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { useRouter } from "next/navigation";
@@ -1507,11 +1507,7 @@ export default function ImageStudio({
     }
     if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
 
-    const vals = {};
-    (skill.inputs || []).forEach((i) => {
-      vals[i.name] = "";
-    });
-    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", recipePromptValues(skill)));
 
     // Resolution: prefer mapping onto the quality enum, else a custom field.
     if (step0.resolution) {

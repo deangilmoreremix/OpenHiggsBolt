@@ -9,6 +9,7 @@ const ctx: Record<string, unknown> = {}
 vi.mock('../../DemoPersonalizeProvider', () => ({ useDemoPersonalize: () => ctx }))
 
 vi.mock('../PersonalizationTemplateBrowser', () => ({ PersonalizationTemplateBrowser: () => null }))
+vi.mock('../LayoutThumbnails', () => ({ LayoutThumbnails: () => null }))
 vi.mock('../AssetUsagePanel', () => ({ AssetUsagePanel: () => null }))
 
 import { StepPersonalize } from '../StepPersonalize'

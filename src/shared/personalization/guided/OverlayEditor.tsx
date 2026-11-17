@@ -14,6 +14,15 @@ import { PersonalizationPlayer } from '../preview/PersonalizationPlayer'
 import type { PlayerRef } from '@remotion/player'
 import { Timeline } from './editor/Timeline'
 import { EditorTour } from './editor/EditorTour'
+import { KeyframePanel } from './editor/KeyframePanel'
+import { moveKeyframe } from '../preview/keyframes'
+import { NEUTRAL_KEYFRAME_STATE, keyframeStateFor, keyframeTransformParts } from '../preview/keyframes'
+import { lookFilter, lookOverlays, vignetteStops } from '../preview/effects'
+import { LookPanel } from './LookPanel'
+import { AudioPanel } from './AudioPanel'
+import { CaptionsPanel } from './CaptionsPanel'
+import { LayerEffectsControls } from './editor/LayerEffectsControls'
+import { CutoutPanel } from './CutoutPanel'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
 import { isRotated, normalizeAngle, rotateCss, rotatedExtent } from '../preview/rotation'
 import type { EditorTipId } from './editor/editorTips'
@@ -56,6 +65,7 @@ import {
   stageScaleFactor,
   toStageBox,
 } from './overlayGeometry'
+import { AddDesignsPanel } from './AddDesignsPanel'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const LAYER_LABELS: Record<PreviewLayerKind, string> = {
@@ -227,6 +237,8 @@ export interface OverlayEditorProps {
    * transparent interaction layer above it. Off by default; the stage then shows the poster image.
    */
   liveStage?: boolean
+  /** Shows an "Add a design" button that opens the full template library (all layouts and designs) above the stage. */
+  addDesigns?: boolean
 }
 
 /**
@@ -256,14 +268,14 @@ const INSPECTOR_TABS: { id: InspectorTab; label: string }[] = [
   { id: 'timing', label: 'Timing' },
 ]
 
-export function OverlayEditor({ inputProps, belowStage, liveStage = false }: OverlayEditorProps): React.JSX.Element {
+export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDesigns = false }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     previewSettings,
     updatePreviewLayer,
     reorderPreviewLayers,
     setPreviewLayerLocked,
-    setRemotionDesign,
+    removePreviewDesignLayer,
     undoPreview,
     redoPreview,
     canUndoPreview,
@@ -279,6 +291,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
   const dragRef = useRef<DragState | null>(null)
   const [confirmRemoveDesign, setConfirmRemoveDesign] = useState(false)
+  const [addDesignsOpen, setAddDesignsOpen] = useState(false)
   // Snap guides: on by default, switched off from the toolbar or by holding Alt while dragging.
   const [snapOn, setSnapOn] = useState(true)
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('content')
@@ -556,6 +569,11 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
           Edit on the video
         </h3>
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+          {addDesigns && (
+            <button type="button" data-testid="editor-add-design" aria-expanded={addDesignsOpen} onClick={() => setAddDesignsOpen((v) => !v)} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', borderColor: addDesignsOpen ? C.cyan : undefined, color: addDesignsOpen ? C.cyan : undefined }}>
+              Add a design
+            </button>
+          )}
           <Tip id="undo"><button type="button" data-testid="editor-undo" aria-label="Undo" disabled={!canUndoPreview} onClick={() => undoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canUndoPreview ? 1 : 0.5 }}>Undo</button></Tip>
           <Tip id="redo"><button type="button" data-testid="editor-redo" aria-label="Redo" disabled={!canRedoPreview} onClick={() => redoPreview?.()} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', opacity: canRedoPreview ? 1 : 0.5 }}>Redo</button></Tip>
           <Tip id="snap">
@@ -582,6 +600,11 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
         </button>
         </Tip>
       </div>
+      {addDesigns && addDesignsOpen && (
+        <div style={{ ...softPanelStyle, margin: '8px 0' }}>
+          <AddDesignsPanel />
+        </div>
+      )}
       <p style={hintStyle}>
         Drag any layer on the video to move it, or use its corner handle to resize. Arrow keys nudge the
         selected layer by 1% (Shift for 5%), Delete hides it. Layers stay inside the 2% safe area of the
@@ -629,13 +652,17 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
             <img
               src={inputProps.posterUrl}
               alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85, filter: lookFilter(settings.look) }}
             />
           ) : (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>
               Your video
             </div>
           )}
+          {lookOverlays(settings.look).map((o) => <div key={o.key} aria-hidden style={{ position: 'absolute', inset: 0, background: o.color, pointerEvents: 'none' }} />)}
+          {settings.look && settings.look.vignette > 0 ? (
+            <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,${vignetteStops(settings.look.vignette)[2].alpha}) 100%)` }} />
+          ) : null}
           <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: settings.brandColors.backgroundDim, pointerEvents: 'none' }} />
             </>
           )}
@@ -777,6 +804,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 </>
               )
 
+              const kfState = isDesign ? NEUTRAL_KEYFRAME_STATE : keyframeStateFor(layer.keyframes, playFrame)
+              const boxTransform = [...keyframeTransformParts(kfState, compW * factor, compH * factor), rotateCss(layer.rotation)].filter(Boolean).join(' ')
               let toolbarTop = 0
               let rotateInside = false
               if (isSelected) {
@@ -815,10 +844,10 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                     outlineOffset: 2,
                     // The selected layer's handles must stay grabbable even where another layer's box overlaps them.
                     ...(isSelected ? { zIndex: 3 } : {}),
-                    opacity: layer.opacity,
+                    opacity: layer.opacity * kfState.opacity,
                     userSelect: 'none',
-                    // The box turns with the layer (about its own center), and so do its handles.
-                    ...(isDesign || !rotateCss(layer.rotation) ? {} : { transform: rotateCss(layer.rotation), transformOrigin: 'center center' }),
+                    // The box follows the layer's keyframes at the playhead and turns with the layer (about its own center), and so do its handles.
+                    ...(isDesign || !boxTransform ? {} : { transform: boxTransform, transformOrigin: 'center center' }),
                   }}
                 >
                   {liveOn ? (
@@ -988,12 +1017,22 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
           onSelect={setSelectedId}
           onChange={(id, patch) => updatePreviewLayer(id, patch)}
           playheadFrame={liveOn ? playFrame : undefined}
+          audio={(settings.audioTracks ?? []).map((t) => ({ id: t.id, name: t.name, start: t.start, length: t.length, muted: t.muted }))}
+          onAudioChange={(id, patch) => updatePreviewComposition({ audioTracks: (settings.audioTracks ?? []).map((t) => (t.id === id ? { ...t, start: patch.start, length: patch.length } : t)) })}
+          onKeyframeMove={(id, from, to) => {
+            const layer = settings.layers.find((l) => l.id === id)
+            if (layer) updatePreviewLayer(id, { keyframes: moveKeyframe(layer.keyframes, from, to, settings.durationInFrames) })
+          }}
           onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
         />
         </div>
 
         {/* ── Layer list + controls ─────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <LookPanel inputProps={inputProps} />
+          <AudioPanel />
+          <CaptionsPanel inputProps={inputProps} />
+          <CutoutPanel inputProps={inputProps} />
           <div style={labelStyle}>Layers</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>
           <SortableContext items={[...settings.layers].reverse().map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -1092,7 +1131,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   <button
                     type="button"
                     data-testid="design-restore-defaults"
-                    onClick={() => updatePreviewLayer(selected.id, { textSlotOverrides: undefined, color: undefined, fontFamily: undefined, imageUrl: undefined })}
+                    onClick={() => updatePreviewLayer(selected.id, { text: undefined, textSlotOverrides: undefined, color: undefined, fontFamily: undefined, imageUrl: undefined })}
                     style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px' }}
                   >
                     Restore design defaults
@@ -1104,7 +1143,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   ) : (
                     <span role="alert" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 10, color: C.muted }}>
                       Remove “{selectedDesign.name}” from the video?
-                      <button type="button" data-testid="design-remove-confirm" onClick={() => { setConfirmRemoveDesign(false); setRemotionDesign(null) }} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Yes, remove</button>
+                      <button type="button" data-testid="design-remove-confirm" onClick={() => { setConfirmRemoveDesign(false); removePreviewDesignLayer(selected.id) }} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Yes, remove</button>
                       <button type="button" onClick={() => setConfirmRemoveDesign(false)} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Keep</button>
                     </span>
                   )}
@@ -1284,6 +1323,15 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                 />
               </div>
 
+              {selected.kind !== 'design' && (
+                <LayerEffectsControls
+                  layer={selected}
+                  onChange={(effects) => updatePreviewLayer(selected.id, { effects })}
+                  brand={settings.brandColors}
+                  posterUrl={inputProps.posterUrl}
+                />
+              )}
+
               {contractOf(selected).userRotatable && selected.kind !== 'design' && (
                 <div>
                   <label style={labelStyle} htmlFor={controlId('rotation')}>Rotation</label>
@@ -1371,6 +1419,17 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false }: Ove
                   />
                 </div>
               </div>
+
+              {selected.kind !== 'design' && contractOf(selected).userMovable && (
+                <KeyframePanel
+                  layer={selected}
+                  playFrame={playFrame}
+                  fps={settings.fps}
+                  durationInFrames={settings.durationInFrames}
+                  onChange={(keyframes) => updatePreviewLayer(selected.id, { keyframes })}
+                  onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
+                />
+              )}
 
               </div>
 

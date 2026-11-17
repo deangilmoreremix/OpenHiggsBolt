@@ -26,8 +26,8 @@ describe('studioKnowledgeBase source-of-truth', () => {
     expect(studios.length).toBeGreaterThan(0);
   });
 
-  it('has exactly 26 entries (every studio tab plus Photo Studio and Social Publishing)', () => {
-    expect(studios).toHaveLength(26);
+  it('has exactly 27 entries (every studio tab plus Photo Studio and Social Publishing)', () => {
+    expect(studios).toHaveLength(27);
   });
 
   it('every entry has required fields', () => {

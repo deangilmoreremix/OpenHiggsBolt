@@ -1,7 +1,30 @@
 import * as muapi from '../muapi.js';
 
 export function fillTemplate(prompt, values) {
-  return prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => (values && values[key]) || '');
+  let hadPlaceholder = false;
+  const filled = prompt.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    hadPlaceholder = true;
+    return (values && values[key]) || '';
+  });
+  if (!hadPlaceholder) return filled;
+  // An empty optional input leaves a stray double space or a space before the
+  // punctuation ("A red fox ." / "contrast.  The"); tidy only what filling can cause.
+  return filled.replace(/[ \t]{2,}/g, ' ').replace(/ +([.,;!?])/g, '$1');
+}
+
+/**
+ * Values used to pre-fill a recipe's prompt when it opens in a studio: each input's
+ * default, or a visible "[Label]" placeholder for a required input with no default,
+ * so the person sees what to replace instead of a silent blank.
+ */
+export function recipePromptValues(skill) {
+  const vals = {};
+  for (const input of skill?.inputs || []) {
+    if (input.default) vals[input.name] = input.default;
+    else if (input.required) vals[input.name] = `[${input.label || input.name.replace(/_/g, ' ')}]`;
+    else vals[input.name] = '';
+  }
+  return vals;
 }
 
 export const SKILL_CAMERA_CHIPS = [
@@ -53,6 +76,14 @@ export function buildParams(step, inputValues, stepOutputs) {
     return { url: resolveRef(ref.url, inputValues, stepOutputs), role: ref.role || null };
   });
   const urls = refs.map((r) => r.url).filter(Boolean);
+  if (step.type === 'clipping') {
+    // The clipping service takes a single source video, not an images_list.
+    return {
+      video_url: urls[0],
+      aspect_ratio: step.aspectRatio || '9:16',
+      num_highlights: step.numHighlights,
+    };
+  }
   if (urls.length > 0) {
     params.images_list = urls;
   }
@@ -72,13 +103,22 @@ function getUrl(result) {
   );
 }
 
-export async function runSkill(apiKey, skill, inputValues, onStep) {
+export async function runSkill(apiKey, skill, inputValues, onStep, options = {}) {
+  const { onApproval, signal } = options;
   const stepOutputs = [];
   for (let i = 0; i < skill.steps.length; i++) {
     const step = skill.steps[i];
+    if (signal?.aborted) throw new Error('Run cancelled');
     onStep(i, { status: 'running' });
     try {
-      if (step.type === 'approval' || step.type === 'script') {
+      if (step.type === 'approval') {
+        // Pause until the person approves the previous output; false = stop here.
+        const approved = onApproval ? await onApproval(i, step) : true;
+        if (!approved) throw new Error('Run stopped at approval step');
+        onStep(i, { status: 'done', note: step.note || '' });
+        continue;
+      }
+      if (step.type === 'script') {
         onStep(i, { status: 'done', note: step.note || '' });
         continue;
       }
@@ -103,13 +143,15 @@ export async function runSkill(apiKey, skill, inputValues, onStep) {
       } else if (step.type === 'audio') {
         result = await muapi.generateAudio(apiKey, params);
       } else if (step.type === 'character') {
-        result = await muapi.generateCharacterVideo(apiKey, params);
+        // generateCharacterVideo is a stub. The character model (seedance-2-character)
+        // is registered as an image-to-image model, and generateI2V would not find it
+        // and would drop the reference images, so dispatch through generateI2I.
+        result = await muapi.generateI2I(apiKey, params);
+      } else if (step.type === 'clipping') {
+        result = await muapi.runClipping(apiKey, params);
       } else {
-        // edit / clipping
-        result =
-          typeof muapi.runClipping === 'function'
-            ? await muapi.runClipping(apiKey, params)
-            : await muapi.generateI2I(apiKey, params);
+        // edit and any other step: image-to-image
+        result = await muapi.generateI2I(apiKey, params);
       }
       const url = getUrl(result);
       stepOutputs[i] = { url };
