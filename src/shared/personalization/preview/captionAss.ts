@@ -1,6 +1,7 @@
-import { generateAss, cuesToWords, type AssAnimation, type AssStyle } from '../captions/assExport'
+import { generateAss, cuesToWords, type AssAnimation, type AssStyle, type AssWord } from '../captions/assExport'
 import { detectScript, representativeLanguage } from '../captions/scripts'
 import { CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import { visibleWordRange } from './capite/activeWord'
 import type { CaptionSettings } from './captions'
 
 /**
@@ -12,7 +13,9 @@ const POSITION_PCT = { bottom: 10, middle: 46, top: 86 } as const
 const REFERENCE_HEIGHT = 1920
 
 export function captionsToAss(c: CaptionSettings, o: { width: number; height: number }): string {
-  const words = cuesToWords(c.cues)
+  // A caption's language: the saved one, else read from its own letters (so English next to Japanese keeps its own font).
+  const lang = (text: string) => c.language ?? representativeLanguage(detectScript(text))
+  const words: AssWord[] = c.cues.flatMap((cue, group) => cuesToWords([cue]).map((w) => ({ ...w, group, language: lang(cue.text) })))
   if (!words.length) return ''
   const st = c.style
   const config = st.preset.startsWith('capite-') ? (CAPTION_STYLE_CONFIGS as Record<string, { fontName: string; fontNameFallback: string } | undefined>)[st.preset.slice('capite-'.length)] : undefined
@@ -38,6 +41,6 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
     animation,
     background: st.box ? { color: st.boxColor, opacity: st.boxOpacity } : undefined,
   }
-  const language = c.language ?? representativeLanguage(detectScript(c.cues.map((x) => x.text).join(' ')))
-  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original' })
+  const language = lang(c.cues.map((x) => x.text).join(' '))
+  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original', sizing: 'preview', visibleRange: st.windowed ? visibleWordRange : undefined })
 }

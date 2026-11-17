@@ -56,8 +56,8 @@ describe('captionsToAss', () => {
     expect(d).toHaveLength(2)
     expect(d[0]).not.toContain('LATER')
     expect(d[1]).not.toContain('HELLO')
-    expect(d[0]).toContain('0:00:00.00,0:00:00.99')
-    expect(d[1]).toContain('0:00:10.00,0:00:10.99')
+    expect(d[0]).toContain('0:00:00.00,0:00:01.00')
+    expect(d[1]).toContain('0:00:10.00,0:00:11.00')
   })
   describe('review fixes', () => {
     it('exports a box behind the whole caption (Boxed, Brand bar) as a background, not as the moving word box', () => {
@@ -79,6 +79,25 @@ describe('captionsToAss', () => {
         const d = dialogues(captionsToAss(caps({ style }), opts)).join('\n')
         expect(d, animation).not.toMatch(/\\fscx1[012]\d|\\blur|\\3a&H00&|\\kf/)
       }
+    })
+  })
+  describe('like the preview', () => {
+    it('shows the moving five-word window when the style is windowed, and every word otherwise', () => {
+      const text = 'a b c d e f g h'
+      const one = (windowed: boolean) => caps({ cues: [{ id: 'x', start: 0, end: 8, text }], style: { ...DEFAULT_CAPTION_STYLE, windowed, uppercase: false } })
+      const count = (line: string) => line.replace(/\{[^}]*\}/g, '').split(',,').pop()!.trim().split(/\s+/).filter(Boolean).length
+      expect(Math.max(...dialogues(captionsToAss(one(true), opts)).map(count))).toBeLessThanOrEqual(5)
+      expect(Math.max(...dialogues(captionsToAss(one(false), opts)).map(count))).toBe(8)
+    })
+    it('styles an English caption and a Japanese caption each for its own script when no language is saved', () => {
+      const ass = captionsToAss(caps({ cues: [{ id: 'a', start: 0, end: 1, text: 'Hello' }, { id: 'b', start: 2, end: 3, text: 'こんにちは' }] }), opts)
+      expect(ass.match(/^Style: /gm)).toHaveLength(2)
+    })
+    it('sizes Arabic text as the preview does, not at the legacy half size', () => {
+      const size = (ass: string) => Number(ass.split('\n').find((l) => l.startsWith('Style: '))!.split(',')[2])
+      const arabic = size(captionsToAss(caps({ language: 'ar' }), opts))
+      const english = size(captionsToAss(caps({ language: 'en' }), opts))
+      expect(arabic / english).toBeGreaterThan(0.55)
     })
   })
 })
