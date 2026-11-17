@@ -39,7 +39,7 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
           style={{
             maxWidth: '100%',
             textAlign: 'center',
-            fontFamily: script.id === 'latin' ? fontStackById(fontFamily) : `${fontStackById(fontFamily)}, ${script.fallbackStack}`,
+            fontFamily: script.id === 'latin' ? fontStackById(fontFamily) : `${script.fallbackStack}, ${fontStackById(fontFamily)}`,
             ...(script.rtl ? { direction: 'rtl' as const } : {}),
             fontSize,
             fontWeight: st.bold ? 800 : 500,

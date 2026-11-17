@@ -49,4 +49,13 @@ describe('captionsToAss', () => {
     expect(captionsToAss(caps({ cues: [{ id: 'a', start: 0, end: 1, text: '你好世界' }] }), opts)).toContain('Style: Default,Noto Sans,')
   })
   it('is empty when there are no captions', () => { expect(captionsToAss(caps({ cues: [] }), opts)).toBe('') })
+  it('keeps separate captions apart and ends each with its own caption', () => {
+    const c = caps({ cues: [{ id: 'a', start: 0, end: 1, text: 'Hello' }, { id: 'b', start: 10, end: 11, text: 'Later' }] })
+    const d = dialogues(captionsToAss(c, opts))
+    expect(d).toHaveLength(2)
+    expect(d[0]).not.toContain('LATER')
+    expect(d[1]).not.toContain('HELLO')
+    expect(d[0]).toContain('0:00:00.00,0:00:00.99')
+    expect(d[1]).toContain('0:00:10.00,0:00:10.99')
+  })
 })

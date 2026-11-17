@@ -35,4 +35,12 @@ describe('CaptionsLayer: other languages and scripts', () => {
     expect(cjk).toBeLessThan(latin)
     expect(cjk).toBeGreaterThanOrEqual(latin * 0.6 - 1)
   })
+  it('puts the script\'s fonts BEFORE the generic families, so an installed Arabic or CJK font is used instead of whatever the system font covers', () => {
+    for (const [text, language, font] of [['مرحبا', 'ar', 'Noto Sans Arabic'], ['שלום', 'he', 'Noto Sans Hebrew'], ['こんにちは', 'ja', 'Noto Sans JP']] as const) {
+      const stack = line(caps(text, language)).style.fontFamily
+      expect(stack.indexOf(font), language).toBeGreaterThan(-1)
+      expect(stack.indexOf(font), language).toBeLessThan(stack.indexOf('system-ui'))
+      expect(stack.indexOf(font), language).toBeLessThan(stack.indexOf('ui-sans-serif'))
+    }
+  })
 })
