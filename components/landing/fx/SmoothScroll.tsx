@@ -126,14 +126,19 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
       if (lenis) {
         lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el) });
       } else {
-        window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'instant' : 'smooth' });
+        const destination = targetTop(el, null, extraOffset);
+        window.scrollTo({ top: destination, behavior: reduced ? 'instant' : 'smooth' });
         let started = false;
         const start = () => {
           if (started || cancelled) return;
           started = true;
           keepAligned(el);
         };
-        if (reduced) start();
+        // Already there (or pinned against the page end): the browser doesn't
+        // scroll, so no scrollend would ever come; align right away.
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const noMove = Math.abs(Math.min(Math.max(destination, 0), maxScroll) - window.scrollY) < 1;
+        if (reduced || noMove) start();
         else if ('onscrollend' in window) {
           // Start once the glide has really finished, not on a guess.
           onScrollEnd = start;
