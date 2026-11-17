@@ -142,14 +142,14 @@ const nextConfig = {
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
-  // SmartKiln studio: client-side routes of the embedded dashboard (public/smartkiln-app) serve its own index.html, and Help
-  // pages (public/smartkiln-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
+  // SmartWarmupAI studio: client-side routes of the embedded dashboard (public/smartwarmupai-app) serve its own index.html, and Help
+  // pages (public/smartwarmupai-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
   async rewrites() {
     return {
       afterFiles: [
-        { source: '/smartkiln-app/:path*', destination: '/smartkiln-app/index.html' },
-        { source: '/smartkiln-help', destination: '/smartkiln-help/index.html' },
-        { source: '/smartkiln-help/:path*', destination: '/smartkiln-help/:path*/index.html' },
+        { source: '/smartwarmupai-app/:path*', destination: '/smartwarmupai-app/index.html' },
+        { source: '/smartwarmupai-help', destination: '/smartwarmupai-help/index.html' },
+        { source: '/smartwarmupai-help/:path*', destination: '/smartwarmupai-help/:path*/index.html' },
       ],
     };
   },
