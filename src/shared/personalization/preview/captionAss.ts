@@ -17,7 +17,8 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
   const st = c.style
   const config = st.preset.startsWith('capite-') ? (CAPTION_STYLE_CONFIGS as Record<string, { fontName: string; fontNameFallback: string } | undefined>)[st.preset.slice('capite-'.length)] : undefined
   const fontSize = Math.round(st.size * REFERENCE_HEIGHT)
-  const animation: AssAnimation = st.box ? 'box' : st.animation ?? 'highlight'
+  // No "Highlight word" means no word effect at all (the preview marks no word active); a box behind the whole caption is a background.
+  const animation: AssAnimation = st.highlight === 'none' ? 'highlight' : st.animation ?? 'highlight'
   const style: AssStyle = {
     fontName: config?.fontName ?? 'Inter',
     fontNameFallback: config?.fontNameFallback ?? 'Noto Sans',
@@ -35,7 +36,7 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
     letterSpacing: st.letterSpacing ? st.letterSpacing * fontSize : 0,
     wordSpacing: st.wordSpacing ? 100 + (st.wordSpacing / 0.3) * 100 : 100,
     animation,
-    boxColor: st.box ? st.boxColor : undefined,
+    background: st.box ? { color: st.boxColor, opacity: st.boxOpacity } : undefined,
   }
   const language = c.language ?? representativeLanguage(detectScript(c.cues.map((x) => x.text).join(' ')))
   return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original' })

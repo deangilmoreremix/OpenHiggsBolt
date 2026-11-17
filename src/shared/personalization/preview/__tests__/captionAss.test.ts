@@ -32,11 +32,12 @@ describe('captionsToAss', () => {
     expect(ass).not.toContain('Style: Default,Inter,')
     expect(dialogues(ass).length).toBeGreaterThan(0)
   })
-  it('turns the highlight off when the style has none, and the box into the box effect', () => {
+  it('turns the highlight off when the style has none, and a caption box into a background behind the whole caption', () => {
     const none = captionsToAss(caps({ style: { ...DEFAULT_CAPTION_STYLE, highlight: 'none' } }), opts)
     expect(dialogues(none)[1]).not.toContain(DEFAULT_CAPTION_STYLE.highlightColor.replace('#', '').toUpperCase())
     const boxed = captionsToAss(caps({ style: { ...DEFAULT_CAPTION_STYLE, box: true } }), opts)
-    expect(dialogues(boxed)[0]).toContain('\\3a&H00&')
+    expect(boxed).toMatch(/,100,100,[^,]*,0,3,/) // BorderStyle 3: a box behind every word
+    expect(dialogues(boxed)[0]).not.toContain('\\3a&H00&') // not the moving word box
   })
   it('keeps the casing the style asks for and places top, middle and bottom at different heights', () => {
     expect(dialogues(captionsToAss(caps({ style: { ...DEFAULT_CAPTION_STYLE, uppercase: false } }), opts))[0]).toContain('Call')
@@ -57,5 +58,27 @@ describe('captionsToAss', () => {
     expect(d[1]).not.toContain('HELLO')
     expect(d[0]).toContain('0:00:00.00,0:00:00.99')
     expect(d[1]).toContain('0:00:10.00,0:00:10.99')
+  })
+  describe('review fixes', () => {
+    it('exports a box behind the whole caption (Boxed, Brand bar) as a background, not as the moving word box', () => {
+      const style = captionPreset('boxed', brand)!
+      expect(style.box).toBe(true)
+      const ass = captionsToAss(caps({ style }), opts)
+      expect(ass).toMatch(/,100,100,[^,]*,0,3,/) // BorderStyle 3 for the whole caption
+      expect(dialogues(ass).join('\n')).not.toContain('\\3a&H00&') // no per-word box
+      expect(ass).toContain('&H') // opacity carried in the colour
+    })
+    it('keeps the selected word effect and a background together', () => {
+      const style = { ...DEFAULT_CAPTION_STYLE, box: true, animation: 'scale' as const }
+      const d = dialogues(captionsToAss(caps({ style }), opts)).join('\n')
+      expect(d).toContain('\\fscx110')
+    })
+    it('exports no word effect at all when "Highlight word" is off', () => {
+      for (const animation of ['scale', 'pop', 'bounce', 'glow', 'box', 'karaoke'] as const) {
+        const style = { ...DEFAULT_CAPTION_STYLE, highlight: 'none' as const, animation }
+        const d = dialogues(captionsToAss(caps({ style }), opts)).join('\n')
+        expect(d, animation).not.toMatch(/\\fscx1[012]\d|\\blur|\\3a&H00&|\\kf/)
+      }
+    })
   })
 })
