@@ -70,3 +70,5 @@ import '../../../styles/landing-pages/puck/65-pc-grooming-short.css';
 import '../../../styles/landing-pages/puck/66-pd-drone-long.css';
 import '../../../styles/landing-pages/puck/67-pd-grooming-long.css';
 import '../../../styles/landing-pages/puck/68-pd-bees-long.css';
+import '../../../styles/landing-pages/puck/69-pd-grease-long.css';
+import '../../../styles/landing-pages/puck/70-pd-backflow-long.css';
