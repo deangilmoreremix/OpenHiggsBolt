@@ -142,9 +142,16 @@ const nextConfig = {
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
-  // Client-side routes of the embedded Warmbly dashboard (public/warmbly-app) serve its own index.html; real files win.
+  // Mailkiln studio: client-side routes of the embedded dashboard (public/mailkiln-app) serve its own index.html, and Help
+  // pages (public/mailkiln-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
   async rewrites() {
-    return { afterFiles: [{ source: '/warmbly-app/:path*', destination: '/warmbly-app/index.html' }] };
+    return {
+      afterFiles: [
+        { source: '/mailkiln-app/:path*', destination: '/mailkiln-app/index.html' },
+        { source: '/mailkiln-help', destination: '/mailkiln-help/index.html' },
+        { source: '/mailkiln-help/:path*', destination: '/mailkiln-help/:path*/index.html' },
+      ],
+    };
   },
   async redirects() {
     return [
