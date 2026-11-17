@@ -27,8 +27,14 @@ for (const demo of ALL_DEMOS) {
 for (const entry of DEMO_LIBRARY_REGISTRY) {
   const demo = toVideoDemo(entry);
   const key = `${demo.sourceRepo}|${demo.slug}`;
-  if (!DEMO_INDEX.has(key)) DEMO_INDEX.set(key, demo);
-  if (demo.slug && !DEMO_SLUG_INDEX.has(demo.slug)) DEMO_SLUG_INDEX.set(demo.slug, demo);
+  // The library holds the verified, playable (hosted) media and the logo label, so a library clip REPLACES the catalog entry
+  // for the same key (the catalog one points at a local file that was never shipped). The slug index follows only when it
+  // was pointing at the entry being replaced, so a slug shared with another catalog keeps its own demo.
+  const shadowed = DEMO_INDEX.get(key);
+  DEMO_INDEX.set(key, demo);
+  if (demo.slug && (!DEMO_SLUG_INDEX.has(demo.slug) || DEMO_SLUG_INDEX.get(demo.slug) === shadowed)) {
+    DEMO_SLUG_INDEX.set(demo.slug, demo);
+  }
 }
 
 export function findDemoById(templateId: string): VideoDemo | undefined {

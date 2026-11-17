@@ -62,6 +62,16 @@ export const VERIFIED_SOURCE_PROFILES: Readonly<Record<string, VerifiedProfile>>
   },
 })
 
+/**
+ * Hosted copies of a clip whose zones were verified on the local file. Same footage (same 16:9 frame and 15.12 s length),
+ * served from the template library, so the verified protection carries over. Matching stays exact: a URL is only here
+ * after the hosted clip was confirmed to be the same one.
+ */
+const VERIFIED_PROFILE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  'https://bzxohkrxcwodllketcpz.supabase.co/storage/v1/object/public/demo-template-videos/clips/mmxLegacy/luxury-perfume-commercial.webm':
+    '/media/minimax-h3/videos/luxury-perfume-commercial.webm',
+});
+
 export function familyFromSrc(videoSrc: string | null | undefined): SourceFamily {
   const src = videoSrc ?? ''
   const m = /\/media\/(minimax-h3|promptfeed|seedance-1|seedance-25)\//.exec(src)
@@ -84,7 +94,7 @@ export function profileForSource(args: {
   customerZones?: ProtectedZone[]
 }): SourceProfile {
   const videoSrc = args.videoSrc ?? null
-  const verified = videoSrc ? VERIFIED_SOURCE_PROFILES[videoSrc] : undefined
+  const verified = videoSrc ? VERIFIED_SOURCE_PROFILES[VERIFIED_PROFILE_ALIASES[videoSrc] ?? videoSrc] : undefined
   const w = args.width && args.width > 0 ? args.width : null
   const h = args.height && args.height > 0 ? args.height : null
   const thirdParty = namesThirdPartyBrand(videoSrc) || namesThirdPartyBrand(args.title)

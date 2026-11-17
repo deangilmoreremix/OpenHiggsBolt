@@ -21,7 +21,7 @@ import { describe, it, expect } from 'vitest'
 import { closeSync, existsSync, openSync, readSync, statSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { getCreateUrl } from '../types'
-import { findDemoById } from '../demoLookup'
+import { findDemoById, findDemoBySlug } from '../demoLookup'
 import {
   DEMO_LIBRARY_REGISTRY,
   DEMO_COLLECTION_IDS,
@@ -289,5 +289,14 @@ describe('DEMO_LIBRARY_REGISTRY — metadata', () => {
       expect(() => getCreateUrl(demo)).not.toThrow()
       expect(getCreateUrl(demo)).toContain(encodeURIComponent(templateId))
     }
+  })
+})
+
+describe('lookups prefer the library clip over the catalog entry for the same key', () => {
+  it('opens the hosted clip (with its logo label) for a legacy slug, by slug and by template id', () => {
+    const bySlug = findDemoBySlug('luxury-perfume-commercial')
+    expect(bySlug?.videoSrc, 'hosted media').toMatch(/^https:\/\//)
+    const byId = findDemoById(`${bySlug!.sourceRepo}|${bySlug!.slug}`)
+    expect(byId?.videoSrc).toBe(bySlug!.videoSrc)
   })
 })
