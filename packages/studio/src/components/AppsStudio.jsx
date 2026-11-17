@@ -376,12 +376,14 @@ const COLLAB_APPS = COLLAB_SUITE_URL
     ].map(([id, name, description]) => ({
       id: `collab-${id}`, name, description, category: "Collaboration",
       hosted: `${COLLAB_SUITE_URL}/#/${id}`,
+      linkOnly: true, // not a reseller app: no guide, workshop, download or deploy actions
     }))
   : [];
 
-APPS.push(...COLLAB_APPS);
+// Display list only. RESELLER_APPS stays the original catalog so reseller flows never see link-only entries.
+const CATALOG_APPS = [...APPS, ...COLLAB_APPS];
 
-const CATEGORIES = ["All", ...Array.from(new Set(APPS.map(app => app.category)))];
+const CATEGORIES = ["All", ...Array.from(new Set(CATALOG_APPS.map(app => app.category)))];
 
 /**
  * Customer-facing deployment documentation. Every card's "Deployment Guide"
@@ -551,7 +553,7 @@ export default function AppsStudio({ locale = "en" }) {
 
   const filteredApps = useMemo(() => {
     const normalizedQuery = debouncedSearchQuery.trim().toLowerCase();
-    return APPS.filter(app => {
+    return CATALOG_APPS.filter(app => {
       const localizedCategory = categoryLabel(app.category, copy);
 
       const matchesSearch = !normalizedQuery ||
@@ -816,7 +818,7 @@ export default function AppsStudio({ locale = "en" }) {
             <p role="status" aria-live="polite" className="text-xs text-white/60 font-medium tracking-wide">
               {copy.filter.results
                 .replace('{count}', String(filteredApps.length))
-                .replace('{total}', String(APPS.length))}
+                .replace('{total}', String(CATALOG_APPS.length))}
             </p>
           </div>
 
@@ -936,6 +938,7 @@ export default function AppsStudio({ locale = "en" }) {
                         {copy.card.demo}
                       </a>
                     ) : null}
+                    {app.linkOnly ? null : (<>
                     <a
                       href={deploymentGuideUrl(app.id)}
                       aria-label={copy.card.deploymentGuideLabel.replace('{app}', app.name)}
@@ -1005,6 +1008,7 @@ export default function AppsStudio({ locale = "en" }) {
                       <FaGraduationCap aria-hidden="true" focusable="false" className="text-[11px]" />
                       {copy.card.learnToLaunch}
                     </a>
+                    </>)}
                   </div>
                 </div>
 
