@@ -72,3 +72,8 @@ import '../../../styles/landing-pages/puck/67-pd-grooming-long.css';
 import '../../../styles/landing-pages/puck/68-pd-bees-long.css';
 import '../../../styles/landing-pages/puck/69-pd-grease-long.css';
 import '../../../styles/landing-pages/puck/70-pd-backflow-long.css';
+import '../../../styles/landing-pages/puck/74-pc-crawl-beforeafter.css';
+import '../../../styles/landing-pages/puck/75-pc-septic-elite.css';
+import '../../../styles/landing-pages/puck/71-pd-septic-pumping.css';
+import '../../../styles/landing-pages/puck/72-pd-crawl-worker.css';
+import '../../../styles/landing-pages/puck/73-pd-crawl-neon.css';

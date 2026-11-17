@@ -68,6 +68,11 @@ import d66 from './designs/67-pd-grooming-long.js';
 import d67 from './designs/68-pd-bees-long.js';
 import d68 from './designs/69-pd-grease-long.js';
 import d69 from './designs/70-pd-backflow-long.js';
+import d70 from './designs/74-pc-crawl-beforeafter.js';
+import d71 from './designs/75-pc-septic-elite.js';
+import d72 from './designs/71-pd-septic-pumping.js';
+import d73 from './designs/72-pd-crawl-worker.js';
+import d74 from './designs/73-pd-crawl-neon.js';
 
 /**
  * Editable-page templates: plain data (no React) so templates.js can list them.
@@ -125,7 +130,7 @@ const STARTER = [
 ];
 
 // One file per converted design (puck/designs/NN-name.js, default export = a template object).
-const EXTRA = [d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22, d23, d24, d25, d26, d27, d28, d29, d30, d31, d32, d33, d34, d35, d36, d37, d38, d39, d40, d41, d42, d43, d44, d45, d46, d47, d48, d49, d50, d51, d52, d53, d54, d55, d56, d57, d58, d59, d60, d61, d62, d63, d64, d65, d66, d67, d68, d69].filter(Boolean);
+const EXTRA = [d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22, d23, d24, d25, d26, d27, d28, d29, d30, d31, d32, d33, d34, d35, d36, d37, d38, d39, d40, d41, d42, d43, d44, d45, d46, d47, d48, d49, d50, d51, d52, d53, d54, d55, d56, d57, d58, d59, d60, d61, d62, d63, d64, d65, d66, d67, d68, d69, d70, d71, d72, d73, d74].filter(Boolean);
 
 // A design that never mentions the person gets the greeting strip, so a personal link is always visibly personal
 // (generic visitors never see it). Designs that already greet by name are left alone.
