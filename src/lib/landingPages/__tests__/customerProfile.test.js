@@ -53,10 +53,30 @@ describe('merge / dedupe', () => {
   });
 });
 
+describe('dedupe keeps distinct people', () => {
+  it('does not merge two people who share a company', () => {
+    const ann = normalizeCustomer({ id: 'a', name: 'Ann Lee', businessName: 'Acme', email: 'ann@acme.com' }, 'client');
+    const bob = normalizeCustomer({ id: 'b', name: 'Bob Ray', businessName: 'Acme', email: 'bob@acme.com' }, 'client');
+    const list = dedupeCustomers([ann, bob]);
+    expect(list).toHaveLength(2);
+    expect(list.map((c) => c.tokens.firstname)).toEqual(['Ann', 'Bob']);
+  });
+  it('still merges the same person (same email, different id)', () => {
+    const a = normalizeCustomer({ id: 'a', name: 'Ann Lee', businessName: 'Acme', email: 'ANN@acme.com' }, 'client');
+    const b = normalizeCustomer({ id: 'z', name: 'Ann Lee', businessName: 'Acme', email: 'ann@acme.com', phone: '555 0100' }, 'lead');
+    expect(dedupeCustomers([a, b])).toHaveLength(1);
+  });
+  it('still folds a business-only record into its business', () => {
+    const ann = normalizeCustomer({ id: 'a', name: 'Ann Lee', businessName: 'Acme' }, 'client');
+    const biz = normalizeCustomer({ id: 'l', business: { name: 'acme', website: 'https://acme.test' } }, 'lead');
+    expect(dedupeCustomers([ann, biz])).toHaveLength(1);
+  });
+});
+
 describe('tokens and contact row', () => {
   const c = normalizeCustomer(CLIENT, 'client', { assets: ASSETS });
   it('customerTokens only returns the public page tokens', () => {
-    expect(Object.keys(customerTokens(c)).sort()).toEqual(['city', 'company', 'companylogo', 'firstname', 'lastname']);
+    expect(Object.keys(customerTokens(c)).sort()).toEqual(['city', 'company', 'companylogo', 'custom1', 'custom2', 'firstname', 'lastname']); // custom1/custom2 = city / the person, for designs that read those
   });
   it('toContactFields keeps the email (owner only) and skips customers with nothing to personalize', () => {
     expect(toContactFields(c).email).toBe('dana@riversideplumbing.com');
@@ -75,10 +95,10 @@ describe('applyCustomerToPuck on every design', () => {
       expect(data.content.map((x) => x.type)).toEqual(t.puckData.content.map((x) => x.type));
       expect(data.root.props.accent).toBe('#ff8a1f');
       expect(applied).toContain('page colour');
-      const nav = data.content.find((x) => x.type === 'NavBar');
+      const nav = data.content.find((x) => /Nav(Bar)?$/.test(x.type));
       if (nav) { expect(nav.props.brand).toBe('Riverside Plumbing'); expect(nav.props.logo).toBe('https://cdn.test/logo.png'); }
       // everything except the brand slots is untouched
-      const strip = (d) => JSON.stringify(d.content.map((x) => (x.type === 'NavBar' || x.type === 'Footer' ? { type: x.type } : x)));
+      const strip = (d) => JSON.stringify(d.content.map((x) => (/Nav(Bar)?$/.test(x.type) || x.type === 'Footer' ? { type: x.type } : x)));
       expect(strip(data)).toBe(strip(t.puckData));
     });
   });
