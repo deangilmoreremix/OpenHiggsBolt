@@ -4,7 +4,7 @@
  * Colors that equal a brand color are stored as a brand reference (`@primary`, `@accent`, `@text`), so applying a style
  * in another project uses THAT project's brand colors.
  */
-import type { CaptionStyle } from './captions'
+import { normalizeCaptions, type CaptionStyle } from './captions'
 import { normalizeLayerEffects, type LayerEffects } from './effects'
 import type { PreviewAnimationId, PreviewBrandColors, PreviewLayer } from './types'
 
@@ -134,7 +134,24 @@ function normalizeCaptionLook(raw: unknown): CaptionLook | undefined {
     box: raw.box === true,
     uppercase: raw.uppercase === true,
     bold: raw.bold !== false,
+    ...extraCaptionFields(raw),
   }
+}
+
+/** The fields Capite's styles add, validated the same way as in captions.ts. */
+function extraCaptionFields(raw: Record<string, unknown>): Partial<CaptionLook> {
+  const n = normalizeCaptions({ enabled: false, cues: [], style: { ...raw, color: '#000000', highlightColor: '#000000', boxColor: '#000000' } })?.style
+  if (!n) return {}
+  const out: Partial<CaptionLook> = {}
+  if (n.animation) out.animation = n.animation
+  if (n.italic) out.italic = true
+  if (n.outline) out.outline = n.outline
+  if (n.shadow) out.shadow = n.shadow
+  if (n.letterSpacing !== undefined) out.letterSpacing = n.letterSpacing
+  if (n.wordSpacing !== undefined) out.wordSpacing = n.wordSpacing
+  if (n.windowed) out.windowed = true
+  if (n.category) out.category = n.category
+  return out
 }
 
 export function normalizeTextStyles(raw: unknown): SavedTextStyle[] | undefined {

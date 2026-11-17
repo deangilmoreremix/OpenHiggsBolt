@@ -4,6 +4,7 @@ import { activeCue, captionWords, cueEntrance, type CaptionSettings } from './ca
 import { TEXT_SHADOW } from './textStyle'
 import { fontStackById } from './presets'
 import { hexWithAlpha } from './effects'
+import { ACTIVE_WORD, visibleWordRange } from './capite/activeWord'
 
 /**
  * The caption line on screen at this frame, with the spoken word highlighted. Plain text, a rounded box and a text shadow, which
@@ -19,6 +20,9 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
   const st = captions.style
   const fontSize = Math.round(compH * st.size)
   const words = captionWords(cue, frame, fps, st.highlight)
+  const activeIdx = words.findIndex((w) => w.active)
+  const [from, to] = st.windowed ? visibleWordRange(words.length, activeIdx) : [0, words.length]
+  const shown = words.map((w, i) => ({ w, i })).slice(from, to)
   const { opacity, rise } = cueEntrance(cue, frame, fps)
   const edge = Math.round(compH * 0.07)
   const place: React.CSSProperties =
@@ -35,22 +39,46 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
             fontSize,
             fontWeight: st.bold ? 800 : 500,
             lineHeight: 1.2,
-            letterSpacing: st.uppercase ? '0.02em' : '-0.005em',
+            letterSpacing: st.letterSpacing !== undefined ? `${st.letterSpacing}em` : st.uppercase ? '0.02em' : '-0.005em',
+            wordSpacing: st.wordSpacing ? `${st.wordSpacing}em` : undefined,
+            fontStyle: st.italic ? 'italic' : undefined,
             color: st.color,
-            textShadow: st.box ? 'none' : TEXT_SHADOW,
+            ...(st.outline ? { WebkitTextStroke: `${(st.outline.size * 2).toFixed(3)}em ${st.outline.color}`, paintOrder: 'stroke fill' as React.CSSProperties['paintOrder'] } : {}),
+            textShadow: st.box ? 'none' : st.shadow ? `0 ${st.shadow.depth}em ${(st.shadow.depth * 1.6).toFixed(3)}em ${hexWithAlpha(st.shadow.color, st.shadow.alpha)}` : TEXT_SHADOW,
             ...(st.box
               ? { background: hexWithAlpha(st.boxColor, st.boxOpacity), padding: '0.25em 0.6em', borderRadius: '0.6em' }
               : {}),
           }}
         >
-          {words.map((w, i) => (
-            <React.Fragment key={i}>
-              {i > 0 ? ' ' : null}
-              <span data-testid="caption-word" data-active={w.active ? '1' : '0'} style={{ color: w.active ? st.highlightColor : st.color, textTransform: st.uppercase ? 'uppercase' : undefined }}>
-                {w.text}
-              </span>
-            </React.Fragment>
-          ))}
+          {shown.map(({ w, i }, n) => {
+            const look = st.animation ? ACTIVE_WORD[st.animation] : null
+            const ramp = w.active && look ? Math.min(1, (w.elapsed ?? 1) / 0.12) : 0
+            const scale = look && w.active ? 1 + (look.scale - 1) * ramp : 1
+            const rise = look && w.active ? look.rise * ramp : 0
+            const boxed = w.active && look?.box
+            const glow = w.active && look?.glow
+            const karaoke = w.active && st.animation === 'karaoke'
+            const pct = Math.round((w.progress ?? 0) * 100)
+            return (
+              <React.Fragment key={i}>
+                {n > 0 ? ' ' : null}
+                <span
+                  data-testid="caption-word"
+                  data-active={w.active ? '1' : '0'}
+                  style={{
+                    color: karaoke ? 'transparent' : boxed ? st.color : w.active ? st.highlightColor : st.color,
+                    textTransform: st.uppercase ? 'uppercase' : undefined,
+                    ...(scale !== 1 || rise ? { display: 'inline-block', transform: `translateY(${(rise * fontSize).toFixed(2)}px) scale(${scale.toFixed(3)})` } : {}),
+                    ...(glow ? { display: 'inline-block', filter: `drop-shadow(0 0 ${glow[0]}em ${st.highlightColor}) drop-shadow(0 0 ${glow[1]}em ${st.highlightColor})` } : {}),
+                    ...(boxed && look?.box ? { display: 'inline-block', background: st.highlightColor, borderRadius: `${look.box.radius}em`, padding: `${look.box.padY}em ${look.box.padX}em`, WebkitTextStroke: undefined } : {}),
+                    ...(karaoke ? { background: `linear-gradient(90deg, ${st.highlightColor} ${pct}%, ${st.color} ${pct}%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' } : {}),
+                  }}
+                >
+                  {w.text}
+                </span>
+              </React.Fragment>
+            )
+          })}
         </div>
       </div>
     </AbsoluteFill>
