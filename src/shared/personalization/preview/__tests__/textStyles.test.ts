@@ -4,7 +4,7 @@ import {
   MAX_TEXT_STYLES, addStyle, applyCaptionStyle, applyTextStyle, captureCaptionStyle, captureTextStyle, deleteStyle, normalizeTextStyles,
   readBrowserStyles, renameStyle, rememberInBrowser, uniqueName, BROWSER_STYLES_KEY, type SavedTextStyle,
 } from '../textStyles'
-import { captionPreset } from '../captions'
+import { capiteLook, captionPreset } from '../captions'
 import { normalizePreviewSettings } from '../presets'
 import type { PreviewLayer } from '../types'
 
@@ -44,6 +44,22 @@ describe('captions styles', () => {
     const back = applyCaptionStyle(look, other)
     expect(back.boxColor).toBe('#aa0000')
     expect(back.preset).toBe('custom')
+  })
+  it('keeps a Capite look when a style is saved, read back and applied (also through a saved project)', () => {
+    const saved = captureCaptionStyle(capiteLook('hormozi')!, brand)
+    expect(saved.look).toBe('hormozi')
+    const entry: SavedTextStyle = { id: 's1', name: 'Hormozi', kind: 'captions', style: saved }
+    const read = normalizeTextStyles([entry])![0] as Extract<SavedTextStyle, { kind: 'captions' }>
+    expect(read.style.look).toBe('hormozi')
+    expect(applyCaptionStyle(read.style, other).look).toBe('hormozi')
+    const project = normalizePreviewSettings({ textStyles: [entry] })
+    expect((project.textStyles![0] as Extract<SavedTextStyle, { kind: 'captions' }>).style.look).toBe('hormozi')
+  })
+  it('drops an unknown look id from a saved style but keeps the rest of it', () => {
+    const saved = { ...captureCaptionStyle(captionPreset('boxed', brand)!, brand), look: 'not-a-look' }
+    const read = normalizeTextStyles([{ id: 's2', name: 'x', kind: 'captions', style: saved }])![0] as Extract<SavedTextStyle, { kind: 'captions' }>
+    expect(read.style.look).toBeUndefined()
+    expect(read.style.box).toBe(true)
   })
 })
 

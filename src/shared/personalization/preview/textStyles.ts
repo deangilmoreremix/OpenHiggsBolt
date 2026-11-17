@@ -4,6 +4,7 @@
  * Colors that equal a brand color are stored as a brand reference (`@primary`, `@accent`, `@text`), so applying a style
  * in another project uses THAT project's brand colors.
  */
+import { isCapiteStyleId } from '../captions/capiteStyles'
 import type { CaptionStyle } from './captions'
 import { normalizeLayerEffects, type LayerEffects } from './effects'
 import type { PreviewAnimationId, PreviewBrandColors, PreviewLayer } from './types'
@@ -134,6 +135,8 @@ function normalizeCaptionLook(raw: unknown): CaptionLook | undefined {
     box: raw.box === true,
     uppercase: raw.uppercase === true,
     bold: raw.bold !== false,
+    // A Capite look saved with the style: kept only if it is one of the known ids (an unknown id is dropped, the rest of the style stays).
+    ...(isCapiteStyleId(raw.look) ? { look: raw.look as string } : {}),
   }
 }
 
