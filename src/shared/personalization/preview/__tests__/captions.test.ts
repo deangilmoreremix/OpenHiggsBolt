@@ -124,3 +124,16 @@ describe('presets', () => {
     }
   })
 })
+
+describe('caption language', () => {
+  const base = { enabled: true, cues: [{ id: 'a', start: 0, end: 2, text: 'hello world' }] }
+  it('keeps a language code (with an optional region) and drops anything else', () => {
+    expect(normalizeCaptions({ ...base, language: 'es' })?.language).toBe('es')
+    expect(normalizeCaptions({ ...base, language: 'pt-BR' })?.language).toBe('pt-BR')
+    for (const bad of ['', 'english', 'e', '12', 'es; drop', 42, null, {}]) expect(normalizeCaptions({ ...base, language: bad })?.language, String(bad)).toBeUndefined()
+    expect(normalizeCaptions(base)?.language).toBeUndefined()
+  })
+  it('survives a saved project', () => {
+    expect(normalizePreviewSettings({ captions: { ...base, language: 'ar' } }).captions?.language).toBe('ar')
+  })
+})

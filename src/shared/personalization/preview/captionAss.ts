@@ -1,0 +1,42 @@
+import { generateAss, cuesToWords, type AssAnimation, type AssStyle } from '../captions/assExport'
+import { detectScript, representativeLanguage } from '../captions/scripts'
+import { CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import type { CaptionSettings } from './captions'
+
+/**
+ * The project's captions as an .ass file (Advanced SubStation Alpha) for editors and players that take styled subtitles. Each line's time is
+ * shared between its words by length. A Capite look keeps its font; every style keeps its colours, outline, shadow, spacing, casing and
+ * word effect. Sizes are fractions of the frame height and ems here and pixels at the 1920-px reference frame in the file.
+ */
+const POSITION_PCT = { bottom: 10, middle: 46, top: 86 } as const
+const REFERENCE_HEIGHT = 1920
+
+export function captionsToAss(c: CaptionSettings, o: { width: number; height: number }): string {
+  const words = cuesToWords(c.cues)
+  if (!words.length) return ''
+  const st = c.style
+  const config = st.preset.startsWith('capite-') ? (CAPTION_STYLE_CONFIGS as Record<string, { fontName: string; fontNameFallback: string } | undefined>)[st.preset.slice('capite-'.length)] : undefined
+  const fontSize = Math.round(st.size * REFERENCE_HEIGHT)
+  const animation: AssAnimation = st.box ? 'box' : st.animation ?? 'highlight'
+  const style: AssStyle = {
+    fontName: config?.fontName ?? 'Inter',
+    fontNameFallback: config?.fontNameFallback ?? 'Noto Sans',
+    fontSize,
+    primaryColor: st.color,
+    // No highlight: the spoken word keeps the text colour.
+    highlightColor: st.highlight === 'none' ? st.color : st.highlightColor,
+    outlineColor: st.outline?.color ?? '#000000',
+    shadowColor: st.shadow?.color ?? '#000000',
+    shadowAlpha: st.shadow ? Math.round((1 - st.shadow.alpha) * 255) : 255,
+    outlineSize: st.outline ? st.outline.size * fontSize : 0,
+    shadowDepth: st.shadow ? st.shadow.depth * fontSize : 0,
+    bold: st.bold,
+    italic: st.italic === true,
+    letterSpacing: st.letterSpacing ? st.letterSpacing * fontSize : 0,
+    wordSpacing: st.wordSpacing ? 100 + (st.wordSpacing / 0.3) * 100 : 100,
+    animation,
+    boxColor: st.box ? st.boxColor : undefined,
+  }
+  const language = c.language ?? representativeLanguage(detectScript(c.cues.map((x) => x.text).join(' ')))
+  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original' })
+}
