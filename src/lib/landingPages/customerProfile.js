@@ -142,11 +142,20 @@ export function mergeCustomer(a, b) {
 
 const key = (c) => c.id || '';
 const nameKey = (c) => (c.business.name || `${c.tokens.firstname} ${c.tokens.lastname}`).toLowerCase().replace(/[^a-z0-9]+/g, '');
-/** Same id or same business/person name => one customer (the first one's values win). Keeps order. */
+/** Who the person is (email, else first + last name); '' for a business-only record. */
+const personKey = (c) => (c.email || '').trim().toLowerCase() || `${c.tokens.firstname || ''} ${c.tokens.lastname || ''}`.toLowerCase().replace(/[^a-z0-9]+/g, '');
+/** The same customer: same id; or, when both are named people, the same person; else (a business-only record) the same business name. */
+const sameCustomer = (a, b) => {
+  if (key(a) && key(a) === key(b)) return true;
+  const pa = personKey(a); const pb = personKey(b);
+  if (pa && pb) return pa === pb; // Ann and Bob at Acme are two recipients, not one
+  return !!nameKey(a) && nameKey(a) === nameKey(b);
+};
+/** Same id, same person, or (for business-only records) same business name => one customer (the first one's values win). Keeps order. */
 export function dedupeCustomers(list) {
   const out = [];
   (list || []).filter(Boolean).forEach((c) => {
-    const i = out.findIndex((o) => (key(c) && key(o) === key(c)) || (nameKey(c) && nameKey(o) === nameKey(c)));
+    const i = out.findIndex((o) => sameCustomer(o, c));
     if (i === -1) out.push(c); else out[i] = mergeCustomer(out[i], c);
   });
   return out;
@@ -156,6 +165,9 @@ export function dedupeCustomers(list) {
 export function customerTokens(c) {
   if (!c) return {};
   const t = { ...c.tokens, company: c.tokens.company || c.business.name, companylogo: httpsUrl(c.tokens.companylogo || c.brand.logoUrl) };
+  // The industry designs read their city from {{custom1}} and the person's name from {{custom2}} (e.g. a pet owner).
+  if (!t.custom1 && t.city) t.custom1 = t.city;
+  if (!t.custom2 && t.firstname) t.custom2 = t.firstname;
   return Object.fromEntries(Object.entries(t).filter(([, v]) => v));
 }
 
@@ -183,9 +195,12 @@ const isImageOutput = (url, outputType) => {
  * /api/personalization/project returns them: { client, generation: { outputUrls }, output_type, updated_at }).
  * Matched by client id first, then by business name. Only https pictures; videos and blob: urls are ignored.
  */
+/** When a project's picture was generated: its own stamp, else (older rows) the last time the project was saved. */
+const generatedAt = (r) => String(r?.generation?.outputGeneratedAt || r?.outputGeneratedAt || r?.updated_at || r?.updatedAt || '');
+
 export function personalImagesFromProjects(projects) {
   const rows = (Array.isArray(projects) ? projects : []).filter((r) => r && typeof r === 'object')
-    .sort((a, b) => String(b.updated_at || b.updatedAt || '').localeCompare(String(a.updated_at || a.updatedAt || '')));
+    .sort((a, b) => generatedAt(b).localeCompare(generatedAt(a)));
   const byId = Object.create(null); const byName = Object.create(null); // no inherited keys like "constructor"
   rows.forEach((r) => {
     const gen = r.generation && typeof r.generation === 'object' ? r.generation : {};
@@ -228,7 +243,7 @@ export function applyCustomerToPuck(puckData, customer, { useImage = true, brand
   data.content.forEach((item) => {
     const p = item.props || {};
     if (image && /Hero|VideoSection/.test(item.type) && ('slotImage' in p || 'photo' in p || 'poster' in p || item.type === 'Hero')) { p.slotImage = image; applied.push('personalized image'); }
-    if (item.type === 'NavBar' && writeBrand) {
+    if (/Nav(Bar)?$/.test(item.type) && writeBrand) {
       if (business.name) { p.brand = business.name; applied.push('business name'); }
       if (httpsUrl(brand.logoUrl)) { p.logo = brand.logoUrl; applied.push('logo'); }
       if (!p.loginUrl && business.website) p.loginUrl = business.website;
