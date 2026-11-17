@@ -28,16 +28,17 @@ export function useCustomers(contacts?: any[]) {
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     let live = true
-    fetch('/api/personalization/leads', { credentials: 'same-origin' })
+    const leadsReq = fetch('/api/personalization/leads', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : ({} as { leads?: any[] })))
       .then((d) => { if (live) setLeads(Array.isArray(d?.leads) ? d.leads : []) })
       .catch(() => {})
-      .finally(() => { if (live) setLoading(false) })
     // the customer's saved Personalization projects hold their generated (personalized) pictures
-    fetch('/api/personalization/project', { credentials: 'same-origin' })
+    const projectsReq = fetch('/api/personalization/project', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : ({} as { projects?: any[] })))
       .then((d) => { if (live) setProjects(Array.isArray(d?.projects) ? d.projects : []) })
       .catch(() => {})
+    // "loading" covers BOTH requests, so a page is never created before the personalized pictures are known
+    void Promise.all([leadsReq, projectsReq]).then(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [])
   const result = useMemo(() => {

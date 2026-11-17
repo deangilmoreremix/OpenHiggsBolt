@@ -90,9 +90,10 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
   const choose = (id: string, plain = false) => {
     const t = (TEMPLATES as any[]).find((x) => x.id === id)
     const withBrand = !!one && choice.brand && !plain
+    const withImage = !!one && choice.image && !plain // the picture option works even with the brand option off
     let cfg = defaultConfig(id, { title: video?.title || '', ...(withBrand ? { brand: brandForConfig(one) } : {}) })
     let applied: string[] = []
-    if (withBrand) { const r = applyCustomerToPuck(cfg.puck, one, { useImage: choice.image }); cfg = { ...cfg, puck: r.data }; applied = r.applied }
+    if (withBrand || withImage) { const r = applyCustomerToPuck(cfg.puck, one, { useImage: choice.image, brand: withBrand }); cfg = { ...cfg, puck: r.data }; applied = r.applied }
     data.current = cfg.puck || t?.puckData
     setSession((prev) => ({ cfg, applied, plain, n: (prev?.n || 0) + 1 }))
     setTemplateId(id); setError(''); setView('edit')
@@ -162,7 +163,7 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
             {video ? <p className="text-xs text-white/40 mb-4">Click a design to see the full page with your video in it, edit every word, then save.</p> : null}
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {list.map((t: any) => (
-                <button key={t.id} type="button" onClick={() => choose(t.id)} className={`${ui.card} text-left hover:border-primary/50 transition-colors`}>
+                <button key={t.id} type="button" disabled={loading} onClick={() => choose(t.id)} className={`${ui.card} text-left hover:border-primary/50 transition-colors`}>
                   <div className="mb-2"><DesignPreview data={t.puckData} label={t.name} /></div>
                   <div className="text-xs font-bold text-white leading-tight">{t.name}</div>
                   <div className="text-[10px] text-white/40 mt-1 line-clamp-2">{t.description}</div>
@@ -177,11 +178,11 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
             {choice.selected.length ? (
               <p data-personalized-note className="text-xs text-primary flex flex-wrap items-center gap-2">
                 <span>
-                  {session && !session.plain && one && choice.brand
+                  {session && !session.plain && one && (choice.brand || choice.image)
                     ? `Personalized for ${one.label}${session.applied.length ? `: ${session.applied.join(', ')} filled in` : ''}. Previewing as ${choice.selected[0].label}.`
                     : one ? `Plain design. Previewing as ${one.label}.` : `${choice.selected.length} personal links will be made when you save. Previewing as ${choice.selected[0].label}.`}
                 </span>
-                {session && !session.plain && one && choice.brand ? <button type="button" className="underline text-white" onClick={() => choose(templateId, true)}>Use the plain design</button> : null}
+                {session && !session.plain && one && (choice.brand || choice.image) ? <button type="button" className="underline text-white" onClick={() => choose(templateId, true)}>Use the plain design</button> : null}
               </p>
             ) : null}
             <div className="hb-puck flex-1 min-h-0 rounded-2xl border border-white/10 overflow-hidden">

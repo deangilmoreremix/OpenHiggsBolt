@@ -59,8 +59,9 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
     try {
       const one = choice.selected.length === 1 ? choice.selected[0] : null
       const withBrand = !!one && choice.brand
+      const withImage = !!one && choice.image
       const config = defaultConfig(template, { title: video.title, ...(withBrand ? { brand: brandForConfig(one) } : {}) })
-      if (withBrand && config.puck) config.puck = applyCustomerToPuck(config.puck, one, { useImage: choice.image }).data
+      if ((withBrand || withImage) && config.puck) config.puck = applyCustomerToPuck(config.puck, one, { useImage: choice.image, brand: withBrand }).data
       let page = await createPage({ title: video.title, videoUrl: video.url, posterUrl: video.posterUrl, source: video.source, config })
       const rows = choice.selected.map(toContactFields).filter(Boolean).map((fields: any) => ({ fields }))
       if (rows.length) {
@@ -143,7 +144,7 @@ export default function NewPageFlow({ queued, onCancel, onCreated }: { queued?: 
         <CustomerPanel customers={customers} loading={customersLoading} choice={choice} />
       </section>
 
-      <button type="button" className={ui.primary} disabled={!video || !!busy} onClick={() => void create()}>
+      <button type="button" className={ui.primary} disabled={!video || !!busy || customersLoading} onClick={() => void create()}>
         {busy || 'Create page'}
       </button>
     </div>
