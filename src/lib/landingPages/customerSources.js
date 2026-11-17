@@ -3,7 +3,7 @@
  * as normalized customers (see customerProfile.js). The app passes in what it has (React context, localStorage,
  * the leads response); nothing here reads storage or the network.
  */
-import { normalizeCustomer, dedupeCustomers } from './customerProfile.js';
+import { normalizeCustomer, dedupeCustomers, attachPersonalImages } from './customerProfile.js';
 
 /**
  * @param {object} input
@@ -16,9 +16,10 @@ import { normalizeCustomer, dedupeCustomers } from './customerProfile.js';
  * @param {object} [input.selectedBusiness] the business picked in Find your business
  * @param {object[]} [input.leads]          saved Lead Finder leads
  * @param {object[]} [input.contacts]       people the caller already has ({firstName, lastName, company, email, ...})
+ * @param {object[]} [input.projects]       saved Personalization projects (their generated pictures)
  * @returns {{ customers: object[], activeId: string }}
  */
-export function collectCustomers({ clientForm, selectedClientId = '', clients = [], assetsByClient = {}, assets, brandColors, selectedBusiness, leads = [], contacts = [] } = {}) {
+export function collectCustomers({ clientForm, selectedClientId = '', clients = [], assetsByClient = {}, assets, brandColors, selectedBusiness, leads = [], contacts = [], projects = [] } = {}) {
   const out = [];
   const currentId = selectedClientId || clientForm?.id || '';
   const hasForm = clientForm && (clientForm.businessName || clientForm.name);
@@ -31,5 +32,5 @@ export function collectCustomers({ clientForm, selectedClientId = '', clients = 
   const activeId = list.find((c) => c.id === currentId)?.id || (hasForm ? list[0]?.id : '') || '';
   // The active customer first (the one in the open Personalization window), then the rest in order.
   const ordered = [...list.filter((c) => c.id === activeId), ...list.filter((c) => c.id !== activeId)];
-  return { customers: dedupeCustomers(ordered), activeId };
+  return { customers: attachPersonalImages(dedupeCustomers(ordered), projects), activeId };
 }

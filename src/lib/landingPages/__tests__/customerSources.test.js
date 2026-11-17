@@ -30,3 +30,13 @@ describe('collectCustomers', () => {
     expect(collectCustomers({ clientForm: {}, clients: [null, {}] }).customers).toEqual([]);
   });
 });
+
+describe('personalized pictures', () => {
+  it('collectCustomers attaches the newest saved picture to the active customer', () => {
+    const { customers } = collectCustomers({
+      clientForm: { id: 'a', name: 'Dana', businessName: 'Riverside Plumbing' }, selectedClientId: 'a', clients: [],
+      projects: [{ updated_at: '2026-11-15', client: { id: 'a' }, output_type: 'image', generation: { outputUrls: ['https://cdn.test/p.png'] } }],
+    });
+    expect(customers[0].image).toBe('https://cdn.test/p.png');
+  });
+});

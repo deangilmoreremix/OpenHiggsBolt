@@ -50,3 +50,7 @@ import '../../../styles/landing-pages/puck/45-pd-chiro.css';
 import '../../../styles/landing-pages/puck/46-pd-medspa.css';
 import '../../../styles/landing-pages/puck/47-pd-salon.css';
 import '../../../styles/landing-pages/puck/48-pd-restaurant.css';
+import '../../../styles/landing-pages/puck/49-pc-roofing.css';
+import '../../../styles/landing-pages/puck/50-pc-hvac.css';
+import '../../../styles/landing-pages/puck/51-pc-detailing.css';
+import '../../../styles/landing-pages/puck/52-pc-realestate.css';

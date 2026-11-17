@@ -13,7 +13,7 @@ function usePersonalizeOrNull(): any {
 
 export type Customer = {
   id: string; label: string; source: string
-  tokens: Record<string, string>; email: string
+  tokens: Record<string, string>; email: string; image?: string
   business: Record<string, string>; brand: { accent: string; logoUrl: string }
 }
 
@@ -24,14 +24,21 @@ export type Customer = {
 export function useCustomers(contacts?: any[]) {
   const ctx = usePersonalizeOrNull()
   const [leads, setLeads] = useState<any[]>([])
+  const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     let live = true
-    fetch('/api/personalization/leads', { credentials: 'same-origin' })
+    const leadsReq = fetch('/api/personalization/leads', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : ({} as { leads?: any[] })))
       .then((d) => { if (live) setLeads(Array.isArray(d?.leads) ? d.leads : []) })
       .catch(() => {})
-      .finally(() => { if (live) setLoading(false) })
+    // the customer's saved Personalization projects hold their generated (personalized) pictures
+    const projectsReq = fetch('/api/personalization/project?list=true', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : ({} as { projects?: any[] })))
+      .then((d) => { if (live) setProjects(Array.isArray(d?.projects) ? d.projects : []) })
+      .catch(() => {})
+    // "loading" covers BOTH requests, so a page is never created before the personalized pictures are known
+    void Promise.all([leadsReq, projectsReq]).then(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [])
   const result = useMemo(() => {
@@ -43,8 +50,8 @@ export function useCustomers(contacts?: any[]) {
     if (!selectedClientId) { try { selectedClientId = getCurrentClientId() || '' } catch { /* none */ } }
     return collectCustomers({
       clientForm: ctx?.clientForm, selectedClientId, clients, assetsByClient,
-      assets: ctx?.assets, brandColors: ctx?.previewSettings?.brandColors, selectedBusiness: ctx?.selectedBusiness, leads, contacts,
+      assets: ctx?.assets, brandColors: ctx?.previewSettings?.brandColors, selectedBusiness: ctx?.selectedBusiness, leads, contacts, projects,
     }) as { customers: Customer[]; activeId: string }
-  }, [ctx?.clients, ctx?.clientForm, ctx?.selectedClientId, ctx?.assets, ctx?.previewSettings?.brandColors, ctx?.selectedBusiness, leads, contacts])
+  }, [ctx?.clients, ctx?.clientForm, ctx?.selectedClientId, ctx?.assets, ctx?.previewSettings?.brandColors, ctx?.selectedBusiness, leads, contacts, projects])
   return { ...result, loading }
 }
