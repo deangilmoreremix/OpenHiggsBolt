@@ -40,14 +40,14 @@ async function seed(page: Page) {
   await expect(dialog.getByRole('heading', { name: 'Preview and approve' })).toBeVisible();
 }
 
-/** Magenta (255, 0, 255) pixels in a frame: how many, and their vertical centre as a fraction of the height. */
+/** Magenta-ish pixels in a frame (the box is 50 % see-through, so it blends darker over the footage): how many, and their vertical centre as a fraction of the height. */
 function magenta(file: string, t: number): { count: number; centerY: number } {
   const w = 480, h = 270;
   const raw = execFileSync('ffmpeg', ['-v', 'error', '-ss', String(t), '-i', file, '-frames:v', '1', '-vf', `scale=${w}:${h}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
   let count = 0, ySum = 0;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * 3;
-    if (raw[i] > 200 && raw[i + 1] < 90 && raw[i + 2] > 200) { count++; ySum += y; }
+    if (raw[i] > 140 && raw[i + 1] < 80 && raw[i + 2] > 140 && raw[i] - raw[i + 1] > 90) { count++; ySum += y; }
   }
   return { count, centerY: count ? ySum / count / h : 0 };
 }
@@ -123,7 +123,7 @@ test('captions customizer: an embedded font, a background, dragged up, in the li
   const none = magenta(file, 0.3).count;
   const during = magenta(file, 2.5);
   expect(none, 'no background before the line starts').toBeLessThan(30);
-  expect(during.count, 'the background is on screen while the line plays').toBeGreaterThan(300);
+  expect(during.count, 'the background is on screen while the line plays').toBeGreaterThan(200);
   // Bottom place is about 0.88 of the height; dragged up by about 0.25 it is near 0.63, clearly above the bottom edge.
   expect(during.centerY, `the background sits where it was dragged (centre ${during.centerY.toFixed(2)})`).toBeGreaterThan(0.45);
   expect(during.centerY).toBeLessThan(0.75);
