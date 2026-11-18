@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { findDemoBySlug, resolveDemoBySlug } from '@/data/demoLookup';
-import type { VideoDemo } from '@/data/types';
+import { getModelLabel, type VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from '@/components/landing/VideoCreateTargetPicker';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization';
 import { buildDemoPersonalizeSource } from '@/shared/personalization/demoSources';
@@ -201,7 +201,7 @@ function DemoDetailPageInner() {
 
                 <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
-                    ['Model', demo.modelName || demo.model || 'SmartVideo GO AI'],
+                    ['Model', getModelLabel(demo)],
                     ['Duration', demo.durationLabel || '—'],
                     ['Aspect', demo.aspectRatio || '—'],
                     ['Source', demo.sourceRepo],

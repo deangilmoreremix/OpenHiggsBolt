@@ -328,7 +328,8 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
       "food"
     ],
     "sourceUrl": "https://x.com/nawalsehar/status/2086685268787278176",
-    "sourceRepo": "promptfeed"
+    "sourceRepo": "promptfeed",
+    "modelName": "Seedance 2.5"
   },
   {
     "id": 13,
@@ -515,7 +516,8 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
       "pizza"
     ],
     "sourceUrl": "https://x.com/ElsaSofia__AI/status/2090036041315168762",
-    "sourceRepo": "promptfeed"
+    "sourceRepo": "promptfeed",
+    "modelName": "Seedance 2.5"
   },
   {
     "id": 20,

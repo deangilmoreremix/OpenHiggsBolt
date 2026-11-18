@@ -49,6 +49,26 @@ export type VideoDemo = {
 };
 
 /**
+ * The model each demo collection's prompts were written for, used when a demo
+ * doesn't record its own. Prompt Feed is left out on purpose: its community
+ * prompts target a mix of models.
+ */
+export const MODEL_BY_SOURCE: Record<string, string> = {
+  'minimax-h3': 'MiniMax Hailuo',
+  'seedance-25': 'Seedance 2.5',
+  'seedance-1': 'Seedance 1',
+  seedance2prompt: 'Seedance 2.0',
+};
+
+/**
+ * The model a demo's prompt is for: its own recorded model if it has one,
+ * otherwise its collection's model, otherwise "Community prompt".
+ */
+export function getModelLabel(demo: Pick<VideoDemo, 'modelName' | 'sourceRepo'>): string {
+  return demo.modelName || MODEL_BY_SOURCE[demo.sourceRepo] || 'Community prompt';
+}
+
+/**
  * Map a demo to the real, existing studio route it should launch.
  * Do NOT hardcode full URLs across components — use this single layer.
  *
