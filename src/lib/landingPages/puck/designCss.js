@@ -77,3 +77,4 @@ import '../../../styles/landing-pages/puck/75-pc-septic-elite.css';
 import '../../../styles/landing-pages/puck/71-pd-septic-pumping.css';
 import '../../../styles/landing-pages/puck/72-pd-crawl-worker.css';
 import '../../../styles/landing-pages/puck/73-pd-crawl-neon.css';
+import '../../../styles/landing-pages/puck/76-pc-bees-short.css';
