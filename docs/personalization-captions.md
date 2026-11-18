@@ -13,6 +13,19 @@ Step 4, **Captions** card (right column, above Layers). Free: nothing is listene
   to their length, so the highlight moves along the line.
 - Captions are saved with the project (`settings.captions`, optional and normalized, so existing projects are unchanged).
 
+## Languages, scripts and more downloads
+
+- **Language of the words.** Once there are lines, **Language of these words** can be set to any of Whisper's languages (or left on "Work it out from the
+  words"). It is saved with the captions (`settings.captions.language`, optional, normalized). Nothing is listened to here, so this only decides how the
+  words are drawn and exported.
+- **Scripts.** Arabic and Hebrew are set right to left; Cyrillic, CJK, Devanagari, Thai and the rest get their font stack after the look's own, and wide letters are
+  set a little smaller (never below 60 %) so a line holds about as many letters as a Latin one. With no language saved the script is read from the letters.
+  The script table follows [ai-video-captions](https://github.com/nicolaigaina/ai-video-captions) (MIT). Fonts are only named: no font is downloaded, so a
+  script shows in a font that is installed on the device, or the browser's fallback.
+- **Downloads.** Besides `.srt` and `.vtt`: `.txt` (the words, one line per caption) and `.ass` (Advanced SubStation Alpha: the style, colours, outline,
+  shadow, spacing, casing and the word effect of the look, at the chosen height; for editors and players that take styled subtitles). Shared pure code in
+  `captions/` (`assExport.ts`, `scripts.ts`, `textTools.ts`), identical in remix-new-editor.
+
 ## How it works
 
 `preview/captions.ts` is pure (parsing, timing, which line and word are active at a frame, normalizing); `preview/CaptionsLayer.tsx` draws the

@@ -99,4 +99,45 @@ describe('CaptionsPanel', () => {
     open(caps())
     expect(screen.getByTestId('captions-preset-clean')).toBeTruthy()
   })
+
+  describe('languages and more downloads', () => {
+    const readBlob = (b: Blob) => new Promise<string>((resolve) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.readAsText(b) })
+    it('downloads the words as a .txt file and the styled captions as an .ass file', async () => {
+      const created: Blob[] = []
+      URL.createObjectURL = vi.fn((b: Blob) => { created.push(b); return 'blob:x' }) as unknown as typeof URL.createObjectURL
+      URL.revokeObjectURL = vi.fn()
+      const names: string[] = []
+      const origClick = HTMLAnchorElement.prototype.click
+      HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) { names.push(this.download) }
+      try {
+        open(caps())
+        fireEvent.click(screen.getByTestId('captions-download-txt'))
+        fireEvent.click(screen.getByTestId('captions-download-ass'))
+        expect(names).toEqual(['captions.txt', 'captions.ass'])
+        expect(await readBlob(created[0])).toBe('hello world\nsecond line\n')
+        const ass = await readBlob(created[1])
+        expect(ass).toContain('[V4+ Styles]')
+        expect(ass).toContain('Dialogue:')
+      } finally { HTMLAnchorElement.prototype.click = origClick }
+    })
+    it('offers the languages and saves the chosen one with the captions, and clears it again', () => {
+      open(caps())
+      const select = screen.getByTestId('captions-language') as HTMLSelectElement
+      expect(select.value).toBe('auto')
+      expect(select.querySelectorAll('option').length).toBeGreaterThan(90)
+      fireEvent.change(select, { target: { value: 'ar' } })
+      expect(last()!.language).toBe('ar')
+      fireEvent.change(select, { target: { value: 'auto' } })
+      expect(last()!.language).toBeUndefined()
+    })
+    it('shows the saved language when the panel opens', () => {
+      open(caps({ language: 'es' }))
+      expect((screen.getByTestId('captions-language') as HTMLSelectElement).value).toBe('es')
+    })
+    it('has no downloads or language choice before there are any lines', () => {
+      open()
+      expect(screen.queryByTestId('captions-download-txt')).toBeNull()
+      expect(screen.queryByTestId('captions-language')).toBeNull()
+    })
+  })
 })

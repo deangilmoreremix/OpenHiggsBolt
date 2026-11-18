@@ -60,7 +60,12 @@ export interface CaptionSettings {
   enabled: boolean
   cues: CaptionCue[]
   style: CaptionStyle
+  /** Language of the words (ISO code such as `es` or `pt-BR`), when known: sets the font fallback, size and reading direction. Absent = worked out from the text. */
+  language?: string
 }
+
+/** `es`, `haw`, `pt-BR`: a two or three letter code with an optional region. */
+const LANGUAGE_CODE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/
 
 export const MAX_CUES = 200
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
@@ -179,7 +184,7 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
   if (finite(s.wordSpacing) && s.wordSpacing > 0) style.wordSpacing = clamp(s.wordSpacing, 0, 1)
   if (s.windowed === true) style.windowed = true
   if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
-  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style }
+  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
 }
 
 // ── turning a script or subtitles into timed lines ──────────────────────────────────────────────────────────────
