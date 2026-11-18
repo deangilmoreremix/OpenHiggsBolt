@@ -119,3 +119,61 @@ describe('mountStudioTooltips', () => {
     expect(b.getAttribute('title')).toBe('Pick one');
   });
 });
+
+describe('value, placeholder and label patterns found by the coverage audit', () => {
+  it('names value-showing buttons by their shape', () => {
+    expect(resolveStudioHelp('16:9')?.name).toBe('Aspect Ratio');
+    expect(resolveStudioHelp('9:16')?.name).toBe('Aspect Ratio');
+    expect(resolveStudioHelp('5s')?.name).toBe('Duration');
+    expect(resolveStudioHelp('10s')?.name).toBe('Duration');
+    expect(resolveStudioHelp('480p')?.name).toBe('Resolution');
+    expect(resolveStudioHelp('1080p')?.name).toBe('Resolution');
+    expect(resolveStudioHelp('2K')?.name).toBe('Resolution');
+    expect(resolveStudioHelp('1.5K')?.name).toBe('Resolution');
+    expect(resolveStudioHelp('3 Highlights')?.name).toBe('Max Highlights');
+    expect(resolveStudioHelp('Orientation:image')?.name).toBe('Orientation');
+  });
+  it('does not give value copy to things that only look similar', () => {
+    for (const label of ['10:30 AM', '5 seconds', 'Plan: 5s', '4K video', 'Top 5s', '16:9 HD', 'Version 2K']) expect(resolveStudioHelp(label), label).toBeNull();
+  });
+  it('names text fields by their placeholder', () => {
+    expect(resolveStudioHelp('Describe the image you want to create')?.name).toBe('Prompt');
+    expect(resolveStudioHelp('Describe the video you want to create')?.name).toBe('Prompt');
+    expect(resolveStudioHelp('Optional — describe additional scene details, lighting, or motion nuances...')?.name).toBe('Prompt');
+    expect(resolveStudioHelp('Describe speech style...')?.name).toBe('Speech style');
+    expect(resolveStudioHelp('Search SmartVideo GO AI Apps...')?.name).toBe('Search');
+    expect(resolveStudioHelp('Describe your motion video')?.name).toBe('Prompt');
+  });
+  it('shared labels are not described as something else (Community, Generate tab)', () => {
+    expect(resolveStudioHelp('Community')?.summary).not.toMatch(/workflow/i);
+    document.body.innerHTML = '<button data-help="thumbnail view">generate</button><button>generate</button>';
+    const [tab, run] = document.querySelectorAll('button');
+    expect(findHelp(tab)?.entry.name).toBe('View');       // the tab is tagged at the source, so it is not "Run the job"
+    expect(findHelp(run)?.entry.name).toBe('Generate');   // an untagged Generate button still is
+  });
+  it('the model button tag resolves to the Model copy', () => {
+    document.body.innerHTML = '<button data-help="model"><span>Nano Banana</span></button>';
+    expect(findHelp(document.querySelector('button'))?.entry.name).toBe('Model');
+  });
+});
+
+describe('data-help keys written in the studio source', () => {
+  const { readdirSync, readFileSync, statSync } = require('node:fs');
+  const walk = (dir) => readdirSync(dir).flatMap((n) => {
+    const p = join(dir, n);
+    if (statSync(p).isDirectory()) return ['node_modules', '__tests__', 'dist', '.next', 'studio-tooltips'].includes(n) ? [] : walk(p);
+    return /\.(js|jsx|ts|tsx)$/.test(n) ? [p] : [];
+  });
+  it('every literal key resolves to copy (dynamic keys are checked by the live audit)', () => {
+    const bad = [];
+    let found = 0;
+    for (const dir of ['components', 'packages/studio/src', 'src/apps']) {
+      for (const file of walk(join(process.cwd(), dir))) {
+        const text = readFileSync(file, 'utf8');
+        for (const m of text.matchAll(/data-help="([^"{}$]+)"/g)) { found++; if (!resolveStudioHelp(m[1])) bad.push(`${file.replace(process.cwd() + '/', '')}: ${m[1]}`); }
+      }
+    }
+    expect(found).toBeGreaterThan(15);   // the tags exist; this is not vacuously true
+    expect(bad).toEqual([]);
+  });
+});

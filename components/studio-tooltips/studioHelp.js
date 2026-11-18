@@ -137,6 +137,88 @@ export const STUDIO_HELP = {
   'gender': h('Gender', 'The character\'s gender.'),
   'shuffle': h('Shuffle', 'Randomize the traits for ideas.'),
   'generate character': h('Generate Character', 'Create the character.'),
+
+  // ── Labels as the studios actually render them (from the coverage audit) ────
+  'library': h('Saved', 'Your saved uploads and generations.', 'Shared by every studio, so anything you made elsewhere can be reused here.'),
+  'saved': h('Saved', 'Your saved uploads and generations.', 'Shared by every studio, so anything you made elsewhere can be reused here.'),
+  'add up to 10 images': h('Add images', 'Upload up to 10 reference images.'),
+  'recipes': h('Recipes', 'Browse ready-made prompt recipes.'),
+  'upload image file': h('Upload image', 'Upload an image file.'),
+  'upload audio file': h('Upload audio', 'Upload an audio file.'),
+  'upload video file': h('Upload video', 'Choose the video to use.'),
+  'upload product': h('Upload Product', 'Add your product image.'),
+  'upload avatar': h('Upload Avatar', 'Add the presenter image.'),
+  'upload references': h('Upload References', 'Add reference images.'),
+  'create workflow': h('Create Workflow', 'Start a new workflow.'),
+  'my workflows': h('My Workflows', 'Your saved workflows.'),
+  'community': h('Community', 'Browse what the community shared.'),
+  'retry': h('Retry', 'Try the failed request again.'),
+
+  'advanced': h('Advanced', 'Extra settings for fine control.', 'The defaults work for most jobs.'),
+  'generate thumbnail': h('Generate Thumbnail', 'Create the thumbnail.'),
+  'new project': h('New Project', 'Start a new project.'),
+  'new page': h('New page', 'Create a new page.'),
+  'send message': h('Send message', 'Send your message.'),
+  'upload reference media': h('Upload reference media', 'Add reference media to your message.'),
+  'write script': h('Write script', 'Write the script for the video.'),
+  'generate storyboard': h('Generate Storyboard', 'Create the storyboard from your story.'),
+  'brief \u2192 scenes': h('Brief \u2192 scenes', 'Turn your brief into scenes.'),
+  'shot editor': h('Shot Editor', 'Edit the individual shots.'),
+  'try the demo project': h('Try the demo project', 'Load the demo project.'),
+  'newest first': h('Newest first', 'Show the newest prompts first.'),
+  'oldest first': h('Oldest first', 'Show the oldest prompts first.'),
+  'all categories': h('Categories', 'Filter prompts by category.'),
+  'all models': h('Models', 'Filter prompts by model.'),
+  'feed': h('Feed', 'Browse the prompt feed.'),
+  'video prompts': h('Video Prompts', 'Browse prompts for video.'),
+  'academy': h('Academy', 'Open the Academy lessons.'),
+  'topic': h('Topic', 'What the video is about.'),
+  'look': h('Look', 'Pick the visual style of the video.'),
+  'voice': h('Voice', 'Pick the voice for the video.'),
+
+  'reset': h('Reset', 'Set every trait back to its default.'),
+  'add image': h('Add image', 'Upload the image to use.'),
+
+  // ── Option lists and card grids (data-help on the list container or on each option) ──
+  'category filter': h('Category', 'Show only this kind of item.'),
+  'edit tool': h('Tool', 'Open this tool in its own playground.'),
+  'layers tool': h('Tool', 'Open this tool.'),
+  'builder tab': h('Builder tab', 'Group traits by area.', 'Face, body or style traits.'),
+  'trait option': h('Trait', 'Click to choose this trait.'),
+  'show more tags': h('Show more', 'Show or hide the rest of the selected tags.'),
+  'thumbnail view': h('View', 'Switch between creating, your thumbnails and the community.'),
+  'thumbnail mode': h('Mode', 'Switch between generating a new image and editing one.'),
+  'thumbnail template': h('Template', 'Start from a template.'),
+  'thumbnail style': h('Style', 'Pick the look of the thumbnail.'),
+  'thumbnail size': h('Size', 'Pick the thumbnail size, for example YouTube HD.'),
+  'vfx effect': h('Effect', 'Pick this effect for your image.'),
+  'vfx effect group': h('Effect group', 'Switch between groups of effects.'),
+
+  'batch count': h('Batch count', 'How many images to make at once.', 'From 1 to 4.'),
+  'pointer tool': h('Pointer tool', 'Select and move things on the canvas.'),
+  'run selection edit': h('Run Selection Edit', 'Apply your edit to the selected area.'),
+  'run text edit': h('Run Text Edit', 'Apply the text change.'),
+  'enhance image': h('Enhance Image', 'Sharpen and clean the image.'),
+  'apply perspective angle': h('Apply Perspective Angle', 'Re-render the image from the new angle.'),
+  'back to tools': h('Back to Tools', 'Return to the tools menu.'),
+  'close panel': h('Close Panel', 'Close this panel.'),
+  'ai enhance prompt': h('AI enhance prompt', 'Let AI expand your prompt.'),
+  'image url': h('Image URL', 'Paste a link to the image instead of uploading.'),
+  'vfx subject': h('Subject', 'Describe the subject in the image.', 'Optional.'),
+  'quick add scene': h('Quick add', 'Type a scene to add it to the storyboard.'),
+  'attach image / video / audio': h('Attach', 'Add an image, video or audio file.'),
+
+  // ── Text fields (matched by their placeholder) ──────────────────────────────
+  'speech style': h('Speech style', 'Describe how the voice should sound.'),
+  'ad script': h('Ad script', 'Write what the presenter says.', 'Use @image1 for the product and @image2 for the avatar.'),
+  'highlights prompt': h('Highlights prompt', 'Describe which highlights to extract.'),
+  'layers prompt': h('Edit prompt', 'Describe how to edit the image or split it into layers.'),
+  'story': h('Story', 'Describe the story beat by beat.', 'One line per scene works best.'),
+  'search': h('Search', 'Filter the list by what you type.'),
+  'character name': h('Character name', 'Name the character so scenes can refer to it.'),
+  'character traits': h('Character traits', 'Short visual details about the character.', 'For example: red coat, scar.'),
+  'reference image': h('Reference image', 'Upload an image of the character, or paste a link to one.'),
+  'extra details': h('Extra details', 'Add anything else you want in the result.', 'For example: neon cyberpunk lighting, dramatic shadows.'),
 };
 
 const SHORTCUT = /\s*\((?:ctrl|cmd|alt|shift|⌘|⌥|⇧)[^)]*\)\s*$/i;
@@ -170,6 +252,9 @@ export const ALIASES = {
   'choose model': 'model',
   'change aspect ratio': 'aspect ratio',
   'ar': 'aspect ratio',
+  'run layer decomposition': 'layer decomposition',
+  'apply relight': 'relight',
+  'prompt textarea': 'prompt',
   'aspect': 'aspect ratio',
   'aspect_ratio': 'aspect ratio',
   'effects': 'effect',
@@ -178,6 +263,41 @@ export const ALIASES = {
 // "Select / Change / Show ..." prefixes and a trailing "options" are dropped, so "Show advanced options" finds "Advanced".
 const VERB = /^(?:select|change|choose|pick|show|hide|open|toggle|set)\s+(?:the\s+|a\s+|an\s+|your\s+)?/;
 
+// Buttons that show their current value instead of a name ("16:9", "5s", "480p", "3 Highlights"): matched by shape, not by label.
+const VALUE_PATTERNS = [
+  [/^\d{1,2}:\d{1,2}$/, 'aspect ratio'],
+  [/^\d+(\.\d+)?s$/, 'duration'],
+  [/^\d{3,4}p$/, 'resolution'],
+  [/^\d(\.\d)?k$/, 'resolution'],
+  [/^\d+ highlights?$/, 'max highlights'],
+  [/^orientation:/, 'orientation'],
+  [/^upload reference video/, 'reference video'],
+  [/^upload character (or performer )?image/, 'character image'],
+  [/^upload video file/, 'upload video file'],
+];
+
+// Text fields that are labelled only by their placeholder, matched by prefix (the text is long and sometimes truncated).
+const PLACEHOLDERS = [
+  [/^describe the (image|video) you want/, 'prompt'],
+  [/^describe your cinema scene/, 'prompt'],
+  [/^describe the motion graphic/, 'prompt'],
+  [/^optional \u2014 describe/, 'prompt'],
+  [/^describe speech style/, 'speech style'],
+  [/^describe your ad script/, 'ad script'],
+  [/^describe prompt \/ highlights/, 'highlights prompt'],
+  [/^describe how to edit image or split layers/, 'layers prompt'],
+  [/^describe the story beat by beat/, 'story'],
+  [/^optional: describe the subject/, 'vfx subject'],
+  [/^a dramatic gaming thumbnail/, 'prompt'],
+  [/^quick-add a scene/, 'quick add scene'],
+  [/^describe your motion video/, 'prompt'],
+  [/^search /, 'search'],
+  [/^name \(e\.g\./, 'character name'],
+  [/^traits \(/, 'character traits'],
+  [/^reference image \(upload or paste/, 'reference image'],
+  [/^add extra details/, 'extra details'],
+];
+
 const lookup = (key) => STUDIO_HELP[key] || STUDIO_HELP[ALIASES[key]] || null;
 
 /** Help entry for a control label, or null. */
@@ -185,6 +305,8 @@ export function resolveStudioHelp(label) {
   const key = helpKey(label);
   const direct = lookup(key);
   if (direct) return direct;
+  const shaped = [...VALUE_PATTERNS, ...PLACEHOLDERS].find(([re]) => re.test(key));
+  if (shaped) return lookup(shaped[1]);
   const stripped = key.replace(VERB, '').replace(/\s+options?$/, '');
   return stripped !== key ? lookup(stripped) : null;
 }

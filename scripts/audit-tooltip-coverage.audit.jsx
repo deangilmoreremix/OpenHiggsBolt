@@ -41,11 +41,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({}),
 }));
-vi.mock('@/components/SocialPublishProvider', () => ({
-  useSocialPublish: () => ({ openPublish: () => {}, closePublish: () => {}, openSocialPublisher: () => {} }),
-  PublishStep: () => null,
-  SocialPublishProvider: ({ children }) => children,
-}));
+vi.mock('@/components/SocialPublishProvider', async () => {
+  const { createContext } = await import('react');
+  return {
+    useSocialPublish: () => ({ openPublish: () => {}, closePublish: () => {}, openSocialPublisher: () => {} }),
+    PublishStep: () => null,
+    SocialPublishProvider: ({ children }) => children,
+    SocialPublishContext: createContext(null),
+  };
+});
 
 const KEY = 'mu_test_key_0123456789';
 const noop = () => {};
@@ -63,7 +67,7 @@ const STUDIOS = [
   ['ZackD', app('zackd/ZackD')], ['DesignAgent', app('design-agent/DesignAgent')], ['VFXStudio', app('vfx-studio/VFXStudio')],
   ['Storyboard', app('storyboard/Storyboard')], ['ThumbnailStudio', app('thumbnail-studio/ThumbnailStudio')],
   ['VideoPagesStudio', app('video-pages/VideoPagesStudio')], ['GoAiViralStudio', app('go-ai-viral/GoAiViralStudio')],
-  ['MotionDirector', app('motion-director/MotionStudio'), { ownRouter: true }],
+  ['MotionDirector', app('motion-director/MotionStudio'), { ownRouter: true, personalize: true }],
 ];
 
 const SELECTOR = 'button, select, input:not([type=hidden]), textarea, [role=button], [role=tab], [title], [data-tooltip], [data-help]';
@@ -86,7 +90,10 @@ const statusOf = (el) => { const hit = findHelp(el); return hit ? (hit.entry.sum
 
 /** One record per control. A row of 6+ id-less sibling buttons (option list, card grid) is one record, covered only if every option is. */
 function collect() {
-  const visible = [...document.body.querySelectorAll(SELECTOR)].filter((el) => !isHidden(el) && !el.closest(CONTENT));
+  const INTERACTIVE = 'button, a, input, select, textarea, [role=button], [role=tab]';
+  // A heading or label whose title only repeats its own visible text (an app card's <h3 title={name}>) is content, not a control.
+  const echoesItself = (el) => !el.matches(INTERACTIVE) && !!el.getAttribute('title') && el.getAttribute('title').trim() === (el.textContent || '').trim();
+  const visible = [...document.body.querySelectorAll(SELECTOR)].filter((el) => !isHidden(el) && !el.closest(CONTENT) && !echoesItself(el));
   const siblings = new Map();
   visible.forEach((el) => { if (el.tagName === 'BUTTON' && !el.id) siblings.set(el.parentElement, (siblings.get(el.parentElement) || 0) + 1); });
   const groupDone = new Set();
@@ -124,7 +131,10 @@ describe('tooltip coverage audit', () => {
       try {
         const mod = await load();
         const Studio = mod.default;
-        await act(async () => { render(opts.ownRouter ? <Studio {...common} /> : <MemoryRouter initialEntries={['/']}><Studio {...common} /></MemoryRouter>); });
+        const body = opts.ownRouter ? <Studio {...common} /> : <MemoryRouter initialEntries={['/']}><Studio {...common} /></MemoryRouter>;
+        // The shell wraps every studio in DemoPersonalizeProvider; Motion Director reads it, so give it the same.
+        const Provider = opts.personalize ? (await import('@/shared/personalization')).DemoPersonalizeProvider : null;
+        await act(async () => { render(Provider ? <Provider apiKey={KEY}>{body}</Provider> : body); });
         await act(async () => { await new Promise((r) => setTimeout(r, 900)); });
         const records = collect();
         if (!records.length) throw new Error('mounted but rendered no visible controls (needs live data or renders outside the document)');
