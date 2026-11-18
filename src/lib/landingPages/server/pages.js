@@ -126,6 +126,7 @@ export async function submitLead(db, pageId, contactId, data) {
   const { error } = await db.from('landing_page_leads').insert({ page_id: pageId, contact_id: contact, data: clean });
   dbFail(error, 'Could not save your details');
   await recordEvent(db, pageId, 'lead', contact).catch(() => {});
+  return { contactId: contact, data: clean };
 }
 
 // ------------------------------------------------------------------ stats
