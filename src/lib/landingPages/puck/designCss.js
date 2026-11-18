@@ -1,5 +1,6 @@
 // Every design stylesheet (fonts first, then family rules, then one file per design). Import AFTER puck-pages.css.
 import '../../../styles/landing-pages/puck-pages.css';
+import '../../../styles/landing-pages/timeline-addons.css';
 import '../../../styles/landing-pages/puck/00-families.css';
 import '../../../styles/landing-pages/puck/00-fonts.css';
 import '../../../styles/landing-pages/puck/01-leadiq.css';

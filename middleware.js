@@ -1,3 +1,4 @@
+import { withPageTracking } from './lib/pageCsp.js';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { shouldBypassClerkForE2e } from './lib/e2eAuthBypass.js';
@@ -35,12 +36,16 @@ const CSP = [
   "frame-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://challenges.cloudflare.com",
 ].join('; ');
 
+function cspFor(pathname = '') {
+  return withPageTracking(CSP, pathname);
+}
+
 function localeFromPathname() {
   return 'en';
 }
 
-function applyResponseHeaders(response, locale) {
-  response.headers.set('Content-Security-Policy', CSP);
+function applyResponseHeaders(response, locale, pathname = '') {
+  response.headers.set('Content-Security-Policy', cspFor(pathname));
   response.headers.set('x-locale', locale);
   return response;
 }
@@ -124,7 +129,7 @@ const clerkHandler = clerkMiddleware(async (auth, request) => {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-locale', locale);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return applyResponseHeaders(response, locale);
+  return applyResponseHeaders(response, locale, request.nextUrl.pathname);
 });
 
 // Local-only E2E bypass: must run BEFORE clerkMiddleware, because Clerk issues
