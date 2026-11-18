@@ -783,7 +783,7 @@ export default function AppsStudio({ locale = "en" }) {
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/50 focus:outline-none focus-visible:border-[#22d3ee] focus-visible:ring-1 focus-visible:ring-[#22d3ee]/30 transition-colors"
             />
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={copy.filter.label}>
+          <div data-help="category filter" className="flex flex-wrap gap-2" role="group" aria-label={copy.filter.label}>
             {CATEGORIES.map(category => {
               const isActive = selectedCategory === category;
               return (

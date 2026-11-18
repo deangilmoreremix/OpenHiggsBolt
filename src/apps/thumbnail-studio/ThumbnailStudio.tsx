@@ -580,7 +580,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
         </div>
         <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
           {(['generate', 'mine', 'community'] as const).map(tab => (
-            <button
+            <button data-help="thumbnail view"
               key={tab}
               onClick={() => setActiveTab(tab)}
               className="relative px-3 py-1 rounded-md text-xs font-medium transition-all capitalize flex items-center gap-1.5"
@@ -604,7 +604,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
             {/* Mode toggle */}
             <div className="flex gap-2">
               {(['generate', 'edit'] as const).map(m => (
-                <button key={m} onClick={() => setMode(m)}
+                <button data-help="thumbnail mode" key={m} onClick={() => setMode(m)}
                   className="flex-1 py-2 rounded-xl text-xs font-medium transition-all capitalize"
                   style={optionStyle(mode === m)}
                 >
@@ -658,7 +658,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
               )}
               <div className="flex flex-wrap gap-1.5">
                 {TEMPLATES.map(t => (
-                  <button key={t.label} onClick={() => { setPrompt(t.prompt); setEnhancedPrompt('') }}
+                  <button data-help="thumbnail template" key={t.label} onClick={() => { setPrompt(t.prompt); setEnhancedPrompt('') }}
                     className="px-2.5 py-1 rounded-full text-xs transition-all"
                     style={{ ...panels.card, color: semantic.textMuted }}
                   >
@@ -673,7 +673,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
               <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>STYLE</p>
               <div className="grid grid-cols-4 gap-2">
                 {STYLES.map(s => (
-                  <button key={s.value} onClick={() => setSelectedStyle(s.value)}
+                  <button data-help="thumbnail style" key={s.value} onClick={() => setSelectedStyle(s.value)}
                     className="py-2 px-1 rounded-lg text-xs font-medium transition-all text-center"
                     style={optionStyle(selectedStyle === s.value)}
                   >
@@ -778,7 +778,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
               <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>CANVAS SIZE</p>
               <div className="grid grid-cols-3 gap-2">
                 {SIZE_PRESETS.map(size => (
-                  <button key={size.id} onClick={() => setSelectedSize(size)}
+                  <button data-help="thumbnail size" key={size.id} onClick={() => setSelectedSize(size)}
                     className="py-2 rounded-lg text-center transition-all"
                     style={optionStyle(selectedSize.id === size.id)}
                   >

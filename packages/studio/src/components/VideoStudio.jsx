@@ -3176,7 +3176,7 @@ export default function VideoStudio({
             <PromptControls ref={dropdownRef}>
               {/* Model btn */}
               <div className="relative">
-                <button
+                <button data-help="model"
                   type="button"
                   onClick={toggleDropdown("model")}
                   className={promptControlClassName({
