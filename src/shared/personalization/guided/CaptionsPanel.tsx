@@ -13,6 +13,9 @@ import {
 } from '../preview/captions'
 import { LANGUAGES } from '../captions/scripts'
 import { applyCasing, clampNudge, findReplace, transcriptText, type Casing } from '../captions/textTools'
+import { CAPTION_FONTS, CAPTION_FONT_CATEGORIES, CAPTION_WEIGHTS, captionFontStack, type CaptionWeight } from '../captions/capiteFonts'
+import { loadCaptionFont } from '../captions/capiteFontLoader'
+import { CAPTION_CASINGS, MAX_CAPTION_OFFSET, type CaptionCasing } from '../captions/captionCustom'
 import { captionsToAss } from '../preview/captionAss'
 import type { PreviewInputProps } from '../preview/types'
 
@@ -40,11 +43,17 @@ export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
   const [wholeWord, setWholeWord] = useState(false)
   const [editNotice, setEditNotice] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  // The chosen font is embedded; load it so the sample line and the preview show it.
+  const chosenFont = previewSettings.captions?.style.fontFamily
+  const chosenWeight = previewSettings.captions?.style.weight
+  useEffect(() => { if (chosenFont) void loadCaptionFont(chosenFont, { weight: chosenWeight ? CAPTION_WEIGHTS[chosenWeight] : 800, italic: previewSettings.captions?.style.italic }) }, [chosenFont, chosenWeight, previewSettings.captions?.style.italic])
   const durationSec = previewSettings.durationInFrames / Math.max(1, previewSettings.fps)
   const brand = previewSettings.brandColors
   const caps: CaptionSettings = previewSettings.captions ?? { enabled: false, cues: [], style: captionPreset('karaoke', brand) ?? DEFAULT_CAPTION_STYLE }
   const set = (patch: Partial<CaptionSettings>) => updatePreviewComposition({ captions: { ...caps, ...patch } })
   const setStyle = (patch: Partial<CaptionStyle>) => set({ style: { ...caps.style, ...patch, preset: patch.preset ?? 'custom' } })
+  // Moving the captions does not change which look they use.
+  const moveTo = (offsetY: number | undefined) => set({ style: { ...caps.style, offsetY } })
   const setCue = (id: string, patch: Partial<CaptionCue>) => set({ cues: caps.cues.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
 
   // The line that is playing: marked, and scrolled into view inside the list (never the page).
@@ -165,7 +174,7 @@ export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
 
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {(['top', 'middle', 'bottom'] as CaptionPosition[]).map((pos) => (
-                  <button key={pos} type="button" data-testid={`captions-pos-${pos}`} aria-pressed={caps.style.position === pos} onClick={() => setStyle({ position: pos })} style={{ ...chipStyle(caps.style.position === pos), minHeight: 26, fontSize: 10 }}>{pos[0].toUpperCase() + pos.slice(1)}</button>
+                  <button key={pos} type="button" data-testid={`captions-pos-${pos}`} aria-pressed={caps.style.position === pos} onClick={() => setStyle({ position: pos, offsetY: undefined })} style={{ ...chipStyle(caps.style.position === pos), minHeight: 26, fontSize: 10 }}>{pos[0].toUpperCase() + pos.slice(1)}</button>
                 ))}
                 <button type="button" data-testid="captions-highlight" aria-pressed={caps.style.highlight === 'word'} onClick={() => setStyle({ highlight: caps.style.highlight === 'word' ? 'none' : 'word' })} style={{ ...chipStyle(caps.style.highlight === 'word'), minHeight: 26, fontSize: 10 }}>Highlight word</button>
                 <button type="button" data-testid="captions-box" aria-pressed={caps.style.box} onClick={() => setStyle({ box: !caps.style.box })} style={{ ...chipStyle(caps.style.box), minHeight: 26, fontSize: 10 }}>Box</button>
@@ -174,6 +183,47 @@ export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
               <div>
                 <label style={labelStyle} htmlFor="captions-size">Size</label>
                 <input id="captions-size" data-testid="captions-size" type="range" aria-label="Caption size" min={0.025} max={0.14} step={0.005} value={caps.style.size} onChange={(e) => setStyle({ size: Number(e.target.value) })} style={{ width: '100%', accentColor: C.cyan }} />
+              </div>
+              <div data-testid="captions-customize" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={labelStyle}>Make it yours</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 11, color: C.text }}>
+                  <span style={{ ...hintStyle, margin: 0 }}>Font</span>
+                  <select data-testid="captions-font" aria-label="Caption font" value={caps.style.fontFamily ?? ''} onChange={(e) => setStyle({ fontFamily: e.target.value || undefined })} style={{ ...inputStyle, width: 'auto', minHeight: 28, fontSize: 11, padding: '0 8px' }}>
+                    <option value="">The look&apos;s own</option>
+                    {CAPTION_FONT_CATEGORIES.map((cat) => (
+                      <optgroup key={cat.id} label={cat.label}>
+                        {CAPTION_FONTS.filter((f) => f.category === cat.id).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {caps.style.fontFamily && <span data-testid="captions-font-sample" style={{ fontFamily: captionFontStack(caps.style.fontFamily, 'sans-serif'), fontSize: 16, color: C.text }}>Aa Hello</span>}
+                </label>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label="Caption weight">
+                  <span style={{ ...hintStyle, margin: 0 }}>Weight</span>
+                  <button type="button" data-testid="captions-weight-default" aria-pressed={!caps.style.weight} onClick={() => setStyle({ weight: undefined })} style={{ ...chipStyle(!caps.style.weight), minHeight: 26, fontSize: 10 }}>Look&apos;s</button>
+                  {(Object.keys(CAPTION_WEIGHTS) as CaptionWeight[]).map((w) => (
+                    <button key={w} type="button" data-testid={`captions-weight-${w}`} aria-pressed={caps.style.weight === w} onClick={() => setStyle({ weight: w })} style={{ ...chipStyle(caps.style.weight === w), minHeight: 26, fontSize: 10 }}>{w === 'extra-bold' ? 'Extra bold' : w[0].toUpperCase() + w.slice(1)}</button>
+                  ))}
+                  <button type="button" data-testid="captions-italic" aria-pressed={caps.style.italic === true} onClick={() => setStyle({ italic: caps.style.italic ? undefined : true })} style={{ ...chipStyle(caps.style.italic === true), minHeight: 26, fontSize: 10, fontStyle: 'italic' }}>Italic</button>
+                </div>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label="Caption casing">
+                  <span style={{ ...hintStyle, margin: 0 }}>Letters</span>
+                  <button type="button" data-testid="captions-casing-default" aria-pressed={!caps.style.casing} onClick={() => setStyle({ casing: undefined })} style={{ ...chipStyle(!caps.style.casing), minHeight: 26, fontSize: 10 }}>Look&apos;s</button>
+                  {CAPTION_CASINGS.map((k: CaptionCasing) => (
+                    <button key={k} type="button" data-testid={`captions-casing-${k}`} aria-pressed={caps.style.casing === k} onClick={() => setStyle({ casing: k })} style={{ ...chipStyle(caps.style.casing === k), minHeight: 26, fontSize: 10 }}>{k === 'upper' ? 'UPPER' : k === 'title' ? 'Title Case' : 'As written'}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2" style={{ gap: 8 }}>
+                  <ColorField id="captions-outline-color" label="Outline color" ariaLabel="Caption outline color" tipId="textColor" value={caps.style.outline?.color ?? '#000000'} onChange={(hex) => setStyle({ outline: { size: caps.style.outline?.size ?? 0.06, color: hex } })} brand={brand} posterUrl={inputProps.posterUrl} />
+                  <ColorField id="captions-bg-color" label="Background color" ariaLabel="Caption background color" tipId="textColor" value={caps.style.boxColor} onChange={(hex) => setStyle({ box: true, boxColor: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="captions-offset">Move up or down</label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input id="captions-offset" data-testid="captions-offset" type="range" aria-label="Caption vertical position" min={-MAX_CAPTION_OFFSET} max={MAX_CAPTION_OFFSET} step={0.01} value={caps.style.offsetY ?? 0} onChange={(e) => moveTo(Number(e.target.value) || undefined)} style={{ flex: 1, accentColor: C.cyan }} />
+                    <button type="button" data-testid="captions-offset-reset" disabled={!caps.style.offsetY} onClick={() => moveTo(undefined)} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Reset</button>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-2" style={{ gap: 8 }}>
                 <ColorField id="captions-color" label="Text color" ariaLabel="Caption text color" tipId="textColor" value={caps.style.color} onChange={(hex) => setStyle({ color: hex })} brand={brand} posterUrl={inputProps.posterUrl} />

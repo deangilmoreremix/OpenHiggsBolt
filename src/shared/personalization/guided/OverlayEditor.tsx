@@ -23,6 +23,7 @@ import { lookFilter, lookOverlays, vignetteStops } from '../preview/effects'
 import { LookPanel } from './LookPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
+import { CaptionDragHandle } from './CaptionDragHandle'
 import { PLAYBACK_RATES } from '../preview/playbackRate'
 import { LayerEffectsControls } from './editor/LayerEffectsControls'
 import { CutoutPanel } from './CutoutPanel'
@@ -650,6 +651,14 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
               </div>
               {/* Shield: clicks on empty stage must not reach the Player (it would toggle play). Layers sit above it. */}
               <div aria-hidden data-testid="editor-live-shield" style={{ position: 'absolute', inset: 0 }} />
+              {/* Captions: a grip level with them, to drag them up or down (saved as the style's vertical offset). */}
+              {ctx.previewSettings.captions?.enabled && ctx.previewSettings.captions.cues.length > 0 && (
+                <CaptionDragHandle
+                  position={ctx.previewSettings.captions.style.position}
+                  offsetY={ctx.previewSettings.captions.style.offsetY}
+                  onChange={(offsetY) => { const c = ctx.previewSettings.captions; if (c) ctx.updatePreviewComposition({ captions: { ...c, style: { ...c.style, offsetY } } }) }}
+                />
+              )}
             </>
           ) : (
             <>
