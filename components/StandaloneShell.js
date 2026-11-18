@@ -11,6 +11,7 @@ import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import HelpAgent from '@/components/help/HelpAgent';
+import StudioTooltips from './studio-tooltips/StudioTooltips';
 import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import { useAuthConfig } from '@/lib/authConfig';
@@ -999,6 +1000,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </SocialPublishProvider>
       </AiAssistantProvider>
 
+      {/* Hover help for every studio control (cyan/purple scheme of this app). */}
+      <StudioTooltips />
       {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
       <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))} />
 
