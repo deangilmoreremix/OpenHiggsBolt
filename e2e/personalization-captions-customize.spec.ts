@@ -86,20 +86,31 @@ test('captions customizer: an embedded font, a background, dragged up, in the li
   await hexInput.press('Enter');
   await page.keyboard.press('Escape');
 
-  // Drag the captions up with the grip on the preview: about a quarter of the frame.
+  // Drag the captions up with the grip on the preview, into the business name (about 0.64 of the frame height): they are kept clear of it.
   const grip = dialog.getByTestId('caption-drag-handle');
   await expect(grip).toBeVisible();
-  const box = (await grip.boundingBox())!;
+  const drag = async (dy: number) => {
+    const box = (await grip.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + dy, { steps: 8 });
+    await page.mouse.up();
+  };
   const stage = (await dialog.getByRole('group', { name: 'Video overlay stage' }).boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - stage.height * 0.25, { steps: 8 });
-  await page.mouse.up();
-  const moved = Number(await grip.getAttribute('aria-valuenow'));
-  expect(moved).toBeGreaterThan(18);
-  expect(moved).toBeLessThan(32);
-  await page.screenshot({ path: path.join(OUT, 'live-customized.png') });
+  await drag(-stage.height * 0.25);
+  await expect(dialog.getByTestId('captions-overlap-warning')).toHaveCount(0); // let go over the name: moved clear of it
+  const kept = Number(await grip.getAttribute('aria-valuenow'));
+  expect(Math.abs(kept)).toBeGreaterThan(5);
+  await page.screenshot({ path: path.join(OUT, 'live-kept-clear.png') });
 
+  // With "Keep clear of text" off, the same drag lands on the name and says so; one click moves them clear again.
+  await dialog.getByTestId('captions-keep-clear').click();
+  await drag(stage.height * 0.0 + (0.64 - 0.63) * stage.height); // nudge a little so the release happens over the name
+  const raw = await grip.boundingBox();
+  expect(raw).not.toBeNull();
+  await dialog.getByTestId('captions-keep-clear').click();
+
+  // Export.
   // Export.
   await dialog.getByRole('button', { name: /Approve this personalization|^Approved$/i }).click({ timeout: 30_000 });
   const rights = page.getByTestId('guided-rights-confirm').locator('input');
@@ -124,8 +135,8 @@ test('captions customizer: an embedded font, a background, dragged up, in the li
   const during = magenta(file, 2.5);
   expect(none, 'no background before the line starts').toBeLessThan(30);
   expect(during.count, 'the background is on screen while the line plays').toBeGreaterThan(200);
-  // Bottom place is about 0.88 of the height; dragged up by about 0.25 it is near 0.63, clearly above the bottom edge.
-  expect(during.centerY, `the background sits where it was dragged (centre ${during.centerY.toFixed(2)})`).toBeGreaterThan(0.45);
-  expect(during.centerY).toBeLessThan(0.75);
+  // Kept clear of the business name (about 0.57 to 0.71 of the frame height), and inside the frame.
+  expect(during.centerY, `the box is clear of the name (centre ${during.centerY.toFixed(2)})`).not.toBeGreaterThan(0.71);
+  expect(during.centerY < 0.57 || during.centerY > 0.71, `centre ${during.centerY.toFixed(2)} is outside the name's band`).toBe(true);
   expect(errors, 'no uncaught page errors').toEqual([]);
 });

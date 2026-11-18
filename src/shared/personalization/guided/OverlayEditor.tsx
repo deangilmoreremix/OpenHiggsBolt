@@ -24,6 +24,7 @@ import { LookPanel } from './LookPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
 import { CaptionDragHandle } from './CaptionDragHandle'
+import { captionAvoid, clearOf } from './captionAvoid'
 import { PLAYBACK_RATES } from '../preview/playbackRate'
 import { LayerEffectsControls } from './editor/LayerEffectsControls'
 import { CutoutPanel } from './CutoutPanel'
@@ -657,6 +658,14 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                   position={ctx.previewSettings.captions.style.position}
                   offsetY={ctx.previewSettings.captions.style.offsetY}
                   onChange={(offsetY) => { const c = ctx.previewSettings.captions; if (c) ctx.updatePreviewComposition({ captions: { ...c, style: { ...c.style, offsetY } } }) }}
+                  // Let go over other text and the captions stop short of it (unless "Keep clear of text" is off).
+                  onRelease={() => {
+                    const c = ctx.previewSettings.captions
+                    if (!c || c.style.keepClear === false) return
+                    const a = captionAvoid(ctx.previewSettings, inputProps.brand)
+                    const out = a ? clearOf(a) : null
+                    if (out?.overlapped && out.cleared) ctx.updatePreviewComposition({ captions: { ...c, style: { ...c.style, offsetY: out.offsetY } } })
+                  }}
                 />
               )}
             </>

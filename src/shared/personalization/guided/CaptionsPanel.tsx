@@ -12,6 +12,7 @@ import {
   activeCue, type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
 import { LANGUAGES } from '../captions/scripts'
+import { captionAvoid, clearOf, coveredNow } from './captionAvoid'
 import { applyCasing, clampNudge, findReplace, transcriptText, type Casing } from '../captions/textTools'
 import { CAPTION_FONTS, CAPTION_FONT_CATEGORIES, CAPTION_WEIGHTS, captionFontStack, type CaptionWeight } from '../captions/capiteFonts'
 import { loadCaptionFont } from '../captions/capiteFontLoader'
@@ -52,6 +53,10 @@ export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
   const caps: CaptionSettings = previewSettings.captions ?? { enabled: false, cues: [], style: captionPreset('karaoke', brand) ?? DEFAULT_CAPTION_STYLE }
   const set = (patch: Partial<CaptionSettings>) => updatePreviewComposition({ captions: { ...caps, ...patch } })
   const setStyle = (patch: Partial<CaptionStyle>) => set({ style: { ...caps.style, ...patch, preset: patch.preset ?? 'custom' } })
+  // What the captions cover: other layers that are on screen while a caption is.
+  const avoid = captionAvoid({ layers: previewSettings.layers, width: previewSettings.width, height: previewSettings.height, fps: previewSettings.fps, captions: previewSettings.captions }, inputProps.brand)
+  const covered = avoid ? coveredNow(avoid) : 0
+  const clear = avoid && covered > 0 ? clearOf(avoid) : null
   // Moving the captions does not change which look they use.
   const moveTo = (offsetY: number | undefined) => set({ style: { ...caps.style, offsetY } })
   const setCue = (id: string, patch: Partial<CaptionCue>) => set({ cues: caps.cues.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
@@ -217,6 +222,19 @@ export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
                   <ColorField id="captions-outline-color" label="Outline color" ariaLabel="Caption outline color" tipId="textColor" value={caps.style.outline?.color ?? '#000000'} onChange={(hex) => setStyle({ outline: { size: caps.style.outline?.size ?? 0.06, color: hex } })} brand={brand} posterUrl={inputProps.posterUrl} />
                   <ColorField id="captions-bg-color" label="Background color" ariaLabel="Caption background color" tipId="textColor" value={caps.style.boxColor} onChange={(hex) => setStyle({ box: true, boxColor: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
                 </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button type="button" data-testid="captions-keep-clear" aria-pressed={caps.style.keepClear !== false} onClick={() => set({ style: { ...caps.style, keepClear: caps.style.keepClear === false ? undefined : false } })} style={{ ...chipStyle(caps.style.keepClear !== false), minHeight: 26, fontSize: 10 }}>Keep clear of text</button>
+                  <span style={{ ...hintStyle, margin: 0 }}>When you drag the captions, they stop short of other text and logos.</span>
+                </div>
+                {covered > 0 && (
+                  <div role="status" data-testid="captions-overlap-warning" style={{ ...hintStyle, margin: 0, color: C.text, border: `1px solid ${C.cyan}`, borderRadius: 8, padding: '6px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span>
+                      The captions cover {covered === 1 ? 'other text or a logo' : `${covered} other layers`} while they show.
+                      {caps.style.keepClear === false ? ' Switch on Keep clear of text to move them off automatically.' : clear && !clear.cleared ? ' There is no clear spot on this frame: shorten the lines or move the other text.' : ''}
+                    </span>
+                    {clear?.cleared && <button type="button" data-testid="captions-clear-now" onClick={() => set({ style: { ...caps.style, offsetY: clear.offsetY } })} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>Move them clear</button>}
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle} htmlFor="captions-offset">Move up or down</label>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

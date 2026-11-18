@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { CaptionSettings } from '../../preview/captions'
+import { createDefaultPreviewSettings } from '../../preview/presets'
 
 const state: { settings: Record<string, unknown> } = { settings: {} }
 const updatePreviewComposition = vi.fn()
@@ -76,5 +77,47 @@ describe('captions customizer', () => {
     fireEvent.click(screen.getByTestId('captions-pos-top'))
     expect(last().style).toMatchObject({ position: 'top' })
     expect(last().style.offsetY).toBeUndefined()
+  })
+})
+
+describe('captions customizer: keeping clear of other text', () => {
+  const nameLayer = (y: number) => ({ ...createDefaultPreviewSettings().layers.find((l) => l.kind === 'businessName')!, visible: true, opacity: 1, startFrame: 0, endFrame: undefined, x: 0.05, y })
+  const brand = { businessName: 'Rascop And Associates LLC', headline: 'Call us today', offer: '10% off', cta: 'Book now' }
+  function openWith(layerY: number, style: Record<string, unknown> = {}) {
+    const captions = caps({ size: 0.08, ...style })
+    state.settings = { durationInFrames: 150, fps: 30, width: 1920, height: 1080, brandColors, layers: [nameLayer(layerY)], captions }
+    render(<CaptionsPanel inputProps={{ posterUrl: null, brand } as never} />)
+    fireEvent.click(screen.getByTestId('captions-toggle-panel'))
+  }
+  it('warns when the captions cover another layer, and is quiet when they do not', () => {
+    openWith(0.84)
+    expect(screen.getByTestId('captions-overlap-warning').textContent).toMatch(/cover/i)
+    cleanup()
+    openWith(0.1)
+    expect(screen.queryByTestId('captions-overlap-warning')).toBeNull()
+  })
+  it('moves the captions clear with one click', () => {
+    openWith(0.84)
+    fireEvent.click(screen.getByTestId('captions-clear-now'))
+    const moved = last().style.offsetY
+    expect(moved).toBeDefined()
+    expect(Math.abs(moved!)).toBeGreaterThan(0.01)
+    expect(last().style.preset).toBe('karaoke') // moving does not change the look
+  })
+  it('has a "keep clear of text" setting that is on until it is switched off', () => {
+    openWith(0.1)
+    const toggle = screen.getByTestId('captions-keep-clear')
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(toggle)
+    expect(last().style.keepClear).toBe(false)
+    cleanup(); vi.clearAllMocks()
+    openWith(0.1, { keepClear: false })
+    expect(screen.getByTestId('captions-keep-clear').getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(screen.getByTestId('captions-keep-clear'))
+    expect(last().style.keepClear).toBeUndefined()
+  })
+  it('suggests switching it on when it is off and the captions cover something', () => {
+    openWith(0.84, { keepClear: false })
+    expect(screen.getByTestId('captions-overlap-warning').textContent).toMatch(/keep clear/i)
   })
 })

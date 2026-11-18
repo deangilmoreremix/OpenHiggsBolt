@@ -58,6 +58,8 @@ export interface CaptionStyle {
   weight?: CaptionWeight
   casing?: CaptionCasing
   offsetY?: number
+  /** Keep the captions off other text when they are moved. On unless false. */
+  keepClear?: false
 }
 
 export type CaptionAnimation = 'highlight' | 'karaoke' | 'pop' | 'bounce' | 'scale' | 'glow' | 'box'

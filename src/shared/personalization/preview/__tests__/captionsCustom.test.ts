@@ -29,12 +29,12 @@ describe('customizer fields in the model', () => {
     expect(ALL_CAPTION_PRESETS.filter((p) => !p.id.startsWith('capite-')).every((p) => captionPreset(p.id, brand)!.fontFamily === undefined)).toBe(true)
   })
   it('keeps the new fields in saved styles', () => {
-    const style = { ...captionPreset('karaoke', brand)!, fontFamily: 'Anton', weight: 'medium' as const, casing: 'original' as const, offsetY: -0.1 }
+    const style = { ...captionPreset('karaoke', brand)!, fontFamily: 'Anton', weight: 'medium' as const, casing: 'original' as const, offsetY: -0.1, keepClear: false as const }
     const look = captureCaptionStyle(style, brand)
     const { list } = addStyle([], { kind: 'captions', name: 'Mine', style: look })
     const restored = normalizeTextStyles(JSON.parse(JSON.stringify(list)))![0]
-    expect(restored.kind === 'captions' && restored.style).toMatchObject({ fontFamily: 'Anton', weight: 'medium', casing: 'original', offsetY: -0.1 })
-    expect(applyCaptionStyle(look, brand)).toMatchObject({ fontFamily: 'Anton', weight: 'medium', casing: 'original', offsetY: -0.1, preset: 'custom' })
+    expect(restored.kind === 'captions' && restored.style).toMatchObject({ fontFamily: 'Anton', weight: 'medium', casing: 'original', offsetY: -0.1, keepClear: false })
+    expect(applyCaptionStyle(look, brand)).toMatchObject({ fontFamily: 'Anton', weight: 'medium', casing: 'original', offsetY: -0.1, keepClear: false, preset: 'custom' })
   })
 })
 
