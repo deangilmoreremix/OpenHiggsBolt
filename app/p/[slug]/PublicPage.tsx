@@ -47,9 +47,9 @@ export default function PublicPage({ page, data, contactId, tokens: serverTokens
         onComplete: () => track('complete'),
         onCta: () => track('cta_click'),
         onLike: () => track('like'),
-        onLead: async (fields: Record<string, string>) => {
+        onLead: async (fields: Record<string, string>, meta?: { kind?: string }) => {
           try {
-            await submitPageLead({ pageId: page.id, contactId, data: fields })
+            await submitPageLead({ pageId: page.id, contactId, data: fields, kind: meta?.kind })
             return { ok: true }
           } catch (err) {
             return { error: err instanceof Error ? err.message : 'Could not send. Please try again.' }

@@ -106,27 +106,34 @@ export async function recordEvent(db, pageId, kind, contactId) {
   dbFail(error, 'Could not record the event');
 }
 
-const FIELD_KEY = /^[a-z0-9_]{1,40}$/;
-/** Lead-form submission for a published page. */
-export async function submitLead(db, pageId, contactId, data) {
+// Answers are keyed like the timeline's List Builder / Lead Generator saves them: the box token ("FIRST NAME", "EMAIL").
+const FIELD_KEY = /^[A-Za-z0-9 _.-]{1,64}$/;
+const LEAD_KINDS = ['lead-form', 'list-builder', 'personalizer'];
+export const safeLeadKind = (k) => (LEAD_KINDS.includes(k) ? k : 'lead-form');
+
+/** Lead-form submission for a published page. `kind` is the form type: lead-form | list-builder | personalizer. */
+export async function submitLead(db, pageId, contactId, data, kind = 'lead-form') {
   if (!validPageId(pageId)) throw bad('BAD_PAGE', 'Bad page id');
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw bad('BAD_DATA', 'Send the form fields');
   const clean = {};
   for (const [k, v] of Object.entries(data)) {
     if (!FIELD_KEY.test(k) || typeof v !== 'string') continue;
-    const s = v.trim().slice(0, 1000);
-    if (s) clean[k] = s;
+    const s = v.trim().slice(0, 500);
+    if (s) clean[k.trim()] = s;
     if (Object.keys(clean).length >= 12) break;
   }
   if (!Object.keys(clean).length) throw bad('EMPTY', 'Fill in the form');
-  if (clean.email && !/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(clean.email)) throw bad('BAD_EMAIL', 'Enter a valid email');
+  // Any box that holds an e-mail address must be one (the same rule the e-mail-list step uses to find the address).
+  const badMail = Object.entries(clean).find(([k, v]) => /MAIL/i.test(k) && !/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(v));
+  if (badMail) throw bad('BAD_EMAIL', 'Enter a valid email');
   const page = await getPublishedPage(db, pageId);
   if (!page) throw notFound();
   const contact = typeof contactId === 'string' && CONTACT_ID_RE.test(contactId) ? contactId : null;
-  const { error } = await db.from('landing_page_leads').insert({ page_id: pageId, contact_id: contact, data: clean });
+  const leadKind = safeLeadKind(kind);
+  const { error } = await db.from('landing_page_leads').insert({ page_id: pageId, contact_id: contact, data: clean, kind: leadKind });
   dbFail(error, 'Could not save your details');
   await recordEvent(db, pageId, 'lead', contact).catch(() => {});
-  return { contactId: contact, data: clean };
+  return { contactId: contact, data: clean, kind: leadKind };
 }
 
 // ------------------------------------------------------------------ stats

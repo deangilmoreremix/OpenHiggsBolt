@@ -39,7 +39,8 @@ export async function recordPageEvent(pageId, { kind, contactId = null }) {
   }
 }
 /** @param {{ pageId: string, contactId?: string | null, data: Record<string, string> }} lead */
-export const submitPageLead = ({ pageId, contactId = null, data }) => call(`/${encodeURIComponent(pageId)}/lead`, { method: 'POST', body: { contactId, data } });
+/** @param {{ pageId: string, contactId?: string | null, data: Record<string, string>, kind?: string }} lead */
+export const submitPageLead = ({ pageId, contactId = null, data, kind = 'lead-form' }) => call(`/${encodeURIComponent(pageId)}/lead`, { method: 'POST', body: { contactId, data, kind } });
 
 // contacts (owner)
 export const listContacts = async (pageId) => (await call(`/${encodeURIComponent(pageId)}/contacts`)).contacts;

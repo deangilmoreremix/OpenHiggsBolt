@@ -5,15 +5,16 @@ import { Download } from 'lucide-react'
 import { fetchPageStats, getFormSettings, listPageLeads, saveFormSettings, testFormWebhooks } from '@/src/lib/landingPages/api.js'
 import { ui } from './ui'
 
-type Lead = { id: string; contactId: string | null; who: string; createdAt: string; answers: Record<string, string> }
+type Lead = { id: string; contactId: string | null; who: string; kind?: string; createdAt: string; answers: Record<string, string> }
+export const KIND_LABEL: Record<string, string> = { 'lead-form': 'Lead Generator', 'list-builder': 'List Builder', personalizer: 'Personalizer' }
 type Settings = { webhookEnabled: boolean; webhook: string; webhook2: string; webhook3: string; emailEnabled: boolean; emailAddress: string; emailAddress2: string; emailAddress3: string; espProvider: string; espListId: string }
 
 const csvCell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
 export const leadsCsv = (rows: Lead[]) => {
   if (!rows.length) return ''
   const keys = Array.from(new Set(rows.flatMap((r) => Object.keys(r.answers))))
-  const head = ['When', 'Who', 'Personal link', ...keys]
-  return [head.map(csvCell).join(','), ...rows.map((r) => [r.createdAt, r.who, r.contactId || '', ...keys.map((k) => r.answers[k] ?? '')].map(csvCell).join(','))].join('\r\n')
+  const head = ['When', 'Who', 'Type', 'Personal link', ...keys]
+  return [head.map(csvCell).join(','), ...rows.map((r) => [r.createdAt, r.who, KIND_LABEL[r.kind || 'lead-form'] || r.kind || '', r.contactId || '', ...keys.map((k) => r.answers[k] ?? '')].map(csvCell).join(','))].join('\r\n')
 }
 
 /** Leads from this page, matched to the personal link they came from, plus where each lead is delivered. */
@@ -39,10 +40,11 @@ export default function LeadsTab({ pageId, published }: { pageId: string; publis
   if (error) return <div className={ui.error}>{error}</div>
   if (!leads) return <div className="text-xs text-white/40">Loading…</div>
   const personal = leads.filter((l) => l.contactId).length
-  const kpis: [string, string | number][] = [['Leads', leads.length], ['From personal links', personal], ['Direct visits', leads.length - personal], ['Of viewers signed up', views ? `${Math.min(100, Math.round((leads.length / views) * 100))}%` : '–']]
+  const byKind = (k: string) => leads.filter((l) => (l.kind || 'lead-form') === k).length
+  const kpis: [string, string | number][] = [['Leads', leads.length], ['Lead Generator', byKind('lead-form')], ['List Builder', byKind('list-builder')], ['Personalizer', byKind('personalizer')], ['From personal links', personal], ['Of viewers signed up', views ? `${Math.min(100, Math.round((leads.length / views) * 100))}%` : '–']]
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-6">
         {kpis.map(([k, v]) => <div key={k} className={ui.card}><div className={ui.label}>{k}</div><div className="text-2xl font-black text-white mt-1">{v}</div></div>)}
       </div>
       {!published ? <p className="text-xs text-white/40">Publish the page to start collecting leads.</p> : null}
@@ -55,11 +57,12 @@ export default function LeadsTab({ pageId, published }: { pageId: string; publis
         {!shown.length ? <p className="text-sm text-white/40">{leads.length ? 'No leads match.' : 'No leads yet. Form answers appear here, matched to the personal link they came from.'}</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left text-white/80">
-              <thead><tr className="text-[11px] uppercase tracking-wide text-white/40"><th className="px-2 py-1">When</th><th className="px-2 py-1">Who</th>{cols.map((c) => <th key={c} className="px-2 py-1 whitespace-nowrap">{c}</th>)}</tr></thead>
+              <thead><tr className="text-[11px] uppercase tracking-wide text-white/40"><th className="px-2 py-1">When</th><th className="px-2 py-1">Who</th><th className="px-2 py-1">Type</th>{cols.map((c) => <th key={c} className="px-2 py-1 whitespace-nowrap">{c}</th>)}</tr></thead>
               <tbody>{shown.map((r) => (
                 <tr key={r.id} className="border-t border-white/5">
                   <td className="px-2 py-1 whitespace-nowrap text-white/40">{new Date(r.createdAt).toLocaleString()}</td>
                   <td className="px-2 py-1 whitespace-nowrap">{r.who}</td>
+                  <td className="px-2 py-1 whitespace-nowrap text-white/50">{KIND_LABEL[r.kind || 'lead-form'] || r.kind}</td>
                   {cols.map((c) => <td key={c} className="px-2 py-1">{r.answers[c] ?? ''}</td>)}
                 </tr>
               ))}</tbody>

@@ -4,11 +4,11 @@ import { peopleRows } from '../HeatPanel'
 
 describe('Leads tab and heat panel helpers', () => {
   it('builds a quoted CSV with the contact each lead came from', () => {
-    const csv = leadsCsv([{ id: '1', contactId: 'c1', who: 'Dana W', createdAt: 't', answers: { email: 'd@x.co', note: 'say "hi"' } }, { id: '2', contactId: null, who: 'Direct visit', createdAt: 't2', answers: { email: 'z@x.co' } }])
+    const csv = leadsCsv([{ id: '1', contactId: 'c1', who: 'Dana W', kind: 'list-builder', createdAt: 't', answers: { email: 'd@x.co', note: 'say "hi"' } }, { id: '2', contactId: null, who: 'Direct visit', createdAt: 't2', answers: { email: 'z@x.co' } }])
     const lines = csv.split('\r\n')
-    expect(lines[0]).toBe('"When","Who","Personal link","email","note"')
-    expect(lines[1]).toBe('"t","Dana W","c1","d@x.co","say ""hi"""')
-    expect(lines[2]).toBe('"t2","Direct visit","","z@x.co",""')
+    expect(lines[0]).toBe('"When","Who","Type","Personal link","email","note"')
+    expect(lines[1]).toBe('"t","Dana W","List Builder","c1","d@x.co","say ""hi"""')
+    expect(lines[2]).toBe('"t2","Direct visit","Lead Generator","","z@x.co",""')
     expect(leadsCsv([])).toBe('')
   })
   it('joins heat, event counts and leads into one row per personal link, newest first', () => {

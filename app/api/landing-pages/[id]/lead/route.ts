@@ -15,9 +15,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const db = await serviceDb()
     const id = (await params).id
-    const saved = await submitLead(db, id, typeof body.contactId === 'string' ? body.contactId : null, body.data)
+    const saved = await submitLead(db, id, typeof body.contactId === 'string' ? body.contactId : null, body.data, typeof body.kind === 'string' ? body.kind : 'lead-form')
     // The owner's webhooks run after the visitor has their answer, so a slow receiver never keeps the form waiting.
-    const send = () => deliverLead(db, { pageId: id, contactId: saved.contactId, data: saved.data }).catch((e: unknown) => console.warn('[landing-pages] delivery failed:', (e as Error)?.name))
+    const send = () => deliverLead(db, { pageId: id, contactId: saved.contactId, data: saved.data, kind: saved.kind }).catch((e: unknown) => console.warn('[landing-pages] delivery failed:', (e as Error)?.name))
     try { after(send) } catch { await send() } // outside a request scope (unit tests) run it inline
     return NextResponse.json({ ok: true })
   } catch (err) {

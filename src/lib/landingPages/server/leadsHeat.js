@@ -77,30 +77,50 @@ const logRows = (ownerId, pageId, deliveries) => deliveries.map((d) => ({
   url_host: d.host, ok: d.ok, http_status: d.status, attempts: d.attempts, error: d.error,
 }));
 
-/** Send one lead to the owner's saved webhooks (settings read here, never from the request) and log the outcome. */
-export async function deliverLead(db, { pageId, contactId, data }, deps = realDeps(), master = process.env.WEBHOOK_SIGNING_SECRET || '') {
+/**
+ * Deliver one lead. The preferred path is the shared lead-capture function (service key, deliver-only): the SAME code the timeline's
+ * List Builder / Lead Generator uses, so webhooks (retried, signed), notification e-mails, Kit / MailerLite and the delivery log
+ * all work. Without the function's address (or when it fails) webhooks are sent directly with the same payload.
+ */
+export async function deliverLead(db, { pageId, contactId, data, kind = 'lead-form' }, deps = realDeps(), master = process.env.WEBHOOK_SIGNING_SECRET || '', capture = captureEnv()) {
   const { data: owner } = await db.from('landing_pages').select('clerk_user_id').eq('id', pageId).eq('published', true).maybeSingle();
   const ownerId = owner?.clerk_user_id;
   if (!ownerId) return [];
+  if (capture.url && capture.key) {
+    try {
+      const res = await (capture.fetchImpl || fetch)(`${capture.url}/functions/v1/lead-capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: capture.key, Authorization: `Bearer ${capture.key}` },
+        body: JSON.stringify({ pageId, contactId, kind, data, skipStore: true }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body?.ok) return [{ via: 'lead-capture', ok: true }];
+    } catch { /* fall back to direct webhooks below */ }
+  }
   const { data: row } = await db.from('landing_page_form_settings').select('settings').eq('page_id', pageId).maybeSingle();
   const hooks = savedWebhooks(row?.settings ?? null, true);
   if (!hooks.length) return [];
-  const body = JSON.stringify({ event: 'landing_page_lead', kind: 'lead-form', pageId, contactId, data, submittedAt: new Date().toISOString() });
+  const clipId = kind === 'list-builder' || kind === 'personalizer' ? 'list-builder' : 'landing-page';
+  // The same event and payload the timeline's forms send, so one receiver can serve both.
+  const body = JSON.stringify({ event: 'video_opted_in', kind, projectId: pageId, clipId, pageId, contactId, data, submittedAt: new Date().toISOString() });
   const secret = master ? await deriveSigningSecret(master, ownerId) : '';
-  const deliveries = await Promise.all(hooks.map((u) => deliverWebhook({ url: u, body, event: 'landing_page_lead', secret, maxAttempts: MAX_ATTEMPTS }, deps)));
+  const deliveries = await Promise.all(hooks.map((u) => deliverWebhook({ url: u, body, event: 'video_opted_in', secret, maxAttempts: MAX_ATTEMPTS }, deps)));
   const { error } = await db.from('webhook_deliveries').insert(logRows(ownerId, pageId, deliveries));
   if (error) console.warn('[landing-pages] delivery log failed:', error.code);
   return deliveries;
 }
+
+/** Where the shared lead-capture function lives (the same Supabase project), from the server's environment. */
+export const captureEnv = () => ({ url: (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, ''), key: process.env.SUPABASE_SERVICE_ROLE_KEY || '' });
 
 /** "Test webhook": a signed sample to the saved addresses, so the owner can see the receiver answers. */
 export async function testWebhooks(db, userId, pageId, deps = realDeps(), master = process.env.WEBHOOK_SIGNING_SECRET || '') {
   const settings = await getFormSettings(db, userId, pageId);
   const hooks = savedWebhooks(settings, true);
   if (!hooks.length) throw bad('NO_WEBHOOK', 'Switch the webhook on and save a valid https address first');
-  const body = JSON.stringify({ event: 'landing_page_lead', kind: 'lead-form', pageId, contactId: null, data: { Email: 'test@example.com', Name: 'Test lead' }, test: true, submittedAt: new Date().toISOString() });
+  const body = JSON.stringify({ event: 'video_opted_in', kind: 'lead-form', projectId: pageId, clipId: 'landing-page', pageId, contactId: null, data: { EMAIL: 'test@example.com', NAME: 'Test lead' }, test: true, submittedAt: new Date().toISOString() });
   const secret = master ? await deriveSigningSecret(master, userId) : '';
-  return Promise.all(hooks.map((u) => deliverWebhook({ url: u, body, event: 'landing_page_lead', secret, maxAttempts: 1 }, deps)));
+  return Promise.all(hooks.map((u) => deliverWebhook({ url: u, body, event: 'video_opted_in', secret, maxAttempts: 1 }, deps)));
 }
 
 // ------------------------------------------------------------------ heat samples
@@ -146,7 +166,7 @@ export async function pageHeat(db, userId, pageId, { days = 30, viewport = 'all'
 export async function pageLeads(db, userId, pageId) {
   await getOwnedPage(db, userId, pageId);
   const [{ data, error }, contacts] = await Promise.all([
-    db.from('landing_page_leads').select('id, contact_id, data, created_at').eq('page_id', pageId).order('created_at', { ascending: false }).limit(2000),
+    db.from('landing_page_leads').select('id, contact_id, data, kind, created_at').eq('page_id', pageId).order('created_at', { ascending: false }).limit(2000),
     listContacts(db, userId, pageId),
   ]);
   dbFail(error, 'Could not load the leads');
@@ -154,6 +174,6 @@ export async function pageLeads(db, userId, pageId) {
   return (data || []).map((l) => {
     const f = l.contact_id ? byId.get(l.contact_id) : null;
     const who = !l.contact_id ? 'Direct visit' : ([f?.firstname, f?.lastname].filter(Boolean).join(' ') || f?.company || `Link ${String(l.contact_id).slice(0, 6)}`);
-    return { id: l.id, contactId: l.contact_id || null, who, createdAt: l.created_at, answers: l.data || {} };
+    return { id: l.id, contactId: l.contact_id || null, who, kind: l.kind || 'lead-form', createdAt: l.created_at, answers: l.data || {} };
   });
 }

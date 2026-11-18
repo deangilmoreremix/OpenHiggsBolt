@@ -73,15 +73,34 @@ describe('heat samples and reads', () => {
   });
 });
 
+describe('lead delivery through the shared lead-capture function', () => {
+  it('asks the shared function to deliver (deliver-only, with the service key) and sends nothing itself', async () => {
+    const db = fakeDb({ pages: [page()], settings: [{ page_id: 'page1234', settings: { webhookEnabled: true, webhook: 'https://hooks.example.com/a' } }] });
+    const calls = []; const capture = { url: 'https://proj.supabase.co', key: 'service-key', fetchImpl: async (u, init) => { calls.push([u, init]); return { ok: true, json: async () => ({ ok: true }) }; } };
+    const d = { fetchFn: vi.fn(), sleepFn: async () => {}, nowFn: () => 1, resolvesPublic: async () => true, newId: () => 'x' };
+    const out = await deliverLead(db, { pageId: 'page1234', contactId: 'c1', data: { EMAIL: 'd@x.co' }, kind: 'list-builder' }, d, '', capture);
+    expect(out).toEqual([{ via: 'lead-capture', ok: true }]); expect(d.fetchFn).not.toHaveBeenCalled();
+    expect(calls[0][0]).toBe('https://proj.supabase.co/functions/v1/lead-capture'); expect(calls[0][1].headers.Authorization).toBe('Bearer service-key');
+    expect(JSON.parse(calls[0][1].body)).toEqual({ pageId: 'page1234', contactId: 'c1', kind: 'list-builder', data: { EMAIL: 'd@x.co' }, skipStore: true });
+  });
+  it('falls back to direct webhooks (list-builder clip id) when the function is unavailable', async () => {
+    const db = fakeDb({ pages: [page()], settings: [{ page_id: 'page1234', settings: { webhookEnabled: true, webhook: 'https://hooks.example.com/a' } }] });
+    const capture = { url: 'https://proj.supabase.co', key: 'k', fetchImpl: async () => { throw new Error('down'); } };
+    const d = { fetchFn: vi.fn(async () => ({ ok: true, status: 200, body: null })), sleepFn: async () => {}, nowFn: () => 1_700_000_000_000, resolvesPublic: async () => true, newId: () => 'del-1' };
+    const out = await deliverLead(db, { pageId: 'page1234', contactId: null, data: { EMAIL: 'd@x.co' }, kind: 'personalizer' }, d, '', capture);
+    expect(out).toHaveLength(1); expect(JSON.parse(d.fetchFn.mock.calls[0][1].body)).toMatchObject({ event: 'video_opted_in', kind: 'personalizer', clipId: 'list-builder' });
+  });
+});
+
 describe('webhook delivery', () => {
   const deps = (over = {}) => ({ fetchFn: vi.fn(async () => ({ ok: true, status: 200, body: null })), sleepFn: async () => {}, nowFn: () => 1_700_000_000_000, resolvesPublic: async () => true, newId: () => 'del-1', ...over });
   it('sends each lead to the saved webhooks only, signed, and logs the delivery', async () => {
     const db = fakeDb({ pages: [page()], settings: [{ page_id: 'page1234', settings: { webhookEnabled: true, webhook: 'https://hooks.example.com/a', webhook2: 'http://insecure.example.com' } }] });
     const d = deps();
-    const out = await deliverLead(db, { pageId: 'page1234', contactId: 'c1', data: { email: 'd@x.co' } }, d, 'master-secret');
+    const out = await deliverLead(db, { pageId: 'page1234', contactId: 'c1', data: { email: 'd@x.co' } }, d, 'master-secret', {});
     expect(out).toHaveLength(1); expect(out[0].ok).toBe(true);
     const [url, init] = d.fetchFn.mock.calls[0]; expect(url).toBe('https://hooks.example.com/a');
-    expect(JSON.parse(init.body)).toMatchObject({ event: 'landing_page_lead', pageId: 'page1234', contactId: 'c1', data: { email: 'd@x.co' } });
+    expect(JSON.parse(init.body)).toMatchObject({ event: 'video_opted_in', kind: 'lead-form', projectId: 'page1234', clipId: 'landing-page', pageId: 'page1234', contactId: 'c1', data: { email: 'd@x.co' } });
     expect(init.headers['X-Remix-Signature']).toBeTruthy();
     expect(db.calls.inserts.find(([t]) => t === 'webhook_deliveries')[1][0]).toMatchObject({ clerk_user_id: 'userA', project_id: 'page1234', url_host: 'hooks.example.com', ok: true });
   });
