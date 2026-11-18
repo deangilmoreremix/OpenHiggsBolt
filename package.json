@@ -53,7 +53,7 @@
     "render:deploy": "render blueprints apply --confirm",
     "source:status": "node scripts/verify-source-of-truth.mjs",
     "source:verify": "node scripts/verify-source-of-truth.mjs",
-    "build:outreach": "cd warmbly/web && pnpm install --frozen-lockfile && pnpm exec vite build --base=/outreach-app/ && rm -rf ../../public/outreach-app && cp -r dist ../../public/outreach-app",
+    "build:warmbly": "cd warmbly/web && pnpm install --frozen-lockfile && pnpm exec vite build --base=/warmbly-app/ && rm -rf ../../public/warmbly-app && cp -r dist ../../public/warmbly-app",
     "build:metadata": "node scripts/generate-build-info.mjs",
     "thumbnails:edit-tools": "node scripts/generate-edit-tool-thumbnails.mjs",
     "thumbnails:workflow-templates": "node scripts/generate-workflow-template-thumbnails.mjs",
