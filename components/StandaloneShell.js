@@ -56,6 +56,7 @@ const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { 
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
+const OutreachStudio = dynamic(() => import('../src/apps/outreach/OutreachStudio'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -125,6 +126,7 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
   { id: 'video-pages', label: 'Video Pages' },
+  { id: 'outreach', label: 'Outreach Studio' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
@@ -152,6 +154,7 @@ const SLUG_TO_TAB = {
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
+  outreach: 'outreach',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
@@ -974,6 +977,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
+          {activeTab === 'outreach' && <OutreachStudio />}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
           {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>

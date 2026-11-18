@@ -18,6 +18,15 @@ const HOST_REFRESH = "host-session";
 const REFRESH_EVERY_MS = 45_000;
 
 let clerk: Clerk | null = null;
+
+/** The host app's window when embedded in one (same origin), else this window. */
+function hostWindow(): Window {
+    try {
+        return window.top && window.top !== window ? window.top : window;
+    } catch {
+        return window;
+    }
+}
 let timer: ReturnType<typeof setInterval> | undefined;
 
 function expiry(jwt: string): Date {
@@ -59,7 +68,9 @@ export async function bootHostSession(): Promise<void> {
     clerk = new Clerk(PUBLISHABLE_KEY);
     await clerk.load();
     if (!clerk.session) {
-        window.location.replace(`${HOST_SIGN_IN_URL}?redirect_url=${encodeURIComponent(window.location.href)}`);
+        // Embedded as a studio, the whole host page goes to sign-in, not just the frame.
+        const top = hostWindow();
+        top.location.replace(`${HOST_SIGN_IN_URL}?redirect_url=${encodeURIComponent(top.location.href)}`);
         await new Promise<never>(() => {});
     }
     await syncHostToken();
@@ -72,5 +83,5 @@ export async function signOutOfHost(): Promise<void> {
     timer = undefined;
     setToken(null);
     await clerk?.signOut();
-    window.location.replace(HOST_SIGN_IN_URL);
+    hostWindow().location.replace(HOST_SIGN_IN_URL);
 }
