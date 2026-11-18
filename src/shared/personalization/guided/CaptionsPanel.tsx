@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Captions, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Captions, Crosshair, Plus, Trash2 } from 'lucide-react'
 import { downloadBlob } from '../preview/capite/subtitleExport'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { ColorField } from './editor/ColorField'
@@ -9,10 +9,10 @@ import { applyCaptionStyle, captureCaptionStyle } from '../preview/textStyles'
 import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle } from './tokens'
 import {
   ALL_CAPTION_PRESETS, CAPTION_ANIMATIONS, CAPTION_PRESET_CATEGORIES, CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, cuesToSrt, cuesToVtt, newCue,
-  type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
+  activeCue, type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
 import { LANGUAGES } from '../captions/scripts'
-import { transcriptText } from '../captions/textTools'
+import { applyCasing, clampNudge, findReplace, transcriptText, type Casing } from '../captions/textTools'
 import { captionsToAss } from '../preview/captionAss'
 import type { PreviewInputProps } from '../preview/types'
 
@@ -23,17 +23,56 @@ import type { PreviewInputProps } from '../preview/types'
  */
 const downloadText = (content: string, name: string, mime: string) => downloadBlob(content, name, mime)
 
-export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps }): React.JSX.Element {
+export function CaptionsPanel({ inputProps, onSeek, playFrame }: {
+  inputProps: PreviewInputProps
+  /** Jump the live preview to a frame. Missing when there is no live preview. */
+  onSeek?: (frame: number) => void
+  /** The live preview's current frame, to mark the line that is playing. */
+  playFrame?: number
+}): React.JSX.Element {
   const { previewSettings, updatePreviewComposition } = useDemoPersonalize()
   const [open, setOpen] = useState(false)
   const [script, setScript] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const [find, setFind] = useState('')
+  const [replaceWith, setReplaceWith] = useState('')
+  const [matchCase, setMatchCase] = useState(false)
+  const [wholeWord, setWholeWord] = useState(false)
+  const [editNotice, setEditNotice] = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
   const durationSec = previewSettings.durationInFrames / Math.max(1, previewSettings.fps)
   const brand = previewSettings.brandColors
   const caps: CaptionSettings = previewSettings.captions ?? { enabled: false, cues: [], style: captionPreset('karaoke', brand) ?? DEFAULT_CAPTION_STYLE }
   const set = (patch: Partial<CaptionSettings>) => updatePreviewComposition({ captions: { ...caps, ...patch } })
   const setStyle = (patch: Partial<CaptionStyle>) => set({ style: { ...caps.style, ...patch, preset: patch.preset ?? 'custom' } })
   const setCue = (id: string, patch: Partial<CaptionCue>) => set({ cues: caps.cues.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
+
+  // The line that is playing: marked, and scrolled into view inside the list (never the page).
+  const playingId = onSeek && playFrame !== undefined ? activeCue(caps.cues, playFrame, previewSettings.fps)?.id : undefined
+  useEffect(() => {
+    const list = listRef.current
+    if (!playingId || !list) return
+    const row = list.querySelector<HTMLElement>(`[data-cue-id="${playingId}"]`)
+    if (!row) return
+    if (row.offsetTop < list.scrollTop) list.scrollTop = Math.max(0, row.offsetTop - 4)
+    else if (row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = row.offsetTop + row.offsetHeight - list.clientHeight + 4
+  }, [playingId])
+
+  const nudge = (id: string, dStart: number, dEnd: number) => {
+    const c = caps.cues.find((x) => x.id === id)
+    if (!c) return
+    const [s0, e0] = clampNudge(c.start, c.end, dStart, dEnd)
+    const end = Math.min(e0, durationSec)
+    setCue(id, { start: Math.min(s0, Math.max(0, end - 0.1)), end })
+  }
+  const replaceAll = () => {
+    const { items, count } = findReplace(caps.cues, find, replaceWith, { matchCase, wholeWord })
+    if (!find) return
+    if (count === 0) { setEditNotice('Nothing to replace.'); return }
+    setEditNotice(`${count} replacement${count > 1 ? 's' : ''}.`)
+    set({ cues: items.map((c) => ({ ...c, text: c.text.slice(0, 240) })) })
+  }
+  const recase = (casing: Casing) => set({ cues: caps.cues.map((c) => ({ ...c, text: applyCasing(c.text, casing) })) })
 
   const apply = () => {
     const cues = cuesFromText(script, durationSec).slice(0, MAX_CUES)
@@ -156,8 +195,21 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Tip id="captionsLines" side="top"><div style={labelStyle}>Lines</div></Tip>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input data-testid="captions-find" aria-label="Find in captions" placeholder="Find" value={find} onChange={(e) => { setFind(e.target.value); setEditNotice(null) }} style={{ ...inputStyle, width: 110, minHeight: 26, padding: '0 8px', fontSize: 11 }} />
+                  <input data-testid="captions-replace" aria-label="Replace with" placeholder="Replace with" value={replaceWith} onChange={(e) => setReplaceWith(e.target.value)} style={{ ...inputStyle, width: 110, minHeight: 26, padding: '0 8px', fontSize: 11 }} />
+                  <button type="button" data-testid="captions-find-case" aria-pressed={matchCase} onClick={() => setMatchCase((v) => !v)} style={{ ...chipStyle(matchCase), minHeight: 26, fontSize: 10 }}>Aa</button>
+                  <button type="button" data-testid="captions-find-word" aria-pressed={wholeWord} onClick={() => setWholeWord((v) => !v)} style={{ ...chipStyle(wholeWord), minHeight: 26, fontSize: 10 }}>Whole word</button>
+                  <button type="button" data-testid="captions-replace-all" onClick={replaceAll} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 10px' }}>Replace all</button>
+                  <span style={{ width: 6 }} />
+                  {(['upper', 'title', 'lower'] as Casing[]).map((k) => (
+                    <button key={k} type="button" data-testid={`captions-case-${k}`} onClick={() => recase(k)} style={{ ...secondaryButtonStyle, minHeight: 26, fontSize: 10, padding: '0 8px' }}>{k === 'upper' ? 'UPPER' : k === 'title' ? 'Title' : 'lower'}</button>
+                  ))}
+                </div>
+                {editNotice && <div role="status" data-testid="captions-edit-notice" style={{ ...hintStyle, margin: 0 }}>{editNotice}</div>}
+                <div ref={listRef} style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto', position: 'relative' }}>
                 {caps.cues.map((c, i) => (
-                  <div key={c.id} data-testid="caption-cue" data-cue-id={c.id} style={{ border: `1px solid ${C.border}`, borderRadius: 8, padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div key={c.id} data-testid="caption-cue" data-cue-id={c.id} data-active={String(c.id === playingId)} style={{ border: `1px solid ${c.id === playingId ? C.cyan : C.border}`, borderRadius: 8, padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <textarea data-testid="caption-cue-text" aria-label={`Caption line ${i + 1}`} rows={2} value={c.text} onChange={(e) => setCue(c.id, { text: e.target.value.slice(0, 240) })} style={{ ...inputStyle, padding: '6px 8px', resize: 'vertical', flex: 1, fontSize: 12 }} />
                       <button type="button" data-testid="caption-cue-delete" aria-label={`Delete caption line ${i + 1}`} onClick={() => set({ cues: caps.cues.filter((x) => x.id !== c.id) })} style={{ ...secondaryButtonStyle, minHeight: 28, width: 30, padding: 0, display: 'grid', placeItems: 'center' }}><Trash2 size={12} aria-hidden /></button>
@@ -166,8 +218,17 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
                       {numField(`caption-start-${c.id}`, 'Starts (s)', c.start, (v) => setCue(c.id, { start: v, end: Math.max(c.end, v + 0.1) }))}
                       {numField(`caption-end-${c.id}`, 'Ends (s)', c.end, (v) => setCue(c.id, { end: Math.max(v, c.start + 0.1) }))}
                     </div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {onSeek && (
+                        <button type="button" data-testid="caption-cue-seek" aria-label={`Jump to caption line ${i + 1}`} onClick={() => onSeek(Math.round(c.start * Math.max(1, previewSettings.fps)))} style={{ ...secondaryButtonStyle, minHeight: 24, fontSize: 10, padding: '0 8px', display: 'inline-flex', gap: 4, alignItems: 'center' }}><Crosshair size={11} aria-hidden /> Jump</button>
+                      )}
+                      {([['start', 'minus', -0.1, 0], ['start', 'plus', 0.1, 0], ['end', 'minus', 0, -0.1], ['end', 'plus', 0, 0.1]] as const).map(([edge, dir, dS, dE]) => (
+                        <button key={`${edge}-${dir}`} type="button" data-testid={`caption-nudge-${c.id}-${edge}-${dir}`} aria-label={`${edge === 'start' ? 'Start' : 'End'} ${dir === 'minus' ? 'earlier' : 'later'} by 0.1 seconds, line ${i + 1}`} onClick={() => nudge(c.id, dS, dE)} style={{ ...secondaryButtonStyle, minHeight: 24, fontSize: 10, padding: '0 6px' }}>{edge === 'start' ? 'Start' : 'End'} {dir === 'minus' ? '−' : '+'}0.1</button>
+                      ))}
+                    </div>
                   </div>
                 ))}
+                </div>
                 <button type="button" data-testid="caption-cue-add" disabled={caps.cues.length >= MAX_CUES} onClick={() => { const last = caps.cues.at(-1); const start = Math.min(durationSec - 0.5, last ? last.end : 0); set({ cues: [...caps.cues, newCue(start, Math.min(durationSec, start + 2))] }) }} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 11, alignSelf: 'flex-start', display: 'inline-flex', gap: 6, alignItems: 'center' }}><Plus size={12} aria-hidden /> Add a line</button>
               </div>
             </>
