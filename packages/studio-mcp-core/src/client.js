@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { sanitizeText, sanitizeDeep, extractOutputs, DONE, FAILED } from './sanitize.js';
+import { sanitizeText, sanitizeDeep, extractOutputs, extractText, DONE, FAILED } from './sanitize.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,6 +56,11 @@ export function createGatewayClient({ gatewayUrl, apiKey, brandName, fetchImpl =
     result: (id) => call(`/result/${encodeURIComponent(id)}`),
     estimate: (endpoint, payload) => call('/estimate', { method: 'POST', body: { endpoint, payload } }),
     balance: () => call('/balance'),
+    /** Run one of the brand's studio functions (as the signed-in key owner). Returns the function's own JSON. */
+    studio: (name, body) => call(`/studio/${encodeURIComponent(name)}`, { method: 'POST', body }),
+    /** Allow-listed passthrough to the brand's workflow / agent API: { method, path, body } → upstream JSON. */
+    raw: (method, path, body) => call('/raw', { method: 'POST', body: { method, path, body } }),
+    sleep,
     async upload({ url, filePath }) {
       if (url) return call('/upload', { method: 'POST', body: { source_url: url } });
       const buf = await readFile(filePath);
@@ -73,7 +78,11 @@ export function createGatewayClient({ gatewayUrl, apiKey, brandName, fetchImpl =
       for (;;) {
         const r = await call(`/result/${encodeURIComponent(requestId)}`);
         const status = String(r.status || '').toLowerCase();
-        if (DONE.has(status)) return { status: 'completed', request_id: requestId, outputs: extractOutputs(r) };
+        if (DONE.has(status)) {
+          const outputs = extractOutputs(r);
+          const text = extractText(r);
+          return { status: 'completed', request_id: requestId, outputs, ...(text !== undefined && !outputs.length ? { text } : {}) };
+        }
         if (FAILED.has(status)) return { status: 'failed', request_id: requestId, error: sanitizeText(r.error || r.detail || 'Generation failed', brandName) };
         if (Date.now() >= deadline) return { status: 'processing', request_id: requestId };
         await sleep(pollIntervalMs);

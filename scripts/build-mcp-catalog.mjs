@@ -15,6 +15,9 @@ const KINDS = {
   audio: [m.audioModels, ['audio']],
 };
 
+// Studios that run on catalog models chosen by id: VFX runs the effects models, Storyboard its storyboard model and a frame model.
+const VFX_MODEL_IDS = new Set(['ai-video-effects', 'motion-controls', 'vfx']);
+const STORYBOARD_IDS = new Set(['openai-sora-2-pro-storyboard', 'flux-dev']);
 const KEEP = ['type', 'title', 'enum', 'default', 'description', 'minimum', 'maximum', 'required'];
 const strip = (s) => String(s ?? '').replace(/mu-?api(\.ai)?/gi, '').trim();
 
@@ -24,6 +27,7 @@ for (const [kind, [list, studios]] of Object.entries(KINDS)) {
   for (const model of list || []) {
     const key = seen.has(model.id) ? `${model.id}:${kind}` : model.id;
     seen.add(model.id);
+    const entryStudios = [...studios, ...(VFX_MODEL_IDS.has(model.id) ? ['vfx-studio'] : []), ...(STORYBOARD_IDS.has(model.id) ? ['storyboard'] : [])];
     const inputs = {};
     for (const [name, def] of Object.entries(model.inputs || {})) {
       inputs[name] = {};
@@ -45,7 +49,7 @@ for (const [kind, [list, studios]] of Object.entries(KINDS)) {
       inputs[name] = { ...(inputs[name] || { type: 'string', title: name }), required: true };
     }
     entries.push({
-      key, kind, studios, id: model.id, name: strip(model.name), family: model.family,
+      key, kind, studios: entryStudios, id: model.id, name: strip(model.name), family: model.family,
       endpoint: model.endpoint || model.id, hasPrompt: model.hasPrompt, imageField: model.imageField, videoField: model.videoField, inputs,
     });
   }

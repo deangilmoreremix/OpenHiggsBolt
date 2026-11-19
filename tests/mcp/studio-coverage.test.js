@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { GENERATION_TOOLS } from '../../packages/studio-mcp-core/src/server.js';
+import { customTools } from '../../mcp/tools.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const manifest = JSON.parse(read('../../mcp/studios.json'));
@@ -12,7 +13,7 @@ const shell = read('../../components/StandaloneShell.js');
 const tabs = shell.slice(shell.indexOf('const TABS = ['), shell.indexOf('];', shell.indexOf('const TABS = [')));
 const appStudios = [...tabs.matchAll(/\{\s*id:\s*'([^']+)'/g)].map((m) => m[1]);
 
-const toolNames = new Set([...GENERATION_TOOLS.map((t) => t.name), 'list_studios', 'search_models', 'get_model', 'estimate_cost', 'get_result', 'upload_file', 'account_balance']);
+const toolNames = new Set([...GENERATION_TOOLS.map((t) => t.name), ...customTools.map((t) => t.name), 'list_studios', 'search_models', 'get_model', 'estimate_cost', 'get_result', 'upload_file', 'account_balance']);
 const kindsInCatalog = new Set(catalog.map((e) => e.kind));
 
 describe('every studio in the app is classified', () => {

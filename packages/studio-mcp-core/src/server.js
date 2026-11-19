@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { InputError } from './catalog.js';
-import { sanitizeText } from './sanitize.js';
+import { sanitizeText, extractOutputs, extractText } from './sanitize.js';
 
 /** Generation tools, one per capability. Registered only when the brand's catalog has models of that kind. */
 export const GENERATION_TOOLS = [
@@ -15,6 +15,7 @@ export const GENERATION_TOOLS = [
   { name: 'video_tool', kinds: ['tools'], timeoutMs: 600_000, description: 'Video utilities: captions, clipping, upscaling, background removal and similar.' },
   { name: 'avatar_generate', kinds: ['avatar'], timeoutMs: 600_000, description: 'Create a talking avatar / presenter video.' },
   { name: 'model_train', kinds: ['training'], timeoutMs: 120_000, description: 'Start training a custom model (e.g. a LoRA) from your images. Returns a request_id; training runs long.' },
+  { name: 'vision_describe', kinds: ['vision'], timeoutMs: 120_000, description: 'Describe or analyse an image with a vision model.' },
   { name: 'text_generate', kinds: ['text'], timeoutMs: 120_000, description: 'Generate text with an LLM (scripts, prompts, captions).' },
   { name: 'motion_control', kinds: ['motion'], timeoutMs: 600_000, description: 'Drive an image/character with the motion of a reference video.' },
   { name: 'motion_graphics', kinds: ['graphics'], timeoutMs: 300_000, description: 'Generate or edit an animated motion-graphics clip from a prompt.' },
@@ -38,7 +39,7 @@ export function createBrandedServer({ brand, catalog, client }) {
     try {
       return await fn(args);
     } catch (err) {
-      const msg = err instanceof InputError ? err.message : sanitizeText(err?.message || 'Request failed', brand.name);
+      const msg = err instanceof InputError || err?.code === 'BAD_INPUT' ? err.message : sanitizeText(err?.message || 'Request failed', brand.name);
       return json({ error: msg, ...(err?.status ? { status: err.status } : {}) }, true);
     }
   };
@@ -96,9 +97,28 @@ export function createBrandedServer({ brand, catalog, client }) {
       const { endpoint, payload } = catalog.buildRequest(model, inputs, tool.kinds);
       const submitted = await client.submit(endpoint, payload);
       const id = submitted.request_id || submitted.id;
-      if (!id) return json({ status: 'completed', outputs: submitted.outputs || submitted.output || [], raw: undefined });
+      if (!id) { const text = extractText(submitted); return json({ status: 'completed', outputs: extractOutputs(submitted), ...(text !== undefined ? { text } : {}) }); }
       if (!wait) return json({ status: 'processing', request_id: id });
       return json(await client.wait(id, { timeoutMs: tool.timeoutMs }));
+    }));
+  }
+
+  // ---- brand-defined tools: { name, description, input (zod shape), build(args) -> { endpoint, payload }, timeoutMs }
+  // The brand supplies the request builder (so it can reuse the app's own payload code); the core submits and waits.
+  for (const tool of brand.customTools || []) {
+    server.registerTool(p(tool.name), {
+      title: `${brand.name}: ${tool.name.replace(/_/g, ' ')}`,
+      description: tool.description,
+      inputSchema: tool.run ? tool.input : { ...tool.input, wait: z.boolean().optional().describe('Wait for the result (default true). If false, or on timeout, returns a request_id for get_result.') },
+    }, guard(async ({ wait = true, ...args }) => {
+      // `run` tools drive a studio function themselves (several calls, own status protocol).
+      if (tool.run) return json(await tool.run({ ...args, wait }, client));
+      const { endpoint, payload } = tool.build(args);
+      const submitted = await client.submit(endpoint, payload);
+      const id = submitted.request_id || submitted.id;
+      if (!id) return json({ status: 'completed', outputs: submitted.outputs || [] });
+      if (!wait) return json({ status: 'processing', request_id: id });
+      return json(await client.wait(id, { timeoutMs: tool.timeoutMs || 600_000 }));
     }));
   }
 

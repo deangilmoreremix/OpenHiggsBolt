@@ -117,20 +117,52 @@
     "t2i",
     "i2i"
    ]
+  },
+  "workflows": {
+   "tools": [
+    "workflows_list",
+    "workflow_inputs",
+    "workflow_run",
+    "workflow_status",
+    "skills_list",
+    "skill_run"
+   ],
+   "kinds": []
+  },
+  "agents": {
+   "tools": [
+    "agents_list",
+    "agent_chat"
+   ],
+   "kinds": []
+  },
+  "vfx-studio": {
+   "tools": [
+    "video_from_image"
+   ],
+   "kinds": [
+    "i2v"
+   ]
+  },
+  "storyboard": {
+   "tools": [
+    "video_generate",
+    "image_generate"
+   ],
+   "kinds": [
+    "t2v",
+    "t2i"
+   ]
   }
  },
  "unsupported": {
-  "brand-studio": "Runs on Netlify/Supabase functions with its own contracts; not exposed yet.",
+  "brand-studio": "Runs on Netlify/Supabase functions with its own contracts (brand, campaign, assets); not exposed yet.",
   "video-pages": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "zackd": "Own app and backend; out of scope for v1.",
+  "zackd": "Own app (src/apps/zackd) with its own backend; not exposed yet (the SmartVid repo has Zack D tools).",
   "motion-director": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "storyboard": "Own /api/storyboard backend (not the catalog generation routes); not exposed yet.",
-  "workflows": "Runs on the workflow/agent API with a different contract; not exposed yet.",
-  "agents": "Runs on the workflow/agent API with a different contract; not exposed yet.",
-  "vfx-studio": "Own /api/vfx routes with separate validation and rate limits; not exposed yet.",
-  "design-agent": "Own app and agent backend; not exposed yet.",
-  "thumbnail-studio": "Own app with a separate generation pipeline; not exposed yet.",
-  "go-ai-viral": "Own app and backend; out of scope for v1.",
+  "design-agent": "Own agent app (src/apps/design-agent); not reviewed yet.",
+  "thumbnail-studio": "Uses its own OpenAI prompt-enhance and Supabase pipeline (/api/proxy/thumbnail-generate); not exposed yet. Image tools cover plain thumbnails.",
+  "go-ai-viral": "Own app (src/apps/go-ai-viral); not reviewed yet.",
   "apps": "Non-generative UI (hub for other studios)."
  }
 }
