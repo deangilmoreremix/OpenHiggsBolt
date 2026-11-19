@@ -2,9 +2,7 @@ import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { decryptMuapiKey } from '@/lib/muapiKeyCrypto';
 import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess';
-// @ts-expect-error plain JS modules
 import { createHandler } from '../../../../lib/mcpGateway.js';
-// @ts-expect-error plain JS modules
 import { createStore, resolveMcpKey } from '../../../../lib/mcpKeys.js';
 
 // Branded gateway for the SmartVideo GO MCP server (mcp/index.js). Auth is an MCP key (see app/api/mcp-keys); the
