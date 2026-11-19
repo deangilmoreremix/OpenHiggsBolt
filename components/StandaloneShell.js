@@ -121,7 +121,7 @@ const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
-  { id: 'muapi-studio', label: 'Muapi Studio' },
+  { id: 'muapi-studio', label: 'Studio' },
   { id: 'edit',    label: 'Edit' },
   { id: 'video-pages', label: 'Video Pages' }, // near the front: the tab bar scrolls sideways and a tab at the far end is easy to miss
   { id: 'audio',   label: 'Audio Studio' },

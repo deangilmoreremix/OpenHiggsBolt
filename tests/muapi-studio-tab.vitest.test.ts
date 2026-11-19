@@ -3,11 +3,11 @@ import fs from 'node:fs';
 
 const read = (p: string) => fs.readFileSync(p, 'utf-8');
 
-describe('Muapi Studio tab', () => {
+describe('Studio tab', () => {
   const shell = read('components/StandaloneShell.js');
 
   it('is a studio tab with its own URL slug', () => {
-    expect(shell).toMatch(/\{ id: 'muapi-studio', label: 'Muapi Studio' \}/);
+    expect(shell).toMatch(/\{ id: 'muapi-studio', label: 'Studio' \}/);
     expect(shell).toMatch(/'muapi-studio': 'muapi-studio'/);
   });
 
