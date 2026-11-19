@@ -12,6 +12,9 @@ import {
   type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
 } from '../preview/captions'
 import { captionsToStudioInput, studioToCaptionSettings, STUDIO_FONTS } from '../preview/captionsFromStudio'
+import { LANGUAGES } from '../captions/scripts'
+import { transcriptText } from '../captions/textTools'
+import { captionsToAss } from '../preview/captionAss'
 import type { PreviewInputProps } from '../preview/types'
 
 /**
@@ -110,9 +113,24 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
                 <button type="button" data-testid="captions-download-vtt" onClick={() => downloadText(cuesToVtt(caps.cues), 'captions.vtt', 'text/vtt')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Download .vtt</button>
               )}
               {caps.cues.length > 0 && (
+                <button type="button" data-testid="captions-download-txt" onClick={() => downloadText(transcriptText(caps.cues.map((x) => x.text)), 'captions.txt', 'text/plain')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>.txt</button>
+              )}
+              {caps.cues.length > 0 && (
+                <button type="button" data-testid="captions-download-ass" onClick={() => downloadText(captionsToAss(caps, { width: previewSettings.width || 1920, height: previewSettings.height || 1080 }), 'captions.ass', 'text/x-ssa')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>.ass</button>
+              )}
+              {caps.cues.length > 0 && (
                 <button type="button" data-testid="captions-clear" onClick={() => updatePreviewComposition({ captions: undefined })} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Remove captions</button>
               )}
             </div>
+            {caps.cues.length > 0 && (
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11, color: C.text }}>
+                <span style={{ ...hintStyle, margin: 0 }}>Language of these words:</span>
+                <select data-testid="captions-language" aria-label="Caption language" value={caps.language ?? 'auto'} onChange={(e) => set({ language: e.target.value === 'auto' ? undefined : e.target.value })} style={{ ...inputStyle, width: 'auto', minHeight: 28, fontSize: 11, padding: '0 8px' }}>
+                  <option value="auto">Work it out from the words</option>
+                  {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+                </select>
+              </label>
+            )}
             {notice && <div role="status" data-testid="captions-notice" style={{ ...hintStyle, margin: '6px 0 0' }}>{notice}</div>}
             <p style={{ ...hintStyle, margin: '6px 0 0' }}>Pasted words are timed evenly across the video, then you can adjust each one.</p>
           </div>

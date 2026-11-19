@@ -21,6 +21,16 @@ export type Customer = {
  * Every customer the Personalization window knows about (the open client, saved clients, the business picked in
  * Find your business), saved Lead Finder leads, and any contacts the caller hands in. The active client comes first.
  */
+/** A stalled customers/projects request must not keep the picker waiting: after this long it counts as "no data". */
+export const CUSTOMER_REQUEST_LIMIT_MS = 5000
+
+/** GET with a time limit (the request is aborted, the caller's `.catch` treats it like any other failure). */
+export function fetchWithin(url: string, ms = CUSTOMER_REQUEST_LIMIT_MS): Promise<Response> {
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), ms)
+  return fetch(url, { credentials: 'same-origin', signal: ctl.signal }).finally(() => clearTimeout(timer))
+}
+
 export function useCustomers(contacts?: any[]) {
   const ctx = usePersonalizeOrNull()
   const [leads, setLeads] = useState<any[]>([])
@@ -28,12 +38,12 @@ export function useCustomers(contacts?: any[]) {
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     let live = true
-    const leadsReq = fetch('/api/personalization/leads', { credentials: 'same-origin' })
+    const leadsReq = fetchWithin('/api/personalization/leads')
       .then((r) => (r.ok ? r.json() : ({} as { leads?: any[] })))
       .then((d) => { if (live) setLeads(Array.isArray(d?.leads) ? d.leads : []) })
       .catch(() => {})
     // the customer's saved Personalization projects hold their generated (personalized) pictures
-    const projectsReq = fetch('/api/personalization/project?list=true', { credentials: 'same-origin' })
+    const projectsReq = fetchWithin('/api/personalization/project?list=true')
       .then((r) => (r.ok ? r.json() : ({} as { projects?: any[] })))
       .then((d) => { if (live) setProjects(Array.isArray(d?.projects) ? d.projects : []) })
       .catch(() => {})

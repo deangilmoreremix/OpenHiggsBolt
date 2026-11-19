@@ -96,9 +96,15 @@ describe('handoff', () => {
     expect(takeQueuedVideo({ storage })).toBeNull();
   });
 
-  it('refuses non-video, non-https and missing items', async () => {
+  it('queues a picture like a video (it becomes the still of the page)', () => {
     const storage = mem();
-    expect(queueVideoForPage({ url: 'https://cdn/x.png', type: 'image' }, { storage })).toBe(false);
+    expect(queueVideoForPage({ url: 'https://cdn/x.png', type: 'image', studio: 'image' }, { storage })).toBe(true);
+    expect(takeQueuedVideo({ storage })).toMatchObject({ url: 'https://cdn/x.png', source: { kind: 'image', studio: 'image' } });
+  });
+
+  it('refuses audio, non-https and missing items', async () => {
+    const storage = mem();
+    expect(queueVideoForPage({ url: 'https://cdn/x.mp3', type: 'audio' }, { storage })).toBe(false);
     expect(queueVideoForPage({ url: 'http://cdn/x.mp4' }, { storage })).toBe(false);
     expect(queueVideoForPage(null, { storage })).toBe(false);
     expect(await openVideoPageFor({ url: 'blob:x' }, { storage })).toBe(false);

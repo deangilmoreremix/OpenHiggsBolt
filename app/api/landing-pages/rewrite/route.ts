@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { ENTITLEMENTS } from '@/access/entitlements'
-import { entitlementForbiddenResponse, requireApiEntitlement } from '@/access/apiRequireEntitlement'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rewriteWithOpenAi, RewriteError } from '@/src/lib/landingPages/server/rewriteLlm.js'
@@ -22,16 +20,12 @@ const MESSAGES: Record<string, string> = {
 
 /**
  * POST /api/landing-pages/rewrite { input: { items: [{id, role, text}], instruction?, context? } } → { ok, items }
- *   401 UNAUTHENTICATED · 403 (SmartVideo GO) · 409 OPENAI_KEY_REQUIRED / OPENAI_KEY_INVALID · 429 · 400
+ *   401 UNAUTHENTICATED · 409 OPENAI_KEY_REQUIRED / OPENAI_KEY_INVALID · 429 · 400
  * Runs on the customer's own OpenAI key, read server-side (never sent to the browser). Only texts are sent.
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-  const gate = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!gate.allowed) {
-    return gate.status === 401 ? NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) : entitlementForbiddenResponse(gate.entitlement)
-  }
   const apiKey = await getOpenAiKeyForUser()
   if (!apiKey) return NextResponse.json({ error: 'OPENAI_KEY_REQUIRED', code: 'OPENAI_KEY_REQUIRED' }, { status: 409 })
   const minute = rateLimit(`lp-rewrite:min:${userId}`, { windowMs: 60_000, max: 12 })

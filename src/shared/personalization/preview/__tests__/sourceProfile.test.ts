@@ -115,3 +115,21 @@ describe('source profile', () => {
     expect(mapZoneToComposition({ id: 'a', label: 'a', source: 'user', x: 0.2, y: 0.2, w: 0.2, h: 0.2 }, fitSourceToComposition(null, 1, 1), null, 1).x).toBeCloseTo(0.2, 6)
   })
 })
+
+describe('hosted copies of a verified clip', () => {
+  const HOSTED = 'https://bzxohkrxcwodllketcpz.supabase.co/storage/v1/object/public/demo-template-videos/clips/mmxLegacy/luxury-perfume-commercial.webm'
+  it('keeps the verified bottle zone and the baked-in mark when the library serves the clip', () => {
+    const local = profileForSource({ videoSrc: PERFUME })
+    const hosted = profileForSource({ videoSrc: HOSTED })
+    expect(hosted.zonesVerified).toBe(true)
+    expect(hosted.zones.map((z) => z.id)).toEqual(local.zones.map((z) => z.id))
+    expect(hosted.baked.status).toBe('known')
+    expect(hosted.baked.regions.map((r) => r.id)).toEqual(local.baked.regions.map((r) => r.id))
+  })
+  it('matching stays exact: a different hosted clip gets no verified profile', () => {
+    const other = profileForSource({ videoSrc: HOSTED.replace('luxury-perfume-commercial', 'some-other-clip') })
+    expect(other.zones).toEqual([])
+    expect(other.baked.status).toBe('unknown')
+  })
+})
+

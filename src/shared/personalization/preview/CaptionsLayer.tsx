@@ -5,6 +5,7 @@ import { TEXT_SHADOW } from './textStyle'
 import { fontStackById } from './presets'
 import { hexWithAlpha } from './effects'
 import { ACTIVE_WORD, visibleWordRange } from './capite/activeWord'
+import { displayScale, scriptFor, withScriptFonts } from '../captions/scripts'
 
 /**
  * The caption line on screen at this frame, with the spoken word highlighted. Plain text, a rounded box and a text shadow, which
@@ -18,7 +19,10 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
   const cue = activeCue(captions.cues, frame, fps)
   if (!cue) return null
   const st = captions.style
-  const fontSize = Math.round(compH * st.size)
+  // Other writing systems: its fonts after the look's own, a smaller size for wide letters, and right-to-left for Arabic and Hebrew.
+  // The language is the saved one, or read from the letters when there is none.
+  const script = scriptFor(captions.language, cue.text)
+  const fontSize = Math.max(10, Math.round(compH * st.size * displayScale(captions.language, cue.text)))
   const words = captionWords(cue, frame, fps, st.highlight)
   const activeIdx = words.findIndex((w) => w.active)
   const [from, to] = st.windowed ? visibleWordRange(words.length, activeIdx) : [0, words.length]
@@ -37,7 +41,8 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
           style={{
             maxWidth: '100%',
             textAlign: 'center',
-            fontFamily: fontStackById(fontFamily),
+            fontFamily: withScriptFonts(fontStackById(fontFamily), script),
+            ...(script.rtl ? { direction: 'rtl' as const } : {}),
             fontSize,
             fontWeight: st.bold ? 800 : 500,
             lineHeight: 1.2,

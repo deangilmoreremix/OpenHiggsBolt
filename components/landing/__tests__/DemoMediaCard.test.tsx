@@ -245,4 +245,22 @@ describe('DemoMediaCard', () => {
 
     expect(push).not.toHaveBeenCalled();
   });
+
+  it("shows the prompt's real model in the View Prompt window, not SmartVideo GO AI", async () => {
+    const minimax = MINIMAX_H3_DEMOS.find((d) => !d.modelName)!;
+    const { container } = render(
+      <Wrapper>
+        <DemoMediaCard demo={minimax} />
+      </Wrapper>,
+    );
+
+    await act(async () => {
+      within(container).getByText('View Prompt').click();
+    });
+
+    const dialog = screen.getAllByRole('dialog').find((d) => d.textContent?.includes(minimax.title))!;
+    expect(dialog).toBeDefined();
+    expect(within(dialog).getByText('MiniMax Hailuo')).toBeDefined();
+    expect(within(dialog).queryByText('SmartVideo GO AI')).toBeNull();
+  });
 });

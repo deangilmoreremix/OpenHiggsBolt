@@ -20,7 +20,8 @@ export function normalizeVideo(item, { allowImage = false } = {}) {
 }
 
 export function queueVideoForPage(item, { storage = globalThis.sessionStorage } = {}) {
-  const v = normalizeVideo(item);
+  // A picture can become a page too (it fills the video slot as a still), so pictures are queued like videos.
+  const v = normalizeVideo(item, { allowImage: true });
   if (!v) return false;
   try { storage.setItem(KEY, JSON.stringify(v)); return true; } catch { return false; }
 }
@@ -31,7 +32,7 @@ export function takeQueuedVideo({ storage = globalThis.sessionStorage } = {}) {
     const raw = storage.getItem(KEY);
     storage.removeItem(KEY);
     const v = raw ? JSON.parse(raw) : null;
-    return v && normalizeVideo({ ...v, kind: 'video' }) ? v : null;
+    return v && normalizeVideo({ ...v, kind: v.source?.kind === 'image' ? 'image' : 'video' }, { allowImage: true }) ? v : null;
   } catch {
     return null;
   }

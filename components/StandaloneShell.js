@@ -1102,7 +1102,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                       >
                         {notificationCopy.open}
                       </button>
-                      {notif.resultUrl && normalizeVideo({ url: notif.resultUrl }) && (
+                      {notif.resultUrl && normalizeVideo({ url: notif.resultUrl }, { allowImage: true }) && (
                         <button
                           type="button"
                           data-action="create-landing-page"
