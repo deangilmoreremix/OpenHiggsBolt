@@ -135,7 +135,7 @@ test(`${COUNT} imported pictures: honest summary, assign -> in the frame, remove
   await expect(panel).toBeVisible();
   expect((await read()).total, 'the pictures survive going back from the result screen').toBe(COUNT);
   await expect(rows.nth(TARGET)).toHaveAttribute('data-state', 'rendered');
-  await rows.nth(TARGET).getByRole('button', { name: /Remove .* from the video/ }).click();
+  await rows.nth(TARGET).getByRole('button', { name: /^Remove\s.*from the video$/ }).click();
   await expect(rows.nth(TARGET)).not.toHaveAttribute('data-state', 'rendered');
   const removed = await read();
   expect(removed.total).toBe(COUNT);
