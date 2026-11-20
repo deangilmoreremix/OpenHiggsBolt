@@ -87,3 +87,22 @@ Companion registry edits, all clean takes in ours: `minimaxModels.js`, `modelFam
 - The baseline is inferred. If our real sync point was earlier than 2026-10-07, there are more missing changes than listed. Per-file blob comparison above is exact for the files listed, though.
 - Not audited: our own `ours-only` code (about 6,800 files). It is out of scope for upstream drift, but it is where most merge conflicts will come from.
 - I did not apply any of these changes. The `upstream` remote was added locally to this checkout only.
+
+## Sync status (updated 2026-11-20)
+
+Upstream re-checked at `46cf201c` (only a README change since `b57f02f7`). Branch `claude/keen-brahmagupta-3m8q5l`.
+
+**Applied (additive, nothing of ours removed):**
+- 25 new upstream files and +46 model IDs (582 -> 628).
+- `muapi.js`: `formatApiError()` for clear 401/402/403 messages.
+- `localInferenceAssets.js`: `rankWindowsAssets`, `describeExitCode`, `resolveRedirectUrl`; Windows picker prefers the CPU build (incl. `win-cpu-x64`).
+- `VideoStudio.js`: provider logos in the model picker, history download/delete helper.
+- `LipSyncStudio.js`: history download/delete helper, `textContent` for error text.
+- `electron/lib/localInference.js`: replaced with upstream's current version. Ours was byte-identical to upstream's 2026-05-23 version (no local edits), so only older upstream code was replaced. Adds lazy path init (#232), resumable downloader, CUDA runtime fetch, binary validation, `OPEN_GENERATIVE_AI_SD_CLI`. All 8 IPC handlers preserved.
+- `packages/studio/.../LipSyncStudio.jsx`: already contained upstream's changes (3-way merge was a no-op).
+
+**Deliberately not applied:**
+- Wan2GP rewrite (Gradio server -> local folder / MCP): `wan2gpProvider.js`, `localModels.js`, `LocalModelManager.js`, `preload.js`, `localInferenceClient.js`, `stage-local-ai-binary.js`, and the VideoStudio "Local" toggle/progress panel that depends on it. All-or-nothing; replaces existing code.
+- `ApiKeyModal.js` (ours already validates keys), theme toggle, i18n/globals/layout edits, submodule pointers, README churn.
+
+**Verification:** vitest 7,021 passed / 4 failed, identical to the pre-sync baseline (the 4 fail on the untouched commit too). `npm run test:local-ai`: 50/53 (3 expect the Wan2GP rewrite). `next build` cannot complete in this container because the `Open-Poe-AI` submodule is not checked out (`ai-agent` unresolved); no errors mention changed files.
