@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { MIN_SPAN_FRAMES, applyTimelineEdit, formatSeconds, fractionToFrame, frameToFraction, layerSpan, rulerTicks } from '../timeline'
+import { MIN_SPAN_FRAMES, applyAudioEdit, applyTimelineEdit, audioSpan, formatSeconds, fractionToFrame, frameToFraction, layerSpan, rulerTicks } from '../timeline'
 
 const D = 150 // 5 s at 30 fps; last frame 149
 
@@ -81,5 +81,30 @@ describe('labels and ruler', () => {
     expect(formatSeconds(45, 30)).toBe('1.5 s')
     expect(rulerTicks(150, 30)).toEqual([0, 30, 60, 90, 120])
     expect(rulerTicks(1, 30)).toEqual([0])
+  })
+})
+
+
+describe('audio lanes', () => {
+  const FPS = 30
+  const DUR = 150
+  it('a track with a start and length occupies those frames; without a length it runs to the end', () => {
+    expect(audioSpan({ start: 1, length: 2 }, FPS, DUR)).toEqual({ start: 30, end: 89 })
+    expect(audioSpan({ start: 1 }, FPS, DUR)).toEqual({ start: 30, end: 149 })
+    expect(audioSpan({ start: 99 }, FPS, DUR).start).toBe(149)
+  })
+  it('moving keeps the length and clamps inside the video', () => {
+    expect(applyAudioEdit({ start: 1, length: 2 }, 'move', 30, FPS, DUR)).toEqual({ start: 2, length: 2 })
+    expect(applyAudioEdit({ start: 1, length: 2 }, 'move', 999, FPS, DUR).start).toBeCloseTo((DUR - 1 - 59) / FPS, 1)
+    expect(applyAudioEdit({ start: 1 }, 'move', 30, FPS, DUR)).toEqual({ start: 2, length: undefined })
+  })
+  it('dragging the right end sets how long it plays, and the last frame makes it open-ended again', () => {
+    expect(applyAudioEdit({ start: 1, length: 2 }, 'end', 30, FPS, DUR)).toEqual({ start: 1, length: 3 })
+    expect(applyAudioEdit({ start: 1, length: 2 }, 'end', -30, FPS, DUR)).toEqual({ start: 1, length: 1 })
+    expect(applyAudioEdit({ start: 1, length: 2 }, 'end', 500, FPS, DUR).length).toBeUndefined()
+    expect(applyAudioEdit({ start: 1 }, 'end', -60, FPS, DUR)).toEqual({ start: 1, length: 2 })
+  })
+  it('never shrinks a track to nothing', () => {
+    expect((applyAudioEdit({ start: 1, length: 2 }, 'end', -9999, FPS, DUR).length ?? 0)).toBeGreaterThan(0)
   })
 })

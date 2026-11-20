@@ -1,6 +1,8 @@
 'use client'
 
-import { DesignRecommendations } from './DesignRecommendations'
+import { ShapeExportPanel } from './ShapeExportPanel'
+import { suggestGoal } from '../templates/recommendations'
+import { AddDesignsPanel } from './AddDesignsPanel'
 import { useState } from 'react'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
@@ -16,7 +18,6 @@ import { useLayoutQuality } from './useLayoutQuality'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
-import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import { chooseFinalOutputPath } from '../finalOutput'
 
 /**
@@ -44,10 +45,6 @@ export function StepPreviewApprove(): React.JSX.Element {
     restoreOriginalVideo,
     updatePreviewComposition,
     setPreviewLayout,
-    remotionDesignTemplates = [],
-    activeRemotionDesignId = null,
-    setRemotionDesign = () => {},
-    remotionDesignError = null,
     previewApproved,
     approvalStale,
     approvePersonalization,
@@ -55,6 +52,9 @@ export function StepPreviewApprove(): React.JSX.Element {
     setAdvancedTab,
     setAdvancedSection,
     createFinalVideo,
+    shapeExport = { status: 'idle', items: [] },
+    exportAllShapes = async () => {},
+    cancelShapeExport = () => {},
     cancelExport,
     apiKey,
     generation,
@@ -76,11 +76,6 @@ export function StepPreviewApprove(): React.JSX.Element {
   // (and disabled) so the two operations are never conflated.
   const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
   const isBrandedPath = finalPath === 'branded-render'
-  // Phase 3 item 13: some frozen upstream designs hardcode SVG `id`s, so a
-  // second instance of the same design is clipped by the first. The catalog
-  // declares which designs are constrained; Step 4 shows a non-blocking
-  // note next to the "Designs" chip row when the selected one is affected.
-  const fixedSvgIdWarning = getRemotionDesignFixedSvgIdWarning(activeRemotionDesignId)
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -158,27 +153,7 @@ export function StepPreviewApprove(): React.JSX.Element {
             </button>
           ))}
         </div>
-        {remotionDesignTemplates.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <DesignRecommendations
-              designs={remotionDesignTemplates}
-              aspectRatio={previewSettings.aspectRatio}
-              activeDesignId={activeRemotionDesignId}
-              available={{ logo: Boolean(assets?.primaryLogo), product: (assets?.products?.length || 0) > 0, service: (assets?.products?.length || 0) > 0 }}
-              onSelectDesign={setRemotionDesign}
-              onAddDesign={ctx.addRemotionDesign}
-              onSelectLayout={setPreviewLayout}
-            />
-            {fixedSvgIdWarning ? (
-              <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
-                {fixedSvgIdWarning}
-              </p>
-            ) : null}
-            {remotionDesignError ? (
-              <p style={{ ...hintStyle, color: C.danger, marginTop: 8 }}>{remotionDesignError}</p>
-            ) : null}
-          </div>
-        )}
+        <AddDesignsPanel suggestion={suggestGoal({ hasOffer: Boolean(clientForm.offer?.trim()), hasProductImages: (assets?.products?.length || 0) > 0, booking: ctx.foundSignals?.booking })} />
         <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
           <div>
             <label style={labelStyle} htmlFor="guided-aspect">Video shape</label>
@@ -394,6 +369,14 @@ export function StepPreviewApprove(): React.JSX.Element {
             </div>
           )}
         </div>
+        {isBrandedPath && previewApproved && (
+          <ShapeExportPanel
+            state={shapeExport}
+            disabled={generating || exportBlocked || rightsGate}
+            onStart={() => { void exportAllShapes() }}
+            onCancel={cancelShapeExport}
+          />
+        )}
         {generating && generation?.progressMessage && (
           <p style={{ ...hintStyle, marginTop: 8, color: C.cyan }}>{generation.progressMessage}</p>
         )}

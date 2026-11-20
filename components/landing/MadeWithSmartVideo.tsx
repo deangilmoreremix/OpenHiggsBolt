@@ -94,6 +94,9 @@ export default function MadeWithSmartVideo({ slugs, demos }: MadeWithSmartVideoP
           initialSlide={Math.min(1, activeDemos.length - 1)}
           spaceBetween={20}
           grabCursor
+          // Swiper's default list includes `video`, which lets the browser
+          // keep the pointer and blocks dragging the reel from the video.
+          focusableElements="input, select, option, textarea, button, label"
           keyboard={{ enabled: true, onlyInViewport: true }}
           a11y={{ prevSlideMessage: 'Previous commercial', nextSlideMessage: 'Next commercial' }}
         >

@@ -474,18 +474,27 @@ export async function writeShotWords(plan: DirectorPlan, capture: SiteCapture | 
 }
 
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
+/** Stage 4 (after approval): pages the storyboard rows need, a few more of the site, and one deadline for all of them. */
+export const STAGE4_NEEDED = 3;
+export const STAGE4_EXTRA = 1;
+export const STAGE4_DEADLINE_MS = 240_000;
+
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; /** Create without AI: no model call of any kind (no retext, no source adaptation). */ noAi?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null; prompt?: string; adaptShots?: boolean; /** Create without AI: no model call of any kind (no retext, no source adaptation). */ noAi?: boolean; music?: boolean; mapping?: MappingRow[]; release?: ReleaseItem[]; direction?: string; targetedCapture?: boolean; /** An edit: the film as it was, so shots the edit did not touch keep their adapted source. */ reuse?: { project: ProjectData; touchedStems: string[] }; /** Reviewer findings per recipe stem: the adaptation of those shots starts from them. */ hints?: Record<string, string[]>; signal?: AbortSignal; /** Stop waiting on stage-4 captures when the run is superseded. */ cancelled?: () => boolean; onAdaptation?: (outcome: AdaptationOutcome) => void; /** Each adapted shot, with the film so far (checkpointing). */ onShot?: (project: ProjectData) => void },
   log: ActivityLog,
 ): Promise<ProjectData> {
   // Pipeline stage 4: a page a storyboard row needs that the first capture did not reach is captured now, on its own.
-  const needed = opts.targetedCapture === false ? [] : neededPages(plan, opts.capture);
+  // At most STAGE4_PAGES at once, all inside one deadline; a stopped build stops waiting for them.
+  const needed = opts.targetedCapture === false ? [] : neededPages(plan, opts.capture, STAGE4_NEEDED, STAGE4_EXTRA);
   if (opts.capture && needed.length) {
     log(`Capturing the pages the storyboard needs (pipeline stage 4): ${needed.map((n) => n.link.path).join(', ')}`, 'running');
+    const deadline = Date.now() + STAGE4_DEADLINE_MS;
+    const stop = () => Boolean(opts.cancelled?.()) || Date.now() > deadline;
     const got = await Promise.all(
-      needed.map((n) => captureSite(n.link.url, { targeted: true, maxWaitMs: 240_000 }).then((c) => ({ n, c })).catch(() => null)),
+      needed.map((n) => captureSite(n.link.url, { targeted: true, maxWaitMs: STAGE4_DEADLINE_MS, cancelled: stop }).then((c) => ({ n, c })).catch(() => null)),
     );
+    if (opts.cancelled?.()) throw new DirectorError('Stopped', 'CANCELLED', 0);
     let merged = opts.capture;
     for (const g of got) if (g) merged = mergeCaptures(merged, g.c, { name: g.n.link.name, path: g.n.link.path });
     const ok = got.filter(Boolean).length;

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useReducedMotion } from './useReducedMotion';
 
 /* ── Global playback limiter ────────────────────────────────────────────────
@@ -8,10 +8,18 @@ import { useReducedMotion } from './useReducedMotion';
  * video is paused. Keeps the page light and the network calm on mobile.
  */
 const MAX_ACTIVE = 6;
+/** Phones and tablets decode fewer videos at once. */
+const MAX_ACTIVE_TOUCH = 3;
 const registry = new Set<() => void>();
 
+function maxActive() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+    ? MAX_ACTIVE_TOUCH
+    : MAX_ACTIVE;
+}
+
 function requestPlay(stop: () => void) {
-  if (registry.size >= MAX_ACTIVE) {
+  if (registry.size >= maxActive()) {
     const oldest = registry.values().next().value as (() => void) | undefined;
     if (oldest) {
       oldest();
@@ -58,17 +66,22 @@ export default function LazyVideo({
   toggleOnClick = false,
 }: LazyVideoProps) {
   const ref = useRef<HTMLVideoElement>(null);
-  const stopRef = useRef<() => void>(() => {});
   const activeRef = useRef(false);
   const [errored, setErrored] = useState(false);
   const reduced = useReducedMotion();
   const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
-
-  stopRef.current = () => {
+  // One stable stop function per video, so the playback limiter's registry
+  // can find it again to release it. Being evicted also gives up the slot:
+  // otherwise a tap could resume this video past the cap without asking.
+  const stopRef = useRef<() => void>(() => {
     ref.current?.pause();
-  };
+    activeRef.current = false;
+    // A tapped-to-play video that gets evicted is no longer pinned, so a
+    // single tap plays it again.
+    setPinned(false);
+  });
 
   // Mark the video as errored when the source fails to load (e.g. 404).
   // The browser will continue showing the poster attribute; we just stop
@@ -126,8 +139,10 @@ export default function LazyVideo({
     }
   }, [shouldPlay, src]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     if (!toggleOnClick) return;
+    // The tap is for playback; keep it from reaching a clickable parent card.
+    event.stopPropagation();
     const el = ref.current;
     const willPin = !pinned;
     setPinned(willPin);

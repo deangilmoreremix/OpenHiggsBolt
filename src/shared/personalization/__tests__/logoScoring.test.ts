@@ -28,3 +28,16 @@ describe('logo scoring', () => {
     expect(Number.isFinite(scoreLogoCandidate({ sourceUrl: '::::' }))).toBe(true)
   })
 })
+
+import { logoQualityNotes } from '../logoScoring'
+describe('logoQualityNotes', () => {
+  it('flags small and JPEG logos, and stays quiet otherwise', () => {
+    expect(logoQualityNotes({ width: 120, height: 80, mimeType: 'image/png', hasTransparency: true })).toHaveLength(1)
+    expect(logoQualityNotes({ name: 'logo.jpg', mimeType: 'image/jpeg', width: 800, height: 800 })[0]).toContain('JPEG')
+    expect(logoQualityNotes({ name: 'logo.svg', mimeType: 'image/svg+xml' })).toEqual([])
+    expect(logoQualityNotes({ mimeType: 'image/png', width: 900, height: 400, hasTransparency: true })).toEqual([])
+    expect(logoQualityNotes({ name: 'logo.jpg', mimeType: 'image/jpeg', hasTransparency: true })).toEqual([])
+    expect(logoQualityNotes(null)).toEqual([])
+    expect(logoQualityNotes({})).toEqual([])
+  })
+})

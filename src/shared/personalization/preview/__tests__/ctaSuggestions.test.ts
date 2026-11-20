@@ -33,7 +33,7 @@ describe('buildCtaSuggestions', () => {
     expect(byId.visit.text).toBe('Visit joes.com')
     expect(byId.email.text).toBe('Email hi@joes.com')
     expect(byId.instagram.text).toBe('Follow @joes_pizza')
-    expect(byId.hours.text).toBe('Open Mo-Sa 09:00-17:00')
+    expect(byId.hours.text).toBe('Open Mon–Sat 9 am–5 pm')
     expect(s.every((x) => x.source.length > 0)).toBe(true)
   })
   it('puts the strongest local-business call first', () => {
@@ -47,5 +47,48 @@ describe('buildCtaSuggestions', () => {
       phone: 'call me maybe',
     })
     expect(s).toEqual([])
+  })
+})
+
+import { endCardExtraLine } from '../ctaSuggestions'
+describe('endCardExtraLine', () => {
+  it('joins a valid email and handle, drops junk, and is empty with nothing', () => {
+    expect(endCardExtraLine({ email: 'hi@joes.com', instagram: 'https://instagram.com/joes_pizza' })).toBe('hi@joes.com   ·   @joes_pizza')
+    expect(endCardExtraLine({ email: 'nope', instagram: 'https://instagram.com/p/xyz' })).toBe('')
+    expect(endCardExtraLine({})).toBe('')
+  })
+})
+
+import { describeHours } from '../../../../server/businessEnrichment/openingHours'
+describe('describeHours', () => {
+  it('summarises simple hours and refuses complex ones', () => {
+    expect(describeHours('Mo-Sa 09:00-17:00')).toBe('Mon–Sat 9 am–5 pm')
+    expect(describeHours('24/7')).toBe('open 24/7')
+    expect(describeHours('Mo-Fr 08:30-12:00; Sa 10:00-14:00')).toBe('Mon–Fri 8:30 am–12 pm, Sat 10 am–2 pm')
+    expect(describeHours('Mo-Su 09:00-17:00')).toBe('daily 9 am–5 pm')
+    expect(describeHours('Mo-Fr 09:00-12:00,13:00-17:00')).toBeNull()
+    expect(describeHours('Mo-Su sunrise-sunset')).toBeNull()
+    expect(describeHours('')).toBeNull()
+  })
+})
+
+import { ratingLine } from '../ctaSuggestions'
+describe('ratingLine', () => {
+  it('formats on a 5-star scale and refuses bad data', () => {
+    expect(ratingLine({ value: 4.8, count: 120, best: 5 })).toBe('4.8 ★ · 120 reviews')
+    expect(ratingLine({ value: 9, count: 1, best: 10 })).toBe('4.5 ★ · 1 review')
+    expect(ratingLine({ value: 6, count: 10, best: 5 })).toBe('')
+    expect(ratingLine({ value: 4, count: 0, best: 5 })).toBe('')
+    expect(ratingLine(null)).toBe('')
+  })
+})
+
+describe('endCardExtraLine does not repeat the call to action', () => {
+  it('drops the email / handle the CTA already shows', () => {
+    const input = { email: 'hi@joes.com', instagram: '@joes_pizza' }
+    expect(endCardExtraLine({ ...input, cta: 'Email hi@joes.com' })).toBe('@joes_pizza')
+    expect(endCardExtraLine({ ...input, cta: 'Follow @JOES_PIZZA' })).toBe('hi@joes.com')
+    expect(endCardExtraLine({ ...input, cta: 'Email hi@joes.com Follow @joes_pizza' })).toBe('')
+    expect(endCardExtraLine({ ...input, cta: 'Call 555-0100' })).toBe('hi@joes.com   ·   @joes_pizza')
   })
 })

@@ -13,6 +13,7 @@ import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import HelpAgent from '@/components/help/HelpAgent';
 import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
+import CaptionStudioAction from '@/components/CaptionStudioAction';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
 import { saveOpenAIKey, deleteOpenAIKey } from '@/shared/api/openaiKey';
@@ -23,6 +24,8 @@ import PreviewModeBadge from '@/access/PreviewModeBadge';
 import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
+import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
+import { LandingPagePickerProvider, LandingPageAction } from '../src/apps/video-pages/LandingPagePicker';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -44,6 +47,7 @@ const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 const AppsStudio = loadStudio('AppsStudio');
+const SkillsBrowser = loadStudio('SkillsBrowser');
 const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -53,6 +57,8 @@ const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/Mo
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
+const MediaHubStudio = dynamic(() => import('../src/apps/media-hub/MediaHub'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -80,28 +86,59 @@ const PERSONALIZE_TRIGGER_CLASS =
 const PERSONALIZE_TRIGGER_CLASS_OVERLAY =
   'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all';
 
+// Every studio that shows Personalize also offers "Landing page": the picker opens with this video attached.
+const landingVideo = (options) => ({ url: options?.media?.url, kind: options?.media?.mediaType === 'image' ? 'image' : 'video', name: options?.title, thumbnail_url: options?.media?.poster, studio: options?.originStudio });
+const LANDING_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
+const LANDING_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
+const LANDING_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[19.5rem]');
+
+// Free, on-device captions: the same Caption Studio from every video studio, offered next to Personalize / Landing page. Image sources get nothing.
+const CAPTION_TRIGGER_CLASS = PERSONALIZE_TRIGGER_CLASS;
+const CAPTION_TRIGGER_CLASS_VIDEO = PERSONALIZE_TRIGGER_CLASS_VIDEO;
+const CAPTION_TRIGGER_CLASS_OVERLAY = PERSONALIZE_TRIGGER_CLASS_OVERLAY.replace('right-52', 'right-[27rem]');
+const captionAction = (options, className) => {
+  const url = options?.media?.mediaType === 'video' ? options.media.url : null;
+  return url ? <CaptionStudioAction videoUrl={url} className={className}>Free captions</CaptionStudioAction> : null;
+};
+// For studios that show their own results (Clipping Studio's clips): they pass the clip and the icon to put in the button.
+const renderCaptionAction = ({ videoUrl, className, children } = {}) =>
+  (videoUrl ? <CaptionStudioAction videoUrl={videoUrl} className={className}>{children}</CaptionStudioAction> : null);
+
 const renderPersonalizeAction = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS)}
+  </>
 );
 
 const renderPersonalizeActionVideo = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_VIDEO}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_VIDEO}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_VIDEO}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS_VIDEO)}
+  </>
 );
 
 const renderPersonalizeActionOverlay = (options) => (
-  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_OVERLAY}>
-    Personalize
-  </PersonalizeVideoAction>
+  <>
+    <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_OVERLAY}>
+      Personalize
+    </PersonalizeVideoAction>
+    <LandingPageAction video={landingVideo(options)} className={LANDING_TRIGGER_CLASS_OVERLAY}>Landing page</LandingPageAction>
+    {captionAction(options, CAPTION_TRIGGER_CLASS_OVERLAY)}
+  </>
 );
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
   { id: 'edit',    label: 'Edit' },
+  { id: 'video-pages', label: 'Video Pages' }, // near the front: the tab bar scrolls sideways and a tab at the far end is easy to miss
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
@@ -121,6 +158,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'media-hub', label: 'Media Hub' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
@@ -147,12 +185,14 @@ const SLUG_TO_TAB = {
   storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages', 'media-hub': 'media-hub',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
   'go-ai-viral': 'go-ai-viral',
   apps: 'apps',
+  // Reached from the Recipes button in the studios; not a top-level tab.
+  skills: 'skills',
 };
 
 // Upstream-matching studios that stay mounted (hidden) after their first visit,
@@ -939,10 +979,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))}>
       <DemoPersonalizeProvider apiKey={apiKey}>
+      <LandingPagePickerProvider openStudio={() => handleTabChange('video-pages')}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
          {persistentStudio('video', (active) => <VideoStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionVideo} {...generationCallbacks['video']} />)}
-         {persistentStudio('clipping', (active) => <ClippingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['clipping']} />)}
+         {persistentStudio('clipping', (active) => <ClippingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} renderCaptionAction={renderCaptionAction} {...generationCallbacks['clipping']} />)}
          {persistentStudio('vibe-motion', (active) => <VibeMotionStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['vibe-motion']} />)}
          {persistentStudio('motion-control', (active) => <MotionControlStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['motion-control']} />)}
          {persistentStudio('lipsync', (active) => <LipSyncStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['lipsync']} />)}
@@ -959,6 +1000,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
+         {activeTab === 'video-pages' && <VideoPagesStudio />}
+         {activeTab === 'media-hub' && <MediaHubStudio />}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
@@ -968,7 +1011,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
+          {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>
+      </LandingPagePickerProvider>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
@@ -1060,6 +1105,16 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                       >
                         {notificationCopy.open}
                       </button>
+                      {notif.resultUrl && normalizeVideo({ url: notif.resultUrl }, { allowImage: true }) && (
+                        <button
+                          type="button"
+                          data-action="create-landing-page"
+                          onClick={() => { if (openVideoPageFor({ url: notif.resultUrl, studio: notif.tabId }, { navigate: () => handleTabChange('video-pages') })) dismissNotification(notif.id); }}
+                          className="ml-3 mt-1.5 text-[11px] font-bold text-cyan-600 transition-colors hover:text-cyan-700"
+                        >
+                          Create landing page
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

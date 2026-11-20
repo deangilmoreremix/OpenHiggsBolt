@@ -87,3 +87,38 @@ describe('Timeline', () => {
     expect(q(el, '[data-testid="timeline"]')).toBeNull()
   })
 })
+
+describe('Timeline audio lanes', () => {
+  type Audio = { id: string; name: string; start: number; length?: number; muted: boolean }
+  function mountAudio(layers: PreviewLayer[], audio: Audio[], onAudioChange = vi.fn()) {
+    const el = document.createElement('div'); document.body.appendChild(el)
+    const root = createRoot(el); mounted.push({ root, el })
+    act(() => { root.render(<Timeline layers={layers} labels={{}} durationInFrames={D} fps={30} selectedId="" onSelect={vi.fn()} onChange={vi.fn()} audio={audio} onAudioChange={onAudioChange} />) })
+    return { el, onAudioChange }
+  }
+
+  it('shows a lane per track, positioned by its start and length', () => {
+    const { el } = mountAudio([logo], [{ id: 'a1', name: 'song.mp3', start: 1, length: 2, muted: false }, { id: 'a2', name: 'voice.wav', start: 0, muted: true }])
+    const bars = [...el.querySelectorAll('[data-testid="timeline-audio-bar"]')]
+    expect(bars).toHaveLength(2)
+    expect(bars[0].getAttribute('data-start')).toBe('30')
+    expect(bars[0].getAttribute('data-end')).toBe('89')
+    expect(bars[1].getAttribute('data-end')).toBe('') // plays to the end
+    expect(q(el, '[data-testid="timeline-audio-label"]')!.textContent).toContain('song.mp3')
+  })
+
+  it('moves a track and sets how long it plays with the keyboard', () => {
+    const { el, onAudioChange } = mountAudio([logo], [{ id: 'a1', name: 'song.mp3', start: 1, length: 2, muted: false }])
+    act(() => { fireEvent.keyDown(q(el, '[data-testid="timeline-audio-move"]')!, { key: 'ArrowRight', shiftKey: true }) })
+    expect(onAudioChange).toHaveBeenLastCalledWith('a1', { start: 1.33, length: 2 })
+    act(() => { fireEvent.keyDown(q(el, '[data-testid="timeline-audio-end"]')!, { key: 'ArrowLeft' }) })
+    expect(onAudioChange).toHaveBeenLastCalledWith('a1', { start: 1, length: 1.97 })
+  })
+
+  it('shows lanes even when every layer is hidden, and no timeline without tracks or layers', () => {
+    const { el } = mountAudio([], [{ id: 'a1', name: 'x.mp3', start: 0, muted: false }])
+    expect(q(el, '[data-testid="timeline-audio-bar"]')).not.toBeNull()
+    const { el: empty } = mountAudio([], [])
+    expect(q(empty, '[data-testid="timeline"]')).toBeNull()
+  })
+})
