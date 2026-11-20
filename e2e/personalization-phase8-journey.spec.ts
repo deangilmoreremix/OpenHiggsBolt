@@ -23,6 +23,8 @@ async function seedBrand(page: Page, finish: 'simple' | 'advanced' = 'simple') {
       return original(obj);
     };
   });
+  // The local dev server only lets the page load past Clerk with this cookie (see docs/e2e-auth-bypass.md).
+  await page.context().addCookies([{ name: '__e2e_auth_bypass', value: '1', url: process.env.DEMO_BASE_URL || 'http://localhost:3111' }]);
   await page.goto('/personalization-demo?test=true', { timeout: 60_000 });
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -217,8 +219,12 @@ test.describe('Phase 8 credit-free journey (real browser, real export)', () => {
     await dialog.getByRole('button', { name: /^Select Headline/ }).click();
     await expect(dialog.getByLabel('Layer text')).toHaveValue('Undo me please');
 
-    // S1: select the design layer; the stage draws the real animation, not a label; no resize handle; no text controls.
+    // S1: the editor stage draws the REAL design, never a name label. Since the live-stage redesign there are two views:
+    //   LIVE on  -> the real composition plays on the stage (`editor-live-player`) with the layer boxes as a transparent layer;
+    //   LIVE off -> each design layer is drawn by its own player (`design-layer-player`).
     await dialog.getByRole('button', { name: /^Select Design/ }).click();
+    await expect(dialog.getByTestId('editor-live-player')).toBeVisible();
+    await dialog.getByTestId('editor-live-toggle').click(); // LIVE off
     await expect(dialog.getByTestId('design-layer-player').first()).toBeVisible();
     await expect(dialog.getByRole('button', { name: /^Resize Design/ })).toHaveCount(0);
     await expect(dialog.getByLabel('Text color')).toHaveCount(0);
