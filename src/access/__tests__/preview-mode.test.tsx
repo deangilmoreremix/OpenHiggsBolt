@@ -43,6 +43,8 @@ const PAID_ACCESS: AccessState = {
   status: 'active',
   source: 'stripe',
   hasSmartVideoGo: true,
+  hasSmartVideoViral: false,
+  isSuperUser: false,
 }
 
 const UNPAID_ACCESS: AccessState = {
@@ -52,6 +54,8 @@ const UNPAID_ACCESS: AccessState = {
   status: 'inactive',
   source: 'manual',
   hasSmartVideoGo: false,
+  hasSmartVideoViral: false,
+  isSuperUser: false,
 }
 
 function makeContext(overrides: Partial<Ctx>): Ctx {
