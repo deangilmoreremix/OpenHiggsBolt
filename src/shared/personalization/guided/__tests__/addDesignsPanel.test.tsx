@@ -10,7 +10,9 @@ vi.mock('../DesignRecommendations', () => ({ DesignRecommendations: () => <div d
 import { useDemoPersonalize } from '../../DemoPersonalizeProvider'
 import { AddDesignsPanel } from '../AddDesignsPanel'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks() })
+// jsdom may not define scrollIntoView, and the test below assigns one: put the original back so it cannot leak.
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+afterEach(() => { cleanup(); vi.restoreAllMocks(); HTMLElement.prototype.scrollIntoView = originalScrollIntoView })
 
 function setup(error: string | null) {
   vi.mocked(useDemoPersonalize).mockImplementation(() => ({
