@@ -66,6 +66,8 @@
     "render:deploy": "render blueprints apply --confirm",
     "source:status": "node scripts/verify-source-of-truth.mjs",
     "source:verify": "node scripts/verify-source-of-truth.mjs",
+    "build:warmbly": "cd warmbly/web && pnpm install --frozen-lockfile && VITE_DOCS_URL=/warmbly-docs pnpm exec vite build --base=/warmbly-app/ && rm -rf ../../public/warmbly-app && cp -r dist ../../public/warmbly-app",
+    "build:warmbly-docs": "cd warmbly/docs && pnpm install --frozen-lockfile && (DOCS_SITE_URL=${URL:-http://localhost} DOCS_BASE_PATH=/warmbly-docs pnpm exec next build || DOCS_SITE_URL=${URL:-http://localhost} DOCS_BASE_PATH=/warmbly-docs pnpm exec next build) && rm -rf ../../public/warmbly-docs && cp -r out ../../public/warmbly-docs",
     "build:metadata": "node scripts/generate-build-info.mjs",
     "thumbnails:edit-tools": "node scripts/generate-edit-tool-thumbnails.mjs",
     "thumbnails:workflow-templates": "node scripts/generate-workflow-template-thumbnails.mjs",

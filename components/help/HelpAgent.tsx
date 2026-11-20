@@ -48,6 +48,7 @@ export const STUDIO_SUGGESTIONS: Record<string, string[]> = {
   'vfx-studio': ['How do I apply an effect to a video?', 'Which effects are available?', 'Which lessons cover motion and effects?'],
   'thumbnail-studio': ['How do I design a thumbnail?', 'How do I make a thumbnail click-worthy?', 'Which lessons cover thumbnail design?'],
   'video-pages': ['How do I turn a video into a landing page?', 'How do I publish and share my page?', 'How do I see who watched my page?'],
+  warmbly: ['How do I connect a mailbox and warm it up?', 'How do I set up and send a cold email campaign?', 'How do I manage replies in the unified inbox?'],
   'ai-influencer': ['How do I create a consistent AI character?', 'How do I make content with my character?', 'Which lessons cover monetizing a character?'],
   'go-ai-viral': ['How do I plan a viral short?', 'How do I produce a batch of shorts?', 'Which lessons cover short-form content?'],
   'photo-studio': ['How do I make a product photo?', 'How do I make a portrait?', 'Which lessons cover product photography?'],

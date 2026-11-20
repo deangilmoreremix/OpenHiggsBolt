@@ -6,6 +6,7 @@ import { shouldBypassClerkForE2e } from './lib/e2eAuthBypass.js';
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
   '/vfx(.*)',
+  '/warmbly-app(.*)',
   '/account(.*)',
   '/api/vfx(.*)',
   '/api/v1/protected(.*)',
