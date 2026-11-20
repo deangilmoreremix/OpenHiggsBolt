@@ -100,3 +100,4 @@ public/warmbly-app/
 !warmbly/internal/**/monitoring/
 !warmbly/internal/pkg/appattest/*.pem
 !warmbly/ios/release/
+public/warmbly-docs/
