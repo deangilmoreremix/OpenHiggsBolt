@@ -36,6 +36,12 @@
     # Use shallow submodule clones (depth=1) to avoid fetching historical commits
     # that reference invalid submodule commits (e.g., 36bdba26ae36a5cc73e6c2cb8e5ec5759d98f741)
     GIT_SUBMODULE_DEPTH = "1"
+    # Netlify's secrets scan fails the build with the bare "Build script returned non-zero exit code: 2" when any
+    # environment-variable value appears in a scanned file. PR #206 added a 17,000-line GENERATED catalogue of 539
+    # clips (titles, tags, topics, URLs): common words in it can equal a short env-var value, and every build containing
+    # it has failed since 2026-11-17 17:41 UTC (reverting it makes the build pass; a local `next build` passes either way).
+    # The file holds only public clip metadata, so it is excluded from the scan, not the whole scan.
+    SECRETS_SCAN_OMIT_PATHS = "src/data/templateVideoLibrary.js"
 
 [site]
   site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
