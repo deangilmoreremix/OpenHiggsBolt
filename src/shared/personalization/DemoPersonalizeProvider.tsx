@@ -951,6 +951,8 @@ export type DemoPersonalizeContextValue = {
   // Generation
   generate: () => Promise<void>
   retry: () => Promise<void>
+  /** Leaves an error or result screen and goes back to editing. Sends nothing; every edit is kept. */
+  returnToEditing: () => void
   generateAgain: () => Promise<void>
   retryBranding: () => Promise<void>
   generation: GenerationState
@@ -5690,10 +5692,25 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   // Retry / Generate Again repeat the same kind of run: a final video goes
   // through createFinalVideo again, so its layers (or branded render) are kept.
+  // One retry at a time: a second click (or a click while a run is already going) is ignored, so a failed paid
+  // operation can never be started twice. It repeats the SAME kind of run, never a different one.
+  const retryInFlightRef = useRef(false)
   const retry = useCallback(async () => {
-    if (lastRunWasFinalVideoRef.current && createFinalVideoRef.current) await createFinalVideoRef.current()
-    else await generate()
+    if (retryInFlightRef.current) return
+    retryInFlightRef.current = true
+    try {
+      if (lastRunWasFinalVideoRef.current && createFinalVideoRef.current) await createFinalVideoRef.current()
+      else await generate()
+    } finally {
+      retryInFlightRef.current = false
+    }
   }, [generate])
+
+  // Back to editing from an error or a result screen. Only the generation status resets: the client, assets, footage,
+  // template and every edit stay exactly as they were, and nothing is sent anywhere.
+  const returnToEditing = useCallback(() => {
+    setGeneration({ ...EMPTY_GENERATION_STATE, status: 'idle' })
+  }, [])
 
   const generateAgain = useCallback(async () => {
     if (lastRunWasFinalVideoRef.current && createFinalVideoRef.current) await createFinalVideoRef.current()
@@ -6704,6 +6721,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Generation
     generate,
     retry,
+    returnToEditing,
     generateAgain,
     retryBranding,
     generation,
