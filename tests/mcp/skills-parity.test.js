@@ -28,7 +28,6 @@ const NOT_VIA_MCP = {
   'muapi-ugc-ads-workflow': /is not an input of gpt-image-2/, // sends reference images to a text-to-image model
   'muapi-ugc-video-factory': /not available through MCP/,   // step "model" is an input name (person)
   'muapi-workflow': /not available through MCP/,            // step "model" is the placeholder "muapi"
-  'flux-3-dev-flagship': /not available through MCP/,       // flux-3-dev is not a catalog model
   'minimax-h3-i2v': /resolution" must be one of/,           // step resolution is not one the model accepts
 };
 
