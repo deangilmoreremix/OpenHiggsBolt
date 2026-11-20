@@ -24,6 +24,7 @@
     "vidbee:setup": "cd apps/vidbee && npm run setup",
     "vidbee:build": "cd apps/vidbee && npm run build",
     "vidbee:start": "cd apps/vidbee && npm run start",
+    "test:local-ai": "node --test tests/historyDom.test.js tests/localInferenceDownload.test.js tests/localInferenceWindows.test.js tests/stageLocalAiBinary.test.js tests/wan2gpCatalog.test.js tests/wan2gpLocal.test.js tests/wan2gpMcp.test.js tests/wan2gpOutput.test.js",
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
     "audit:tooltips": "vitest run --config vitest.audit.config.ts",

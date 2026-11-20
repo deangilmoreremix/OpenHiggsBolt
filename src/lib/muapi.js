@@ -10,6 +10,18 @@ import {
   uploadVideoToMuAPI,
 } from './muapiUpload.ts';
 
+// Maps common HTTP failures to actionable messages; other statuses keep the
+// original "API Request Failed" text.
+export function formatApiError(status, statusText, errText = '') {
+    if (status === 401 || status === 403) {
+        return 'Invalid or missing API key. Add a valid Muapi API key in Settings (get one at muapi.ai).';
+    }
+    if (status === 402) {
+        return 'Insufficient credits. Generation needs a Muapi API key with credit balance - top up at muapi.ai and try again.';
+    }
+    return `API Request Failed: ${status} ${statusText} - ${String(errText).slice(0, 100)}`;
+}
+
 // Marks an error as terminal so the polling loop rethrows instead of retrying.
 function fatal(message) {
     const error = new Error(message);
@@ -149,7 +161,7 @@ export class MuapiClient {
             if (!response.ok) {
                 const errText = await response.text();
                 console.error('[Muapi] API Error Body:', errText);
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
@@ -271,7 +283,7 @@ export class MuapiClient {
             if (!response.ok) {
                 const errText = await response.text();
                 console.error('[Muapi] API Error Body:', errText);
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
@@ -346,7 +358,7 @@ export class MuapiClient {
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
@@ -437,7 +449,7 @@ export class MuapiClient {
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
@@ -553,7 +565,7 @@ export class MuapiClient {
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
@@ -615,7 +627,7 @@ export class MuapiClient {
             if (!response.ok) {
                 const errText = await response.text();
                 console.error('[Muapi] LipSync API Error:', errText);
-                throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+                throw new Error(formatApiError(response.status, response.statusText, errText));
             }
 
             const submitData = await response.json();
