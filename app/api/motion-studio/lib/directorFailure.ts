@@ -10,7 +10,9 @@ export function directorFailure(err: unknown): NextResponse {
   const name = err instanceof Error ? err.name : ''
   const retryAfterMs = (err as { retryAfterMs?: number })?.retryAfterMs
   const reply = (code: string, http: number, error: string) => NextResponse.json({ error, code, ...(status ? { upstreamStatus: status } : {}), ...(retryAfterMs ? { retryAfterMs } : {}) }, { status: http, ...(retryAfterMs ? { headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } } : {}) })
-  if (status === 401 || status === 403) return reply('OPENAI_KEY_REJECTED', 401, `OpenAI rejected the API key (HTTP ${status}): ${message}`)
+  if (status === 401) return reply('OPENAI_KEY_REJECTED', 401, `OpenAI rejected the API key (HTTP 401): ${message}`)
+  // 403 means the key is valid but this project may not use the model: say so instead of calling the key bad.
+  if (status === 403) return reply('OPENAI_ACCESS_DENIED', 403, `Your OpenAI key is valid but OpenAI denied access (HTTP 403): ${message}`)
   if (status === 429) return reply('OPENAI_RATE_LIMITED', 429, `OpenAI rate limit or quota reached (HTTP 429): ${message}`)
   if (name === 'ModelOutputError') {
     const code = (err as { code?: string }).code ?? 'BAD_OUTPUT';
