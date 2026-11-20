@@ -1675,19 +1675,6 @@
     "e.g. What happens when you swallow gum?",
     "keyframe(s)"
    ]
-  },
-  "warmbly": {
-   "files": [
-    "warmbly/web/src/app/app/emails/page.tsx",
-    "warmbly/web/src/app/app/emails/domains/page.tsx",
-    "warmbly/web/src/app/app/campaigns/page.tsx"
-   ],
-   "labels": [
-    "Add account",
-    "Add mailboxes",
-    "New campaign",
-    "Sending domains"
-   ]
   }
  }
 }

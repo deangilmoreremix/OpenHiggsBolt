@@ -1,1 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS idx_campaign_leads_campaign_position;

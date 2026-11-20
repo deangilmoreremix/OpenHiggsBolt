@@ -1,3 +1,0 @@
-[
-    { "name": "query", "type": "text", "label": "Email or name contains", "required": true }
-]

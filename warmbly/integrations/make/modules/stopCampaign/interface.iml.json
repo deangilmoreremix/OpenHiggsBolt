@@ -1,4 +1,0 @@
-[
-    { "name": "campaign_id", "type": "text", "label": "Campaign ID" },
-    { "name": "status", "type": "text", "label": "Status" }
-]

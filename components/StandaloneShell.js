@@ -62,7 +62,6 @@ const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: fals
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
 const MediaHubStudio = dynamic(() => import('../src/apps/media-hub/MediaHub'), { ssr: false });
-const WarmblyStudio = dynamic(() => import('../src/apps/warmbly/WarmblyStudio'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -165,7 +164,6 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
   { id: 'media-hub', label: 'Media Hub' },
-  { id: 'warmbly', label: 'Warmbly Studio' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
@@ -196,7 +194,6 @@ const SLUG_TO_TAB = {
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages', 'media-hub': 'media-hub',
   'muapi-studio': 'muapi-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
-  warmbly: 'warmbly',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
@@ -1023,7 +1020,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
           {activeTab === 'muapi-studio' && <MuapiStudioPanel apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} />}
-          {activeTab === 'warmbly' && <WarmblyStudio />}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
           {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>

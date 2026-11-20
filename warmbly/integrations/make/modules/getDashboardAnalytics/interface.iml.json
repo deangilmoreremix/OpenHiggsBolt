@@ -1,4 +1,0 @@
-[
-    { "name": "period", "type": "text", "label": "Period" },
-    { "name": "overall_stats", "type": "collection", "label": "Overall stats" }
-]

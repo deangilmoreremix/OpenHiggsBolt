@@ -1,9 +1,0 @@
-# Encryption (Redis)
-SERVICE_KEY=""
-
-# Redis for tasks
-REDIS_ADDR="localhost:6379"
-REDIS_PASSWORD=""
-
-# Log
-LOG_DISCORD_WEBHOOK_URL=""

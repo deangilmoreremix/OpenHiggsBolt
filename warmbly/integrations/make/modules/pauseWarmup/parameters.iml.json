@@ -1,9 +1,0 @@
-[
-    {
-        "name": "email_account_id",
-        "type": "select",
-        "label": "Mailbox",
-        "required": true,
-        "options": "rpc://mailboxList"
-    }
-]

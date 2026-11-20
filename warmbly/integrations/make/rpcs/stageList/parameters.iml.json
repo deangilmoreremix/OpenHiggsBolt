@@ -1,8 +1,0 @@
-[
-    {
-        "name": "pipeline_id",
-        "type": "text",
-        "label": "Pipeline",
-        "required": true
-    }
-]

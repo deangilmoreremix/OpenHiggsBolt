@@ -1,3 +1,0 @@
-[
-    { "name": "deal_id", "type": "text", "label": "Deal ID", "required": true }
-]

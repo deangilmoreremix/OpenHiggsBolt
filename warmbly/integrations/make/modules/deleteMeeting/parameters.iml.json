@@ -1,3 +1,0 @@
-[
-    { "name": "meeting_id", "type": "text", "label": "Meeting ID", "required": true }
-]

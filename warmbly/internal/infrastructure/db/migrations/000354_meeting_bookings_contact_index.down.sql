@@ -1,1 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS public.idx_meeting_bookings_contact_created;

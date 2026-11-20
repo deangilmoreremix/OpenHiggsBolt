@@ -1,2 +1,0 @@
-ALTER TABLE tasks DROP COLUMN IF EXISTS thread_id;
-ALTER TABLE sequences DROP COLUMN IF EXISTS thread_reply;

@@ -1,3 +1,0 @@
-[
-    { "name": "query", "type": "text", "label": "Name contains", "required": true }
-]
