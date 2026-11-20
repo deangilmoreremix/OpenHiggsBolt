@@ -165,7 +165,6 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
   { id: 'media-hub', label: 'Media Hub' },
-  { id: 'video-pages', label: 'Video Pages' },
   { id: 'warmbly', label: 'Warmbly Studio' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
