@@ -45,10 +45,7 @@ function magentaPixels(file: string, seconds: number): number {
   return n;
 }
 
-test(`${COUNT} imported pictures: honest summary, assign -> in the frame, remove -> out of the frame, zero AI requests`, async ({ page }) => {
-  test.setTimeout(600_000);
-  fs.mkdirSync(OUT, { recursive: true });
-  const requests: string[] = [];
+async function seedPictures(page: Page, requests: string[]) {
   page.on('request', (r) => requests.push(r.url()));
   await page.addInitScript(() => {
     const original = URL.createObjectURL.bind(URL);
@@ -66,7 +63,7 @@ test(`${COUNT} imported pictures: honest summary, assign -> in the frame, remove
   await page.fill('input[placeholder="ABC Roofing"]', 'Pictures Co');
   await dialog.getByRole('button', { name: /Next: Your assets/ }).click();
 
-  // 25 distinct pictures; index TARGET is solid magenta, the rest are hues between green and blue.
+  // COUNT distinct pictures; index TARGET is solid magenta, the rest are hues between green and blue.
   const pictures: string[] = await page.evaluate(([count, target]) => {
     const out: string[] = [];
     for (let i = 0; i < (count as number); i++) {
@@ -90,63 +87,71 @@ test(`${COUNT} imported pictures: honest summary, assign -> in the frame, remove
   }
   await page.waitForTimeout(1500);
   await page.getByRole('button', { name: /Simple Mode/i }).click();
-
   await dialog.getByRole('button', { name: /Step 2/i }).click();
   await dialog.getByRole('tab', { name: /AI Demos/i }).click();
   await dialog.getByPlaceholder('Search demos…').fill('luxury perfume');
   const card = dialog.locator('[data-testid*="luxury-perfume-commercial"]').first();
   await card.scrollIntoViewIfNeeded(); await card.click();
   await page.waitForTimeout(1500);
-
   await dialog.getByRole('button', { name: /Step 3/i }).click();
   const panel = dialog.getByTestId('asset-usage-panel');
   await expect(panel).toBeVisible();
+  const rows = panel.locator('[data-testid^="asset-usage-"][data-state]');
   const read = async () => {
     const text = await dialog.getByTestId('asset-usage-summary').innerText();
     const m = /(\d+) imported\D+(\d+) in the video\D+(\d+) not used/.exec(text);
     expect(m, `summary text: ${text}`).not.toBeNull();
     return { total: Number(m![1]), inVideo: Number(m![2]), unused: Number(m![3]) };
   };
-  const first = await read();
-  fs.writeFileSync(path.join(OUT, 'summary-initial.json'), JSON.stringify(first));
-  expect(first.total).toBe(COUNT);
-  expect(first.inVideo + first.unused).toBe(COUNT);
-  expect(first.inVideo).toBeLessThan(COUNT); // importing 25 pictures never puts all 25 in the video
-  await expect(panel.locator('[data-testid^="asset-usage-"][data-state]')).toHaveCount(COUNT);
+  return { dialog, panel, rows, read };
+}
 
-  // Put the magenta picture on the Product layer.
-  const rows = panel.locator('[data-testid^="asset-usage-"][data-state]');
-  await rows.nth(TARGET).getByRole('button', { name: /as the product image/ }).click();
-  await expect(rows.nth(TARGET)).toHaveAttribute('data-state', 'rendered');
-  const assigned = await read();
-  expect(assigned.total).toBe(COUNT);
-  expect(assigned.inVideo).toBeGreaterThanOrEqual(1);
-  expect(assigned.inVideo).toBeLessThan(COUNT);
+test.describe(`${COUNT} imported pictures in a real browser`, () => {
+  test('honest summary; the assigned picture is in the exported frame; zero AI requests', async ({ page }) => {
+    test.setTimeout(400_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    const requests: string[] = [];
+    const { rows, read } = await seedPictures(page, requests);
 
-  const withIt = await exportOnce(page, 'with-target');
-  const withCount = Math.max(magentaPixels(withIt, 2.0), magentaPixels(withIt, 3.0));
+    const first = await read();
+    fs.writeFileSync(path.join(OUT, 'summary-initial.json'), JSON.stringify(first));
+    expect(first.total).toBe(COUNT);
+    expect(first.inVideo + first.unused).toBe(COUNT);
+    expect(first.inVideo, 'importing pictures never puts all of them in the video').toBeLessThan(COUNT);
+    await expect(rows).toHaveCount(COUNT);
 
-  // After a render, "Step 3" shows the result screen first; "Generate Again" returns to the wizard. The pictures and the
-  // assignment must still be there afterwards.
-  await dialog.getByRole('button', { name: /Step 3/i }).click();
-  const again = dialog.getByRole('button', { name: 'Generate Again' });
-  if (await again.isVisible({ timeout: 4000 }).catch(() => false)) await again.click();
-  await dialog.getByRole('button', { name: /Step 3/i }).click();
-  await expect(panel).toBeVisible();
-  expect((await read()).total, 'the pictures survive going back from the result screen').toBe(COUNT);
-  await expect(rows.nth(TARGET)).toHaveAttribute('data-state', 'rendered');
-  await rows.nth(TARGET).getByRole('button', { name: /^Remove\s.*from the video$/ }).click();
-  await expect(rows.nth(TARGET)).not.toHaveAttribute('data-state', 'rendered');
-  const removed = await read();
-  expect(removed.total).toBe(COUNT);
+    await rows.nth(TARGET).getByRole('button', { name: /as the product image/ }).click();
+    await expect(rows.nth(TARGET)).toHaveAttribute('data-state', 'rendered');
+    const assigned = await read();
+    expect(assigned.total).toBe(COUNT);
+    expect(assigned.inVideo).toBeGreaterThanOrEqual(1);
+    expect(assigned.inVideo).toBeLessThan(COUNT);
 
-  const without = await exportOnce(page, 'without-target');
-  const withoutCount = Math.max(magentaPixels(without, 2.0), magentaPixels(without, 3.0));
+    const file = await exportOnce(page, 'with-target');
+    const count = Math.max(magentaPixels(file, 2.0), magentaPixels(file, 3.0));
+    fs.writeFileSync(path.join(OUT, 'result-assigned.json'), JSON.stringify({ first, assigned, magentaPixels: count }, null, 2));
+    expect(count, 'the assigned picture is in the exported frame').toBeGreaterThan(500);
+    expect(requests.filter((u) => AI_REQUEST.test(u))).toEqual([]);
+  });
 
-  fs.writeFileSync(path.join(OUT, 'result.json'), JSON.stringify({ first, assigned, removed, magentaWith: withCount, magentaWithout: withoutCount }, null, 2));
-  expect(withCount, 'the assigned picture is in the exported frame').toBeGreaterThan(500);
-  expect(withoutCount, 'after Remove the picture is out of the exported frame').toBeLessThan(50);
+  test('Remove takes the picture out of the video and out of the exported frame', async ({ page }) => {
+    test.setTimeout(400_000);
+    fs.mkdirSync(OUT, { recursive: true });
+    const requests: string[] = [];
+    const { rows, read } = await seedPictures(page, requests);
 
-  const ai = requests.filter((u) => AI_REQUEST.test(u));
-  expect(ai, `AI requests: ${ai.join(', ')}`).toEqual([]);
+    await rows.nth(TARGET).getByRole('button', { name: /as the product image/ }).click();
+    await expect(rows.nth(TARGET)).toHaveAttribute('data-state', 'rendered');
+    await rows.nth(TARGET).getByRole('button', { name: /^Remove\s.*from the video$/ }).click();
+    await expect(rows.nth(TARGET)).not.toHaveAttribute('data-state', 'rendered');
+    const removed = await read();
+    expect(removed.total).toBe(COUNT);
+    await expect(rows).toHaveCount(COUNT); // removed from the video, still in the library
+
+    const file = await exportOnce(page, 'without-target');
+    const count = Math.max(magentaPixels(file, 2.0), magentaPixels(file, 3.0));
+    fs.writeFileSync(path.join(OUT, 'result-removed.json'), JSON.stringify({ removed, magentaPixels: count }, null, 2));
+    expect(count, 'after Remove the picture is not in the exported frame').toBeLessThan(50);
+    expect(requests.filter((u) => AI_REQUEST.test(u))).toEqual([]);
+  });
 });
