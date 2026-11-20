@@ -12,12 +12,15 @@ export const BATCH = 60;
 const MAX_TEXT = 700;
 
 // Keys that are settings, links, media or identifiers, not copy.
-const SKIP_KEYS = /^(id|type|key|kind|variant|layout|columns|cols|align|style|icon|design|url|href|src|image|img|photo|logo|avatar|background|bg|poster|arrow|accent|highlight|rounded|showForm|options|required|buttonUrl|loginUrl|days|month|time|date|zones|root)$/i;
+const SKIP_KEYS = /^(fbPixelId|gaMeasurementId|tiktokPixelId|gtmId|afterAction|afterUrl|privacyLink|buttonColor|id|type|key|kind|variant|layout|columns|cols|align|style|icon|design|url|href|src|image|img|photo|logo|avatar|background|bg|poster|arrow|accent|highlight|rounded|showForm|options|required|buttonUrl|loginUrl|days|month|time|date|zones|root)$/i;
 // Whole lists that hold form field definitions (names/placeholders must stay as built).
 const SKIP_LISTS = /^(formFields|fields)$/i;
 const URLISH = /^(https?:|mailto:|tel:|#|\/|data:|javascript:)/i;
 const HEX = /^#[0-9a-f]{3,8}$/i;
 const ENUM = /^[a-z][a-z0-9_-]*$/; // single lowercase token, e.g. 'story', 'yes', 'center'
+
+/** The words of a List Builder / Lead Generator form (everything else in its settings is styling or wiring). */
+const OPTIN_COPY = new Set(['caption', 'btnText', 'skipText', 'successMessage', 'privacyDisclaimer', 'privacyPolicyCaption', 'afterSubmitButtonText', 'popupHeaderText', 'popupFillOutText', 'popupClickText', 'popupDescriptionText']);
 
 export function isCopy(key, value) {
   if (typeof value !== 'string') return false;
@@ -64,8 +67,12 @@ export function collectTexts(puckData, { section = null } = {}) {
       return;
     }
     if (node && typeof node === 'object') {
+      // The sign-up form's settings hold fonts, colours, field tokens and layout names next to its words: only its words are copy.
+      const only = key === 'config' && node.elements !== undefined ? OPTIN_COPY : null;
       for (const [k, v] of Object.entries(node)) {
         if (k === 'type' || k === 'id') continue;
+        if (only && !only.has(k) && k !== 'elements') continue;
+        if (only && k === 'elements') { (Array.isArray(v) ? v : []).forEach((el, i) => ['label', 'placeholder'].forEach((f) => { if (typeof el?.[f] === 'string') walk(el[f], [...path, k, i, f], top, f); })); continue; }
         walk(v, [...path, k], top, k);
       }
     }

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { fetchPageStats } from '@/src/lib/landingPages/api.js'
+import HeatPanel from './HeatPanel'
 import { ui } from './ui'
 
 type Stats = { views: number; plays: number; completes: number; ctaClicks: number; leads: number; uniqueContacts: number; likes: number }
 
-export default function AnalyticsTab({ pageId }: { pageId: string }) {
+export default function AnalyticsTab({ pageId, published = true }: { pageId: string; published?: boolean }) {
   const [stats, setStats] = useState<Stats | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -23,13 +24,16 @@ export default function AnalyticsTab({ pageId }: { pageId: string }) {
     ['Button clicks', stats.ctaClicks], ['Leads', stats.leads], ['Likes', stats.likes], ['People (personal links)', stats.uniqueContacts],
   ]
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-      {cards.map(([label, value]) => (
-        <div key={label} className={ui.card}>
-          <div className={ui.label}>{label}</div>
-          <div className="text-2xl font-black text-white mt-1">{value}</div>
-        </div>
-      ))}
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        {cards.map(([label, value]) => (
+          <div key={label} className={ui.card}>
+            <div className={ui.label}>{label}</div>
+            <div className="text-2xl font-black text-white mt-1">{value}</div>
+          </div>
+        ))}
+      </div>
+      <HeatPanel pageId={pageId} published={published} />
     </div>
   )
 }

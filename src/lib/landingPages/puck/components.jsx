@@ -3,9 +3,14 @@
  * (escaped), links/images go through safeUrl/safeImageUrl, and the video / lead form keep the same tracking
  * events and token rules as the classic renderer.
  */
-import { useEffect, useRef, useState } from 'react';
+import { parseChoices } from './choicesField.jsx';
+import { normalizeOptions, fieldRequired, afterSubmitPlan, personalizePage, hasTracking, gateSeen, markGateSeen, PointerHint } from './formOptions.jsx';
+import { PixelLoader } from './optinForm.jsx';
+import { tokenAnswers, leadKindFor } from '../leadPipeline.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fillTokens, splitAccent, prefillFor, safeUrl, safeImageUrl } from '../templates.js';
-import { usePage, useThanks } from './context.js';
+import { usePage, useThanks, useFormSettings } from './context.js';
 import { ICON_PATHS } from '../siteIcons.js';
 
 const MARKS = [{ at: 0.25, kind: 'progress_25' }, { at: 0.5, kind: 'progress_50' }, { at: 0.75, kind: 'progress_75' }];
@@ -58,7 +63,9 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
   const pageVideo = isPlayableVideo(page?.video_url) ? page.video_url : '';
   const src = (isPlayableVideo(slotVideo) ? httpsMedia(slotVideo) : '') || pageVideo;
   const pageImage = !pageVideo && httpsMedia(page?.video_url) && IMAGE_PATH.test(pathOf(page.video_url)) ? httpsMedia(page.video_url) : '';
-  const userImage = safeImageUrl(slotImage) || pageImage;
+  // A picture can carry a token ({{custom3}}), so every contact's personal link shows their own picture.
+  const fill = useTokens();
+  const userImage = safeImageUrl(fill(slotImage)) || pageImage;
   const designPoster = safeImageUrl(poster) || (/^\/landing-art\/[a-z0-9/_-]+\.(webp|png|jpe?g)$/i.test(poster) ? poster : '');
   const posterUrl = userImage || safeImageUrl(page?.poster_url) || designPoster;
   const ownPicture = !!(userImage || safeImageUrl(page?.poster_url));
@@ -96,44 +103,106 @@ const DEFAULT_FIELDS = [
   { key: 'email', label: 'Email', type: 'email', required: true },
 ];
 
-export function LeadForm({ title, subtitle, submitLabel = 'Send', successMessage = 'Thanks!', privacy, fields = DEFAULT_FIELDS }) {
+/** One page-wide claim so only one gate opens when several forms have it switched on. */
+let gateOwner = null;
+
+function LeadFormBody({ title, subtitle, submitLabel = 'Send', successMessage = 'Thanks!', privacy, fields = DEFAULT_FIELDS, o, onDone }) {
   const { handlers, preview, tokens } = usePage();
   const t = useTokens();
   const [state, setState] = useState({ status: 'idle', error: '' });
-  if (state.status === 'done') return <div className="pk-form pk-form--done"><p className="pk-thanks">{t(successMessage) || 'Thanks!'}</p></div>;
+  const root = useFormSettings();
+  const plan = afterSubmitPlan(o, root);
+  if (state.status === 'done') {
+    return (
+      <div className="pk-form pk-form--done">
+        <p className="pk-thanks">{t(successMessage) || 'Thanks!'}</p>
+        {plan.action === 'button' ? <a className="pk-btn pk-btn--primary" href={plan.url} target="_blank" rel="noopener noreferrer">{plan.text}</a> : null}
+      </div>
+    );
+  }
   const onSubmit = async (e) => {
     e.preventDefault();
     if (preview) { setState({ status: 'idle', error: 'Preview only: nothing is sent.' }); return; }
     const data = {};
     new FormData(e.currentTarget).forEach((v, k) => { data[k] = String(v); });
     setState({ status: 'sending', error: '' });
-    const res = await (handlers.onLead?.(data) ?? { error: 'Form is not available' });
-    if (res?.error) setState({ status: 'idle', error: 'Could not send. Please try again.' });
-    else setState({ status: 'done', error: '' });
+    // Saved the way the timeline's List Builder / Lead Generator saves: answers keyed by the box tokens, with the form's kind.
+    const res = await (handlers.onLead?.(tokenAnswers(fields, data), { kind: leadKindFor(o.kind) }) ?? { error: 'Form is not available' });
+    if (res?.error) { setState({ status: 'idle', error: 'Could not send. Please try again.' }); return; }
+    setState({ status: 'done', error: '' });
+    if (o.kind === 'personalizer' && personalizePage(tokenAnswers(fields, data))) return;
+    const go = plan.action === 'redirect' ? safeUrl(plan.url) : '';
+    if (go && /^https:/i.test(go)) setTimeout(() => { try { window.location.assign(go); } catch { /* the thank-you message stays */ } }, 1500);
+    onDone?.(data);
   };
+  const boxStyle = o.boxRadius != null ? { borderRadius: `${o.boxRadius}px` } : undefined;
   return (
-    <form className="pk-form" onSubmit={onSubmit}>
+    <form className="pk-form" onSubmit={onSubmit} data-kind={o.kind}>
       {title ? <AccentText as="h2" className="pk-form-title" text={title} /> : null}
       {subtitle ? <p className="pk-form-sub">{t(subtitle)}</p> : null}
-      {fields.map((f) => (
-        <label key={f.key} className="pk-field">
-          <span className="pk-sr">{f.label}</span>
-          {f.type === 'select'
-            ? (
-              <select name={f.key} required={!!f.required} defaultValue="">
-                <option value="" disabled>{t(f.placeholder || f.label)}</option>
-                {String(f.options || '').split(',').map((o) => o.trim()).filter(Boolean).map((o) => <option key={o} value={o}>{o}</option>)}
-              </select>
-            )
-            : f.type === 'textarea'
-            ? <textarea name={f.key} rows={3} required={!!f.required} placeholder={t(f.placeholder || f.label)} defaultValue={prefillFor(f.key, tokens) || ''} maxLength={2000} />
-            : <input name={f.key} type={['text', 'email', 'tel'].includes(f.type) ? f.type : 'text'} required={!!f.required} placeholder={t(f.placeholder || f.label)} defaultValue={prefillFor(f.key, tokens) || ''} maxLength={2000} />}
-        </label>
-      ))}
-      <button type="submit" className="pk-btn pk-btn--primary" disabled={state.status === 'sending'}>{t(submitLabel)}</button>
+      {o.pointer && !preview ? <PointerHint text={o.pointerText} seconds={o.pointerSeconds} /> : null}
+      {fields.map((f) => {
+        const required = fieldRequired(f, o.kind);
+        return (
+          <label key={f.key} className="pk-field">
+            <span className="pk-sr">{f.label}</span>
+            {f.type === 'select'
+              ? (
+                <select name={f.key} required={required} defaultValue="" style={boxStyle}>
+                  <option value="" disabled>{t(f.placeholder || f.label)}</option>
+                  {parseChoices(f.options).map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )
+              : f.type === 'textarea'
+              ? <textarea name={f.key} rows={3} required={required} placeholder={t(f.placeholder || f.label)} defaultValue={prefillFor(f.key, tokens) || ''} maxLength={2000} style={boxStyle} />
+              : <input name={f.key} type={['text', 'email', 'tel', 'number', 'date'].includes(f.type) ? f.type : 'text'} required={required} placeholder={t(f.placeholder || f.label)} defaultValue={prefillFor(f.key, tokens) || ''} maxLength={2000} style={boxStyle} />}
+          </label>
+        );
+      })}
+      <button type="submit" className="pk-btn pk-btn--primary" disabled={state.status === 'sending'} style={o.buttonColor ? { background: o.buttonColor, borderColor: o.buttonColor } : undefined}>{t(submitLabel)}</button>
       <p className="pk-status" role="status">{state.error}</p>
-      {privacy ? <p className="pk-privacy">{t(privacy)}</p> : null}
+      {privacy || o.privacyLink ? <p className="pk-privacy">{privacy ? t(privacy) : null}{privacy && o.privacyLink ? ' ' : null}{o.privacyLink ? <a href={o.privacyLink} target="_blank" rel="noopener noreferrer">{o.privacyLinkText}</a> : null}</p> : null}
     </form>
+  );
+}
+
+/** The design's own form, shown full screen before the page is used (once per visitor). Public page only. */
+function FormGate(props) {
+  const { page, preview } = usePage();
+  const { o } = props;
+  const [open, setOpen] = useState(false);
+  const token = useRef({}).current;
+  useEffect(() => {
+    if (preview || !page?.id || typeof document === 'undefined') return undefined;
+    if (!o.askEveryVisit && gateSeen(page.id)) return undefined;
+    if (gateOwner && gateOwner !== token) return undefined;
+    gateOwner = token; setOpen(true);
+    return () => { if (gateOwner === token) gateOwner = null; };
+  }, [preview, page?.id, o.askEveryVisit, token]);
+  if (!open || typeof document === 'undefined') return null;
+  const close = () => { if (!o.askEveryVisit) markGateSeen(page.id); setOpen(false); };
+  const themed = document.querySelector('.pk-page');
+  return createPortal(
+    <div className={themed?.className || 'pk-page'} data-pk-gate="1" role="dialog" aria-modal="true" aria-label={props.title || 'Sign up'}
+      ref={(el) => { if (el && themed) el.style.cssText = `${themed.style.cssText};position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;min-height:0;background:rgba(8,12,24,.78);overflow:auto;padding:16px`; }}>
+      <div className="pk-gate-card" style={{ background: 'var(--pk-bg, #fff)', color: 'var(--pk-ink, inherit)', borderRadius: 18, padding: 20, width: 'min(460px, 100%)', boxShadow: '0 20px 60px rgba(0,0,0,.45)', position: 'relative' }}>
+        <LeadFormBody {...props} o={{ ...o, gate: false }} onDone={() => setTimeout(close, 1600)} />
+        {o.skip ? <button type="button" className="pk-gate-skip" onClick={close} style={{ marginTop: 10, background: 'none', border: 0, color: 'inherit', opacity: 0.75, cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>{o.skipText}</button> : null}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** The form every design uses. `options` adds the List Builder / Lead Generator features (see formOptions.jsx). */
+export function LeadForm({ options, ...props }) {
+  const o = useMemo(() => normalizeOptions(options), [options]);
+  return (
+    <>
+      <LeadFormBody {...props} o={o} />
+      {o.gate ? <FormGate {...props} o={o} /> : null}
+      {hasTracking(o) ? <PixelLoader config={o} /> : null}
+    </>
   );
 }
 
@@ -209,7 +278,7 @@ const cssImage = (v) => {
   return u && !/["'()\\\s<>]/.test(u) ? `url(${JSON.stringify(u)})` : '';
 };
 
-export function Hero({ variant = 'copy-video-form', background, eyebrow, headline, subhead, bullets, chip, photo, slotImage, slotVideo, bakedPlay, formTitle, formSubtitle, submitLabel, formFields, privacy, buttons, showForm = 'yes' }) {
+export function Hero({ variant = 'copy-video-form', background, eyebrow, headline, subhead, bullets, chip, photo, slotImage, slotVideo, bakedPlay, formOptions, formTitle, formSubtitle, submitLabel, formFields, privacy, buttons, showForm = 'yes' }) {
   const t = useTokens();
   const fields = asList(formFields).filter((f) => f.key && f.label).map((f) => ({ ...f, key: String(f.key).replace(/[^a-z0-9_]/gi, '').toLowerCase() }));
   return (
@@ -225,7 +294,7 @@ export function Hero({ variant = 'copy-video-form', background, eyebrow, headlin
         <VideoPlayer poster={photo} slotImage={slotImage} slotVideo={slotVideo} bakedPlay={bakedPlay} />
         {chip ? <div className="pk-chip">{t(chip)}</div> : null}
       </div>
-      {showForm === 'yes' ? <div className="pk-hero-form" id="lead"><LeadForm title={formTitle} subtitle={formSubtitle} submitLabel={submitLabel} privacy={privacy} fields={fields.length ? fields : undefined} /></div> : null}
+      {showForm === 'yes' ? <div className="pk-hero-form" id="lead"><LeadForm options={formOptions} title={formTitle} subtitle={formSubtitle} submitLabel={submitLabel} privacy={privacy} fields={fields.length ? fields : undefined} /></div> : null}
     </header>
   );
 }
@@ -263,13 +332,13 @@ export function Band({ title, text, buttonLabel, placeholder, social, tagline, b
 }
 
 /** A contact form band with any number of fields (name, email, company, message...). */
-export function ContactBand({ eyebrow, title, text, fields, submitLabel, successMessage }) {
+export function ContactBand({ eyebrow, title, text, fields, submitLabel, successMessage, formOptions }) {
   const t = useTokens();
   return (
     <section className="pk-band pk-band--contact" id="contact">
       <div className="pk-band-in pk-band-in--contact">
         <div className="pk-band-text">{eyebrow ? <small className="pk-eyebrow-plain">{t(eyebrow)}</small> : null}<b>{t(title)}</b>{text ? <span>{t(text)}</span> : null}</div>
-        <LeadForm submitLabel={submitLabel || 'Contact us'} successMessage={successMessage} fields={asList(fields).filter((f) => f.key && f.label)} />
+        <LeadForm options={formOptions} submitLabel={submitLabel || 'Contact us'} successMessage={successMessage} fields={asList(fields).filter((f) => f.key && f.label)} />
       </div>
     </section>
   );
