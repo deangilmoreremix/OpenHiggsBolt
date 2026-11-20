@@ -19,7 +19,7 @@
     "build:help-index": "tsx scripts/build-help-index.ts",
     "generate:niche-demos": "tsx scripts/generate-niche-demos.ts",
     "test:vfx": "vitest run tests/vfx-service.vitest.test.js tests/vfx-validation.vitest.test.js",
-    "test:vidbee-gate": "node --test lib/vidbee/gate.nodetest.mjs apps/vidbee/apps/desktop/host/access-token.nodetest.mjs apps/vidbee/apps/desktop/host/media-access.nodetest.mjs apps/vidbee/apps/desktop/host/net-fetch.nodetest.mjs apps/vidbee/apps/desktop/host/export-path.nodetest.mjs apps/vidbee/apps/desktop/host/ipc-binary.nodetest.mjs apps/vidbee/apps/desktop/host/pdf-export.nodetest.mjs lib/vidbee/middleware-matcher.nodetest.mjs",
+    "test:vidbee-gate": "node --test lib/vidbee/gate.nodetest.mjs apps/vidbee/apps/desktop/host/access-token.nodetest.mjs apps/vidbee/apps/desktop/host/media-access.nodetest.mjs apps/vidbee/apps/desktop/host/net-fetch.nodetest.mjs apps/vidbee/apps/desktop/host/export-path.nodetest.mjs apps/vidbee/apps/desktop/host/ipc-binary.nodetest.mjs apps/vidbee/apps/desktop/host/pdf-export.nodetest.mjs apps/vidbee/apps/desktop/host/hub-routing.nodetest.mjs lib/vidbee/middleware-matcher.nodetest.mjs",
     "vidbee:install": "cd apps/vidbee && npm run install:vidbee",
     "vidbee:setup": "cd apps/vidbee && npm run setup",
     "vidbee:build": "cd apps/vidbee && npm run build",
