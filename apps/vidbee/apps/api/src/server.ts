@@ -1,5 +1,6 @@
 import { lookup } from 'node:dns/promises'
 import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
 import net from 'node:net'
 import path from 'node:path'
@@ -12,6 +13,16 @@ import Fastify from 'fastify'
 import { startTaskQueue, stopTaskQueue, taskQueue } from './lib/downloader'
 import { startEngines, stopEngines } from './lib/engines'
 import { resolveReadableMediaFile } from './lib/managed-files'
+import { getAiRun } from './lib/ai-host'
+import { aiRouter } from './lib/ai-router'
+import { ExportBusyError, exportVideoWithSubtitles } from './lib/video-export-host'
+import { getChat } from './lib/chat-host'
+import { aiChannel, chatChannel, subscribeLive, translateChannel } from './lib/live-events'
+import { listTranslations } from './lib/translate-host'
+import { chatRouter } from './lib/chat-router'
+import { failInterruptedTranslations } from './lib/translate-host'
+import { translateRouter } from './lib/translate-router'
+import { failInterruptedAiRuns } from './lib/ai-host'
 import { projectTaskForApi } from './lib/projection'
 import { rpcRouter } from './lib/rpc-router'
 import { SseHub } from './lib/sse'
@@ -21,6 +32,7 @@ import {
   stopApiSubscriptions
 } from './lib/subscriptions-host'
 import { subscriptionsRouter } from './lib/subscriptions-router'
+import { transcriptsRouter } from './lib/transcripts-router'
 
 const MAX_PROXY_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_PROXY_REDIRECTS = 5
@@ -126,11 +138,19 @@ export const createApiServer = async () => {
 
   await fastify.register(cors, {
     origin: true,
-    methods: ['GET', 'POST', 'OPTIONS']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    // Lets a cross-origin page read the size and range of media it streams.
+    exposedHeaders: ['Content-Range', 'Content-Length', 'Accept-Ranges']
   })
 
   const rpcHandler = new RPCHandler(rpcRouter)
   const subscriptionsRpcHandler = new RPCHandler(subscriptionsRouter)
+  const transcriptsRpcHandler = new RPCHandler(transcriptsRouter)
+  const aiRpcHandler = new RPCHandler(aiRouter)
+  const chatRpcHandler = new RPCHandler(chatRouter)
+  const translateRpcHandler = new RPCHandler(translateRouter)
+  failInterruptedAiRuns()
+  failInterruptedTranslations()
   const openApiHandler = new OpenAPIHandler(rpcRouter, {
     plugins: [
       new OpenAPIReferencePlugin({
@@ -198,7 +218,7 @@ export const createApiServer = async () => {
     ['.webp', 'image/webp']
   ])
 
-  fastify.get<{ Querystring: { path?: string } }>('/files', async (request, reply) => {
+  fastify.get<{ Querystring: { path?: string; inline?: string } }>('/files', async (request, reply) => {
     const rawPath = request.query.path?.trim()
     if (!rawPath) {
       return reply.code(400).send({ message: 'Missing path query parameter.' })
@@ -211,8 +231,33 @@ export const createApiServer = async () => {
 
     const extension = path.extname(resolvedPath).toLowerCase()
     const fileName = path.basename(resolvedPath)
+    const size = (await stat(resolvedPath)).size
     reply.header('content-type', FILE_CONTENT_TYPES.get(extension) ?? 'application/octet-stream')
-    reply.header('content-disposition', `attachment; filename="${fileName.replaceAll('"', '')}"`)
+    reply.header(
+      'content-disposition',
+      `${request.query.inline === '1' ? 'inline' : 'attachment'}; filename="${fileName.replaceAll('"', '')}"`
+    )
+    // Byte ranges let <video> and <audio> seek without downloading the whole file.
+    reply.header('accept-ranges', 'bytes')
+    const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.range ?? '')
+    if (range && size > 0) {
+      let start = range[1] ? Number(range[1]) : 0
+      let end = range[2] ? Number(range[2]) : size - 1
+      if (!range[1] && range[2]) {
+        // "bytes=-N" means the last N bytes.
+        start = Math.max(0, size - Number(range[2]))
+        end = size - 1
+      }
+      end = Math.min(end, size - 1)
+      if (start > end || start >= size) {
+        reply.header('content-range', `bytes */${size}`)
+        return reply.code(416).send()
+      }
+      reply.header('content-range', `bytes ${start}-${end}/${size}`)
+      reply.header('content-length', end - start + 1)
+      return reply.code(206).send(createReadStream(resolvedPath, { start, end }))
+    }
+    reply.header('content-length', size)
     return reply.send(createReadStream(resolvedPath))
   })
 
@@ -351,6 +396,84 @@ export const createApiServer = async () => {
     })
   })
 
+  // Video with subtitles: `GET /export/video?downloadId=&mode=soft|burn&language=` (language = a finished translation).
+  fastify.get<{ Querystring: { downloadId?: string; mode?: string; language?: string } }>(
+    '/export/video',
+    async (request, reply) => {
+      const downloadId = request.query.downloadId?.trim()
+      const mode = request.query.mode === 'burn' ? 'burn' : request.query.mode === 'soft' ? 'soft' : null
+      if (!(downloadId && mode)) {
+        return reply.code(400).send({ message: 'Expected downloadId and mode=soft|burn.' })
+      }
+      try {
+        const result = await exportVideoWithSubtitles({
+          downloadId,
+          mode,
+          language: request.query.language ?? ''
+        })
+        const size = (await stat(result.filePath)).size
+        reply.header('content-type', result.mimeType)
+        reply.header('content-length', size)
+        reply.header('content-disposition', `attachment; filename="${result.filename.replaceAll('"', '')}"`)
+        const stream = createReadStream(result.filePath)
+        stream.on('close', result.cleanup)
+        return reply.send(stream)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Export failed.'
+        return reply.code(error instanceof ExportBusyError ? 429 : 400).send({ message })
+      }
+    }
+  )
+
+  // Live AI output: `GET /stream?channel=ai&downloadId=&skillId=`, `?channel=chat&downloadId=` or `?channel=translate&downloadId=`.
+  // Sends one `snapshot`, then `delta` (text chunks) and `state` (full run/chat) events.
+  fastify.get('/stream', async (request, reply) => {
+    const query = request.query as Record<string, string | undefined>
+    const downloadId = query.downloadId?.trim()
+    const skillId = query.skillId?.trim()
+    const isAi = query.channel === 'ai'
+    const isTranslate = query.channel === 'translate'
+    if (!downloadId || (isAi && !skillId) || !(isAi || isTranslate || query.channel === 'chat')) {
+      return reply.code(400).send({
+        error: 'Expected channel=ai&downloadId&skillId, channel=chat&downloadId or channel=translate&downloadId'
+      })
+    }
+    const requestOrigin = request.headers.origin?.trim()
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': requestOrigin || '*',
+      ...(requestOrigin ? { Vary: 'Origin' } : {})
+    })
+    const response = reply.raw as ServerResponse
+    const send = (event: string, payload: unknown): void => {
+      response.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`)
+    }
+    const channel = isAi
+      ? aiChannel(downloadId, skillId ?? '')
+      : isTranslate
+        ? translateChannel(downloadId)
+        : chatChannel(downloadId)
+    // Subscribe before reading the snapshot so no delta is missed in between.
+    const unsubscribe = subscribeLive(channel, (item) => send(item.event, item.payload))
+    send(
+      'snapshot',
+      isAi
+        ? getAiRun(downloadId, skillId ?? '')
+        : isTranslate
+          ? listTranslations(downloadId)
+          : getChat(downloadId)
+    )
+    const heartbeat = setInterval(() => response.write(': heartbeat\n\n'), 15_000)
+    request.raw.on('close', () => {
+      clearInterval(heartbeat)
+      unsubscribe()
+    })
+  })
+
   // Subscriptions live behind their own oRPC handler so the contract surface
   // mirrors `subscriptionContract` 1:1 (NEX-132). The match runs before the
   // generic `/rpc/*` handler because Fastify applies the most-specific route
@@ -358,6 +481,30 @@ export const createApiServer = async () => {
   fastify.all('/rpc/subscriptions/*', async (request, reply) => {
     await subscriptionsRpcHandler.handle(request, reply, {
       prefix: '/rpc/subscriptions'
+    })
+  })
+
+  fastify.all('/rpc/transcripts/*', async (request, reply) => {
+    await transcriptsRpcHandler.handle(request, reply, {
+      prefix: '/rpc/transcripts'
+    })
+  })
+
+  fastify.all('/rpc/chat/*', async (request, reply) => {
+    await chatRpcHandler.handle(request, reply, {
+      prefix: '/rpc/chat'
+    })
+  })
+
+  fastify.all('/rpc/translate/*', async (request, reply) => {
+    await translateRpcHandler.handle(request, reply, {
+      prefix: '/rpc/translate'
+    })
+  })
+
+  fastify.all('/rpc/ai/*', async (request, reply) => {
+    await aiRpcHandler.handle(request, reply, {
+      prefix: '/rpc/ai'
     })
   })
 

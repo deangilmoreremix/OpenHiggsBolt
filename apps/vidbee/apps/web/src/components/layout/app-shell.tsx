@@ -7,7 +7,13 @@ import { appSidebarIcons } from "@vidbee/ui/components/ui/app-sidebar-icons";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-type AppPage = "about" | "download" | "settings" | "subscriptions";
+type AppPage =
+	| "about"
+	| "download"
+	| "settings"
+	| "subscriptions"
+	| "tools"
+	| "transcripts";
 
 interface AppShellProps {
 	children: ReactNode;
@@ -18,10 +24,6 @@ export const AppShell = ({ children, page }: AppShellProps) => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 
-	const openExternal = (url: string) => {
-		window.open(url, "_blank", "noopener,noreferrer");
-	};
-
 	const items: AppSidebarItem[] = [
 		{
 			id: "home",
@@ -30,6 +32,15 @@ export const AppShell = ({ children, page }: AppShellProps) => {
 			label: t("menu.home"),
 			onClick: () => {
 				void navigate({ to: "/" });
+			},
+		},
+		{
+			id: "transcripts",
+			active: page === "transcripts",
+			icon: appSidebarIcons.transcripts,
+			label: t("menu.transcripts"),
+			onClick: () => {
+				void navigate({ to: "/transcripts" });
 			},
 		},
 		{
@@ -45,8 +56,9 @@ export const AppShell = ({ children, page }: AppShellProps) => {
 			id: "tools",
 			icon: appSidebarIcons.tools,
 			label: t("menu.tools"),
+			active: page === "tools",
 			onClick: () => {
-				openExternal("https://vidbee.org/tools/");
+				void navigate({ to: "/tools" });
 			},
 		},
 	];
