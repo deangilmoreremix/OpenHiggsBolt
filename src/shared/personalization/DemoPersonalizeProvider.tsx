@@ -131,6 +131,12 @@ import {
   type BrandColorPair,
 } from './researchHelpers'
 import {
+  applyResearchedBrandColors,
+  firstParagraphOf,
+  researchBrandColors,
+  type BrandColorPair,
+} from './researchHelpers'
+import {
   getRemotionDesignTemplate,
   listRemotionDesignTemplates,
   subscribeRemotionDesignRegistry,
@@ -2904,6 +2910,22 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       })
       autoFilledRef.current = merged.autoFilled
       return merged.form
+    })
+    // The site's own brand colours theme the preview, unless the visitor has
+    // picked colours (then theirs win). Colours auto-applied for an earlier
+    // business are replaced, never mistaken for the visitor's choice.
+    const researchedColors = researchBrandColors(research.brandColors)
+    // Read once, outside the updater, so a re-run updater (StrictMode) sees
+    // the same input and produces the same result.
+    const previouslyAutoApplied = autoAppliedBrandColorsRef.current
+    setPreviewSettings((prev) => {
+      const { colors, autoApplied } = applyResearchedBrandColors(
+        prev.brandColors,
+        researchedColors,
+        previouslyAutoApplied,
+      )
+      autoAppliedBrandColorsRef.current = autoApplied
+      return colors === prev.brandColors ? prev : { ...prev, brandColors: colors }
     })
     // The site's own brand colours theme the preview, unless the visitor has
     // picked colours (then theirs win). Colours auto-applied for an earlier
