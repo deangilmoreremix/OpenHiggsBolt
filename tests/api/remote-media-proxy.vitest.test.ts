@@ -92,4 +92,21 @@ describe('GET /api/media/remote', () => {
     fetchMock.mockResolvedValue(new Response('nope', { status: 404 }))
     expect((await callRoute(CDN_URL)).status).toBe(404)
   })
+
+  it('sends the x.com Referer and a browser User-Agent to video.twimg.com only', async () => {
+    const twimg = 'https://video.twimg.com/amplify_video/1/vid/avc1/1920x1080/a.mp4?tag=29'
+    fetchMock.mockImplementation(async () => new Response('abc', { status: 206, headers: { 'content-type': 'video/mp4', 'content-range': 'bytes 0-2/9' } }))
+    expect((await callRoute(twimg, { headers: { range: 'bytes=0-2' } })).status).toBe(206)
+    const x = fetchMock.mock.calls[0][1] as RequestInit
+    const xh = x.headers as Record<string, string>
+    expect(xh.Referer).toBe('https://x.com/')
+    expect(xh.Origin).toBe('https://x.com')
+    expect(xh['User-Agent']).toMatch(/Mozilla/)
+    expect(xh.Range).toBe('bytes=0-2')
+
+    await callRoute(CDN_URL)
+    const other = (fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>
+    expect(other.Referer).toBeUndefined()
+    expect(other['User-Agent']).toBe('OpenHiggsBolt-Personalization-Preview')
+  })
 })
