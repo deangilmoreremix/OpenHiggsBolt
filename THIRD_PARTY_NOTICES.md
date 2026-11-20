@@ -19,3 +19,14 @@ re-check its notices and keep any required attribution and distribution terms.
 ## Warmbly dashboard
 
 `apps/warmbly-web/` contains the dashboard from <https://github.com/warmbly/warmbly>, licensed under the Apache License 2.0 (copy in `apps/warmbly-web/LICENSE`). See `apps/warmbly-web/UPSTREAM.md` for the source commit and local changes.
+
+## Email provider merge-tag list (Personalization Modal, Email tab)
+
+Providers marked "More providers (not checked)" in the email picker were imported from the provider list in
+`lib/constants/campaigns/email-providers.js` of the upstream editor, <https://github.com/strategic-limited/remix-new-editor>
+(author "Digital Strategies"; its `package.json` declares the ISC license, and the repository has no LICENSE file).
+Only provider names and merge-tag syntax (opening/closing characters and the first name / last name / email fields) were
+used. These entries have not been checked against the vendors' own documentation. The providers marked as checked were
+written from vendor documentation instead.
+
+The ISC license requires this notice to be kept with copies of the covered material.
