@@ -27,6 +27,9 @@ const GATE_SYMBOL = 'requireApiEntitlement'
 // diff below catches a NEW gated route that is not yet listed here.
 // ---------------------------------------------------------------------------
 const PAID_PATHS: string[] = [
+  // MCP: users mint keys (entitlement-checked) and the gateway runs generations with them.
+  'app/api/mcp-keys/route.ts',
+  'app/api/mcp-gateway/[[...path]]/route.ts',
   // brand studio brand store: mutating paid surfaces (POST/PATCH), gated with
   // the same requireApiEntitlement contract as brand/analyze (see
   // tests/api/brand-route.test.ts and 12e0e1fde).

@@ -181,8 +181,9 @@ async function callDirector(key: string, instructions: string, input: string, sc
       const status = (error as { status?: number }).status
       // A remembered model that stops working for this key is forgotten, so the next request tries the others.
       if (known && status === 404) { workingModels.delete(id); if (EXPLICIT_MODEL === undefined) return callDirector(key, instructions, input, schemaName, schema, images) }
-      // Only "this model does not exist for this key" moves on to the next model; every other failure is the answer.
-      if (!(status === 404 && candidates.length > 1)) throw error
+      // Only "this model does not exist / is not allowed for this key" moves on to the next model; every other failure is the answer.
+      // A 403 is the same for the next model: this project may not be allowed to use this one. If none works the 403 is reported as access denied.
+      if (!((status === 404 || status === 403) && candidates.length > 1)) throw error
     }
   }
   throw lastError ?? new Error('No director model is available')

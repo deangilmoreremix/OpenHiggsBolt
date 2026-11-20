@@ -327,14 +327,14 @@ describe('POST /api/motion-studio/director', () => {
     expect((await res.json()).code).toBe('OPENAI_KEY_REJECTED')
   })
 
-  it('does not call a 403 a bad key: retries on gpt-4o, then reports access denied', async () => {
+  it('does not call a 403 a bad key: tries the fallback models, then reports access denied', async () => {
     vi.doMock('@/src/lib/openaiKeyServer', () => ({ getOpenAiKeyForUser: async () => 'sk-ok' }))
     const fetchMock = mockOpenAi({ error: { message: 'no access to model' } }, 403)
     const { POST } = await import('@/app/api/motion-studio/director/route')
     const res = await POST(post('/api/motion-studio/director', { mode: 'plan', prompt: 'x' }))
     expect(res.status).toBe(403)
     expect((await res.json()).code).toBe('OPENAI_ACCESS_DENIED')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3) // gpt-6-astra, gpt-4o, gpt-4o-mini
   })
 
   it('requires a signed-in user before calling OpenAI', async () => {

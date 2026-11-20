@@ -29,7 +29,7 @@ describe('the director reports the real cause', () => {
 
   it('an unknown model or bad request carries OpenAI\'s message', async () => {
     const r = await read(err('The model `gpt-6-astra` does not exist', { status: 404 }))
-    expect(r.body.code).toBe('OPENAI_REQUEST_REJECTED')
+    expect(r.body.code).toBe('OPENAI_MODEL_UNAVAILABLE')
     expect(r.body.error).toMatch(/gpt-6-astra/)
   })
 
