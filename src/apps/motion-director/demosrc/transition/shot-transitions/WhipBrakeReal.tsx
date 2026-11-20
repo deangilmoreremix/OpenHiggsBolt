@@ -20,17 +20,30 @@
 //   98–130  真静止 hold
 import React from 'react';
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
-import layout from '../../_textures/live-layout.json';
+import { useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 import { EASE, FONT, ramp, mix, velocity, softShadow, SpeedBlur } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, type, SERIF } from '../../_fixtures/Look';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { isWebRendering } from '../../_fixtures/ExportMode';
 
 export const WHIPBRAKE_DUR = 130;
 
 const L = LOOKS.paper;
-const cards = layout.projects.cards;
-// 长廊顺序：目标卡 card4（高清）排在第 9 位，第 10 位是真实的下一张卡
-const RAIL = [cards[0], cards[1], cards[2], cards[4], cards[5], cards[6], cards[7], cards[8], null, cards[9]];
+type RailCard = LiveLayout['projects']['cards'][number];
+/**
+ * The gallery's ten slots: the target (null: the hires texture) in the ninth, a real next card in the tenth. The sample's
+ * order is the original (every card but card 4, card 4 ninth). A customer's gallery is their own cards in reading order
+ * with their hero ninth (their cards repeat to fill ten slots when the page has fewer), and each card keeps its own proportions.
+ */
+const railOf = (layout: LiveLayout): { rail: Array<RailCard | null>; customer: boolean; hero: RailCard } => {
+  const cards = layout.projects.cards;
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  if (!customer) return { rail: [cards[0], cards[1], cards[2], cards[4], cards[5], cards[6], cards[7], cards[8], null, cards[9]], customer, hero: cards[3] };
+  const main = Math.min(layout.projects.main ?? 0, cards.length - 1);
+  const others = cards.filter((_, i) => i !== main);
+  const pick = (k: number) => others[k % others.length];
+  return { rail: [pick(0), pick(1), pick(2), pick(3), pick(4), pick(5), pick(6), pick(7), null, pick(8)], customer, hero: cards[main] };
+};
 const TARGET_I = 8;
 const START_I = 1;
 const CARD_W = 460;
@@ -77,8 +90,11 @@ const Wheel: React.FC<{ pos: number; speed: number }> = ({ pos, speed }) => {
     <span style={{
       display: 'inline-block', width: '0.6em', height: '1em', overflow: 'hidden', position: 'relative', verticalAlign: 'top',
       // 滚筒感：上下缘渐隐（数字从筒里转出来，而不是被硬框切掉）
-      WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)',
-      maskImage: 'linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)',
+      // (The MP4 renderer drops the clip of an element that has a mask, and the whole digit strip shows; there the fade is left out.)
+      ...(isWebRendering() ? {} : {
+        WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)',
+        maskImage: 'linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)',
+      }),
     }}>
       {blur > 0.3 && (
         <svg width={0} height={0} style={{ position: 'absolute' }}>
@@ -97,6 +113,10 @@ const Wheel: React.FC<{ pos: number; speed: number }> = ({ pos, speed }) => {
 
 export const WhipBrakeReal: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const { rail: RAIL, customer, hero } = React.useMemo(() => railOf(layout), [layout]);
+  // A customer's card keeps its own proportions at the rail's card width, centred on the rail's line.
+  const heightOf = (c: RailCard) => (c.w > 0 ? (CARD_W * c.h) / c.w : CARD_H);
   const dx = dxAt(frame);
   const v = velocity(dxAt, frame);
 
@@ -127,12 +147,17 @@ export const WhipBrakeReal: React.FC = () => {
       <SpeedBlur vx={-v} amount={0.085} max={64}>
         <div style={{ position: 'absolute', left: 0, top: 0, transform: `translateX(${(-dx).toFixed(2)}px)` }}>
           {RAIL.map((c, k) => (c ? (
-            <Img key={c.file} src={liveTexture(c.file)} style={cardStyle(k)} />
+            <div key={`${c.file}-${k}`} style={customer ? { ...cardStyle(k), height: heightOf(c), top: RAIL_Y + (CARD_H - heightOf(c)) / 2 } : { ...cardStyle(k), height: heightOf(c) }}>
+              {/* The picture fills a box that carries the radius and shadow (the MP4 renderer draws a bare <img> with these styles as nothing). */}
+              <Img src={liveTexture(c.file)} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover' }} />
+            </div>
           ) : (
-            <Img key="target" src={liveTexture('card4-hires.png')} style={{
-              ...cardStyle(k), top: RAIL_Y - 12 * lift, transform: lift > 0 ? `scale(${targetScale.toFixed(4)})` : undefined,
+            <div key="target" style={{
+              ...cardStyle(k), height: customer ? heightOf(hero) : CARD_H, top: (customer ? RAIL_Y + (CARD_H - heightOf(hero)) / 2 : RAIL_Y) - 12 * lift, transform: lift > 0 ? `scale(${targetScale.toFixed(4)})` : undefined,
               boxShadow: softShadow(mix(8, 44, lift), { color: L.shadow, strength: 1.3 }), zIndex: 2,
-            }} />
+            }}>
+              <Img src={liveTexture(customer ? hero.file : 'card4-hires.png')} style={{ display: 'block', width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover' }} />
+            </div>
           )))}
           {/* 刻度尺：每卡一个大刻度 + 序号，中间 4 根细刻度 */}
           <svg width={LEFT0 + RAIL.length * PITCH + 400} height={200} style={{ position: 'absolute', left: 0, top: 812 }}>

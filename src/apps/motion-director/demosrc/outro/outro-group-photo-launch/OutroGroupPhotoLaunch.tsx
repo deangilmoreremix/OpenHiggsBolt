@@ -12,7 +12,8 @@
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { PageCam2D } from '../../_fixtures/PageCam2D';
 import { EASE, Grain, SpeedBlur, ramp, velocity } from '../../_fixtures/Polish';
-import layout from '../../_textures/live-layout.json';
+import React from 'react';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 import { BRAND, PITCH, MotionStudioMark } from '../../_fixtures/Brand';
 import { liveTexture } from '../../_fixtures/liveTexture';
 
@@ -20,15 +21,15 @@ export const OUTRO_GROUP_PHOTO_LAUNCH_DURATION = 145;
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 const LETTERS = () => BRAND.name.split('');
-const PAGE_H = layout.projects.pageH;
-const WBR_PAGE_H = layout.wbr.pageH;
 
 const FLY_EASE = Easing.bezier(0.34, 1.4, 0.44, 1);
 const CRANE_EASE = Easing.bezier(0.3, 0, 0.2, 1);
 
+/** What an element shows: a texture file, or a region of one of the captured pages (x, y, and the scale of the region to the element). */
+type Src = { kind: 'file'; file: string } | { kind: 'page'; page: 'projects-full.png' | 'wbr-full.png' | 'papers-full.png'; x: number; y: number; pageH: number; s: number };
 type FlyEl = {
   key: string;
-  file: string;
+  src: Src;
   w: number;
   h: number;
   cx: number;
@@ -39,21 +40,62 @@ type FlyEl = {
   dy: number;
   radius: number;
   cue: number;
-  wbrCrop?: boolean;
 };
 
+const F = (file: string): Src => ({ kind: 'file', file });
 // render order = cue order, so later arrivals stack on top
-const ELS: FlyEl[] = [
-  { key: 'nav', file: 'nav.png', w: 1920, h: 61, cx: 960, cy: 84, scale: 0.62, rot: 0, dx: 0, dy: -120, radius: 10, cue: 4 },
-  { key: 'card4', file: 'card4-hires.png', w: 358, h: 312, cx: 280, cy: 300, scale: 0.72, rot: -5, dx: -500, dy: 0, radius: 16, cue: 7 },
-  { key: 'card1', file: 'card1.png', w: 358, h: 288, cx: 1640, cy: 318, scale: 0.68, rot: 4, dx: 500, dy: 0, radius: 16, cue: 10 },
-  { key: 'paper1', file: 'paper1.png', w: 1104, h: 225, cx: 1460, cy: 730, scale: 0.5, rot: -3, dx: 450, dy: 260, radius: 12, cue: 13 },
-  { key: 'card7', file: 'card7.png', w: 358, h: 312, cx: 260, cy: 800, scale: 0.6, rot: 3, dx: -400, dy: 300, radius: 16, cue: 16 },
-  { key: 'paper3', file: 'paper3.png', w: 1104, h: 225, cx: 620, cy: 930, scale: 0.48, rot: 2, dx: 0, dy: 320, radius: 12, cue: 19 },
-  { key: 'search', file: 'float-search.png', w: 1016, h: 44, cx: 760, cy: 180, scale: 0.55, rot: -1.5, dx: 0, dy: -240, radius: 10, cue: 22 },
-  { key: 'stats', file: 'float-stats.png', w: 315, h: 56, cx: 1560, cy: 950, scale: 0.9, rot: -2, dx: 380, dy: 0, radius: 10, cue: 25 },
-  { key: 'wbr', file: 'wbr-full.png', w: 688, h: 54, cx: 1620, cy: 170, scale: 0.8, rot: 2.5, dx: 360, dy: -200, radius: 8, cue: 28, wbrCrop: true },
+const SAMPLE_ELS: FlyEl[] = [
+  { key: 'nav', src: F('nav.png'), w: 1920, h: 61, cx: 960, cy: 84, scale: 0.62, rot: 0, dx: 0, dy: -120, radius: 10, cue: 4 },
+  { key: 'card4', src: F('card4-hires.png'), w: 358, h: 312, cx: 280, cy: 300, scale: 0.72, rot: -5, dx: -500, dy: 0, radius: 16, cue: 7 },
+  { key: 'card1', src: F('card1.png'), w: 358, h: 288, cx: 1640, cy: 318, scale: 0.68, rot: 4, dx: 500, dy: 0, radius: 16, cue: 10 },
+  { key: 'paper1', src: F('paper1.png'), w: 1104, h: 225, cx: 1460, cy: 730, scale: 0.5, rot: -3, dx: 450, dy: 260, radius: 12, cue: 13 },
+  { key: 'card7', src: F('card7.png'), w: 358, h: 312, cx: 260, cy: 800, scale: 0.6, rot: 3, dx: -400, dy: 300, radius: 16, cue: 16 },
+  { key: 'paper3', src: F('paper3.png'), w: 1104, h: 225, cx: 620, cy: 930, scale: 0.48, rot: 2, dx: 0, dy: 320, radius: 12, cue: 19 },
+  { key: 'search', src: F('float-search.png'), w: 1016, h: 44, cx: 760, cy: 180, scale: 0.55, rot: -1.5, dx: 0, dy: -240, radius: 10, cue: 22 },
+  { key: 'stats', src: F('float-stats.png'), w: 315, h: 56, cx: 1560, cy: 950, scale: 0.9, rot: -2, dx: 380, dy: 0, radius: 10, cue: 25 },
+  { key: 'wbr', src: { kind: 'page', page: 'wbr-full.png', x: 576, y: 173, pageH: SAMPLE_LAYOUT.wbr.pageH, s: 1 }, w: 688, h: 54, cx: 1620, cy: 170, scale: 0.8, rot: 2.5, dx: 360, dy: -200, radius: 8, cue: 28 },
 ];
+
+
+/**
+ * The group photo: nine elements of the page that fly in and settle around the wordmark. They are the page's own pieces; the
+ * composition (where each lands, its tilt, its cue) is fixed, so a customer's photo keeps the same composition with the customer's
+ * pieces: the page's top band, three of its cards (the hero first), two papers/rows (the papers page's, else slices of the
+ * page), a search-field-sized and a stat-sized slice, and a strip of the report page. Cards keep their own proportions.
+ */
+const elsOf = (layout: LiveLayout): { els: FlyEl[]; pageH: number } => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const pageH = layout.projects.pageH;
+  if (!customer) return { els: SAMPLE_ELS, pageH };
+  const cards = layout.projects.cards;
+  const main = Math.min(layout.projects.main ?? 0, cards.length - 1);
+  const card = (k: number) => cards[(main + k) % cards.length];
+  const left = Math.min(...cards.map((c) => c.x));
+  const slice = (x: number, y: number, w: number, h: number): Pick<FlyEl, 'src' | 'w' | 'h'> => ({ src: { kind: 'page', page: 'projects-full.png', x, y: Math.max(0, Math.min(pageH - h, y)), pageH, s: 1 }, w, h });
+  const paper = (i: number): Pick<FlyEl, 'src' | 'w' | 'h'> => {
+    const rows = layout.source?.mapped.includes('papers.cards') ? layout.papers.cards : null;
+    const r = rows?.[i];
+    if (!rows || !r) return slice(left, pageH * (i === 0 ? 0.28 : 0.56), 1104, 225);
+    return { src: { kind: 'page', page: 'papers-full.png', x: r.x, y: r.y, pageH: layout.papers.pageH, s: 1104 / r.w }, w: 1104, h: (1104 * r.h) / r.w };
+  };
+  const pic = (c: (typeof cards)[number]): Pick<FlyEl, 'src' | 'w' | 'h'> => ({ src: { kind: 'file', file: c.file }, w: 358, h: (358 * c.h) / c.w });
+  const wbrPageH = layout.wbr.pageH;
+  const els = SAMPLE_ELS.map((el): FlyEl => {
+    switch (el.key) {
+      case 'nav': return { ...el, ...slice(0, 0, 1920, 61) };
+      case 'card4': return { ...el, ...pic(card(0)) };
+      case 'card1': return { ...el, ...pic(card(1)) };
+      case 'card7': return { ...el, ...pic(card(2)) };
+      case 'paper1': return { ...el, ...paper(0) };
+      case 'paper3': return { ...el, ...paper(2) };
+      case 'search': return { ...el, ...slice(left, 90, 1016, 44) };
+      case 'stats': return { ...el, ...slice(left + 21, pageH * 0.3, 315, 56) };
+      case 'wbr': return { ...el, src: { kind: 'page', page: 'wbr-full.png', x: 576, y: 173, pageH: wbrPageH, s: 1 } };
+      default: return el;
+    }
+  });
+  return { els, pageH };
+};
 
 // 20 gold dust motes, all parameters index-derived (deterministic)
 // 质感：每颗带一圈暖光晕（亮场上才看得见"金"），另加 6 颗前景失焦大光斑（bokeh）做景深层
@@ -77,6 +119,8 @@ const BOKEH = Array.from({ length: 6 }, (_, i) => ({
 
 export const OutroGroupPhotoLaunch: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const { els: ELS, pageH: PAGE_H } = React.useMemo(() => elsOf(layout), [layout]);
   const duration = OUTRO_GROUP_PHOTO_LAUNCH_DURATION;
 
   const blur = interpolate(frame, [0, 24], [0, 14], {
@@ -168,12 +212,7 @@ export const OutroGroupPhotoLaunch: React.FC = () => {
                 : '0 10px 24px rgba(30,25,18,.16), 0 2px 6px rgba(30,25,18,.08)';
             const settledOpacity = opacity * (1 - 0.12 * recede);
             const saturate = 1 - 0.08 * recede;
-            const texture = el.wbrCrop
-              ? {
-                  background: `#fff url(${liveTexture(el.file)}) -576px -173px / 1920px ${WBR_PAGE_H}px no-repeat`,
-                  border: '1px solid oklch(90% .008 82)',
-                }
-              : null;
+            const texture = el.key === 'wbr' ? { background: '#fff', border: '1px solid oklch(90% .008 82)' } : null;
             // 方向性运动模糊：按屏幕速度（px/帧）沿飞行方向拖影，落地后为 0（替代滞后 ghost 残影）
             const posAt = (fr: number) => {
               const tt = interpolate(fr, [el.cue, el.cue + 12], [0, 1], {
@@ -200,8 +239,11 @@ export const OutroGroupPhotoLaunch: React.FC = () => {
                     opacity: settledOpacity, filter: `saturate(${saturate})`, ...texture,
                   }}
                 >
-                  {el.wbrCrop ? null : (
-                    <Img src={liveTexture(el.file)} style={{ position: 'absolute', inset: 0, width: el.w, height: el.h, display: 'block' }} />
+                  {el.src.kind === 'file' ? (
+                    <Img src={liveTexture(el.src.file)} style={{ position: 'absolute', inset: 0, width: el.w, height: el.h, display: 'block' }} />
+                  ) : (
+                    // A region of a captured page, drawn as a positioned picture in the clip (the MP4 renderer does not paint a CSS background-image).
+                    <Img src={liveTexture(el.src.page)} style={{ position: 'absolute', left: -el.src.x * el.src.s, top: -el.src.y * el.src.s, width: 1920 * el.src.s, height: el.src.pageH * el.src.s, maxWidth: 'none', display: 'block' }} />
                   )}
                 </div>
               </SpeedBlur>

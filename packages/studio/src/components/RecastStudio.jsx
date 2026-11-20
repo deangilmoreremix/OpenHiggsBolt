@@ -1142,7 +1142,7 @@ export default function RecastStudio({
             <PromptControls>
               {/* Model selector */}
               <div className="relative">
-                <button
+                <button data-help="model"
                   ref={modelBtnRef}
                   type="button"
                   onClick={(e) => {

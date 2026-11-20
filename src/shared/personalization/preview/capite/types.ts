@@ -1,4 +1,4 @@
-// Copied from Capite (https://github.com/muneebkhan08/Capite), MIT License, Copyright (c) 2026 Capite Contributors. See ./LICENSE.
+// Capite-style captions: the data and rules below follow Capite (https://github.com/muneebkhan08/Capite).
 // Source: frontend/src/types/caption.ts (the caption style types and transcript shapes only).
 
 export type CaptionStyle =

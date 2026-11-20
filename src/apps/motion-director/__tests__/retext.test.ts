@@ -32,6 +32,18 @@ describe('retext', () => {
     expect(fallbackTexts(['Arial, sans-serif'], content, 'Acme', { index: 0, headline: 'x y z' })).toEqual({});
   });
 
+  it('repeats the site\'s words when they run out, instead of leaving the template\'s own copy', () => {
+    const small = { headline: 'Stop downtime', description: '', headings: [], ctas: ['Book a demo'], nav: ['Help desk'] };
+    const lines = ['Settings', 'Renders', 'Projects', 'Billing'];
+    const kept = fallbackTexts(lines, small, 'Acme', undefined, new Set(), false, false);
+    expect(Object.keys(kept)).toHaveLength(2); // two labels, four lines: the rest keep the template's words
+    const repeated = fallbackTexts(lines, small, 'Acme');
+    expect(Object.keys(repeated)).toHaveLength(4);
+    expect(Object.values(repeated).every((v) => ['Help desk', 'Book a demo'].includes(v))).toBe(true);
+    // effect words keep their shape: a repeat never breaks a word-count or length rule
+    expect(Object.keys(fallbackTexts(['Faster'], small, 'Acme', undefined, new Set(), true))).toHaveLength(0);
+  });
+
   it('keeps the word count and length of words that are part of an effect', () => {
     const allowed = new Map([[0, new Set(['Faster', 'Build the film'])]]);
     const out = validateRetext({ scenes: [{ index: 0, pairs: [{ from: 'Faster', to: 'Smarter' }, { from: 'Faster', to: 'Much faster' }, { from: 'Build the film', to: 'Ship it' }] }] }, allowed, new Set([0]));

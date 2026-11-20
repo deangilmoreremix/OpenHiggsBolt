@@ -1,0 +1,129 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n5 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\n18 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n6 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n17 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nMake a launch film for Acme using the spotlight-hero-card, deck-deal-flyin and row-embed shot cards\n03:48 PM\nBuilding the film around Spotlight Hero Card, Deck Deal Flyin, Row Embed.\n03:48 PM\nNo key. I used the Ink Press template instead.\n\nStoryboard “Acme — shot film” — 5 scenes, 20s:\n1. 0:00–0:02 · Title card · on screen: “Meet Acme.”\n2. 0:02–0:09 · Spotlight Hero Card · on screen: “Front and centre.” · caption: Your product, the way customers see it · bottom-push cut\n3. 0:09–0:14 · Deck Deal Flyin · on screen: “Every page, live.” · caption: Real screens, not mock-ups · dip cut\n4. 0:14–0:17 · Row Embed · on screen: “Real screens, not mock-ups”\n5. 0:17–0:20 · Title card · on screen: “Try Acme today.”\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n03:48 PM\nYour film is ready: 20s at 1920×1080, 30 fps, Transitions / Captions / Shots / Background / SFX / Music tracks.\nFrame QA passed (17 frames rendered).\nReview against the shot cards' checklist: 14 passed, 1 to fix.\n- F2 ✗ The same line is said again: \"Real screens, not mock-ups\" at 14.8s.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n03:48 PM\n↺ New film\n✓ Read 3 shot cards in full: Spotlight Hero Card, Deck Deal Flyin, Row Embed\n✓ Storyboard ready from the Ink Press template · 5 scenes\n✓ Cuts snapped to the beat of house-vibez\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 4 of 4 cuts within 3 frames of a beat (worst 1 frames), 4 on a kick or a downbeat\n✓ Film built · 6 tracks\n✓ Frame QA · 17 frames render cleanly\nFINAL FILM\nAcme — shot film\n1920×1080 · 30 fps · h264\nMeet\nAcme.\n0:00 / 0:21\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~3 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n5 scenes · 20s · Ink Press\n04\n✓\nAnimate\nRemotion code\n18 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n6 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n17 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "tracks": [
+  {
+   "name": "Transitions",
+   "clips": [
+    [
+     "connected-seam",
+     272,
+     20
+    ],
+    [
+     "connected-seam",
+     436,
+     16
+    ]
+   ]
+  },
+  {
+   "name": "Captions",
+   "clips": [
+    [
+     "inkpress-caption",
+     90,
+     192
+    ],
+    [
+     "inkpress-caption",
+     282,
+     162
+    ],
+    [
+     "inkpress-caption",
+     444,
+     75
+    ]
+   ]
+  },
+  {
+   "name": "Shots",
+   "clips": [
+    [
+     "inkpress-title-card",
+     0,
+     90
+    ],
+    [
+     "demo:SpotlightHeroCard",
+     90,
+     192
+    ],
+    [
+     "demo:DeckDealFlyin",
+     282,
+     162
+    ],
+    [
+     "demo:RowEmbed",
+     444,
+     75
+    ],
+    [
+     "inkpress-title-card",
+     519,
+     84
+    ]
+   ]
+  },
+  {
+   "name": "Background",
+   "clips": [
+    [
+     "bg-paper",
+     0,
+     603
+    ]
+   ]
+  },
+  {
+   "name": "SFX",
+   "clips": [
+    [
+     "audio-clip",
+     0,
+     14
+    ],
+    [
+     "audio-clip",
+     79,
+     24
+    ],
+    [
+     "audio-clip",
+     277,
+     19
+    ],
+    [
+     "audio-clip",
+     379,
+     79
+    ],
+    [
+     "audio-clip",
+     511,
+     22
+    ],
+    [
+     "audio-clip",
+     516,
+     17
+    ]
+   ]
+  },
+  {
+   "name": "Music",
+   "role": "music",
+   "clips": [
+    [
+     "audio-clip",
+     0,
+     603
+    ]
+   ]
+  }
+ ]
+}

@@ -24,8 +24,8 @@ vi.mock('../lib/directorClient', () => {
   };
 });
 
-import { buildFilmProject, looksLikePersonLine, storyboardFilm } from '../lib/filmPipeline';
-import { captureSite, type SiteCapture } from '../lib/directorClient';
+import { buildFilmProject, looksLikePersonLine, storyboardFilm, StoryboardError } from '../lib/filmPipeline';
+import { captureSite, requestPlan, DirectorError, type SiteCapture } from '../lib/directorClient';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { parseFilmRequest } from '../lib/filmChat';
 import { projectEndFrame } from '../types';
@@ -138,3 +138,35 @@ describe('captions never use a testimonial name line', () => {
     for (const l of ['Finally, a Cure for Your IT Headaches', 'Identify & Secure', 'Managed IT Services', 'What Other Business Owners are Saying']) expect(looksLikePersonLine(l), l).toBe(false);
   });
 });
+
+describe('a failed AI plan is reported, not replaced by an unrelated template', () => {
+  const failWith = (status: number, code: string, message: string) => vi.mocked(requestPlan).mockRejectedValue(new DirectorError(message, code, status));
+
+  it('an OpenAI outage stops with the real code and message', async () => {
+    failWith(502, 'OPENAI_UNAVAILABLE', 'OpenAI is unavailable (HTTP 503): overloaded');
+    const req = parseFilmRequest('a promo for Acme');
+    const logs: string[] = [];
+    await expect(storyboardFilm(req, { template: 'director', durationSec: 20, aspectRatio: '16:9' }, (l) => logs.push(l))).rejects.toThrow(StoryboardError);
+    await expect(storyboardFilm(req, { template: 'director', durationSec: 20, aspectRatio: '16:9' }, () => {})).rejects.toThrow(/OPENAI_UNAVAILABLE, HTTP 502/);
+    expect(logs.join('\n')).not.toMatch(/Storyboard ready from the Ink Press template/);
+  });
+
+  it('a rate limit is reported too', async () => {
+    failWith(429, 'OPENAI_RATE_LIMITED', 'quota reached');
+    await expect(storyboardFilm(parseFilmRequest('a promo for Acme'), { template: 'director', durationSec: 20, aspectRatio: '16:9' }, () => {})).rejects.toMatchObject({ code: 'OPENAI_RATE_LIMITED', status: 429 });
+  });
+
+  it('the Ink Press template stands in only when the person asked for it', async () => {
+    failWith(502, 'DIRECTOR_FAILED', 'boom');
+    const result = await storyboardFilm(parseFilmRequest('a promo for Acme with the Ink Press template'), { template: 'inkpress', durationSec: 20, aspectRatio: '16:9' }, () => {});
+    expect(result.source).toBe('inkpress');
+  });
+
+  it('no usable key is a setting: the template runs and the note says why', async () => {
+    failWith(401, 'OPENAI_KEY_REQUIRED', 'Add your OpenAI API key in Settings');
+    const result = await storyboardFilm(parseFilmRequest('a promo for Acme'), { template: 'director', durationSec: 20, aspectRatio: '16:9' }, () => {});
+    expect(result.source).toBe('inkpress');
+    expect(result.note).toMatch(/OpenAI API key/);
+  });
+});
+

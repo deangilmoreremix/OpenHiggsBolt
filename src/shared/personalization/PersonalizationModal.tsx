@@ -52,6 +52,8 @@ import { LeadInsightsPanel } from './LeadInsightsPanel'
 import { createSeenTracker, leadsToCsv } from './leadInsights'
 import { openStatus } from '@/server/businessEnrichment/openingHours'
 import { useBusinessEnrichment, mergeCardContacts } from './useBusinessEnrichment'
+import EmailLinkPanel from './EmailLinkPanel'
+import { tokensInText, tokensWithoutDefault } from './emailMergeLink'
 import { DEFAULT_ADVANCED_SECTIONS, useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { AutoFillKey } from './businessContentFromResearch'
 import type { AdvancedEditingSections, AdvancedEditingTab } from './types'
@@ -1840,7 +1842,7 @@ function ProgressView({ status, progress, message }: { status: string; progress:
   )
 }
 
-function ResultView(props: any) {
+export function ResultView(props: any) {
   const {
     result, resultTab, setResultTab, source, promptState,
     generateAgain, returnToEditing, retryBranding, outputType, setOutputType, download,
@@ -1848,6 +1850,9 @@ function ResultView(props: any) {
     sharedMediaCount, isVideo, eligibleModes, mode, setMode,
     canPublish = true, canEditInVideoStudio = true, publishNote = '',
   } = props
+  const emailText = promptState?.edited || promptState?.personalized || promptState?.original || ''
+  const emailTokens = useMemo(() => tokensInText(emailText), [emailText])
+  const emailNoDefaults = useMemo(() => tokensWithoutDefault(emailText), [emailText])
 
   return (
     <div className="py-6 space-y-6">
@@ -1856,14 +1861,14 @@ function ResultView(props: any) {
         <p className="text-xs mt-1 text-white/40">Original on the left, personalized result on the right.</p>
       </div>
       <div className="flex gap-2 border-b border-white/10 pb-px">
-        {(result.type === 'prompt' ? ['prompt'] : result.type === 'image' ? ['prompt', 'images'] : ['prompt', 'videos']).map((tab: string) => (
+        {[...(result.type === 'prompt' ? ['prompt'] : result.type === 'image' ? ['prompt', 'images'] : ['prompt', 'videos']), ...(emailTokens.length ? ['email'] : [])].map((tab: string) => (
           <button
             key={tab}
             onClick={() => setResultTab(tab)}
             className={classNames('px-4 py-2 text-sm font-medium transition-colors', resultTab === tab ? 'text-cyan-300' : 'text-white/50 hover:text-white/80')}
             style={{ borderBottom: resultTab === tab ? `2px solid ${C.cyan}` : '2px solid transparent' }}
           >
-            {tab === 'prompt' ? 'Prompt' : tab === 'images' ? 'Images' : 'Videos'}
+            {tab === 'prompt' ? 'Prompt' : tab === 'images' ? 'Images' : tab === 'email' ? 'Email' : 'Videos'}
           </button>
         ))}
       </div>
@@ -1898,6 +1903,8 @@ function ResultView(props: any) {
           </div>
         </div>
       )}
+
+      {resultTab === 'email' && <EmailLinkPanel tokens={emailTokens} noDefaults={emailNoDefaults} />}
 
       {resultTab === 'images' && result.type === 'image' && result.url && (
         <div className="space-y-4">

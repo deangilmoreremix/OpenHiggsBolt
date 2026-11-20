@@ -13219,6 +13219,378 @@
         "Look": "The visual style preset: Plasticine clay, Translucent glass or Bright toy studio.",
         "Burned-in captions": "Captions drawn into the video itself (paid), as opposed to the free .srt file."
       }
+    },
+    {
+      "id": "muapi-studio",
+      "name": "Studio (Muapi)",
+      "route": "/studio/muapi-studio",
+      "description": "A muapi.ai/studio-style studio inside the app: Image, Video, Audio, Avatar, 3D, Tools, Text and More, able to generate with any model in the MuAPI catalog using your own MuAPI key.",
+      "shortDescription": "Generate with any MuAPI model from one studio, using your own MuAPI key.",
+      "fullDescription": "The Studio tab embeds a prebuilt muapi.ai/studio-style interface. You choose a category, pick a model (with cost estimates and its own options), write a prompt, and the generation runs through this app's /api/v1 proxy with your own MuAPI key. Results, history, balance and uploads are available inside the studio. The studio's media library and file deletion are switched off in this app.",
+      "keyFeatures": [
+        "Any model in the MuAPI catalog, grouped by category tabs (Image, Video, Audio, Avatar, 3D, Tools, Text, More)",
+        "Per-model options and cost estimates before you generate",
+        "History, balance and uploads inside the studio",
+        "Uses your own MuAPI key; the app asks for it if none is saved",
+        "One-click apps inside the Image and Video categories"
+      ],
+      "howToUse": "Open /studio/muapi-studio, connect your MuAPI key if asked, choose a category and a model, write a prompt, check the cost estimate and generate.",
+      "howToSteps": [
+        "Open the Studio tab (/studio/muapi-studio).",
+        "If it shows Connect your MuAPI key, click it and save your key.",
+        "Choose a category tab such as Image or Video.",
+        "Pick a model; read its options and cost estimate.",
+        "Write your prompt, add any reference files, and click Generate.",
+        "Find the result and earlier runs in the studio's history."
+      ],
+      "gettingStarted": [
+        "Save your MuAPI key first.",
+        "Start with the category that matches what you want to make.",
+        "Check the cost estimate before you generate."
+      ],
+      "tips": [
+        "Compare two models on the same prompt before a big batch.",
+        "Use the cost estimate to plan a batch."
+      ],
+      "bestPractices": [
+        "Keep your MuAPI balance topped up before long runs.",
+        "Use Image Studio or Video Studio when you want this app's own presets and editors."
+      ],
+      "inputs": [
+        "Prompt",
+        "Model",
+        "Reference files",
+        "Model options"
+      ],
+      "requiredInputs": [
+        "MuAPI key",
+        "Prompt"
+      ],
+      "optionalInputs": [
+        "Reference files",
+        "Model options"
+      ],
+      "outputs": [
+        "Generated images, videos, audio, avatars and 3D assets, kept in the studio's history"
+      ],
+      "limitations": [
+        "Needs your own MuAPI key and balance.",
+        "The studio's media library and deleting generated files are turned off in this app."
+      ],
+      "troubleshooting": [
+        "If it says Connect your MuAPI key, save a key and reopen the tab.",
+        "If a generation fails, check your MuAPI balance and the model's options."
+      ],
+      "faqs": [
+        {
+          "question": "Whose key does it use?",
+          "answer": "Your own MuAPI key. It is sent through this app's /api/v1 proxy, which applies the same access check as the other studios."
+        }
+      ],
+      "relatedStudios": [
+        "image",
+        "video"
+      ],
+      "sourceFiles": [
+        "src/apps/muapi-studio/MuapiStudioPanel.jsx",
+        "packages/muapi-studio/README.md",
+        "components/StandaloneShell.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Read MuapiStudioPanel.jsx, packages/muapi-studio/README.md and the tab wiring in StandaloneShell.js on 2026-11-20. Model catalog size and the app list inside Image and Video were not counted here.",
+        "verifiedAt": "2026-11-20",
+        "verifiedBy": "Code review 2026-11-20"
+      },
+      "inputDetails": [
+        {
+          "name": "Prompt",
+          "description": "What you want the model to make.",
+          "required": true,
+          "whenToUse": "Every generation"
+        },
+        {
+          "name": "Model",
+          "description": "Any model from the MuAPI catalog, with its own options and cost estimate.",
+          "required": true,
+          "whenToUse": "Every generation"
+        }
+      ],
+      "generationModes": [],
+      "modeExplanations": [
+        {
+          "mode": "Category tabs",
+          "description": "Image, Video, Audio, Avatar, 3D, Tools, Text and More each list the models for that kind of output."
+        }
+      ],
+      "modelCapabilities": "",
+      "modelExplanations": "The studio lists the models in the MuAPI catalog; what each can do is shown with the model in the picker.",
+      "advancedFeatures": [
+        "Cost estimate before running",
+        "Per-model options"
+      ],
+      "advancedFeatureExplanations": [
+        {
+          "feature": "Per-model options",
+          "explanation": "Each model shows its own settings, such as size, duration or reference files.",
+          "whyToUse": "Get the result you want without trial and error."
+        }
+      ],
+      "featureExplanations": [
+        {
+          "feature": "Cost estimate",
+          "explanation": "Shows what a generation is expected to cost before you run it.",
+          "whyToUse": "Plan batches and avoid surprises."
+        }
+      ],
+      "outputDetails": [
+        {
+          "outputType": "Generated media",
+          "description": "The result of a run, kept in the studio's history.",
+          "postGenerationActions": "Open it from history, or download it."
+        }
+      ],
+      "limitationDetails": [
+        {
+          "limitation": "Your own MuAPI key and balance are required",
+          "impact": "Without a key the studio shows Connect your MuAPI key.",
+          "workaround": "Save a key; add balance in your MuAPI account."
+        }
+      ],
+      "troubleshootingSteps": [
+        {
+          "issue": "The studio asks for a key",
+          "steps": [
+            "Click Connect your MuAPI key.",
+            "Save a valid MuAPI key.",
+            "Reopen the tab."
+          ]
+        }
+      ],
+      "commonProblems": [
+        {
+          "problem": "A run fails straight away",
+          "whyItHappens": "The balance may be empty or an option is not valid for the model.",
+          "howToFix": "Check your MuAPI balance and the model's options, then try again."
+        }
+      ],
+      "exampleWorkflows": [
+        {
+          "title": "Compare two models",
+          "steps": [
+            "Open the Image category.",
+            "Run the same prompt on one model.",
+            "Switch to a second model and run it again.",
+            "Compare both results in history."
+          ]
+        }
+      ],
+      "useCases": [],
+      "whenToUse": [
+        "Trying a MuAPI model that the other studios do not list",
+        "Comparing models on the same prompt"
+      ],
+      "whenToUseAnother": [
+        "Use Image Studio or Video Studio for this app's own presets and editors"
+      ],
+      "bestFor": "People who already use MuAPI and want its full model catalog in one place.",
+      "targetCustomers": [],
+      "contentTypes": [],
+      "businessValue": "",
+      "competitivePositioning": "",
+      "relatedStudioGuidance": [
+        {
+          "studio": "Image Studio",
+          "relationship": "This app's own image workflows",
+          "whenToMove": "When you want presets and editing tools",
+          "why": "Image Studio is built around this app's workflows."
+        }
+      ],
+      "academyGuidance": [
+        {
+          "resource": "SmartVideo GO Academy (/academy)",
+          "whatYouLearn": "Lessons on choosing image and video models."
+        }
+      ],
+      "glossary": {
+        "MuAPI key": "Your personal key for muapi.ai, used to run generations."
+      }
+    },
+    {
+      "id": "smartwarmupai",
+      "name": "SmartWarmupAI",
+      "route": "/studio/smartwarmupai",
+      "description": "A cold-email and mailbox-warmup dashboard with a built-in Help site, embedded as a studio. It runs on recorded demo data until a real backend is connected.",
+      "shortDescription": "Cold-email and mailbox-warmup dashboard (demo data) with a Help site.",
+      "fullDescription": "SmartWarmupAI embeds a rebranded copy of the open-source Warmbly dashboard and its Help site in the studio, with a Dashboard / Help switch. Without a backend it answers every request from recorded demo data, so you can explore campaigns, mailboxes, warmup and the inbox without sending anything.",
+      "keyFeatures": [
+        "Dashboard for campaigns, mailboxes, warmup and the inbox",
+        "Built-in Help site, one click away",
+        "Runs on recorded demo data; nothing is sent",
+        "Help links inside the dashboard open the Help tab"
+      ],
+      "howToUse": "Open /studio/smartwarmupai, explore the Dashboard, and switch to Help for guides.",
+      "howToSteps": [
+        "Open the SmartWarmupAI tab (/studio/smartwarmupai).",
+        "Explore the Dashboard: campaigns, mailboxes, warmup and the inbox.",
+        "Click Help for the guides.",
+        "Click a help link inside the dashboard to open that page in Help."
+      ],
+      "gettingStarted": [
+        "Start in the Dashboard to see the demo data.",
+        "Open Help for the step-by-step guides."
+      ],
+      "tips": [
+        "Use Help to learn the terms before changing settings."
+      ],
+      "bestPractices": [
+        "Treat the demo data as a sample; no emails are sent."
+      ],
+      "inputs": [
+        "Clicks and settings in the dashboard"
+      ],
+      "requiredInputs": [],
+      "optionalInputs": [
+        "Dashboard settings"
+      ],
+      "outputs": [
+        "Demo dashboards and Help articles; no emails are sent"
+      ],
+      "limitations": [
+        "Runs on recorded demo data until a real backend is configured.",
+        "The dashboard and Help are built at deploy time; if they are not built the tab says so."
+      ],
+      "troubleshooting": [
+        "If the tab says the dashboard has not been built, run pnpm run build:smartwarmupai and reload."
+      ],
+      "faqs": [
+        {
+          "question": "Does it send real email?",
+          "answer": "No. It runs on recorded demo data until a real backend is connected."
+        }
+      ],
+      "relatedStudios": [
+        "video-pages",
+        "marketing"
+      ],
+      "sourceFiles": [
+        "components/SmartWarmupAIStudio.jsx",
+        "apps/warmbly-web/UPSTREAM.md",
+        "apps/smartwarmupai-brand/README.md"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Read SmartWarmupAIStudio.jsx and apps/warmbly-web/UPSTREAM.md on 2026-11-20. The dashboard's own screens were not exercised in a browser here.",
+        "verifiedAt": "2026-11-20",
+        "verifiedBy": "Code review 2026-11-20"
+      },
+      "inputDetails": [
+        {
+          "name": "Dashboard settings",
+          "description": "Settings in the embedded dashboard.",
+          "required": false,
+          "whenToUse": "When exploring or configuring"
+        }
+      ],
+      "generationModes": [],
+      "modeExplanations": [
+        {
+          "mode": "Dashboard",
+          "description": "The rebranded Warmbly dashboard on demo data."
+        },
+        {
+          "mode": "Help",
+          "description": "The Help site with step-by-step guides."
+        }
+      ],
+      "modelCapabilities": "",
+      "modelExplanations": "SmartWarmupAI does not use an AI model in this studio.",
+      "advancedFeatures": [
+        "Dashboard / Help switch"
+      ],
+      "advancedFeatureExplanations": [
+        {
+          "feature": "Dashboard / Help switch",
+          "explanation": "Moves between the dashboard and the Help site without leaving the studio.",
+          "whyToUse": "Look something up and go straight back."
+        }
+      ],
+      "featureExplanations": [
+        {
+          "feature": "Demo data",
+          "explanation": "Every request is answered from recorded data, so nothing is sent.",
+          "whyToUse": "Explore safely."
+        }
+      ],
+      "outputDetails": [
+        {
+          "outputType": "Demo screens",
+          "description": "Dashboards and Help pages on recorded data.",
+          "postGenerationActions": "None; nothing is created."
+        }
+      ],
+      "limitationDetails": [
+        {
+          "limitation": "Demo data only",
+          "impact": "Nothing you do is sent or saved to a real account.",
+          "workaround": "Connect a real backend (see UPSTREAM.md)."
+        }
+      ],
+      "troubleshootingSteps": [
+        {
+          "issue": "The tab says the dashboard has not been built",
+          "steps": [
+            "Run pnpm run build:smartwarmupai.",
+            "Reload the page."
+          ]
+        }
+      ],
+      "commonProblems": [
+        {
+          "problem": "The dashboard does not load",
+          "whyItHappens": "The site was not built at deploy time.",
+          "howToFix": "Run pnpm run build:smartwarmupai and redeploy."
+        }
+      ],
+      "exampleWorkflows": [
+        {
+          "title": "Explore the demo",
+          "steps": [
+            "Open SmartWarmupAI.",
+            "Look through campaigns and mailboxes.",
+            "Switch to Help to read a guide."
+          ]
+        }
+      ],
+      "useCases": [],
+      "whenToUse": [
+        "Exploring a cold-email and warmup dashboard safely on demo data"
+      ],
+      "whenToUseAnother": [
+        "Use Marketing Studio for video ads"
+      ],
+      "bestFor": "Anyone evaluating a cold-email and mailbox-warmup workflow without sending real email.",
+      "targetCustomers": [],
+      "contentTypes": [],
+      "businessValue": "",
+      "competitivePositioning": "",
+      "relatedStudioGuidance": [
+        {
+          "studio": "Marketing Studio",
+          "relationship": "Makes campaign videos",
+          "whenToMove": "When you need video for outreach",
+          "why": "SmartWarmupAI does not create video."
+        }
+      ],
+      "academyGuidance": [
+        {
+          "resource": "SmartVideo GO Academy (/academy)",
+          "whatYouLearn": "Lessons on finding and winning clients."
+        }
+      ],
+      "glossary": {
+        "Warmup": "Gradually sending and receiving mail so a mailbox builds a good sending reputation."
+      }
     }
   ],
   "meta": {

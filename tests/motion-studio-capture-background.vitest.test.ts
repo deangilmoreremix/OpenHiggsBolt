@@ -158,6 +158,19 @@ describe('GET /api/motion-studio/capture/status', () => {
     expect((await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))).status).toBe(404)
     expect((await GET(req('GET', '/api/motion-studio/capture/status?jobId=../../etc'))).status).toBe(404)
   })
+
+  it('answers 503, not 404, when storage itself fails', async () => {
+    const real = storage.download
+    storage.download = async () => ({ data: null, error: { message: 'connection reset by peer' } })
+    try {
+      const { GET } = await import('@/app/api/motion-studio/capture/status/route')
+      const res = await GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))
+      expect(res.status).toBe(503)
+      expect(await res.json()).toMatchObject({ code: 'STORAGE_UNAVAILABLE' })
+    } finally {
+      storage.download = real
+    }
+  })
 })
 
 describe('the background worker', () => {
@@ -277,5 +290,78 @@ describe('the Netlify function', () => {
     expect((await handler({ headers: { 'x-internal-service-token': 'wrong' }, body: '{}' })).statusCode).toBe(401)
     expect((await handler({ headers: { 'x-internal-service-token': 's3cret' }, body: '{"jobId":"x"}' })).statusCode).toBe(400)
     expect((await handler({ headers: { 'x-internal-service-token': 's3cret' }, body: 'not json' })).statusCode).toBe(400)
+  })
+})
+
+describe('POST /api/motion-studio/capture in local development', () => {
+  beforeEach(() => {
+    delete process.env.NETLIFY
+    delete process.env.INTERNAL_FUNCTION_SECRET
+    delete process.env.MOTION_CAPTURE_INLINE
+    vi.stubEnv('NODE_ENV', 'development')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    delete process.env.MOTION_CAPTURE_INLINE
+  })
+
+  const poll = async (jobId: string) => {
+    const { GET } = await import('@/app/api/motion-studio/capture/status/route')
+    return GET(req('GET', `/api/motion-studio/capture/status?jobId=${jobId}`))
+  }
+
+  it('answers at once with a job id while a slow capture goes on, then the job is done', async () => {
+    let release!: () => void
+    capture.mockImplementation(() => new Promise((resolve) => { release = () => resolve(fullCapture) }))
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))
+    expect(res.status).toBe(202)
+    const { jobId, state } = await res.json()
+    expect(state).toBe('running')
+    expect((await (await poll(jobId)).json()).state).toBe('running')
+    release()
+    await vi.waitFor(async () => expect((await (await poll(jobId)).json()).state).toBe('done'))
+    const done = await (await poll(jobId)).json()
+    expect(done.capture.title).toBe('Acme')
+    expect(capture).toHaveBeenCalledWith('https://acme.test')
+  })
+
+  it('a job belongs to the user who started it', async () => {
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const { jobId } = await (await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))).json()
+    userId = 'user_2'
+    const res = await poll(jobId)
+    expect(res.status).toBe(404)
+  })
+
+  it('a capture that fails ends the job with its code, not a hidden 500', async () => {
+    capture.mockRejectedValue(new Error('browser crashed'))
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const { jobId } = await (await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))).json()
+    await vi.waitFor(async () => expect((await (await poll(jobId)).json()).state).toBe('error'))
+    expect(await (await poll(jobId)).json()).toMatchObject({ state: 'error', code: 'CAPTURE_FAILED' })
+  })
+
+  it('refuses an address the guard rejects before starting a job', async () => {
+    guardCheck.mockRejectedValue(new FakeSsrfError('private'))
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(req('POST', '/api/motion-studio/capture', { url: 'http://10.0.0.1' }))
+    expect(res.status).toBe(400)
+    expect(capture).not.toHaveBeenCalled()
+  })
+
+  it('MOTION_CAPTURE_INLINE=1 keeps the capture inside the request', async () => {
+    process.env.MOTION_CAPTURE_INLINE = '1'
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).title).toBe('Acme')
+  })
+
+  it('never starts a local job in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const res = await POST(req('POST', '/api/motion-studio/capture', { url: 'acme.test' }))
+    expect(res.status).toBe(200) // no background secret here: the in-request path, as before
   })
 })

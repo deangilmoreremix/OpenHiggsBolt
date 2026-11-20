@@ -551,7 +551,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
 
         {/* Category pills + search */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Effect categories">
+          <div data-help="vfx effect group" className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Effect categories">
             {VFX_CATEGORIES.map((category) => (
               <button
                 key={category.id}
@@ -597,6 +597,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                   key={effect.id}
                   type="button"
                   data-vfx-effect={effect.name}
+                  data-help="vfx effect"
                   aria-pressed={isSelected}
                   onClick={() => setSelectedEffectId(effect.id)}
                   className={`group relative aspect-[3/4] overflow-hidden rounded-2xl border bg-[#111] text-left transition-all ${

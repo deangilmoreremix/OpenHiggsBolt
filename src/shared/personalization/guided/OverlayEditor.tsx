@@ -23,6 +23,9 @@ import { lookFilter, lookOverlays, vignetteStops } from '../preview/effects'
 import { LookPanel } from './LookPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
+import { CaptionDragHandle } from './CaptionDragHandle'
+import { captionAvoid, clearOf } from './captionAvoid'
+import { PLAYBACK_RATES } from '../preview/playbackRate'
 import { LayerEffectsControls } from './editor/LayerEffectsControls'
 import { CutoutPanel } from './CutoutPanel'
 import { HANDLES, cursorForHandle, resizeFromHandle, rotationFromPointer, type HandleId, type TransformBox } from './editor/transform'
@@ -303,6 +306,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
   const playerRef = useRef<PlayerRef | null>(null)
   const [playFrame, setPlayFrame] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [playRate, setPlayRate] = useState<number>(1)
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
   // Layers list reorder: top of the list = frontmost, so the list is the layer array reversed.
   const sensors = useSensors(
@@ -642,11 +646,28 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                   playerRefOverride={playerRef}
                   onFrameChange={setPlayFrame}
                   onPlayingChange={setPlaying}
+                  playbackRate={playRate}
                   ariaLabel="Live preview of your video"
                 />
               </div>
               {/* Shield: clicks on empty stage must not reach the Player (it would toggle play). Layers sit above it. */}
               <div aria-hidden data-testid="editor-live-shield" style={{ position: 'absolute', inset: 0 }} />
+              {/* Captions: a grip level with them, to drag them up or down (saved as the style's vertical offset). */}
+              {ctx.previewSettings.captions?.enabled && ctx.previewSettings.captions.cues.length > 0 && (
+                <CaptionDragHandle
+                  position={ctx.previewSettings.captions.style.position}
+                  offsetY={ctx.previewSettings.captions.style.offsetY}
+                  onChange={(offsetY) => { const c = ctx.previewSettings.captions; if (c) ctx.updatePreviewComposition({ captions: { ...c, style: { ...c.style, offsetY } } }) }}
+                  // Let go over other text and the captions stop short of it (unless "Keep clear of text" is off).
+                  onRelease={() => {
+                    const c = ctx.previewSettings.captions
+                    if (!c || c.style.keepClear === false) return
+                    const a = captionAvoid(ctx.previewSettings, inputProps.brand)
+                    const out = a ? clearOf(a) : null
+                    if (out?.overlapped && out.cleared) ctx.updatePreviewComposition({ captions: { ...c, style: { ...c.style, offsetY: out.offsetY } } })
+                  }}
+                />
+              )}
             </>
           ) : (
             <>
@@ -993,6 +1014,11 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                 <span data-testid="editor-timecode" style={{ ...hintStyle, margin: 0, fontVariantNumeric: 'tabular-nums', minWidth: 74, textAlign: 'right' }}>
                   {(playFrame / Math.max(1, settings.fps)).toFixed(1)} / {(settings.durationInFrames / Math.max(1, settings.fps)).toFixed(1)} s
                 </span>
+                <div role="group" aria-label="Preview speed" style={{ display: 'inline-flex', gap: 3 }}>
+                  {PLAYBACK_RATES.map((r) => (
+                    <button key={r} type="button" data-testid={`editor-speed-${r}`} aria-pressed={playRate === r} onClick={() => setPlayRate(r)} style={{ ...chipStyle(playRate === r), minHeight: 28, fontSize: 10, padding: '0 6px' }}>{r}×</button>
+                  ))}
+                </div>
               </>
             )}
             <span style={{ flex: liveOn ? undefined : 1 }} />
@@ -1033,7 +1059,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <LookPanel inputProps={inputProps} />
           <AudioPanel />
-          <CaptionsPanel inputProps={inputProps} />
+          <CaptionsPanel inputProps={inputProps} playFrame={liveOn ? playFrame : undefined} onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined} />
           <CutoutPanel inputProps={inputProps} />
           <div style={labelStyle}>Layers</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>

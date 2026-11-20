@@ -27,6 +27,8 @@ import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, Dust, TextReveal, alpha, type } from '../../_fixtures/Look';
 import layout from '../../_textures/live-layout.json';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { isWebRendering } from '../../_fixtures/ExportMode';
+import { useDocumentContent, fillSlots, type DocumentContent } from '../../_fixtures/documentContent';
 
 export const DOCUMENT_TYPEWRITER_REVEAL_DURATION = 150;
 
@@ -106,9 +108,65 @@ const memberH2 = new Set<number>();
   });
 }
 
+/** Width of a heading's reveal mask when the document is the person's own (their words are longer than the sample's). */
+const DOC_HEAD_W = 760;
+/** The closing line of a personalised document: the brand and what it says, split in two for the two-part reveal. */
+const taglineOf = (doc: DocumentContent): { a: string; b: string } => {
+  const words = (doc.meta.tagline || doc.title || doc.meta.brand || '').split(/\s+/).filter(Boolean).slice(0, 8);
+  if (words.length < 2) return { a: words.join(' '), b: '' };
+  const k = Math.ceil(words.length / 2);
+  return { a: words.slice(0, k).join(' '), b: words.slice(k).join(' ') };
+};
+
+/** The document as typeset text: what the screenshot was of. The write-on masks, rails and history sit on top, exactly as on the screenshot. */
+const TypesetDocument: React.FC<{ doc: DocumentContent; slotText: Array<string | null>; zoom: number }> = ({ doc, slotText, zoom }) => {
+  // The web renderer places text boxes at their zoomed positions but draws the glyphs at the unzoomed size (the camera uses CSS zoom), so words would
+  // overlap while the camera is pulled back: in the export the font size follows the zoom. The preview (the browser's own CSS) is untouched.
+  const zf = 1;
+  const px = (n: number) => Math.round(n * zf * 100) / 100;
+  // Words are their own boxes with an explicit gap: the renderer drops the spaces of text inside the zoomed camera, so each word is placed by layout instead.
+  const words = (t: string) => t.split(' ').filter(Boolean).map((w, i, a) => <span key={i} style={{ display: 'inline-block', marginRight: i < a.length - 1 ? '0.27em' : 0 }}>{w}</span>);
+  return (
+  <div style={{ position: 'absolute', left: 0, top: 0, width: PAGE_W, height: PAGE_H, background: PAPER, fontFamily: FONT.sans, color: '#1f2937' }}>
+    {/* top bar of the document window */}
+    <div style={{ position: 'absolute', left: 0, top: 0, width: PAGE_W, height: 61, borderBottom: '1px solid rgba(31,41,55,0.1)', display: 'flex', alignItems: 'center', padding: '0 28px', fontSize: px(18), fontWeight: 600, color: '#374151', boxSizing: 'border-box' }}>{words(doc.meta.brand ?? doc.title)}</div>
+    {/* left rail: short labels */}
+    <div style={{ position: 'absolute', left: leftRail.x + 20, top: leftRail.y + 18, width: leftRail.w - 40, fontSize: px(15), lineHeight: '26px', color: '#4b5563' }}>
+      {doc.sideLeft.slice(0, 6).map((t, i) => <div key={i} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{words(t)}</div>)}
+    </div>
+    {/* right rail: facts / calls to action */}
+    <div style={{ position: 'absolute', left: rightRail.x + 20, top: rightRail.y + 18, width: rightRail.w - 40, fontSize: px(15), lineHeight: '26px', color: '#4b5563' }}>
+      {doc.sideRight.slice(0, 8).map((t, i) => <div key={i} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{words(t)}</div>)}
+    </div>
+    {blocks.map((b, i) => {
+      const text = slotText[i];
+      if (!text) return null;
+      const head = b.tag !== 'li';
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute', left: b.x, top: b.y, width: head ? DOC_HEAD_W - 12 : b.w, height: b.h, overflow: 'hidden',
+            fontSize: head ? px(Math.round(b.h * (b.tag === 'h1' ? 0.92 : 0.82))) : px(18), fontWeight: b.tag === 'h1' ? 800 : b.tag === 'h2' ? 700 : 400,
+            lineHeight: head ? `${b.h}px` : '27px', whiteSpace: head ? 'nowrap' : 'normal', textOverflow: 'ellipsis', color: b.tag === 'li' ? '#374151' : '#111827',
+          }}
+        >
+          {b.tag === 'li' ? '• ' : ''}{words(text)}
+        </div>
+      );
+    })}
+  </div>
+  );
+};
+
 export const DocumentTypewriterReveal: React.FC = () => {
   const frame = useCurrentFrame();
   const cam = camAt(frame);
+  // A document of the person's own (structured text, lib/documentContent): typeset into the recipe's slots instead of the sample screenshot.
+  const doc = useDocumentContent();
+  const slotText = doc ? fillSlots(doc, blocks.map((b) => b.tag)) : null;
+  const weeks = doc ? doc.history.map((h) => ({ week: h.label, date: h.date ?? '', title: h.title })) : PAST_WEEKS;
+  const tagline = doc ? taglineOf(doc) : { a: 'From screenshot', b: 'to showreel.' };
 
   // 只有一个笔尖：跟最新的、仍在写的块
   let caretIdx = -1;
@@ -131,9 +189,19 @@ export const DocumentTypewriterReveal: React.FC = () => {
         <div style={{ position: 'absolute', inset: 0, perspective: `${(PERSP * cam.zoom).toFixed(2)}px`, perspectiveOrigin: '960px 540px' }}>
           <div
             style={{
-              position: 'absolute', width: PAGE_W, height: PAGE_H, zoom: cam.zoom,
-              transform: `translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg)`,
-              transformOrigin: `${cam.cx.toFixed(2)}px ${cam.cy.toFixed(2)}px`,
+              position: 'absolute', width: PAGE_W, height: PAGE_H,
+              // The camera: CSS zoom in the preview (as tuned). In the export a live-text document is drawn with a scale in the transform instead (the
+              // web renderer lays out text inside a CSS zoom at one size and draws it at another, so the words overlap): the same matrix, no zoom.
+              ...(doc && isWebRendering()
+                ? {
+                    transform: `scale3d(${cam.zoom.toFixed(4)}, ${cam.zoom.toFixed(4)}, ${cam.zoom.toFixed(4)}) translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) translate(${cam.cx.toFixed(2)}px, ${cam.cy.toFixed(2)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg) translate(${(-cam.cx).toFixed(2)}px, ${(-cam.cy).toFixed(2)}px)`,
+                    transformOrigin: '0px 0px',
+                  }
+                : {
+                    zoom: cam.zoom,
+                    transform: `translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg)`,
+                    transformOrigin: `${cam.cx.toFixed(2)}px ${cam.cy.toFixed(2)}px`,
+                  }),
               transformStyle: 'preserve-3d',
             }}
           >
@@ -153,14 +221,14 @@ export const DocumentTypewriterReveal: React.FC = () => {
                 boxShadow: `0 0 0 1.5px ${alpha('#ffffff', 0.35)}, 0 70px 160px -20px ${alpha(L.shadow, 0.95)}, 0 20px 60px ${alpha('#000000', 0.55)}`,
               }}
             >
-              <Img src={liveTexture('wbr-full.png')} style={{ position: 'absolute', width: PAGE_W, height: PAGE_H }} />
+              {doc && slotText ? <TypesetDocument doc={doc} slotText={slotText} zoom={cam.zoom} /> : <Img src={liveTexture('wbr-full.png')} style={{ position: 'absolute', width: PAGE_W, height: PAGE_H }} />}
 
               {blocks.map((p, i) => {
                 const cue = cueFor(i);
                 const coverT = interpolate(frame, [cue, cue + WIPE], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: REVEAL_EASE });
                 const bx = p.tag === 'li' ? p.x - 28 : p.x - 4;
                 const by = p.y - 3;
-                const bw = p.w + (p.tag === 'li' ? 34 : 10) + (p.tag === 'li' ? 24 : 120);
+                const bw = doc && p.tag !== 'li' ? DOC_HEAD_W : p.w + (p.tag === 'li' ? 34 : 10) + (p.tag === 'li' ? 24 : 120);
                 const bh = p.h + 6;
                 const caretX = bx + bw * (1 - coverT);
                 const caretH = Math.min(22, p.h - 2);
@@ -169,7 +237,7 @@ export const DocumentTypewriterReveal: React.FC = () => {
                   ? interpolate(frame, [nameCue, nameCue + 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.3, 0, 0.2, 1) })
                   : 0;
                 // 写入中的笔尖只骑在实际文字宽度内（遮罩右侧多盖的空白段不走笔尖）
-                const textRight = p.x + p.w + 6;
+                const textRight = doc && slotText ? p.x + Math.min(p.tag === 'li' ? p.w : DOC_HEAD_W - 12, Math.max(40, (slotText[i] ?? '').length * (p.tag === 'li' ? 9.5 : p.h * 0.55))) : p.x + p.w + 6;
                 return (
                   <React.Fragment key={i}>
                     {nameGrow > 0 ? (
@@ -215,7 +283,7 @@ export const DocumentTypewriterReveal: React.FC = () => {
               })}
 
               {/* 历史周报：从上方逐条落入左栏 */}
-              {PAST_WEEKS.map((w, i) => {
+              {weeks.map((w, i) => {
                 const cue = WEEK_CUE(i);
                 if (frame < cue) return null;
                 const t = interpolate(frame, [cue, cue + 9], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: WEEK_DROP });
@@ -248,8 +316,8 @@ export const DocumentTypewriterReveal: React.FC = () => {
 
       {/* 收尾标语：底部，左对齐窗口左缘 */}
       <div style={{ position: 'absolute', left: 250, top: 930, display: 'flex', alignItems: 'baseline', gap: 0, ...type(84, 760), color: L.ink, opacity: tagIn > 0 ? 1 : 0 }}>
-        <TextReveal text="From screenshot" by="word" variant="rise" start={100} each={16} gap={3} />
-        <TextReveal text="to showreel." by="word" variant="rise" start={108} each={16} gap={3} style={{ color: L.accent, marginLeft: '0.26em' }} />
+        <TextReveal text={tagline.a} by="word" variant="rise" start={100} each={16} gap={3} />
+        <TextReveal text={tagline.b} by="word" variant="rise" start={108} each={16} gap={3} style={{ color: L.accent, marginLeft: '0.26em' }} />
       </div>
     </AbsoluteFill>
   );

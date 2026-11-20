@@ -1,0 +1,171 @@
+{
+  "supported": {
+    "image": {
+      "tools": [
+        "image_generate",
+        "image_edit"
+      ],
+      "kinds": [
+        "t2i",
+        "i2i"
+      ]
+    },
+    "video": {
+      "tools": [
+        "video_generate",
+        "video_from_image",
+        "video_to_video"
+      ],
+      "kinds": [
+        "t2v",
+        "i2v",
+        "v2v"
+      ]
+    },
+    "edit": {
+      "tools": [
+        "image_edit",
+        "video_to_video"
+      ],
+      "kinds": [
+        "i2i",
+        "v2v"
+      ]
+    },
+    "audio": {
+      "tools": [
+        "audio_generate"
+      ],
+      "kinds": [
+        "audio"
+      ]
+    },
+    "clipping": {
+      "tools": [
+        "clip_video"
+      ],
+      "kinds": [
+        "clipping"
+      ]
+    },
+    "vibe-motion": {
+      "tools": [
+        "motion_graphics"
+      ],
+      "kinds": [
+        "graphics"
+      ]
+    },
+    "motion-control": {
+      "tools": [
+        "motion_control"
+      ],
+      "kinds": [
+        "motion"
+      ]
+    },
+    "lipsync": {
+      "tools": [
+        "lipsync"
+      ],
+      "kinds": [
+        "lipsync"
+      ]
+    },
+    "cinema": {
+      "tools": [
+        "image_generate",
+        "video_generate",
+        "video_from_image"
+      ],
+      "kinds": [
+        "t2i",
+        "t2v",
+        "i2v"
+      ]
+    },
+    "marketing": {
+      "tools": [
+        "marketing_ad"
+      ],
+      "kinds": [
+        "ad"
+      ]
+    },
+    "recast": {
+      "tools": [
+        "recast"
+      ],
+      "kinds": [
+        "recast"
+      ]
+    },
+    "layers": {
+      "tools": [
+        "image_edit"
+      ],
+      "kinds": [
+        "i2i"
+      ]
+    },
+    "ai-influencer": {
+      "tools": [
+        "image_generate",
+        "image_edit"
+      ],
+      "kinds": [
+        "t2i",
+        "i2i"
+      ]
+    },
+    "workflows": {
+      "tools": [
+        "workflows_list",
+        "workflow_inputs",
+        "workflow_run",
+        "workflow_status",
+        "skills_list",
+        "skill_run"
+      ],
+      "kinds": []
+    },
+    "agents": {
+      "tools": [
+        "agents_list",
+        "agent_chat"
+      ],
+      "kinds": []
+    },
+    "vfx-studio": {
+      "tools": [
+        "video_from_image"
+      ],
+      "kinds": [
+        "i2v"
+      ]
+    },
+    "storyboard": {
+      "tools": [
+        "video_generate",
+        "image_generate"
+      ],
+      "kinds": [
+        "t2v",
+        "t2i"
+      ]
+    }
+  },
+  "unsupported": {
+    "brand-studio": "Runs on Netlify/Supabase functions with its own contracts (brand, campaign, assets); not exposed yet.",
+    "video-pages": "Own app with a client-side renderer (Remotion); out of scope for v1.",
+    "zackd": "Own app (src/apps/zackd) with its own backend; not exposed yet (the SmartVid repo has Zack D tools).",
+    "motion-director": "Own app with a client-side renderer (Remotion); out of scope for v1.",
+    "design-agent": "Own agent app (src/apps/design-agent); not reviewed yet.",
+    "thumbnail-studio": "Uses its own OpenAI prompt-enhance and Supabase pipeline (/api/proxy/thumbnail-generate); not exposed yet. Image tools cover plain thumbnails.",
+    "go-ai-viral": "Own app (src/apps/go-ai-viral); not reviewed yet.",
+    "apps": "Non-generative UI (hub for other studios).",
+    "muapi-studio": "Embeds the vendored muapi.ai studio in the browser with the user's own MuAPI key; the same models are reachable through the generation tools and search_models.",
+    "smartwarmupai": "Embedded dashboard and Help site running on recorded demo data; it has no generation to expose.",
+    "media-hub": "Own app (VidBee media hub) with its own host; not exposed yet."
+  }
+}

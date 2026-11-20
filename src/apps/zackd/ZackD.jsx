@@ -69,7 +69,7 @@ const ImageIcon = () => (
 );
 
 /** One result card, same anatomy as the Video Studio gallery: hover-play media, overlay actions, mobile actions, footer. */
-function MediaCard({ id, label, kind, url, prompt, aspect = 'aspect-[9/16]', pending, disabled, onRedo, onRedoKeyframe, onOpen, onCopyError }) {
+function MediaCard({ id, label, kind, url, poster, prompt, aspect = 'aspect-[9/16]', pending, disabled, onRedo, onRedoKeyframe, onOpen, onCopyError }) {
   const name = `${id.replace(/[^a-z0-9]+/gi, '-')}.${kind === 'video' ? 'mp4' : 'png'}`;
   const actions = [];
   if (url) actions.push({ kind: 'download', label: 'Download', onSelect: () => downloadFile(url, name) });
@@ -81,7 +81,7 @@ function MediaCard({ id, label, kind, url, prompt, aspect = 'aspect-[9/16]', pen
         <div className={`w-full ${aspect} bg-white/5 animate-pulse flex items-center justify-center text-[10px] text-white/40`}>Generating…</div>
       ) : url && kind === 'video' ? (
         <video
-          src={url} className={`w-full ${aspect} object-cover bg-black/40 hover:opacity-80`} loop muted playsInline controls={false} preload="metadata"
+          src={url} poster={poster} className={`w-full ${aspect} object-cover bg-black/40 hover:opacity-80`} loop muted playsInline controls={false} preload="metadata"
           onMouseOver={(e) => { const r = e.currentTarget.play?.(); r?.catch?.(() => {}); }}
           onMouseOut={(e) => { e.currentTarget.pause?.(); try { e.currentTarget.currentTime = 0; } catch { /* not ready */ } }}
         />
@@ -537,7 +537,7 @@ export default function ZackD({
                       const asClip = e.keyframe && (e.clip || pending.has(`clip:${x.shot_id}`));
                       const label = `${x.shot_id} · ${x.camera_move.replace(/_/g, ' ')}`;
                       return asClip ? (
-                        <MediaCard key={x.shot_id} id={`clip:${x.shot_id}`} label={label} kind="video" url={e.clip} prompt={clipPrompt(x)}
+                        <MediaCard key={x.shot_id} id={`clip:${x.shot_id}`} label={label} kind="video" url={e.clip} poster={e.keyframe} prompt={clipPrompt(x)}
                           pending={pending.has(`clip:${x.shot_id}`)} disabled={busy || !hasKey || pending.has(`clip:${x.shot_id}`) || pending.has(`kf:${x.shot_id}`)} onOpen={(u, k) => setLightbox({ url: u, kind: k })} onCopyError={fail}
                           onRedo={() => batch('Clip', [x], (i) => `clip:${i.shot_id}`, genClip, 'Generate this clip?')}
                           onRedoKeyframe={e.clip ? () => batch('Keyframe', [x], (i) => `kf:${i.shot_id}`, genKeyframe, 'Regenerate this keyframe? The current clip is discarded and must be animated again (paid).') : undefined} />
@@ -611,6 +611,32 @@ export default function ZackD({
               ))}
             </div>
             <p className="text-[11px] text-white/30 mt-3">{TEMPLATE_ATTRIBUTION}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 w-full max-w-4xl px-4" data-zackd-templates>
+              {TEMPLATES.map((t) => {
+                const sameTopic = TEMPLATES.find((x) => x.demo && x.topic === t.topic);
+                const poster = t.poster || sameTopic?.poster;
+                return (
+                  <div key={t.id} className="rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] flex flex-col text-left">
+                    {t.demo ? (
+                      <video src={t.demo} poster={t.poster} controls playsInline preload="none" className="w-full aspect-[9/16] max-h-80 object-cover bg-black" />
+                    ) : poster ? (
+                      <img src={poster} alt={t.title} loading="lazy" className="w-full aspect-[9/16] max-h-80 object-cover" style={{ objectPosition: '50% 25%' }} />
+                    ) : (
+                      <div className="w-full aspect-[9/16] max-h-80 flex flex-col items-center justify-center gap-2 p-6 text-center bg-gradient-to-br from-[#2a1a3a] to-[#0a0a14]">
+                        <span className="text-[10px] font-bold tracking-widest text-[#22d3ee] uppercase">Script</span>
+                        <span className="text-lg font-black text-white leading-tight">{t.topic}</span>
+                      </div>
+                    )}
+                    <div className="p-3 flex flex-col gap-2">
+                      <div className="text-sm font-bold text-white">{t.title}</div>
+                      <button type="button" className={promptControlClassName({ compact: true })} onClick={() => loadTemplate(t)}>
+                        <span className={PROMPT_CONTROL_LABEL_CLASS}>{t.kind === 'finished' ? 'Use as template' : 'Use script'}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

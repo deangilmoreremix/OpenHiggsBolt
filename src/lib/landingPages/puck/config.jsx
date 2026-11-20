@@ -21,7 +21,10 @@ import * as x10 from './extensions/31-results.jsx';
 import * as x11 from './extensions/32-realtor.jsx';
 import * as x12 from './extensions/33-dreamhome.jsx';
 import { slotFields, SLOT_DEFAULTS } from './slotFields.js';
-import { ThanksContext } from './context.js';
+import { ThanksContext, FormSettingsContext } from './context.js';
+import { choicesField } from './choicesField.jsx';
+import { formOptionsField } from './formOptions.jsx';
+import { ListBuilderForm, OptinGate, PixelLoader, optinConfigField, defaultListBuilder, publicOptinConfig } from './optinForm.jsx';
 
 // Designs may ship extra components (puck/extensions/NN-name.jsx exporting `components`), merged in automatically.
 const EXT = [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12];
@@ -33,7 +36,12 @@ const iconField = { type: 'select', label: 'Icon', options: [{ label: 'None', va
 const cols = { type: 'select', label: 'Width (grid columns)', options: [1, 2, 3, 4, 5, 6].map((n) => ({ label: `${n}`, value: n })) };
 const buttonArray = { type: 'array', label: 'Buttons', arrayFields: { label: T('Text'), url: T('Link (https, mailto: or tel:)'), style: { type: 'radio', label: 'Style', options: [{ label: 'Primary', value: 'primary' }, { label: 'Secondary', value: 'secondary' }] } }, getItemSummary: (i) => i.label || 'Button', defaultItemProps: { label: 'Button', url: '', style: 'secondary' } };
 const linkArray = (label) => ({ type: 'array', label, arrayFields: { label: T('Text'), url: T('Link (optional)') }, getItemSummary: (i) => i.label || 'Link', defaultItemProps: { label: 'Link', url: '' } });
-const formFieldArray = { type: 'array', label: 'Form fields', arrayFields: { key: T('Field name (a-z)'), label: T('Label / placeholder'), type: { type: 'select', label: 'Type', options: ['text', 'email', 'tel', 'textarea', 'select'].map((v) => ({ label: v === 'select' ? 'dropdown' : v, value: v })) }, options: T('Dropdown choices (comma separated)'), required: { type: 'radio', label: 'Required', options: [{ label: 'Yes', value: true }, { label: 'No', value: false }] } }, getItemSummary: (i) => i.label || 'Field', defaultItemProps: { key: 'name', label: 'Name', type: 'text', required: true } };
+const formFieldArray = { type: 'array', label: 'Form fields', arrayFields: { key: T('Field name (a-z)'), label: T('Label / placeholder'), type: { type: 'select', label: 'Type', options: ['text', 'email', 'tel', 'number', 'date', 'textarea', 'select'].map((v) => ({ label: v === 'select' ? 'dropdown' : v === 'tel' ? 'phone' : v, value: v })) }, options: choicesField('Dropdown choices'), placeholder: T('Placeholder (shown before a choice is picked)'), required: { type: 'radio', label: 'Required', options: [{ label: 'Yes', value: true }, { label: 'No', value: false }] } }, getItemSummary: (i) => i.label || 'Field', defaultItemProps: { key: 'name', label: 'Name', type: 'text', required: true } };
+
+// Every design's form gets the same controls: the full box list and the List Builder / Lead Generator options.
+for (const c of Object.values(EXT_COMPONENTS)) {
+  if (c?.fields?.formFields) c.fields = { ...c.fields, formFields: formFieldArray, formOptions: formOptionsField() };
+}
 
 const HERO_FIELDS = [{ key: 'name', label: 'Your Name', type: 'text', required: true }, { key: 'email', label: 'Your Email', type: 'email', required: true }, { key: 'company', label: 'Your Company', type: 'text', required: false }];
 
@@ -48,10 +56,12 @@ export const puckConfig = {
       headingFont: { type: 'select', label: 'Heading font', options: FONT_OPTIONS },
       bodyFont: { type: 'select', label: 'Body font', options: FONT_OPTIONS },
       thanks: T('Thank-you message after an email sign-up'),
+      afterSubmit: { type: 'radio', label: 'After a form is sent', options: [{ label: 'Show the thank-you message', value: 'message' }, { label: 'Open another page (https link)', value: 'redirect' }] },
+      afterSubmitUrl: T('Page to open after a form is sent (https link)'),
       greeting: T('Greeting strip shown only on a personal link (e.g. "A personal video for {{firstname|you}}"; empty = none)'),
     },
-    defaultProps: { design: 'clean', accent: '#2563eb', background: '#ffffff', text: '#0f172a', surface: '', headingFont: '', bodyFont: '', thanks: 'Thanks! Check your inbox.', greeting: '' },
-    render: ({ children, design, accent, background, text, surface, headingFont, bodyFont, thanks, greeting }) => {
+    defaultProps: { design: 'clean', accent: '#2563eb', background: '#ffffff', text: '#0f172a', surface: '', headingFont: '', bodyFont: '', thanks: 'Thanks! Check your inbox.', greeting: '', afterSubmit: 'message', afterSubmitUrl: '' },
+    render: ({ children, design, accent, background, text, surface, headingFont, bodyFont, thanks, greeting, afterSubmit, afterSubmitUrl }) => {
       const ok = (v, d) => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : d);
       const acc = ok(accent, '#2563eb');
       // Button text: white on dark accents, near-black on light ones, so every accent stays readable.
@@ -62,7 +72,7 @@ export const puckConfig = {
       const fh = fontStack(headingFont); const fb = fontStack(bodyFont);
       if (fh) style['--pk-fh'] = fh;
       if (fb) style['--pk-fb'] = fb;
-      return <div className={`pk-page pk-d-${String(design || 'clean').replace(/[^a-z0-9-]/gi, '')}`} style={style} {...(fh ? { 'data-fh': '' } : {})} {...(fb ? { 'data-fb': '' } : {})}><ThanksContext.Provider value={thanks || 'Thanks! Check your inbox.'}><C.LeadAnchorFallback /><C.PersonalGreeting text={greeting} />{children}</ThanksContext.Provider></div>;
+      return <div className={`pk-page pk-d-${String(design || 'clean').replace(/[^a-z0-9-]/gi, '')}`} style={style} {...(fh ? { 'data-fh': '' } : {})} {...(fb ? { 'data-fb': '' } : {})}><ThanksContext.Provider value={thanks || 'Thanks! Check your inbox.'}><FormSettingsContext.Provider value={{ action: afterSubmit === 'redirect' ? 'redirect' : 'message', url: afterSubmitUrl || '' }}><C.LeadAnchorFallback /><C.PersonalGreeting text={greeting} />{children}</FormSettingsContext.Provider></ThanksContext.Provider></div>;
     },
   },
   categories: {
@@ -88,9 +98,10 @@ export const puckConfig = {
         subhead: A('Sub-headline'),
         bullets: { type: 'array', label: 'Tick list', arrayFields: { text: T('Text') }, getItemSummary: (i) => i.text || 'Item', defaultItemProps: { text: 'New point' } },
         buttons: buttonArray,
-        chip: T('Label on the video'),
+        chip: T("Label on the video (your own words over the picture; text inside a photo can't be edited, so swap the picture)"),
         photo: T('Placeholder image before the video plays (https link)'),
         ...slotFields(),
+        formOptions: formOptionsField(),
         showForm: { type: 'radio', label: 'Lead form', options: [{ label: 'Show', value: 'yes' }, { label: 'Hide', value: 'no' }] },
         formTitle: T('Form title'),
         formSubtitle: T('Form subtitle'),
@@ -132,9 +143,21 @@ export const puckConfig = {
     },
     ContactBand: {
       label: 'Contact form band',
-      fields: { eyebrow: T('Small label'), title: T('Headline'), text: A('Text'), fields: formFieldArray, submitLabel: T('Button text'), successMessage: T('Thank-you message') },
+      fields: { eyebrow: T('Small label'), title: T('Headline'), text: A('Text'), fields: formFieldArray, submitLabel: T('Button text'), successMessage: T('Thank-you message'), formOptions: formOptionsField() },
       defaultProps: { eyebrow: "Let's talk", title: 'Ready to get started?', text: 'Tell us a little about your team and we will get back to you.', fields: [{ key: 'name', label: 'Name', type: 'text', required: true }, { key: 'email', label: 'Work email', type: 'email', required: true }, { key: 'message', label: 'How can we help?', type: 'textarea', required: false }], submitLabel: 'Contact us', successMessage: 'Thanks! We will be in touch.' },
       render: (p) => <C.ContactBand {...p} />,
+    },
+    ListBuilderForm: {
+      label: 'Sign-up form (List Builder)',
+      fields: { config: optinConfigField('List Builder settings', 'list-builder') },
+      defaultProps: { config: publicOptinConfig(defaultListBuilder('list-builder')) },
+      render: (p) => <><ListBuilderForm {...p} /><OptinGate config={p.config} /><PixelLoader config={p.config} /></>,
+    },
+    LeadGeneratorForm: {
+      label: 'Lead form (Lead Generator)',
+      fields: { config: optinConfigField('Lead Generator settings', 'lead-generator') },
+      defaultProps: { config: publicOptinConfig(defaultListBuilder('lead-generator')) },
+      render: (p) => <><ListBuilderForm {...p} kind="lead-generator" /><OptinGate config={p.config} /><PixelLoader config={p.config} /></>,
     },
     CtaBar: { label: 'Bottom button bar', fields: { text: T('Text beside the button (empty = button only)'), label: T('Button text'), url: T('Link (https, mailto:, tel: or #lead)'), icon: iconField, icons: { type: 'array', label: 'Social icons (button-only bar)', arrayFields: { icon: iconField, url: T('Link (https)') }, getItemSummary: (i) => i.icon || 'Icon', defaultItemProps: { icon: 'facebook', url: '' } } }, defaultProps: { text: '', label: 'Book a Free Consultation', url: '#lead', icon: 'calendar', icons: [] }, render: (p) => <C.CtaBar {...p} /> },
     Footer: { label: 'Footer', fields: { text: T('Footer text'), links: linkArray('Footer links') }, defaultProps: { text: 'Sent by {{sender|us}} · {{brand|your brand}}', links: [] }, render: (p) => <C.Footer {...p} /> },

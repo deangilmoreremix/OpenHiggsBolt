@@ -2,6 +2,7 @@ import { generateAss, cuesToWords, type AssAnimation, type AssStyle, type AssWor
 import { inferLanguage } from '../captions/scripts'
 import { CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
 import { visibleWordRange } from './capite/activeWord'
+import { assBoldOf, assCasingOf, offsetPositionPct, resolveCasing, resolveWeight } from '../captions/captionCustom'
 import type { CaptionSettings } from './captions'
 
 /**
@@ -23,7 +24,7 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
   // No "Highlight word" means no word effect at all (the preview marks no word active); a box behind the whole caption is a background.
   const animation: AssAnimation = st.highlight === 'none' ? 'highlight' : st.animation ?? 'highlight'
   const style: AssStyle = {
-    fontName: config?.fontName ?? 'Inter',
+    fontName: st.fontFamily ?? config?.fontName ?? 'Inter',
     fontNameFallback: config?.fontNameFallback ?? 'Noto Sans',
     fontSize,
     primaryColor: st.color,
@@ -34,7 +35,7 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
     shadowAlpha: st.shadow ? Math.round((1 - st.shadow.alpha) * 255) : 255,
     outlineSize: st.outline ? st.outline.size * fontSize : 0,
     shadowDepth: st.shadow ? st.shadow.depth * fontSize : 0,
-    bold: st.bold,
+    bold: assBoldOf(resolveWeight(st.weight, st.bold)),
     italic: st.italic === true,
     letterSpacing: st.letterSpacing ? st.letterSpacing * fontSize : 0,
     wordSpacing: st.wordSpacing ? 100 + (st.wordSpacing / 0.3) * 100 : 100,
@@ -42,5 +43,5 @@ export function captionsToAss(c: CaptionSettings, o: { width: number; height: nu
     background: st.box ? { color: st.boxColor, opacity: st.boxOpacity } : undefined,
   }
   const language = lang(c.cues.map((x) => x.text).join(' '))
-  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: POSITION_PCT[st.position], casing: st.uppercase ? 'uppercase' : 'original', sizing: 'preview', visibleRange: st.windowed ? (st.highlight === 'none' ? (count) => visibleWordRange(count, -1) : visibleWordRange) : undefined })
+  return generateAss({ words, width: o.width, height: o.height, style, language, positionPct: offsetPositionPct(POSITION_PCT[st.position], st.offsetY), casing: assCasingOf(resolveCasing(st.casing, st.uppercase)), sizing: 'preview', visibleRange: st.windowed ? (st.highlight === 'none' ? (count) => visibleWordRange(count, -1) : visibleWordRange) : undefined })
 }

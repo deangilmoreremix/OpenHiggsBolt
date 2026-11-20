@@ -347,3 +347,36 @@ describe('the site\'s own pictures', () => {
     expect(plan.scenes.map((s) => s.recipeId)).toContain('brand/people-gallery');
   });
 });
+
+describe('Ink Press storyboard copy', () => {
+  const uiEntrance = MOTION_TEMPLATES.filter((t) => t.category === 'ui-entrance').slice(0, 2);
+
+  it('never puts the same on-screen line on two shots of one category', () => {
+    expect(uiEntrance).toHaveLength(2);
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance });
+    const lines = plan.scenes.filter((s) => s.kind === 'shot' && s.headline).map((s) => s.headline);
+    expect(new Set(lines).size).toBe(lines.length);
+  });
+
+  it('gives the second shot the site\'s own heading when the site has one', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance, content: { headings: ['Managed IT', 'Cybersecurity'] } });
+    const shots = plan.scenes.filter((s) => s.kind === 'shot');
+    expect(shots[0].headline).toBe('Every page, live.');
+    expect(shots[1].headline).toBe('Cybersecurity');
+    // The heading is the headline, so the caption is not the same words again.
+    expect(shots[1].caption).not.toBe(shots[1].headline);
+  });
+
+  it('does not say a caption twice either', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance });
+    const captions = plan.scenes.filter((s) => s.kind === 'shot' && s.caption).map((s) => s.caption);
+    expect(new Set(captions).size).toBe(captions.length);
+  });
+
+  it('a repeated caption becomes the product name, so the shot is not left without one', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30, recipes: uiEntrance, productName: 'Acme' });
+    const shots = plan.scenes.filter((s) => s.kind === 'shot');
+    expect(shots[0].caption).toBeTruthy();
+    expect(shots[1].caption).toBe('Acme');
+  });
+});

@@ -47,6 +47,8 @@ export const STUDIO_SUGGESTIONS: Record<string, string[]> = {
   'design-agent': ['How do I design with the Design Agent?', 'How do I refine a design with follow-up messages?', 'Which lessons cover designs that sell?'],
   'vfx-studio': ['How do I apply an effect to a video?', 'Which effects are available?', 'Which lessons cover motion and effects?'],
   'thumbnail-studio': ['How do I design a thumbnail?', 'How do I make a thumbnail click-worthy?', 'Which lessons cover thumbnail design?'],
+  'muapi-studio': ['How do I connect my MuAPI key?', 'How do I pick a model and see its cost?', 'How do I compare two models?'],
+  'smartwarmupai': ['What is SmartWarmupAI?', 'How does mailbox warmup work?', 'Does it send real email?'],
   'video-pages': ['How do I turn a video into a landing page?', 'How do I publish and share my page?', 'How do I see who watched my page?'],
   'ai-influencer': ['How do I create a consistent AI character?', 'How do I make content with my character?', 'Which lessons cover monetizing a character?'],
   'go-ai-viral': ['How do I plan a viral short?', 'How do I produce a batch of shorts?', 'Which lessons cover short-form content?'],

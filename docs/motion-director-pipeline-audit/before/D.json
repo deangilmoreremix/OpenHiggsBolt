@@ -1,0 +1,194 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 21s · Ink Press\n04\n✓\nAnimate\nRemotion code\n22 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n7 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nMake a promo for Acme with the Ink Press template\n03:50 PM\nNo key. I used the Ink Press template instead.\n\nStoryboard “Acme — Ink Press” — 6 scenes, 21s:\n1. 0:00–0:01 · Title card · on screen: “Meet Acme.”\n2. 0:01–0:07 · Spotlight Hero Card · on screen: “Front and centre.” · caption: Your product, the way customers see it · bottom-push cut\n3. 0:07–0:12 · Deck Deal Flyin · on screen: “Every page, live.” · caption: Real screens, not mock-ups · dip cut\n4. 0:12–0:14 · Row Embed · on screen: “Real screens, not mock-ups” · bottom-push cut\n5. 0:14–0:19 · Crash Zoom Punch · Crash Zoom Real · on screen: “Up close on the details.” · caption: Every pixel, sharp\n6. 0:19–0:21 · Title card · on screen: “Try Acme today.”\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n03:50 PM\nYour film is ready: 21s at 1920×1080, 30 fps, Transitions / Captions / Shots / Background / SFX / Music tracks.\nFrame QA passed (20 frames rendered).\nReview against the shot cards' checklist: 14 passed, 1 to fix.\n- F2 ✗ The same line is said again: \"Real screens, not mock-ups\" at 12.4s.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n03:50 PM\n↺ New film\n✓ Read 6 shot cards in full: Spotlight Hero Card, Deck Deal Flyin, Row Embed, Crash Zoom Punch · Crash Zoom Real, Page Waterfall Wall, Outro Group Photo Launch\n✓ Storyboard ready from the Ink Press template · 6 scenes\n✓ Cuts snapped to the beat of house-vibez\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 5 of 5 cuts within 3 frames of a beat (worst 2 frames), 5 on a kick or a downbeat\n✓ Film built · 6 tracks\n✓ Frame QA · 20 frames render cleanly\nFINAL FILM\nAcme — Ink Press\n1920×1080 · 30 fps · h264\nMeet\nAcme.\n0:00 / 0:22\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~4 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 21s · Ink Press\n04\n✓\nAnimate\nRemotion code\n22 clips on 6 tracks\n05\n✓\nBeat sync\nSound design\n7 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "shots": [
+  {
+   "cardId": "inkpress-title-card",
+   "start": 0,
+   "duration": 61,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "inkpress-title-card"
+  },
+  {
+   "cardId": "demo:SpotlightHeroCard",
+   "start": 61,
+   "duration": 162,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 1
+   },
+   "label": "demo:SpotlightHeroCard"
+  },
+  {
+   "cardId": "demo:DeckDealFlyin",
+   "start": 223,
+   "duration": 148,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 1
+   },
+   "label": "demo:DeckDealFlyin"
+  },
+  {
+   "cardId": "demo:RowEmbed",
+   "start": 371,
+   "duration": 74,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 0
+   },
+   "label": "demo:RowEmbed"
+  },
+  {
+   "cardId": "demo:CrashZoomReal",
+   "start": 445,
+   "duration": 134,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 4,
+    "crops": 4,
+    "texts": 2
+   },
+   "label": "demo:CrashZoomReal"
+  },
+  {
+   "cardId": "inkpress-title-card",
+   "start": 579,
+   "duration": 51,
+   "props": {
+    "adaptedCode": false,
+    "logo": false,
+    "screens": 0,
+    "crops": 0,
+    "texts": 0
+   },
+   "label": "inkpress-title-card"
+  }
+ ],
+ "ev": [
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 134,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0.0059,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [
+    "in motion."
+   ],
+   "variance": 528.8
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 199,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0.0069,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [
+    "in motion."
+   ],
+   "variance": 527.4
+  },
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 290,
+   "suppliedShare": {
+    "magenta": 0.0476,
+    "lime": 0.037,
+    "orange": 0.0958,
+    "cyan": 0.0334
+   },
+   "forbidden": [
+    "in motion.",
+    "REAL PAGE CAPTURES"
+   ],
+   "variance": 5349
+  },
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 349,
+   "suppliedShare": {
+    "magenta": 0.0236,
+    "lime": 0.0309,
+    "orange": 0.0219,
+    "cyan": 0.0301
+   },
+   "forbidden": [
+    "in motion.",
+    "REAL PAGE CAPTURES"
+   ],
+   "variance": 3521.1
+  },
+  {
+   "card": "demo:RowEmbed",
+   "frame": 404,
+   "suppliedShare": {
+    "magenta": 0.855,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 2229
+  },
+  {
+   "card": "demo:RowEmbed",
+   "frame": 434,
+   "suppliedShare": {
+    "magenta": 0.9467,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 116.6
+  },
+  {
+   "card": "demo:CrashZoomReal",
+   "frame": 505,
+   "suppliedShare": {
+    "magenta": 0.3868,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 1176.5
+  },
+  {
+   "card": "demo:CrashZoomReal",
+   "frame": 559,
+   "suppliedShare": {
+    "magenta": 0.3876,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 1761.9
+  }
+ ]
+}

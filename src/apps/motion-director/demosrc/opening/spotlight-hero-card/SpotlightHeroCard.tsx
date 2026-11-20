@@ -26,11 +26,13 @@
 //   142–172 hold：相机锁死，只剩光柱里浮尘与光池极缓呼吸
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
-import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
+import { PageCam2D, CamKey2D, cameraStageStyle } from '../../_fixtures/PageCam2D';
 import { EASE, FONT, Grain, ramp } from '../../_fixtures/Polish';
 import { Dust, LOOKS, alpha } from '../../_fixtures/Look';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, useHasCustomerLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity } from '../../_textures/retarget';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { isWebRendering } from '../../_fixtures/ExportMode';
 
 export const SPOTLIGHT_HERO_CARD_DURATION = 172;
 
@@ -40,12 +42,25 @@ const BEAM_CORE = 'rgba(255,250,238,0.98)';
 const LAMP = '255,238,212'; // 钨丝暖白
 const PATCH = 'oklch(97.5% 0.008 82)';
 
-const PAGE_H = layout.projects.pageH;
 const MAIN = 3;
-const CARD = layout.projects.cards[MAIN];
-const MCX = CARD.x + CARD.w / 2; // ≈ 960
-const MCY = CARD.y + CARD.h / 2; // 772
 const RADIUS = 16;
+// The sample page's hero card: the anchor every authored number below is relative to.
+const SAMPLE_CARD = SAMPLE_LAYOUT.projects.cards[MAIN];
+const SAMPLE_MCX = SAMPLE_CARD.x + SAMPLE_CARD.w / 2; // ≈ 960
+const SAMPLE_MCY = SAMPLE_CARD.y + SAMPLE_CARD.h / 2; // 772
+
+/**
+ * The page this shot plays on: the hero card, the page height, and the similarity that carries the shot's authored
+ * composition (camera target and zoom, the 3D note beside the card) from the sample's hero card onto this page's.
+ * With the sample's layout the similarity is the identity and every number below is the original.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const CARD = layout.projects.cards[layout.projects.main ?? MAIN] ?? layout.projects.cards[0];
+  const sim = similarity(SAMPLE_CARD, CARD);
+  const target = sim.point(SAMPLE_MCX - 105, SAMPLE_MCY - 10);
+  return { CARD, PAGE_H: layout.projects.pageH, sim, target, zoomPush: sim.zoom(2.6) };
+};
+type Geometry = ReturnType<typeof geometryOf>;
 
 // —— 节拍 ——
 const LOCK = 34;
@@ -56,11 +71,11 @@ const RISE1 = 66;
 const RESEAT0 = 124;
 const LAND = 142;
 
-const CAM_KEYS: CamKey2D[] = [
+const camKeysOf = (g: Geometry): CamKey2D[] => [
   { frame: 0, cx: 960, cy: 600, zoom: 0.8, rotX: 0, rotY: 0, rotZ: 0, persp: 1200 },
   { frame: PUSH0, cx: 960, cy: 600, zoom: 0.8, rotX: 0, rotY: 0, rotZ: 0, persp: 1200 },
-  { frame: PUSH1, cx: MCX - 105, cy: MCY - 10, zoom: 2.6, rotX: 8, rotY: 34, rotZ: 2, persp: 1200 },
-  { frame: SPOTLIGHT_HERO_CARD_DURATION, cx: MCX - 105, cy: MCY - 10, zoom: 2.6, rotX: 8, rotY: 34, rotZ: 2, persp: 1200 },
+  { frame: PUSH1, cx: g.target.x, cy: g.target.y, zoom: g.zoomPush, rotX: 8, rotY: 34, rotZ: 2, persp: 1200 },
+  { frame: SPOTLIGHT_HERO_CARD_DURATION, cx: g.target.x, cy: g.target.y, zoom: g.zoomPush, rotX: 8, rotY: 34, rotZ: 2, persp: 1200 },
 ];
 const PUSH_EASE = Easing.bezier(0.35, 0, 0.2, 1);
 const POP_EASE = Easing.bezier(0.2, 1.25, 0.3, 1);
@@ -69,7 +84,7 @@ const RESEAT_EASE = Easing.bezier(0.4, 0, 0.3, 1.05);
 const clampOpt = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 
 // 页面相机的纯函数版（与 PageCam2D 同一套插值与 3D 坐标数学），供注记层复用同一台相机
-const camAt = (frame: number) => {
+const camAt = (frame: number, CAM_KEYS: CamKey2D[]) => {
   let a = CAM_KEYS[0];
   let b = CAM_KEYS[CAM_KEYS.length - 1];
   for (let i = 0; i < CAM_KEYS.length - 1; i++) {
@@ -79,14 +94,13 @@ const camAt = (frame: number) => {
   const m = (x?: number, y?: number) => (x ?? 0) + ((y ?? 0) - (x ?? 0)) * t;
   return { cx: m(a.cx, b.cx), cy: m(a.cy, b.cy), zoom: m(a.zoom, b.zoom), rotX: m(a.rotX, b.rotX), rotY: m(a.rotY, b.rotY), rotZ: m(a.rotZ, b.rotZ), persp: m(a.persp, b.persp) };
 };
-const NoteCam: React.FC<{ frame: number; children: React.ReactNode }> = ({ frame, children }) => {
-  const c = camAt(frame);
+const NoteCam: React.FC<{ frame: number; keys: CamKey2D[]; pageH: number; children: React.ReactNode }> = ({ frame, keys, pageH, children }) => {
+  const c = camAt(frame, keys);
   return (
     <AbsoluteFill style={{ overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', inset: 0, perspective: `${c.persp * c.zoom}px`, perspectiveOrigin: '960px 540px' }}>
+      <div style={{ position: 'absolute', inset: 0, ...(isWebRendering() ? {} : { perspective: `${c.persp * c.zoom}px`, perspectiveOrigin: '960px 540px' }) }}>
         <div style={{
-          position: 'absolute', width: 1920, height: PAGE_H, zoom: c.zoom, transformOrigin: `${c.cx}px ${c.cy}px`, transformStyle: 'preserve-3d',
-          transform: `translate(${960 / c.zoom - c.cx}px, ${540 / c.zoom - c.cy}px) rotateY(${c.rotY}deg) rotateX(${c.rotX}deg) rotateZ(${c.rotZ}deg)`,
+          position: 'absolute', width: 1920, height: pageH, ...cameraStageStyle(c),
         }}>
           {children}
         </div>
@@ -97,6 +111,13 @@ const NoteCam: React.FC<{ frame: number; children: React.ReactNode }> = ({ frame
 
 export const SpotlightHeroCard: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const customer = useHasCustomerLayout();
+  const { CARD, PAGE_H, sim } = React.useMemo(() => geometryOf(layout), [layout]);
+  const CAM_KEYS = React.useMemo(() => camKeysOf(geometryOf(layout)), [layout]);
+  // A customer page's own empty plate under the lifted card (never the sample's paper colour); the sample keeps its patch.
+  const plate = liveTexture('projects-empty.png');
+  const customerPlate = customer && plate !== staticFile('motion-studio/textures/live/projects-empty.png') && layout.source?.mapped.includes('plate');
 
   // --- 开灯：亮 → 回闪 → 稳（舞台灯推闸） ---
   const lamp = interpolate(frame, [1, 3, 4, 6], [0, 1, 0.62, 1], clampOpt);
@@ -184,7 +205,7 @@ export const SpotlightHeroCard: React.FC = () => {
           {slotVis > 0.02 || landPulse > 0.02 ? (
             <div style={{
               position: 'absolute', left: CARD.x - 2, top: CARD.y - 2, width: CARD.w + 4, height: CARD.h + 4, transform: 'translateZ(1.5px)',
-              background: slotVis > 0.02 ? PATCH : 'transparent', borderRadius: RADIUS,
+              ...(slotVis > 0.02 ? (customerPlate ? { backgroundImage: `url(${plate})`, backgroundSize: `1920px ${PAGE_H}px`, backgroundPosition: `-${CARD.x - 2}px -${CARD.y - 2}px` } : { background: customer ? layout.projects.bg ?? PATCH : PATCH }) : { background: 'transparent' }), borderRadius: RADIUS,
               boxShadow: `inset 0 0 26px rgba(150,110,40,${(0.14 * slotEdge).toFixed(3)})`, opacity: Math.max(slotVis, landPulse),
             }}>
               <div style={{ position: 'absolute', inset: 0, borderRadius: RADIUS, border: `1.5px solid ${GOLD}`, opacity: slotEdge, boxShadow: landPulse > 0.02 ? `0 0 ${(24 * landPulse).toFixed(1)}px ${alpha(GOLD, 0.8)}` : undefined }} />
@@ -198,7 +219,7 @@ export const SpotlightHeroCard: React.FC = () => {
           }}>
             <div style={{ position: 'absolute', inset: 0, borderRadius: RADIUS, overflow: 'hidden', boxShadow: landed ? 'none' : shadow }}>
               <Img src={liveTexture(CARD.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
-              <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', opacity: hiresIn }} />
+              <Img src={liveTexture(CARD.file.startsWith('crop:') ? CARD.file : 'card4-hires.png')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', opacity: hiresIn }} />
               {/* 悬浮时卡面受光：右上角暖光 → 左下渐暗 */}
               <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(200deg, rgba(${LAMP},0.35), rgba(${LAMP},0) 45%, rgba(20,16,10,0.08) 100%)`, opacity: lift, pointerEvents: 'none' }} />
             </div>
@@ -256,7 +277,9 @@ export const SpotlightHeroCard: React.FC = () => {
       </AbsoluteFill>
       {/* 注记层：与页面同一台相机（camAt 复刻 PageCam2D 的坐标数学），但画在灯光层之上——
           它是"自发光"的字，不被关灯的 multiply 压暗；暗色衬底负责把背后的邻卡字压下去 */}
-      <NoteCam frame={frame}>
+      <NoteCam frame={frame} keys={CAM_KEYS} pageH={PAGE_H}>
+        {/* The note is authored beside the SAMPLE card; on another page it follows that page's card (identity on the sample). */}
+        <div style={sim.identity ? undefined : { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: sim.css, transformStyle: 'preserve-3d' }}>
           {/* 3D 注记：卡左侧，同一 3D 空间、同一台相机；reseat 时一起落回页面 */}
           {frame >= 70 ? (
             <div style={{ transformStyle: 'preserve-3d', pointerEvents: 'none' }}>
@@ -287,6 +310,7 @@ export const SpotlightHeroCard: React.FC = () => {
               </div>
             </div>
           ) : null}
+        </div>
       </NoteCam>
       <Grain opacity={0.07} blend="soft-light" />
     </AbsoluteFill>
