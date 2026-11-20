@@ -22,6 +22,7 @@
 'use client'
 
 import { cutoutAssetIds } from './backgroundRemoval/useAutoCutout'
+import { ErrorView } from './RecoveryViews'
 import { RECAST_MAX_SECONDS } from './recast/recastJob'
 import { logoQualityNotes } from './logoScoring'
 import {
@@ -760,6 +761,7 @@ export default function PersonalizationModal() {
     generate,
     retry,
     generateAgain,
+    returnToEditing,
     retryBranding,
     result,
     resultTab,
@@ -1585,6 +1587,7 @@ export default function PersonalizationModal() {
               source={source}
               promptState={promptState}
               generateAgain={generateAgain}
+              returnToEditing={returnToEditing}
               retryBranding={retryBranding}
               outputType={outputType}
               setOutputType={setOutputType}
@@ -1602,7 +1605,7 @@ export default function PersonalizationModal() {
             <ErrorView
               errorMessage={generation.errorMessage}
               retry={generation.failedStage === 'prompt' ? handlePersonalize : retry}
-              generate={generate}
+              returnToEditing={returnToEditing}
               stage={generation.failedStage}
             />
           ) : personalizationInProgress ? (
@@ -1837,40 +1840,10 @@ function ProgressView({ status, progress, message }: { status: string; progress:
   )
 }
 
-function ErrorView({ errorMessage, retry, generate, stage }: { errorMessage: string | null; retry: () => void; generate: () => void; stage?: 'prompt' | 'generation' | 'research' | 'discovery' | 'upload' }) {
-  const retryLabel = stage === 'prompt' ? 'Retry Personalization' : stage === 'generation' ? 'Retry Generation' : stage === 'research' ? 'Retry Research' : stage === 'discovery' ? 'Retry Discovery' : stage === 'upload' ? 'Retry Upload' : 'Retry'
-  return (
-    <div className="px-6 py-16 text-center space-y-4">
-      <AlertTriangle size={40} style={{ color: C.danger }} className="mx-auto" />
-      <h3 className="text-lg font-bold text-white">We Could Not Complete This Personalization</h3>
-      <p className="text-sm text-white/60 max-w-md mx-auto">{errorMessage || 'An unexpected error occurred.'}</p>
-      <p className="text-xs text-white/40">Your client, assets, and settings have been preserved.</p>
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          onClick={retry}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
-          style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}
-        >
-          <RefreshCw size={14} /> {retryLabel}
-        </button>
-        {stage !== 'prompt' && (
-          <button
-            onClick={generate}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
-            style={{ background: C.cyan, color: '#041014' }}
-          >
-            Try Again
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 function ResultView(props: any) {
   const {
     result, resultTab, setResultTab, source, promptState,
-    generateAgain, retryBranding, outputType, setOutputType, download,
+    generateAgain, returnToEditing, retryBranding, outputType, setOutputType, download,
     editInImageStudio, editInVideoStudio, publish,
     sharedMediaCount, isVideo, eligibleModes, mode, setMode,
     canPublish = true, canEditInVideoStudio = true, publishNote = '',
@@ -1919,6 +1892,9 @@ function ResultView(props: any) {
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}>
               <RefreshCw size={14} /> Generate Again
             </button>
+            <button type="button" data-testid="pz-result-back-to-editing" onClick={returnToEditing} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
+              Back to editing
+            </button>
           </div>
         </div>
       )}
@@ -1953,6 +1929,9 @@ function ResultView(props: any) {
             )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again
+            </button>
+            <button type="button" data-testid="pz-result-back-to-editing" onClick={returnToEditing} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
+              Back to editing
             </button>
           </div>
         </div>
@@ -1992,6 +1971,9 @@ function ResultView(props: any) {
             )}
             <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
               <RefreshCw size={14} /> Generate Again
+            </button>
+            <button type="button" data-testid="pz-result-back-to-editing" onClick={returnToEditing} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 text-white hover:bg-white/5">
+              Back to editing
             </button>
           </div>
         </div>
