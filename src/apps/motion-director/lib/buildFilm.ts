@@ -14,7 +14,7 @@ import { CARD_FPS, type CardDef } from '../cards/types';
 import type { AspectRatio } from '../projectContract';
 import { t } from '../i18n';
 import type { BrandInput } from '../demosrc/_fixtures/Brand';
-import { uid, type ClipData, type ProjectData } from '../types';
+import { uid, type ClipData, type ProjectData, type TrackData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { isProductTextureShot } from './productShots';
 import { BRAND_SCENES, isBrandScene, type DirectorPlan, type SceneTransition } from './directorPlan';
@@ -34,6 +34,14 @@ export interface FilmCapture {
   /** Where the page's sections start (CSS px from the top of `screens[0]`) and its height; the insets show them one by one. */
   sections?: number[];
   pageH?: number;
+  /** The exact crop of each captured card (crop i is the picture of layout card i), kept apart from the film's mixed picture list. */
+  cardCrops?: string[];
+  /** The page with its cards hidden. */
+  emptyPlate?: string | null;
+  /** The customer's page geometry in the sample layout's shape (lib/customerLayout); only set when the page had enough real cards. */
+  liveLayout?: unknown;
+  /** The structured document DocumentTypewriterReveal types out (lib/documentContent), from the site's words or the person's text. */
+  document?: unknown;
   /** Section headings, best effort in page order, used as the inset labels. */
   sectionNames?: string[];
   /** The site's menu entries and calls to action: the nodes of the hub and the closing line. */
@@ -64,6 +72,37 @@ export interface FilmMusic {
 }
 
 const FPS = 30;
+/** Recipes that read the page's geometry (their layout comes from the capture, not the sample site). Grows as each is repaired and proven. */
+/** Recipes whose geometry was retargeted onto a customer's page, and the part of the layout each one reads. */
+export const LAYOUT_NEEDS: Readonly<Record<string, 'projects.cards' | 'detail.rows' | 'papers.cards5'>> = {
+  SpotlightHeroCard: 'projects.cards',
+  DeckDealFlyin: 'projects.cards',
+  RowEmbed: 'detail.rows',
+  CrashZoomReal: 'projects.cards',
+  CrashImpactReal: 'projects.cards',
+  MultiplaneReal: 'projects.cards',
+  TypeAndFilter: 'projects.cards',
+  FreezeAnnotateReal: 'projects.cards',
+  WhipBrakeReal: 'projects.cards',
+  OutroGroupPhotoLaunch: 'projects.cards',
+  ListStackPress: 'papers.cards5',
+  JumpCutPunchIn: 'projects.cards',
+};
+export const LAYOUT_RECIPES: ReadonlySet<string> = new Set(Object.keys(LAYOUT_NEEDS));
+/**
+ * Recipes that read the page's geometry but are NOT retargeted onto a customer's page, with why. They play as the sample demo
+ * (plus the framed inset of the site) instead of drawing the customer's pictures in the sample's boxes.
+ *  - DocumentTypewriterReveal: its technique is typing out a document's text blocks (headings, list items, two side rails and a list
+ *    of earlier issues). A capture has page rectangles, not that text structure, so the blocks cannot be mapped without inventing them.
+ */
+export const GEOMETRY_UNMAPPED: Readonly<Record<string, string>> = {
+  DocumentTypewriterReveal: 'its document layout (text blocks, side rails, issue list) is not part of a page capture: it is fed a structured document (lib/documentContent) made from the site\'s words or the person\'s text instead, and refused when there is too little text',
+};
+/** The layout is handed to a recipe only when the capture really contains what that recipe reads. */
+const layoutFits = (stem: string, layout: unknown) => {
+  const source = (layout as { source?: { mapped?: string[] } } | undefined)?.source;
+  return !source || Boolean(source.mapped?.includes(LAYOUT_NEEDS[stem])); // no `source` = the sample's own layout
+};
 const SEAM_LABEL: Record<SeamKind, string> = { flash: 'Push-in flash', whip: 'Whip-pan', window: 'Through the window', wipe: 'Wipe', barn: 'Barn door', push: 'Bottom push', iris: 'Iris', ink: 'Ink bleed', portal: 'Portal', line: 'Line carry', dip: 'Dip', leak: 'Light leak', glitch: 'Glitch' };
 /** Sound effects served from public/ (the ShotCraft SFX library: real-object and film-vocabulary sounds only, sound-design S1). */
 /**
@@ -113,14 +152,23 @@ export const sfxGain = (name: string): number => {
   return Math.min(5, Math.round(10 ** ((-8 - db) / 20) * 100) / 100);
 };
 
-const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string } = {}): ClipData => {
+/** Why a cue exists: the cinematic action it belongs to and the frame that action lands on (sound is tied to motion, never scattered). */
+export interface SoundIntent {
+  action: 'whoosh' | 'impact' | 'riser' | 'sparkle' | 'stamp' | 'type' | 'hit';
+  anchor: 'cut' | 'landing' | 'reveal' | 'finale' | 'title';
+  /** The frame the action lands on (the cue's peak is pinned to it). */
+  frame: number;
+  /** Required: a planned action that must have its sound. Optional: an accent that may be dropped without harm. */
+  need: 'required' | 'optional';
+}
+const pinSfx = (name: string, peakFrame: number, o: { tailMs?: number; volume?: number; label?: string; intent?: Omit<SoundIntent, 'frame'> } = {}): ClipData => {
   const lag = peakLagF(name);
   const raw = peakFrame - lag - OUTPUT_AUDIO_OFFSET_F;
   const start = Math.max(0, Math.round(raw));
   const trim = raw < 0 ? Math.round(-raw) : 0;
   const frames = Math.max(2, Math.ceil(((o.tailMs ?? 700) / 1000) * FPS + (lag - trim)));
   const whole = Math.ceil(((SFX_PEAKS[name]?.durationMs ?? 60_000) / 1000) * FPS) - trim;
-  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100 }, { label: o.label, inOffset: trim });
+  return clip('audio-clip', start, Math.min(frames, whole), { file: sfxFile(name), volume: Math.round((o.volume ?? 0.6) * sfxGain(name) * 100) / 100, ...(o.intent ? { intent: { ...o.intent, frame: peakFrame } } : {}) }, { label: o.label, inOffset: trim });
 };
 /** Frame of the closing scene where the impact lands (see BRAND_SOUNDS). */
 const LOGO_IMPACT_F = 12;
@@ -129,7 +177,7 @@ const LOGO_IMPACT_F = 12;
  * (scripts/gen-riser.py, public/motion-studio/sfxlib/riser), pinned by its peak, which is the last
  * moment of the file, to the frame just before the impact lands.
  */
-const riserBuild = (impactFrame: number): ClipData => pinSfx('riser/riser-rise-build', impactFrame - 1, { tailMs: 60, volume: 0.6, label: 'Build' });
+const riserBuild = (impactFrame: number): ClipData => pinSfx('riser/riser-rise-build', impactFrame - 1, { tailMs: 60, volume: 0.6, label: 'Build', intent: { action: 'riser', anchor: 'finale', need: 'required' } });
 /** Sound cues of each brand scene: [file, peak frame after the scene starts, tail after the peak (ms), volume, label]. Typing is a run of single key hits. */
 type Cue = readonly [string, number, number, number, string];
 const BRAND_SOUNDS: Record<string, ReadonlyArray<Cue>> = {
@@ -245,6 +293,20 @@ function withClosingScene(plan: DirectorPlan, opts: { brand?: BrandInput | null;
   return { scenes, seconds };
 }
 
+/**
+ * Scenes of a plan whose recipe cannot be drawn (not in the catalog, or its card is not registered). The build
+ * shows each as a title card instead of dropping it, and callers use this list to say so.
+ */
+export function unresolvedScenes(plan: DirectorPlan): Array<{ index: number; recipeId: string; headline: string }> {
+  const out: Array<{ index: number; recipeId: string; headline: string }> = [];
+  plan.scenes.forEach((scene, index) => {
+    if (scene.kind === 'title' || isBrandScene(scene.recipeId)) return;
+    const template = resolveMotionTemplate(scene.recipeId);
+    if (!template || !CARDS[motionCardId(template)]) out.push({ index, recipeId: scene.recipeId, headline: scene.headline });
+  });
+  return out;
+}
+
 const rotated = <T,>(list: T[], by: number): T[] => (list.length > 1 ? [...list.slice(by % list.length), ...list.slice(0, by % list.length)] : list);
 
 export function planToProject(
@@ -297,7 +359,8 @@ const INSET_PAGE_H = 1200;
     if (kind !== 'cut') seams.push({ at, kind, n: wipeIndex });
     const pair = SEAM_SOUNDS[kind] ?? SEAM_SOUNDS.cut;
     const turn = (soundTurn[kind] = (soundTurn[kind] ?? -1) + 1);
-    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh' }));
+    // A hit (flash/glitch) or a styled seam (whip, wipe, push...) is a planned action with a required sound; a plain cut's whoosh is an optional accent.
+    sfx.push(pinSfx(pair[turn % 2], at, { tailMs: hit ? 900 : 500, volume: 0.6, label: hit ? 'Impact' : 'Whoosh', intent: { action: hit ? 'impact' : 'whoosh', anchor: 'cut', need: kind === 'cut' ? 'optional' : 'required' } }));
   };
   let wipes = 0;
 
@@ -312,8 +375,13 @@ const INSET_PAGE_H = 1200;
       }
     }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
-    if (scene.kind === 'title') {
-      sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp' }));
+    // A recipe that cannot be drawn is shown as a title card, never dropped: the film keeps its length, seams and sound.
+    const undrawable = scene.kind !== 'title' && !isBrandScene(scene.recipeId) && (() => {
+      const found = resolveMotionTemplate(scene.recipeId);
+      return !found || !CARDS[motionCardId(found)];
+    })();
+    if (scene.kind === 'title' || undrawable) {
+      sfx.push(pinSfx('text/typewriter-hit-soft', at + 8, { tailMs: 250, volume: 0.4, label: 'Stamp', intent: { action: 'stamp', anchor: 'title', need: 'optional' } }));
       shots.push(
         clip('inkpress-title-card', at, frames, {
           text: scene.headline,
@@ -359,7 +427,7 @@ const INSET_PAGE_H = 1200;
       const url = String(props.url ?? '');
       const cues = [...(scene.recipeId === 'brand/url-scan' ? typingCues(url.length) : []), ...(BRAND_SOUNDS[scene.recipeId] ?? [])];
       for (const [file, peak, tail, volume, label] of cues) {
-        if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label }));
+        if (peak < frames) sfx.push(pinSfx(file, at + peak, { tailMs: Math.min(tail, ((frames - peak) / FPS) * 1000 + 200), volume, label, intent: { action: /impact|boom|hit/i.test(`${file}${label ?? ''}`) ? 'impact' : /sparkle|chime|shine/i.test(`${file}${label ?? ''}`) ? 'sparkle' : /type|key/i.test(`${file}${label ?? ''}`) ? 'type' : 'whoosh', anchor: 'reveal', need: 'optional' } }));
       }
       if (scene.recipeId === 'brand/logo-reveal') sfx.push(riserBuild(at + LOGO_IMPACT_F));
       shots.push(clip(BRAND_SCENES[scene.recipeId].cardId, at, frames, props, { label: BRAND_SCENES[scene.recipeId].title }));
@@ -367,15 +435,19 @@ const INSET_PAGE_H = 1200;
       const template = resolveMotionTemplate(scene.recipeId);
       const cardId = template ? motionCardId(template) : '';
       const card = CARDS[cardId];
-      if (!template || !card) return;
-      const usesCapture = isProductTextureShot(template.componentName) && (screens.length > 0 || crops.length > 0);
+      if (!template || !card) return; // unreachable: undrawable scenes took the title-card branch above
+      const usesCapture = isProductTextureShot(template.componentName) && !(template.componentName in GEOMETRY_UNMAPPED) && (screens.length > 0 || crops.length > 0 || Boolean(opts.capture?.liveLayout));
+      const documentProps = template.componentName === 'DocumentTypewriterReveal' && opts.capture?.document ? { documentContent: opts.capture.document } : {};
       shots.push(
         // Shots carry their own typography; the headline goes in the caption
         // strip rather than over the shot.
         clip(cardId, at, frames, {
           accent: palette.accent,
+          ...documentProps,
           // Each repeat of a recipe starts further along the site's pictures, so scenes do not show the same crops.
           // Shots that draw their own sample UI carry the scene's pictures too, for the shot adapter (lib/adaptLoop).
+          // Shots that read the page's geometry get the customer's own (the sample's boxes would put the pictures in the wrong places).
+          ...(usesCapture && opts.capture?.liveLayout && LAYOUT_RECIPES.has(template.componentName) && layoutFits(template.componentName, opts.capture.liveLayout) ? { liveLayout: opts.capture.liveLayout, cardCrops: opts.capture.cardCrops ?? [], ...(opts.capture.emptyPlate ? { emptyPlate: opts.capture.emptyPlate } : {}) } : {}),
           ...(!usesCapture && opts.capture?.scenes?.[i]?.crops.length ? { scenePictures: { screens: opts.capture.scenes[i]!.screens.slice(0, 3), crops: opts.capture.scenes[i]!.crops } } : {}),
           ...(usesCapture
             ? opts.capture?.scenes?.[i]?.crops.length
@@ -437,7 +509,7 @@ const INSET_PAGE_H = 1200;
   }
 
   const total = Math.max(at, FPS);
-  const tracks = [
+  const tracks: TrackData[] = [
     { id: uid('track'), name: t('track.transitions'), clips: flashes },
     { id: uid('track'), name: t('track.captions'), clips: captions },
     { id: uid('track'), name: 'Site', clips: insets },
@@ -449,6 +521,7 @@ const INSET_PAGE_H = 1200;
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
+      role: 'music' as const,
       // Music sits under the SFX at about a third of full volume, with a 1 s fade in and a 1.7 s fade out (sound-design 3).
       clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 50, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
     });

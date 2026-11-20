@@ -25,7 +25,8 @@
 //   108–131 hold 24f：极缓推近 1→1.015 + 光的呼吸，尾帧是一张完整海报
 import React from 'react';
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity } from '../../_textures/retarget';
 import { Dust, LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { EASE, FONT, Vignette, mix, ramp, softShadow } from '../../_fixtures/Polish';
 import { BRAND, PITCH } from '../../_fixtures/Brand';
@@ -35,27 +36,50 @@ import { blurSamples } from '../../_fixtures/ExportMode';
 export const CRASHZOOM_DUR = 132;
 
 const L = LOOKS.ember;
-const CARD = layout.projects.cards[3];
-const TARGET = { cx: CARD.x + CARD.w / 2, cy: CARD.y + CARD.h / 2 }; // ≈ (960, 772) 页面坐标
-const CARD_R = 8.5; // 截图里卡片圆角（页面 px）
+const SAMPLE_CARD = SAMPLE_LAYOUT.projects.cards[3];
 
 // 浏览器窗口在页面坐标里的取景（页面 1920 宽，内容区 408–1512）：左右各留一截页边，
 // 底边取到 1060 —— 特写时窗口下沿必须在画外（2.34x 下约落在屏幕 y≈1220）
-const WIN = { x: 220, y: 0, w: 1480, h: 1060 };
+const SAMPLE_WIN = { x: 220, y: 0, w: 1480, h: 1060 };
 const CHROME = 54; // 窗口标题栏高（页面 px）
 const WIN_R = 18;
-const WIN_C = { x: WIN.x + WIN.w / 2, y: (WIN.y - CHROME + WIN.y + WIN.h) / 2 }; // 窗口几何中心
+
+/**
+ * The page this shot plays on: the target card, the browser window around it, and the zooms that frame the card the way the
+ * authored 2.34x framed the sample's card. With the sample's layout every number is the original.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const cards = layout.projects.cards;
+  const CARD = customer ? cards[layout.projects.main ?? 0] : SAMPLE_LAYOUT.projects.cards[3];
+  const sim = similarity(SAMPLE_CARD, CARD);
+  const PAGE_H = layout.projects.pageH;
+  // The window shows the page from its top down past the card (the sample's window ends 300px under its card).
+  const winH = customer ? Math.min(PAGE_H, Math.max(SAMPLE_WIN.h, CARD.y + CARD.h + 300)) : SAMPLE_WIN.h;
+  const WIN = { ...SAMPLE_WIN, h: winH };
+  return {
+    customer,
+    CARD,
+    PAGE_H,
+    WIN,
+    TARGET: { cx: CARD.x + CARD.w / 2, cy: CARD.y + CARD.h / 2 },
+    WIN_C: { x: WIN.x + WIN.w / 2, y: (WIN.y - CHROME + WIN.y + WIN.h) / 2 },
+    PEAK: sim.zoom(2.48),
+    REST: sim.zoom(2.34),
+    CARD_R: sim.len(8.5),
+  };
+};
+type Geo = ReturnType<typeof geometryOf>;
 
 const PUSH = 40; // 急推起点
 const HIT = 46; // 到位帧（6f 急推）
-const PEAK = 2.48; // 急推冲到的峰值（比落定高 6%，卡片参数表"回弹幅度 3–6%"的上沿）
-const REST = 2.34; // 回弹后落定倍率（卡片 ≈ 836×730，占画高 68%）
 const SHIFT = 56; // 跟随左移起点（回弹在 ~56f 已收干）
 const CARD_X_END = 640; // 跟随后卡片中心的屏幕 x
 
 // 相机：zoom（页面 px → 屏幕 px）、目标卡中心的屏幕位置 sx/sy、后仰角 tilt。
 // 用"目标卡屏幕位置"而不是相机中心做插值：急推时目标单调地收向画面中心，不会先甩出去再回来。
-const camAt = (f: number) => {
+const camAt = (f: number, g: Geo) => {
+  const { TARGET, WIN_C, PEAK, REST } = g;
   const settle = ramp(f, 0, 34, EASE.smooth);
   const wind = ramp(f, 34, 6, EASE.smooth);
   const z0 = mix(0.7, 0.72, settle) * mix(1, 0.96, wind);
@@ -83,8 +107,9 @@ const camAt = (f: number) => {
 };
 
 // 一个相机姿态下的整个世界（窗口 + 页面 + 角标），给运动模糊子帧复用
-const World: React.FC<{ f: number; lift: number; lock: number; breath: number }> = ({ f, lift, lock, breath }) => {
-  const { zoom, sx, sy, tilt } = camAt(f);
+const World: React.FC<{ f: number; lift: number; lock: number; breath: number; g: Geo }> = ({ f, lift, lock, breath, g }) => {
+  const { CARD, TARGET, WIN, CARD_R } = g;
+  const { zoom, sx, sy, tilt } = camAt(f, g);
   const tx = sx - TARGET.cx * zoom;
   const ty = sy - TARGET.cy * zoom;
   // 角标：外扩量由锁定进度与预备呼吸决定；线宽按 zoom 反算，屏幕上恒定 3px
@@ -114,7 +139,7 @@ const World: React.FC<{ f: number; lift: number; lock: number; breath: number }>
               </div>
             </div>
             <div style={{ position: 'absolute', left: 0, top: CHROME, width: WIN.w, height: WIN.h, overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: -WIN.x, top: -WIN.y, width: 1920, height: layout.projects.pageH }}>
+              <div style={{ position: 'absolute', left: -WIN.x, top: -WIN.y, width: 1920, height: g.PAGE_H }}>
                 <Img src={liveTexture('projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
                 {/* 点名：卡片外一圈极大 spread 的影子当遮罩，周边压成暖黑；目标卡生出浮起影 */}
                 {lift > 0.001 && (
@@ -126,7 +151,7 @@ const World: React.FC<{ f: number; lift: number; lock: number; breath: number }>
                   />
                 )}
                 {/* 高清目标卡覆盖原位，放大后文字仍锐（Q2） */}
-                <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
+                <Img src={liveTexture(g.customer ? CARD.file : 'card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
                 {/* 轮廓光：主角唯一的光效，贴着圆角走（Q4） */}
                 {lift > 0.001 && (
                   <div
@@ -164,15 +189,15 @@ const World: React.FC<{ f: number; lift: number; lock: number; breath: number }>
 // 快门窗口内等权叠加：第 i 层不透明度 1/(i+1)，逐层 over 合成后恰为算术平均。
 // 子帧数按本帧位移自适应：画面边缘在快门窗口内走过的像素 / 6px，封顶 44。
 const SHUTTER = 0.55; // 帧（≈200° 快门）
-const samplesAt = (f: number) => {
-  const a = camAt(f), b = camAt(f - SHUTTER);
+const samplesAt = (f: number, g: Geo) => {
+  const a = camAt(f, g), b = camAt(f - SHUTTER, g);
   const edge = Math.abs(a.zoom - b.zoom) * 1100 + Math.hypot(a.sx - b.sx, a.sy - b.sy) + Math.abs(a.tilt - b.tilt) * 30;
   return blurSamples(Math.max(1, Math.min(44, Math.ceil(edge / 6))));
 };
 // 子帧间距（屏幕 px）→ 每层补一点各向同性模糊，把离散回波抹成连续拖影（页面小字只有 ~14px 高，
 // 回波间距 6px 时肉眼仍能数出层数）
-const smearAt = (f: number, n: number) => {
-  const a = camAt(f), b = camAt(f - SHUTTER);
+const smearAt = (f: number, n: number, g: Geo) => {
+  const a = camAt(f, g), b = camAt(f - SHUTTER, g);
   const edge = Math.abs(a.zoom - b.zoom) * 1100 + Math.hypot(a.sx - b.sx, a.sy - b.sy);
   // 只在真正的高速帧补：位移 <60px 不补（否则慢段整体发虚），≥260px 补满
   const fast = Math.min(1, Math.max(0, (edge - 60) / 200));
@@ -181,6 +206,9 @@ const smearAt = (f: number, n: number) => {
 
 export const CrashZoomReal: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const g = React.useMemo(() => geometryOf(layout), [layout]);
+  const { CARD } = g;
   const lock = ramp(frame, 14, 16, EASE.snappy);
   const breath = ramp(frame, 34, 6, EASE.smooth) * (1 - ramp(frame, PUSH, 4, EASE.exit));
   const lift = ramp(frame, HIT + 1, 16, EASE.out);
@@ -189,14 +217,14 @@ export const CrashZoomReal: React.FC = () => {
   const vig = 0.1 + 0.3 * ramp(frame, PUSH, HIT - PUSH, EASE.exit) - 0.36 * ramp(frame, HIT, 18, EASE.out);
   // 舞台在急推后几乎被窗口盖满；全景时它负责"产品在舞台上"
   const wideFade = 1 - ramp(frame, PUSH, HIT - PUSH, EASE.exit);
-  const n = frame >= PUSH && frame <= HIT + 1 ? samplesAt(frame) : 1;
-  const smear = n > 1 ? smearAt(frame, n) : 0;
+  const n = frame >= PUSH && frame <= HIT + 1 ? samplesAt(frame, g) : 1;
+  const smear = n > 1 ? smearAt(frame, n, g) : 0;
   const callout = frame >= 58;
   // A company's film (setBrand with a site): the readout speaks the company's own words.
   const company = BRAND.name !== 'SmartVideo GO';
   const scrim = ramp(frame, 58, 14, EASE.out);
   // 右栏压暗的起点跟着卡片右缘走（卡右缘 + 70px），永远不压到主角身上
-  const cam = camAt(frame);
+  const cam = camAt(frame, g);
   const scrimX = cam.sx + (CARD.w / 2) * cam.zoom + 70;
   return (
     <Stage look={L} keyLight={{ x: 0.5, y: 0.0 }} fill={{ x: 0.5, y: 1.05 }} horizon={0.86} intensity={0.9} breathe={0.5} vignette={mix(0.1, 0.5, wideFade)}>
@@ -210,11 +238,11 @@ export const CrashZoomReal: React.FC = () => {
       {n > 1 ? (
         Array.from({ length: n }, (_, i) => (
           <AbsoluteFill key={i} style={{ opacity: 1 / (i + 1), filter: smear > 0.3 ? `blur(${smear.toFixed(2)}px)` : undefined }}>
-            <World f={frame - (SHUTTER * i) / (n - 1)} lift={lift} lock={lock} breath={breath} />
+            <World f={frame - (SHUTTER * i) / (n - 1)} lift={lift} lock={lock} breath={breath} g={g} />
           </AbsoluteFill>
         ))
       ) : (
-        <World f={frame} lift={lift} lock={lock} breath={breath} />
+        <World f={frame} lift={lift} lock={lock} breath={breath} g={g} />
       )}
 
       {/* 到位帧暖色曝光闪：以目标卡为中心，8f 指数衰减 */}

@@ -5,6 +5,8 @@ import { useT } from './i18n';
 import { useSocialPublish } from '@/components/SocialPublishProvider';
 import { storeFile } from './lib/mediaUpload';
 import { useStore } from './store';
+import { isMusicTrack } from './types';
+import { explainExportProblem } from './lib/exportErrors';
 import { estimateExportSec } from './lib/exportCost';
 import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
@@ -20,6 +22,8 @@ type JobState = {
 };
 
 const EXPORT_EVENT = 'motion-studio:export';
+/** Fired when the toolbar has rendered an MP4; the film chat listens so its Deliver step is not left waiting. */
+export const FILM_EXPORTED_EVENT = 'motion-director:film-exported';
 
 /** Start an MP4 export from elsewhere in the studio (the Agent chat's "render the MP4"). */
 export const requestExport = () => {
@@ -74,7 +78,7 @@ const ExportButton: React.FC = () => {
       console.log('[motion-studio:export] canRender result', JSON.stringify({ canRender: canRenderResult.canRender, issues: canRenderResult.issues, resolvedVideoCodec: canRenderResult.videoCodec, resolvedAudioCodec: canRenderResult.audioCodec }));
     } catch (e) {
       console.error('[motion-studio:export] canRender threw', e);
-      window.alert(t('export.startFailed') + ': ' + (e instanceof Error ? e.message : String(e)));
+      setJob({ id: 'check', status: 'error', progress: 0, filename: project.name, error: explainExportProblem(e) });
       return;
     }
 
@@ -83,50 +87,53 @@ const ExportButton: React.FC = () => {
         ? canRenderResult.issues.join(', ')
         : 'This browser cannot encode MP4 in this configuration.';
       console.error('[motion-studio:export] canRender=false', detail);
-      window.alert(t('export.startFailed') + ': ' + detail);
+      setJob({ id: 'check', status: 'error', progress: 0, filename: project.name, error: explainExportProblem(canRenderResult.issues.length ? canRenderResult.issues : detail) });
       return;
     }
 
     // Generate a fake ID for tracking (not really needed, but we keep the state structure)
     const id = Math.random().toString(36).substring(2, 9);
     setJob({ id, status: 'queued', progress: 0, filename: project.name });
-    abortControllerRef.current = new AbortController();
+    // Captured per run: stopRendering() nulls the shared ref, so the outcome below must read this local one.
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     // The render runs in this tab: closing or reloading it cancels the export.
     const releaseGuard = guardTabWhileRendering();
 
     try {
       const result = await renderVideoOnWeb({
         // Only the music bed goes; sound effects and video sound stay.
-        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
+        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => !isMusicTrack(track)) } : project,
         videoCodec: canRenderResult.videoCodec,
         audioCodec: canRenderResult.audioCodec,
         scale: draft ? 2 / 3 : 1,
         onProgress: (progress, info) => {
-          if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          if (!controller.signal.aborted) {
             setJob((prev) => (prev ? { ...prev, progress, etaMs: info?.etaMs ?? null, status: 'running' } : null));
           }
         },
-        signal: abortControllerRef.current.signal,
+        signal: controller.signal,
       });
 
-      // If we get here, the render completed successfully
-      if (!abortControllerRef.current?.signal.aborted) {
+      // A render that resolves after the user cancelled is discarded, not marked done.
+      if (!controller.signal.aborted) {
         setJob((prev) => (prev ? { ...prev, status: 'done', progress: 1, blob: result.blob } : null));
+        // The chat's Deliver step turns done when an MP4 exists, wherever it was rendered from.
+        window.dispatchEvent(new Event(FILM_EXPORTED_EVENT));
       }
     } catch (e) {
-      // If the render was aborted, we don't show an error
-      if (abortControllerRef.current?.signal.aborted) {
+      // A cancelled render is not a failure: no alert, just the cancelled state.
+      if (controller.signal.aborted) {
         console.log('[motion-studio:export] cancelled by user');
-        setJob((prev) => (prev ? { ...prev, status: 'error', error: 'Render cancelled.' } : null));
+        setJob((prev) => (prev ? { ...prev, status: 'error', error: t('export.cancelled') } : null));
       } else {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('[motion-studio:export] render failed', e);
-        window.alert(t('export.startFailed') + ': ' + msg);
-        setJob((prev) => (prev ? { ...prev, status: 'error', error: msg } : null));
+        setJob((prev) => (prev ? { ...prev, status: 'error', error: explainExportProblem(e) } : null));
       }
     } finally {
       releaseGuard();
-      abortControllerRef.current = null;
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
   };
 
@@ -230,13 +237,12 @@ const ExportButton: React.FC = () => {
   }
   if (job?.status === 'error') {
     return (
-      <button
-        className="btn danger"
-        title={job.error}
-        onClick={start}
-      >
-        {t('export.failedRetry')}
-      </button>
+      <>
+        <span className="text-xs" style={{ color: '#fca5a5', maxWidth: 360 }} role="alert" data-testid="export-error">{job.error}</span>
+        <button className="btn danger" title={job.error} onClick={start}>
+          {t('export.failedRetry')}
+        </button>
+      </>
     );
   }
   // A ranking of how heavy the film's shots are to draw, scaled to the draft size when chosen.

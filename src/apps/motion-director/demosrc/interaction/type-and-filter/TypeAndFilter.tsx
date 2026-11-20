@@ -14,49 +14,73 @@
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { SpeedBlur, velocity } from '../../_fixtures/Polish';
-import layout from '../../_textures/live-layout.json';
+import React from 'react';
+import { SAMPLE_LAYOUT, useLiveLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
+import { similarity } from '../../_textures/retarget';
+import { SlotPatches } from '../../_textures/SlotPatches';
 import { liveTexture } from '../../_fixtures/liveTexture';
+import { BRAND } from '../../_fixtures/Brand';
 
 export const TYPE_AND_FILTER_DURATION = 73; // 118–190f 落在 shot 内 offset 0
 
-const PAGE_H = layout.projects.pageH;
-const cards = layout.projects.cards;
 const PAPER = '#f9f6f1';
 const FIELD = '#fefcf9';
 const AMBER = 'oklch(58% 0.13 65)';
 const AMBER_RGB = '176,116,40'; // AMBER 的近似 sRGB，用于半透明辉光
-const QUERY = 'nano-lab';
+const SAMPLE_QUERY = 'nano-lab';
 const TYPE_START = 10; // 118 - 118 = 0 偏移基准：scene-local 从 118 起
 const FILTER_START = 42; // 160 - 118
 const CLICK = 58; // 176 - 118
 
-// search box (page-space CSS px)
-const SEARCH = { x: 408, y: 130, w: 1016, h: 44 };
+// The sample's composition, in its page coordinates: search box, first-row slot, click point, pointer start.
+const SAMPLE_SEARCH = { x: 408, y: 130, w: 1016, h: 44 };
+const SAMPLE_NANO_TITLE = 'nano-lab';
+const SAMPLE_FIRST = SAMPLE_LAYOUT.projects.cards[0];
+const SAMPLE_TO = { x: 408, y: 247 }; // first-row slot
+const SAMPLE_CLICK = { x: 586, y: 391 }; // click point on the settled result card
+const SAMPLE_PTR = { x: 1210, y: 214 };
 
-// nano-lab target card (the one that filters to row one)
-const NANO_TITLE = 'nano-lab';
-const nanoIdx = cards.findIndex((c) => c.title.includes(NANO_TITLE));
-const nano = cards[nanoIdx];
-const NANO_TO = { x: 408, y: 247 }; // first-row slot
-const CLICK_C = { x: 586, y: 391 }; // click point on the settled result card
+/**
+ * The page this shot plays on. The filtered card is the sample's "nano-lab" card, or the customer's hero card; it slides
+ * to the first slot of the customer's grid; the search field, the pointer and the camera keys follow the grid through a
+ * similarity from the sample's first card to the customer's (identity for the sample, so its numbers are the original).
+ * The capture has no search field to find, so on a customer's page the field is drawn above the grid, where a search box sits.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const cards = layout.projects.cards;
+  const nanoIdx = customer ? Math.min(layout.projects.main ?? 0, cards.length - 1) : cards.findIndex((c) => c.title.includes(SAMPLE_NANO_TITLE));
+  const nano = cards[nanoIdx];
+  const first = cards[0];
+  const sim = similarity(SAMPLE_FIRST, first);
+  const NANO_TO = customer ? { x: first.x, y: first.y } : SAMPLE_TO;
+  const gridW = Math.max(...cards.map((c) => c.x + c.w)) - first.x;
+  const SEARCH = customer
+    ? { x: first.x, y: Math.max(70, first.y - sim.len(SAMPLE_TO.y - SAMPLE_SEARCH.y)), w: Math.round(gridW * (SAMPLE_SEARCH.w / 1104)), h: sim.len(SAMPLE_SEARCH.h) }
+    : SAMPLE_SEARCH;
+  const CLICK_C = customer ? { x: first.x + first.w / 2 - sim.len(0.5), y: first.y + first.h / 2 - sim.len(12) } : SAMPLE_CLICK;
+  const PTR_FROM = customer ? { x: SEARCH.x + sim.len(SAMPLE_PTR.x - SAMPLE_SEARCH.x), y: SEARCH.y + sim.len(SAMPLE_PTR.y - SAMPLE_SEARCH.y) } : SAMPLE_PTR;
+  const leaveRank = new Map<number, number>();
+  cards.forEach((_, i) => { if (i !== nanoIdx) leaveRank.set(i, leaveRank.size); });
+  // camera: 打字段贴近搜索框 → 打完的呼吸位拉开到满幅全景（过滤/滑位全程可见）→ 推进点击卡
+  const near = customer ? { cx: SEARCH.x + sim.len(820 - SAMPLE_SEARCH.x), cy: SEARCH.y + sim.len(270 - SAMPLE_SEARCH.y) } : { cx: 820, cy: 270 };
+  const CAM_KEYS: CamKey2D[] = [
+    { frame: 0, ...near, zoom: sim.zoom(2.0) },
+    { frame: 34, ...near, zoom: sim.zoom(2.0) },
+    { frame: 46, cx: 960, cy: 540, zoom: 1.0 },
+    { frame: 56, cx: 960, cy: 540, zoom: 1.0 },
+    { frame: 72, cx: CLICK_C.x, cy: CLICK_C.y, zoom: sim.zoom(2.2) },
+  ];
+  // What is typed: the sample's query, or the customer's own name (the caps keep the typing's 3f rhythm).
+  const brand = BRAND.name !== 'SmartVideo GO' ? BRAND.name.split(/\s+/)[0].slice(0, 8).toLowerCase() : '';
+  const QUERY = customer && brand ? brand : SAMPLE_QUERY;
+  return { customer, cards, PAGE_H: layout.projects.pageH, nanoIdx, nano, NANO_TO, CLICK_C, SEARCH, PTR_FROM, leaveRank, CAM_KEYS, QUERY, k: sim.k };
+};
+type Geo = ReturnType<typeof geometryOf>;
 
-// filter departure rank for the non-target cards (reading order)
-const leaveRank = new Map<number, number>();
-cards.forEach((_, i) => {
-  if (i !== nanoIdx) leaveRank.set(i, leaveRank.size);
-});
-
-// camera: 打字段贴近搜索框 → 打完的呼吸位拉开到满幅全景（过滤/滑位全程可见）→ 推进点击卡
-const CAM_KEYS: CamKey2D[] = [
-  { frame: 0, cx: 820, cy: 270, zoom: 2.0 },
-  { frame: 34, cx: 820, cy: 270, zoom: 2.0 },
-  { frame: 46, cx: 960, cy: 540, zoom: 1.0 },
-  { frame: 56, cx: 960, cy: 540, zoom: 1.0 },
-  { frame: 72, cx: CLICK_C.x, cy: CLICK_C.y, zoom: 2.2 },
-];
 // 与 PageCam2D 同一缓动/插值，求当前 zoom（指针做反向缩放，保持屏幕尺寸恒定）
 const CAM_EASE = Easing.bezier(0.33, 0, 0.15, 1);
-const camZoom = (f: number) => {
+const camZoom = (f: number, CAM_KEYS: CamKey2D[]) => {
   for (let i = 0; i < CAM_KEYS.length - 1; i++) {
     const a = CAM_KEYS[i];
     const b = CAM_KEYS[i + 1];
@@ -69,18 +93,22 @@ const camZoom = (f: number) => {
 };
 
 // 指针路径（页面坐标）：全景落定时停在搜索框右下，46–57f 带弧线滑到点击点
-const PTR_FROM = { x: 1210, y: 214 };
-const ptrAt = (f: number) => {
+const ptrAt = (f: number, g: Geo) => {
   const t = interpolate(f, [46, 57], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.45, 0, 0.2, 1) });
-  const arc = Math.sin(t * Math.PI) * 60; // 向下鼓一点的弧，不走死直线
+  const arc = Math.sin(t * Math.PI) * 60 * g.k; // 向下鼓一点的弧，不走死直线
   return {
-    x: PTR_FROM.x + (CLICK_C.x - PTR_FROM.x) * t,
-    y: PTR_FROM.y + (CLICK_C.y - PTR_FROM.y) * t + arc,
+    x: g.PTR_FROM.x + (g.CLICK_C.x - g.PTR_FROM.x) * t,
+    y: g.PTR_FROM.y + (g.CLICK_C.y - g.PTR_FROM.y) * t + arc,
   };
 };
 
 export const TypeAndFilter: React.FC = () => {
   const frame = useCurrentFrame();
+  const layout = useLiveLayout();
+  const g = React.useMemo(() => geometryOf(layout), [layout]);
+  const { customer, cards, PAGE_H, nanoIdx, nano, NANO_TO, CLICK_C, SEARCH, leaveRank, CAM_KEYS, QUERY, k } = g;
+  const hasPlate = Boolean(layout.source?.mapped.includes('plate'));
+  const pageSrc = customer && !hasPlate ? 'motion-studio/textures/live/projects-full.png' : 'motion-studio/textures/live/projects-empty.png';
 
   // typed chars: one every 3 frames (unhurried)
   const typedCount =
@@ -96,10 +124,10 @@ export const TypeAndFilter: React.FC = () => {
   });
 
   // 指针：全景落定前淡入，点击后在推进中淡出（交棒帧画面干净）
-  const ptr = ptrAt(frame);
+  const ptr = ptrAt(frame, g);
   const ptrO = interpolate(frame, [42, 47, 62, 67], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const ptrPress = interpolate(frame, [CLICK - 1, CLICK + 1, CLICK + 5], [1, 0.86, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const ptrScale = (1 / camZoom(frame)) * ptrPress;
+  const ptrScale = (1 / camZoom(frame, CAM_KEYS)) * ptrPress;
 
   // 目标卡滑位
   const slideAt = (f: number) =>
@@ -111,7 +139,8 @@ export const TypeAndFilter: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: PAPER }}>
-      <PageCam2D src="motion-studio/textures/live/projects-empty.png" pageH={PAGE_H} keys={CAM_KEYS} bg={PAPER}>
+      <PageCam2D src={pageSrc} pageH={PAGE_H} keys={CAM_KEYS} bg={PAPER}>
+        {customer && !hasPlate ? <SlotPatches layout={layout} /> : null}
         {/* ---- 25 non-target cards: staggered fade+sink on filter ---- */}
         {cards.map((c, i) => {
           if (i === nanoIdx) return null;
@@ -147,8 +176,11 @@ export const TypeAndFilter: React.FC = () => {
             <SpeedBlur vx={0} vy={slideVy} amount={0.04} max={7} style={{ zIndex: 2 }}>
               <div
                 style={{
-                  position: 'absolute', left: nano.x, top: nano.y, width: nano.w, height: nano.h,
-                  transform: `translate3d(${slideDx}px, ${slideDy}px, ${slideZ}px) scale(${slideScale})`,
+                  // Laid out at its destination and translated back by what is left of the slide: the same position on every frame
+                  // as laying it out at its start and translating forward, but it never sits (in layout) below the frame, where the
+                  // MP4 renderer skips painting it.
+                  position: 'absolute', left: NANO_TO.x, top: NANO_TO.y, width: nano.w, height: nano.h,
+                  transform: `translate3d(${slideDx - (NANO_TO.x - nano.x)}px, ${slideDy - (NANO_TO.y - nano.y)}px, ${slideZ}px) scale(${slideScale})`,
                   transformOrigin: 'center center',
                   // 两层影：近地实影 + 随浮起变宽变淡的环境影
                   boxShadow: `0 ${1 + 2 * float}px ${2 + 4 * float}px rgba(60,45,30,${0.07 + 0.03 * float}), 0 ${4 + 18 * float}px ${12 + 30 * float}px -${4 + 6 * float}px rgba(60,45,30,${0.09 + 0.12 * float})`,
@@ -162,13 +194,20 @@ export const TypeAndFilter: React.FC = () => {
         })()}
 
         {/* ---- search box: paper patch over the placeholder (keeps magnifier), typed text + caret ---- */}
-        <div
-          style={{
-            position: 'absolute', left: 440, top: SEARCH.y + 4,
-            width: SEARCH.x + SEARCH.w - 448, height: SEARCH.h - 8,
-            background: FIELD, opacity: 1, pointerEvents: 'none',
-          }}
-        />
+        {customer ? (
+          // A customer's page has no search field to patch: draw one (border, magnifier) where a search box sits above the grid.
+          <div style={{ position: 'absolute', left: SEARCH.x, top: SEARCH.y, width: SEARCH.w, height: SEARCH.h, background: FIELD, borderRadius: 9, boxSizing: 'border-box', border: '1px solid rgba(60,45,30,0.14)', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: 14 * k, top: SEARCH.h / 2 - 7 * k, width: 11 * k, height: 11 * k, borderRadius: '50%', border: `${1.6 * k}px solid rgba(60,45,30,0.45)`, boxSizing: 'border-box' }} />
+          </div>
+        ) : (
+          <div
+            style={{
+              position: 'absolute', left: 440, top: SEARCH.y + 4,
+              width: SEARCH.x + SEARCH.w - 448, height: SEARCH.h - 8,
+              background: FIELD, opacity: 1, pointerEvents: 'none',
+            }}
+          />
+        )}
         {/* 聚焦环：1px 强调色描边 + 3px 浅色外环（与输入框同圆角，跟着输入状态亮/灭） */}
         <div
           style={{
@@ -180,15 +219,15 @@ export const TypeAndFilter: React.FC = () => {
         />
         <div
           style={{
-            position: 'absolute', left: 448, top: SEARCH.y, height: SEARCH.h,
+            position: 'absolute', left: customer ? SEARCH.x + 40 * k : 448, top: SEARCH.y, height: SEARCH.h,
             display: 'flex', alignItems: 'center',
             fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
-            fontSize: 15, letterSpacing: 0.2, color: 'oklch(25% 0.006 82)', pointerEvents: 'none',
+            fontSize: 15 * k, letterSpacing: 0.2, color: 'oklch(25% 0.006 82)', pointerEvents: 'none',
           }}
         >
           <span>{QUERY.slice(0, typedCount)}</span>
           {caretOn ? (
-            <span style={{ display: 'inline-block', width: 1.5, height: 19, marginLeft: 1.5, borderRadius: 1, background: AMBER }} />
+            <span style={{ display: 'inline-block', width: 1.5, height: 19 * k, marginLeft: 1.5, borderRadius: 1, background: AMBER }} />
           ) : null}
         </div>
 

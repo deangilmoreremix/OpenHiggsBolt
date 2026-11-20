@@ -9,6 +9,8 @@
  * template" takes the validated template path. Plain data, no React, so the
  * same rules hold in the entry composer, the studio's Agent panel and tests.
  */
+import { classifyBusiness } from './productBrief';
+import { HOLD_BUDGET } from './holdBudget';
 import {
   MOTION_TEMPLATES,
   MOTION_TEMPLATE_CARDS,
@@ -56,7 +58,20 @@ export const INK_PRESS_INTRO =
   '(e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product ' +
   'check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.';
 
-export type FilmTemplateChoice = 'inkpress' | 'director';
+/**
+ * Upstream SKILL.md: before a mode is chosen, say which mode fits and why (Ink Press is not the default just because it is a template).
+ * Read from what the request says; the page itself is only captured after the person chooses.
+ */
+export function modeRecommendation(prompt: string, hasSite: boolean): string {
+  const { kind, evidence } = classifyBusiness(prompt);
+  const said = evidence.length ? ` (you mention ${evidence.slice(0, 3).join(', ')})` : '';
+  const withSite = hasSite ? ' Either way I capture your real site first, so its pages, logo and words are what the film shows.' : '';
+  if (kind === 'software') return `My recommendation: Ink Press. This reads as a software or web product${said}. Ink Press is built for product launches that show real pages, so little has to be re-chosen.${withSite}`;
+  if (kind === 'unknown') return `My recommendation: let the director pick shots. I cannot tell what kind of business this is from the request alone, and Ink Press assumes a product with pages to show, so choosing from the whole library is the safer fit.${withSite}`;
+  return `My recommendation: let the director pick shots. This reads as a ${kind.replace('-', ' ')} business${said}; Ink Press is tuned for software launches, so I would choose shots that suit your business instead.${withSite}`;
+}
+
+export type FilmTemplateChoice = 'inkpress' | 'director' | 'local';
 
 export interface FilmRequest {
   /** The message as the user wrote it. */
@@ -326,10 +341,28 @@ export function inkPressPlan(opts: {
   if (story && (opts.pictures ?? 0) >= 2 && shots.length + 5 <= PLAN_LIMITS.maxScenes && target >= (shots.length + 5) * PLAN_LIMITS.minSceneSec) {
     scenes.push({ kind: 'shot', recipeId: 'brand/people-gallery', durationSec: 4, headline: fit(site?.headings?.[0], PLAN_LIMITS.headlineChars), caption: '', transition: 'cut', feature: 'The people and pictures', action: 'the site\'s own pictures, one after another', asset: 'your images' });
   }
+  // The copy is per shot category, so two shots of one category would say the same line twice (upstream: no repeated
+  // tagline). A line already on screen gives way to the site's own heading for that shot, else the category's other line.
+  const onScreen = new Set<string>();
   shots.forEach((shot, i) => {
-    const scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
+    let scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
     const heading = fit(site?.headings?.[i], PLAN_LIMITS.captionChars);
-    scenes.push(heading ? { ...scene, caption: heading } : scene);
+    if (scene.headline && onScreen.has(scene.headline)) {
+      const own = fit(site?.headings?.[i], PLAN_LIMITS.headlineChars);
+      const useOwn = Boolean(own) && !onScreen.has(own);
+      // The category's second line stays as the caption when the headline is now the site's heading (never the same words twice).
+      scene = { ...scene, headline: useOwn ? own : scene.caption && !onScreen.has(scene.caption) ? scene.caption : '', caption: useOwn ? scene.caption : '' };
+    }
+    if (scene.headline) onScreen.add(scene.headline);
+    // The site's heading is the caption, unless it is already this shot's headline.
+    let caption = heading && heading !== scene.headline ? heading : scene.caption;
+    // A caption already on screen in an earlier scene is not said twice (upstream: no repeated tagline).
+    // A repeat falls back to the product's name (true, and a shot is never left mute) rather than to nothing.
+    if (caption && onScreen.has(caption)) caption = '';
+    // A shot is not left without a caption: the product's name (true) fills it when the category's lines are used up.
+    if (!caption && scene.kind === 'shot' && name !== 'your product' && !onScreen.has(name)) caption = name;
+    if (caption) onScreen.add(caption);
+    scenes.push({ ...scene, caption });
   });
   if (withTitles) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Try *${name}* today.`, caption: fit(site?.ctas?.[0], PLAN_LIMITS.captionChars), transition: 'cut' });
@@ -661,7 +694,18 @@ export function fitNativeLengths(plan: DirectorPlan, targetSec: number, keep: Re
     if (drop < 0) break;
     scenes.splice(drop, 1);
   }
-  const spare = target - sum();
+  let spare = target - sum();
+  if (spare > 0.5) {
+    // Breathing room first (upstream stage 3): the opener and the closing scene get at least their hold budget out of the spare time.
+    for (const i of [0, scenes.length - 1]) {
+      const need = HOLD_BUDGET.openerSec - scenes[i].durationSec;
+      if (need > 0 && spare > 0) {
+        const add = Math.min(need, spare);
+        scenes[i].durationSec += add;
+        spare -= add;
+      }
+    }
+  }
   if (spare > 0.5) {
     // Longer holds, shared in proportion to what each can still take.
     const room = scenes.map((s) => (s.kind === 'title' ? Math.max(0, 3 - s.durationSec) : s.durationSec * Math.max(0, holdGrowth - 1)));

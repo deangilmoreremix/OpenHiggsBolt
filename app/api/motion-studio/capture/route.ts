@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { BrowserSsrfError, capturePageScreenshots, createSsrfGuard } from '@/src/server/browserDiscovery'
-import { CAPTURE_BUCKET, buildCaptureResponse, captureImages, captureIsEmpty, storeCaptureImages, writeCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
+import { CAPTURE_BUCKET, buildCaptureResponse, captureImages, captureIsEmpty, localCaptureJobsEnabled, startLocalCaptureJob, storeCaptureImages, writeCaptureJob, type CaptureStorage } from '@/src/server/motionCapture'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 import { requireMotionStudioUser } from '../lib/auth'
 
@@ -95,34 +95,60 @@ export async function POST(req: NextRequest) {
     // The background function could not be started: capture inside this request instead (shorter, but something).
   }
 
+  // Local development: the same job protocol as the host (start, then poll), held in this process. A heavy real site needs more
+  // than the ~30 s the dev server allows one request, so it must not be captured inside the request.
+  if (!backgroundCaptureEnabled() && localCaptureJobsEnabled() && process.env.MOTION_CAPTURE_INLINE !== '1') {
+    try {
+      await createSsrfGuard().validateNavigationTarget(url)
+    } catch (err) {
+      if (err instanceof BrowserSsrfError) return NextResponse.json({ error: 'That address cannot be captured. Use a public http(s) page.', code: 'URL_REJECTED' }, { status: 400 })
+      throw err
+    }
+    const jobId = startLocalCaptureJob(user.userId, () => captureAndBuild(url, targeted, user.userId), randomUUID)
+    if (jobId) return NextResponse.json({ jobId, state: 'running' }, { status: 202 })
+  }
+
+  try {
+    return NextResponse.json(await captureAndBuild(url, targeted, user.userId))
+  } catch (err) {
+    if (err instanceof CaptureFailure) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status })
+    throw err
+  }
+}
+
+/** A capture that failed in a way the caller is told about: the message, the code the client reads, the HTTP status. */
+class CaptureFailure extends Error {
+  constructor(message: string, readonly code: string, readonly status: number) {
+    super(message)
+  }
+}
+
+/** Capture the page, store its images (inline in local development without storage), and build the response. Throws CaptureFailure. */
+async function captureAndBuild(url: string, targeted: boolean, userId: string) {
   let capture
   try {
     capture = targeted ? await capturePageScreenshots(url, { maxRoutes: 0 }) : await capturePageScreenshots(url)
   } catch (err) {
-    if (err instanceof BrowserSsrfError) {
-      return NextResponse.json({ error: 'That address cannot be captured. Use a public http(s) page.', code: 'URL_REJECTED' }, { status: 400 })
-    }
+    if (err instanceof BrowserSsrfError) throw new CaptureFailure('That address cannot be captured. Use a public http(s) page.', 'URL_REJECTED', 400)
     console.warn('[motion-studio/capture] capture failed', err instanceof Error ? err.message : String(err))
-    return NextResponse.json({ error: 'The page could not be captured', code: 'CAPTURE_FAILED' }, { status: 502 })
+    throw new CaptureFailure('The page could not be captured', 'CAPTURE_FAILED', 502)
   }
 
-  if (captureIsEmpty(capture)) {
-    return NextResponse.json({ error: 'The page could not be captured', code: 'CAPTURE_FAILED' }, { status: 502 })
-  }
+  if (captureIsEmpty(capture)) throw new CaptureFailure('The page could not be captured', 'CAPTURE_FAILED', 502)
   const images = captureImages(capture)
   let urls: Map<string, string>
   let transient = false
   try {
-    urls = await storeCaptureImages(await captureStorage(), user.userId, images)
+    urls = await storeCaptureImages(await captureStorage(), userId, images)
   } catch (err) {
     // Local development without storage: hand the images back inline so the
     // flow can be exercised. Production never falls back to inline images.
     if (process.env.NODE_ENV === 'production') {
       console.warn('[motion-studio/capture] storage failed', err instanceof Error ? err.message : String(err))
-      return NextResponse.json({ error: 'The capture could not be saved', code: 'STORAGE_FAILED' }, { status: 502 })
+      throw new CaptureFailure('The capture could not be saved', 'STORAGE_FAILED', 502)
     }
     urls = new Map(images.map((image) => [image.name, `data:${image.contentType};base64,${image.body.toString('base64')}`]))
     transient = true
   }
-  return NextResponse.json(buildCaptureResponse(capture, urls, transient))
+  return buildCaptureResponse(capture, urls, transient)
 }

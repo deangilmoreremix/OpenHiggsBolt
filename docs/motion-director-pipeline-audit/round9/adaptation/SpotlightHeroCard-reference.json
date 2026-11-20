@@ -1,0 +1,46 @@
+{
+  "stem": "SpotlightHeroCard",
+  "source": "reference",
+  "modelUsed": false,
+  "requests": 1,
+  "notes": "reference source (not a model)",
+  "adaptedCodeBytes": 19726,
+  "gateProblemsSeen": [],
+  "checks": {
+    "assetIdentity": {
+      "adaptedHeroShare": [
+        0.0557,
+        0.1788,
+        0.227
+      ],
+      "parameterisedHeroShare": [
+        0.0557,
+        0.1788,
+        0.227
+      ]
+    },
+    "motionProfile": {
+      "adapted": [
+        0.988,
+        0.252,
+        0.991
+      ],
+      "originalSample": [
+        0.87,
+        0.262,
+        0.886
+      ],
+      "parameterised": [
+        0.988,
+        0.252,
+        0.991
+      ]
+    },
+    "reopenDiff": 0
+  },
+  "frames": [
+    34,
+    86,
+    169
+  ]
+}

@@ -8,6 +8,7 @@
  * schemas sent to the model and the validation applied to what comes back, so
  * the server and the browser enforce the same rules. Plain data, no React.
  */
+import { recipeContract } from './recipeContract';
 import { MOTION_CATEGORIES, MOTION_TEMPLATES, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { drawsSampleScreen, isProductTextureShot } from './productShots';
 import { isSlowToExport } from './exportCost';
@@ -98,13 +99,19 @@ export function cardLine(componentName: string): string {
   return `${f.oneLiner}${f.useWhen ? ` USE WHEN: ${f.useWhen}` : ''}`;
 }
 
+/** The measured personalisation of a recipe (lib/recipeContract), for the director: it should not promise what a recipe cannot do. */
+const contractTag = (stem: string): string => {
+  const p = recipeContract(stem).personalizable;
+  return p === 'tested' ? ' | PERSONALIZABLE' : p === 'sample-only' ? ' | SAMPLE-ONLY' : p === 'partly' ? ' | PARTLY-PERSONALIZABLE' : '';
+};
+
 export function buildCatalogBrief(): string {
   const label = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
   const brand = Object.entries(BRAND_SCENES).map(([id, b]) => `${id} | ${b.title} | Brand scenes | 3-5s | BRAND-SCENE | ${BRAND_SCENE_NOTES[id]}`);
   return [...MOTION_TEMPLATES.map(
     (t) =>
       `${t.id} | ${motionTemplateTitle(t)} | ${label[t.category] ?? t.category} | ${t.durationSec}s${
-        (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '') + (ruleTags(t.componentName) ? ` | ${ruleTags(t.componentName)}` : '')
+        (isProductTextureShot(t.componentName) ? ' | PRODUCT-PAGE' : drawsSampleScreen(t) ? ' | SAMPLE-UI' : '') + contractTag(t.componentName) + (isSlowToExport(t.componentName) ? ' | SLOW-EXPORT' : '') + (ruleTags(t.componentName) ? ` | ${ruleTags(t.componentName)}` : '')
       } | ${cardLine(t.componentName) || t.summaryEn}`,
   ), ...brand].join('\n');
 }
