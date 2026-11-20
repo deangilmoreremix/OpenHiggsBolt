@@ -19,6 +19,7 @@
     "build:help-index": "tsx scripts/build-help-index.ts",
     "generate:niche-demos": "tsx scripts/generate-niche-demos.ts",
     "test:vfx": "vitest run tests/vfx-service.vitest.test.js tests/vfx-validation.vitest.test.js",
+    "test:local-ai": "node --test tests/historyDom.test.js tests/localInferenceDownload.test.js tests/localInferenceWindows.test.js tests/stageLocalAiBinary.test.js tests/wan2gpCatalog.test.js tests/wan2gpLocal.test.js tests/wan2gpMcp.test.js tests/wan2gpOutput.test.js",
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
