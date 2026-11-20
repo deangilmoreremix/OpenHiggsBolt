@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Plus, Film, Clapperboard, BarChart3, Wand2, FileJson, FileText, AlertCircle, AlertTriangle } from 'lucide-react'
+import { Loader2, Plus, Film, Clapperboard, BarChart3, Wand2, FileJson, FileText, AlertCircle, AlertTriangle, Upload, Play, Presentation } from 'lucide-react'
 import { generateStoryboard } from '@/api/storyboard'
 import { useStoryboard, type StoryboardCharacter } from '../StoryboardContext'
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
@@ -9,7 +9,10 @@ import { buildShotPrompt, withCharacters } from '../cameraTaxonomy'
 import CharacterLibrary from '../CharacterLibrary'
 import SendToMenu from '../SendToMenu'
 import ProjectBar from '../ProjectBar'
-import { exportJson, exportPdf } from '../exportUtils'
+import { exportJson, exportPdf, downloadBlob, safeFileName } from '../exportUtils'
+import ScriptImport from '../ScriptImport'
+import AnimaticPlayer from '../AnimaticPlayer'
+import { buildPitchDeckHtml } from '../scriptPipeline'
 
 // The storyboard video endpoint only accepts 5s or 10s clips.
 const CLIP_LENGTHS = [5, 10] as const
@@ -62,6 +65,8 @@ export default function StoryboardPlanner() {
   } = useStoryboard()
 
   const [sceneDraft, setSceneDraft] = useState('')
+  const [showImport, setShowImport] = useState(false)
+  const [showAnimatic, setShowAnimatic] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -170,9 +175,37 @@ export default function StoryboardPlanner() {
           >
             <FileText size={14} /> PDF
           </button>
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all"
+            style={buttons.ghost}
+            title="Build shots from a script (.fdx, .fountain, .txt)"
+          >
+            <Upload size={14} /> Script
+          </button>
+          <button
+            onClick={() => setShowAnimatic(true)}
+            disabled={shots.length === 0}
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
+            style={buttons.ghost}
+            title="Play the storyboard as a timed animatic"
+          >
+            <Play size={14} /> Animatic
+          </button>
+          <button
+            onClick={() => downloadBlob(new Blob([buildPitchDeckHtml({ title: projectName || 'Untitled storyboard', logline: brief, shots, characters })], { type: 'text/html' }), `${safeFileName(projectName)}-pitch-deck.html`)}
+            disabled={shots.length === 0}
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
+            style={buttons.ghost}
+            title="Download a print-ready pitch deck (open it and Save as PDF)"
+          >
+            <Presentation size={14} /> Deck
+          </button>
           <SendToMenu />
         </div>
       </div>
+      {showImport && <ScriptImport onClose={() => setShowImport(false)} />}
+      {showAnimatic && <AnimaticPlayer shots={shots} onClose={() => setShowAnimatic(false)} />}
 
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
