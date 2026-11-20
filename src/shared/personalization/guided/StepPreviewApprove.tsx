@@ -4,6 +4,8 @@ import { ShapeExportPanel } from './ShapeExportPanel'
 import { suggestGoal } from '../templates/recommendations'
 import { AddDesignsPanel } from './AddDesignsPanel'
 import { useState } from 'react'
+import { DesignGallery } from './DesignGallery'
+import type { DesignSlot } from '../preview/types'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { uploadPersonalizationAsset } from '../assetUploadService'
@@ -32,6 +34,12 @@ import { chooseFinalOutputPath } from '../finalOutput'
 /** Title of the preview video produced by "Remove branding", so the original can be offered back. */
 const BRANDING_REMOVED_TITLE = 'Branding removed'
 
+/** The two scenes that play around the video; designs that sit on top of it are added in the panel above. */
+const SCENE_TABS: { slot: Exclude<DesignSlot, 'overlay'>; label: string; hint: string; none: string }[] = [
+  { slot: 'intro', label: 'Opening scene', hint: 'Plays before your video starts. Any design works here.', none: 'None: start straight on your video' },
+  { slot: 'outro', label: 'Closing scene', hint: 'Plays after your video ends, instead of the branded end card. Any design works here.', none: 'None: keep the branded end card' },
+]
+
 export function StepPreviewApprove(): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
@@ -44,6 +52,9 @@ export function StepPreviewApprove(): React.JSX.Element {
     setPreviewVideo,
     restoreOriginalVideo,
     updatePreviewComposition,
+    remotionDesignTemplates = [],
+    activeRemotionSceneIds = { intro: null, outro: null },
+    setRemotionDesign = () => {},
     setPreviewLayout,
     previewApproved,
     approvalStale,
@@ -64,6 +75,7 @@ export function StepPreviewApprove(): React.JSX.Element {
 
   const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
+  const [sceneTab, setSceneTab] = useState<Exclude<DesignSlot, 'overlay'>>('intro')
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
   const quality = useLayoutQuality(inputProps)
   // Only a CONFIRMED critical rendering failure blocks the branded render; layout
@@ -154,6 +166,34 @@ export function StepPreviewApprove(): React.JSX.Element {
           ))}
         </div>
         <AddDesignsPanel suggestion={suggestGoal({ hasOffer: Boolean(clientForm.offer?.trim()), hasProductImages: (assets?.products?.length || 0) > 0, booking: ctx.foundSignals?.booking })} />
+        {remotionDesignTemplates.length > 0 ? (
+          <div data-testid="scene-designs" style={{ marginTop: 14 }}>
+            <div style={{ ...labelStyle, marginBottom: 6 }}>Opening and closing scenes <span style={{ color: C.muted, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+            <div role="tablist" aria-label="Which scene" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {SCENE_TABS.map((tab) => {
+                const chosen = remotionDesignTemplates.find((design) => design.id === activeRemotionSceneIds[tab.slot])
+                return (
+                  <button key={tab.slot} type="button" role="tab" aria-selected={sceneTab === tab.slot} onClick={() => setSceneTab(tab.slot)} style={{ ...chipStyle(sceneTab === tab.slot), display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, padding: '6px 12px', borderRadius: 10 }}>
+                    <span>{tab.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: chosen ? C.cyan : C.muted }}>{chosen ? chosen.name : 'None'}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ ...hintStyle, marginTop: 0, marginBottom: 8 }}>
+              {SCENE_TABS.find((tab) => tab.slot === sceneTab)?.hint} Each card uses your own logo, text and colors. Hover a card to watch it play, click to add it.
+            </p>
+            <DesignGallery
+              key={sceneTab}
+              designs={remotionDesignTemplates}
+              activeDesignId={activeRemotionSceneIds[sceneTab]}
+              onSelect={(designId) => setRemotionDesign(designId, sceneTab)}
+              inputProps={inputProps}
+              slot={sceneTab}
+              noneLabel={SCENE_TABS.find((tab) => tab.slot === sceneTab)?.none}
+            />
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
           <div>
             <label style={labelStyle} htmlFor="guided-aspect">Video shape</label>
