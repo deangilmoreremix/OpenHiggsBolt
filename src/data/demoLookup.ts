@@ -3,7 +3,6 @@ import { SEEDANCE_25_DEMOS } from './seedance25Demos';
 import { SEEDANCE_1_DEMOS } from './seedance1Demos';
 import { PROMPTFEED_DEMOS } from './promptFeedDemos';
 import { type VideoDemo } from './types';
-import { DEMO_LIBRARY_REGISTRY, toVideoDemo } from './demoLibraryRegistry';
 
 const ALL_DEMOS: VideoDemo[] = [
   ...MINIMAX_H3_DEMOS,
@@ -18,21 +17,6 @@ for (const demo of ALL_DEMOS) {
   const key = `${demo.sourceRepo}|${demo.slug}`;
   DEMO_INDEX.set(key, demo);
   if (demo.slug) {
-    DEMO_SLUG_INDEX.set(demo.slug, demo);
-  }
-}
-
-// The template-library clips (hosted in the demo-template-videos bucket) are not in the catalogs above, but step 2 offers them and
-// `/studio?template={sourceRepo}|{slug}` and `/demo/{slug}` resolve through this index. Index them too so those links never open empty.
-for (const entry of DEMO_LIBRARY_REGISTRY) {
-  const demo = toVideoDemo(entry);
-  const key = `${demo.sourceRepo}|${demo.slug}`;
-  // The library holds the verified, playable (hosted) media and the logo label, so a library clip REPLACES the catalog entry
-  // for the same key (the catalog one points at a local file that was never shipped). The slug index follows only when it
-  // was pointing at the entry being replaced, so a slug shared with another catalog keeps its own demo.
-  const shadowed = DEMO_INDEX.get(key);
-  DEMO_INDEX.set(key, demo);
-  if (demo.slug && (!DEMO_SLUG_INDEX.has(demo.slug) || DEMO_SLUG_INDEX.get(demo.slug) === shadowed)) {
     DEMO_SLUG_INDEX.set(demo.slug, demo);
   }
 }
