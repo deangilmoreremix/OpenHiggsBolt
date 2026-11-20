@@ -4,6 +4,8 @@
  * frame is a pure function, so the live Player and the browser export agree.
  */
 import { CAPTION_STYLES, CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import { normalizeCustom, type CaptionCasing } from '../captions/captionCustom'
+import { captionFontByName, type CaptionWeight } from '../captions/capiteFonts'
 import type { CaptionStyleConfig } from './capite/types'
 import { transcriptToSrt, transcriptToVtt } from './capite/subtitleExport'
 
@@ -60,6 +62,13 @@ export interface CaptionStyle {
   category?: string
   /** A dragged vertical centre of the captions, 0..1 of the frame height. Wins over `position`. */
   positionY?: number
+  /** The customizer: one of Capite's 16 fonts (canonical name), a weight, a casing (wins over `uppercase`) and a vertical offset as a fraction of the frame height (positive = up). */
+  fontFamily?: string
+  weight?: CaptionWeight
+  casing?: CaptionCasing
+  offsetY?: number
+  /** Keep the captions off other text when they are moved. On unless false. */
+  keepClear?: false
 }
 
 export type CaptionAnimation = 'highlight' | 'karaoke' | 'pop' | 'bounce' | 'scale' | 'glow' | 'box'
@@ -124,6 +133,8 @@ export function captionStyleFromCapite(c: CaptionStyleConfig): Omit<CaptionStyle
     wordSpacing: clamp(((c.wordSpacing - 100) / 100) * 0.3, 0, 1),
     windowed: true,
     category: c.category ?? 'trending',
+    // The look's own font, so it is drawn in the preview and the export (and named in the .ass), not only in the .ass.
+    ...(captionFontByName(c.fontName) ? { fontFamily: captionFontByName(c.fontName)!.name } : {}),
   }
 }
 
@@ -209,6 +220,7 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
   if (s.windowed === true) style.windowed = true
   if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
   if (finite(s.positionY)) style.positionY = clamp(s.positionY, 0.04, 0.96)
+  Object.assign(style, normalizeCustom(s))
   return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
 }
 
