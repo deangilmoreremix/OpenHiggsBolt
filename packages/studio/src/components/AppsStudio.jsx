@@ -368,11 +368,7 @@ const COLLAB_SUITE_URL = (process.env.NEXT_PUBLIC_COLLAB_SUITE_URL || "").replac
 const COLLAB_APPS = COLLAB_SUITE_URL
   ? [
       ["teamchat", "Teamchat", "Channels and team messaging."],
-      ["calendar", "Calendar", "Plan events and schedules."],
-      ["contacts", "Contacts", "People and companies."],
       ["meetings", "Meetings", "Video calls."],
-      ["email", "Email", "Compose and manage mail."],
-      ["signatures", "Signatures", "Draw and save your signature."],
     ].map(([id, name, description]) => ({
       id: `collab-${id}`, name, description, category: "Collaboration",
       hosted: `${COLLAB_SUITE_URL}/#/${id}`,
