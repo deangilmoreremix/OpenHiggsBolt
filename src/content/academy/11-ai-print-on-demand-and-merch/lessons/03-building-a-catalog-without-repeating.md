@@ -1,112 +1,83 @@
 # Building a Catalog Without Repeating Yourself
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Scale from 1 to 100+ unique merch listings using prompt matrix variations and niche sub-segmentation.
-
-**Track:** AI Print-on-Demand & Merch Design  
-**Time:** ~40 minutes  
-**Prerequisites:** [01: Designing Sellable AI Art](01-designing-sellable-ai-art-for-merch.md), [02: POD Platform Basics](02-print-on-demand-platform-basics.md)  
-
-## The Problem
-
-To generate meaningful revenue on Etsy or POD marketplaces, you need a diverse catalog of **50 to 200+ listings**. However, creators often make two fatal mistakes:
-1. **Spamming Identical Designs:** Uploading the exact same image with minor color tweaks, getting flagged for listing spam by marketplace algorithms.
-2. **Burnout from One-Off Prompting:** Spending hours crafting custom prompts for one single shirt, making catalog expansion impossible to sustain.
-
-You need a structured **Prompt Matrix Expansion System** to generate distinct, niche-targeted designs efficiently without creative repetition.
+> **Time:** about 16 minutes. **You will finish with:** a 3x3 niche prompt matrix, a reusable variable prompt and 12 generated graphics.
 
 ---
 
-## The Concept
+## Before you start
 
-The **Niche Prompt Matrix** expands 1 core design theme across multiple sub-niches:
+Real revenue on Etsy or POD marketplaces needs a catalog of **50 to 200+ listings**. Two mistakes sink creators: spamming near-identical designs with tiny color tweaks (flagged as listing spam), and burning hours on one-off prompts. The fix is a **Niche Prompt Matrix** that expands one core theme across sub-niches and styles, for example Retro Vintage Animals, then Cat / Dog / Owl / Bear, then 80s Synthwave / Japanese Ink / Minimal Line, giving 12 distinct listings.
 
+You need lesson 1 (Designing Sellable AI Art for Merch) and lesson 2 (Print-on-Demand Platform Basics) done, `templates/merch-prompt-brief.md`, and SmartVideo GO AI **Image Studio** and **Storyboard / Campaign Planner** for batch matrices.
+
+## Step by step
+
+### 1. Pick a passion niche
+
+Choose a passionate buyer niche, for example *Outdoor Camping & Coffee*.
+
+**You should see:** one niche written at the top of your notes.
+
+**If not:** pick something you know buyers care about, such as Coffee, Gaming or Cats.
+
+### 2. Fill the 3x3 matrix
+
+Make three columns: Subject (Axis A), Aesthetic Style (Axis B), Target Customer Niche (Axis C). Examples: Cyberpunk Cat / Japanese Sumi-e Ink / Tech Developers and Programmers; Vintage Botanical Sunflower / Cottagecore Watercolor / Gardening and Plant Enthusiasts; Retro Synthwave Mountain / 80s Neon Vector / Hikers and Outdoor Campers.
+
+**You should see:** three rows, nine cells, no two rows alike.
+
+**If not:** change whichever row shares a subject or style with another.
+
+### 3. Build the variable prompt
+
+Open `templates/merch-prompt-brief.md` and save this template:
+
+```text
+Clean vector graphic of [SUBJECT] drinking coffee by a campfire, [STYLE] style, bold outlines, isolated on solid background, 300 DPI
 ```
-Core Theme (Retro Vintage Animals) ──► Niche Matrix (Cat / Dog / Owl / Bear) ──► Style Variations (80s Synthwave / Japanese Ink / Minimal Line) ──► 12 Distinct Listings
-```
 
-### The 3x3 Expansion Framework:
+**You should see:** a prompt with two replaceable variables.
 
-| Subject (Axis A) | Aesthetic Style (Axis B) | Target Customer Niche (Axis C) |
-|---|---|---|
-| Cyberpunk Cat | Japanese Sumi-e Ink | Tech Developers & Programmers |
-| Vintage Botanical Sunflower | Cottagecore Watercolor | Gardening & Plant Enthusiasts |
-| Retro Synthwave Mountain | 80s Neon Vector | Hikers & Outdoor Campers |
+**If not:** keep the brackets so you can swap values quickly.
 
----
+### 4. List the variable values
 
-## Do It
+Write `[SUBJECT]`: Bear, Fox, Raccoon, Owl. `[STYLE]`: Retro 70s Badge, Minimalist Linework, Synthwave Neon.
 
-### Step 1: Select a Passion Niche Matrix
-Identify a passionate buyer niche (e.g., *Outdoor Camping & Coffee*).
+**You should see:** 4 subjects x 3 styles = **12 combinations**.
 
-### Step 2: Build a Variable Prompt Template
-Open [`templates/merch-prompt-brief.md`](templates/merch-prompt-brief.md). Create a prompt template with replaceable variables:
-* `"Clean vector graphic of [SUBJECT] drinking coffee by a campfire, [STYLE] style, bold outlines, isolated on solid background, 300 DPI"`
-* Substitute `[SUBJECT]` with: `Bear`, `Fox`, `Raccoon`, `Owl`.
-* Substitute `[STYLE]` with: `Retro 70s Badge`, `Minimalist Linework`, `Synthwave Neon`.
+**If not:** count again; every subject must pair with every style.
 
-### Step 3: Batch Generate 12 Distinct Graphics
-Run the prompt combinations through muapi `/nano-banana-2`. Isolate backgrounds and upscale all 12 graphics in batch.
+### 5. Generate the 12 graphics
 
-### Step 4: Cross-Publish Across Product Types
-Apply each graphic to 3 high-margin product types (T-Shirt, Coffee Mug, Canvas Tote Bag) to turn 12 graphics into **36 unique store listings**.
+Run each combination through muapi `/nano-banana-2` (use Image Studio or Storyboard / Campaign Planner for batches).
 
----
+**You should see:** 12 distinct graphics on solid backgrounds.
 
-## Worked Example
+**If not:** if two look alike, change the style wording, not just the color.
 
-<p align="center">
-<img src="templates/examples/merch-design-vector-art.jpg" alt="Isolated Vector Merch Art Design" width="480">
-</p>
-<p align="center"><sub>Isolated Vector Art Graphic (Ready for Multi-Product Catalog Placement)</sub></p>
+## Check yourself
 
-**Catalog Scaling Case Study: "The Retro Outdoor Collection"**
+* [ ] I have a niche and a filled 3x3 matrix.
+* [ ] My prompt template uses [SUBJECT] and [STYLE].
+* [ ] I generated 12 visibly different graphics.
 
-* **Core Concept:** Retro National Park Badge Illustrations.
-* **Subjects Generated:** 5 Animals (Bear, Wolf, Bison, Eagle, Moose).
-* **Styles Applied:** 70s Vintage Sunburst & Linework.
-* **Total Products Published:** 5 Animals × 3 Products (Shirt, Mug, Hoodie) = **45 Active Listings**.
-* **Time Taken:** 2.5 hours total setup.
+## Common mistakes
 
----
+* Uploading the same image with minor color tweaks.
+* Writing a custom prompt for every single shirt.
+* Varying only color instead of subject or style.
 
-## Launch It
+## Go further
 
-* **Avoid Copyright & Trademark Infringement:** Never use trademarked names (e.g., Disney, Marvel, Nike) or celebrity likenesses in your prompts or store tags. Search USPTO TESS database before publishing.
+**Worked example, "The Retro Outdoor Collection":** Retro National Park Badge illustrations; 5 animals (Bear, Wolf, Bison, Eagle, Moose); 70s Vintage Sunburst and Linework styles; 5 animals x 3 products (Shirt, Mug, Hoodie) = **45 active listings**; 2.5 hours total setup. Preview: `templates/examples/merch-design-vector-art.jpg`.
 
----
+**Exercises:**
 
-## Exercises
+1. Easy: build a 3x3 prompt matrix for a niche of your choice.
+2. Medium: batch generate 6 distinct graphics from your matrix and isolate their backgrounds.
+3. Hard: publish a 15-item collection across 3 product types (Tee, Mug, Tote) in your dev store.
 
-1. **Easy:** Build a 3x3 prompt matrix for a niche of your choice (e.g., Coffee, Gaming, Cats).
-2. **Medium:** Batch generate 6 distinct graphics from your matrix and isolate their backgrounds.
-3. **Hard:** Publish a 15-item product collection across 3 product types (Tee, Mug, Tote) in your dev store.
+**Template:** `templates/merch-prompt-brief.md` has matrix prompt templates, niche variable tables and trademark compliance checklists.
 
----
-
-## Templates
-
-* [`templates/merch-prompt-brief.md`](templates/merch-prompt-brief.md) — Matrix prompt templates, niche variable tables, and trademark compliance checklists.
-
----
-
-[← POD Platform Basics](02-print-on-demand-platform-basics.md) · Next: [Pricing & Passive-Income Math for POD →](04-pricing-and-passive-income-math.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Building a Catalog Without Repeating Yourself, part 2.

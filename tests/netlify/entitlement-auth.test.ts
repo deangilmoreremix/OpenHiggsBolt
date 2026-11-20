@@ -159,10 +159,10 @@ describe('hasSmartVideoGo (resolveAccess semantics)', () => {
     expect(hasSmartVideoGo({ smartvideo_go: true }, undefined)).toBe(true);
   });
 
-  it('fails for inactive/unpaid users', () => {
-    expect(hasSmartVideoGo({ smartvideo_go: false }, 'inactive')).toBe(false);
-    expect(hasSmartVideoGo({ smartvideo_go: true }, 'canceled')).toBe(false);
-    expect(hasSmartVideoGo({}, 'active')).toBe(false);
+  it('is open to every signed-in user (only GO-Viral and the reseller apps are paid)', () => {
+    expect(hasSmartVideoGo({ smartvideo_go: false }, 'inactive')).toBe(true);
+    expect(hasSmartVideoGo({ smartvideo_go: true }, 'canceled')).toBe(true);
+    expect(hasSmartVideoGo({}, 'active')).toBe(true);
   });
 });
 
@@ -186,20 +186,16 @@ describe('requirePaidEntitlement (Netlify guard)', () => {
     expect(result).toEqual({ ok: false, status: 401, body: { error: 'AUTH_REQUIRED' } });
   });
 
-  it('403 PAYMENT_REQUIRED when the user has no entitlement row', async () => {
+  it('allows a signed-in user with no entitlement row (base access is open)', async () => {
     const token = makeToken(validPayload());
     const result = await requirePaidEntitlement(
       { headers: { authorization: `Bearer ${token}` } },
       { ...baseOptions(), supabase: fakeSupabase(null) }
     );
-    expect(result).toEqual({
-      ok: false,
-      status: 403,
-      body: { error: 'PAYMENT_REQUIRED', upgradeRequired: true },
-    });
+    expect(result).toEqual({ ok: true, userId: 'user_123' });
   });
 
-  it('403 PAYMENT_REQUIRED when the entitlement is inactive', async () => {
+  it('allows a signed-in user whose entitlement is inactive (base access is open)', async () => {
     const token = makeToken(validPayload());
     const result = await requirePaidEntitlement(
       { headers: { cookie: `__session=${token}` } },
@@ -212,8 +208,7 @@ describe('requirePaidEntitlement (Netlify guard)', () => {
         }),
       }
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.status).toBe(403);
+    expect(result).toEqual({ ok: true, userId: 'user_123' });
   });
 
   it('allows a user with smartvideo_go', async () => {

@@ -14,6 +14,15 @@ const ALLOWED_HOSTS = new Set([
   'muapi.ai',
 ]);
 
+// Our own Supabase storage host (public buckets) so storyboard panels saved there can be drawn to a canvas.
+try {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const own = supabaseUrl && new URL(supabaseUrl).hostname;
+  if (own) ALLOWED_HOSTS.add(own);
+} catch {
+  // no configured storage host
+}
+
 const FETCH_TIMEOUT_MS = 10000;
 const MAX_BYTES = 15 * 1024 * 1024; // 15MB safety cap
 

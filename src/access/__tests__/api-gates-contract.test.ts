@@ -39,10 +39,14 @@ const PAID_PATHS: string[] = [
   'app/api/vfx/upload/route.ts',
   // photo-studio
   'app/api/photo-studio/route.ts',
+  // Ask SmartVideo help assistant: gated by SMARTVIDEO_GO, runs on the customer's own OpenAI key
+  'app/api/help/chat/route.ts',
   // proxy/*
   'app/api/proxy/openai-image/route.ts',
   'app/api/proxy/openai-enhance/route.ts',
   'app/api/proxy/thumbnail-generate/route.ts',
+  // storyboard panels from the user's own OpenAI key
+  'app/api/storyboard/openai/route.ts',
   // design-agent/*
   'app/api/design-agent/approve/route.ts',
   'app/api/design-agent/assets/route.ts',
@@ -136,6 +140,7 @@ const PREMIUM_OPERATIONS: Array<{ id: string; path: string }> = [
   { id: 'photo studio', path: 'app/api/photo-studio/route.ts' },
   { id: 'openai image proxy', path: 'app/api/proxy/openai-image/route.ts' },
   { id: 'thumbnail generation proxy', path: 'app/api/proxy/thumbnail-generate/route.ts' },
+  { id: 'storyboard openai panels', path: 'app/api/storyboard/openai/route.ts' },
   { id: 'canonical binary upload', path: 'app/api/upload-binary/route.js' },
   { id: 'v1 binary upload', path: 'app/api/v1/upload-binary/route.js' },
   { id: 'v1 upload url', path: 'app/api/v1/get_upload_url/route.js' },
@@ -623,5 +628,57 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body.error).toBe('UNAUTHENTICATED')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// (d) VIDEO PAGES ARE PERMANENTLY FREE.
+//
+// Every user can turn any video or image they create into a landing page and use the editor, the AI rewrite
+// (on their own OpenAI key), the contacts and the MailerLite sync (on their own MailerLite key) without a
+// paid plan. This walks the whole feature (API routes, server library, studio UI and picker) so a paywall
+// cannot be added later without somebody changing this test on purpose.
+// ---------------------------------------------------------------------------
+describe('Video Pages are permanently free (static source check)', () => {
+  const UI_PAYWALL_TOKENS = ['useSmartVideoAccess', 'PaidAction', 'openUpgradeModal', 'requireEntitlement', 'isPaid', 'SMARTVIDEO_GO']
+  const filesUnder = (dir: string): string[] => {
+    const out: string[] = []
+    const root = join(repoRoot, dir)
+    const visit = (d: string) => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, entry.name)
+        if (entry.isDirectory()) { if (entry.name !== '__tests__' && entry.name !== 'node_modules') visit(full); continue }
+        if (/\.(ts|tsx|js|jsx)$/.test(entry.name) && !/\.test\./.test(entry.name)) out.push(full)
+      }
+    }
+    visit(root)
+    return out
+  }
+
+  it('no Video Pages API route is entitlement-gated or lists a paid entitlement', () => {
+    const routes = walkRouteFiles(join(repoRoot, 'app/api/landing-pages'))
+    expect(routes.length).toBeGreaterThan(0)
+    const violations: string[] = []
+    for (const abs of routes) {
+      const source = readFileSync(abs, 'utf-8')
+      for (const token of [...PAID_GATE_VOCABULARY, 'ENTITLEMENTS']) if (source.includes(token)) violations.push(`${toPosix(abs)} → ${token}`)
+    }
+    expect(violations, `Video Pages are free; these routes must not reference a paid gate:\n  ${violations.join('\n  ')}`).toEqual([])
+  })
+
+  it('the Video Pages server library, studio UI and picker contain no paywall', () => {
+    const violations: string[] = []
+    for (const dir of ['src/lib/landingPages', 'src/apps/video-pages']) {
+      for (const abs of filesUnder(dir)) {
+        const source = readFileSync(abs, 'utf-8')
+        for (const token of [...PAID_GATE_VOCABULARY, ...UI_PAYWALL_TOKENS]) if (source.includes(token)) violations.push(`${toPosix(abs)} → ${token}`)
+      }
+    }
+    expect(violations, `Video Pages are free; no paywall may be added here:\n  ${violations.join('\n  ')}`).toEqual([])
+  })
+
+  it('no Video Pages route is listed as paid', () => {
+    const listed = PAID_PATHS.filter((p) => p.startsWith('app/api/landing-pages'))
+    expect(listed, `Video Pages routes must not be in PAID_PATHS:\n  ${listed.join('\n  ')}`).toEqual([])
   })
 })

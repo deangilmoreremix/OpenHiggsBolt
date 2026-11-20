@@ -1,139 +1,109 @@
 # Agency Case Study: Small-Team Economics
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 18 minutes. **You will finish with:** a customised agency agreement, a pitch for one niche and a weekly batch plan with a monthly profit estimate.
 
+---
 
+## Before you start
 
-> Don't build an audience for yourself; build and manage audiences for paying clients.
-
-**Track:** AI Avatars & Influencers  
-**Time:** ~30 minutes  
-**Prerequisites:** Building a Consistent AI Character, Character to Content Pipeline, Voice Cloning & Dialogue, Monetization Tiers by Follower Count  
-
-## The Problem
-
-Launching your own virtual influencer from scratch is slow. You have to build an audience, optimize scripts, post daily, and wait for sponsorships to roll in. During this 6-month ramp-up phase, you have zero cash flow, but your monthly subscriptions and API bills keep arriving.
-
-A faster, more predictable way to make a full-time income is running a **Virtual Influencer Agency (VIA)**.
-
-Instead of building an audience for yourself, you **build, manage, and animate virtual spokespeople on behalf of existing corporate clients**. Companies (SaaS startups, law firms, accounting practices) need human faces to explain their products, but their founders are too busy or camera-shy to record videos themselves. They will gladly pay an agency an upfront monthly retainer to handle it for them.
-
-## The Concept
-
-The economics of a Virtual Influencer Agency (VIA) are built on a **Management Retainer Contract**:
+Launching your own virtual influencer means a roughly 6-month ramp-up with zero cash flow while subscriptions and API bills keep arriving. A faster route is a **Virtual Influencer Agency (VIA)**: you build, manage and animate virtual spokespeople for existing clients (SaaS startups, law firms, accounting practices) who are too busy or camera-shy to record. The model rests on a management retainer:
 
 ```
 Client Retainer ($2,000/mo)  ──►  Upfront Invoice settled  ──►  Agency delivers 15 Videos/mo
 ```
 
-To run a profitable VIA:
-* **The Spokesperson Retention Agreement:** You structure a contract using the [`templates/influencer-agency-agreement.md`](templates/influencer-agency-agreement.md) detailing the scope of work, monthly volume, and payment schedules.
-* **IP Separation:** You clearly define who owns the underlying assets. The industry standard is that the **Agency owns the engine files** (prompt guides, model seeds, and voice clone credentials), while the **Client owns the distribution rights to the completed video exports**. This protects your intellectual property and ensures client lock-in.
-* **Vocal & Visual Sync:** You charge a premium because you manage the entire pipeline (visual consistency, lip-sync rendering, and voice synthesis) under a unified service.
+Industry-standard IP separation: the **agency owns the engine files** (prompt guides, model seeds, voice clone credentials) and the **client owns distribution rights to the finished video exports**. You need: the [agency agreement template](templates/influencer-agency-agreement.md), skills from lessons 1-4, and the SmartVideo GO AI **AI Influencer Studio**, **Lip-Sync Studio** and **Storyboard / Campaign Planner**.
 
----
+## Step by step
 
-## Do It
+### 1. Customise your service contract
 
-### Step 1: Customize Your Service Contract
-Open the [`templates/influencer-agency-agreement.md`](templates/influencer-agency-agreement.md). Define the monthly fee (**$1,500–$2,500/month** is standard for micro-agencies) and the volume (typically 15 vertical clips per month).
+Open [`templates/influencer-agency-agreement.md`](templates/influencer-agency-agreement.md). Set the monthly fee (**$1,500-$2,500/month** is standard for micro-agencies) and volume (typically 15 vertical clips per month). State the IP split: you keep engine files, the client gets video distribution rights.
 
-### Step 2: Pitch B2B Professional Services
-Reach out to service-based firms that need content marketing:
-* Bookkeeping/Accounting firms (explaining tax write-offs).
-* Recruiting agencies (explaining job interview tips).
-* Local real estate brokerages (explaining buying guides).
-Highlight that they don't need to show their face on camera or spend hours recording audio.
+**You should see:** an agreement with fee, volume, payment schedule and ownership rules filled in.
 
-### Step 3: Conduct the Character Briefing Session
-Upon securing the contract, run a briefing session. Agree on the character's age, look, style, and voice profile (e.g. *"professional HR advisor in her 30s, warm and clear voice"*). Create the visual seed guidelines.
+**If not:** this is a business document; have it reviewed by a professional before real use.
 
-### Step 4: Run the Weekly Batch Station
-Manage deliveries in weekly batches (4 videos every Friday).
-* Write the scripts and get client approval via email.
-* Batch-generate the cloned voice audio.
-* Run the static avatar image and voice tracks through the `/sync-lipsync` API.
-* Trim, subtitle, and color-grade the exports.
+### 2. Add approval and re-render terms
 
-### Step 5: Deliver to Shared Folders
-Upload the finished files to the client's shared folder. Send a notification: *"Batch 2 is ready in your folder. Let us know if you need any adjustments by Monday."*
+Write in two rules: once a script is approved it cannot be modified (a **lock-in milestone**), and a post-approval script change costs a flat **$50 re-render fee** per video.
 
----
+**You should see:** both rules in the agreement.
 
-## Worked Example
+**If not:** if a client resists, explain that re-renders cost you API credits and edit time.
 
-<p align="center">
-<img src="templates/examples/avatar-agency-suite.jpg" alt="Agency Suite" width="280">
-<img src="templates/examples/avatar-agency-suite-clip.gif" alt="3D Avatar Agency Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Agency Suite Image (Left) ──► Image-to-Video 3D Avatar Motion (Right) · Video File: <a href="templates/examples/avatar-agency-suite-clip.mp4">templates/examples/avatar-agency-suite-clip.mp4</a></sub></p>
+### 3. Pick a niche and write the pitch
 
-**Virtual Spokesperson Campaign for "HireFast" (Recruiting SaaS)**
+Choose one: bookkeeping/accounting (tax write-offs), recruiting (interview tips) or local real estate (buying guides). Write one paragraph stressing that they do not need to show their face or record audio.
 
+**You should see:** a one-paragraph pitch aimed at a single niche.
 
+**If not:** if it is generic, name a specific video topic from the niche.
 
-* **The Client:** A recruiting software startup.
-* **The Deal:** **$2,000/month** retainer.
-* **The Deliverables:** 15 vertical video tips (e.g. *"how to write a resume"*).
-* **The Character:** "Maya" (A virtual HR consultant, styled in business-casual clothing).
-* **Monthly Agency P&L:**
-  * **Retainer Income:** **$2,000.00**
-  * **API Expenses:** 15 videos * $0.70/video = **$10.50**
-  * **Software Subscriptions:** ElevenLabs + CapCut Pro = **$45.00**
-  * **Net Agency Profit:** **$1,944.50 / month** (97% profit margin).
-  * **Time Spent:** ~5 hours per month to script, generate, and edit the batch.
+### 4. Plan the character briefing
 
-**The Result:** The client gets a high-performing brand spokesperson posting consistently. The agency runs a high-value service with almost zero overhead, allowing a single editor to manage up to 4 clients simultaneously ($8,000/month gross).
+Agree on age, look, style and voice with the client, for example: "professional HR advisor in her 30s, warm and clear voice." Record it in the [character style guide](templates/character-style-guide.md) as your seed guidelines.
 
----
+**You should see:** a one-page brief the client can approve.
 
-## Compare Tools
+**If not:** if the client cannot decide, show two or three options from **Image Studio**.
 
-| Platform / Tool | Invoice & Payments | Deliverables Management | Client Onboarding |
-|---|---|---|---|
-| **Stripe Invoicing** | Safe, reliable, recurring card charges. | N/A | Sending professional corporate billing terms. |
-| **Google Drive / Dropbox** | Simple, reliable, direct folder sharing. | Direct upload of large video files. | Staging raw client assets and visual templates. |
-| **ClickUp / Slack** | Client task assignment and project milestones. | N/A | Complex agency operations with multiple clients. |
+### 5. Design the weekly batch station
 
-For small agencies, keep communication simple. Do not invite clients into complex Slack channels or project management spaces. Send monthly invoices via Stripe, manage script approvals via simple email, and deliver final files through a shared Google Drive folder.
+Plan 4 videos every Friday: (1) write scripts and get approval by email; (2) batch-generate cloned voice audio; (3) run the static avatar and voice tracks through `/sync-lipsync`; (4) trim, subtitle and color-grade.
 
----
+**You should see:** a weekly checklist with those four stages.
 
-## Launch It
+**If not:** if the week overruns, reduce scope before dropping approval.
 
-**How to manage approval cycles:**
-* **Establish a Lock-In Milestone:** In your agreement, state that once a script is approved, it cannot be modified. This prevents the client from requesting voiceover or lip-sync re-renders (which cost you API credits) after the video is compiled.
-* **Re-render Fees:** If the client requests a visual revision due to a change in their script *after* approval, charge a flat **$50 re-render fee** per video to cover API credits and edit times.
+### 6. Set up delivery
 
----
+Upload finished files to the client's shared folder and send: "Batch 2 is ready in your folder. Let us know if you need any adjustments by Monday." Send invoices via Stripe and approve scripts by simple email.
 
-## Exercises
+**You should see:** a folder structure and a message template ready to use.
 
-1. **Easy:** Fill out the Influencer Agency Agreement template with a mock client and specify character ownership rules.
-2. **Medium:** Research three local business niches. Write a 1-paragraph pitch email for a virtual spokesperson tailored specifically to one of them.
-3. **Hard:** Project the monthly profit-and-loss sheet for an agency managing 3 distinct client avatars, factoring in all software subscriptions and API credits used for a 15-video/month delivery schedule.
+**If not:** keep communication simple; avoid inviting clients into complex project spaces.
 
----
+### 7. Project your monthly profit
 
-## Templates
+Fill a P&L using the worked example's numbers below, then replace them with your own.
 
-* [`templates/influencer-agency-agreement.md`](templates/influencer-agency-agreement.md) — agency service contract covering character ownership, retainers, and revisions.
+**You should see:** a total for income, costs and net profit.
 
----
+**If not:** double-check that you multiplied API cost by the number of videos.
 
-[← Monetization Tiers by Follower Count](04-monetization-tiers.md) · [Track overview](README.md)
+## Check yourself
 
+* [ ] My agreement states fee, volume and the IP split.
+* [ ] I added a lock-in milestone and a $50 re-render fee.
+* [ ] I have a niche-specific pitch.
+* [ ] I have a weekly batch routine and a P&L.
 
----
+## Common mistakes
 
-## Produce this in SmartVideo GO AI
+* Letting clients change scripts after approval for free.
+* Giving the client the engine files (prompts, seeds, voice credentials).
+* Over-complicating communication with chat tools and project boards.
+* Promising full-time income without costing time.
 
-Apply this lesson directly inside SmartVideo GO AI:
+## Go further
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**Worked example, "HireFast" (recruiting SaaS) with virtual HR consultant "Maya":** $2,000/month retainer for 15 vertical tips (such as "how to write a resume"). P&L: retainer **$2,000.00**; API 15 videos x $0.70 = **$10.50**; ElevenLabs + CapCut Pro **$45.00**; net **$1,944.50/month** (97% margin); about 5 hours per month. One editor could manage up to 4 clients ($8,000/month gross).
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Compare tools:**
+
+| Tool | Role |
+|---|---|
+| Stripe Invoicing | Reliable recurring card charges; professional billing terms |
+| Google Drive / Dropbox | Folder sharing for large video files and raw client assets |
+| ClickUp / Slack | Task assignment and milestones for complex multi-client operations |
+
+For small agencies: Stripe for invoices, email for approvals, a shared Drive folder for files.
+
+**Exercises:**
+
+1. Easy: fill out the agreement with a mock client and set character ownership rules.
+2. Medium: research three local business niches and write a pitch for one.
+3. Hard: project the monthly P&L for an agency with 3 client avatars, including all subscriptions and API credits, at 15 videos/month each.
+
+**Template:** [`templates/influencer-agency-agreement.md`](templates/influencer-agency-agreement.md).

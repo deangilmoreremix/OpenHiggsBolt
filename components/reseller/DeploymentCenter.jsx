@@ -119,6 +119,7 @@ export default function DeploymentCenter() {
           <InternalLink href="/studio/apps">AI Apps</InternalLink>
           <span className="text-[13px] font-bold text-[#22d3ee] whitespace-nowrap">Deployment Center</span>
           <InternalLink href={ACADEMY_TRAINING_HREF}>Academy</InternalLink>
+          <InternalLink href="/academy/reseller/launch">Reseller Setup Walkthrough</InternalLink>
         </nav>
         <div className="flex-shrink-0 flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
           <span className="w-2 h-2 rounded-full bg-[#22d3ee]" aria-hidden="true" />
@@ -418,6 +419,10 @@ export default function DeploymentCenter() {
                   once the purchase is active.
                 </>
               )}
+            </p>
+            <p className="text-[11px] text-white/50 leading-relaxed font-medium">
+              Step-by-step setup for any app, from GitHub to Stripe to your own domain:{' '}
+              <InternalLink href="/academy/reseller/launch">Reseller Setup Walkthrough</InternalLink>.
             </p>
           </Panel>
         </section>

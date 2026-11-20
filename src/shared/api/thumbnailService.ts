@@ -25,7 +25,31 @@ async function postToEdgeFunction(url: string, body: Record<string, unknown>): P
   return response.json() as Promise<Record<string, unknown>>
 }
 
-export interface ThumbnailGenerateParams {
+export type ThumbnailQuality = 'auto' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+export type ThumbnailComplexity = 'low' | 'medium' | 'high'
+
+/** Optional OpenAI image controls shared by generate and refine. */
+export interface ThumbnailImageControls {
+  /** Composition planning; only sent for Images 2.6 models. */
+  complexity?: ThumbnailComplexity
+  /** 'WxH' in pixels (multiples of 16); overrides the aspect-ratio derived size. */
+  size?: string
+  background?: 'transparent' | 'opaque' | 'auto'
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  outputCompression?: number
+}
+
+function imageControlFields(params: ThumbnailImageControls): Record<string, unknown> {
+  return {
+    ...(params.complexity ? { complexity: params.complexity } : {}),
+    ...(params.size ? { size: params.size } : {}),
+    ...(params.background ? { background: params.background } : {}),
+    ...(params.outputFormat ? { output_format: params.outputFormat } : {}),
+    ...(params.outputCompression !== undefined ? { output_compression: params.outputCompression } : {}),
+  }
+}
+
+export interface ThumbnailGenerateParams extends ThumbnailImageControls {
   prompt: string
   model?: string
   aspectRatio?: string
@@ -38,7 +62,7 @@ export interface ThumbnailGenerateParams {
   templateValues?: Record<string, any>
   referenceUrls?: string[]
   style?: string
-  quality?: 'low' | 'medium' | 'high'
+  quality?: ThumbnailQuality
 }
 
 export interface ThumbnailGenerateResult {
@@ -47,21 +71,30 @@ export interface ThumbnailGenerateResult {
   revisedPrompt?: string
   templateId?: string
   aspectRatio?: string
+  model?: string
+  fallbackFrom?: string
 }
 
-export interface ThumbnailRefineParams {
+export interface ThumbnailRefineParams extends ThumbnailImageControls {
   imageUrl: string
   prompt: string
   model?: string
   aspectRatio?: string
   n?: number
   strength?: number
+  quality?: ThumbnailQuality
+  /** PNG data URL; transparent pixels mark the region to repaint (inpainting). */
+  maskUrl?: string
 }
 
 export interface ThumbnailRefineResult {
   url: string
   responseId?: string
   revisedPrompt?: string
+  /** Model that actually produced the image (may differ from the one asked for). */
+  model?: string
+  /** Set when the requested model was unavailable and GPT Image 2 was used instead. */
+  fallbackFrom?: string
 }
 
 /**
@@ -81,6 +114,7 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
     quality: params.quality || 'medium',
     ...(params.templateId ? { template_id: params.templateId, template_values: params.templateValues || {} } : {}),
     ...(params.referenceUrls?.length ? { reference_urls: params.referenceUrls } : {}),
+    ...imageControlFields(params),
   }
 
   if (params.imageUrl) {
@@ -102,6 +136,8 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
         revisedPrompt: typeof data.revised_prompt === 'string' ? data.revised_prompt : undefined,
         templateId: params.templateId,
         aspectRatio: params.aspectRatio,
+        model: typeof data.model === 'string' ? data.model : undefined,
+        fallbackFrom: typeof data.fallback_from === 'string' ? data.fallback_from : undefined,
       })
     } else if (u && typeof u === 'object' && 'url' in u && typeof (u as { url?: unknown }).url === 'string') {
       results.push({
@@ -129,6 +165,9 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
     aspect_ratio: params.aspectRatio || '16:9',
     n: Math.min(Math.max(params.n || 1, 1), 4),
     strength: params.strength ?? 0.5,
+    ...(params.quality ? { quality: params.quality } : {}),
+    ...(params.maskUrl ? { mask_url: params.maskUrl } : {}),
+    ...imageControlFields(params),
   }
 
   const data = await postToEdgeFunction('/api/proxy/thumbnail-generate', body)
@@ -143,6 +182,8 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
         url: u,
         responseId: typeof data.request_id === 'string' ? `${data.request_id}-${i}` : undefined,
         revisedPrompt: typeof data.revised_prompt === 'string' ? data.revised_prompt : undefined,
+        model: typeof data.model === 'string' ? data.model : undefined,
+        fallbackFrom: typeof data.fallback_from === 'string' ? data.fallback_from : undefined,
       })
     } else if (u && typeof u === 'object' && 'url' in u && typeof (u as { url?: unknown }).url === 'string') {
       results.push({

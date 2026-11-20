@@ -577,9 +577,8 @@ describe('assets.js: unauthorized mutations are denied', () => {
     const handler = await loadAssets();
     const res = await call(handler, makeEvent({ query: { id: "x' or 1=1 --" }, token: signSessionToken(USER_A) }));
     expect(res.status).toBe(400);
-    // Only the entitlement lookup ran; the invalid id never reached a query.
-    expect(restCalls()).toHaveLength(1);
-    expect(restCalls()[0].url).toContain('/rest/v1/user_entitlements');
+    // The invalid id never reached a query.
+    expect(restCalls()).toHaveLength(0);
   });
 
   it('rejects a POST body without a campaign_id', async () => {
@@ -980,98 +979,66 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
 // purchase entitlement gate — the same 403 the Next.js API returns
 // ===========================================================================
 
-describe('brand studio functions: purchase entitlement gate', () => {
-  it('assets.js: 403 PAYMENT_REQUIRED for an authenticated caller with no entitlement row', async () => {
+describe('brand studio functions: base access is open to every signed-in user', () => {
+  // Only GO-Viral and the reseller apps are paid. Brand Studio, Photo Studio,
+  // brands, campaigns and assets are base access: a verified Clerk session is
+  // enough, whatever the caller's user_entitlements row says.
+  const notPaymentRequired = (res: { status: number; body: any }) => {
+    expect(res.status).not.toBe(403);
+    expect(res.body?.error).not.toBe('PAYMENT_REQUIRED');
+  };
+
+  it('assets.js: an authenticated caller with no entitlement row is not asked to pay', async () => {
     const handler = await loadAssets();
     const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_C) }));
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({
-      error: 'PAYMENT_REQUIRED',
-      entitlement: 'smartvideo_go',
-      upgradeRequired: true,
-    });
-    // The entitlement lookup is the only query: no row is read or written.
-    expect(restCalls().every((c) => c.url.includes('/rest/v1/user_entitlements'))).toBe(true);
-    expect(edgeCalls()).toHaveLength(0);
+    notPaymentRequired(res);
+    // No entitlement lookup is needed any more.
+    expect(restCalls().some((c) => c.url.includes('/rest/v1/user_entitlements'))).toBe(false);
   });
 
-  it('assets.js: 403 for generation without an entitlement row, before the edge call', async () => {
-    const handler = await loadAssets();
-    const res = await call(
-      handler,
-      makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { campaign_id: CAMP_A, platform: 'instagram_feed' } })
-    );
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('PAYMENT_REQUIRED');
-    expect(edgeCalls()).toHaveLength(0);
-  });
-
-  it('assets.js: 403 for a qualifying flag with a non-qualifying status', async () => {
+  it('assets.js: rows with a revoked status or no SmartVideo GO flag are not asked to pay', async () => {
     mock.rows.user_entitlements.push({ clerk_user_id: USER_D, status: 'revoked', entitlements: { smartvideo_go: true } });
-    const handler = await loadAssets();
-    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_D) }));
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('PAYMENT_REQUIRED');
-  });
-
-  it('assets.js: 403 for a qualifying status without a qualifying flag', async () => {
     mock.rows.user_entitlements.push({ clerk_user_id: USER_E, status: 'active', entitlements: { smartvideo_ai: true } });
     const handler = await loadAssets();
-    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_E) }));
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('PAYMENT_REQUIRED');
+    for (const user of [USER_D, USER_E]) {
+      notPaymentRequired(await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(user) })));
+    }
   });
 
-  it('a legacy row with no status still qualifies', async () => {
-    // Rows predating the status column are tolerated as 'active' (mirrors
-    // src/access/entitlements.ts isQualifyingStatus).
-    mock.rows.user_entitlements.push({ clerk_user_id: USER_F, status: undefined, entitlements: { smartvideo_go: true } });
+  it('brands.js lists the caller\'s own brands with no entitlement row', async () => {
     const handler = await loadFunction('brands');
     const res = await call(handler, makeEvent({ token: signSessionToken(USER_F) }));
-    expect(res.status).toBe(200); // the entitlement gate passed; the list is scoped to USER_F
+    expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
 
-  it('brands.js / photo-studio.js gate reads; campaigns GET stays free browse (Next.js contract)', async () => {
-    // The Next.js /api/campaigns route has never entitlement-gated GET —
-    // free users keep browse/preview access; only generation (POST) is gated.
-    // brands.js and photo-studio.js reads stay purchase-gated.
-    const readExpected = [
-      { file: 'brands', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
-      { file: 'campaigns', event: makeEvent({ token: signSessionToken(USER_C) }), status: 200 },
-      { file: 'photo-studio', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
-    ];
-    for (const { file, event, status } of readExpected) {
+  it('brands / campaigns / photo-studio / brand never answer PAYMENT_REQUIRED to a signed-in caller', async () => {
+    const reads = ['brands', 'campaigns', 'photo-studio'];
+    for (const file of reads) {
       const handler = await loadFunction(file);
-      const res = await call(handler, event);
-      expect(res.status, `${file} GET`).toBe(status);
-      if (status === 403) {
-        expect(res.body.error).toBe('PAYMENT_REQUIRED');
-        expect(edgeCalls()).toHaveLength(0);
-      }
+      notPaymentRequired(await call(handler, makeEvent({ token: signSessionToken(USER_C) })));
     }
 
-    const mutationExpected = [
+    const mutations = [
       { file: 'brands', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { url: 'https://x.example' } }) },
       { file: 'campaigns', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { brand_id: BRAND_A, goal: 'awareness' } }) },
       { file: 'photo-studio', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { brand_id: BRAND_A, category: 'bottle', style: 'studio' } }) },
     ];
-    for (const { file, event } of mutationExpected) {
+    for (const { file, event } of mutations) {
       const handler = await loadFunction(file);
       const res = await call(handler, event);
-      expect(res.status, `${file} POST`).toBe(403);
-      expect(res.body.error).toBe('PAYMENT_REQUIRED');
-      expect(edgeCalls()).toHaveLength(0);
+      expect(res.body?.error, `${file} POST`).not.toBe('PAYMENT_REQUIRED');
     }
 
+    // Someone else's brand is still protected by ownership, not by payment.
     const brand = await loadFunction('brand');
     for (const method of ['GET', 'PATCH', 'DELETE']) {
       const res = await call(
         brand,
         makeEvent({ method, query: { id: BRAND_A }, token: signSessionToken(USER_C), body: { brand_name: 'pwned' } })
       );
-      expect(res.status, `brand.js ${method}`).toBe(403);
-      expect(res.body.error).toBe('PAYMENT_REQUIRED');
+      expect(res.body?.error, `brand.js ${method}`).not.toBe('PAYMENT_REQUIRED');
+      expect(res.status, `brand.js ${method}`).toBeGreaterThanOrEqual(400);
     }
   });
 });

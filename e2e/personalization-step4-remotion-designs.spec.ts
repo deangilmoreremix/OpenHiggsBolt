@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { artifactDir } from './helpers/artifactDir';
 
 /**
  * Phase 1 — Remotion designs inside Simple Mode Step 4.
@@ -15,7 +16,7 @@ import path from 'node:path';
  * `docs/REMOTION_PHASE_1_REPORT.md`.
  */
 
-const SHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-1-step4');
+const SHOT_DIR = artifactDir('docs', 'screenshots', 'phase-1-step4');
 
 const LAYOUT_PILLS = [
   'Business Introduction',
@@ -123,12 +124,11 @@ test.describe('Phase 1 — Remotion designs in Step 4', () => {
       await pill.click();
       await expect(pill).toHaveAttribute('aria-pressed', 'true');
 
-      // Every design draws the MIT credit line inside the overlay, so the
-      // design layer is provably present in the rendered frame.
-      const credit = page
-        .getByRole('region', { name: 'After: personalized preview' })
-        .locator('[data-remotion-design-credit]');
-      await expect(credit.first()).toBeVisible();
+      // The design layer is present in the rendered frame, and designs draw
+      // no copyright or licence credit.
+      const after = page.getByRole('region', { name: 'After: personalized preview' });
+      await expect(after.locator('[data-remotion-design]').first()).toBeVisible();
+      await expect(after.locator('[data-remotion-design-credit]')).toHaveCount(0);
     }
   });
 

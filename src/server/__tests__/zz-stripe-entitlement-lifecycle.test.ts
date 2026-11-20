@@ -147,24 +147,26 @@ describe('zz-stripe: entitlement resolution and preservation', () => {
     expect(access?.hasSmartVideoGo).toBe(true);
   });
 
-  it('an unknown user is denied with a synthetic unpaid state, not a crash', async () => {
+  it('an unknown user gets the open base access but no paid app, not a crash', async () => {
     const { resolveSmartVideoAccessForUser } = await loadModule();
 
     const access = await resolveSmartVideoAccessForUser('user_never_seen');
 
     expect(access).not.toBeNull();
-    expect(access?.hasSmartVideoGo).toBe(false);
+    expect(access?.hasSmartVideoGo).toBe(true);
+    expect(access?.hasSmartVideoViral).toBe(false);
     expect(access?.status).toBe('inactive');
   });
 
-  it('an inactive row is denied even though the entitlement is still recorded', async () => {
-    seedRow({ status: 'inactive' });
+  it('an inactive row is denied the paid app even though the entitlement is still recorded', async () => {
+    seedRow({ status: 'inactive', entitlements: { smartvideo_go: true, go_viral_ai: true } });
     const { resolveSmartVideoAccessForUser } = await loadModule();
 
     const access = await resolveSmartVideoAccessForUser('user_entitled');
 
-    expect(access?.hasSmartVideoGo).toBe(false);
-    expect(access?.entitlements.smartvideo_go).toBe(true);
+    expect(access?.hasSmartVideoGo).toBe(true);
+    expect(access?.hasSmartVideoViral).toBe(false);
+    expect(access?.entitlements.go_viral_ai).toBe(true);
   });
 
   it('grantEntitlement reactivates the row without dropping previously bought entitlements', async () => {
@@ -184,12 +186,12 @@ describe('zz-stripe: entitlement resolution and preservation', () => {
     expect(db.user_entitlements[0].stripe_customer_id).toBe('cus_2');
   });
 
-  it('a refunded purchase loses access while a lifetime purchase retains it', async () => {
+  it('a refunded purchase loses the paid app while a lifetime purchase retains it', async () => {
     const refunded = seedRow({
       id: 'ent_refunded',
       clerk_user_id: 'user_refunded',
       email: 'refunded@example.com',
-      entitlements: { smartvideo_go: true },
+      entitlements: { smartvideo_go: true, go_viral_ai: true },
       status: 'active',
       source: 'stripe',
       stripe_customer_id: 'cus_refunded',
@@ -198,7 +200,7 @@ describe('zz-stripe: entitlement resolution and preservation', () => {
       id: 'ent_lifetime',
       clerk_user_id: 'user_lifetime',
       email: 'lifetime@example.com',
-      entitlements: { smartvideo_go: true },
+      entitlements: { smartvideo_go: true, go_viral_ai: true },
       status: 'active',
       source: 'stripe',
       stripe_customer_id: 'cus_lifetime',
@@ -216,12 +218,14 @@ describe('zz-stripe: entitlement resolution and preservation', () => {
     const revokedAccess = await resolveSmartVideoAccessForUser('user_refunded');
     const lifetimeAccess = await resolveSmartVideoAccessForUser('user_lifetime');
 
-    expect(revokedAccess?.hasSmartVideoGo).toBe(false);
+    // Base access is open to everyone; the refund removes the paid app.
+    expect(revokedAccess?.hasSmartVideoGo).toBe(true);
+    expect(revokedAccess?.hasSmartVideoViral).toBe(false);
     expect(revokedAccess?.status).toBe('inactive');
 
-    expect(lifetimeAccess?.hasSmartVideoGo).toBe(true);
+    expect(lifetimeAccess?.hasSmartVideoViral).toBe(true);
     expect(lifetimeAccess?.status).toBe('active');
-    expect(lifetimeAccess?.entitlements).toEqual({ smartvideo_go: true });
+    expect(lifetimeAccess?.entitlements).toEqual({ smartvideo_go: true, go_viral_ai: true });
 
     // The refunded row is retained for audit, never deleted.
     expect(db.user_entitlements).toHaveLength(2);

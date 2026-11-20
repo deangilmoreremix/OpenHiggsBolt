@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { generateImage, uploadFile } from "../muapi.js";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
@@ -1319,6 +1320,9 @@ export default function CinemaStudio({
                 )}
               </button>
             </div>
+
+            {/* Saved uploads and generations, shared by every studio */}
+            <AssetLibraryButton kinds={["image"]} onSelect={(asset) => setUploadedImage(asset.url)} />
 
             {/* Personalize this shot in the shared Personalization Modal.
                 Renders nothing without a source image. */}

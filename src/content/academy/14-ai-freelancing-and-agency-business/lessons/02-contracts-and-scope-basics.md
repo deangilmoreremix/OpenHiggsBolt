@@ -1,121 +1,135 @@
-# Module 2: Contracts & Scope Basics
+# Contracts and Scope Basics
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Structuring bulletproof Master Services Agreements (MSA), Statements of Work (SOW), revision caps, milestone payment schedules, and AI copyright/IP assignment clauses.
+> **Time:** about 16 minutes. **You will finish with:** a customised contract draft with the five key clauses, a payment schedule and ready replies to common scope-creep requests.
 
 ---
 
-## 🎯 Why Standard Contracts Fail for AI Agencies
+## Before you start
 
-Traditional creative contracts assume human labor, manual camera shoots, and clear linear timelines. When managing AI creation pipelines, traditional contract templates leave massive legal loopholes:
+Standard creative contracts assume human labor and slow timelines. With AI work, three gaps appear: clients assume that because AI generates images in seconds they can demand endless variations; clients ask for your prompt libraries, ComfyUI workflows and LoRA weights; and AI copyright is ambiguous (the lesson points to U.S. Copyright Office rulings on AI-generated assets).
 
-1. **The Revision Trap:** Clients assuming that because *"AI generates images in seconds,"* they can demand 50 infinite variations for free.
-2. **The Prompt IP Confusion:** Clients demanding full ownership of your internal prompt libraries, ComfyUI workflows, and LoRA weights.
-3. **The AI Copyright Ambiguity:** Misunderstandings around U.S. Copyright Office rulings on AI-generated assets and commercial usage guarantees.
+Two agreements cover this. The **Master Services Agreement (MSA)** governs the whole relationship (liability caps, confidentiality, payment terms, governing law) and is signed once per client. A **Statement of Work (SOW)** is a project-specific addendum with deliverables, milestone dates, revision limits and fees, signed per project.
 
-To protect your agency margin and sanity, every client relationship must be governed by two legally binding agreements:
-* **Master Services Agreement (MSA):** The overarching legal contract that governs the entire client relationship — covering liability caps, confidentiality, payment terms, and governing law. Signed once per client and applies to all future projects.
-* **Statement of Work (SOW):** A project-specific addendum to the MSA that defines the exact deliverables, milestone dates, revision limits, and fees for a single engagement. A new SOW is signed for each individual project.
+The clause wording below is example text from the course, not legal advice. Have a qualified lawyer review your final contract.
 
----
+You will need:
 
-## 🔒 The 5 Mandatory Contract Clauses for AI Creators
+* `templates/freelance-client-contract.md` from this track.
+* A project you might sell, so you can fill in real numbers.
+* About 16 minutes.
 
-### 1. Revision Caps & Scope Creep Shield
-Scope creep is the single biggest threat to agency profit. Define *exactly* what constitutes a valid revision vs. an out-of-scope change order:
+## Step by step
 
-> **Clause 4.2 — Scope of Revisions:**  
-> *"The agreed Contract Value includes exactly two (2) rounds of revisions per deliverable. A 'Revision' is strictly limited to minor adjustments in color grading, background lighting adjustments, contrast correction, or minor masking fixes. Any request by Client for structural prompt re-engineering, model replacement, pose changes, or fundamental style alterations following sign-off of the initial Brief shall be classified as an Out-of-Scope Change Order, billed at Agency's standard rate of $150.00 per hour."*
+### 1. Open the contract template
 
----
+Open `templates/freelance-client-contract.md`. Note where the MSA ends and the SOW begins.
 
-### 2. Milestone Payment Structure & Payment Lock
-Never initiate GPU renders or prompt execution without non-refundable upfront cash. A standard milestone structure ensures positive cash flow:
+**You should see:** a master agreement section and a per-project statement of work.
 
-```
-+-----------------------------------------------------------------------------+
-|                        MILESTONE PAYMENT SCHEDULE                           |
-+-----------------------------------------------------------------------------+
-| MILESTONE 1: 50% Non-Refundable Deposit Upon Contract Signing               |
-| • Unlocks compute resources, model selection, and initial draft generation. |
-|                                                                             |
-| MILESTONE 2: 25% Upon First Watermarked Draft Review                        |
-| • Delivered as low-res watermarked proofs for Client feedback sign-off.     |
-|                                                                             |
-| MILESTONE 3: 25% Upon Final Asset Handover                                  |
-| • Unlocks un-watermarked 8k master files & commercial usage license.        |
-+-----------------------------------------------------------------------------+
+**If not:** copy the template into your own document and mark the two parts yourself.
+
+### 2. Add the revision cap clause
+
+Scope creep is the biggest threat to your profit. Add a clause like this one (adjust the numbers to your offer):
+
+```text
+Clause 4.2 - Scope of Revisions: The agreed Contract Value includes exactly two (2) rounds of revisions per deliverable. A "Revision" is strictly limited to minor adjustments in color grading, background lighting adjustments, contrast correction, or minor masking fixes. Any request by Client for structural prompt re-engineering, model replacement, pose changes, or fundamental style alterations following sign-off of the initial Brief shall be classified as an Out-of-Scope Change Order, billed at Agency's standard rate of $150.00 per hour.
 ```
 
-> [!WARNING]
-> **Never Deliver Final Un-Watermarked Master Files Prior to 100% Payment Clearance.** Delivering un-watermarked assets early removes all payment leverage and leads to delayed accounts receivable.
+**You should see:** your contract defines what counts as a revision and a change order rate.
 
----
+**If not:** check the clause names a number of rounds, a list of allowed edits and a rate.
 
-### 3. AI Copyright & Intellectual Property Assignment
-Address copyright law regarding AI-generated media clearly to set realistic expectations and protect client commercial rights:
+### 3. Set the milestone payment schedule
 
-> **Clause 8.1 — Intellectual Property & AI Commercial License:**  
-> *"Upon receipt of full payment, Agency grants to Client an exclusive, perpetual, worldwide commercial usage license to use, display, distribute, and monetize the final delivered media assets. Client acknowledges that deliverables utilize state-of-the-art Generative AI models (e.g., FLUX, Runway, ElevenLabs) operating under commercial enterprise tier agreements. Agency warrants that its prompt workflows and post-processing methods do not incorporate confidential third-party trade secrets or trademarked visual assets without authorization."*
+Never start renders without paid, non-refundable money upfront. Use this structure:
 
----
+```text
+MILESTONE 1: 50% non-refundable deposit upon contract signing. Unlocks compute resources, model selection and initial draft generation.
+MILESTONE 2: 25% upon first watermarked draft review. Delivered as low-res watermarked proofs for Client feedback sign-off.
+MILESTONE 3: 25% upon final asset handover. Unlocks un-watermarked 8k master files and the commercial usage license.
+```
 
-### 4. Background Proprietary IP Reservation
-Protect your internal workflow assets so clients cannot steal your technical stack:
+**You should see:** three milestones adding up to 100%.
 
-> **Clause 8.4 — Agency Background Technology:**  
-> *"Agency retains all right, title, and interest in and to its pre-existing tools, proprietary prompt libraries, ComfyUI node graphs, LoRA model weights, workflow scripts, and background automation technology ('Agency Background IP'). Nothing in this Agreement shall be construed as transferring ownership of Agency Background IP to Client."*
+**If not:** recheck that 50 + 25 + 25 = 100.
 
----
+### 4. Protect your payment leverage
 
-### 5. Client Input Warranty & Indemnification
-Ensure the client is legally responsible if they provide trademarked or copyrighted reference photos:
+Add one line to your process: never deliver final un-watermarked master files before 100% payment clears. Send low-resolution watermarked previews before the final milestone.
 
-> **Clause 9.3 — Client Data & Input Warranty:**  
-> *"Client represents and warrants that all logos, brand guidelines, reference images, trademarks, and employee headshots provided to Agency for AI model input do not infringe upon any third-party intellectual property or privacy rights. Client agrees to defend, indemnify, and hold harmless Agency against any claims arising from Client-provided inputs."*
+**You should see:** a written rule about watermarked proofs and release on full payment.
 
----
+**If not:** add it to the SOW delivery section.
 
-## 🛑 Common Scope Creep Scenarios & Exact Client Responses
+### 5. Add the IP and commercial license clause
 
-| Scope Creep Scenario | Client Request | Contract Defense & Exact Response |
-|---|---|---|
-| **Endless Variations** | *"Can we try 30 more variations of this lighting setup?"* | *"We’d love to explore those new variations! As per Clause 4.2 of our SOW, our 2 included revision rounds are complete. I can send over an Out-of-Scope Change Order for $450 to cover 15 additional variations."* |
-| **Workflow Source Files** | *"Send over all raw JSON prompts and node graphs so our team can run them internally."* | *"Our final 8k deliverables are fully licensed to you upon final payment! However, as outlined in Clause 8.4, our internal ComfyUI node graphs and prompt libraries are proprietary Agency Background IP and are not included in this deliverable."* |
-| **Late Payment Delay** | *"Our accounting department pays Net-60. Send the HD files now and we’ll pay next month."* | *"We completely understand corporate AP cycles! Per our agreement, high-resolution un-watermarked master files are released immediately upon final invoice clearance. Let us know as soon as the wire goes through!"* |
+```text
+Clause 8.1 - Intellectual Property & AI Commercial License: Upon receipt of full payment, Agency grants to Client an exclusive, perpetual, worldwide commercial usage license to use, display, distribute, and monetize the final delivered media assets. Client acknowledges that deliverables utilize state-of-the-art Generative AI models (e.g., FLUX, Runway, ElevenLabs) operating under commercial enterprise tier agreements. Agency warrants that its prompt workflows and post-processing methods do not incorporate confidential third-party trade secrets or trademarked visual assets without authorization.
+```
 
----
+**You should see:** the license starts only after full payment.
 
-## 🛠️ Step-by-Step Action Plan
+**If not:** have your lawyer check the warranty wording matches the tools you really use.
 
-1. **Adopt the Master Agreement:** Download [`templates/freelance-client-contract.md`](templates/freelance-client-contract.md) to customize your agency agreement.
-2. **Set Rigid Revision Limits:** Always state revision limits in writing in your initial project proposal.
-3. **Use Watermarked Proofing:** Deliver low-resolution watermarked previews prior to final milestone release.
-4. **Review Client Performance Dashboard:** View the client metrics dashboard report graphic:
-   ![Client Metrics Dashboard](templates/examples/client-dashboard-metrics.jpg)
-   *Watch the analytics motion video loop ([client-dashboard-motion.mp4](templates/examples/client-dashboard-motion.mp4) / [.gif](templates/examples/client-dashboard-motion.gif)).*
+### 6. Reserve your background IP
 
----
+```text
+Clause 8.4 - Agency Background Technology: Agency retains all right, title, and interest in and to its pre-existing tools, proprietary prompt libraries, ComfyUI node graphs, LoRA model weights, workflow scripts, and background automation technology ("Agency Background IP"). Nothing in this Agreement shall be construed as transferring ownership of Agency Background IP to Client.
+```
 
-## 💡 Key Takeaways
-- Always enforce a 50% non-refundable deposit before starting any GPU render or prompt pipeline.
-- Separate final output licensing (transferred to client) from internal prompt graphs and workflow IP (retained by agency).
-- Explicitly define revision parameters to prevent scope creep from destroying your net margin.
+**You should see:** the final outputs go to the client while your workflows stay yours.
 
+**If not:** confirm Clause 8.4 and Clause 8.1 do not contradict each other.
 
----
+### 7. Add the client input warranty
 
-## Produce this in SmartVideo GO AI
+```text
+Clause 9.3 - Client Data & Input Warranty: Client represents and warrants that all logos, brand guidelines, reference images, trademarks, and employee headshots provided to Agency for AI model input do not infringe upon any third-party intellectual property or privacy rights. Client agrees to defend, indemnify, and hold harmless Agency against any claims arising from Client-provided inputs.
+```
 
-Apply this lesson directly inside SmartVideo GO AI:
+**You should see:** the client is responsible for the inputs they give you.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**If not:** compare against the template and add the missing wording.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+### 8. Save your three scope-creep replies
+
+Keep these ready in a notes file:
+
+```text
+Endless variations: We'd love to explore those new variations! As per Clause 4.2 of our SOW, our 2 included revision rounds are complete. I can send over an Out-of-Scope Change Order for $450 to cover 15 additional variations.
+```
+
+```text
+Workflow source files: Our final 8k deliverables are fully licensed to you upon final payment! However, as outlined in Clause 8.4, our internal ComfyUI node graphs and prompt libraries are proprietary Agency Background IP and are not included in this deliverable.
+```
+
+```text
+Late payment (Net-60): We completely understand corporate AP cycles! Per our agreement, high-resolution un-watermarked master files are released immediately upon final invoice clearance. Let us know as soon as the wire goes through!
+```
+
+**You should see:** three replies that each cite a clause.
+
+**If not:** change the clause numbers to match your own contract.
+
+## Check yourself
+
+* [ ] I can explain the difference between an MSA and an SOW.
+* [ ] My contract has a revision cap, a 50/25/25 payment schedule, an IP clause, a background IP clause and an input warranty.
+* [ ] I will not release un-watermarked masters before full payment.
+* [ ] A lawyer will review the final contract before I use it.
+
+## Common mistakes
+
+* **Vague revision wording.** Define what a revision is and what is a change order.
+* **Starting work before the deposit.** Compute and time are spent first, then payment is hard to get.
+* **Transferring your workflows by accident.** Separate output licensing from Agency Background IP.
+* **Copying clauses without legal review.** The text is an example to adapt.
+
+## Go further
+
+**Exercise.** Take a project you quoted in the pricing lesson and write its SOW: deliverables, milestone dates, revision limit and fee, using the template.
+
+**Reference.** The client metrics dashboard graphic at `templates/examples/client-dashboard-metrics.jpg` shows one way to report results to a client.
+
+Next: Finding and closing clients.

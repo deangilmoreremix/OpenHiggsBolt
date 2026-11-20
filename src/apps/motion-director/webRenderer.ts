@@ -278,6 +278,8 @@ export const formatEta = (ms: number | null | undefined): string => {
  * renderer lives in this tab, so leaving it cancels the export. Returns the
  * function that removes the guard.
  */
+let rendersRunning = 0;
+
 export const guardTabWhileRendering = (): (() => void) => {
   if (typeof window === 'undefined') return () => {};
   const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -285,8 +287,19 @@ export const guardTabWhileRendering = (): (() => void) => {
     e.returnValue = '';
   };
   window.addEventListener('beforeunload', onBeforeUnload);
-  return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  rendersRunning++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    rendersRunning--;
+    window.removeEventListener('beforeunload', onBeforeUnload);
+  };
 };
+
+/** Leaving the view that runs an MP4 render cancels it: true when nothing is rendering or the person agrees. */
+export const confirmLeaveWhileRendering = (message: string): boolean =>
+  rendersRunning === 0 || window.confirm(message);
 
 /**
  * Render a still frame from the composition as a PNG Blob.

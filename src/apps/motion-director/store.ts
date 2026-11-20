@@ -17,10 +17,17 @@ export { projectDuration } from "./types";
 // "shotcraft-workbench" tool so returning users keep their existing project.
 const STORAGE_KEY = "motion-director:project-v1";
 const SESSIONS_STORAGE_KEY = "motion-director:sessions-v1";
+// Keys of the removed Motion Studio (same project/session format). Read only while
+// Motion Director has saved nothing of its own, so earlier Motion Studio work reopens here.
+const LEGACY_STORAGE_KEY = "shotcraft-workbench-project-v1";
+const LEGACY_SESSIONS_STORAGE_KEY = "shotcraft-motion-sessions-v1";
+
+const readSaved = (key: string, legacyKey: string): string | null =>
+  localStorage.getItem(key) ?? localStorage.getItem(legacyKey);
 
 const loadSaved = (): ProjectData | null => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readSaved(STORAGE_KEY, LEGACY_STORAGE_KEY);
     if (raw) {
       const p = JSON.parse(raw) as ProjectData;
       if (p && isProjectShape(p)) return p;
@@ -33,7 +40,7 @@ const loadSaved = (): ProjectData | null => {
 
 const loadSavedSessions = (): SessionData[] => {
   try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    const raw = readSaved(SESSIONS_STORAGE_KEY, LEGACY_SESSIONS_STORAGE_KEY);
     if (raw) {
       const s = JSON.parse(raw) as SessionData[];
       // 旧存档没有 messages 字段：补空数组，messageCount 取真实条数

@@ -25,6 +25,7 @@ import type { ClipData, ProjectData, TrackData } from "./types";
 import { applyLocaleToDocument, LOCALES, useLocale, useT, type Locale } from "./i18n";
 import { MOTION_CATEGORIES, motionCardId, type MotionTemplate } from "@/data/motionRecipeCatalog";
 import ExportButton from "./ExportButton";
+import { confirmLeaveWhileRendering } from "./webRenderer";
 import "./styles.css";
 
 const isEditable = (el: EventTarget | null) =>
@@ -137,7 +138,7 @@ export const App: React.FC = () => {
 
   /** Clicking a recipe goes to the chat with it picked (films are made there); "Add" still puts it on the timeline. */
   const handleSelectRecipe = (recipe: MotionTemplate) => {
-    navigate("/new", { state: { pickRecipe: recipe.id } });
+    if (confirmLeaveWhileRendering(t("export.leaveConfirm"))) navigate("/new", { state: { pickRecipe: recipe.id } });
   };
 
   /** Library → timeline: insert the shot at the playhead on the selected
@@ -208,7 +209,9 @@ export const App: React.FC = () => {
         <button
           type="button"
           className="ms-back"
-          onClick={() => navigate("/new")}
+          onClick={() => {
+            if (confirmLeaveWhileRendering(t("export.leaveConfirm"))) navigate("/new");
+          }}
           title="Back to the Motion Director chat (your film stays here — reopen it from Continue editing)"
           data-testid="workbench-back-to-chat"
         >

@@ -115,6 +115,7 @@ import { setCharacterSheet } from "../lib/characterStore";
 import { fillTemplate } from "../lib/promptRecipes";
 import registry from "../skills/registry.json";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 async function downloadFile(url, filename) {
@@ -3093,6 +3094,17 @@ export default function VideoStudio({
                   type="audio"
                 />
               )}
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={[
+                  "image",
+                  ...(videoUploadLimit > 0 ? ["video"] : []),
+                  ...(audioUploadLimit > 0 ? ["audio"] : []),
+                ]}
+                // Same path as an upload: it picks a model that takes this media type and respects its limit.
+                onSelect={(asset) => applyReferenceUrls(asset.kind, [asset.url])}
+              />
                 </>
               )}
             </div>

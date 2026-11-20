@@ -1,6 +1,5 @@
 'use client';
 import { useRef } from 'react';
-import Link from 'next/link';
 import LazyVideo from './LazyVideo';
 import Magnetic from './fx/Magnetic';
 import { useCinematicHero } from './fx/useCinematicHero';
@@ -66,19 +65,21 @@ export default function SeedancePromptsHero() {
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Magnetic className="w-full sm:w-auto">
               <a
-                href={getCreateUrl(hero ?? ({ slug: 'placeholder', sourceRepo: 'seedance2prompt' } as any))}
+                // No hero demo in the catalog: open the Video Studio rather than a
+                // template id that matches nothing.
+                href={hero ? getCreateUrl(hero) : '/studio/video'}
                 className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-7 py-3.5 text-sm font-bold text-black shadow-glow transition sm:w-auto fx-shine"
               >
                 Start Creating
               </a>
             </Magnetic>
             <Magnetic className="w-full sm:w-auto">
-              <Link
-                href="#smartvideo-gallery-prompts"
+              <a
+                href="#smartvideo-gallery-all"
                 className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto"
               >
                 Watch More
-              </Link>
+              </a>
             </Magnetic>
           </div>
         </div>

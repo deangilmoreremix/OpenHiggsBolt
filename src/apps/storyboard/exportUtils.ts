@@ -123,3 +123,59 @@ export function exportPdf(project: StoryboardProject) {
   win.document.write(html)
   win.document.close()
 }
+
+/** Same-origin address for an image, so it can be drawn to a canvas: remote images go through /api/thumbnail. */
+function drawableUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? `/api/thumbnail?url=${encodeURIComponent(url)}` : url
+}
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('A frame could not be loaded'))
+    img.src = drawableUrl(url)
+  })
+}
+
+/**
+ * Turn the shots that have a frame into an animated, looping GIF (each frame held for its shot's duration,
+ * capped, or `frameMs` when set) and download it. Resolves with the number of frames used.
+ */
+export async function exportGif(
+  shots: { frameUrl?: string; duration?: number }[],
+  aspectRatio: '16:9' | '9:16',
+  projectName: string,
+  { frameMs, maxWidth = 640 }: { frameMs?: number; maxWidth?: number } = {},
+): Promise<number> {
+  const withFrames = shots.filter((s): s is { frameUrl: string; duration?: number } => Boolean(s.frameUrl))
+  if (!withFrames.length) throw new Error('Generate at least one frame first.')
+  const { encodeGif } = await import('./gifEncoder')
+  const portrait = aspectRatio === '9:16'
+  const width = portrait ? Math.round(maxWidth * 0.5625) : maxWidth
+  const height = portrait ? maxWidth : Math.round(maxWidth * 0.5625)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('This browser cannot build a GIF.')
+
+  const frames: { data: Uint8ClampedArray; delayMs: number }[] = []
+  for (const shot of withFrames) {
+    const img = await loadImage(shot.frameUrl)
+    // Fill the frame, cropping the overflow ("cover").
+    const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight)
+    const w = img.naturalWidth * scale
+    const h = img.naturalHeight * scale
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, width, height)
+    ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h)
+    frames.push({
+      data: ctx.getImageData(0, 0, width, height).data,
+      delayMs: Math.min(frameMs ?? Math.min(Math.max((Number(shot.duration) || 2) * 1000, 300), 5000), 60_000), // a GIF stores the delay in 1/100 s as 16 bits
+    })
+  }
+  const bytes = encodeGif(frames, width, height)
+  downloadBlob(new Blob([bytes as BlobPart], { type: 'image/gif' }), `${safeFileName(projectName)}-storyboard.gif`)
+  return frames.length
+}

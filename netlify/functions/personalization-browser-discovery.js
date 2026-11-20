@@ -41,14 +41,24 @@ function getSupabase() {
 // Resource limits / timeouts
 // ---------------------------------------------------------------------------
 
+/**
+ * Same honest crawler agent as src/lib/siteRequestHeaders.ts (this plain-JS
+ * worker cannot import TypeScript).
+ */
+const SITE_USER_AGENT = 'Mozilla/5.0 (compatible; SmartVideoGO/1.0; +https://go.smartvid.app)'
+
 const BROWSER_FALLBACK_MAX_PAGES = 4
 // Time budget for the static / sitemap / Crawlee layers inside the worker.
 const FAST_DISCOVERY_BUDGET_MS = 20_000
 const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5000
+// JS-built pages (Wix, Squarespace, React) often need more than 5s to reach
+// DOMContentLoaded on a cold serverless Chromium, and their images load only
+// as the page is scrolled. 9s + three short scroll steps stays inside the
+// 60s run budget at 4 pages / 2 concurrent.
+const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9000
 const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2000
-const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-const BROWSER_FALLBACK_SCROLL_DELAY = 100
+const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+const BROWSER_FALLBACK_SCROLL_DELAY = 300
 const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 /** Hard cap on the redirect hops a single navigation may take. */
@@ -1104,7 +1114,8 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingB
 
   try {
     context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+      userAgent: SITE_USER_AGENT,
+      locale: 'en-US',
       viewport: { width: 1280, height: 900 },
       // A registered service worker issues its own `fetch`es in a worker scope
       // that `context.route()` never sees. Blocking them closes the bypass: the
@@ -1200,7 +1211,7 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingB
             if (currentHeight === lastHeight) break
             lastHeight = currentHeight
             await page.evaluate('window.scrollBy(0, window.innerHeight * 0.8)')
-            await page.waitForTimeout(100)
+            await page.waitForTimeout(BROWSER_FALLBACK_SCROLL_DELAY)
             attempts++
           }
           await page.evaluate('window.scrollTo(0, 0)')

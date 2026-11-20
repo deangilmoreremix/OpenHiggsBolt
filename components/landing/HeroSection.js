@@ -109,12 +109,12 @@ export default function HeroSection() {
         <h1 className="mx-auto max-w-4xl text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
           <span ref={headlineRef} className="landing-gradient-text" style={{ textWrap: 'balance' }}>Turn Any Local Business Into</span>
           <br className="hidden sm:inline" />
-          <span data-hero-rotator className="mt-2 inline-block">
+          <span data-hero-rotator className="mt-2 block sm:inline-block">
             <AnimatedHeadline
               phrases={HERO_ANIMATED_CREATION_TYPES}
               interval={HERO_CREATION_PHRASE_INTERVAL_MS}
               transition={HERO_PHRASE_TRANSITION_MS}
-              className="text-5xl md:text-7xl lg:text-8xl"
+              className="text-[2rem] sm:text-5xl md:text-7xl lg:text-8xl"
             />
           </span>
         </h1>
@@ -123,8 +123,9 @@ export default function HeroSection() {
           Find the business. Find their photos. Fix their assets. Personalize viral campaigns. Create content built specifically for them.
         </p>
 
-        {/* min-height reserves two lines so the rotating words don't shift the page */}
-        <div data-hero-reveal className="mt-4 min-h-[3.5rem]">
+        {/* min-height reserves the most lines any phrase pair needs, so the rotating
+            words never shift the page: 5 below 360px, 4 on phones, 2 from sm up. */}
+        <div data-hero-reveal className="mt-4 min-h-[8.75rem] min-[360px]:min-h-[7rem] sm:min-h-[3.5rem]">
           <AnimatedLine
             text="SmartVideo GO gives [ANIMATED] an entire AI content production system for serving [ANIMATED]."
             words={[

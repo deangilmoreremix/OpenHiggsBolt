@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { processMotionControl, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -296,6 +298,31 @@ function CharacterImagesMediaButton({
           </div>
         )}
       </button>
+
+      {/* Always-visible thumbnails, so uploaded images can be seen and removed without opening the popover */}
+      {images.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap max-w-[11rem] max-h-[5.5rem] overflow-y-auto custom-scrollbar">
+          {images.map((img, idx) => (
+          <div
+            key={`${img.url}-${idx}`}
+            className="relative w-10 h-10 shrink-0 rounded-full overflow-hidden border border-white/10 bg-black/50"
+          >
+            <img src={img.url} alt={img.name || ""} className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveImage(idx);
+              }}
+              title={copy.titles.removeImage}
+              className="absolute top-0 right-0 w-4 h-4 bg-black/70 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] leading-none border border-white/20"
+            >
+              ×
+            </button>
+          </div>
+          ))}
+        </div>
+      )}
 
       {/* Quick Add Button if images already exist */}
       {images.length > 0 && images.length < maxImages && (
@@ -967,6 +994,14 @@ export default function MotionControlStudio({
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                     </svg>
                   </button>
+                  <span onClick={(e) => e.stopPropagation()} className="contents">
+                    <PublishStep
+                      mediaUrl={entry.url}
+                      mediaType="video"
+                      title={entry.prompt?.substring(0, 50) || "Motion control video"}
+                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                    />
+                  </span>
                   <button
                     type="button"
                     title={copy.buttons.useAsVideo}
@@ -1445,6 +1480,21 @@ export default function MotionControlStudio({
                 />
               )}
             </div>
+
+            {/* Everything you've uploaded or generated in any studio (kept on your account) */}
+            <AssetLibraryButton
+              kinds={["image", "video"]}
+              label="Saved"
+              onSelect={(asset) => {
+                if (asset.kind === "video") {
+                  setVideoUrl(asset.url);
+                  setVideoName(asset.name || copy.defaults.selectedVideo);
+                  setVideoState(UPLOAD_STATE.READY);
+                } else if (characterImages.length < maxImagesAllowed) {
+                  setCharacterImages((prev) => [...prev, { url: asset.url, name: asset.name || copy.defaults.selectedImage }]);
+                }
+              }}
+            />
           </PromptControls>
 
           {/* Action Generate Button */}

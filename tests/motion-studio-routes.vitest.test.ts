@@ -13,6 +13,7 @@ class FakeSsrfError extends Error {}
 let userId: string | null = 'user_1'
 let entitled = true
 const upload = vi.fn()
+const signUpload = vi.fn()
 const capture = vi.fn()
 const realFetch = globalThis.fetch
 
@@ -37,6 +38,7 @@ beforeEach(() => {
   userId = 'user_1'
   entitled = true
   upload.mockReset().mockResolvedValue({ error: null })
+  signUpload.mockReset().mockImplementation(async (path: string) => ({ data: { signedUrl: `https://storage.test/sign/${path}?token=t` }, error: null }))
   capture.mockReset().mockResolvedValue({
     url: 'https://acme.test/',
     title: 'Acme',
@@ -60,6 +62,7 @@ beforeEach(() => {
       storage: {
         from: () => ({
           upload,
+          createSignedUploadUrl: signUpload,
           getPublicUrl: (path: string) => ({ data: { publicUrl: `https://storage.test/${path}` } }),
         }),
       },
@@ -166,6 +169,35 @@ describe('POST /api/motion-studio/capture', () => {
     const { POST } = await import('@/app/api/motion-studio/capture/route')
     const res = await POST(post('/api/motion-studio/capture', {}))
     expect(res.status).toBe(400)
+  })
+})
+
+describe('POST /api/motion-studio/upload', () => {
+  const file = { name: 'Theme song.mp3', type: 'audio/mpeg', size: 4_000_000 }
+
+  it("hands out a one-time upload address under the caller's own prefix", async () => {
+    const { POST } = await import('@/app/api/motion-studio/upload/route')
+    const res = await POST(post('/api/motion-studio/upload', file))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.uploadUrl).toMatch(/^https:\/\/storage\.test\/sign\/smartvideo\/user_1\/motion-media\/[0-9a-f-]+-Theme-song\.mp3\?token=t$/)
+    expect(body.url).toMatch(/^https:\/\/storage\.test\/smartvideo\/user_1\/motion-media\/[0-9a-f-]+-Theme-song\.mp3$/)
+  })
+
+  it('refuses other kinds of file, empty or oversized files, and signed-out callers', async () => {
+    const { POST } = await import('@/app/api/motion-studio/upload/route')
+    expect((await POST(post('/api/motion-studio/upload', { ...file, type: 'text/html' }))).status).toBe(400)
+    expect((await POST(post('/api/motion-studio/upload', { ...file, size: 0 }))).status).toBe(400)
+    expect((await POST(post('/api/motion-studio/upload', { ...file, size: 101 * 1024 * 1024 }))).status).toBe(400)
+    expect(signUpload).not.toHaveBeenCalled()
+    userId = null
+    expect((await POST(post('/api/motion-studio/upload', file))).status).toBe(401)
+  })
+
+  it('answers 503 when storage cannot sign an upload, so the file stays tab-only', async () => {
+    signUpload.mockResolvedValue({ data: null, error: { message: 'bucket missing' } })
+    const { POST } = await import('@/app/api/motion-studio/upload/route')
+    expect((await POST(post('/api/motion-studio/upload', file))).status).toBe(503)
   })
 })
 

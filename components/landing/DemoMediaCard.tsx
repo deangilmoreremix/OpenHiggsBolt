@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
@@ -51,7 +52,7 @@ export default function DemoMediaCard({
     <Reveal
       as="article"
       delay={Math.min(index, 8) * 60}
-      className="fx-card-glow group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
+      className="fx-card-glow group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
       onClick={openDetail}
     >
       <div className="fx-card flex flex-1 flex-col" onPointerMove={trackSpotlight}>
@@ -74,7 +75,17 @@ export default function DemoMediaCard({
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-lg font-bold leading-snug text-white">{demo.title}</h3>
+        <h3 className="text-lg font-bold leading-snug text-white">
+          {/* A real link so keyboard, middle-click and "open in new tab" work;
+              the rest of the card opens the same page on click. */}
+          <Link
+            href={`/demo/${demo.slug}`}
+            onClick={(event) => event.stopPropagation()}
+            className="rounded-sm hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+          >
+            {demo.title}
+          </Link>
+        </h3>
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">{demo.useCase}</p>
 
         <div className="mt-auto pt-5" onClick={(event) => event.stopPropagation()}>

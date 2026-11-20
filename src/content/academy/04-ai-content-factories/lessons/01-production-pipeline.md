@@ -1,43 +1,22 @@
 # The Multi-Step Production Pipeline
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> A factory is built on stations, not tasks.
-
-**Track:** AI Content Factories  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
-
-## The Problem
-
-Most solopreneurs and content agencies handle video creation as an ad-hoc craft. They write a line, open an image generator to test it, write another line, record a voice clip, import it into an editor, and tweak it. This constant context-shifting causes extreme decision fatigue and wastes hours. A single 60-second video can take an entire afternoon to produce. 
-
-If you are selling content production as a service, this speed is a business-killer. If you charge $50 per video and spend 4 hours creating it, you are working for $12.50 an hour. 
-
-To turn a profit, you must run your production like an assembly line: separating the process into discrete, linear **stations** where assets flow unidirectionally from ideation to final scheduling without ever moving backward.
-
-## The Concept
-
-The core principle of a content factory is the **Linear Production Pipeline**:
-
-```
-Idea  ──►  Script  ──►  Voiceover  ──►  Visuals  ──►  Assembly  ──►  Polish  ──►  Schedule
-```
-
-By organizing your work into stations, you achieve:
-* **Unidirectional Flow:** You never write or modify a script *after* voiceover generation is complete. You never generate new visual assets *after* editing is complete. Work only moves forward through the pipeline — never backward.
-* **Station Specialization:** Each stage has strict input and output criteria, preventing unfinished work from clogging down-line editors.
-* **Standardized Deliverables:** Export files are checked against strict technical parameters (resolution, codecs, audio thresholds) before delivery to avoid revisions.
+> **Time:** about 15 minutes. **You will finish with:** a factory folder set up, a locked script, and a logged voiceover, ready for the visuals in part 2.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Set Up Your Factory Folders
-On your hard drive, create a folder template that mirrors the pipeline station structure:
-```
+A single 60-second video can eat an afternoon when you jump between writing, images, voice and editing. At $50 per video and 4 hours of work, you earn $12.50 an hour. A factory fixes this by splitting the work into stations where assets only move forward: Idea, Script, Voiceover, Visuals, Assembly, Polish, Schedule. You never edit a script after the voiceover exists, and never generate visuals after editing starts.
+
+You will need a folder on your computer, a video idea, and a voice tool (the worked example used ElevenLabs). In SmartVideo GO AI you can use the **Storyboard / Campaign Planner** for scripts and batch briefs. Part 2 covers visuals, editing and export.
+
+## Step by step
+
+### 1. Create the factory folders
+
+On your hard drive, create this structure:
+
+```text
 [Factory_Batch_01]/
 ├── 01_scripts/     # Locked script drafts
 ├── 02_audio/       # Voiceover narrations (.mp3/.wav)
@@ -46,97 +25,65 @@ On your hard drive, create a folder template that mirrors the pipeline station s
 └── 05_exports/     # Completed masters checked against specs
 ```
 
-### Step 2: Station 1 & 2 (Script Lock)
-Draft the batch scripts. Ensure they meet the strict word count restrictions (under 180 words for short-form) and follow the hook structures. Lock the scripts.
+**You should see:** five numbered folders inside one batch folder.
 
-### Step 3: Station 3 & 4 (Audio Spine)
-Batch-generate the voiceover audio files. Import them into your project folder. Cut out starting and trailing silences. Log their durations in your narration log template.
+**If not:** if your system sorts them oddly, keep the number prefixes exactly; they enforce the order.
 
-### Step 4: Station 5 (Visual Harvest)
-Generate or download the background visuals matching the logged audio timeline. Do not open the video editor yet. Keep visuals organized in subfolders by video number.
+### 2. Pick one idea and write the script
 
-### Step 5: Station 6 & 7 (Timeline Edit & Polish)
-Import all assets. Cut the visual clips to the exact audio milestones. Apply text caption templates and LUT color profiles. 
+Choose one angle (the worked example used "How physical grocery stores use AI cameras to count inventory"). Draft a script under 180 words for short-form, following a hook structure. Save it in `01_scripts/`.
 
-### Step 6: Station 8 (Specs Check & Export)
-Before exporting, run through the [`templates/asset-specs-checklist.md`](templates/asset-specs-checklist.md). Verify that:
-* Aspect ratio is correct (`9:16` for vertical, `16:9` for widescreen).
-* Peak audio volume sits at **-3dB** to **-1dB**.
-* The file name contains the primary target keyword.
+**You should see:** a script file under 180 words (the worked example was 140).
 
----
+**If not:** if it runs over, cut the weakest sentences rather than speeding up the voice.
 
-## Worked Example
+### 3. Lock the script
 
-<p align="center">
-<img src="templates/examples/content-factory-studio.jpg" alt="Content Studio" width="280">
-<img src="templates/examples/content-factory-studio-clip.gif" alt="Automated Factory Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Automated Content Studio Image (Left) ──► Image-to-Video Factory Motion (Right) · Video File: <a href="templates/examples/content-factory-studio-clip.mp4">templates/examples/content-factory-studio-clip.mp4</a></sub></p>
+Read it once, fix it, then call it locked. From now on, no script changes after voiceover is generated.
 
-**Pipeline Run: "AI in Retail" Explainer (Widescreen)**
+**You should see:** a final script you will not touch again.
 
+**If not:** if you want to change it later, delete the voiceover and redo this station; do not patch backward.
 
+### 4. Generate the voiceover
 
-* **Station 1 (Idea):** Angle chosen: *"How physical grocery stores use AI cameras to count inventory."* (Time spent: **2 mins**).
-* **Station 2 (Script):** Drafted a 140-word narrative structure. (Time spent: **6 mins**).
-* **Station 3 (Voice):** Fed script into ElevenLabs using a warm narration voice profile. (Time spent: **3 mins**).
-* **Station 4 (Visuals):** Generated 4 widescreen background clips of high-tech grocery stores using `nano-banana-2` and `seedance-2`. (Time spent: **8 mins**).
-* **Station 5 (Edit & Polish):** Synced visual cuts to the audio spine, added text captions, applied a cinematic color LUT. (Time spent: **10 mins**).
-* **Station 6 (Export check):** Verified audio levels and H.264 export settings. (Time spent: **2 mins**).
+Feed the locked script into your voice tool (the example used a warm narration voice profile). Save the file in `02_audio/`.
 
-**Total Production Time:** **31 minutes** from blank page to finished export.
+**You should see:** one audio file for the script, in `.mp3` or `.wav`.
 
----
+**If not:** if the tool rejects the length, check the script is within your plan's limit.
 
-## Compare Tools
+### 5. Cut silences and log the duration
 
-| Production Method | Speed | Output Quality | Best for |
-|---|---|---|---|
-| **Manual CapCut Editing** | Medium (30 mins/video) | High (Highly custom captions, custom transitions) | Professional client deliverables and premium channels. |
-| **Programmatic Rendering** (`AI-Youtube-Shorts-Generator`) | Fast (5 mins/video) | Medium (Generic template overlays and stock clips) | Mass-producing faceless channels and placeholder video networks. |
-| **Traditional Editors** (Premiere/DaVinci) | Slow (60+ mins/video) | Ultra-High (Unrestricted color grading, advanced audio mixing) | Cinema-grade corporate videos and long-form explainers. |
+Cut starting and trailing silence from the audio. Write the final duration in your narration log (a simple note or the pipeline template: [`templates/pipeline-flowchart-template.md`](templates/pipeline-flowchart-template.md)).
 
-For agency-scale output, CapCut is the standard tool because of its fast rendering times and auto-caption capabilities. When scaling beyond 3 channels, use programmatic generators like `AI-Youtube-Shorts-Generator` to handle bulk rendering.
+**You should see:** a trimmed file and a duration logged next to its name.
 
----
+**If not:** if you cannot tell where silence ends, zoom the waveform in your editor until the speech edge is clear.
 
-## Launch It
+## Check yourself
 
-**How to monetize this system:**
-* **Pipeline Audit Service:** Pitch local businesses that are struggling to produce content. Audit their current workflow and design a custom production flowchart for them for **$500–$1,000**.
-* **Content Sourcing Outsourcing:** Scale your factory by hiring cheap freelance virtual assistants to manage specific stations (e.g. Station 5: Visual Sourcing, or Station 3: Audio Generation) while you handle Station 2 (Scripting) and Station 6 (Editing).
+* [ ] My folders mirror the five stations.
+* [ ] My script is under 180 words and locked.
+* [ ] My voiceover is trimmed and its duration is logged.
+* [ ] I know the one-way flow: Idea, Script, Voiceover, Visuals, Assembly, Polish, Schedule.
 
----
+## Common mistakes
 
-## Exercises
+* Editing the script after voiceover exists.
+* Opening the video editor before audio and visuals are finished.
+* Skipping the duration log, which you need to time visuals.
 
-1. **Easy:** Set up a clean factory folder structure on your local drive. Organize a mock set of audio and visual files inside.
-2. **Medium:** Document your current content creation workflow step-by-step. Identify the points where you move backwards in the pipeline, and rewrite your process as a strict unidirectional flow.
-3. **Hard:** Complete a full 60-second video build using a stopwatch. Track the exact time spent at each of the 6 stations. Highlight the slowest station and write a plan to optimize it.
+## Go further
 
----
+**Worked example, "AI in Retail" explainer (widescreen):** Idea 2 min, Script 140 words 6 min, Voice 3 min, Visuals 8 min (4 widescreen clips with `nano-banana-2` and `seedance-2`), Edit and polish 10 min, Export check 2 min. Total: **31 minutes** from blank page to finished export.
 
-## Templates
+**Compare tools:** Manual CapCut editing is medium speed (about 30 mins/video) with high quality, best for client work. Programmatic rendering (`AI-Youtube-Shorts-Generator`) is fast (about 5 mins/video) with medium quality, best for faceless channels. Premiere/DaVinci is slow (60+ mins/video) with ultra-high quality. CapCut is the agency standard; past 3 channels, consider programmatic generators.
 
-* [`templates/pipeline-flowchart-template.md`](templates/pipeline-flowchart-template.md) — a layout diagram and audit sheet for pipeline stations.
-* [`templates/asset-specs-checklist.md`](templates/asset-specs-checklist.md) — export checklist for resolution, codecs, and safe zones.
+**Monetize:** a Pipeline Audit Service (audit a business's workflow and design a flowchart for **$500-$1,000**), or hire freelance assistants to run single stations while you keep scripting and editing.
 
----
+**Exercises:** Easy: set up the folder structure with mock files. Medium: write your current workflow and rewrite it as strictly one-way. Hard: build a 60-second video with a stopwatch, time each of the 6 stations, and plan to fix the slowest.
 
-[← Track overview](README.md) · Next: [Building a TikTok/Reels Factory →](02-tiktok-reels-factory.md)
+**Templates:** [`templates/pipeline-flowchart-template.md`](templates/pipeline-flowchart-template.md), [`templates/asset-specs-checklist.md`](templates/asset-specs-checklist.md).
 
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: The Multi-Step Production Pipeline, part 2.

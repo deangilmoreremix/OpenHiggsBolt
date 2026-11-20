@@ -20,6 +20,7 @@
  * `Error` so the caller's per-image mapping reports it as `ok: false`.
  */
 
+import { SITE_IMAGE_HEADERS } from '../lib/siteRequestHeaders'
 import axios, { type AxiosResponse } from 'axios'
 import {
   checkDestination,
@@ -97,7 +98,7 @@ function redirectLocationOf(response: AxiosResponse): string {
  * fetch-level failure (DNS, connect, timeout) propagates as a plain `Error`
  * for the caller to report as a per-image failure.
  */
-async function fetchWithValidatedRedirects(startUrl: string): Promise<{
+async function fetchWithValidatedRedirects(startUrl: string, maxBytes: number): Promise<{
   response: AxiosResponse
   finalUrl: string
 }> {
@@ -121,10 +122,12 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
 
     const response = await axios.get(currentUrl, {
       responseType: 'arraybuffer',
+      // Enforced while the body streams in (axios aborts the request), so an oversized
+      // response is never buffered in full.
+      maxContentLength: maxBytes,
+      maxBodyLength: maxBytes,
       timeout: REQUEST_TIMEOUT,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-      },
+      headers: { ...SITE_IMAGE_HEADERS },
       // 3xx must come back as a response so the manual loop can re-validate
       // the next hop instead of letting axios follow it unchecked.
       validateStatus: (status: number) => status >= 200 && status < 400,
@@ -157,12 +160,20 @@ export async function downloadImageAsDataUrl(url: string, maxBytes = 5 * 1024 * 
   // Pre-flight before any fetch: an unsafe initial URL never reaches axios.
   await guardUrl(url)
 
-  const { response } = await fetchWithValidatedRedirects(url)
+  const tooLarge = () =>
+    new Error(`This image is larger than ${Math.round(maxBytes / (1024 * 1024))} MB, so it cannot be edited here. Upload a smaller copy instead.`)
+
+  let response: AxiosResponse
+  try {
+    ;({ response } = await fetchWithValidatedRedirects(url, maxBytes))
+  } catch (err) {
+    // axios aborts with this message as soon as the streamed body passes maxContentLength.
+    if (err instanceof Error && /maxContentLength size of .* exceeded/i.test(err.message)) throw tooLarge()
+    throw err
+  }
 
   const buffer = Buffer.from(response.data)
-  if (buffer.length > maxBytes) {
-    throw new Error(`This image is larger than ${Math.round(maxBytes / (1024 * 1024))} MB, so it cannot be edited here. Upload a smaller copy instead.`)
-  }
+  if (buffer.length > maxBytes) throw tooLarge()
 
   const contentType = String(response.headers['content-type'] || 'application/octet-stream')
   if (!contentType.startsWith('image/')) {

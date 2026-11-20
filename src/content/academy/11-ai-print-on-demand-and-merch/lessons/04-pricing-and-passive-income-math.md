@@ -1,128 +1,100 @@
 # Pricing & Passive-Income Math for POD
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Master unit economics, marketplace listing fees, and conversion math to build a profitable POD catalog.
-
-**Track:** AI Print-on-Demand & Merch Design  
-**Time:** ~35 minutes  
-**Prerequisites:** [01: Designing Sellable AI Art](01-designing-sellable-ai-art-for-merch.md), [02: POD Platform Basics](02-print-on-demand-platform-basics.md), [03: Building a Catalog](03-building-a-catalog-without-repeating.md)  
-
-## The Problem
-
-Many POD sellers generate sales but end up **losing money** at the end of the month. They price t-shirts at $19.99 without accounting for hidden platform fees:
-* Etsy listing fees ($0.20 per listing).
-* Etsy payment processing fees (6.5% transaction fee + 3% + $0.25 payment fee).
-* Print supplier base garment costs ($9.50) + shipping ($4.75).
-* Ad spend or marketing costs ($2 - $5 per sale).
-
-After subtracting all costs, a $19.99 shirt nets a negative profit margin. You need an exact mathematical pricing model to ensure every sale yields a healthy **$7 to $12 net profit**.
-
-> **Note on Etsy fees:** Etsy charges a $0.20 listing fee, a 6.5% transaction fee on the sale price, and a ~3% + $0.25 payment processing fee. Combined, this totals roughly **9.5–10% of your retail price** — which is what the model below uses.
+> **Time:** about 15 minutes. **You will finish with:** a pricing sheet with net profit per product and a monthly income projection.
 
 ---
 
-## The Concept
+## Before you start
 
-The POD Profit Formula determines net profit per unit sold:
+Many POD sellers make sales but lose money, because they price a t-shirt at $19.99 and ignore fees: Etsy listing fee ($0.20), transaction fee (6.5%), payment processing (~3% + $0.25), supplier garment cost ($9.50) plus shipping ($4.75), and ad spend ($2 - $5 per sale). Together Etsy fees are roughly **9.5 - 10% of retail**, which this model uses. The goal is **$7 to $12 net profit** per sale.
 
-$$\text{Net Profit} = \text{Retail Price} - (\text{Print Supplier Cost} + \text{Shipping}) - \text{Marketplace Fees} - \text{Ad Spend}$$
+**Net Profit = Retail Price - (Print Supplier Cost + Shipping) - Marketplace Fees - Ad Spend**
 
-### Unit Economics Breakdown (Example T-Shirt):
+You need lessons 1 to 3, a spreadsheet (Google Sheets or Excel), and `templates/pod-pricing-calculator.md`. SmartVideo GO AI Storyboard / Campaign Planner can hold test plans.
 
-```
-Retail Sale Price:           $24.99
------------------------------------
-Printify Base Garment Cost:  -$9.25
-Shipping Cost:               -$4.75
-Etsy Fees (~10% total):      -$2.50
------------------------------------
-NET PROFIT PER SALE:          $8.49 (34% Net Margin)
-```
+## Step by step
 
----
+### 1. Open the calculator
 
-## Do It
+Open `templates/pod-pricing-calculator.md`.
 
-### Step 1: Benchmark Base Supplier Costs
-Open [`templates/pod-pricing-calculator.md`](templates/pod-pricing-calculator.md). Input base production and shipping costs for your core products:
-* **T-Shirt (Bella+Canvas 3001):** $9.25 print + $4.75 shipping = **$14.00 Base**.
-* **Ceramic Mug (11oz White):** $4.50 print + $5.00 shipping = **$9.50 Base**.
-* **Heavyweight Hoodie (Gildan 18000):** $18.50 print + $7.50 shipping = **$26.00 Base**.
+**You should see:** COGS models, margin calculators and fee formulas.
 
-### Step 2: Set Target Retail Prices for 35%+ Net Margins
-* Set T-Shirt Retail Price to **$24.99** (Net Profit: **$8.49**).
-* Set Ceramic Mug Retail Price to **$17.99** (Net Profit: **$6.69**).
-* Set Heavyweight Hoodie Retail Price to **$44.99** (Net Profit: **$14.49**).
+**If not:** copy its columns into a new spreadsheet.
 
-### Step 3: Run the Catalog Revenue Projection
-Calculate passive monthly income based on catalog size and average store conversion rates (1.5% - 2.5%):
-* **Catalog Size:** 100 Active Listings.
-* **Monthly Store Views:** 10,000 visitors.
-* **Orders (2.0% Conversion Rate):** 200 sales/month.
-* **Monthly Net Profit (200 sales × $8.50 avg profit):** **$1,700 / month passive income**.
+### 2. Enter T-shirt costs
 
----
+Bella+Canvas 3001: $9.25 print + $4.75 shipping = **$14.00 base**.
 
-## Worked Example
+**You should see:** $14.00 in your base-cost cell.
 
-**30-Day Financial Performance of "Urban Vector Merch Studio"**
+**If not:** recheck the addition.
 
-* **Active Catalog:** 120 POD listings across Etsy & Shopify.
-* **Total Units Sold:** 340 t-shirts, mugs, and hoodies.
-* **Gross Revenue:** **$8,650.00**.
-* **Supplier Production & Shipping (Printify):** -$4,620.00.
-* **Marketplace & Payment Fees:** -$865.00.
-* **Etsy Ads Spend:** -$650.00.
-* **Net Monthly Profit:** **$2,515.00** (29.1% Net Profit Margin).
+### 3. Enter mug and hoodie costs
 
----
+Ceramic Mug (11oz White): $4.50 + $5.00 = **$9.50 base**. Heavyweight Hoodie (Gildan 18000): $18.50 + $7.50 = **$26.00 base**.
 
-## Compare Tools
+**You should see:** three base costs: $14.00, $9.50, $26.00.
 
-| Financial Tool | Purpose | Key Metric Tracked |
-|---|---|---|
-| **Etsy / Shopify Analytics** | Conversion tracking & traffic sources | Conversion Rate & AOV |
-| **Printify Profit Calculator** | Instant COGS and shipping estimation | Gross Margin % |
-| **Google Sheets / Excel Matrix** | Net profit modeling after fees & ads | Monthly Net Income |
+**If not:** use your own supplier's current prices instead and keep the same formula.
 
----
+### 4. Set retail prices
 
-## Launch It
+Set T-Shirt **$24.99**, Mug **$17.99**, Hoodie **$44.99**.
 
-* **Offer Free Shipping by Bundling:** Include shipping in the retail price (e.g., price shirt at $28.99 with "FREE SHIPPING") to increase Etsy search rank and buyer conversion rates.
+**You should see:** net profit **$8.49** (T-shirt: 24.99 - 9.25 - 4.75 - 2.50 fees), **$6.69** (mug) and **$14.49** (hoodie).
 
----
+**If not:** check that fees are about 10% of retail.
 
-## Exercises
+### 5. Check the margin
 
-1. **Easy:** Calculate the net profit for a ceramic mug priced at $18.99 with a base cost of $4.50 and shipping of $5.00.
-2. **Medium:** Use your pricing sheet to model a 50-product catalog generating 50 sales per month.
-3. **Hard:** Set up a dynamic pricing matrix accounting for 10% Etsy ad spend while maintaining an $8.00 minimum profit per sale.
+Target a **35%+** net margin where you can; the sample T-shirt nets 34%.
 
----
+**You should see:** each product's margin next to its profit.
 
-## Templates
+**If not:** raise the price or lower costs.
 
-* [`templates/pod-pricing-calculator.md`](templates/pod-pricing-calculator.md) — Dynamic profit spreadsheets, platform fee formulas, and COGS benchmarks.
+### 6. Project monthly income
 
----
+Use 100 active listings, 10,000 monthly visitors, a 2.0% conversion rate (range 1.5% - 2.5%): **200 sales/month**. At $8.50 average profit: **$1,700 / month**.
 
-[← Building a Catalog](03-building-a-catalog-without-repeating.md) · [Track Overview](README.md)
+**You should see:** 200 sales and $1,700 in your sheet.
 
+**If not:** multiply visitors x conversion first, then x profit.
 
----
+### 7. Add ad spend
 
-## Produce this in SmartVideo GO AI
+Subtract ad spend (for example $2 - $5 per sale) and see if profit stays in range.
 
-Apply this lesson directly inside SmartVideo GO AI:
+**You should see:** profit still near $7 - $12 per sale, or a clear warning.
 
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
+**If not:** raise the price; this projection is a model, not a guarantee.
 
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+## Check yourself
+
+* [ ] I know the profit formula.
+* [ ] Each product has a base cost, retail price and net profit.
+* [ ] I projected monthly income from catalog size and conversion.
+* [ ] Ad spend is included.
+
+## Common mistakes
+
+* Pricing at $19.99 and ignoring fees.
+* Forgetting shipping and ad spend.
+* Treating the monthly projection as a promise.
+
+## Go further
+
+**Worked example, "Urban Vector Merch Studio" (30 days):** 120 listings across Etsy and Shopify; 340 units; gross **$8,650.00**; supplier -$4,620.00; fees -$865.00; Etsy Ads -$650.00; net **$2,515.00** (29.1% margin).
+
+**Tools:** Etsy / Shopify Analytics (conversion rate, AOV); Printify Profit Calculator (gross margin %); Google Sheets / Excel (monthly net income).
+
+**Tip:** bundle shipping into the price (for example $28.99 with "FREE SHIPPING") to improve Etsy search rank and conversion.
+
+**Exercises:**
+
+1. Easy: net profit for a mug at $18.99, base $4.50, shipping $5.00.
+2. Medium: model a 50-product catalog generating 50 sales per month.
+3. Hard: build a dynamic pricing matrix with 10% Etsy ad spend and an $8.00 minimum profit per sale.
+
+**Template:** `templates/pod-pricing-calculator.md`.

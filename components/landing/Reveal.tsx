@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 
 /**
  * Reveals children with the project's existing `animate-fade-in-up` animation
@@ -11,7 +11,8 @@ export default function Reveal({
   className = '',
   delay = 0,
   as: Tag = 'div',
-}: {
+  ...rest
+}: Omit<HTMLAttributes<HTMLElement>, 'children' | 'className'> & {
   children: ReactNode;
   className?: string;
   delay?: number;
@@ -42,9 +43,10 @@ export default function Reveal({
 
   return (
     <Tag
+      {...rest}
       ref={ref as never}
       className={`${className} ${shown ? 'animate-fade-in-up' : 'opacity-0'}`}
-      style={shown ? { animationDelay: `${delay}ms` } : undefined}
+      style={shown ? { ...rest.style, animationDelay: `${delay}ms` } : rest.style}
     >
       {children}
     </Tag>

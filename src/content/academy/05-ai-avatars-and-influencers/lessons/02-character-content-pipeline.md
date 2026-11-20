@@ -1,143 +1,85 @@
 # Character to Content Pipeline
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 12 minutes. **You will finish with:** a lip-synced talking-head clip of your character that passes a quality audit.
 
+---
 
+## Before you start
 
-> The character is the face, but the motion makes them real.
-
-**Track:** AI Avatars & Influencers  
-**Time:** ~45 minutes  
-**Prerequisites:** Building a Consistent AI Character  
-
-## The Problem
-
-A static image of an AI avatar is only useful for photo-based feeds (like Instagram grid posts). But the highest reach, attention, and advertiser payments are on **video feeds** (TikTok, YouTube Shorts, Reels). If your character cannot talk, move, and present information in video format, you cannot build a scalable virtual influencer brand.
-
-However, video animation presents severe challenges. If you run your consistent character through a standard image-to-video model, the face will warp as soon as the head moves. The hair structure will change, or the clothing textures will slide around, creating an unnatural "uncanny valley" effect that drives viewers away.
-
-To animate your character successfully, you need to establish a dedicated lip-sync and compositing pipeline that animates only the mouth and facial expressions while locking down the rest of the head and body.
-
-## The Concept
-
-The professional virtual influencer video pipeline is based on **Lip-Sync Video Rendering**:
+A still avatar only works on photo grids, but the highest reach and advertiser payments are on video feeds (TikTok, YouTube Shorts, Reels). Run a consistent character through a standard image-to-video model and the face warps as soon as the head moves: hair changes, clothing textures slide, and the uncanny valley drives viewers away. The professional answer is a lip-sync pipeline that animates only the mouth, jaw and eyes:
 
 ```
 Static Avatar Portrait + Clean Voice Audio  ──►  Lip-Sync Engine  ──►  Talking Head Video
 ```
 
-1. **The Static Anchor:** Instead of generating a full video from scratch, you use your consistent Master Portrait as the visual anchor.
-2. **Audio-Driven Lip Sync:** You feed the Master Portrait and your generated voice track into a lip-sync API (like `sync-lipsync` or `volcengine-video-to-video-lip-sync` via muapi). The engine morphs *only* the mouth, jaw, and eyes to match the audio waveforms, keeping the head structure, hair, and clothing 100% consistent.
-3. **Compositing & Overlay:** To make the video look dynamic, you cut away from the talking head every 4–5 seconds, overlaying b-roll screenshots, charts, or slides while the voice track continues playing.
+You need: your master portrait from the previous lesson (for example `emma-master.jpg`), a clean voiceover file (for example `01_intro.mp3`), the [lip-sync spec sheet](templates/lipsync-spec-sheet.md), and SmartVideo GO AI's **Lip-Sync Studio** and **Video Studio**. This lesson covers the render; part 2 covers the edit.
 
----
+## Step by step
 
-## Do It
+### 1. Prep your assets
 
-### Step 1: Prep Your Assets
-Ensure your files meet the guidelines in the [`templates/lipsync-spec-sheet.md`](templates/lipsync-spec-sheet.md). Lock down your static Master Portrait (`emma-master.jpg`) and your clean voiceover narration (`01_intro.mp3`).
+1. Open [`templates/lipsync-spec-sheet.md`](templates/lipsync-spec-sheet.md).
+2. Check that your master portrait (centered face) and your clean narration meet its visual and audio guidelines.
 
-### Step 2: Call the Lip-Sync API
-Submit your assets to the `/sync-lipsync` (or volcengine lip-sync) endpoint:
-* **Audio URL:** The public URL of your narration file.
-* **Image URL:** The public URL of your consistent avatar portrait.
-* Set the aspect ratio to `9:16` or `1:1` to match your target feed.
+**You should see:** both files ticked off against the checklist.
 
-### Step 3: Download & Audit the Render
-Download the generated `.mp4` file. Run a quality audit:
-* **Mouth warping:** Check if the mouth coordinates stretch unnaturally during fast words.
-* **Drift:** Ensure the lips match the voice track syllables. If there is a slight lag, adjust the audio track by -50ms to -100ms in your timeline to align the sync.
+**If not:** fix the failing item (re-crop the face, re-export clean audio) before rendering; bad inputs cost credits.
 
-### Step 4: Add B-Roll Overlays in Editing
-Import the talking-head video into CapCut. Do not leave the talking head on screen for the entire 60 seconds.
-* **0.0 - 3.0s:** Keep the avatar on screen to establish the human hook.
-* **3.0 - 15.0s:** Cut away to high-contrast b-roll (screen recordings, product shots) while the voiceover continues on A1.
-* **15.0 - 18.0s:** Cut back to the avatar's face to re-establish connection.
+### 2. Submit to the lip-sync engine
 
----
+In **Lip-Sync Studio**, or via the `/sync-lipsync` (or volcengine lip-sync) endpoint through muapi, provide:
 
-## Worked Example
+* **Audio URL:** the public URL of your narration file.
+* **Image URL:** the public URL of your avatar portrait.
+* **Aspect ratio:** `9:16` or `1:1`, to match your target feed.
 
-<p align="center">
-<img src="templates/examples/emma-master.jpg" alt="Avatar Profile Anchor" width="240">
-<img src="templates/examples/emma-clip.gif" alt="Avatar Video Clip Loop (I2V)" width="240">
-</p>
-<p align="center"><sub>Avatar Master Profile Image (Left) ──► Image-to-Video Motion Loop (Right) · Video File: <a href="templates/examples/emma-clip.mp4">templates/examples/emma-clip.mp4</a></sub></p>
+**You should see:** a render that finishes as an `.mp4` of the same length as your audio (a 4.5 second hook gives a 4.5 second clip).
 
-**Animating "Emma" for a 60-Second Short**
+**If not:** if it rejects the files, check that both URLs are public and the formats match the spec sheet. Menus move; follow the current screen.
 
+### 3. Download and audit the render
 
+Download the `.mp4` and play it through, checking two things:
 
-* **Assets Prepped:** `emma-master.jpg` (centered face) and `01_hook.mp3` (*"Hey, it's Emma here. Today we are..."*, duration: 4.5 seconds).
-* **Lip-Sync Processing:** Assets fed into `/sync-lipsync`. The output video file is 4.5 seconds long, showing Emma speaking the intro text naturally with blink animations.
-* **Timeline Assembly:**
-  * **0.0 - 4.5s:** Emma is on screen speaking directly to the audience. Text captions overlay on Y-axis.
-  * **4.5 - 20.0s:** Video track cuts to screen recording of a Zapier automation workspace. Emma's voiceover continues.
-  * **20.0 - 24.0s:** Video track cuts back to Emma speaking.
+* **Mouth warping:** the mouth should not stretch unnaturally on fast words.
+* **Drift:** lips should match the syllables.
 
-**The Result:** The video is highly dynamic. The viewer is hooked by a realistic, talking face, but the body of the video is filled with informative screenshots, keeping engagement high while minimizing rendering costs.
+**You should see:** natural mouth movement and blinks with the head, hair and clothing unchanged.
 
-**The clip below is real, not a mockup** — the consistent cafe image animated into a short vertical video loop using `seedance-2-image-to-video-fast` from the scenario above, so you can see what a first-pass output actually looks like:
+**If not:** if the lips lag slightly, shift the audio track by -50ms to -100ms in your timeline. If the mouth warps badly, re-render with a cleaner, more front-facing portrait.
 
+## Check yourself
 
+* [ ] My portrait and audio passed the spec sheet.
+* [ ] I rendered a lip-sync clip in the right aspect ratio.
+* [ ] I audited the clip for mouth warping and sync drift.
 
-<p align="center"><i>An unedited first pass — Emma blinks naturally, shifts her head slightly, holding the coffee cup, dynamically animated by the video engine for high-retention content.</i></p>
+## Common mistakes
 
-*How this was actually produced, end to end, via the muapi API:*
-1. Took the consistent face-swapped image `emma-cafe-consistent.jpg`.
-2. Uploaded it via muapi's `upload_file` endpoint to get a public URL.
-3. Fed that URL into **`seedance-2-image-to-video-fast`** (image-to-video, $0.50/clip) on the `images_list` param with a vertical aspect ratio and a prompt describing Emma's facial movement.
-4. Downloaded the resulting `.mp4` and converted it to the silent GIF preview above using `ffmpeg`.
+* Running the character through plain image-to-video and letting the face warp.
+* Rendering before checking the spec sheet, then paying for a bad clip.
+* Ignoring a small audio lag instead of nudging the track by -50ms to -100ms.
 
----
+## Go further
 
-## Compare Tools
+**Worked example, animating "Emma" for a 60-second Short:** `emma-master.jpg` plus `01_hook.mp3` ("Hey, it's Emma here. Today we are...", 4.5 seconds) went into `/sync-lipsync`; the output is 4.5 seconds with natural blink animation. The real motion loop was made from the consistent cafe image with `seedance-2-image-to-video-fast` (image-to-video, $0.50/clip) on the `images_list` param with a vertical aspect ratio and a prompt describing Emma's facial movement; see [the clip](templates/examples/emma-clip.mp4).
 
-| Platform / Tool | Rendering Quality | Payout / Credit Cost | Setup Effort |
+**Compare tools:**
+
+| Tool | Quality | Cost | Setup |
 |---|---|---|---|
-| **muapi `/sync-lipsync`** | High (Maintains background details, provides natural blinking) | ~$0.50 per clip | Low (Direct API call) |
-| **HeyGen / Synthesia** | Very High (Pre-built bodies and hand gestures, but subscription is expensive) | High ($30–$200/mo) | Low |
-| **Local ComfyUI (LivePortrait)** | Ultra-High (Tracks exact movements from a webcam actor) | Free | Very High (Requires heavy GPU setup and node mapping) |
+| muapi `/sync-lipsync` | High; keeps background, natural blinking | ~$0.50 per clip | Low (direct API call) |
+| HeyGen / Synthesia | Very high; pre-built bodies and gestures | $30-$200/mo | Low |
+| Local ComfyUI (LivePortrait) | Ultra-high; tracks a webcam actor | Free | Very high (heavy GPU setup) |
 
-For content factories delivering client projects, using muapi's `/sync-lipsync` is the most scalable option. It charges only per API call with no monthly subscription lock-in, and outputs high-fidelity head movement that matches custom voiceover files.
+For client content factories, `/sync-lipsync` scales best: pay per call, no subscription lock-in.
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: gather one clean front-facing face image and a 5-second audio clip; verify they meet the spec checklist.
+2. Medium: submit them to a lip-sync engine, download the video, align the audio and fix any small delay.
+3. Hard: see part 2 for the 30-second edit.
 
-**How to optimize your video files:**
-* **Use Green-Screen Backgrounds:** If you want your avatar to sit in front of changing backgrounds, generate your Master Portrait with a solid green background. Use the editor's Chroma Key tool to remove the green and composite the talking head over any video clip.
-* **Add Subtle Ambient Light:** Apply an adjustment layer in editing with a soft amber or teal color overlay at 5% opacity to blend the avatar face into the background lighting, making it look integrated.
+**Template:** [`templates/lipsync-spec-sheet.md`](templates/lipsync-spec-sheet.md) has prep checklists and sync logs.
 
----
-
-## Exercises
-
-1. **Easy:** Gather one clean front-facing face image and a 5-second audio clip. Verify that they meet the checklist specs.
-2. **Medium:** Submit your prepped assets to a lip-sync engine. Download the video and align the audio track to the timeline, correcting any minor lip sync delays.
-3. **Hard:** Produce a 30-second vertical video where the AI avatar speaks for the first 3 seconds, cuts to green-screen background b-roll for 20 seconds, and cuts back to the avatar for a 7-second call-to-action.
-
----
-
-## Templates
-
-* [`templates/lipsync-spec-sheet.md`](templates/lipsync-spec-sheet.md) — visual and audio prep checklists and sync logs.
-
----
-
-[← Building a Consistent AI Character](01-consistent-character.md) · Next: [Voice Cloning & Dialogue →](03-voice-cloning-dialogue.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Character to Content Pipeline, part 2.

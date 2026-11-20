@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { installStudioSession, waitForWorkbench } from './helpers/motion-studio';
 
+// Motion Studio was removed: its route redirects to Motion Director (next.config.mjs)
+// and the studio nav has no Motion Studio tab. These tests cover that hand-over.
+
 // Dev-only E2E auth bypass. The __e2e_auth_bypass cookie makes the middleware
 // skip Clerk auth so tests can run fully offline without a live Clerk session.
 // The cookie is injected straight into the browser context: /api/dev-login
@@ -12,56 +15,54 @@ async function enableDevAuth(page: Page, options: { entrySeen?: boolean } = {}) 
 }
 
 /**
- * Open the Motion Studio *workspace* (the editor, not the /new entry page).
- * The entry-seen flag is seeded so the internal router skips the input step
- * and mounts the workbench — without it the editor chrome (.timeline,
- * .preview) never exists and the workspace assertions would be vacuous.
+ * Open the Motion Workbench (Motion Director's editor). Without it the editor
+ * chrome (.timeline, .preview) never exists and the workspace assertions would
+ * be vacuous.
  */
-async function openWorkspace(page: Page, url = '/studio/motion-studio'): Promise<void> {
+async function openWorkspace(page: Page, url = '/studio/motion-director/workbench'): Promise<void> {
   await enableDevAuth(page, { entrySeen: true });
   await page.goto(url);
   await waitForWorkbench(page);
 }
 
-test.describe('Motion Studio navigation & workspace', () => {
-  test('opens /studio/motion-studio via direct navigation', async ({ page }) => {
+test.describe('Motion Studio redirect & Motion Director workspace', () => {
+  test('/studio/motion-studio redirects to /studio/motion-director', async ({ page }) => {
     await enableDevAuth(page);
     await page.goto('/studio/motion-studio');
-    await expect(page).toHaveURL(/\/studio\/motion-studio/);
-    // The Motion Studio wrapper sets its own title; expect "SmartVideo GO" or "motion"
+    await expect(page).toHaveURL(/\/studio\/motion-director/);
     await expect(page).toHaveTitle(/SmartVideo|Studio|motion/i);
   });
 
-  test('clicking Motion Studio tab navigates to /studio/motion-studio', async ({ page }) => {
+  test('paths under /studio/motion-studio redirect too', async ({ page }) => {
     await enableDevAuth(page);
-    await page.goto('/studio');
-    const tabBtn = page.locator('button:has-text("Motion Studio")').first();
-    await tabBtn.click();
-    await page.waitForURL(/\/studio\/motion-studio/, { timeout: 60_000 });
-    await expect(page).toHaveURL(/\/studio\/motion-studio/);
+    await page.goto('/studio/motion-studio/new');
+    await expect(page).toHaveURL(/\/studio\/motion-director/);
   });
 
-  test('no Personalization Modal opens on Motion Studio route', async ({ page }) => {
+  test('studio nav has a Motion Director tab and no Motion Studio tab', async ({ page }) => {
+    await enableDevAuth(page);
+    await page.goto('/studio');
+    await expect(page.locator('button:has-text("Motion Studio")')).toHaveCount(0);
+    await page.locator('button:has-text("Motion Director")').first().click();
+    await page.waitForURL(/\/studio\/motion-director/, { timeout: 60_000 });
+  });
+
+  test('no Personalization Modal opens on the redirected route', async ({ page }) => {
     await enableDevAuth(page);
     await page.goto('/studio/motion-studio');
-    await expect(page).toHaveURL(/\/studio\/motion-studio/);
+    await expect(page).toHaveURL(/\/studio\/motion-director/);
     const modal = page.locator('.personalization-modal, [role="dialog"][aria-label*="Personalization"]');
     await expect(modal).toHaveCount(0);
   });
 
-  test('BasicText deep link resolves to Motion Studio workspace', async ({ page }) => {
-    await openWorkspace(page, '/studio/motion-studio?template=motion-studio|BasicText');
-    // The route is the Motion Studio route and the template survived the
-    // round-trip. `|` is percent-encoded to `%7C` in the query string, so the
-    // parameter is decoded instead of matched against the raw URL text (the
-    // raw text is `?template=motion-studio%7CBasicText` — "motion-studio"
-    // comes BEFORE "BasicText", so a `BasicText.*motion-studio` regex can
-    // never match the real URL).
+  test('a template deep link keeps its template through the redirect', async ({ page }) => {
+    await enableDevAuth(page);
+    await page.goto('/studio/motion-studio?template=motion-studio|BasicText');
+    await expect(page).toHaveURL(/\/studio\/motion-director/);
+    // `|` is percent-encoded to `%7C`, so decode the parameter instead of matching raw URL text.
     const url = new URL(page.url());
-    expect(url.pathname).toBe('/studio/motion-studio');
+    expect(url.pathname.startsWith('/studio/motion-director')).toBe(true);
     expect(url.searchParams.get('template')).toBe('motion-studio|BasicText');
-    expect(page.url()).toContain('BasicText');
-    expect(page.url()).toContain('motion-studio');
   });
 
   test('workspace renders recipe library area', async ({ page }) => {

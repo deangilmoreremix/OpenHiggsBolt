@@ -16,6 +16,8 @@
  * that cannot start its proxy fails closed instead of running with one layer.
  */
 
+import { SITE_USER_AGENT } from '../lib/siteRequestHeaders'
+import { isThirdPartyAdUrl } from './adDomains'
 import { isIPv6 } from 'node:net'
 
 import {
@@ -34,10 +36,10 @@ import {
 
 export const BROWSER_FALLBACK_MAX_PAGES = 4
 export const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5_000
+export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9_000
 export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2_000
-export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-export const BROWSER_FALLBACK_SCROLL_DELAY = 100
+export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+export const BROWSER_FALLBACK_SCROLL_DELAY = 300
 export const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 // ---------------------------------------------------------------------------
@@ -643,6 +645,19 @@ export function redirectHopCount(
   }
 
   return hops
+}
+
+/** True for the page's own top-level navigation (not an iframe, not a subresource). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isMainFrameNavigation(request: any): boolean {
+  try {
+    if (typeof request?.isNavigationRequest !== 'function' || !request.isNavigationRequest()) return false
+    const frame = typeof request.frame === 'function' ? request.frame() : null
+    return !frame || typeof frame.parentFrame !== 'function' || frame.parentFrame() === null
+  } catch {
+    // Playwright throws from frame() for some service-worker requests: treat as a subresource.
+    return false
+  }
 }
 
 /** True when a request has already been redirected at (or past) the cap. */
@@ -1446,6 +1461,13 @@ async function withGuardedContext<T>(
         return route.abort()
       }
 
+      // Ad / tracker requests (Scrapling's `block_ads`): they slow the page and
+      // put ad banners in the DOM. The page's own top-level navigation and the
+      // site's own host are never blocked.
+      if (!isMainFrameNavigation(request) && isThirdPartyAdUrl(url, `https://${options.baseTarget.hostname}/`)) {
+        return route.abort()
+      }
+
       // Redirect hops are counted here as a cheap budget, not as a guarantee:
       // Playwright does not invoke this interceptor for every hop of every
       // navigation (and not at all for service-worker fetches), so this counter
@@ -1552,7 +1574,7 @@ async function collectBrowserCandidates(
       guard,
       baseTarget,
       contextOptions: {
-        userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+        userAgent: SITE_USER_AGENT,
         viewport: { width: 1280, height: 900 },
       },
       blockedResourceTypes: BLOCKED_RESOURCE_TYPES,

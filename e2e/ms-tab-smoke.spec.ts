@@ -11,12 +11,13 @@ async function enableDevAuth(page: Page) {
   await installStudioSession(page);
 }
 
-test('opens Motion Studio via tab', async ({ page }) => {
+test('opens Motion Director via tab; no Motion Studio tab', async ({ page }) => {
   await enableDevAuth(page);
   await page.goto('/studio');
   await expect(page).toHaveURL(/\/studio$/);
-  const tab = page.locator('button:has-text("Motion Studio")').first();
+  await expect(page.locator('button:has-text("Motion Studio")')).toHaveCount(0);
+  const tab = page.locator('button:has-text("Motion Director")').first();
   await tab.click();
-  await page.waitForURL(/\/studio\/motion-studio/, { timeout: 60_000 });
-  await expect(page).toHaveURL(/\/studio\/motion-studio/);
+  await page.waitForURL(/\/studio\/motion-director/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/studio\/motion-director/);
 });
