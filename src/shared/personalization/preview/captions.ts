@@ -7,12 +7,19 @@ import { CAPTION_STYLES, CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
 import type { CaptionStyleConfig } from './capite/types'
 import { transcriptToSrt, transcriptToVtt } from './capite/subtitleExport'
 
+export interface CaptionWordTiming { text: string; /** Seconds. */ start: number; end: number }
+
 export interface CaptionCue {
   id: string
   /** Seconds. */
   start: number
   end: number
   text: string
+  /**
+   * When the words were timed from the speech (the Caption Studio), their exact times. Used for the word highlight only while the words
+   * still spell the line's text; an edited line falls back to sharing the line's time by word length.
+   */
+  words?: CaptionWordTiming[]
 }
 
 export type CaptionPosition = 'bottom' | 'middle' | 'top'
@@ -51,6 +58,8 @@ export interface CaptionStyle {
   windowed?: boolean
   /** Grouping for the style chips. */
   category?: string
+  /** A dragged vertical centre of the captions, 0..1 of the frame height. Wins over `position`. */
+  positionY?: number
 }
 
 export type CaptionAnimation = 'highlight' | 'karaoke' | 'pop' | 'bounce' | 'scale' | 'glow' | 'box'
@@ -142,6 +151,19 @@ export function captionPreset(id: string, brand: { primary: string; accent: stri
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = { preset: 'karaoke', ...CAPTION_PRESETS[1].build({ primary: '#29d3f2', accent: '#facc15', text: '#ffffff' }) }
 
 // ── normalizing saved data ──────────────────────────────────────────────────────────────────────────────────────
+const MAX_WORDS_PER_CUE = 24
+/** Word timings read back from storage: kept only when every word is valid and together they spell the line. */
+function cleanWords(raw: unknown, text: string): CaptionWordTiming[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_WORDS_PER_CUE) return undefined
+  const out: CaptionWordTiming[] = []
+  for (const w of raw) {
+    if (!isRecord(w) || typeof w.text !== 'string' || !w.text.trim() || !finite(w.start) || !finite(w.end)) return undefined
+    const start = clamp(w.start, 0, 3600)
+    out.push({ text: w.text.trim().slice(0, 40), start, end: clamp(w.end, start, 3600) })
+  }
+  return out.map((w) => w.text).join(' ') === text.split(/\s+/).filter(Boolean).join(' ') ? out : undefined
+}
+
 export function normalizeCues(raw: unknown): CaptionCue[] {
   if (!Array.isArray(raw)) return []
   const out: CaptionCue[] = []
@@ -153,7 +175,9 @@ export function normalizeCues(raw: unknown): CaptionCue[] {
     let id = typeof item.id === 'string' && item.id ? item.id : `cue_${out.length}`
     while (seen.has(id)) id += '_'
     seen.add(id)
-    out.push({ id, start, end, text: item.text.trim().slice(0, 240) })
+    const text = item.text.trim().slice(0, 240)
+    const words = cleanWords(item.words, text)
+    out.push({ id, start, end, text, ...(words ? { words } : {}) })
     if (out.length >= MAX_CUES) break
   }
   return out.sort((a, b) => a.start - b.start)
@@ -184,6 +208,7 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
   if (finite(s.wordSpacing) && s.wordSpacing > 0) style.wordSpacing = clamp(s.wordSpacing, 0, 1)
   if (s.windowed === true) style.windowed = true
   if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
+  if (finite(s.positionY)) style.positionY = clamp(s.positionY, 0.04, 0.96)
   return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
 }
 
@@ -262,6 +287,16 @@ export interface CaptionWord {
 export function captionWords(cue: CaptionCue, frame: number, fps: number, highlight: CaptionHighlight): CaptionWord[] {
   const words = cue.text.split(/\s+/).filter(Boolean)
   if (highlight === 'none') return words.map((text) => ({ text, active: false }))
+  // Words timed from the speech: highlight exactly the word being said (only while the words still spell the line).
+  if (cue.words && cue.words.length === words.length && cue.words.every((w, i) => w.text === words[i])) {
+    const t = frame / Math.max(1, fps)
+    let activeIdx = 0
+    cue.words.forEach((w, i) => { if (t >= w.start) activeIdx = i })
+    const aw = cue.words[activeIdx]
+    return words.map((text, i) => (i === activeIdx
+      ? { text, active: true, elapsed: Math.max(0, t - aw.start), progress: clamp((t - aw.start) / Math.max(0.001, aw.end - aw.start), 0, 1) }
+      : { text, active: false }))
+  }
   const progress = clamp((frame / Math.max(1, fps) - cue.start) / Math.max(0.001, cue.end - cue.start), 0, 0.9999)
   const weights = words.map((w) => w.length + 1)
   const total = weights.reduce((a, b) => a + b, 0)
