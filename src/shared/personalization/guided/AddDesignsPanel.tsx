@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { canAddDesign, listAddedDesigns } from '../preview/designAddons'
@@ -39,6 +39,11 @@ export function AddDesignsPanel({ suggestion }: { suggestion?: GoalSuggestion } 
     }),
     [assets],
   )
+  // Bring a refusal into view: with the library open the card that was clicked can be far below this message.
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (remotionDesignError) errorRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [remotionDesignError])
   const added = listAddedDesigns(previewSettings)
   if (remotionDesignTemplates.length === 0) return null
   const fixedSvgIdWarning = getRemotionDesignFixedSvgIdWarning(activeRemotionDesignId)
@@ -73,6 +78,8 @@ export function AddDesignsPanel({ suggestion }: { suggestion?: GoalSuggestion } 
           })}
         </ul>
       )}
+      {/* One refusal message, above the recommendations and the library so it is never pushed below a long card grid. */}
+      {remotionDesignError ? <p ref={errorRef} role="alert" style={{ ...hintStyle, color: C.danger, marginTop: 8, marginBottom: 8 }}>{remotionDesignError}</p> : null}
       <DesignRecommendations
         designs={remotionDesignTemplates}
         aspectRatio={previewSettings.aspectRatio}
@@ -85,7 +92,6 @@ export function AddDesignsPanel({ suggestion }: { suggestion?: GoalSuggestion } 
         addCheck={(design) => canAddDesign(previewSettings, design, available)}
       />
       {fixedSvgIdWarning ? <p role="note" style={{ ...hintStyle, marginTop: 8 }}>{fixedSvgIdWarning}</p> : null}
-      {remotionDesignError ? <p role="alert" style={{ ...hintStyle, color: C.danger, marginTop: 8 }}>{remotionDesignError}</p> : null}
     </div>
   )
 }
