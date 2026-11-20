@@ -3924,7 +3924,7 @@ export default function LayersStudio({
             {activeSideTab === "menu" && (
               <div className="space-y-1 mb-6">
                 {sideMenuItems.map((item) => (
-                  <button
+                  <button data-help="layers tool"
                     key={item.id}
                     onClick={() => setActiveSideTab(item.id)}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-white/70 hover:text-white hover:bg-white/5"

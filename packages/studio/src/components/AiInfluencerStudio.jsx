@@ -615,7 +615,7 @@ export default function AiInfluencerStudio({
         </div>
 
         {/* Tab pills */}
-        <div className="flex gap-1 px-3 py-2 border-b border-white/[0.07] shrink-0">
+        <div data-help="builder tab" className="flex gap-1 px-3 py-2 border-b border-white/[0.07] shrink-0">
           {Object.keys(TABS_CONFIG).map((key) => (
             <button
               key={key}
@@ -638,7 +638,7 @@ export default function AiInfluencerStudio({
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-0.5">
                 {copy.subcategories[subcat.id] || subcat.label}
               </p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div data-help="trait option" className="grid grid-cols-3 gap-1.5">
                 {subcat.options?.map((opt) => {
                   const sel = selectedOptions[subcat.id] === opt.id;
                   return (
@@ -810,7 +810,7 @@ export default function AiInfluencerStudio({
                 />
               ))}
               {selectedTags.length > TAGS_VISIBLE && (
-                <button
+                <button data-help="show more tags"
                   type="button"
                   onClick={() => setShowAllTags((v) => !v)}
                   className="h-[22px] px-2 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] text-[11px] text-gray-500 hover:text-gray-300 whitespace-nowrap transition-all"

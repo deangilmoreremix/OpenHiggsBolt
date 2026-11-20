@@ -1192,7 +1192,7 @@ export default function MotionControlStudio({
           <PromptControls>
             {/* Model Selector */}
             <div className="relative">
-              <button
+              <button data-help="model"
                 ref={modelBtnRef}
                 type="button"
                 onClick={(e) => {

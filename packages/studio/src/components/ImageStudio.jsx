@@ -1934,7 +1934,7 @@ export default function ImageStudio({
             <PromptControls ref={dropdownRef}>
               {/* Model button */}
               <div className="relative">
-                <button
+                <button data-help="model"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -2133,7 +2133,7 @@ export default function ImageStudio({
 
               {/* Batch size stepper */}
               <div className={promptControlClassName({ compact: true, className: "select-none" })}>
-                <button
+                <button data-help="batch count"
                   type="button"
                   onClick={() => setBatchSize(prev => Math.max(1, prev - 1))}
                   className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
@@ -2143,7 +2143,7 @@ export default function ImageStudio({
                 <span className="text-xs font-semibold text-white/70 min-w-[24px] text-center">
                   {batchSize}/4
                 </span>
-                <button
+                <button data-help="batch count"
                   type="button"
                   onClick={() => setBatchSize(prev => Math.min(4, prev + 1))}
                   className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
