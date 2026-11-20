@@ -127,6 +127,9 @@ importers:
       '@fontsource/sora':
         specifier: ^5.3.0
         version: 5.3.0
+      '@huggingface/transformers':
+        specifier: 3.8.1
+        version: 3.8.1
       '@lottiefiles/dotlottie-react':
         specifier: 0.20.0
         version: 0.20.0(react@19.3.0)
@@ -148,6 +151,9 @@ importers:
       '@react-three/fiber':
         specifier: 9.8.1
         version: 9.8.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+      '@remotion/captions':
+        specifier: 4.0.499
+        version: 4.0.499
       '@remotion/media':
         specifier: 4.0.499
         version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -208,6 +214,9 @@ importers:
       lucide-react:
         specifier: ^1.21.0
         version: 1.52.0(@types/react@19.3.0)(react@19.3.0)
+      mediabunny:
+        specifier: 1.50.8
+        version: 1.50.8
       motion:
         specifier: ^11.18.0
         version: 11.18.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -2763,6 +2772,9 @@ packages:
   '@remix-run/router@1.23.4':
     resolution: {integrity: sha512-q7j5geK7xs3UJSdm9/iytUNclBnLmYx1EnSeCFXHPeutdqgIMeFeHtUZgS3EhlKxdBEAu8OwtJCwmLrEzpSs7Q==}
     engines: {node: '>=14.0.0'}
+
+  '@remotion/captions@4.0.499':
+    resolution: {integrity: sha512-fn38c6bQqn3EMr19vJ41efrtST+aPpNuVc1pbYV6JtztfVzF1Ea4jnv3x0iSP+aEPzdPEVeQDkXA/81bD673lw==}
 
   '@remotion/licensing@4.0.499':
     resolution: {integrity: sha512-dKjaYAJsxCUXDvAjJW8bHIUe+dYAXEcq2M0RVrqdS1CEUZPUQXhzIbYILX+slcVb5c8/DD5t+edm7d2VSY81Tg==}
@@ -10972,6 +10984,8 @@ snapshots:
       - immer
 
   '@remix-run/router@1.23.4': {}
+
+  '@remotion/captions@4.0.499': {}
 
   '@remotion/licensing@4.0.499': {}
 

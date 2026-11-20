@@ -89,6 +89,13 @@ const ClockIcon = () => (
   </svg>
 );
 
+const CaptionsIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="3" />
+    <path d="M7 11h4M13 11h4M7 15h7" />
+  </svg>
+);
+
 const DownloadIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
@@ -240,6 +247,11 @@ export default function ClippingStudio({
    *     prompt: { text, model, modelName } }
    */
   renderPersonalizeAction,
+  /**
+   * Optional render prop for the free, on-device Caption Studio on a generated clip. The app root injects it (the studio package never imports
+   * the app's modules). Called with `{ videoUrl, className, children }`: render the returned element in the clip's action row.
+   */
+  renderCaptionAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_clipping_studio_persistent";
@@ -998,6 +1010,14 @@ export default function ClippingStudio({
                             >
                               <DownloadIcon />
                             </button>
+                            {/* Free captions on this clip. The wrapper keeps the click from also opening the clip fullscreen. */}
+                            <span className="contents" onClick={(e) => e.stopPropagation()}>
+                              {renderCaptionAction?.({
+                                videoUrl: clipUrl,
+                                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
+                                children: <CaptionsIcon />,
+                              })}
+                            </span>
                             <PublishStep
                               mediaUrl={clipUrl}
                               mediaType="video"
