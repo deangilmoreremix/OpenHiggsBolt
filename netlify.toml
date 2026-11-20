@@ -36,6 +36,11 @@
     # Use shallow submodule clones (depth=1) to avoid fetching historical commits
     # that reference invalid submodule commits (e.g., 36bdba26ae36a5cc73e6c2cb8e5ec5759d98f741)
     GIT_SUBMODULE_DEPTH = "1"
+    # Netlify's secrets scan fails the build if the *value* of any env var appears in the
+    # build output or repo files. CLERK_ISSUER_URL (https://clerk.go.smartvid.app) is a public
+    # URL that is intentionally present in netlify.toml's CSP and in the client bundle, so it is
+    # not a secret. Omit only these known-public keys; real secrets stay scanned.
+    SECRETS_SCAN_OMIT_KEYS = "CLERK_ISSUER_URL,CLERK_JWT_ISSUER,NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,NEXT_PUBLIC_CLERK_FRONTEND_API_URL"
 
 [site]
   site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
