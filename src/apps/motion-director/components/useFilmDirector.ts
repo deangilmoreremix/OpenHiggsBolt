@@ -613,7 +613,7 @@ export function useFilmDirector(opts: {
     try {
       // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
       const media = storyboard.media ?? s.media;
-      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined }, glog);
+      const buildOut = await buildFilmProject(storyboard.plan, { aspectRatio: pending.current?.req.aspectRatio ?? s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null, prompt: pending.current?.req.prompt, mapping: storyboard.mapping, release: storyboard.release, direction: storyboard.direction ? `${storyboard.direction.chosen.name}: ${storyboard.direction.chosen.claim}${storyboard.direction.chosen.tradeoff ? ` Trade-off: ${storyboard.direction.chosen.tradeoff}.` : ''}` : undefined, cancelled: () => !live() }, glog);
       // Findings the program can repair safely are repaired once, and said.
       const { project, fixed } = fixFilm(buildOut);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });

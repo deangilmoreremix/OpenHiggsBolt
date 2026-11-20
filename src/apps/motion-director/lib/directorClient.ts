@@ -115,8 +115,9 @@ export async function captureSite(
   const first = await post<SiteCapture & { jobId?: string }>('/api/motion-studio/capture', { url, ...(opts.targeted ? { targeted: true } : {}) }, 32_000);
   if (!first.jobId) return first;
   const started = Date.now();
-  // The quick capture is done in about 2 minutes; past 4 the film goes on with what it has (the words, no pictures).
-  const maxWait = opts.maxWaitMs ?? 270_000;
+  // The quick capture takes about 2 minutes; the worker's watchdog ends a job at 4 (WORKER_WATCHDOG_MS, 240 s),
+  // so the app waits just past it to read that last record, then the film goes on without the capture.
+  const maxWait = opts.maxWaitMs ?? 245_000;
   let failures = 0;
   while (Date.now() - started < maxWait) {
     await sleep(opts.pollMs ?? 2_000);
