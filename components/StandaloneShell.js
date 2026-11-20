@@ -57,6 +57,7 @@ const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { 
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
+const MediaHubStudio = dynamic(() => import('../src/apps/media-hub/MediaHub'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
 //
@@ -141,6 +142,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'media-hub', label: 'Media Hub' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
@@ -167,7 +169,7 @@ const SLUG_TO_TAB = {
   storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages', 'media-hub': 'media-hub',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
@@ -983,6 +985,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
          {activeTab === 'video-pages' && <VideoPagesStudio />}
+         {activeTab === 'media-hub' && <MediaHubStudio />}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
