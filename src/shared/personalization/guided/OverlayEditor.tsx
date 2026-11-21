@@ -42,6 +42,8 @@ import {
   PREVIEW_FONTS,
   PREVIEW_POSITIONS,
   isImageLayerKind,
+  isSceneLayer,
+  sceneLengths,
 } from '../preview/presets'
 import { accentRuleStyle, ctaPillStyle, isSingleLineBox, isTextStyleKind, layerTextStyle, textAlignFor } from '../preview/textStyle'
 import { hasTextScrim, scrimForBox, scrimStyle } from '../preview/scrim'
@@ -305,6 +307,15 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
   const liveOn = liveStage && liveWanted
   const playerRef = useRef<PlayerRef | null>(null)
   const [playFrame, setPlayFrame] = useState(0)
+  // The player plays: opening scene, then the video, then the closing scene. `playFrame` is the player's own frame; the
+  // timeline, captions and keyframes work on the VIDEO's clock, which starts after the opening scene.
+  const { intro: introLen, outro: outroLen } = sceneLengths(settings)
+  const mainLen = Math.max(1, Math.round(settings.durationInFrames))
+  const totalLen = introLen + mainLen + outroLen
+  const videoPlayFrame = Math.max(0, Math.min(mainLen - 1, playFrame - introLen))
+  const sceneNow: 'intro' | 'outro' | null = playFrame < introLen ? 'intro' : playFrame >= introLen + mainLen ? 'outro' : null
+  const seekPlayer = (frame: number) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(Math.max(0, Math.min(totalLen - 1, Math.round(frame)))) } catch { /* no player */ } }
+  const seekVideo = (frame: number) => seekPlayer(frame + introLen)
   const [playing, setPlaying] = useState(false)
   const [playRate, setPlayRate] = useState<number>(1)
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
@@ -344,7 +355,8 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
   // One factor for both axes: stagePx = compositionPx * (stageWidth / compW).
   const factor = stageScaleFactor(stageWidth, compW)
 
-  const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
+  // Opening/closing scenes fill the whole frame and have no handles to drag; they are managed from the layer list.
+  const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard' && !isSceneLayer(layer))
   const selected = settings.layers.find((layer) => layer.id === selectedId) || settings.layers[0] || null
   const selectedDesign =
     selected?.kind === 'design' && selected.designId
@@ -827,7 +839,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                 </>
               )
 
-              const kfState = isDesign ? NEUTRAL_KEYFRAME_STATE : keyframeStateFor(layer.keyframes, playFrame)
+              const kfState = isDesign ? NEUTRAL_KEYFRAME_STATE : keyframeStateFor(layer.keyframes, videoPlayFrame)
               const boxTransform = [...keyframeTransformParts(kfState, compW * factor, compH * factor), rotateCss(layer.rotation)].filter(Boolean).join(' ')
               let toolbarTop = 0
               let rotateInside = false
@@ -1006,14 +1018,19 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
                   data-testid="editor-scrubber"
                   aria-label="Preview position"
                   min={0}
-                  max={Math.max(1, Math.round(settings.durationInFrames) - 1)}
-                  value={Math.min(playFrame, Math.max(1, Math.round(settings.durationInFrames) - 1))}
-                  onChange={(event) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(Number(event.target.value)) } catch { /* no player */ } }}
+                  max={Math.max(1, totalLen - 1)}
+                  value={Math.min(playFrame, Math.max(1, totalLen - 1))}
+                  onChange={(event) => seekPlayer(Number(event.target.value))}
                   style={{ flex: 1, accentColor: C.cyan }}
                 />
                 <span data-testid="editor-timecode" style={{ ...hintStyle, margin: 0, fontVariantNumeric: 'tabular-nums', minWidth: 74, textAlign: 'right' }}>
-                  {(playFrame / Math.max(1, settings.fps)).toFixed(1)} / {(settings.durationInFrames / Math.max(1, settings.fps)).toFixed(1)} s
+                  {(playFrame / Math.max(1, settings.fps)).toFixed(1)} / {(totalLen / Math.max(1, settings.fps)).toFixed(1)} s
                 </span>
+                {sceneNow ? (
+                  <span data-testid="editor-scene-note" style={{ ...hintStyle, margin: 0, whiteSpace: 'nowrap' }}>
+                    {sceneNow === 'intro' ? `Opening scene · your video starts at ${(introLen / Math.max(1, settings.fps)).toFixed(1)}s` : 'Closing scene · plays after your video'}
+                  </span>
+                ) : null}
                 <div role="group" aria-label="Preview speed" style={{ display: 'inline-flex', gap: 3 }}>
                   {PLAYBACK_RATES.map((r) => (
                     <button key={r} type="button" data-testid={`editor-speed-${r}`} aria-pressed={playRate === r} onClick={() => setPlayRate(r)} style={{ ...chipStyle(playRate === r), minHeight: 28, fontSize: 10, padding: '0 6px' }}>{r}×</button>
@@ -1044,14 +1061,14 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
           selectedId={selected?.id ?? ''}
           onSelect={setSelectedId}
           onChange={(id, patch) => updatePreviewLayer(id, patch)}
-          playheadFrame={liveOn ? playFrame : undefined}
+          playheadFrame={liveOn ? videoPlayFrame : undefined}
           audio={(settings.audioTracks ?? []).map((t) => ({ id: t.id, name: t.name, start: t.start, length: t.length, muted: t.muted }))}
           onAudioChange={(id, patch) => updatePreviewComposition({ audioTracks: (settings.audioTracks ?? []).map((t) => (t.id === id ? { ...t, start: patch.start, length: patch.length } : t)) })}
           onKeyframeMove={(id, from, to) => {
             const layer = settings.layers.find((l) => l.id === id)
             if (layer) updatePreviewLayer(id, { keyframes: moveKeyframe(layer.keyframes, from, to, settings.durationInFrames) })
           }}
-          onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
+          onSeek={liveOn ? seekVideo : undefined}
         />
         </div>
 
@@ -1059,7 +1076,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <LookPanel inputProps={inputProps} />
           <AudioPanel />
-          <CaptionsPanel inputProps={inputProps} playFrame={liveOn ? playFrame : undefined} onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined} />
+          <CaptionsPanel inputProps={inputProps} playFrame={liveOn ? videoPlayFrame : undefined} onSeek={liveOn ? seekVideo : undefined} />
           <CutoutPanel inputProps={inputProps} />
           <div style={labelStyle}>Layers</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onReorderEnd}>
@@ -1464,11 +1481,11 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
               {selected.kind !== 'design' && contractOf(selected).userMovable && (
                 <KeyframePanel
                   layer={selected}
-                  playFrame={playFrame}
+                  playFrame={videoPlayFrame}
                   fps={settings.fps}
                   durationInFrames={settings.durationInFrames}
                   onChange={(keyframes) => updatePreviewLayer(selected.id, { keyframes })}
-                  onSeek={liveOn ? (f) => { try { playerRef.current?.pause(); playerRef.current?.seekTo(f) } catch { /* no player */ } } : undefined}
+                  onSeek={liveOn ? seekVideo : undefined}
                 />
               )}
 

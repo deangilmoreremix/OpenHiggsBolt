@@ -61,6 +61,7 @@ import type {
   PreviewLayoutId,
   PreviewBrandColors,
   PreviewAspectRatio,
+  DesignSlot,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import type { ProtectedZone } from './preview/types'
@@ -118,7 +119,8 @@ import {
   applyDesignTemplate,
   addDesignTemplate,
   resetLayoutToDefaults,
-  resetPreviewDesign,
+  removeDesignSlot,
+  retimeScenes,
   normalizePreviewSettings,
   getCompositionDimensions,
   reflowLayersForAspect,
@@ -1064,8 +1066,13 @@ export type DemoPersonalizeContextValue = {
    remotionDesignTemplates: RemotionDesignTemplate[]
    /** Id of the design currently applied to the preview, or null. */
    activeRemotionDesignId: string | null
-   /** Applies a design, or clears the applied design when given null. */
-   setRemotionDesign: (designId: string | null) => void
+   /** Ids of the opening and closing scenes, or null. */
+   activeRemotionSceneIds: { intro: string | null; outro: string | null }
+   /**
+    * Applies a design to a slot (on top of the video by default, or as the opening/closing scene), or clears that slot
+    * when given null.
+    */
+   setRemotionDesign: (designId: string | null, slot?: DesignSlot) => void
   /** Adds a design on top of the current layout (every existing layer is kept), instead of replacing it. */
   addRemotionDesign: (designId: string) => void
   /** Takes one design layer off the video, leaving the other layers. */
@@ -1254,6 +1261,27 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
   }
 }
 
+
+/**
+ * Points every preview layer that shows one of `oldUrls` at `newUrl`, so an
+ * edited image replaces the original in the video preview and the export.
+ * Returns the same object when nothing changes.
+ */
+export function retargetLayerImages(
+  settings: PersonalizationPreviewSettings,
+  oldUrls: string[],
+  newUrl: string,
+): PersonalizationPreviewSettings {
+  const old = new Set(oldUrls.filter(Boolean))
+  if (old.size === 0 || !newUrl) return settings
+  let changed = false
+  const layers = settings.layers.map((layer) => {
+    if (!layer.imageUrl || !old.has(layer.imageUrl)) return layer
+    changed = true
+    return { ...layer, imageUrl: newUrl }
+  })
+  return changed ? { ...settings, layers } : settings
+}
 
 function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset): AssetLibrary {
   switch (asset.role) {
@@ -3225,7 +3253,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       ...target,
       name: file.name,
       url: localUrl,
-      uploadedUrl: target.uploadedUrl,
+      // The old upload is the UNEDITED image. Keeping it would make the video
+      // preview (which prefers uploadedUrl) keep showing the original; the
+      // edited upload replaces it once it is saved below.
+      uploadedUrl: undefined,
       file,
       mimeType: file.type,
       uploadStatus: 'local',
@@ -3252,6 +3283,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    // Video layers copied the image address when the layout was applied:
+    // point every layer that showed the original at the edited image.
+    const previousUrls = [target.url, target.uploadedUrl, target.editedDataUrl].filter(Boolean) as string[]
+    setPreviewSettings((prev) => retargetLayerImages(prev, previousUrls, localUrl))
 
     let supabaseUrl: string | undefined
     try {
@@ -3302,11 +3337,15 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
             logos: updater(prev.logos),
             products: updater(prev.products),
             brandReferences: updater(prev.brandReferences),
+            primaryLogo: prev.primaryLogo?.id === editedAsset.id ? { ...prev.primaryLogo, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.primaryLogo,
+            primaryIdentity: prev.primaryIdentity?.id === editedAsset.id ? { ...prev.primaryIdentity, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.primaryIdentity,
             firstFrame: prev.firstFrame?.id === editedAsset.id ? { ...prev.firstFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.firstFrame,
             lastFrame: prev.lastFrame?.id === editedAsset.id ? { ...prev.lastFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.lastFrame,
             ctaGraphic: prev.ctaGraphic?.id === editedAsset.id ? { ...prev.ctaGraphic, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.ctaGraphic,
           }
         })
+        // The saved copy replaces the temporary browser copy in the video too.
+        setPreviewSettings((prev) => retargetLayerImages(prev, [localUrl], supabaseUrl!))
       }
     } catch {
       // Supabase persistence failed — fall back to MuAPI upload below
@@ -5416,7 +5455,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         resolved = { ...resolved, directInputs: { ...resolved.directInputs, video_url: chosenVideoUrl } }
       }
 
-      const finalPrompt = promptState.edited || promptState.personalized || promptState.original
+      // A video picked straight from the demo library may carry no prompt:
+      // describe the personalization from the business details instead of
+      // sending the model an empty prompt.
+      const businessName = (clientForm.businessName || clientForm.name || '').trim()
+      const fallbackPrompt = [
+        `Recreate this video as a short promotional clip${businessName ? ` for ${businessName}` : ''}.`,
+        clientForm.offer ? `Feature the offer: ${clientForm.offer}.` : '',
+        clientForm.callToAction ? `End on: ${clientForm.callToAction}.` : '',
+        'Keep the original style, pacing and camera movement.',
+      ]
+        .filter(Boolean)
+        .join(' ')
+      const finalPrompt =
+        promptState.edited || promptState.personalized || promptState.original || source.fullPrompt || fallbackPrompt
 
       // Pre-generate CTA end card if exact end-card handling is requested
       if (!burnInLayers && options.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
@@ -5785,17 +5837,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
    * Applies a registered Remotion design to the preview, or clears the applied
    * design when given null.
    *
-   * The design replaces the preview's layer list with its own `design` layer;
-   * brand colours, aspect ratio, fps and duration are untouched. An unknown
+   * The design is added as a `design` layer on top of the layout's layers
+   * (null removes only that layer); brand colours, aspect ratio, fps and
+   * duration are untouched. An unknown
    * design id is refused and reported through `remotionDesignError` instead of
    * silently doing nothing.
    */
-  const setRemotionDesign = useCallback((designId: string | null) => {
+  const setRemotionDesign = useCallback((designId: string | null, slot: DesignSlot = 'overlay') => {
     markSessionStarted()
     if (designId === null) {
       remotionDesignErrorIdRef.current = null
       setRemotionDesignError(null)
-      setPreviewSettings((prev) => resetPreviewDesign(prev, previewSeedRef.current))
+      setPreviewSettings((prev) => removeDesignSlot(prev, slot))
       return
     }
     if (!getRemotionDesignTemplate(designId)) {
@@ -5805,7 +5858,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
     remotionDesignErrorIdRef.current = null
     setRemotionDesignError(null)
-    setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current))
+    setPreviewSettings((prev) => applyDesignTemplate(prev, designId, previewSeedRef.current, slot))
   }, [])
 
   const addRemotionDesign = useCallback((designId: string) => {
@@ -6022,6 +6075,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           // anything the customer moved or resized is left exactly where it is.
           next = reflowLayersForAspect(next, prev.aspectRatio, patch.aspectRatio)
         }
+        // A new length or frame rate moves the closing scene to the new end.
+        if (patch.durationInFrames !== undefined || patch.fps !== undefined) return retimeScenes(next)
         return next
       })
     },
@@ -6778,6 +6833,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     resetPreviewLayout,
     remotionDesignTemplates,
     activeRemotionDesignId: previewSettings.remotionDesignId ?? null,
+    activeRemotionSceneIds: {
+      intro: previewSettings.remotionSceneIds?.intro ?? null,
+      outro: previewSettings.remotionSceneIds?.outro ?? null,
+    },
     setRemotionDesign,
     addRemotionDesign,
     removePreviewDesignLayer,

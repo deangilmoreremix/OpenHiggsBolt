@@ -9,4 +9,5 @@ Use `--check` in CI or before committing to catch bad status values and dead cod
 
 | Feature | Area | Status | Where in app | Added | Details |
 |---|---|---|---|---|---|
+| Opening and closing scenes (Personalization Step 4) | personalization | live | Personalize a video > Step 4 (Preview and approve) > Opening and closing scenes | 2026-11-20 | [page](personalization/opening-and-closing-scenes.md) |
 | Social Publishing | studio | live | Studio result > Publish | TBD | [page](studio/social-publishing.md) |
