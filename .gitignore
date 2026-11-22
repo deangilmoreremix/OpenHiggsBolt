@@ -92,3 +92,6 @@ netlify/lib/motion-capture.cjs
 # Video Pages e2e scratch output
 scripts/e2e-video-pages/seed.json
 scripts/e2e-video-pages/next.log
+
+# MCP smoke run: dry-run output is throwaway; the live smoke-results.json is committed on purpose
+mcp/smoke-results.dry-run.json

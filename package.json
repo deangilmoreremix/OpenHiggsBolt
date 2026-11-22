@@ -69,7 +69,8 @@
     "mcp:catalog": "node --no-warnings scripts/build-mcp-catalog.mjs",
     "mcp:start": "node mcp/index.js",
     "test:mcp": "vitest run tests/mcp",
-    "mcp:coverage": "node scripts/build-mcp-coverage.mjs"
+    "mcp:coverage": "node --no-warnings scripts/build-mcp-coverage.mjs",
+    "mcp:smoke": "node --no-warnings scripts/mcp-smoke.mjs"
   },
   "build": {
     "appId": "ai.generative.open",

@@ -31,6 +31,9 @@ Flow: `search_models` → `get_model` (see the exact fields) → a generation to
 
 Recipes and agents: `_skills_list`, `_skill_run` (the 65 ready-made recipes), `_workflows_list`, `_workflow_inputs`, `_workflow_run`, `_workflow_status`, `_agents_list`, `_agent_chat`.
 
+## Deploying and checking it live
+`mcp/DEPLOY.md` is the checklist (migration, preview, key, smoke run). `npm run mcp:smoke` runs one cheapest call per model kind and per custom tool, refuses to spend without `--confirm-spend <max> --yes`, and `npm run mcp:coverage` turns the results into the Live column of `mcp/COVERAGE.md`.
+
 ## Which studios are covered
 `mcp/studios.json` classifies every studio tab: the tools that serve it, or why it is not exposed. `tests/mcp/studio-coverage.test.js` fails when a tab is added without being classified; `tests/mcp/skills-parity.test.js` runs every recipe through both the Skills panel code and the MCP and compares the requests.
 
