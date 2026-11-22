@@ -158,7 +158,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
-  { id: 'media-hub', label: 'Media Hub' },
+  { id: 'media-hub', label: 'Smartvid Downloader' },
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
