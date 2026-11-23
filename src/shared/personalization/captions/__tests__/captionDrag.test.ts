@@ -1,28 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { gripY, offsetFromDrag, offsetFromKey } from '../captionDrag'
+import { MIN_Y, MAX_Y, yFromDrag, yFromKey } from '../captionDrag'
 
-describe('captionDrag', () => {
-  it('puts the grip near the caption for each place, and moves it with the offset', () => {
-    expect(gripY('bottom', undefined)).toBeCloseTo(0.88, 5)
-    expect(gripY('middle', 0)).toBe(0.5)
-    expect(gripY('top', undefined)).toBeCloseTo(0.12, 5)
-    expect(gripY('bottom', 0.2)).toBeCloseTo(0.68, 5)
-    expect(gripY('bottom', -0.2)).toBe(0.96) // kept on the frame
-  })
-  it('turns a drag into an offset: up is positive, a whole frame height is clamped to 0.4', () => {
-    expect(offsetFromDrag(undefined, -108, 1080)).toBe(0.1)
-    expect(offsetFromDrag(0.1, 54, 1080)).toBe(0.05)
-    expect(offsetFromDrag(0, -2000, 1080)).toBe(0.4)
-    expect(offsetFromDrag(0, 2000, 1080)).toBe(-0.4)
+describe('captionDrag (Studio captions: the height is a fraction of the frame, from the top)', () => {
+  it('turns a drag into a height: down is larger, clamped to the frame', () => {
+    expect(yFromDrag(0.5, 108, 1080)).toBeCloseTo(0.6, 5)
+    expect(yFromDrag(0.5, -108, 1080)).toBeCloseTo(0.4, 5)
+    expect(yFromDrag(0.5, 5000, 1080)).toBe(MAX_Y)
+    expect(yFromDrag(0.5, -5000, 1080)).toBe(MIN_Y)
   })
   it('ignores a drag it cannot measure', () => {
-    expect(offsetFromDrag(0.1, 50, 0)).toBe(0.1)
-    expect(offsetFromDrag(undefined, NaN, 1080)).toBe(0)
+    expect(yFromDrag(0.5, 50, 0)).toBe(0.5)
+    expect(yFromDrag(0.5, NaN, 1080)).toBe(0.5)
   })
-  it('moves one percent per arrow key, five with Shift, within 0.4, and ignores other keys', () => {
-    expect(offsetFromKey(undefined, 'ArrowUp', false)).toBe(0.01)
-    expect(offsetFromKey(0.1, 'ArrowDown', true)).toBe(0.05)
-    expect(offsetFromKey(0.39, 'ArrowUp', true)).toBe(0.4)
-    expect(offsetFromKey(0.1, 'Enter', false)).toBeUndefined()
+  it('moves one percent per arrow key (up is smaller), five with Shift, and ignores other keys', () => {
+    expect(yFromKey(0.5, 'ArrowUp', false)).toBeCloseTo(0.49, 5)
+    expect(yFromKey(0.5, 'ArrowDown', true)).toBeCloseTo(0.55, 5)
+    expect(yFromKey(MIN_Y, 'ArrowUp', true)).toBe(MIN_Y)
+    expect(yFromKey(0.5, 'Enter', false)).toBeUndefined()
   })
 })

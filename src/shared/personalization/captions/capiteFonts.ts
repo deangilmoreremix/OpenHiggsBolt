@@ -1,7 +1,7 @@
 /**
  * The caption fonts of Capite (https://github.com/muneebkhan08/Capite): the 16 families of its font picker and looks, plus IBM Plex Sans, its
  * fallback. Pure data and helpers (no React, no DOM); identical in remix-new-editor and OpenHiggsBolt. The font files themselves are in
- * `fontData/` (Latin subset, embedded, loaded on demand by `capiteFontLoader.ts`). In CSS they carry the alias "Capite <name>" so they can never be
+ * `captionStudio/fonts/` (Latin subset, embedded, loaded on demand by `capiteFontLoader.ts`). In CSS they carry the alias "Capite <name>" so they can never be
  * confused with a same-named font the page already has; the real names are kept for the .ass export, where the viewer's own fonts are used.
  */
 export type CaptionFontCategory = 'sans' | 'serif' | 'mono' | 'display'
@@ -9,7 +9,7 @@ export type CaptionFontCategory = 'sans' | 'serif' | 'mono' | 'display'
 export interface CaptionFont {
   /** The font's real name, as Capite and the .ass file use it. */
   name: string
-  /** Key of the data module in `fontData/`. */
+  /** Key of the data module in the Studio's `fonts/data/`. */
   slug: string
   category: CaptionFontCategory
   popularIn: string

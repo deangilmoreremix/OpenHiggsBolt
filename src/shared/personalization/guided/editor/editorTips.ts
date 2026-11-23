@@ -71,9 +71,6 @@ export const EDITOR_TIPS = {
   audioAdd: { text: 'Add your own music or a voiceover. Each track has its own volume, fades, start time and mute and solo. Free, no credits.', free: true },
 
   // ── captions ─────────────────────────────────────────────────────────
-  captionsScript: { text: 'Paste what is said, or subtitles in SRT format. Plain words are timed evenly across the video; subtitles keep their own times. Nothing is listened to or generated, and it is free.', free: true },
-  captionsStyle: { text: 'One-click caption looks. They use your brand colors, and you can change anything afterwards.' },
-  captionsLines: { text: 'Each line, with when it appears and disappears. Fix a word or nudge the timing so it matches your video.' },
 
   // ── layout quality check ─────────────────────────────────────────────
   qualityReview: { text: 'Open the full layout check: every problem found, with buttons to show it on the video or fix it.' },

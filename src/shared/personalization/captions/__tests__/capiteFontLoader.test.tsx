@@ -19,23 +19,23 @@ beforeEach(() => {
   Object.defineProperty(document, 'fonts', { configurable: true, value: { load: fontsLoad, ready: Promise.resolve() } })
   fontsLoad.mockClear(); delays.open.clear(); delays.opened = 0
 })
-afterEach(() => { document.body.innerHTML = ''; document.head.querySelectorAll('style[data-capite-font]').forEach((e) => e.remove()) })
+afterEach(() => { document.body.innerHTML = ''; document.head.querySelectorAll('style[data-caption-font]').forEach((e) => e.remove()) })
 
 describe('loadCaptionFont', () => {
   it('registers the font from embedded data (no URL to fetch), then waits for the browser to have it', async () => {
     const out = await loadCaptionFont('Anton', { weight: 400 })
     expect(out.loaded).toBe(true)
-    const style = document.head.querySelector('style[data-capite-font="Anton"]')!
+    const style = document.head.querySelector('style[data-caption-font="Anton"]')!
     expect(style.textContent).toContain('font-family:"Capite Anton"')
     expect(style.textContent).toMatch(/src:url\(data:font\/woff2;base64,[A-Za-z0-9+/=]{100,}\)/)
     expect(style.textContent).not.toMatch(/url\((?!data:)/)
     expect(fontsLoad).toHaveBeenCalledWith('400 16px "Capite Anton"', expect.any(String))
     // and Capite's fallback came with it
-    expect(document.head.querySelector('style[data-capite-font="IBM Plex Sans"]')).not.toBeNull()
+    expect(document.head.querySelector('style[data-caption-font="IBM Plex Sans"]')).not.toBeNull()
   })
   it('registers each font once, and asks for italics when told to', async () => {
     await loadCaptionFont('Anton'); await loadCaptionFont('Anton', { italic: true, weight: 700 })
-    expect(document.head.querySelectorAll('style[data-capite-font="Anton"]')).toHaveLength(1)
+    expect(document.head.querySelectorAll('style[data-caption-font="Anton"]')).toHaveLength(1)
     expect(fontsLoad).toHaveBeenLastCalledWith('italic 700 16px "Capite Anton"', expect.any(String))
   })
   it('does nothing for a name that is not one of the 16', async () => {
