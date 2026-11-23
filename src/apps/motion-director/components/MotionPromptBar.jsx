@@ -18,6 +18,7 @@ import {
   PROMPT_MEDIA_PREVIEW_CLASS,
 } from 'studio/src/components/prompt/PromptComposer';
 import { prepareMedia, attachMediaAttachments } from '../lib/mediaUpload';
+import AssetLibraryButton from 'studio/src/components/AssetLibraryButton';
 
 const ASPECT_RATIOS = ['16:9', '9:16', '1:1'];
 const DURATIONS = [5, 6, 8, 10, 12, 15, 20, 25, 30];
@@ -94,6 +95,23 @@ export default function MotionPromptBar({
     [autoAttach, onMediaChange],
   );
 
+  /** A saved upload or generation from the user's library: already a lasting hosted address, so it attaches as is. */
+  const handleLibraryAsset = useCallback(
+    (asset) => {
+      const attachment = {
+        id: `library-${asset.id}`,
+        kind: asset.kind,
+        name: asset.name || asset.kind,
+        url: asset.url,
+        size: 0,
+      };
+      if (autoAttach) attachMediaAttachments([attachment]);
+      setMedia((prev) => [...prev, attachment]);
+      onMediaChange?.([attachment]);
+    },
+    [autoAttach, onMediaChange],
+  );
+
   return (
     <PromptComposer positionClassName="relative w-full animate-fade-in-up">
       <PromptTextarea
@@ -135,6 +153,9 @@ export default function MotionPromptBar({
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
+        {!generating && (
+          <AssetLibraryButton kinds={['image', 'video', 'audio']} label="Saved" onSelect={handleLibraryAsset} />
+        )}
         <input
           ref={fileRef}
           type="file"

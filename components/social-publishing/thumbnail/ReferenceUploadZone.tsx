@@ -2,7 +2,15 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import AssetLibraryButtonBase from 'studio/src/components/AssetLibraryButton';
 import type { ThumbnailState } from '../types';
+
+// The shared picker is plain JS; give it the props this zone passes.
+const AssetLibraryButton = AssetLibraryButtonBase as unknown as React.ComponentType<{
+  kinds?: string[]
+  label?: string
+  onSelect?: (asset: { url: string; kind: string; name?: string }) => void
+}>
 
 export interface ReferenceUploadZoneProps {
   templateId: string | undefined
@@ -114,6 +122,17 @@ export default function ReferenceUploadZone({ templateId, references, onUpdate, 
           aria-hidden="true"
         />
       </div>
+
+      {/* Saved uploads and generations; a saved image is a hosted https address the thumbnail route can fetch */}
+      {!disabled && (hasMultiple || references.length === 0) && references.length < (hasMultiple ? 4 : 1) && (
+        <AssetLibraryButton
+          kinds={['image']}
+          label="Saved"
+          onSelect={(asset) => {
+            if (!references.includes(asset.url)) onUpdate({ references: [...references, asset.url] })
+          }}
+        />
+      )}
 
       {/* Reference previews */}
       {references.length > 0 && (
