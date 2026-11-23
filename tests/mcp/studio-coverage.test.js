@@ -47,3 +47,35 @@ describe('every supported studio is actually reachable', () => {
     for (const e of catalog) for (const s of e.studios) expect(known.has(s), `${e.key} tagged with unknown studio ${s}`).toBe(true);
   });
 });
+
+// ── features: every feature of every studio is mapped to real tools or explained ─────────────────────
+describe('every feature is mapped or explained', () => {
+  const bridge = JSON.parse(read('../../mcp/bridge-tools.json'));
+  const bridgeNames = new Set(Object.values(bridge.studios).flatMap((s) => s.tools.map((t) => t.name)));
+  const features = manifest.features || {};
+
+  it('feature lists exist only for studios in the app (plus "shared")', () => {
+    for (const s of Object.keys(features)) expect(s === 'shared' || appStudios.includes(s), `features for unknown studio ${s}`).toBe(true);
+  });
+  it('every supported studio has features, and every classified-unsupported studio does not pretend to', () => {
+    for (const s of Object.keys(manifest.supported)) expect((features[s] || []).length, `${s} has no features listed`).toBeGreaterThan(0);
+    for (const s of Object.keys(manifest.unsupported)) expect(features[s], s).toBeUndefined();
+  });
+  it('each feature names real tools, real tab tools, or a reason', () => {
+    for (const [studio, list] of Object.entries(features)) for (const f of list) {
+      expect(f.name?.length, `${studio} feature name`).toBeGreaterThan(3);
+      if (f.notExposed) { expect(f.notExposed.length, `${studio}/${f.name}`).toBeGreaterThan(20); continue; }
+      expect((f.tools?.length || 0) + (f.bridgeTools?.length || 0), `${studio}/${f.name} maps to nothing`).toBeGreaterThan(0);
+      for (const t of f.tools || []) expect(toolNames.has(t), `${studio}/${f.name}: tool ${t}`).toBe(true);
+      for (const t of f.bridgeTools || []) expect(bridgeNames.has(t), `${studio}/${f.name}: tab tool ${t}`).toBe(true);
+    }
+  });
+  it('no registered tool or tab tool is left unmapped', () => {
+    const mapped = new Set(Object.values(features).flatMap((l) => l.flatMap((f) => [...(f.tools || []), ...(f.bridgeTools || [])])));
+    const ignore = new Set(['list_studios']);
+    for (const n of [...customTools.map((t) => t.name), ...bridgeNames, ...GENERATION_TOOLS.map((t) => t.name)]) expect(mapped.has(n) || ignore.has(n), `tool ${n} is in no studio's features`).toBe(true);
+  });
+  it('a bridge-only studio names its tab tools and every tab tool belongs to one', () => {
+    for (const [studio, entry] of Object.entries(manifest.supported)) if (entry.bridgeTools) expect(bridge.studios[entry.bridgeTools], `${studio} bridge group`).toBeTruthy();
+  });
+});

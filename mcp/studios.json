@@ -200,11 +200,474 @@
    ],
    "kinds": [],
    "note": "script and topic ideas use your saved OpenAI key and are an MCP addition (the app drafts its script offline)"
+  },
+  "video-pages": {
+   "tools": [
+    "video_pages_list",
+    "video_pages_get",
+    "video_pages_create",
+    "video_pages_update",
+    "video_pages_publish",
+    "video_pages_unpublish",
+    "video_pages_delete",
+    "video_pages_stats",
+    "video_pages_contacts",
+    "video_pages_add_contacts",
+    "video_pages_remove_contact"
+   ],
+   "kinds": [],
+   "note": "Runs the app's own owner-scoped page code on the server. Publishing and deleting need confirm: true."
+  },
+  "motion-director": {
+   "tools": [],
+   "bridgeTools": "motion-director",
+   "kinds": [],
+   "note": "Controlled through the open tab only (the editor and Remotion renderer live in the browser). Needs the tab open, signed in and switched on."
   }
  },
  "unsupported": {
-  "video-pages": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "motion-director": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "apps": "Non-generative UI (hub for other studios)."
+  "apps": "A hub of links to other studios and hosted third-party apps; there is nothing in it to control."
+ },
+ "features": {
+  "image": [
+   {
+    "name": "Text to image",
+    "tools": [
+     "image_generate"
+    ]
+   },
+   {
+    "name": "Image to image / edit",
+    "tools": [
+     "image_edit"
+    ]
+   },
+   {
+    "name": "Model search, cost estimate, balance",
+    "tools": [
+     "search_models",
+     "get_model",
+     "estimate_cost",
+     "account_balance",
+     "usage_info"
+    ]
+   }
+  ],
+  "video": [
+   {
+    "name": "Text to video",
+    "tools": [
+     "video_generate"
+    ]
+   },
+   {
+    "name": "Image to video",
+    "tools": [
+     "video_from_image"
+    ]
+   },
+   {
+    "name": "Video to video",
+    "tools": [
+     "video_to_video"
+    ]
+   },
+   {
+    "name": "Check or collect a result later",
+    "tools": [
+     "get_result"
+    ]
+   },
+   {
+    "name": "Video utility tools (trim, extract and similar)",
+    "tools": [
+     "video_tool"
+    ]
+   }
+  ],
+  "edit": [
+   {
+    "name": "Browse Edit tools and their models",
+    "tools": [
+     "edit_tools_list"
+    ]
+   },
+   {
+    "name": "Run an Edit tool by slug",
+    "tools": [
+     "edit_tool_run"
+    ]
+   },
+   {
+    "name": "Use the playground form in the open tab",
+    "notExposed": "The form (tool, model, upload slots) is not driven from a tab; edit_tool_run does the same job without a tab."
+   }
+  ],
+  "audio": [
+   {
+    "name": "Music, voice and sound generation",
+    "tools": [
+     "audio_generate"
+    ]
+   },
+   {
+    "name": "Upload a file to use as input",
+    "tools": [
+     "upload_file"
+    ]
+   },
+   {
+    "name": "Voice, avatar and vision helpers",
+    "tools": [
+     "avatar_generate",
+     "vision_describe",
+     "text_generate"
+    ]
+   }
+  ],
+  "clipping": [
+   {
+    "name": "AI highlight clipping",
+    "tools": [
+     "clip_video"
+    ]
+   }
+  ],
+  "vibe-motion": [
+   {
+    "name": "Motion graphics from a prompt",
+    "tools": [
+     "motion_graphics"
+    ]
+   }
+  ],
+  "motion-control": [
+   {
+    "name": "Motion control",
+    "tools": [
+     "motion_control"
+    ]
+   }
+  ],
+  "lipsync": [
+   {
+    "name": "Lip sync",
+    "tools": [
+     "lipsync"
+    ]
+   }
+  ],
+  "cinema": [
+   {
+    "name": "Cinematic stills and clips",
+    "tools": [
+     "image_generate",
+     "video_generate",
+     "video_from_image"
+    ]
+   }
+  ],
+  "marketing": [
+   {
+    "name": "Marketing ad",
+    "tools": [
+     "marketing_ad"
+    ]
+   }
+  ],
+  "recast": [
+   {
+    "name": "Body swap / recast",
+    "tools": [
+     "recast"
+    ]
+   }
+  ],
+  "layers": [
+   {
+    "name": "Image edits that make layers",
+    "tools": [
+     "image_edit"
+    ]
+   },
+   {
+    "name": "Decompose, upscale, remove background, layer visibility, source image and options in the open tab",
+    "bridgeTools": [
+     "layers_get_state",
+     "layers_set_image",
+     "layers_set_options",
+     "layers_decompose",
+     "layers_upscale",
+     "layers_remove_background",
+     "layers_set_layer_visibility"
+    ]
+   },
+   {
+    "name": "Freehand drawing, lasso, region, shape and brush tools, text edit and colour grading sliders",
+    "notExposed": "They work on pointer events over a canvas and have no programmatic surface."
+   }
+  ],
+  "ai-influencer": [
+   {
+    "name": "Influencer images and edits",
+    "tools": [
+     "image_generate",
+     "image_edit"
+    ]
+   }
+  ],
+  "workflows": [
+   {
+    "name": "List, inspect, run and check workflows",
+    "tools": [
+     "workflows_list",
+     "workflow_inputs",
+     "workflow_run",
+     "workflow_status",
+     "workflow_get"
+    ]
+   },
+   {
+    "name": "Create, rename and delete a workflow definition",
+    "tools": [
+     "workflow_create",
+     "workflow_rename",
+     "workflow_delete"
+    ]
+   },
+   {
+    "name": "Skills (recipes)",
+    "tools": [
+     "skills_list",
+     "skill_run"
+    ]
+   },
+   {
+    "name": "Build out a workflow's nodes on the canvas",
+    "notExposed": "The app has no create-nodes call; the builder is a hosted editor. The MCP creates, renames and deletes definitions and runs them."
+   },
+   {
+    "name": "Publish a workflow / architect (AI-build) a workflow",
+    "notExposed": "The app does not call a publish or architect endpoint from SmartVideo GO, so there is nothing to mirror."
+   }
+  ],
+  "agents": [
+   {
+    "name": "List agents and chat",
+    "tools": [
+     "agents_list",
+     "agent_chat"
+    ]
+   },
+   {
+    "name": "Create a persona agent",
+    "tools": [
+     "agent_create"
+    ]
+   }
+  ],
+  "vfx-studio": [
+   {
+    "name": "VFX from an image",
+    "tools": [
+     "video_from_image"
+    ]
+   }
+  ],
+  "storyboard": [
+   {
+    "name": "Generate shots",
+    "tools": [
+     "image_generate",
+     "video_generate"
+    ]
+   },
+   {
+    "name": "Edit the open storyboard: brief, name, aspect, duration, model, shots, characters, projects, export as data",
+    "bridgeTools": [
+     "storyboard_get_state",
+     "storyboard_export_json",
+     "storyboard_set_brief",
+     "storyboard_set_project_name",
+     "storyboard_set_aspect_ratio",
+     "storyboard_set_episode_duration",
+     "storyboard_set_model",
+     "storyboard_add_shot",
+     "storyboard_update_shot",
+     "storyboard_move_shot",
+     "storyboard_remove_shot",
+     "storyboard_add_character",
+     "storyboard_update_character",
+     "storyboard_remove_character",
+     "storyboard_create_project",
+     "storyboard_switch_project",
+     "storyboard_delete_project"
+    ]
+   },
+   {
+    "name": "PDF and GIF downloads",
+    "notExposed": "They need the browser file dialog."
+   }
+  ],
+  "thumbnail-studio": [
+   {
+    "name": "Generate and refine thumbnails",
+    "tools": [
+     "thumbnail_generate",
+     "thumbnail_refine"
+    ]
+   }
+  ],
+  "go-ai-viral": [
+   {
+    "name": "Search viral prompt libraries",
+    "tools": [
+     "viral_prompts_search",
+     "viral_seedance_search"
+    ]
+   }
+  ],
+  "design-agent": [
+   {
+    "name": "Sessions, chat, jobs, assets, approve/reject, skills",
+    "tools": [
+     "design_agent_session",
+     "design_agent_sessions",
+     "design_agent_chat",
+     "design_agent_job",
+     "design_agent_assets",
+     "design_agent_decide",
+     "design_agent_run_skill"
+    ]
+   }
+  ],
+  "brand-studio": [
+   {
+    "name": "Analyze a site, save brands, campaigns",
+    "tools": [
+     "brand_analyze",
+     "brands_list",
+     "brand_save",
+     "campaign_generate",
+     "campaigns_list"
+    ]
+   },
+   {
+    "name": "Photo Studio",
+    "tools": [
+     "photo_studio_generate",
+     "photo_studio_status",
+     "photo_studio_history"
+    ]
+   },
+   {
+    "name": "Brands that survive a server restart",
+    "notExposed": "Brand Studio keeps brands in server memory (documented in src/shared/brandStore.ts); the MCP reads and writes the same store, so brands saved through it are lost on restart just like the app's own. A persistence change in the app is a separate piece of work."
+   }
+  ],
+  "zackd": [
+   {
+    "name": "Trends, script, media steps",
+    "tools": [
+     "zackd_trends",
+     "zackd_script",
+     "zackd_submit"
+    ]
+   }
+  ],
+  "video-pages": [
+   {
+    "name": "List, read, create, edit, publish, unpublish and delete pages; stats; recipients",
+    "tools": [
+     "video_pages_list",
+     "video_pages_get",
+     "video_pages_create",
+     "video_pages_update",
+     "video_pages_publish",
+     "video_pages_unpublish",
+     "video_pages_delete",
+     "video_pages_stats",
+     "video_pages_contacts",
+     "video_pages_add_contacts",
+     "video_pages_remove_contact"
+    ]
+   },
+   {
+    "name": "The visual page editor",
+    "notExposed": "Dragging blocks in the page editor has no programmatic surface; pages are edited by their settings (title, poster, config)."
+   }
+  ],
+  "motion-director": [
+   {
+    "name": "Read the project, run a plain-English command, add/edit/remove clips, background, selection, playhead, undo/redo",
+    "bridgeTools": [
+     "motion_director_get_project",
+     "motion_director_command",
+     "motion_director_add_clip",
+     "motion_director_update_clip_props",
+     "motion_director_update_clip",
+     "motion_director_remove_clip",
+     "motion_director_set_background",
+     "motion_director_select_clip",
+     "motion_director_set_playhead",
+     "motion_director_undo",
+     "motion_director_redo"
+    ]
+   },
+   {
+    "name": "Dragging on the timeline and rendering to a file",
+    "notExposed": "Drag gestures have no programmatic surface; rendering needs the browser renderer and a download."
+   }
+  ],
+  "shared": [
+   {
+    "name": "Your asset library",
+    "tools": [
+     "assets_library_list",
+     "assets_library_add",
+     "assets_library_delete"
+    ]
+   },
+   {
+    "name": "Generation history",
+    "tools": [
+     "history_list",
+     "history_delete_media"
+    ]
+   },
+   {
+    "name": "Social accounts and publishing",
+    "tools": [
+     "social_accounts_list",
+     "social_publish",
+     "social_publish_status"
+    ]
+   },
+   {
+    "name": "Which studio is open, and moving between studios",
+    "bridgeTools": [
+     "app_state",
+     "app_navigate"
+    ]
+   },
+   {
+    "name": "Connecting or disconnecting a social account; saving API keys; checkout",
+    "notExposed": "Only a person may do these (they involve sign-in with another service, secrets, or payment)."
+   },
+   {
+    "name": "Opening a tab tool from the MCP when no tab is open",
+    "notExposed": "Tab tools work only while the tab is open, signed in and switched on with \"Let MCP control this tab\"."
+   },
+   {
+    "name": "Listing GET /api/assets and GET /api/campaigns app routes",
+    "notExposed": "Those app routes have no sign-in check and return other users' rows; the MCP never calls them (it uses owner-scoped routes). Left unchanged by decision; reported."
+   },
+   {
+    "name": "Model training",
+    "tools": [
+     "model_train"
+    ]
+   }
+  ]
  }
 }

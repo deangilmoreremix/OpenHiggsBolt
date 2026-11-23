@@ -5,7 +5,7 @@ The Live column comes from the smoke run against a deployed gateway with a real 
 
 No live run recorded yet.
 
-22 supported, 3 not exposed.
+24 supported, 1 not exposed.
 
 | Studio | Status | Tools / reason | Live |
 |---|---|---|---|
@@ -31,6 +31,68 @@ No live run recorded yet.
 | `design-agent` | supported | `design_agent_session`, `design_agent_sessions`, `design_agent_chat`, `design_agent_job`, `design_agent_assets`, `design_agent_decide`, `design_agent_run_skill` | not run |
 | `brand-studio` | supported | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` (brands are kept in the app's in-memory store per server instance, so a saved brand can be missing on a later call; assets and Photo Studio are not exposed) | not run |
 | `zackd` | supported | `zackd_trends`, `zackd_script`, `zackd_submit` (script and topic ideas use your saved OpenAI key and are an MCP addition (the app drafts its script offline)) | not run |
-| `video-pages` | not exposed | Own app with a client-side renderer (Remotion); out of scope for v1. | n/a |
-| `motion-director` | not exposed | Own app with a client-side renderer (Remotion); out of scope for v1. | n/a |
-| `apps` | not exposed | Non-generative UI (hub for other studios). | n/a |
+| `video-pages` | supported | `video_pages_list`, `video_pages_get`, `video_pages_create`, `video_pages_update`, `video_pages_publish`, `video_pages_unpublish`, `video_pages_delete`, `video_pages_stats`, `video_pages_contacts`, `video_pages_add_contacts`, `video_pages_remove_contact` (Runs the app's own owner-scoped page code on the server. Publishing and deleting need confirm: true.) | not run |
+| `motion-director` | supported |  (Controlled through the open tab only (the editor and Remotion renderer live in the browser). Needs the tab open, signed in and switched on.) | not run |
+| `apps` | not exposed | A hub of links to other studios and hosted third-party apps; there is nothing in it to control. | n/a |
+
+## Features
+
+| Studio | Feature | Tools |
+|---|---|---|
+| `image` | Text to image | `image_generate` |
+| `image` | Image to image / edit | `image_edit` |
+| `image` | Model search, cost estimate, balance | `search_models`, `get_model`, `estimate_cost`, `account_balance`, `usage_info` |
+| `video` | Text to video | `video_generate` |
+| `video` | Image to video | `video_from_image` |
+| `video` | Video to video | `video_to_video` |
+| `video` | Check or collect a result later | `get_result` |
+| `video` | Video utility tools (trim, extract and similar) | `video_tool` |
+| `edit` | Browse Edit tools and their models | `edit_tools_list` |
+| `edit` | Run an Edit tool by slug | `edit_tool_run` |
+| `edit` | Use the playground form in the open tab | not exposed: The form (tool, model, upload slots) is not driven from a tab; edit_tool_run does the same job without a tab. |
+| `audio` | Music, voice and sound generation | `audio_generate` |
+| `audio` | Upload a file to use as input | `upload_file` |
+| `audio` | Voice, avatar and vision helpers | `avatar_generate`, `vision_describe`, `text_generate` |
+| `clipping` | AI highlight clipping | `clip_video` |
+| `vibe-motion` | Motion graphics from a prompt | `motion_graphics` |
+| `motion-control` | Motion control | `motion_control` |
+| `lipsync` | Lip sync | `lipsync` |
+| `cinema` | Cinematic stills and clips | `image_generate`, `video_generate`, `video_from_image` |
+| `marketing` | Marketing ad | `marketing_ad` |
+| `recast` | Body swap / recast | `recast` |
+| `layers` | Image edits that make layers | `image_edit` |
+| `layers` | Decompose, upscale, remove background, layer visibility, source image and options in the open tab | `layers_get_state` (open tab), `layers_set_image` (open tab), `layers_set_options` (open tab), `layers_decompose` (open tab), `layers_upscale` (open tab), `layers_remove_background` (open tab), `layers_set_layer_visibility` (open tab) |
+| `layers` | Freehand drawing, lasso, region, shape and brush tools, text edit and colour grading sliders | not exposed: They work on pointer events over a canvas and have no programmatic surface. |
+| `ai-influencer` | Influencer images and edits | `image_generate`, `image_edit` |
+| `workflows` | List, inspect, run and check workflows | `workflows_list`, `workflow_inputs`, `workflow_run`, `workflow_status`, `workflow_get` |
+| `workflows` | Create, rename and delete a workflow definition | `workflow_create`, `workflow_rename`, `workflow_delete` |
+| `workflows` | Skills (recipes) | `skills_list`, `skill_run` |
+| `workflows` | Build out a workflow's nodes on the canvas | not exposed: The app has no create-nodes call; the builder is a hosted editor. The MCP creates, renames and deletes definitions and runs them. |
+| `workflows` | Publish a workflow / architect (AI-build) a workflow | not exposed: The app does not call a publish or architect endpoint from SmartVideo GO, so there is nothing to mirror. |
+| `agents` | List agents and chat | `agents_list`, `agent_chat` |
+| `agents` | Create a persona agent | `agent_create` |
+| `vfx-studio` | VFX from an image | `video_from_image` |
+| `storyboard` | Generate shots | `image_generate`, `video_generate` |
+| `storyboard` | Edit the open storyboard: brief, name, aspect, duration, model, shots, characters, projects, export as data | `storyboard_get_state` (open tab), `storyboard_export_json` (open tab), `storyboard_set_brief` (open tab), `storyboard_set_project_name` (open tab), `storyboard_set_aspect_ratio` (open tab), `storyboard_set_episode_duration` (open tab), `storyboard_set_model` (open tab), `storyboard_add_shot` (open tab), `storyboard_update_shot` (open tab), `storyboard_move_shot` (open tab), `storyboard_remove_shot` (open tab), `storyboard_add_character` (open tab), `storyboard_update_character` (open tab), `storyboard_remove_character` (open tab), `storyboard_create_project` (open tab), `storyboard_switch_project` (open tab), `storyboard_delete_project` (open tab) |
+| `storyboard` | PDF and GIF downloads | not exposed: They need the browser file dialog. |
+| `thumbnail-studio` | Generate and refine thumbnails | `thumbnail_generate`, `thumbnail_refine` |
+| `go-ai-viral` | Search viral prompt libraries | `viral_prompts_search`, `viral_seedance_search` |
+| `design-agent` | Sessions, chat, jobs, assets, approve/reject, skills | `design_agent_session`, `design_agent_sessions`, `design_agent_chat`, `design_agent_job`, `design_agent_assets`, `design_agent_decide`, `design_agent_run_skill` |
+| `brand-studio` | Analyze a site, save brands, campaigns | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` |
+| `brand-studio` | Photo Studio | `photo_studio_generate`, `photo_studio_status`, `photo_studio_history` |
+| `brand-studio` | Brands that survive a server restart | not exposed: Brand Studio keeps brands in server memory (documented in src/shared/brandStore.ts); the MCP reads and writes the same store, so brands saved through it are lost on restart just like the app's own. A persistence change in the app is a separate piece of work. |
+| `zackd` | Trends, script, media steps | `zackd_trends`, `zackd_script`, `zackd_submit` |
+| `video-pages` | List, read, create, edit, publish, unpublish and delete pages; stats; recipients | `video_pages_list`, `video_pages_get`, `video_pages_create`, `video_pages_update`, `video_pages_publish`, `video_pages_unpublish`, `video_pages_delete`, `video_pages_stats`, `video_pages_contacts`, `video_pages_add_contacts`, `video_pages_remove_contact` |
+| `video-pages` | The visual page editor | not exposed: Dragging blocks in the page editor has no programmatic surface; pages are edited by their settings (title, poster, config). |
+| `motion-director` | Read the project, run a plain-English command, add/edit/remove clips, background, selection, playhead, undo/redo | `motion_director_get_project` (open tab), `motion_director_command` (open tab), `motion_director_add_clip` (open tab), `motion_director_update_clip_props` (open tab), `motion_director_update_clip` (open tab), `motion_director_remove_clip` (open tab), `motion_director_set_background` (open tab), `motion_director_select_clip` (open tab), `motion_director_set_playhead` (open tab), `motion_director_undo` (open tab), `motion_director_redo` (open tab) |
+| `motion-director` | Dragging on the timeline and rendering to a file | not exposed: Drag gestures have no programmatic surface; rendering needs the browser renderer and a download. |
+| `shared` | Your asset library | `assets_library_list`, `assets_library_add`, `assets_library_delete` |
+| `shared` | Generation history | `history_list`, `history_delete_media` |
+| `shared` | Social accounts and publishing | `social_accounts_list`, `social_publish`, `social_publish_status` |
+| `shared` | Which studio is open, and moving between studios | `app_state` (open tab), `app_navigate` (open tab) |
+| `shared` | Connecting or disconnecting a social account; saving API keys; checkout | not exposed: Only a person may do these (they involve sign-in with another service, secrets, or payment). |
+| `shared` | Opening a tab tool from the MCP when no tab is open | not exposed: Tab tools work only while the tab is open, signed in and switched on with "Let MCP control this tab". |
+| `shared` | Listing GET /api/assets and GET /api/campaigns app routes | not exposed: Those app routes have no sign-in check and return other users' rows; the MCP never calls them (it uses owner-scoped routes). Left unchanged by decision; reported. |
+| `shared` | Model training | `model_train` |
+
+"(open tab)" tools only work while that studio is open in a signed-in tab with "Let MCP control this tab" switched on. They are listed in `mcp/bridge-tools.json` (37 tools). Live: not run.
