@@ -35,8 +35,8 @@ export async function getDesignAgentApiKey(req: NextRequest, deps?: {
 
   // 2. Fall back to Clerk session + encrypted key from Supabase.
   const auth = deps?.auth || (async () => {
-    const { auth: clerkAuth } = await import('@clerk/nextjs/server');
-    return clerkAuth();
+    const { authOrPrincipal } = await import('../../../../lib/principal');
+    return authOrPrincipal();
   });
   const getSb = deps?.getSupabaseAdmin || getSupabaseAdmin;
 

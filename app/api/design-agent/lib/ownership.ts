@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { authOrPrincipal } from '../../../../lib/principal';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 
 type OwnershipRecord = {
@@ -50,7 +50,7 @@ export async function getOwnerId(resourceKey: string, resourceType: 'session' | 
 }
 
 export async function requireOwnership(resourceKey: string, resourceType: 'session' | 'job' = 'session'): Promise<{ userId: string } | Response> {
-  const { userId } = await auth();
+  const { userId } = await authOrPrincipal();
   if (!userId) {
     return new Response('Unauthorized', { status: 401 });
   }
@@ -69,6 +69,6 @@ export async function requireOwnership(resourceKey: string, resourceType: 'sessi
 }
 
 export async function resolveClerkUserId(): Promise<string | null> {
-  const { userId } = await auth();
+  const { userId } = await authOrPrincipal();
   return userId;
 }

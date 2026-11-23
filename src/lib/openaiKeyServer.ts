@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { authOrPrincipal } from '../../lib/principal';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 import { decryptMuapiKey } from '@/src/lib/muapiKeyCrypto';
 
@@ -9,7 +9,7 @@ import { decryptMuapiKey } from '@/src/lib/muapiKeyCrypto';
  * does not have a key configured, or the stored value cannot be decrypted.
  */
 export async function getOpenAiKeyForUser(): Promise<string | null> {
-  const { userId } = await auth();
+  const { userId } = await authOrPrincipal();
   if (!userId) return null;
 
   try {

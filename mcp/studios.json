@@ -153,16 +153,58 @@
     "t2v",
     "t2i"
    ]
+  },
+  "thumbnail-studio": {
+   "tools": [
+    "thumbnail_generate",
+    "thumbnail_refine"
+   ],
+   "kinds": [],
+   "note": "needs your saved OpenAI key; the studio's prompt-enhance step is not exposed"
+  },
+  "go-ai-viral": {
+   "tools": [
+    "viral_prompts_search",
+    "viral_seedance_search"
+   ],
+   "kinds": []
+  },
+  "design-agent": {
+   "tools": [
+    "design_agent_session",
+    "design_agent_sessions",
+    "design_agent_chat",
+    "design_agent_job",
+    "design_agent_assets",
+    "design_agent_decide",
+    "design_agent_run_skill"
+   ],
+   "kinds": []
+  },
+  "brand-studio": {
+   "tools": [
+    "brand_analyze",
+    "brands_list",
+    "brand_save",
+    "campaign_generate",
+    "campaigns_list"
+   ],
+   "kinds": [],
+   "note": "brands are kept in the app's in-memory store per server instance, so a saved brand can be missing on a later call; assets and Photo Studio are not exposed"
+  },
+  "zackd": {
+   "tools": [
+    "zackd_trends",
+    "zackd_script",
+    "zackd_submit"
+   ],
+   "kinds": [],
+   "note": "script and topic ideas use your saved OpenAI key and are an MCP addition (the app drafts its script offline)"
   }
  },
  "unsupported": {
-  "brand-studio": "Runs on Netlify/Supabase functions with its own contracts (brand, campaign, assets); not exposed yet.",
   "video-pages": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "zackd": "Own app (src/apps/zackd) with its own backend; not exposed yet (the SmartVid repo has Zack D tools).",
   "motion-director": "Own app with a client-side renderer (Remotion); out of scope for v1.",
-  "design-agent": "Own agent app (src/apps/design-agent); not reviewed yet.",
-  "thumbnail-studio": "Uses its own OpenAI prompt-enhance and Supabase pipeline (/api/proxy/thumbnail-generate); not exposed yet. Image tools cover plain thumbnails.",
-  "go-ai-viral": "Own app (src/apps/go-ai-viral); not reviewed yet.",
   "apps": "Non-generative UI (hub for other studios)."
  }
 }

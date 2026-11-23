@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { authOrPrincipal } from '../../lib/principal';
 import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess';
 import {
   ENTITLEMENTS,
@@ -37,7 +37,7 @@ function checkEntitlementKey(entitlementKey: EntitlementKey | string, access: Ac
 }
 
 export async function requireApiEntitlement(entitlementKey: string): Promise<EntitlementCheckResult> {
-  const { userId } = await auth();
+  const { userId } = await authOrPrincipal();
 
   if (!userId) {
     return { allowed: false, status: 401 };

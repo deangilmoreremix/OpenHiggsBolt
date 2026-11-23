@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { authOrPrincipal as auth } from '../../../lib/principal'
 import { brands, getBrandForUser, type Brand } from '@/shared/brandStore'
 import { apiError } from '@/lib/apiError'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'

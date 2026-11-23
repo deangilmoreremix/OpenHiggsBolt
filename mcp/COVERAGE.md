@@ -5,7 +5,7 @@ The Live column comes from the smoke run against a deployed gateway with a real 
 
 No live run recorded yet.
 
-17 supported, 8 not exposed.
+22 supported, 3 not exposed.
 
 | Studio | Status | Tools / reason | Live |
 |---|---|---|---|
@@ -26,11 +26,11 @@ No live run recorded yet.
 | `agents` | supported | `agents_list`, `agent_chat` | not run |
 | `vfx-studio` | supported | `video_from_image` | not run |
 | `storyboard` | supported | `video_generate`, `image_generate` | not run |
-| `brand-studio` | not exposed | Runs on Netlify/Supabase functions with its own contracts (brand, campaign, assets); not exposed yet. | n/a |
+| `thumbnail-studio` | supported | `thumbnail_generate`, `thumbnail_refine` (needs your saved OpenAI key; the studio's prompt-enhance step is not exposed) | not run |
+| `go-ai-viral` | supported | `viral_prompts_search`, `viral_seedance_search` | not run |
+| `design-agent` | supported | `design_agent_session`, `design_agent_sessions`, `design_agent_chat`, `design_agent_job`, `design_agent_assets`, `design_agent_decide`, `design_agent_run_skill` | not run |
+| `brand-studio` | supported | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` (brands are kept in the app's in-memory store per server instance, so a saved brand can be missing on a later call; assets and Photo Studio are not exposed) | not run |
+| `zackd` | supported | `zackd_trends`, `zackd_script`, `zackd_submit` (script and topic ideas use your saved OpenAI key and are an MCP addition (the app drafts its script offline)) | not run |
 | `video-pages` | not exposed | Own app with a client-side renderer (Remotion); out of scope for v1. | n/a |
-| `zackd` | not exposed | Own app (src/apps/zackd) with its own backend; not exposed yet (the SmartVid repo has Zack D tools). | n/a |
 | `motion-director` | not exposed | Own app with a client-side renderer (Remotion); out of scope for v1. | n/a |
-| `design-agent` | not exposed | Own agent app (src/apps/design-agent); not reviewed yet. | n/a |
-| `thumbnail-studio` | not exposed | Uses its own OpenAI prompt-enhance and Supabase pipeline (/api/proxy/thumbnail-generate); not exposed yet. Image tools cover plain thumbnails. | n/a |
-| `go-ai-viral` | not exposed | Own app (src/apps/go-ai-viral); not reviewed yet. | n/a |
 | `apps` | not exposed | Non-generative UI (hub for other studios). | n/a |

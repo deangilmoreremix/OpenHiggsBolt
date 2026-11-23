@@ -17,6 +17,8 @@ Nothing new is required. These must already be set for the app (they are read by
 | `MUAPI_KEY_SECRET` (or the service-role fallback) | `src/lib/muapiKeyCrypto.ts`, to read each user's saved key |
 | `MCP_ALLOW_BYOK` | **leave unset in any deployed environment.** Local development only. |
 
+Thumbnails, Zack D script/topic steps and Brand Studio text need the user's own **OpenAI key saved in Settings** (`app_users.openai_key`); without it those tools answer with a clear "save your key" message.
+
 The gateway checks the `SMARTVIDEO_GO` entitlement for the key's owner on every request (same rule as the app's proxy routes) and refuses if it cannot be confirmed.
 
 ## 3. Deploy a preview
@@ -44,6 +46,8 @@ npm run mcp:coverage
 The run stops before any call that would push the running estimate past the cap and writes `mcp/smoke-results.json`. `mcp:coverage` rewrites `mcp/COVERAGE.md` (Live column per studio, gateway checks, which verb the upstream status route accepted). Commit both.
 
 ## 7. Checks the script cannot do
+- **Cross-user isolation:** with two accounts, create a Design Agent session with account A's key and try to read its assets with account B's key: expect 403. List campaigns with B: A's must not appear.
+- **App route exposure (not part of the MCP):** `GET /api/campaigns` in the app has no sign-in check and returns every user's campaigns. The MCP never calls it, but anyone can. Worth fixing separately.
 - **Revoked key:** revoke the key at `/studio/mcp-cli`, call a tool again: expect "Missing, invalid or revoked SmartVideo GO MCP key".
 - **No saved API key:** remove the key in Settings; the MCP key stops working (401) until one is saved again.
 - **No entitlement:** an account without `SMARTVIDEO_GO` access gets 403 from the gateway.

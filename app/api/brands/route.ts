@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { authOrPrincipal } from '../../../lib/principal'
 import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
 import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
@@ -31,7 +31,7 @@ async function requireUserId(): Promise<{ userId: string } | { response: NextRes
     }
     return { response: entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO) }
   }
-  const { userId } = await auth()
+  const { userId } = await authOrPrincipal()
   if (!userId) {
     return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
   }

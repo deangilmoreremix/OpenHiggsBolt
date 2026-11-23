@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { z, createCatalog, extractOutputs, sanitizeDeep } from '../packages/studio-mcp-core/src/index.js';
 import { buildParams } from '../packages/studio/src/lib/promptRecipes.js';
 import { endpointFixes } from './brand.js';
+import { buildMedia } from '../lib/zackdFunction.js';
 
 const registry = JSON.parse(readFileSync(new URL('../packages/studio/src/skills/registry.json', import.meta.url), 'utf8'));
 const skillList = Array.isArray(registry.skills) ? registry.skills : Object.values(registry.skills || {});
@@ -162,3 +163,172 @@ async function workflowWait(client, runId, timeoutMs) {
     await sleep(client, 2000);
   }
 }
+
+// ── Studios that run the app's own route handlers as the key owner (lib/mcpStudios.ts) ─────────────────
+const studio = (client, name, call) => client.studio(name, call);
+const SESSION = z.string().regex(/^[A-Za-z0-9_-]{1,100}$/);
+const JOB = z.string().regex(/^[A-Za-z0-9_-]{1,100}$/);
+
+customTools.push(
+  // Visual prompt libraries (GO AI Viral): public data, read only.
+  {
+    name: 'viral_prompts_search',
+    description: 'Search the visual prompt feed (ready-made image and video prompts with example media) by keyword, category, model or business niche.',
+    input: { search: z.string().optional(), media_type: z.enum(['image', 'video', 'all']).optional(), category: z.string().optional(), model: z.string().optional(), niche: z.string().optional(), sort: z.enum(['newest', 'oldest']).optional(), page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
+    run: (a, client) => studio(client, 'go-ai-viral', { route: 'prompts', query: { search: a.search, mediaType: a.media_type, category: a.category, model: a.model, niche: a.niche, sort: a.sort, page: a.page, pageSize: a.page_size } }),
+  },
+  {
+    name: 'viral_seedance_search',
+    description: 'Search the Seedance prompt collection by keyword or language.',
+    input: { search: z.string().optional(), language: z.string().optional(), has_video: z.boolean().optional(), page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
+    run: (a, client) => studio(client, 'go-ai-viral', { route: 'seedance', query: { search: a.search, language: a.language, hasVideo: a.has_video, page: a.page, pageSize: a.page_size } }),
+  },
+
+  // Thumbnails (needs your OpenAI key saved in Settings).
+  {
+    name: 'thumbnail_generate',
+    description: 'Generate social thumbnails from a prompt (optionally with reference images, a headline and subheadline). Uses your saved OpenAI key. Returns image URLs or data URLs.',
+    input: { prompt: z.string().min(1).max(4000), headline: z.string().max(120).optional(), subheadline: z.string().max(200).optional(), aspect_ratio: z.string().optional().describe('e.g. 16:9, 9:16, 1:1'), n: z.number().int().min(1).max(4).optional(), quality: z.enum(['low', 'medium', 'high']).optional(), reference_urls: z.array(z.string().url()).max(4).optional(), model: z.string().optional() },
+    run: (a, client) => studio(client, 'thumbnail', { body: { action: 'generate', prompt: a.prompt, headline: a.headline, subheadline: a.subheadline, aspect_ratio: a.aspect_ratio, n: a.n, quality: a.quality, reference_urls: a.reference_urls, model: a.model } }),
+  },
+  {
+    name: 'thumbnail_refine',
+    description: 'Edit an existing thumbnail with a prompt (optionally masked by a PNG data URL). Uses your saved OpenAI key.',
+    input: { image_url: z.string().url(), prompt: z.string().min(1).max(4000), mask_url: z.string().startsWith('data:image/png').optional(), aspect_ratio: z.string().optional(), quality: z.enum(['low', 'medium', 'high']).optional(), model: z.string().optional() },
+    run: (a, client) => studio(client, 'thumbnail', { body: { action: 'refine', image_url: a.image_url, prompt: a.prompt, mask_url: a.mask_url, aspect_ratio: a.aspect_ratio, quality: a.quality, model: a.model } }),
+  },
+
+  // Design Agent: a chat-driven creative agent with sessions, jobs and assets. Ownership is enforced by the app's own routes.
+  {
+    name: 'design_agent_session',
+    description: 'Create a Design Agent session and get its id. Use the id with design_agent_chat.',
+    input: { title: z.string().max(200).optional() },
+    run: (a, client) => studio(client, 'design-agent', { route: 'sessions', method: 'POST', body: a.title ? { title: a.title } : {} }),
+  },
+  {
+    name: 'design_agent_sessions',
+    description: 'List your Design Agent sessions.',
+    input: {},
+    run: (a, client) => studio(client, 'design-agent', { route: 'sessions' }),
+  },
+  {
+    name: 'design_agent_chat',
+    description: 'Send a message to a Design Agent session. Returns a job_id: follow it with design_agent_job.',
+    input: { session_id: SESSION, message: z.string().min(1).max(8000), extra: z.record(z.any()).optional().describe('Other fields the Design Agent accepts (e.g. mode, references)') },
+    run: (a, client) => studio(client, 'design-agent', { route: 'chat', method: 'POST', body: { ...(a.extra || {}), sessionId: a.session_id, message: a.message } }),
+  },
+  {
+    name: 'design_agent_job',
+    description: 'Get a Design Agent job\'s events (progress, messages), or with only session_id the session\'s jobs. wait=true polls until the job reports it is done or waiting for approval.',
+    input: { job_id: JOB.optional(), session_id: SESSION.optional(), since: z.string().optional(), limit: z.number().int().min(1).max(200).optional(), wait: z.boolean().optional() },
+    run: async (a, client) => {
+      if (!a.job_id && !a.session_id) throw Object.assign(new Error('Provide job_id or session_id.'), { code: 'BAD_INPUT' });
+      const get = () => studio(client, 'design-agent', { route: 'jobs', query: { jobId: a.job_id, sessionId: a.job_id ? undefined : a.session_id, since: a.since, limit: a.limit } });
+      let r = await get();
+      if (!a.wait || !a.job_id) return r;
+      const deadline = Date.now() + 240_000;
+      const finished = (x) => /(complete|completed|done|failed|error|awaiting|approval|cancel)/i.test(JSON.stringify(x?.status ?? x?.state ?? (Array.isArray(x?.events) ? x.events.at(-1)?.type : '') ?? ''));
+      while (!finished(r) && Date.now() < deadline) { await client.sleep(3000); r = await get(); }
+      return r;
+    },
+  },
+  {
+    name: 'design_agent_assets',
+    description: 'List the assets (images, designs) a Design Agent session has produced.',
+    input: { session_id: SESSION },
+    run: (a, client) => studio(client, 'design-agent', { route: 'assets', query: { sessionId: a.session_id } }),
+  },
+  {
+    name: 'design_agent_decide',
+    description: 'Approve or reject a Design Agent job that is waiting for your decision.',
+    input: { job_id: JOB, decision: z.enum(['approve', 'reject']) },
+    run: (a, client) => studio(client, 'design-agent', { route: a.decision === 'approve' ? 'approve' : 'reject', method: 'POST', body: { jobId: a.job_id } }),
+  },
+  {
+    name: 'design_agent_run_skill',
+    description: 'Run one of the Design Agent\'s expert skills in a session by name, with its inputs.',
+    input: { session_id: SESSION, skill_name: z.string().min(1).max(120), inputs: z.record(z.any()).optional(), model: z.string().optional() },
+    run: (a, client) => studio(client, 'design-agent', { route: 'run-skill', method: 'POST', body: { sessionId: a.session_id, skill_name: a.skill_name, inputs: a.inputs, model: a.model } }),
+  },
+
+  // Brand Studio. Brands live in the app's in-memory store (per server instance), so a saved brand can be missing on a later call.
+  {
+    name: 'brand_analyze',
+    description: 'Analyse a website\'s brand (name, voice, colours, audience) from its URL.',
+    input: { url: z.string().url() },
+    run: (a, client) => studio(client, 'brand', { route: 'analyze', method: 'POST', body: { url: a.url } }),
+  },
+  {
+    name: 'brands_list',
+    description: 'List your saved brands (the app keeps these in memory per server instance, so a brand can disappear between calls).',
+    input: { page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
+    run: (a, client) => studio(client, 'brand', { route: 'brands', query: { page: a.page, pageSize: a.page_size } }),
+  },
+  {
+    name: 'brand_save',
+    description: 'Save a brand from its website URL (reads its name and tagline).',
+    input: { url: z.string().url() },
+    run: (a, client) => studio(client, 'brand', { route: 'brands', method: 'POST', body: { url: a.url } }),
+  },
+  {
+    name: 'campaign_generate',
+    description: 'Generate a campaign (concepts and copy) for one of your saved brands. The brand must belong to you.',
+    input: { brand_id: z.string().min(1).max(100), goal: z.string().min(1).max(500), direction: z.string().max(1000).optional() },
+    run: (a, client) => studio(client, 'campaigns', { route: 'generate', body: { brand_id: a.brand_id, goal: a.goal, direction: a.direction } }),
+  },
+  {
+    name: 'campaigns_list',
+    description: 'List campaigns for your brands (only brands you own), optionally for one brand.',
+    input: { brand_id: z.string().max(100).optional() },
+    run: (a, client) => studio(client, 'campaigns', { route: 'list', query: { brand_id: a.brand_id } }),
+  },
+);
+
+
+// ── Zack D (curiosity-loop explainer shorts) ───────────────────────────────────────────────────────────
+// Media steps use the studio's own models and payloads (lib/zackdFunction.js buildMedia, from src/apps/zackd/zackdPrompts.js).
+// If a model's endpoint rejects the job outright the fallback model is tried once; if the outcome is unknown (timeout, dropped
+// connection) it is NOT retried, because the first job may have started and been billed.
+customTools.push(
+  {
+    name: 'zackd_trends',
+    description: 'Zack D: suggest trending topics for a curiosity-loop short (uses your saved OpenAI key).',
+    input: { query: z.string().max(200).optional().describe('Niche or keyword') },
+    run: (a, client) => client.studio('zackd', { action: 'trends', query: a.query }),
+  },
+  {
+    name: 'zackd_script',
+    description: 'Zack D: turn a topic into a beat map (a script with the visual and narration of each beat). Uses your saved OpenAI key.',
+    input: { topic: z.string().min(1).max(200), max_beats: z.number().int().min(2).max(8).optional() },
+    run: (a, client) => client.studio('zackd', { action: 'script', topic: a.topic, maxBeats: a.max_beats }),
+  },
+  {
+    name: 'zackd_submit',
+    description: 'Zack D: make one media asset. kind=image (prompt), clip (image_url + prompt), tts (text), music (prompt), captions (video_url). Waits for the result unless wait=false.',
+    input: {
+      kind: z.enum(['image', 'clip', 'tts', 'music', 'captions']),
+      prompt: z.string().optional(), text: z.string().optional(), voice: z.string().optional(), speed: z.number().optional(),
+      image_url: z.string().url().optional(), video_url: z.string().url().optional(),
+      aspect: z.enum(['9:16', '16:9', '1:1']).optional(), duration: z.number().optional(), language: z.string().optional(), theme: z.string().optional(),
+      wait: z.boolean().optional().describe('Wait for the result (default true)'),
+    },
+    run: async (a, client) => {
+      const req = buildMedia({ kind: a.kind, prompt: a.prompt, text: a.text, voice: a.voice, speed: a.speed, imageUrl: a.image_url, videoUrl: a.video_url, aspect: a.aspect, duration: a.duration, language: a.language, theme: a.theme });
+      if (req.error) throw Object.assign(new Error(req.error), { code: 'BAD_INPUT' });
+      let last;
+      for (const model of req.models) {
+        try {
+          const sub = await client.submit(`/${model}`, req.payload);
+          const id = sub.request_id || sub.id;
+          if (!id) return { status: 'completed', model, outputs: extractOutputs(sub) };
+          return a.wait === false ? { status: 'processing', request_id: id, model } : { model, ...(await client.wait(id, { timeoutMs: 600_000 })) };
+        } catch (err) {
+          if (err?.status === 401 || err?.status === 403 || err?.code === 'NO_KEY') throw err;
+          if (!err?.status) throw Object.assign(new Error('The media service did not answer. The job may still have started: check your balance before trying again.'), { code: 'UNKNOWN_OUTCOME' });
+          last = err;
+        }
+      }
+      throw last || new Error('The media service rejected the job.');
+    },
+  },
+);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ok, apiError } from '@/lib/apiError'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
-import { auth } from '@clerk/nextjs/server'
+import { authOrPrincipal as auth } from '../../../lib/principal'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 
 export const dynamic = "force-dynamic";

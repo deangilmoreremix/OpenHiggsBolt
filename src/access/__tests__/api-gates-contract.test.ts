@@ -59,6 +59,9 @@ const PAID_PATHS: string[] = [
   'app/api/design-agent/session-assets/route.ts',
   'app/api/design-agent/sessions/route.ts',
   'app/api/design-agent/skills/route.ts',
+  // MCP access: keys are created by an entitled user and the gateway re-checks the entitlement for the key's owner on every request
+  'app/api/mcp-gateway/[[...path]]/route.ts',
+  'app/api/mcp-keys/route.ts',
   // storyboard / agents / workflow / app catch-alls
   'app/api/storyboard/[[...path]]/route.ts',
   'app/api/agents/[[...path]]/route.js',
