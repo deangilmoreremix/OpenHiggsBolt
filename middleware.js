@@ -151,7 +151,7 @@ export const config = {
     '/api/vfx/:path*',
     '/api/v1/:path*',
     '/((?!_next|.*\\..*).*)',
-    // Media Hub: export downloads (/vidbee/exports/<id>/<file>.srt) and protocol URLs (/vidbee/protocol/…/<file>.jpg) carry file
+    // Smartvid Downloader: export downloads (/vidbee/exports/<id>/<file>.srt) and protocol URLs (/vidbee/protocol/…/<file>.jpg) carry file
     // extensions, which the pattern above skips. app/vidbee gates them and needs Clerk's auth context, or signed-in users get a 401.
     '/vidbee/exports/:path*',
     '/vidbee/protocol/:path*',
