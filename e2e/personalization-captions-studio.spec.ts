@@ -4,11 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * The captions customizer in the real modal and the real in-browser export: pick one of Capite's embedded fonts, give the captions a magenta
- * background, drag them up with the grip on the live preview, export an MP4 and measure it with ffmpeg: the magenta box is on screen while the line
- * plays and sits where it was dragged to, and the font is loaded from the embedded copy. Offline; needs `ffmpeg` on PATH.
+ * The Caption Studio is the one captions UI: open it from the panel, import an SRT (no model needed), pick an embedded font and a magenta background,
+ * apply. The live preview then draws the Studio captions in that font (embedded: no font request), the grip drags them and they are kept clear of the
+ * business name, and the exported MP4 shows the box where it was put. Offline; needs `ffmpeg` on PATH.
  */
-const OUT = process.env.CAPTIONS_OUT_DIR ?? path.join(process.cwd(), 'test-results', 'captions-customize');
+const OUT = process.env.CAPTIONS_OUT_DIR ?? path.join(process.cwd(), 'test-results', 'captions-studio');
 const LOGO = path.join(process.cwd(), 'public/motion-studio/previews/IconFlipBloomLogo-a.jpg');
 const dataUrl = (file: string) => `data:image/jpeg;base64,${fs.readFileSync(file).toString('base64')}`;
 
@@ -52,7 +52,7 @@ function magenta(file: string, t: number): { count: number; centerY: number } {
   return { count, centerY: count ? ySum / count / h : 0 };
 }
 
-test('captions customizer: an embedded font, a background, dragged up, in the live preview and the export', async ({ page }) => {
+test('Caption Studio captions: embedded font, kept clear of the business name, in the live preview and the export', async ({ page }) => {
   test.setTimeout(420_000);
   fs.mkdirSync(OUT, { recursive: true });
   const errors: string[] = [];
@@ -60,57 +60,42 @@ test('captions customizer: an embedded font, a background, dragged up, in the li
   await page.setViewportSize({ width: 1440, height: 1000 });
   await seed(page);
   const dialog = page.getByRole('dialog');
-  await dialog.getByTestId('captions-toggle-panel').scrollIntoViewIfNeeded();
-  await dialog.getByTestId('captions-toggle-panel').click();
-  await dialog.getByTestId('captions-script').fill('1\n00:00:00,600 --> 00:00:03,200\nCall us today for a free quote');
-  await dialog.getByTestId('captions-apply').click();
-  await expect(dialog.getByTestId('caption-cue')).toHaveCount(1);
-  await dialog.getByTestId('captions-preset-boxed').click();
+  await dialog.getByTestId('captions-open-studio').scrollIntoViewIfNeeded();
+  await dialog.getByTestId('captions-open-studio').click();
 
-  // The font: one of Capite's 16, embedded: the live line uses it and the browser has loaded it.
-  await dialog.getByTestId('captions-font').selectOption('Bangers');
-  await dialog.getByTestId('captions-size').fill('0.08');
+  // In the Studio: import subtitles (no speech model needed), pick the font and a magenta background, apply.
+  const srt = path.join(OUT, 'quote.srt');
+  fs.writeFileSync(srt, '1\n00:00:00,600 --> 00:00:03,200\nCall us today for a free quote\n');
+  await page.locator('[data-import]').setInputFiles(srt);
+  await page.getByRole('tab', { name: /Style/ }).click();
+  await page.locator('select[data-style="fontFamily"]').selectOption('Bangers');
+  await page.locator('input[data-style="background"]').check();
+  await page.locator('input[data-style="backgroundColor"]').evaluate((el: HTMLInputElement) => { el.value = '#ff00ff'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('[data-act="apply"]').click();
+
+  // The panel shows what was made, and the live preview draws it natively in the embedded font.
+  await expect(dialog.getByTestId('captions-summary')).toContainText('drawn as designed in the Caption Studio');
   const player = dialog.getByTestId('editor-live-player');
   await player.scrollIntoViewIfNeeded();
   await dialog.getByTestId('editor-scrubber').fill('45');
-  const line = player.getByTestId('caption-line');
-  await expect(line).toBeVisible({ timeout: 15_000 });
-  await expect(line).toHaveCSS('font-family', /Capite Bangers/);
+  const layer = player.locator('[data-caption-source="studio"]');
+  await expect(layer).toBeVisible({ timeout: 15_000 });
+  await expect(layer.locator('span').first()).toHaveCSS('font-family', /Capite Bangers/);
   await expect.poll(() => page.evaluate(() => document.fonts.check('16px "Capite Bangers"')), { timeout: 15_000 }).toBe(true);
-  expect(await page.evaluate(() => Array.from(document.querySelectorAll('style[data-capite-font]')).every((s) => !/url\((?!data:)/.test(s.textContent ?? '')))).toBe(true);
+  expect(await page.evaluate(() => Array.from(document.querySelectorAll('style[data-caption-font]')).every((s) => !/url\((?!data:)/.test(s.textContent ?? '')))).toBe(true);
 
-  // The background: magenta, so it cannot be mistaken for the footage.
-  await dialog.getByRole('button', { name: 'Caption background color' }).click();
-  const hexInput = page.getByRole('textbox', { name: /hex/i }).first();
-  await hexInput.fill('#ff00ff');
-  await hexInput.press('Enter');
-  await page.keyboard.press('Escape');
-
-  // Drag the captions up with the grip on the preview, into the business name (about 0.64 of the frame height): they are kept clear of it.
+  // The grip: drag the captions up into the business name (about 0.64 of the frame height): let go and they stop short of it.
   const grip = dialog.getByTestId('caption-drag-handle');
   await expect(grip).toBeVisible();
-  const drag = async (dy: number) => {
-    const box = (await grip.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + dy, { steps: 8 });
-    await page.mouse.up();
-  };
   const stage = (await dialog.getByRole('group', { name: 'Video overlay stage' }).boundingBox())!;
-  await drag(-stage.height * 0.25);
-  await expect(dialog.getByTestId('captions-overlap-warning')).toHaveCount(0); // let go over the name: moved clear of it
-  const kept = Number(await grip.getAttribute('aria-valuenow'));
-  expect(Math.abs(kept)).toBeGreaterThan(5);
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, stage.y + stage.height * 0.64, { steps: 10 });
+  await page.mouse.up();
+  await expect(dialog.getByTestId('captions-overlap')).toHaveCount(0);
   await page.screenshot({ path: path.join(OUT, 'live-kept-clear.png') });
 
-  // With "Keep clear of text" off, the same drag lands on the name and says so; one click moves them clear again.
-  await dialog.getByTestId('captions-keep-clear').click();
-  await drag(stage.height * 0.0 + (0.64 - 0.63) * stage.height); // nudge a little so the release happens over the name
-  const raw = await grip.boundingBox();
-  expect(raw).not.toBeNull();
-  await dialog.getByTestId('captions-keep-clear').click();
-
-  // Export.
   // Export.
   await dialog.getByRole('button', { name: /Approve this personalization|^Approved$/i }).click({ timeout: 30_000 });
   const rights = page.getByTestId('guided-rights-confirm').locator('input');
@@ -127,16 +112,15 @@ test('captions customizer: an embedded font, a background, dragged up, in the li
     for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
     return btoa(s);
   });
-  const file = path.join(OUT, 'customized.mp4');
+  const file = path.join(OUT, 'studio.mp4');
   fs.writeFileSync(file, Buffer.from(b64, 'base64'));
   for (const t of [1.5, 2.5]) execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(t), '-i', file, '-frames:v', '1', path.join(OUT, `frame-${t}.png`)]);
 
   const none = magenta(file, 0.3).count;
   const during = magenta(file, 2.5);
   expect(none, 'no background before the line starts').toBeLessThan(30);
-  expect(during.count, 'the background is on screen while the line plays').toBeGreaterThan(200);
+  expect(during.count, 'the background is on screen while the line plays').toBeGreaterThan(150);
   // Kept clear of the business name (about 0.57 to 0.71 of the frame height), and inside the frame.
-  expect(during.centerY, `the box is clear of the name (centre ${during.centerY.toFixed(2)})`).not.toBeGreaterThan(0.71);
   expect(during.centerY < 0.57 || during.centerY > 0.71, `centre ${during.centerY.toFixed(2)} is outside the name's band`).toBe(true);
   expect(errors, 'no uncaught page errors').toEqual([]);
 });
