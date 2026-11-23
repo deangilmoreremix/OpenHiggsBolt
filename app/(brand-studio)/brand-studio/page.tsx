@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Globe, Loader2, Check } from 'lucide-react';
 import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
+import { studio, store, getMuapiKey } from '@/src/lib/brandStudio/client';
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +33,21 @@ export default function BrandStudioLanding() {
         setError(null);
         setStep(0);
         try {
-          const res = await fetch('/api/brands', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to analyze brand');
+          // Open-Pomelli pipeline when the user has a MuAPI key; the original OpenAI analyzer otherwise.
+          let data: any;
+          if (getMuapiKey()) {
+            const dna = await studio('analyze', { url });
+            if (dna.blocked) setError('That site blocked our scraper, so the Brand DNA is inferred from the domain. Review it in the editor.');
+            data = await store.create('brand', dna);
+          } else {
+            const res = await fetch('/api/brands', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+            data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to analyze brand');
+          }
           router.push(`/brand/${data.id}`);
         } catch (err: any) {
           setError(err.message);

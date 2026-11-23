@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Save, Loader2, Check, Plus, X, Camera, Sparkles } from 'lucide-react';
 import { panels, buttons, semantic } from '@/shared/styles/designTokens';
+import Link from 'next/link';
+import { store } from '@/src/lib/brandStudio/client';
+import { goalLabel } from '@/src/lib/brandStudio/goals';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import type { StudioPersonalizeOptions } from '@/shared/personalization/studioEntry';
 
@@ -35,6 +38,7 @@ export default function BrandPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     brand_name: '',
@@ -83,6 +87,10 @@ export default function BrandPage() {
         setError(err.message);
         setLoading(false);
       });
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id) store.list('campaign', { brand_id: String(params.id) }).then(setCampaigns).catch(() => {});
   }, [params.id]);
 
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
@@ -178,7 +186,7 @@ export default function BrandPage() {
               Photo Studio
             </a>
             {studioPersonalizeOptions && (
-              <PersonalizeVideoAction options={studioPersonalizeOptions} className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors">
+              <PersonalizeVideoAction options={studioPersonalizeOptions} className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 hover:text-white hover:border-primary/60 transition-colors">
                 Personalize
               </PersonalizeVideoAction>
             )}
@@ -240,15 +248,33 @@ export default function BrandPage() {
                 <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Imagery Style</label>
                 <input value={form.imagery_style} onChange={(e) => update('imagery_style', e.target.value)} className="w-full rounded-lg px-3 py-2 outline-none" style={panels.card} />
               </div>
-              {form.logo_url && (
-                <div className="mt-4">
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Logo</label>
-                  <img src={form.logo_url} alt="logo" className="max-h-24 object-contain" />
-                </div>
-              )}
+              <div className="mt-4">
+                <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Layout Style</label>
+                <input data-field="layout_style" value={form.layout_style} onChange={(e) => update('layout_style', e.target.value)} className="w-full rounded-lg px-3 py-2 outline-none" style={panels.card} />
+              </div>
+              <div className="mt-4">
+                <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Logo URL</label>
+                <input data-field="logo_url" value={form.logo_url} onChange={(e) => update('logo_url', e.target.value)} placeholder="https://…/logo.png" className="w-full rounded-lg px-3 py-2 outline-none" style={panels.card} />
+                <p className="mt-1 text-[11px]" style={{ color: semantic.textMuted }}>PNG, JPG or WebP logos are used as a reference when generating creatives; SVG logos are shown but skipped.</p>
+                {form.logo_url && <img src={form.logo_url} alt="logo" className="mt-3 max-h-24 object-contain" />}
+              </div>
             </section>
           </div>
         </div>
+
+        {campaigns.length > 0 && (
+          <section className="mt-8 rounded-xl p-6" style={panels.glass}>
+            <h2 className="text-base font-semibold mb-4">Past Campaigns</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {campaigns.map((c) => (
+                <Link key={c.id} href={`/campaign/${c.id}`} className="rounded-lg p-4 block" style={panels.card}>
+                  <p className="font-medium">{goalLabel(c.goal)}</p>
+                  <p className="text-xs mt-1" style={{ color: semantic.textMuted }}>{(c.concepts || []).length} concepts · {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

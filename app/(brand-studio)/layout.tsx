@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Palette, Camera, Plus, ArrowLeft, ChevronRight, Globe } from 'lucide-react';
+import { Palette, Camera, Film, Plus, ArrowLeft, ChevronRight, Globe } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 import HelpAgent from '@/components/help/HelpAgent';
@@ -113,7 +113,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
         className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
         style={
           isNewBrand
-            ? { background: 'rgba(34,211,238,0.15)', border: '1px solid var(--color-primary)', color: 'var(--color-primary)' }
+            ? { background: semantic.activeAccent, border: '1px solid var(--color-primary)', color: 'var(--color-primary)' }
             : { background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'rgba(255,255,255,0.7)' }
         }
       >
@@ -141,7 +141,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
                     className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition"
                     style={
                       active
-                        ? { background: 'rgba(34,211,238,0.12)', color: 'var(--color-primary)' }
+                        ? { background: semantic.activeAccent, color: 'var(--color-primary)' }
                         : { color: 'rgba(255,255,255,0.6)' }
                     }
                   >
@@ -193,10 +193,18 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
         <Link
           href="/photo-studio"
           className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition"
-          style={isPhotoStudio ? { background: 'rgba(34,211,238,0.12)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
+          style={isPhotoStudio ? { background: semantic.activeAccent, color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
         >
           <Camera size={16} className="shrink-0" />
           <span className="font-medium">Photo Studio</span>
+        </Link>
+        <Link
+          href="/animate"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition"
+          style={pathname === '/animate' ? { background: semantic.activeAccent, color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
+        >
+          <Film size={16} className="shrink-0" />
+          <span className="font-medium">Animate</span>
         </Link>
       </div>
     </div>
@@ -239,7 +247,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
             <Link
               href="/brand-studio"
               className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-              style={isNewBrand ? { background: 'rgba(34,211,238,0.15)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
+              style={isNewBrand ? { background: semantic.activeAccent, color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
             >
               <Plus size={13} /> New Brand
             </Link>
@@ -248,7 +256,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
                 key={b.id}
                 href={`/brand/${b.id}`}
                 className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-                style={activeBrandId === b.id ? { background: 'rgba(34,211,238,0.15)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
+                style={activeBrandId === b.id ? { background: semantic.activeAccent, color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
               >
                 <Globe size={12} /> {brandLabel(b)}
               </Link>
@@ -256,7 +264,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
             <Link
               href="/photo-studio"
               className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-              style={isPhotoStudio ? { background: 'rgba(34,211,238,0.15)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
+              style={isPhotoStudio ? { background: semantic.activeAccent, color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
             >
               <Camera size={12} /> Photo Studio
             </Link>

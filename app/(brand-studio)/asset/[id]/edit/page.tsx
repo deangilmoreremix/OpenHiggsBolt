@@ -1,175 +1,196 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Save, Download, RefreshCw, Loader2 } from 'lucide-react';
-import { panels, buttons, semantic } from '@/shared/styles/designTokens';
+import Link from 'next/link';
+import { Save, Download, RefreshCw, Loader2, Eraser, Upload, Film, Check } from 'lucide-react';
+import { panels, buttons, semantic, optionStyle } from '@/shared/styles/designTokens';
+import { findPlatform } from '@/src/lib/brandStudio/platforms';
+import { studio, store, loadBrand, normalizeConcept, useHasMuapiKey } from '@/src/lib/brandStudio/client';
+import { POSITIONS, SIZES, ALIGNS, defaultLayout, positionStyle, SIZE_CQW, type Layout, type BlockKey } from '@/src/lib/brandStudio/layout';
 
-const GRID = [
-  'top-left', 'top-center', 'top-right',
-  'middle-left', 'middle-center', 'middle-right',
-  'bottom-left', 'bottom-center', 'bottom-right',
+const BLOCKS: { key: BlockKey; label: string }[] = [
+  { key: 'headline', label: 'Headline' },
+  { key: 'body', label: 'Body' },
+  { key: 'cta', label: 'CTA' },
 ];
 
 export default function AssetEditPage() {
   const params = useParams();
+  const hasKey = useHasMuapiKey();
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [asset, setAsset] = useState<any>(null);
+  const [brand, setBrand] = useState<any>(null);
+  const [concept, setConcept] = useState<any>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [active, setActive] = useState<BlockKey>('headline');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [headline, setHeadline] = useState('');
-  const [body, setBody] = useState('');
-  const [cta, setCta] = useState('');
-  const [position, setPosition] = useState('bottom-left');
-  const [headlineSize, setHeadlineSize] = useState(48);
-  const [bodySize, setBodySize] = useState(16);
-  const [headlineColor, setHeadlineColor] = useState('#ffffff');
-  const [bodyColor, setBodyColor] = useState('#ffffff');
-  const [bgColor, setBgColor] = useState('#000000');
-  const [bgOpacity, setBgOpacity] = useState(0);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params.id) return;
-    setLoading(true);
-    fetch(`/api/assets?id=${params.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setLoading(false);
-          return;
+    (async () => {
+      try {
+        const a = await store.get('asset', String(params.id));
+        setAsset(a);
+        setImageUrl(a.image_url || '');
+        const b = a.brand_id ? await loadBrand(a.brand_id).catch(() => null) : null;
+        setBrand(b);
+        const fontFamily = b?.fonts?.[0] ? `${b.fonts[0]}, system-ui, sans-serif` : 'system-ui, sans-serif';
+        const base = defaultLayout(a.headline || '', a.body || '', a.cta || '', fontFamily, b?.primaryColors?.[0]);
+        const saved = a.canvas_data?.layout;
+        setLayout(saved ? { headline: { ...base.headline, ...saved.headline }, body: { ...base.body, ...saved.body }, cta: { ...base.cta, ...saved.cta } } : base);
+        if (a.campaign_id) {
+          const c = await store.get('campaign', a.campaign_id).catch(() => null);
+          if (c) setConcept(normalizeConcept((c.concepts || [])[a.concept_index] || {}));
         }
-        const found = Array.isArray(data) ? data.find((a) => a.id === params.id) : data;
-        if (found) {
-          setAsset(found);
-          setHeadline(found.headline || '');
-          setBody(found.body || '');
-          setCta(found.cta || '');
-          const canvas = found.canvas_data || {};
-          if (canvas.position) setPosition(canvas.position);
-          if (canvas.headlineSize) setHeadlineSize(canvas.headlineSize);
-          if (canvas.bodySize) setBodySize(canvas.bodySize);
-          if (canvas.headlineColor) setHeadlineColor(canvas.headlineColor);
-          if (canvas.bodyColor) setBodyColor(canvas.bodyColor);
-          if (canvas.bgColor) setBgColor(canvas.bgColor);
-          if (canvas.bgOpacity) setBgOpacity(canvas.bgOpacity);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (e: any) { setError(e.message); }
+      setLoading(false);
+    })();
   }, [params.id]);
 
-  const save = async () => {
-    if (!params.id) return;
-    setSaving(true);
-    const canvas = { position, headlineSize, bodySize, headlineColor, bodyColor, bgColor, bgOpacity };
-    const res = await fetch(`/api/assets?id=${params.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ headline, body, cta, canvas_data: canvas }),
-    });
-    if (res.ok) {
-      alert('Saved');
-    }
-    setSaving(false);
+  const patch = (key: BlockKey, p: Record<string, unknown>) => setLayout((l) => (l ? { ...l, [key]: { ...l[key], ...p } } : l));
+
+  const run = async (name: string, fn: () => Promise<void>) => {
+    setBusy(name); setError(null);
+    try { await fn(); } catch (e: any) { setError(e.message); } finally { setBusy(null); }
   };
 
-  if (loading) {
+  const regenerate = (noText: boolean) => run(noText ? 'clean' : 'swap', async () => {
+    if (!brand || !concept) throw new Error('Brand or concept not available for this asset.');
+    const r = await studio('regenerate-image', { brand, concept, platform: asset.platform, headline: layout?.headline.text || '', noText });
+    setImageUrl(r.imageUrl);
+  });
+
+  const upload = (file: File) => run('upload', async () => {
+    const data: string = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(file); });
+    const r = await studio('upload', { data, filename: file.name, contentType: file.type || 'image/png' });
+    setImageUrl(r.url);
+  });
+
+  const save = () => run('save', async () => {
+    if (!layout) return;
+    await store.update('asset', String(params.id), {
+      headline: layout.headline.text, body: layout.body.text, cta: layout.cta.text, image_url: imageUrl,
+      canvas_data: { ...(asset?.canvas_data || {}), layout },
+    });
+    setSaved(true); setTimeout(() => setSaved(false), 2000);
+  });
+
+  if (loading || !layout) {
     return (
-      <div className="flex items-center justify-center py-24" style={{ color: semantic.textSecondary }}>
-        <Loader2 size={24} className="animate-spin" />
+      <div className="flex items-center justify-center py-24" style={{ color: error ? semantic.error : semantic.textSecondary }}>
+        {error || <Loader2 size={24} className="animate-spin" />}
       </div>
     );
   }
 
-  const cellClass: any = {
-    'top-left': 'items-start justify-start text-left',
-    'top-center': 'items-start justify-center text-center',
-    'top-right': 'items-start justify-end text-right',
-    'middle-left': 'items-center justify-start text-left',
-    'middle-center': 'items-center justify-center text-center',
-    'middle-right': 'items-center justify-end text-right',
-    'bottom-left': 'items-end justify-start text-left',
-    'bottom-center': 'items-end justify-center text-center',
-    'bottom-right': 'items-end justify-end text-right',
-  };
+  const platform = findPlatform(asset?.platform || '');
+  const block = layout[active];
 
   return (
     <div className="p-6">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => router.back()} className="text-sm" style={{ color: semantic.textSecondary }}>← Back</button>
-            <div className="flex gap-2">
-              <button onClick={() => window.open(asset?.image_url, '_blank')} className="px-3 py-1.5 rounded-lg text-xs" style={buttons.ghost}><Download size={14} /></button>
-              <button className="px-3 py-1.5 rounded-lg text-xs" style={buttons.ghost}><RefreshCw size={14} /></button>
-            </div>
-          </div>
-          <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', background: 'var(--bg-card)' }}>
-            {asset?.image_url && <img src={asset.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-            <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-2 p-[5%]">
-              {GRID.map((pos) => {
-                const active = position === pos;
-                const blocks: any[] = [];
-                if (['top-left', 'top-center', 'top-right'].includes(pos)) blocks.push({ kind: 'headline', text: headline ? headline.substring(0, 8) : '', size: headlineSize, color: headlineColor, bold: true });
-                if (['middle-left', 'middle-center', 'middle-right'].includes(pos)) blocks.push({ kind: 'body', text: body ? body.substring(0, 15) : '', size: bodySize, color: bodyColor, bold: false });
-                if (['bottom-left', 'bottom-center', 'bottom-right'].includes(pos)) blocks.push({ kind: 'headline', text: headline ? headline.substring(0, 8) : '', size: headlineSize, color: headlineColor, bold: true });
-                return (
-                  <div key={pos} onClick={() => setPosition(pos)} className={`flex flex-col gap-1 cursor-pointer ${cellClass[pos]}`} style={{ outline: active ? '2px dashed var(--color-primary)' : 'none' }}>
-                    {blocks.map((b) => (
-                      <span key={b.kind} style={{ fontSize: Math.min(b.size, 24), color: b.color, fontWeight: b.bold ? 700 : 400 }}>{b.text}</span>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <button onClick={() => router.back()} className="text-sm" style={{ color: semantic.textSecondary }}>← Back</button>
+          <div className="flex flex-wrap gap-2">
+            <button data-action="swap" disabled={!hasKey || !!busy} onClick={() => regenerate(false)} className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 disabled:opacity-50" style={buttons.ghost}>
+              {busy === 'swap' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Swap image
+            </button>
+            <button data-action="clean" disabled={!hasKey || !!busy} onClick={() => regenerate(true)} className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 disabled:opacity-50" style={buttons.ghost}>
+              {busy === 'clean' ? <Loader2 size={14} className="animate-spin" /> : <Eraser size={14} />} Clean background
+            </button>
+            <button data-action="upload" disabled={!hasKey || !!busy} onClick={() => fileRef.current?.click()} className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 disabled:opacity-50" style={buttons.ghost}>
+              {busy === 'upload' ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Upload
+            </button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
+            <Link href={`/animate?asset_id=${params.id}`} className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5" style={buttons.ghost}><Film size={14} /> Animate</Link>
+            <a href={imageUrl} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5" style={buttons.ghost}><Download size={14} /> Open</a>
+            <button data-action="save" onClick={save} disabled={!!busy} className="px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50" style={buttons.primary}>
+              {busy === 'save' ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Save size={14} />} {saved ? 'Saved' : 'Save'}
+            </button>
           </div>
         </div>
+        {error && <p className="mb-3 text-sm" style={{ color: semantic.error }}>{error}</p>}
+        {!hasKey && <p className="mb-3 text-xs" style={{ color: semantic.textMuted }}>Add your MuAPI key in Settings to swap, clean or upload images.</p>}
 
-        <aside className="space-y-4">
-          <div className="rounded-xl p-4" style={panels.glass}>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Headline</label>
-            <input value={headline} onChange={(e) => setHeadline(e.target.value)} className="w-full rounded-lg px-3 py-2 outline-none mb-3" style={panels.card} />
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Body</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full rounded-lg px-3 py-2 outline-none mb-3" style={panels.card} />
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>CTA</label>
-            <input value={cta} onChange={(e) => setCta(e.target.value)} className="w-full rounded-lg px-3 py-2 outline-none mb-3" style={panels.card} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
+          <div>
+            <div data-preview className="relative mx-auto w-full overflow-hidden rounded-xl" style={{ aspectRatio: `${platform.width} / ${platform.height}`, maxHeight: '75vh', background: 'var(--bg-card)', containerType: 'inline-size' }}>
+              {imageUrl && <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 p-[4cqw]">
+                {POSITIONS.map((pos) => (
+                  <div key={pos} className="flex flex-col gap-[1cqw]" style={positionStyle(pos)}>
+                    {BLOCKS.filter((b) => layout[b.key].position === pos && layout[b.key].text).map((b) => {
+                      const l = layout[b.key];
+                      return (
+                        <span key={b.key} data-block={b.key} onClick={() => setActive(b.key)}
+                          style={{ cursor: 'pointer', fontSize: `${SIZE_CQW[l.size]}cqw`, color: l.color, fontFamily: l.fontFamily, textAlign: l.align, fontWeight: b.key === 'headline' ? 800 : b.key === 'cta' ? 700 : 500, lineHeight: 1.1,
+                            background: l.bg || undefined, padding: l.bg ? '0.6cqw 1.4cqw' : undefined, borderRadius: l.bg ? '0.8cqw' : undefined,
+                            textShadow: l.bg ? undefined : '0 0.2cqw 1.2cqw rgba(0,0,0,0.65)', outline: active === b.key ? '2px dashed var(--color-primary)' : 'none', outlineOffset: 4, maxWidth: '100%' }}>
+                          {l.text}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="mt-2 text-center text-xs" style={{ color: semantic.textMuted }}>{platform.label} · {platform.width}×{platform.height}</p>
           </div>
 
-          <div className="rounded-xl p-4" style={panels.glass}>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: semantic.textLabel }}>Position</label>
-            <div className="grid grid-cols-3 gap-1 mb-4">
-              {GRID.map((p) => (
-                <button key={p} onClick={() => setPosition(p)} className={`rounded px-2 py-1.5 text-[10px] ${position === p ? 'text-white' : ''}`} style={position === p ? buttons.activePill : buttons.inactivePill}>{p.replace('-', ' ')}</button>
+          <aside className="space-y-4">
+            <div className="flex gap-2">
+              {BLOCKS.map((b) => (
+                <button key={b.key} data-tab={b.key} onClick={() => setActive(b.key)} className="flex-1 rounded-lg px-3 py-2 text-sm font-medium" style={optionStyle(active === b.key)}>{b.label}</button>
               ))}
             </div>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Headline size: {headlineSize}px</label>
-            <input type="range" min={16} max={72} value={headlineSize} onChange={(e) => setHeadlineSize(Number(e.target.value))} className="w-full mb-3" />
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: semantic.textLabel }}>Body size: {bodySize}px</label>
-            <input type="range" min={12} max={24} value={bodySize} onChange={(e) => setBodySize(Number(e.target.value))} className="w-full mb-3" />
-          </div>
-
-          <div className="rounded-xl p-4" style={panels.glass}>
-            <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: semantic.textLabel }}>Colors</label>
-            <div className="flex items-center gap-2 mb-2">
-              <input type="color" value={headlineColor} onChange={(e) => setHeadlineColor(e.target.value)} className="h-8 w-12 rounded border-0 bg-transparent p-1 cursor-pointer" />
-              <input value={headlineColor} onChange={(e) => setHeadlineColor(e.target.value)} className="flex-1 rounded px-2 py-1 text-xs font-mono outline-none" style={panels.card} />
+            <div className="rounded-xl p-4 space-y-3" style={panels.glass}>
+              <Label>Text</Label>
+              <textarea data-field="text" value={block.text} onChange={(e) => patch(active, { text: e.target.value })} rows={active === 'body' ? 3 : 2} className="w-full rounded-lg px-3 py-2 outline-none" style={panels.card} />
+              <Label>Position</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {POSITIONS.map((p) => (
+                  <button key={p} data-pos={p} onClick={() => patch(active, { position: p })} className="rounded px-1 py-1.5 text-[10px]" style={optionStyle(block.position === p)}>{p.replace('-', ' ')}</button>
+                ))}
+              </div>
+              <Label>Size</Label>
+              <div className="flex gap-1">
+                {SIZES.map((s) => <button key={s} onClick={() => patch(active, { size: s })} className="flex-1 rounded px-2 py-1.5 text-xs capitalize" style={optionStyle(block.size === s)}>{s}</button>)}
+              </div>
+              <Label>Align</Label>
+              <div className="flex gap-1">
+                {ALIGNS.map((a) => <button key={a} onClick={() => patch(active, { align: a })} className="flex-1 rounded px-2 py-1.5 text-xs capitalize" style={optionStyle(block.align === a)}>{a}</button>)}
+              </div>
+              <Label>Text colour</Label>
+              <ColorRow value={block.color} onChange={(v) => patch(active, { color: v })} />
+              <Label>Background</Label>
+              <div className="flex items-center gap-2">
+                <ColorRow value={block.bg || '#000000'} onChange={(v) => patch(active, { bg: v })} />
+                <button onClick={() => patch(active, { bg: null })} className="rounded px-2 py-1.5 text-xs" style={buttons.ghost}>None</button>
+              </div>
+              <Label>Font</Label>
+              <input value={block.fontFamily} onChange={(e) => patch(active, { fontFamily: e.target.value })} className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={panels.card} />
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <input type="color" value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} className="h-8 w-12 rounded border-0 bg-transparent p-1 cursor-pointer" />
-              <input value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} className="flex-1 rounded px-2 py-1 text-xs font-mono outline-none" style={panels.card} />
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="h-8 w-12 rounded border-0 bg-transparent p-1 cursor-pointer" />
-              <input type="range" min={0} max={100} value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} className="flex-1" />
-            </div>
-          </div>
-
-          <button onClick={save} disabled={saving} className="w-full px-4 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50" style={buttons.primary}>
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save Changes
-          </button>
-        </aside>
+          </aside>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <label className="block text-xs font-semibold uppercase tracking-wide" style={{ color: semantic.textLabel }}>{children}</label>;
+}
+function ColorRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-1 items-center gap-2">
+      <input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#000000'} onChange={(e) => onChange(e.target.value)} className="h-8 w-12 rounded border-0 bg-transparent p-1 cursor-pointer" />
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 rounded px-2 py-1 text-xs font-mono outline-none" style={panels.card} />
     </div>
   );
 }
