@@ -138,7 +138,8 @@ const FROZEN_UPSTREAM: Record<string, { file: string; upstream?: string }> = {
   'rve-masonry-gallery/MasonryGallery.tsx': { file: 'd5901f995df8ceb25d39d706cf4baf6bff43b197609c13a75f7d47ac8523dd2b' },
   'rve-matrix-rain/MatrixRain.tsx': { file: '38e6be6410f43828c15b437e87488d226787be207a117d7dbd6720d0fcbd8ae6' },
   'rve-morph-transition/MorphTransition.tsx': { file: '3724c666342932b281ab148a27eb9808a63405679ecc5cf58c1f1a6fce8181a0' },
-  'rve-noise-grain/NoiseGrain.tsx': { file: 'f41e7b5e7187397b2c85c24c2687d754c54f454f8b6f69159fcbcf4b6f659fe7' },
+  // Edited copy (C8): the grain is 8 opacity-bucket <path>s instead of ~14,400 <rect>s (export fix); hash re-pinned on purpose.
+  'rve-noise-grain/NoiseGrain.tsx': { file: '53bce586b1b45ea66774a8beafe5c184f1944995315e6a21ab6722bc3d391c97' },
   'rve-notification-pop/NotificationPop.tsx': { file: '6b9855204e3dace7b35abdd95353e99629e85c7359bec33ee4322fda4da2e42e' },
   'rve-particle-explosion/ParticleExplosion.tsx': { file: '24a0f15d999003fd8d8f5dfb0ae465605b448911b0218f6b129ad5fc0f1b3df9' },
   'rve-photo-stack/PhotoStack.tsx': { file: '8f85d8fcd4869ac0aa20954f90beda9e08e8c33e1453b978eeb3d876170119e8' },

@@ -367,7 +367,7 @@ export function OverlayEditor({ inputProps, belowStage, liveStage = false, addDe
     selectedDesign?.textSlots?.find((slot) => slot && slot.primary)?.label ?? 'Text'
   // Every slot the selected design declares, with the value each one shows.
   const selectedSlots: RemotionDesignTextSlot[] =
-    selectedDesign && Array.isArray(selectedDesign.textSlots) ? selectedDesign.textSlots : []
+    selectedDesign && Array.isArray(selectedDesign.textSlots) ? selectedDesign.textSlots.filter((slot) => !slot?.hidden) : []
   const selectedSlotValues: Record<string, string | undefined> =
     selectedDesign && selected ? resolveDesignSlotValues(selectedDesign, selected, brand) : {}
 

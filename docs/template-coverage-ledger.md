@@ -12,13 +12,18 @@ Spec: `e2e/personalization-design-sweep.spec.ts`; screening and contact sheets: 
 
 By category (all exported at 16:9): animated-headline 27/27, logo-reveal 15/15, lower-third 4/4, promo-cta 7/7, visual-effect 13/14 (`rve-noise-grain` fails), other 6/6, full-scene 29/29, transition 20/20, data-visualization 15/15.
 
-### Defects and oddities found (not fixed here)
-1. **`rve-noise-grain` crashes the export** (twice, on a fresh page each time). Likely a heavy SVG-filter effect in the web renderer. Needs its own fix or a "not export-safe" flag.
-2. **`kpi-counter` shows the literal labels "PLACEHOLDER 1" to "PLACEHOLDER 4"** and a clipped value in the fourth tile.
-3. **`rve-animated-list` draws nothing visible** anywhere in the 8-frame filmstrip.
-4. **`rve-subscribe-reminder` is a tiny cyan dot** in the bottom-right corner; **`rve-vignette-pulse`** is a very faint edge darkening. Both are visible but easy to mistake for "nothing drawn".
-5. **Logo designs on a white tile** (`rve-logo-fade-reveal`, `-glitch-reveal`, `-scale-rotate`, `-spin-reveal`): the first run used a white wordmark and it vanished on the white tile. Re-run with a coloured logo, the logo shows (small). That was a fixture problem, not a design defect, but it means a **white or light logo disappears on these four**; there is no contrast handling.
-6. **Transitions act in the first ~2 s of the clip**, so a mid-clip sample shows plain footage. They all work (filmstrip), but nothing in the UI says when the effect plays.
+### Defects found, and what happened to each (2026-11-23, branch `claude/fix-sweep-defects`)
+Each fix was re-exported through the real browser renderer and the frame looked at.
+
+| # | Defect | Status | Evidence |
+|---|---|---|---|
+| 1 | `rve-noise-grain` crashed the export | **Fixed** | One `<rect>` per cell (~14,400 per 1080p frame) became 8 opacity-bucket `<path>`s; the export now completes (70 s) and the grain is visible. |
+| 2 | `kpi-counter` printed "PLACEHOLDER 1..4" | **Fixed** | The customer types up to four figures (label + number, no brand fallback). A card without a number is not drawn; with none typed only title and subtitle show. Unit tests + real export (no placeholder text). The same placeholder convention remains in `bar-chart-anim`, `line-chart-anim`, `racing-chart` and the `rve-*` charts: **not changed** (out of this request, same class of defect). |
+| 3 | `rve-animated-list` drew nothing | **Fixed** | Root cause: the adapter falls back to brand fields the design did not declare as slots, so a business with no offer / phone / website got an empty list. Hidden fallback slots added; a sparse-brand test now checks every text design shows text for a name-only business. Real export shows the row. |
+| 4 | `rve-subscribe-reminder` was a bare dot | **Fixed** | Same root cause: the pill now carries the business name (real export). It is still a small pill by design. |
+| 5 | `rve-vignette-pulse` barely visible | **Partly** | Darkening now starts at 25 % of the radius (upstream 40 %). On this clip, whose edges are already black, it is still faint: that is the footage, not the design. Not verified on bright footage. |
+| 6 | White logo vanished on a white tile (4 logo designs) | **Fixed** | A `lightLogo` image hint (measured in the browser, kept through save/restore, carried to the trimmed logo URL) gives a white / pale logo a dark brand tile. Real export with the white wordmark shows it on all four. |
+| 7 | Transitions play in the first ~2 s, nothing said so | **Fixed (wording)** | Gallery and recommendation cards add "Plays at the start of your video." No behaviour change. |
 
 ### What this does NOT show
 - It is one clip, one logo, two product pictures, one business name, **16:9 only**.

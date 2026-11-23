@@ -79,6 +79,17 @@ export interface RemotionDesignTextSlot {
    * into this slot. The inspector applies it to the field's `maxLength`.
    */
   maxLength?: number
+  /**
+   * The slot is resolved (brand fallback and all) so the design can use it as a FALLBACK line, but it is not shown as an
+   * input in the editor. Needed when an adapter falls back to a brand field that the design does not otherwise edit
+   * (a design that only declares cta + website would otherwise draw nothing for a business with neither).
+   */
+  hidden?: boolean
+  /**
+   * The slot has NO brand fallback: it is empty until the customer types into it (e.g. the four KPI figures). Its `field`
+   * is then only a label hint. The design must hide the element while the slot is empty, never print stand-in text.
+   */
+  freeText?: boolean
 }
 
 /** Binds a brand colour role to a colour the design paints with. */
@@ -175,6 +186,8 @@ export interface RemotionDesignComponentProps {
   color: string
   /** Optional font family stack chosen by the customer. */
   fontFamily?: string
+  /** The customer's logo is mostly very light (white / pale): designs must not put it on a white tile. */
+  logoIsLight?: boolean
 }
 
 /** The overlay component a design renders. */

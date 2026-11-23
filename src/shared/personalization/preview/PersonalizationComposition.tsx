@@ -630,6 +630,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     opacity={layer.opacity}
                     color={textColor}
                     fontFamily={layer.fontFamily}
+                    logoIsLight={Boolean(brand.logoUrl && settings.imageHints?.[brand.logoUrl]?.lightLogo)}
                   />
                 </Sequence>
               </AbsoluteFill>
@@ -865,6 +866,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
                     opacity={1}
                     color={layer.color ?? settings.brandColors.text}
                     fontFamily={layer.fontFamily}
+                    logoIsLight={Boolean(brand.logoUrl && settings.imageHints?.[brand.logoUrl]?.lightLogo)}
                   />
                 </AbsoluteFill>
               </AbsoluteFill>
