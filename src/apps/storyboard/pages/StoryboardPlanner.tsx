@@ -197,6 +197,8 @@ export default function StoryboardPlanner() {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="My Animated Series"
+                data-help-name="Project name"
+                data-help-text="The name of this storyboard project."
                 className="w-full rounded-xl p-2 text-sm outline-none"
                 style={inputStyle}
               />

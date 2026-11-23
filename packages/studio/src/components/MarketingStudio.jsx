@@ -771,6 +771,8 @@ export default function MarketingStudio({
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setDropdown(dropdown === 'format' ? null : 'format'); }}
+                  data-help-name="Video format"
+                  data-help-text="Pick a ready-made ad style such as UGC, Tutorial or Unboxing."
                   className={promptControlClassName({
                     active: dropdown === "format",
                   })}

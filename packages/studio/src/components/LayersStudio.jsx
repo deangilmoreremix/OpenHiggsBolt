@@ -1356,6 +1356,7 @@ export default function LayersStudio({
       {/* Hidden File Input */}
       <input
         type="file"
+        aria-label="Upload image"
         ref={fileInputRef}
         onChange={handleFileInputChange}
         accept="image/*"
@@ -1565,6 +1566,7 @@ export default function LayersStudio({
                   <input
                     type="text"
                     value={regionalPrompt}
+                    aria-label="Regional edit prompt"
                     onChange={(e) => setRegionalPrompt(e.target.value)}
                     onKeyDown={(e) =>
                       e.key === "Enter" && handleRunRegionalEdit()
@@ -1846,6 +1848,7 @@ export default function LayersStudio({
                 </span>
                 <input
                   type="range"
+                  aria-label="Brush size"
                   min="2"
                   max="40"
                   value={brushSize}
@@ -2074,6 +2077,7 @@ export default function LayersStudio({
 
             <button
               onClick={() => setZoomLevel((z) => Math.max(50, z - 10))}
+              aria-label="Zoom out"
               className="px-1.5 py-1 text-white/60 hover:text-white text-xs font-bold"
             >
               –
@@ -2087,6 +2091,7 @@ export default function LayersStudio({
             </button>
             <button
               onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
+              aria-label="Zoom in"
               className="px-1.5 py-1 text-white/60 hover:text-white text-xs font-bold"
             >
               +
@@ -2280,6 +2285,8 @@ export default function LayersStudio({
                 {/* Hero Feature Card with 5 CDN Layers */}
                 <div
                   onClick={handleLoadSampleLayers}
+                  data-help-name="Sample layers"
+                  data-help-text="Load a sample image that is already split into layers, so you can try the layer tools."
                   className="group w-full bg-[#f4f4f7] hover:bg-white rounded-3xl p-3 shadow-lg overflow-hidden border border-white/20 cursor-pointer transition-all duration-200 hover:scale-[1.01]"
                   title={copy.sample.clickToLoad}
                 >
@@ -2378,6 +2385,7 @@ export default function LayersStudio({
                       </span>
                       <input
                         type="range"
+                        aria-label="Number of layers"
                         min="2"
                         max="16"
                         value={layerCount}
