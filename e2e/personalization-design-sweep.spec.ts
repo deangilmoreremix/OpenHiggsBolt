@@ -162,6 +162,13 @@ test('design sweep chunk: every design exports through the real renderer and dra
       } else {
         await card.click();
         await page.waitForTimeout(1200);
+        if (process.env.SWEEP_DEBUG) {
+          // Debug aid: the design's live DOM (what the preview draws) at the moment of export.
+          const html = await page.evaluate(() => Array.from(document.querySelectorAll('[data-remotion-design-id]')).map((el) => el.outerHTML).join('\n\n'));
+          fs.mkdirSync(path.join(OUT, 'debug'), { recursive: true });
+          fs.writeFileSync(path.join(OUT, 'debug', `${design.id}.html`), html);
+          await page.screenshot({ path: path.join(OUT, 'debug', `${design.id}.png`) });
+        }
         const file = await exportCurrent(page, design.id);
         res.bytes = fs.statSync(file).size;
         Object.assign(res, probe(file));
