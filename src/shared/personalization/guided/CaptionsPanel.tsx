@@ -1,62 +1,59 @@
 import { useState } from 'react'
-import { Captions, Plus, Trash2 } from 'lucide-react'
+import { Captions, Copy, Download, Trash2 } from 'lucide-react'
 import { downloadBlob } from '../preview/capite/subtitleExport'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
-import { ColorField } from './editor/ColorField'
-import { Tip } from './editor/Tip'
-import { SavedStylesBar } from './SavedStylesBar'
-import { applyCaptionStyle, captureCaptionStyle } from '../preview/textStyles'
-import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle } from './tokens'
-import {
-  ALL_CAPTION_PRESETS, CAPTION_ANIMATIONS, CAPTION_PRESET_CATEGORIES, CAPTION_PRESETS, DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesFromText, cuesToSrt, cuesToVtt, newCue,
-  type CaptionAnimation, type CaptionCue, type CaptionPosition, type CaptionSettings, type CaptionStyle,
-} from '../preview/captions'
-import { captionsToStudioInput, studioToCaptionSettings, STUDIO_FONTS } from '../preview/captionsFromStudio'
-import { LANGUAGES } from '../captions/scripts'
+import { C, hintStyle, labelStyle, secondaryButtonStyle } from './tokens'
+import { DEFAULT_CAPTION_STYLE, MAX_CUES, captionPreset, cuesToSrt, cuesToVtt, type CaptionSettings } from '../preview/captions'
+import { captionsToStudioInput, studioToCaptionSettings } from '../preview/captionsFromStudio'
+import { cleanStudioCaptions, withPositionY } from '../captions/studioCaptions'
 import { transcriptText } from '../captions/textTools'
+import { captionAvoid, clearOf, coveredNow } from './captionAvoid'
 import { captionsToAss } from '../preview/captionAss'
 import type { PreviewInputProps } from '../preview/types'
 
 /**
- * Captions (Step 4): write them from the video's speech with the free on-device Caption Studio (Whisper runs in the browser, every word is
- * timed), or paste a script or subtitles and the lines are timed across the video. Adjust each line's words and times, pick a style (the
- * presets take your brand colors), a position and size, a word highlight and a box. Free either way. Drawn live and in the exported video
- * by the same code.
+ * Captions (Step 4): the free on-device Caption Studio is the one place to make and edit them (Whisper runs in the browser, every word is
+ * timed; look, font, weight, height, line edits, find and replace all live there). This panel opens it, shows what was made, warns when the
+ * captions cover other text, and downloads the lines. Drawn live and in the exported video by the same code.
  */
-const downloadText = (content: string, name: string, mime: string) => downloadBlob(content, name, mime)
+const smallButton = { ...secondaryButtonStyle, minHeight: 28, fontSize: 10, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 5 } as const
 
 export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps }): React.JSX.Element {
   const { previewSettings, updatePreviewComposition } = useDemoPersonalize()
-  const [open, setOpen] = useState(false)
-  const [script, setScript] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
-  const durationSec = previewSettings.durationInFrames / Math.max(1, previewSettings.fps)
+  const [copied, setCopied] = useState<'copied' | 'failed' | null>(null)
   const brand = previewSettings.brandColors
-  const caps: CaptionSettings = previewSettings.captions ?? { enabled: false, cues: [], style: captionPreset('karaoke', brand) ?? DEFAULT_CAPTION_STYLE }
-  const set = (patch: Partial<CaptionSettings>) => updatePreviewComposition({ captions: { ...caps, ...patch } })
-  const setStyle = (patch: Partial<CaptionStyle>) => set({ style: { ...caps.style, ...patch, preset: patch.preset ?? 'custom' } })
-  const setCue = (id: string, patch: Partial<CaptionCue>) => set({ cues: caps.cues.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
-
+  const caps = previewSettings.captions
   const videoUrl = inputProps.videoUrl && !inputProps.isImageSource ? inputProps.videoUrl : null
-  /** Opens the Caption Studio on this video; what it makes becomes the captions (lines with exact word times, plus its look). */
+  const set = (c: CaptionSettings | undefined) => updatePreviewComposition({ captions: c })
+
+  // What the captions cover: other layers that are on screen while a caption is.
+  const avoid = caps ? captionAvoid({ layers: previewSettings.layers, width: previewSettings.width, height: previewSettings.height, fps: previewSettings.fps, captions: caps }, inputProps.brand) : null
+  const covered = avoid ? coveredNow(avoid) : 0
+  const clear = avoid && covered > 0 ? clearOf(avoid) : null
+
+  /** Opens the Caption Studio on this video; what it makes becomes the captions (its pages and style, plus lines with exact word times). */
   const openStudio = async () => {
     if (!videoUrl) { setNotice('Add a video first. The Caption Studio writes captions from its speech.'); return }
     try {
       const [{ openCaptionStudio }, { studioPayload }] = await Promise.all([import('../../captionStudio/modal.js'), import('../../captionStudio/studioData.js')])
-      const start = captionsToStudioInput(caps)
+      const start = caps?.studio
+        ? { words: caps.studio.pages.flatMap((p) => p.tokens.map((t) => ({ text: t.text.trim(), startMs: t.fromMs, endMs: t.toMs }))), style: caps.studio.style as unknown as Record<string, unknown> }
+        : caps ? captionsToStudioInput(caps) : { words: [], style: undefined }
       openCaptionStudio({
         videoUrl,
         // Remotion's convention: every word but the first starts with a space.
         captions: start.words.map((w, i) => ({ text: (i ? ' ' : '') + w.text, startMs: w.startMs, endMs: w.endMs })),
         style: start.style,
-        fonts: STUDIO_FONTS,
         accentColor: C.cyan,
         applyLabel: 'Use these captions in the video',
         onApply: ({ captions, captionStyle }: { captions: unknown[]; captionStyle: Record<string, unknown> }) => {
-          const { settings, truncated } = studioToCaptionSettings(studioPayload(captions, captionStyle), brand)
-          if (settings.cues.length === 0) { setNotice('No captions were made, so nothing was changed.'); return }
-          updatePreviewComposition({ captions: settings })
-          setNotice(`${settings.cues.length} line${settings.cues.length > 1 ? 's' : ''} written from the video’s speech${truncated ? `. A project keeps at most ${MAX_CUES} lines, so the rest were left out` : ''}. Adjust them below.`)
+          const payload = studioPayload(captions, captionStyle)
+          const { settings, truncated } = studioToCaptionSettings(payload, brand)
+          const studio = cleanStudioCaptions(payload)
+          if (settings.cues.length === 0 || !studio) { setNotice('No captions were made, so nothing was changed.'); return }
+          set({ ...settings, studio, ...(caps?.language ? { language: caps.language } : {}) })
+          setNotice(`${settings.cues.length} line${settings.cues.length > 1 ? 's' : ''} written from the video’s speech${truncated ? `. A project keeps at most ${MAX_CUES} lines, so the rest were left out` : ''}.`)
         },
         onError: (err: Error) => setNotice(err?.message || 'The Caption Studio could not open.'),
       })
@@ -64,151 +61,53 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
       setNotice((err as Error)?.message || 'The Caption Studio could not open.')
     }
   }
-
-  const apply = () => {
-    const cues = cuesFromText(script, durationSec).slice(0, MAX_CUES)
-    if (cues.length === 0) { setNotice('Nothing to caption yet. Paste some words or subtitles.'); return }
-    setNotice(`${cues.length} line${cues.length > 1 ? 's' : ''} timed across ${durationSec.toFixed(1)} seconds. Adjust them below.`)
-    set({ cues, enabled: true })
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(transcriptText((caps?.cues ?? []).map((c) => c.text))); setCopied('copied') } catch { setCopied('failed') }
   }
 
-  const numField = (id: string, label: string, value: number, onChange: (v: number) => void) => (
-    <label htmlFor={id} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 9, color: C.muted2 }}>
-      {label}
-      <input id={id} data-testid={id} type="number" aria-label={label} min={0} max={durationSec} step={0.1} value={Math.round(value * 100) / 100}
-        onChange={(e) => { if (e.target.value.trim() !== '') onChange(Math.max(0, Number(e.target.value))) }} style={{ ...inputStyle, minHeight: 26, padding: '0 6px', fontSize: 11 }} />
-    </label>
-  )
-
   return (
-    <div data-testid="captions-panel" style={{ ...panelStyle, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Captions size={14} color={C.cyan} aria-hidden />
-        <button type="button" data-testid="captions-toggle-panel" aria-expanded={open} onClick={() => setOpen((v) => !v)} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 11, padding: '0 10px', flex: 1, textAlign: 'left' }}>
-          Captions {caps.enabled && caps.cues.length ? `· ${caps.cues.length} lines` : ''}
+    <div data-testid="captions-panel" style={{ marginTop: 12 }}>
+      <div style={{ ...labelStyle, marginBottom: 6 }}>Captions</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          type="button" data-testid="captions-open-studio" disabled={!videoUrl} onClick={() => void openStudio()}
+          style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: videoUrl ? 1 : 0.5 }}
+        >
+          <Captions size={12} /> {caps ? 'Edit in the Caption Studio' : 'Open Caption Studio'}
         </button>
+        <span style={{ ...hintStyle, margin: 0 }}>Free, on this device. Transcribe, edit, restyle and recolour in one window.</span>
       </div>
+      {notice && <p data-testid="captions-notice" style={{ ...hintStyle, margin: '6px 0 0' }}>{notice}</p>}
 
-      {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div>
-            <button type="button" data-testid="captions-open-studio" disabled={!videoUrl} onClick={() => void openStudio()} title={videoUrl ? undefined : 'Add a video first'}
-              style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px', borderColor: C.cyan, opacity: videoUrl ? 1 : 0.5 }}>
-              ✨ {caps.cues.length ? 'Edit in the Caption Studio' : 'Write captions from the video’s speech'}
-            </button>
-            <p style={{ ...hintStyle, margin: '6px 0 0' }}>Free, on this device: the speech is turned into text in your browser, every word is timed, and nothing is uploaded. Or paste your own words below.</p>
-          </div>
-          <div>
-            <Tip id="captionsScript" side="top"><label style={labelStyle} htmlFor="captions-script">Your words</label></Tip>
-            <textarea id="captions-script" data-testid="captions-script" rows={3} value={script} onChange={(e) => setScript(e.target.value)} placeholder="Paste a script, or subtitles in SRT format…" style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-              <button type="button" data-testid="captions-apply" onClick={apply} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px', borderColor: C.cyan, color: C.cyan }}>Time my words</button>
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-enabled" aria-pressed={caps.enabled} onClick={() => set({ enabled: !caps.enabled })} style={{ ...chipStyle(caps.enabled), minHeight: 30, fontSize: 11 }}>{caps.enabled ? 'Captions on' : 'Captions off'}</button>
-              )}
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-download-srt" onClick={() => downloadText(cuesToSrt(caps.cues), 'captions.srt', 'application/x-subrip')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Download .srt</button>
-              )}
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-download-vtt" onClick={() => downloadText(cuesToVtt(caps.cues), 'captions.vtt', 'text/vtt')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Download .vtt</button>
-              )}
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-download-txt" onClick={() => downloadText(transcriptText(caps.cues.map((x) => x.text)), 'captions.txt', 'text/plain')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>.txt</button>
-              )}
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-download-ass" onClick={() => downloadText(captionsToAss(caps, { width: previewSettings.width || 1920, height: previewSettings.height || 1080 }), 'captions.ass', 'text/x-ssa')} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>.ass</button>
-              )}
-              {caps.cues.length > 0 && (
-                <button type="button" data-testid="captions-clear" onClick={() => updatePreviewComposition({ captions: undefined })} style={{ ...secondaryButtonStyle, minHeight: 30, fontSize: 11, padding: '0 12px' }}>Remove captions</button>
-              )}
-            </div>
-            {caps.cues.length > 0 && (
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 11, color: C.text }}>
-                <span style={{ ...hintStyle, margin: 0 }}>Language of these words:</span>
-                <select data-testid="captions-language" aria-label="Caption language" value={caps.language ?? 'auto'} onChange={(e) => set({ language: e.target.value === 'auto' ? undefined : e.target.value })} style={{ ...inputStyle, width: 'auto', minHeight: 28, fontSize: 11, padding: '0 8px' }}>
-                  <option value="auto">Work it out from the words</option>
-                  {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-                </select>
-              </label>
-            )}
-            {notice && <div role="status" data-testid="captions-notice" style={{ ...hintStyle, margin: '6px 0 0' }}>{notice}</div>}
-            <p style={{ ...hintStyle, margin: '6px 0 0' }}>Pasted words are timed evenly across the video, then you can adjust each one.</p>
-          </div>
-
-          {caps.cues.length > 0 && (
-            <>
-              <div>
-                <Tip id="captionsStyle" side="top"><div style={labelStyle}>Style</div></Tip>
-                {CAPTION_PRESET_CATEGORIES.map((cat) => {
-                  const list = ALL_CAPTION_PRESETS.filter((p) => ('category' in p ? (p as { category: string }).category : 'brand') === cat.id)
-                  if (list.length === 0) return null
-                  return (
-                    <div key={cat.id} style={{ marginBottom: 6 }}>
-                      <div style={{ ...hintStyle, margin: '0 0 3px' }}>{cat.label}</div>
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                        {list.map((p) => (
-                          <button key={p.id} type="button" data-testid={`captions-preset-${p.id}`} aria-pressed={caps.style.preset === p.id} onClick={() => set({ style: captionPreset(p.id, brand)!, enabled: true })} style={{ ...chipStyle(caps.style.preset === p.id), minHeight: 28, fontSize: 10 }}>{p.label}</button>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-                <div style={{ ...hintStyle, margin: '4px 0 3px' }}>Word animation</div>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                  {(['none', ...CAPTION_ANIMATIONS] as (CaptionAnimation | 'none')[]).map((a) => (
-                    <button key={a} type="button" data-testid={`captions-anim-${a}`} aria-pressed={(caps.style.animation ?? 'none') === a} onClick={() => setStyle({ animation: a === 'none' ? undefined : a, windowed: a === 'none' ? undefined : true })} style={{ ...chipStyle((caps.style.animation ?? 'none') === a), minHeight: 26, fontSize: 10 }}>{a === 'none' ? 'Plain' : a[0].toUpperCase() + a.slice(1)}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {(['top', 'middle', 'bottom'] as CaptionPosition[]).map((pos) => (
-                  <button key={pos} type="button" data-testid={`captions-pos-${pos}`} aria-pressed={caps.style.position === pos} onClick={() => setStyle({ position: pos })} style={{ ...chipStyle(caps.style.position === pos), minHeight: 26, fontSize: 10 }}>{pos[0].toUpperCase() + pos.slice(1)}</button>
-                ))}
-                <button type="button" data-testid="captions-highlight" aria-pressed={caps.style.highlight === 'word'} onClick={() => setStyle({ highlight: caps.style.highlight === 'word' ? 'none' : 'word' })} style={{ ...chipStyle(caps.style.highlight === 'word'), minHeight: 26, fontSize: 10 }}>Highlight word</button>
-                <button type="button" data-testid="captions-box" aria-pressed={caps.style.box} onClick={() => setStyle({ box: !caps.style.box })} style={{ ...chipStyle(caps.style.box), minHeight: 26, fontSize: 10 }}>Box</button>
-                <button type="button" data-testid="captions-caps" aria-pressed={caps.style.uppercase} onClick={() => setStyle({ uppercase: !caps.style.uppercase })} style={{ ...chipStyle(caps.style.uppercase), minHeight: 26, fontSize: 10 }}>CAPS</button>
-              </div>
-              <div>
-                <label style={labelStyle} htmlFor="captions-size">Size</label>
-                <input id="captions-size" data-testid="captions-size" type="range" aria-label="Caption size" min={0.025} max={0.14} step={0.005} value={caps.style.size} onChange={(e) => setStyle({ size: Number(e.target.value) })} style={{ width: '100%', accentColor: C.cyan }} />
-              </div>
-              <div className="grid grid-cols-2" style={{ gap: 8 }}>
-                <ColorField id="captions-color" label="Text color" ariaLabel="Caption text color" tipId="textColor" value={caps.style.color} onChange={(hex) => setStyle({ color: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
-                <ColorField id="captions-highlight-color" label="Highlight color" ariaLabel="Caption highlight color" tipId="textColor" value={caps.style.highlightColor} onChange={(hex) => setStyle({ highlightColor: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
-              </div>
-              {caps.style.box && (
-                <ColorField id="captions-box-color" label="Box color" ariaLabel="Caption box color" tipId="textColor" value={caps.style.boxColor} onChange={(hex) => setStyle({ boxColor: hex })} brand={brand} posterUrl={inputProps.posterUrl} />
-              )}
-
-              <SavedStylesBar
-                kind="captions"
-                idPrefix="captions"
-                styles={previewSettings.textStyles ?? []}
-                onStylesChange={(next) => updatePreviewComposition({ textStyles: next.length ? next : undefined })}
-                capture={() => captureCaptionStyle(caps.style, brand)}
-                onApply={(s) => { if (s.kind === 'captions') set({ style: applyCaptionStyle(s.style, brand), enabled: true }) }}
-                defaultName="Caption style"
-              />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <Tip id="captionsLines" side="top"><div style={labelStyle}>Lines</div></Tip>
-                {caps.cues.map((c, i) => (
-                  <div key={c.id} data-testid="caption-cue" data-cue-id={c.id} style={{ border: `1px solid ${C.border}`, borderRadius: 8, padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <textarea data-testid="caption-cue-text" aria-label={`Caption line ${i + 1}`} rows={2} value={c.text} onChange={(e) => setCue(c.id, { text: e.target.value.slice(0, 240) })} style={{ ...inputStyle, padding: '6px 8px', resize: 'vertical', flex: 1, fontSize: 12 }} />
-                      <button type="button" data-testid="caption-cue-delete" aria-label={`Delete caption line ${i + 1}`} onClick={() => set({ cues: caps.cues.filter((x) => x.id !== c.id) })} style={{ ...secondaryButtonStyle, minHeight: 28, width: 30, padding: 0, display: 'grid', placeItems: 'center' }}><Trash2 size={12} aria-hidden /></button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
-                      {numField(`caption-start-${c.id}`, 'Starts (s)', c.start, (v) => setCue(c.id, { start: v, end: Math.max(c.end, v + 0.1) }))}
-                      {numField(`caption-end-${c.id}`, 'Ends (s)', c.end, (v) => setCue(c.id, { end: Math.max(v, c.start + 0.1) }))}
-                    </div>
-                  </div>
-                ))}
-                <button type="button" data-testid="caption-cue-add" disabled={caps.cues.length >= MAX_CUES} onClick={() => { const last = caps.cues.at(-1); const start = Math.min(durationSec - 0.5, last ? last.end : 0); set({ cues: [...caps.cues, newCue(start, Math.min(durationSec, start + 2))] }) }} style={{ ...secondaryButtonStyle, minHeight: 28, fontSize: 11, alignSelf: 'flex-start', display: 'inline-flex', gap: 6, alignItems: 'center' }}><Plus size={12} aria-hidden /> Add a line</button>
-              </div>
-            </>
+      {caps && (
+        <div data-testid="captions-result" style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.text, fontWeight: 700 }}>
+            <input type="checkbox" data-testid="captions-enabled" checked={caps.enabled} onChange={(e) => set({ ...caps, enabled: e.target.checked })} />
+            Show captions in the video
+          </label>
+          <p data-testid="captions-summary" style={{ ...hintStyle, margin: 0 }}>
+            {caps.cues.length} lines{caps.studio ? ' · drawn as designed in the Caption Studio (look, font, motion and height included)' : ' · open the Caption Studio to restyle or fix these'}.
+          </p>
+          {covered > 0 && (
+            <p data-testid="captions-overlap" role="status" style={{ ...hintStyle, margin: 0, color: C.text }}>
+              The captions cover {covered === 1 ? 'a text layer' : `${covered} text layers`} while they are on screen.
+              {clear && !clear.cleared ? ' There is no clear spot on this frame: shorten the lines or move the other text.' : ' '}
+              {clear?.cleared && caps.studio && <button type="button" data-testid="captions-clear-now" onClick={() => set({ ...caps, studio: withPositionY(caps.studio!, clear.positionY) })} style={smallButton}>Move them clear</button>}
+            </p>
           )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button type="button" data-testid="captions-srt" onClick={() => downloadBlob(cuesToSrt(caps.cues), 'captions.srt', 'application/x-subrip')} style={smallButton}><Download size={11} /> Download .srt</button>
+            <button type="button" data-testid="captions-vtt" onClick={() => downloadBlob(cuesToVtt(caps.cues), 'captions.vtt', 'text/vtt')} style={smallButton}><Download size={11} /> Download .vtt</button>
+            <button type="button" data-testid="captions-txt" onClick={() => downloadBlob(transcriptText(caps.cues.map((c) => c.text)), 'captions.txt', 'text/plain')} style={smallButton}><Download size={11} /> Download .txt</button>
+            <button type="button" data-testid="captions-ass" onClick={() => downloadBlob(captionsToAss(caps, { width: previewSettings.width || 1920, height: previewSettings.height || 1080 }), 'captions.ass', 'text/x-ssa')} style={smallButton}><Download size={11} /> Download .ass</button>
+            <button type="button" data-testid="captions-copy" onClick={() => void copy()} style={smallButton}><Copy size={11} /> Copy text</button>
+            <button type="button" data-testid="captions-remove" onClick={() => set(undefined)} style={smallButton}><Trash2 size={11} /> Remove captions</button>
+            {copied && <span data-testid="captions-copy-note" style={{ ...hintStyle, margin: 0, alignSelf: 'center' }}>{copied === 'copied' ? 'Copied.' : 'Your browser would not copy it. Select the text and copy it yourself.'}</span>}
+          </div>
+          <p style={{ ...hintStyle, margin: 0 }}>
+            Captions are drawn into the preview and into every file you export, and follow the video&apos;s own speech.
+            {previewSettings.audio ? ' You chose a different sound track, so check that the captions still match what people will hear.' : ''}
+          </p>
         </div>
       )}
     </div>

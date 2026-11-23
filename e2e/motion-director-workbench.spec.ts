@@ -17,30 +17,30 @@ const OUT = 'docs/motion-studio-design-replacement';
 const PROJECT_KEY = 'motion-director:project-v1';
 
 async function buildFilm(page: Page) {
-  await page.route('**/api/motion-studio/director', (route) =>
+  // Created WITHOUT AI (no key, no director call): the storyboard comes from a mocked capture of a site, so shots that need the site's pictures
+  // and words are chosen and kept by the storyboard gate. Only the capture is mocked here; the director route is never called.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mP4z8AAAAMBAQBZ8vGWAAAAAElFTkSuQmCC', 'base64');
+  await page.route('https://captures.example.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
+  await page.route('**/api/motion-studio/capture', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        plan: {
-          title: 'Workbench film',
-          summary: '',
-          palette: { background: '#111111', text: '#fafafa', accent: '#ec008c' },
-          scenes: [
-            { kind: 'title', recipeId: '', durationSec: 2, headline: 'Meet *Acme*', caption: 'Ship faster', transition: 'cut' },
-            { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 4, headline: 'Every release counts', caption: '', transition: 'flash' },
-            { kind: 'shot', recipeId: 'camera/crash-zoom-punch/CrashImpactReal', durationSec: 4, headline: 'Your real product', caption: '', transition: 'cut' },
-          ],
-        },
+        url: 'https://acme.example.com/', title: 'Acme',
+        page: { url: 'https://captures.example.com/page.png', width: 3840, height: 3492 },
+        crops: ['https://captures.example.com/crop-1.png', 'https://captures.example.com/crop-2.png', 'https://captures.example.com/crop-3.png'],
+        content: { headline: 'Ship faster with Acme', description: 'Every release counts.', headings: ['Plan', 'Ship', 'Learn'], ctas: ['Start free'], nav: ['Product', 'Pricing'] },
+        brand: { background: '#111111', text: '#fafafa', accent: '#ec008c', fontFamily: 'Inter' },
+        transient: false,
       }),
     }),
   );
   await page.goto(`${BASE_URL}/studio/motion-director/new`);
   await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
   await assertNoOnboardingModal(page);
-  await page.getByPlaceholder('Describe your motion video...').fill('A 10-second launch film for Acme');
+  await page.getByPlaceholder('Describe your motion video...').fill('A 20-second launch film for https://acme.example.com');
   await page.getByRole('button', { name: 'Generate' }).click();
-  await answerInkPressOffer(page, 'director');
+  await page.getByTestId('create-without-ai').click({ timeout: 60_000 });
   await approveFilmAndOpenWorkbench(page);
 }
 
@@ -66,7 +66,12 @@ test.describe('Motion Director → Motion Workbench editor', () => {
     }
 
     // Select a shot: its copy, font size and colours are editable.
-    await page.locator('.clip', { hasText: /Hit Counter|HitCounter/ }).first().click();
+    await page.waitForTimeout(2000);
+    const demo = ((await savedProject(page)).tracks ?? []).flatMap((t: any) => t.clips).find((c: any) => String(c.cardId).startsWith('demo:'));
+    expect(demo, 'the film has a ShotCraft shot').toBeTruthy();
+    const demoId = demo.cardId as string;
+    // The first ShotCraft shot on the Shots lane (after the title card).
+    await page.locator('.tl-lane').nth(names.map((n) => n.trim()).indexOf('Shots')).locator('.clip').nth(1).click();
     const inspector = page.locator('.inspector');
     const titleRow = inspector.locator('.prop-row', { hasText: 'Title text' });
     await expect(titleRow).toBeVisible({ timeout: 15_000 });
@@ -84,7 +89,7 @@ test.describe('Motion Director → Motion Workbench editor', () => {
 
     await expect
       .poll(async () => {
-        const c = await shotClip(page, 'demo:HitCounter');
+        const c = await shotClip(page, demoId);
         return c && { title: c.props.title, color: c.props.titleColor, speed: c.speed, start: c.start, duration: c.duration };
       }, { timeout: 10_000 })
       .toEqual({ title: 'Every release counts', color: '#22ccff', speed: 1.5, start: 75, duration: 90 });

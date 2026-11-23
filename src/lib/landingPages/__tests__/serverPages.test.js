@@ -104,12 +104,16 @@ describe('landing pages server data layer', () => {
     const a = await createPage(db, 'user_a', input());
     await rejects(submitLead(db, a.id, null, { name: 'A', email: 'a@x.io' }), 404);
     await updatePage(db, 'user_a', a.id, { published: true });
-    await submitLead(db, a.id, 'contactMaya1', { name: ' Maya ', email: 'maya@x.io', 'bad key': 'x', n: 5, long: 'y'.repeat(2000) });
+    await submitLead(db, a.id, 'contactMaya1', { 'FIRST NAME': ' Maya ', EMAIL: 'maya@x.io', 'bad/key': 'x', n: 5, long: 'y'.repeat(2000) }, 'list-builder');
     const lead = db.tables.landing_page_leads[0];
-    expect(lead.data).toEqual({ name: 'Maya', email: 'maya@x.io', long: 'y'.repeat(1000) });
+    // answers are keyed by the timeline's box tokens and carry the form kind
+    expect(lead.data).toEqual({ 'FIRST NAME': 'Maya', EMAIL: 'maya@x.io', long: 'y'.repeat(500) });
+    expect(lead.kind).toBe('list-builder');
     expect(lead.contact_id).toBe('contactMaya1');
     expect(db.rpcCalls.at(-1)[1].p_kind).toBe('lead');
-    await rejects(submitLead(db, a.id, null, { email: 'not an email' }), 400, 'BAD_EMAIL');
+    await submitLead(db, a.id, null, { NOTES: 'y'.repeat(2000) }, 'evil-kind');
+    expect(db.tables.landing_page_leads[1].data.NOTES.length).toBe(500); expect(db.tables.landing_page_leads[1].kind).toBe('lead-form');
+    await rejects(submitLead(db, a.id, null, { 'WORK EMAIL': 'not an email' }), 400, 'BAD_EMAIL');
     await rejects(submitLead(db, a.id, null, {}), 400, 'EMPTY');
     await rejects(submitLead(db, a.id, null, 'x'), 400, 'BAD_DATA');
   });

@@ -664,11 +664,13 @@ export type {
   PreviewBrandColors,
   PreviewVideoRef,
   PersonalizationPreviewSettings,
+  DesignSlot,
 } from './preview/types'
 
 // ── Shared Remotion design registry ──────────────────────────────────────────
 
 export type {
+  RemotionDesignRole,
   RemotionDesignCategory,
   RemotionDesignColorBinding,
   RemotionDesignColorRole,

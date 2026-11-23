@@ -7,11 +7,14 @@ const calls: Array<{ prompt: string; capture: unknown; single: string | null; du
 let gate: Promise<void> | null = null;
 /** When set, the build (frame QA) waits for it. */
 let buildGate: Promise<void> | null = null;
+/** The abort signal of the most recent film build. */
+let lastBuildSignal: AbortSignal | undefined;
 vi.mock('../lib/filmPipeline', async (orig) => {
   const real = await orig<typeof import('../lib/filmPipeline')>();
   const { inkPressPlan, singleShotPlan } = await import('../lib/filmChat');
   return {
     ...real,
+    buildFilmProject: vi.fn(async (...args: Parameters<typeof real.buildFilmProject>) => { lastBuildSignal = (args[1] as { signal?: AbortSignal }).signal; return real.buildFilmProject(...args); }),
     storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; durationSec: number | null; recipes: { componentName: string }[]; single: Parameters<typeof singleShotPlan>[0] | null }, opts: { capture: unknown; durationSec: number }) => {
       calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec, recipes: req.recipes.map((t) => t.componentName) });
       if (gate) await gate;
@@ -44,6 +47,8 @@ vi.mock('../lib/directorClient', async (orig) => {
 let guidedOn = true;
 
 import { useFilmDirector } from '../components/useFilmDirector';
+import { completeStage, newRun, startStage } from '../lib/productionRun';
+import { saveCheckpoint } from '../lib/runStore';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
@@ -234,6 +239,45 @@ describe('useFilmDirector', () => {
     expect(result.current.stage).toBe('idle');
     expect(result.current.storyboard).toBeNull();
     expect(result.current.messages).toEqual([]);
+  });
+
+  it('reset aborts a build that is still running', async () => {
+    lastBuildSignal = undefined;
+    buildGate = new Promise<void>(() => { /* never released: the build is held in frame QA */ });
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    act(() => { result.current.approve(); });
+    await vi.waitFor(() => expect(lastBuildSignal).toBeDefined());
+    expect(lastBuildSignal!.aborted).toBe(false);
+    act(() => { result.current.reset(); });
+    expect(lastBuildSignal!.aborted).toBe(true);
+    buildGate = null;
+  });
+
+  it('reset clears the previous film\'s run so its progress does not show in the next conversation', async () => {
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.run).not.toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.run).toBeNull();
+    expect(result.current.status).toBeNull();
+  });
+
+  it('reset (session switch) clears a pending resume offer', async () => {
+    let r = newRun('make a film', 'autonomous', 1000);
+    r = completeStage(r, { stage: 'brief', productName: 'Acme', kind: 'software', features: ['x'], objective: 'sell' });
+    r = completeStage(r, { stage: 'direction', chosen: 'Ink' });
+    r = completeStage(r, { stage: 'mapping', rows: [{ feature: 'f', firstShot: 's' }] });
+    r = completeStage(r, { stage: 'storyboard', scenes: 3, failedChecks: [] });
+    r = startStage(r, 'assets');
+    saveCheckpoint({ run: r, request: { prompt: 'p', aspectRatio: '16:9', template: 'director' }, storyboard: { plan: { title: 't', scenes: [{ recipeId: 'x' }] } as never, capture: null, source: 'director', media: [] }, adapted: [] } as never);
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    await flush();
+    expect(result.current.resumeOffer).not.toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.resumeOffer).toBeNull();
   });
 
   it('revising a one-shot film swaps the shot', async () => {

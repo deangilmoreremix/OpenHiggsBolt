@@ -6,13 +6,16 @@ import * as Motion from '../demosrc/_fixtures/Motion';
 import * as PageCam2D from '../demosrc/_fixtures/PageCam2D';
 import * as Polish from '../demosrc/_fixtures/Polish';
 import * as liveTexture from '../demosrc/_fixtures/liveTexture';
+import * as LiveLayoutContext from '../demosrc/_textures/LiveLayoutContext';
+import * as retarget from '../demosrc/_textures/retarget';
+import * as SlotPatches from '../demosrc/_textures/SlotPatches';
 import { compileAdapted, registerAdaptedFixtures, type AdaptedComponent } from './shotAdapter';
 
 /**
  * Where adapted recipes are compiled and kept. A clip carries the adapted source (`adaptedCode`);
  * the demo wrapper asks for its component here, so preview, stills and export all play the same code.
  */
-registerAdaptedFixtures({ Brand, ExportMode, Fixtures, Look, Motion, PageCam2D, Polish, liveTexture });
+registerAdaptedFixtures({ Brand, ExportMode, Fixtures, Look, Motion, PageCam2D, Polish, liveTexture, LiveLayoutContext, retarget, SlotPatches });
 
 /** A short stable key for a piece of source. */
 export const hashCode = (code: string): string => {

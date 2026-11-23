@@ -11,6 +11,7 @@ import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import HelpAgent from '@/components/help/HelpAgent';
+import StudioTooltips from './studio-tooltips/StudioTooltips';
 import { academyStudioUrl, getStudioGuide } from '@/data/academyStudioGuides';
 import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import CaptionStudioAction from '@/components/CaptionStudioAction';
@@ -52,6 +53,8 @@ const EditStudio = loadStudio('EditStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
+const SmartWarmupAIStudio = dynamic(() => import('./SmartWarmupAIStudio'), { ssr: false });
+const MuapiStudioPanel = dynamic(() => import('../src/apps/muapi-studio/MuapiStudioPanel'), { ssr: false });
 const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
 const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/MotionStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
@@ -137,6 +140,7 @@ const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
+  { id: 'muapi-studio', label: 'Studio' },
   { id: 'edit',    label: 'Edit' },
   { id: 'video-pages', label: 'Video Pages' }, // near the front: the tab bar scrolls sideways and a tab at the far end is easy to miss
   { id: 'audio',   label: 'Audio Studio' },
@@ -155,6 +159,7 @@ const TABS = [
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
+  { id: 'smartwarmupai', label: 'SmartWarmupAI' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
@@ -185,7 +190,10 @@ const SLUG_TO_TAB = {
   storyboard: 'storyboard', zackd: 'zackd', marketing: 'marketing', 'motion-studio': 'motion-director', 'motion-director': 'motion-director', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
+  smartwarmupai: 'smartwarmupai',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages', 'media-hub': 'media-hub',
+  'muapi-studio': 'muapi-studio',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
@@ -998,6 +1006,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {persistentStudio('agents', (active) => <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} locale={locale} />)}
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
+         {activeTab === 'smartwarmupai' && <div className="absolute inset-0"><SmartWarmupAIStudio /></div>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
          {activeTab === 'video-pages' && <VideoPagesStudio />}
@@ -1010,6 +1019,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          )}
          {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'go-ai-viral' && <GoViralGate><GoAiViralStudio apiKey={apiKey} /></GoViralGate>}
+          {activeTab === 'muapi-studio' && <MuapiStudioPanel apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} />}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
           {activeTab === 'skills' && <div className="h-full overflow-y-auto p-4 md:p-8"><SkillsBrowser apiKey={apiKey} /></div>}
       </div>
@@ -1018,6 +1028,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </SocialPublishProvider>
       </AiAssistantProvider>
 
+      {/* Hover help for every studio control (cyan/purple scheme of this app). */}
+      <StudioTooltips />
       {/* "Ask SmartVideo" help assistant — one launcher for every studio. Hides itself when the agent is not configured. */}
       <HelpAgent studioId={activeTab} studioLabel={TABS.find((t) => t.id === activeTab)?.label ?? null} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))} />
 

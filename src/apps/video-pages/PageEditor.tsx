@@ -14,12 +14,13 @@ import { deletePage, updatePage, listContacts } from '@/src/lib/landingPages/api
 import { embedCode, pageUrl } from '@/src/lib/landingPages/ids.js'
 import AnalyticsTab from './AnalyticsTab'
 import ContactsTab from './ContactsTab'
+import LeadsTab from './LeadsTab'
 import AiRewritePanel from './AiRewritePanel'
 import { ui } from './ui'
 import type { PageRow } from './VideoPagesStudio'
 
 const SAMPLE_TOKENS = { firstname: 'Alex', lastname: 'Rivera', company: 'Brightline', role: 'Head of Growth' }
-type Tab = 'design' | 'contacts' | 'analytics'
+type Tab = 'design' | 'contacts' | 'leads' | 'analytics'
 
 export default function PageEditor({ page, onBack, onChanged }: { page: PageRow; onBack: () => void; onChanged: (p: PageRow) => void }) {
   const [tab, setTab] = useState<Tab>('design')
@@ -105,9 +106,9 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
         <button type="button" className={ui.primary} disabled={busy || !dirty} onClick={() => void save()}><Save size={14} /> {busy ? 'Saving…' : 'Save'}</button>
       </div>
       <div className="w-full max-w-7xl mx-auto px-4 md:px-6 mt-3 flex items-center gap-6 border-b border-white/5">
-        {(['design', 'contacts', 'analytics'] as Tab[]).map((t) => (
+        {(['design', 'contacts', 'leads', 'analytics'] as Tab[]).map((t) => (
           <button key={t} type="button" className={ui.tab(tab === t)} onClick={() => setTab(t)}>
-            {t === 'design' ? 'Design' : t === 'contacts' ? 'Personal links' : 'Analytics'}
+            {t === 'design' ? 'Design' : t === 'contacts' ? 'Personal links' : t === 'leads' ? 'Leads' : 'Analytics'}
             {tab === t ? <span className={ui.tabLine} /> : null}
           </button>
         ))}
@@ -135,8 +136,10 @@ export default function PageEditor({ page, onBack, onChanged }: { page: PageRow;
           </div>
         ) : tab === 'contacts' ? (
           <ContactsTab pageId={page.id} published={published} />
+        ) : tab === 'leads' ? (
+          <LeadsTab pageId={page.id} published={published} />
         ) : (
-          <AnalyticsTab pageId={page.id} />
+          <AnalyticsTab pageId={page.id} published={published} />
         )}
       </div>
     </div>

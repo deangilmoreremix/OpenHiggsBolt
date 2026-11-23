@@ -4,6 +4,9 @@
  * frame is a pure function, so the live Player and the browser export agree.
  */
 import { CAPTION_STYLES, CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import { cleanStudioCaptions, type StudioCaptions } from '../captions/studioCaptions'
+import { normalizeCustom, type CaptionCasing } from '../captions/captionCustom'
+import { captionFontByName, type CaptionWeight } from '../captions/capiteFonts'
 import type { CaptionStyleConfig } from './capite/types'
 import { transcriptToSrt, transcriptToVtt } from './capite/subtitleExport'
 
@@ -60,6 +63,13 @@ export interface CaptionStyle {
   category?: string
   /** A dragged vertical centre of the captions, 0..1 of the frame height. Wins over `position`. */
   positionY?: number
+  /** The customizer: one of Capite's 16 fonts (canonical name), a weight, a casing (wins over `uppercase`) and a vertical offset as a fraction of the frame height (positive = up). */
+  fontFamily?: string
+  weight?: CaptionWeight
+  casing?: CaptionCasing
+  offsetY?: number
+  /** Keep the captions off other text when they are moved. On unless false. */
+  keepClear?: false
 }
 
 export type CaptionAnimation = 'highlight' | 'karaoke' | 'pop' | 'bounce' | 'scale' | 'glow' | 'box'
@@ -71,6 +81,8 @@ export interface CaptionSettings {
   style: CaptionStyle
   /** Language of the words (ISO code such as `es` or `pt-BR`), when known: sets the font fallback, size and reading direction. Absent = worked out from the text. */
   language?: string
+  /** Captions designed in the Caption Studio: its pages and full style, drawn natively. `cues` and `style` stay as the fallback for the list and the downloads. */
+  studio?: StudioCaptions
 }
 
 /** `es`, `haw`, `pt-BR`: a two or three letter code with an optional region. */
@@ -124,6 +136,8 @@ export function captionStyleFromCapite(c: CaptionStyleConfig): Omit<CaptionStyle
     wordSpacing: clamp(((c.wordSpacing - 100) / 100) * 0.3, 0, 1),
     windowed: true,
     category: c.category ?? 'trending',
+    // The look's own font, so it is drawn in the preview and the export (and named in the .ass), not only in the .ass.
+    ...(captionFontByName(c.fontName) ? { fontFamily: captionFontByName(c.fontName)!.name } : {}),
   }
 }
 
@@ -209,7 +223,9 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
   if (s.windowed === true) style.windowed = true
   if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
   if (finite(s.positionY)) style.positionY = clamp(s.positionY, 0.04, 0.96)
-  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
+  Object.assign(style, normalizeCustom(s))
+  const studio = cleanStudioCaptions(raw.studio)
+  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(studio ? { studio } : {}), ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
 }
 
 // ── turning a script or subtitles into timed lines ──────────────────────────────────────────────────────────────

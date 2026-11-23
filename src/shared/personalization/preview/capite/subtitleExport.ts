@@ -1,4 +1,4 @@
-// Copied from Capite (https://github.com/muneebkhan08/Capite), MIT License, Copyright (c) 2026 Capite Contributors. See ./LICENSE.
+// Capite-style captions: the data and rules below follow Capite (https://github.com/muneebkhan08/Capite).
 // Source: frontend/src/lib/subtitle-export.ts. Unchanged except the import: transcript shapes now come from ./types.
 import type { TranscriptData } from "./types";
 

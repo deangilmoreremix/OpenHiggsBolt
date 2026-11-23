@@ -28,7 +28,7 @@ export function EditToolCard({ tool, onOpen }) {
   const [thumbnailState, setThumbnailState] = useState("loading");
   return (
     <article>
-      <button
+      <button data-help="edit tool"
         type="button"
         onClick={() => onOpen(tool.slug)}
         aria-label={`Open ${tool.name}`}
@@ -95,7 +95,7 @@ export function EditToolGallery({ onOpen }) {
           </h1>
           <p className="mt-1 text-sm text-white/50">Pick a tool to open its playground.</p>
         </div>
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter tools">
+        <div data-help="category filter" className="flex flex-wrap gap-2" role="tablist" aria-label="Filter tools">
           {EDIT_TOOL_CATEGORIES.map((name) => (
             <button
               key={name}

@@ -10,6 +10,7 @@ import React from 'react';
 import { Img } from 'remotion';
 import { MotionStudioMark } from './Brand';
 import { realCrop, realPage } from './liveTexture';
+import { isWebRendering } from './ExportMode';
 
 const SANS = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Inter, Arial, sans-serif';
 const MONO = '"SF Mono", "JetBrains Mono", Menlo, monospace';
@@ -544,8 +545,14 @@ export const FakeDashboard: React.FC<{ variant?: 'A' | 'B'; tone?: Tone }> = ({ 
   const page = realPage(variant === 'A' ? 0 : 1);
   if (page) {
     return (
-      <div style={{ width: 1920, height: 1080, background: p.canvas, overflow: 'hidden' }}>
-        <Img src={page} style={{ width: 1920, height: 1080, objectFit: 'cover', objectPosition: variant === 'A' ? '50% 0%' : '50% 30%', display: 'block' }} />
+      <div style={{ width: 1920, height: 1080, background: p.canvas, overflow: 'hidden', ...(isWebRendering() ? { position: 'relative' } : {}) }}>
+        {isWebRendering() ? (
+          // The MP4 renderer ignores `object-position` (it crops from the middle), so the same crop is laid out by hand: the page at
+          // full width, top-aligned (A) or 30 % of the way down its overflow (B), exactly what `cover` + that position draws.
+          <Img src={page} style={{ position: 'absolute', left: 0, top: variant === 'A' ? 0 : 324, width: 1920, height: 'auto', maxWidth: 'none', transform: variant === 'A' ? undefined : 'translateY(-30%)', display: 'block' }} />
+        ) : (
+          <Img src={page} style={{ width: 1920, height: 1080, objectFit: 'cover', objectPosition: variant === 'A' ? '50% 0%' : '50% 30%', display: 'block' }} />
+        )}
       </div>
     );
   }

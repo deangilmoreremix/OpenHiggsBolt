@@ -6,6 +6,7 @@ import { uploadFile } from "../muapi.js";
 import { UPLOAD_LIMITS, getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from "../uploadContract.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey } from "../persistKey.js";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 
 const HISTORY_KEY_BASE = "smartvideo_media_upload_history_v1";
 const DRAFT_KEY_BASE = "smartvideo_media_slot_drafts_v1";
@@ -314,6 +315,15 @@ export default function UniversalMediaUploader({
               <path d="M3 3v5h5M12 7v5l3 2" />
             </svg>
           </button>
+        )}
+
+        {/* Saved uploads and generations, shared by every studio */}
+        {showHistory && remaining > 0 && !disabled && (
+          <AssetLibraryButton
+            kinds={[mediaType]}
+            label="Saved"
+            onSelect={(asset) => selectHistory({ url: asset.url })}
+          />
         )}
       </div>
 

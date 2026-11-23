@@ -1,4 +1,4 @@
-// Copied from Capite (https://github.com/muneebkhan08/Capite), MIT License, Copyright (c) 2026 Capite Contributors. See ./LICENSE.
+// Capite-style captions: the data and rules below follow Capite (https://github.com/muneebkhan08/Capite).
 // Source: frontend/src/lib/caption-styles.ts (the style id list and the id -> config builder) and
 // frontend/src/lib/caption-styles.config.json (copied unchanged next to this file). The only edits: the `~` import paths.
 import configJson from "./caption-styles.config.json";

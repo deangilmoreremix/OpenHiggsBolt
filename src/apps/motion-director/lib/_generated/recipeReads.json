@@ -1,0 +1,757 @@
+{
+ "AnimeImpact": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "AssembleThenTypeFlyin": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "AttentionBounce": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "AuroraBloomBgFlip": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "AutolayoutGapDial": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "AvatarBracketCarousel": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "AxisRescaleShockV2": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BarnDoorSplit": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "Basic3DScene": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BeatStepListThemeCycle": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BeforeAfterSliderScrub": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "BentoLightUp": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "BezierSourceConvergeMerge": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "BlindsSlice": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BlurSlide": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BottomPushStackWipe": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BraceExpand": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BrakeReticleLock": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "BrandFrameSnap": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BrandInkOpen": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "BulletTimeFreezeOrbit": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CardFlipReveal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CardFlockTumble": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CardStack": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "Carousel3D": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "ChangelogScrollBrake": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "ChipGridSingleSelectBlackout": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CircleMatchIris": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ClonerDepthEcho": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "ComicPanelSplit": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ContactShadowLift": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "CornerSpotlightReveal": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "CountdownArcScatter": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CraneRiseReveal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "CrashImpactReal": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "CrashZoomReal": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "CursorCastEnsemble": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "CursorFlyover": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "DatavizLandscapeOpen": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "DeckDealFlyin": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "DiagramCascadeBuild": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "DocParkLeftPillDeal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "DocumentTypewriterReveal": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "DrawSvgTrace": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "DroneDiveLanding": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "ExplodedView": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "FlyingWords": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "FlylineArc": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "FontWeightPump": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "Fracture": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "FreezeAnnotateReal": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "GlassPillDictationTyping": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GlitchCycle": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GlitchDisplace": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GlowOrbAmbient": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GlowWakeSleepPanel": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GradientTransition": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GradientWordSweep": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GrainDissolve": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "GrazeFaceTour": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "HashtagToPillMaterialize": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "HitCounter": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "IconFieldColorize": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "IconFlipBloomLogo": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "ImpactBurstKit": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "InkBleedReveal": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "InputMorphsIntoLogo": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "IntegrationHubMap": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "InvisibleCut": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "JumpCutPunchIn": {
+  "brand": false,
+  "textures": true,
+  "fixtures": true
+ },
+ "KanadaPerspectiveSnap": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "KaraokeFillSync": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "LeadWordZoomAssemble": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "LetterDropPhysics": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "LetterformDriftAssembly": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "LetterformZoom": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "LetterspaceMaterialize": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "LightLeakBurn": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "LineCarryTransition": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ListReveal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ListStackPress": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "LogoShrinkWordmarkLockup": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "MagicianCardFlourish": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "MarkerUnderlineTitle": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "MosaicReframe": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "MultiplaneReal": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "NeedleSweepSelftest": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "NeonFrameForerun": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "NeonFrameForerunOrbit": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "NeonTripleMarquee": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "OrbFlylineRelay": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "OrbitRingTitleOpen": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "OscilloscopeStreamV2": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "OutlineWordFill": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "OutroGroupPhotoLaunch": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "OverheadTabletopDrop": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "PageWaterfallWall": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "PaletteThemeRipple": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "PanelToCanvasMaterialize": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "PaparazziFlash": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "PaperTitleCard": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "PickerCarouselFeatureCycle": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "PillChipSlotCycleHandled": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "PillSlotCycle": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "PortalWipeV2": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "ProductCardProgressiveAssemble": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "PullBackIsolation": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "QuadSplitParallelScenes": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "RadialRipplePhoneChips": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "RadialWave": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "ResearchCardStackScroll": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "ReticleLockOn": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "RisoMisregistrationHit": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "RowEmbed": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "SakugaTimingShift": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ScanBracketSweep": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ScanlineAnnotateFocus": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ScanlineAssembleFlyin": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ScoreSlam": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "SegmentedThumbHero": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "SheenSweepRetry": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "SlideSpotlightPan": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "SplitTextStagger": {
+  "brand": false,
+  "textures": false,
+  "fixtures": true
+ },
+ "SpotlightHeroCard": {
+  "brand": false,
+  "textures": true,
+  "fixtures": false
+ },
+ "SpotlightSweepReveal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "SteepTiltGlide": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "StrokeSegmentBuild": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "TapeScrollFixedPointer": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "Terminal3D": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "TextAsMask": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "TextColumnConverge": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "TextOnPath": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "ThemeSweepToggle": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "TiltReveal": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "TimelineTravel": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "TitleDemoteToLabel": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "TrailerBumper": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "TypeAndFilter": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "TypewriterErrorRetype": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "UiStripAwayOutro": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "UnitDotSwarmRegroupV2": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "ValueStaggerGradient": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "VersusSlam": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "VerticalTicker": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "VerticalWordRollBlurCycle": {
+  "brand": false,
+  "textures": false,
+  "fixtures": false
+ },
+ "VoiceWaveformLive": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "WhipBrakeReal": {
+  "brand": true,
+  "textures": true,
+  "fixtures": false
+ },
+ "WhiteFlashLogoSimplifyCut": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "WireframeDrawOn": {
+  "brand": true,
+  "textures": false,
+  "fixtures": true
+ },
+ "WordRelayFilmstrip": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ },
+ "WordRelayGeometry": {
+  "brand": true,
+  "textures": false,
+  "fixtures": false
+ }
+}

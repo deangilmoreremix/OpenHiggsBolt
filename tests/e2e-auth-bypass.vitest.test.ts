@@ -52,6 +52,14 @@ describe('E2E auth bypass', () => {
     ).toBe(true)
     expect(isE2eAuthBypassAllowed({ ...ok(), headers: headers({ host: 'localhost:3111', 'x-forwarded-for': '::1' }) })).toBe(true)
   })
+  it.each(['/studio/motion-director', '/studio/motion-director/new', '/studio/motion-director/workbench'])('allows the Motion Director page %s (all other conditions holding)', (pathname: string) => {
+    expect(isE2eAuthBypassAllowed({ ...ok(), pathname })).toBe(true)
+  })
+
+  it.each(['/studio/motion-director/other', '/studio/motion-director/new/extra', '/studio/motion-director/'])('does not widen to %s', (pathname: string) => {
+    expect(isE2eAuthBypassAllowed({ ...ok(), pathname })).toBe(false)
+  })
+
   it.each(['/', '/studio', '/api/personalization/discover-assets', '/api/v1/x', '/personalization-demo/extra', '/api/dev-login'])(
     'is off for non-allow-listed path %s',
     (pathname) => {

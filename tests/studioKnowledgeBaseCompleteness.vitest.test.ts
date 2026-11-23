@@ -36,8 +36,8 @@ describe('studioKnowledgeBase content completeness', () => {
     studios = arr;
   });
 
-  it('has 27 studios', () => {
-    expect(studios).toHaveLength(27);
+  it('has 29 studios', () => {
+    expect(studios).toHaveLength(29);
   });
 
   it('every studio has all required documentation fields', () => {

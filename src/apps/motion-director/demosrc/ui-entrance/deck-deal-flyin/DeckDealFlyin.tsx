@@ -27,67 +27,129 @@ import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
 import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
-import layout from '../../_textures/live-layout.json';
+import { SAMPLE_LAYOUT, useLiveLayout, useHasCustomerLayout, type LiveLayout } from '../../_textures/LiveLayoutContext';
 import { MotionStudioMark } from '../../_fixtures/Brand';
-import { liveCard, liveTexture } from '../../_fixtures/liveTexture';
+import { layoutCard, liveTexture } from '../../_fixtures/liveTexture';
+import { isWebRendering } from '../../_fixtures/ExportMode';
+import { cameraStageStyle } from '../../_fixtures/PageCam2D';
 
 export const DECK_DEAL_FLYIN_DURATION = 150;
 
 const L = LOOKS.graphite;
-const cards = layout.projects.cards;
-const PAGE_H = layout.projects.pageH;
 const PAPER = '#f9f6f1';
 
-// 页面板：只取内容区（左右各留一截页边），下方纸面延长容纳 16 张溢出卡
-const BOARD = { x: 352, w: 1216 };
-const COLS = [408, 781.328125, 1154.65625];
 const CARD_W = 357.328125;
-const EXTRA_ROWS = [1795, 2188, 2581, 2974, 3367];
-const BOARD_H = PAGE_H + 2036;
-
-const extras = Array.from({ length: 16 }, (_, i) => ({
-  file: `card${((i * 3 + 2) % 10) + 1}.png`,
-  x: i === 0 ? COLS[2] : COLS[(i - 1) % 3],
-  y: i === 0 ? 1402 : EXTRA_ROWS[Math.floor((i - 1) / 3)],
-  w: CARD_W,
-  h: 312,
-}));
-
-// 牌堆：放在板右侧的桌面上（页面坐标）
-const PILE = { x: 1640, y: 250 };
+const CARD_H = 312;
 const N_CARDS = 26;
 const DEAL_START = 36;
 const STACK_STEP = 3;
-const PILE_CX = PILE.x + CARD_W / 2;
-const PILE_CY = PILE.y + 156;
-
-const grid = [...cards.map((c) => ({ file: c.file, x: c.x, y: c.y, w: c.w, h: c.h })), ...extras]
-  .sort((a, b) => a.y - b.y || a.x - b.x)
-  .map((c, k) => ({
-    ...c,
-    cue: DEAL_START + 4 * k - 0.0792 * k * (k - 1),
-    px: PILE.x + (((k * 7) % 9) - 4) * 2,
-    py: PILE.y + (((k * 5) % 7) - 3) * 2,
-    protZ: ((k * 11) % 7) - 3,
-    pz: (N_CARDS - k) * STACK_STEP,
-  }));
+const SAMPLE_BOARD = { x: 352, w: 1216 };
+const SAMPLE_COLS = [408, 781.328125, 1154.65625];
+const SAMPLE_EXTRA_ROWS = [1795, 2188, 2581, 2974, 3367];
+const SAMPLE_BOARD_H = SAMPLE_LAYOUT.projects.pageH + 2036;
+const SAMPLE_LAST_BOTTOM = 3367 + CARD_H;
+const BOARD_MARGIN = SAMPLE_BOARD_H - SAMPLE_LAST_BOTTOM;
+const GAP_RATIO = 81 / CARD_H;
 
 const HOVER_H = 40;
 const SETTLE_EASE = Easing.bezier(0.3, 0, 0.25, 1.15);
 const DIVE_EASE = Easing.bezier(0.3, 0, 0.2, 1);
 const ANTICIPATE = { from: 26, to: 36, pileDown: 48, topPull: 30 };
 
+type GridCard = { file: string; x: number; y: number; w: number; h: number };
+const median = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
+/** Distinct x positions (columns) of a set of cards. */
+const columnsOf = (xs: number[], tol = 40) => {
+  const out: number[] = [];
+  [...xs].sort((a, b) => a - b).forEach((x) => { if (!out.length || x - out[out.length - 1] > tol) out.push(x); });
+  return out;
+};
+
+/**
+ * The table this shot plays on, from the page's card layout: where the 26 cards end up (the page's own cards, then the
+ * same grid continued below the page), the board they are dealt onto, and the pile beside it.
+ * The sample's layout gives the original numbers exactly; a customer's page gives its own cards, columns and size.
+ */
+const geometryOf = (layout: LiveLayout) => {
+  const customer = Boolean(layout.source?.mapped.includes('projects.cards'));
+  const pageCards = layout.projects.cards;
+  const PAGE_H = layout.projects.pageH;
+  let BOARD = SAMPLE_BOARD;
+  let cardW = CARD_W;
+  let cardH = CARD_H;
+  let BOARD_H = PAGE_H + 2036;
+  let extras: GridCard[];
+  if (!customer) {
+    extras = Array.from({ length: 16 }, (_, i) => ({
+      file: `card${((i * 3 + 2) % 10) + 1}.png`,
+      x: i === 0 ? SAMPLE_COLS[2] : SAMPLE_COLS[(i - 1) % 3],
+      y: i === 0 ? 1402 : SAMPLE_EXTRA_ROWS[Math.floor((i - 1) / 3)],
+      w: CARD_W,
+      h: CARD_H,
+    }));
+  } else {
+    cardW = median(pageCards.map((c) => c.w));
+    cardH = median(pageCards.map((c) => c.h));
+    const cols = columnsOf(pageCards.map((c) => c.x)).slice(0, 4);
+    const gapY = Math.round(cardH * GAP_RATIO);
+    const left = Math.max(0, Math.min(...pageCards.map((c) => c.x)) - 56);
+    const right = Math.min(1920, Math.max(...pageCards.map((c) => c.x + c.w)) + 56);
+    BOARD = { x: left, w: right - left };
+    const bottom = Math.max(...pageCards.map((c) => c.y + c.h));
+    const count = Math.max(0, N_CARDS - pageCards.length);
+    extras = Array.from({ length: count }, (_, i) => ({
+      file: pageCards[(i * 3 + 2) % pageCards.length].file,
+      x: cols[i % cols.length],
+      y: bottom + gapY + Math.floor(i / cols.length) * (cardH + gapY),
+      w: cardW,
+      h: cardH,
+    }));
+    const last = extras.length ? Math.max(...extras.map((e) => e.y + e.h)) : bottom;
+    BOARD_H = last + BOARD_MARGIN;
+  }
+  // The pile sits on the table to the right of the board, in page coordinates.
+  const PILE = customer ? { x: BOARD.x + BOARD.w + 72, y: 250 } : { x: 1640, y: 250 };
+  const PILE_CX = PILE.x + cardW / 2;
+  const PILE_CY = PILE.y + cardH / 2;
+  const grid = [...pageCards.map((c) => ({ file: c.file, x: c.x, y: c.y, w: c.w, h: c.h })), ...extras]
+    .slice(0, N_CARDS)
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((c, k) => ({
+      ...c,
+      cue: DEAL_START + 4 * k - 0.0792 * k * (k - 1),
+      px: PILE.x + (((k * 7) % 9) - 4) * 2,
+      py: PILE.y + (((k * 5) % 7) - 3) * 2,
+      protZ: ((k * 11) % 7) - 3,
+      pz: (N_CARDS - k) * STACK_STEP,
+    }));
+  return { customer, PAGE_H, BOARD, BOARD_H, PILE, PILE_CX, PILE_CY, grid, cardW, pageCards, anchors: anchorsOf(customer, { BOARD, BOARD_H, PILE_CX, PILE_CY, cardW }) };
+};
+
 // ───────────── 相机：单调三次 Hermite 样条（各参数分别过锚点，关键帧处速度连续） ─────────────
 type Cam = { cx: number; cy: number; zoom: number; rotX: number; rotY: number; rotZ: number; persp: number; sx: number };
 type Key = Cam & { frame: number };
-const ANCHORS: Key[] = [
-  { frame: 0, cx: PILE_CX - 40, cy: PILE_CY + 60, zoom: 1.9, rotX: 48, rotY: -30, rotZ: 9, persp: 1100, sx: 0 },
-  { frame: 30, cx: PILE_CX + 20, cy: PILE_CY + 40, zoom: 1.8, rotX: 42, rotY: 24, rotZ: -6, persp: 1100, sx: 0 },
-  { frame: 62, cx: 1080, cy: 760, zoom: 0.8, rotX: 22, rotY: 0, rotZ: 2, persp: 1700, sx: 0 },
-  { frame: 86, cx: 980, cy: 1720, zoom: 0.56, rotX: 38, rotY: -4, rotZ: -10, persp: 2500, sx: 120 },
-  { frame: 110, cx: 960, cy: 2150, zoom: 0.5, rotX: 52, rotY: -6, rotZ: -26, persp: 3300, sx: 300 },
-  { frame: 150, cx: 960, cy: 2160, zoom: 0.508, rotX: 52, rotY: -6, rotZ: -26, persp: 3300, sx: 300 },
-];
+/**
+ * The authored camera. The first two keys frame the pile (they follow it wherever it sits and scale with the card);
+ * the rest frame the board (its width and its length). With the sample's board these are the original numbers.
+ */
+const anchorsOf = (customer: boolean, g: { BOARD: { x: number; w: number }; BOARD_H: number; PILE_CX: number; PILE_CY: number; cardW: number }): Key[] => {
+  const kc = customer ? g.cardW / CARD_W : 1;
+  const kx = customer ? g.BOARD.w / SAMPLE_BOARD.w : 1;
+  const ky = customer ? g.BOARD_H / SAMPLE_BOARD_H : 1;
+  const bcx = g.BOARD.x + g.BOARD.w / 2;
+  const X = (x: number) => (customer ? bcx + (x - 960) * kx : x);
+  const Y = (y: number) => (customer ? y * ky : y);
+  const zp = (z: number) => z / kc;
+  const zb = (z: number) => z / kx;
+  return [
+    { frame: 0, cx: g.PILE_CX - 40 * kc, cy: g.PILE_CY + 60 * kc, zoom: zp(1.9), rotX: 48, rotY: -30, rotZ: 9, persp: 1100, sx: 0 },
+    { frame: 30, cx: g.PILE_CX + 20 * kc, cy: g.PILE_CY + 40 * kc, zoom: zp(1.8), rotX: 42, rotY: 24, rotZ: -6, persp: 1100, sx: 0 },
+    { frame: 62, cx: X(1080), cy: Y(760), zoom: zb(0.8), rotX: 22, rotY: 0, rotZ: 2, persp: 1700, sx: 0 },
+    { frame: 86, cx: X(980), cy: Y(1720), zoom: zb(0.56), rotX: 38, rotY: -4, rotZ: -10, persp: 2500, sx: 120 },
+    { frame: 110, cx: X(960), cy: Y(2150), zoom: zb(0.5), rotX: 52, rotY: -6, rotZ: -26, persp: 3300, sx: 300 },
+    { frame: 150, cx: X(960), cy: Y(2160), zoom: zb(0.508), rotX: 52, rotY: -6, rotZ: -26, persp: 3300, sx: 300 },
+  ];
+};
 const PARAMS: (keyof Cam)[] = ['cx', 'cy', 'zoom', 'rotX', 'rotY', 'rotZ', 'persp', 'sx'];
 const hermite = (xs: number[], ys: number[]) => {
   const n = xs.length;
@@ -109,8 +171,8 @@ const hermite = (xs: number[], ys: number[]) => {
     return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
   };
 };
-const CURVES = Object.fromEntries(PARAMS.map((p) => [p, hermite(ANCHORS.map((k) => k.frame), ANCHORS.map((k) => k[p]))])) as Record<keyof Cam, (x: number) => number>;
-const camAt = (f: number): Cam => Object.fromEntries(PARAMS.map((p) => [p, CURVES[p](f)])) as Cam;
+const curvesOf = (anchors: Key[]) => Object.fromEntries(PARAMS.map((p) => [p, hermite(anchors.map((k) => k.frame), anchors.map((k) => k[p]))])) as Record<keyof Cam, (x: number) => number>;
+const camAt = (curves: ReturnType<typeof curvesOf>, f: number): Cam => Object.fromEntries(PARAMS.map((p) => [p, curves[p](f)])) as Cam;
 
 // ───────────── 拉丝石墨桌面纹理（确定性 feTurbulence：x 极低频 / y 高频 = 横向拉丝） ─────────────
 const BRUSH_TILE = (() => {
@@ -127,7 +189,17 @@ const T = 4000; // 桌面平面外扩（页面坐标），任意斜角不穿帮
 
 export const DeckDealFlyin: React.FC = () => {
   const frame = useCurrentFrame();
-  const cam = camAt(frame);
+  const layout = useLiveLayout();
+  useHasCustomerLayout();
+  const g = React.useMemo(() => geometryOf(layout), [layout]);
+  const { PAGE_H, BOARD, BOARD_H, PILE_CX, PILE_CY, grid, customer } = g;
+  const curves = React.useMemo(() => curvesOf(g.anchors), [g]);
+  const cam = camAt(curves, frame);
+  // The page picture under the board: a customer's own empty plate, else their page with every card slot painted out
+  // (the cards are dealt onto those slots, so no second copy may show beneath them).
+  const plateUrl = liveTexture('projects-empty.png');
+  const pageUrl = liveTexture('projects-full.png');
+  const hasPlate = Boolean(layout.source?.mapped.includes('plate'));
 
   // 板面"灯亮"：f34→64 以牌堆为圆心的柔边光圈把暗板照亮
   const lightUp = interpolate(frame, [34, 64], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.bezier(0.5, 0, 0.6, 1) });
@@ -160,21 +232,19 @@ export const DeckDealFlyin: React.FC = () => {
 
       {/* 3D 相机（PageCam2D 同款坐标数学：CSS zoom 做放大，Q2 文字按放大后尺寸栅格化） */}
       <AbsoluteFill style={{ transform: `translateX(${cam.sx.toFixed(2)}px)` }}>
-        <div style={{ position: 'absolute', inset: 0, perspective: `${persp.toFixed(2)}px`, perspectiveOrigin: '960px 540px' }}>
+        <div style={{ position: 'absolute', inset: 0, ...(isWebRendering() ? {} : { perspective: `${persp.toFixed(2)}px`, perspectiveOrigin: '960px 540px' }) }}>
           <div
             style={{
-              position: 'absolute', width: 1920, height: BOARD_H, zoom: cam.zoom,
-              transform: `translate(${(960 / cam.zoom - cam.cx).toFixed(3)}px, ${(540 / cam.zoom - cam.cy).toFixed(3)}px) rotateY(${cam.rotY.toFixed(3)}deg) rotateX(${cam.rotX.toFixed(3)}deg) rotateZ(${cam.rotZ.toFixed(3)}deg)`,
-              transformOrigin: `${cam.cx.toFixed(2)}px ${cam.cy.toFixed(2)}px`,
-              transformStyle: 'preserve-3d',
+              position: 'absolute', width: 1920, height: BOARD_H,
+              ...cameraStageStyle(cam),
             }}
           >
             {/* 石墨桌面：远处柔边隐进暗场 */}
             <div
               style={{
                 position: 'absolute', left: -T, top: -T, width: 1920 + 2 * T, height: BOARD_H + 2 * T, background: tableBg,
-                WebkitMaskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
-                maskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + 960}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
+                WebkitMaskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + BOARD.x + BOARD.w / 2}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
+                maskImage: `radial-gradient(ellipse ${2600}px ${3600}px at ${T + BOARD.x + BOARD.w / 2}px ${T + BOARD_H / 2}px, #000 40%, transparent 100%)`,
               }}
             />
 
@@ -186,9 +256,18 @@ export const DeckDealFlyin: React.FC = () => {
                 boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 60px 160px rgba(0,0,0,0.7), 0 12px 40px rgba(0,0,0,0.5)',
               }}
             >
-              <Img src={liveTexture('projects-empty.png')} style={{ position: 'absolute', left: -BOARD.x, top: 0, width: 1920, height: PAGE_H }} />
+              {customer && !hasPlate ? (
+                <>
+                  <Img src={pageUrl} style={{ position: 'absolute', left: -BOARD.x, top: 0, width: 1920, height: PAGE_H }} />
+                  {g.pageCards.map((c, i) => (
+                    <div key={`slot-${i}`} style={{ position: 'absolute', left: c.x - BOARD.x - 2, top: c.y - 2, width: c.w + 4, height: c.h + 4, background: layout.projects.bg ?? PAPER }} />
+                  ))}
+                </>
+              ) : (
+                <Img src={customer ? plateUrl : liveTexture('projects-empty.png')} style={{ position: 'absolute', left: -BOARD.x, top: 0, width: 1920, height: PAGE_H }} />
+              )}
               {/* 纸面延长段的分区小标（与截图同款排版：大写字距 + 计数） */}
-              <div style={{ position: 'absolute', left: 408 - BOARD.x, top: PAGE_H + 6, width: 1104, height: 1, background: 'rgba(60,45,30,0.08)' }} />
+              <div style={{ position: 'absolute', left: (customer ? BOARD.x + 56 : 408) - BOARD.x, top: PAGE_H + 6, width: BOARD.w - 112, height: 1, background: 'rgba(60,45,30,0.08)' }} />
               {/* 板面暗层：开场整块板在暗处，灯从牌堆处亮开（柔边光圈） */}
               {lightUp < 1 && (
                 <div
@@ -251,7 +330,7 @@ export const DeckDealFlyin: React.FC = () => {
                         opacity: 0.28 * (1 - diveT), filter: 'blur(7px)', borderRadius: 16, overflow: 'hidden',
                       }}
                     >
-                      <Img src={liveCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      <Img src={layoutCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                     </div>
                   ) : null}
                   <div
@@ -260,7 +339,7 @@ export const DeckDealFlyin: React.FC = () => {
                       transform, boxShadow: shadow, borderRadius: 16, overflow: 'hidden',
                     }}
                   >
-                    <Img src={liveCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                    <Img src={layoutCard(i, c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                     {pileShade > 0.005 && <div style={{ position: 'absolute', inset: 0, background: `rgba(10,10,12,${pileShade.toFixed(3)})` }} />}
                   </div>
                 </div>

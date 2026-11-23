@@ -39,7 +39,8 @@ export async function recordPageEvent(pageId, { kind, contactId = null }) {
   }
 }
 /** @param {{ pageId: string, contactId?: string | null, data: Record<string, string> }} lead */
-export const submitPageLead = ({ pageId, contactId = null, data }) => call(`/${encodeURIComponent(pageId)}/lead`, { method: 'POST', body: { contactId, data } });
+/** @param {{ pageId: string, contactId?: string | null, data: Record<string, string>, kind?: string }} lead */
+export const submitPageLead = ({ pageId, contactId = null, data, kind = 'lead-form' }) => call(`/${encodeURIComponent(pageId)}/lead`, { method: 'POST', body: { contactId, data, kind } });
 
 // contacts (owner)
 export const listContacts = async (pageId) => (await call(`/${encodeURIComponent(pageId)}/contacts`)).contacts;
@@ -60,3 +61,22 @@ export const syncConnect = (apiKey) => sync('PUT', { apiKey });
 export const syncDisconnect = () => sync('DELETE');
 export const syncGroups = async () => (await sync('POST', { action: 'groups' })).groups;
 export const syncPush = (pageId, groupId, offset = 0) => sync('POST', { action: 'push', pageId, groupId: groupId || null, offset });
+
+// leads, delivery settings and heat maps
+export const listPageLeads = async (id) => (await call(`/${encodeURIComponent(id)}/leads`)).leads;
+export const getFormSettings = async (id) => (await call(`/${encodeURIComponent(id)}/form-settings`)).settings;
+export const saveFormSettings = async (id, settings) => (await call(`/${encodeURIComponent(id)}/form-settings`, { method: 'PUT', body: { settings } })).settings;
+export const testFormWebhooks = async (id) => (await call(`/${encodeURIComponent(id)}/form-settings/test`, { method: 'POST', body: {} })).results;
+export const fetchPageHeat = async (id, { days = 30, viewport = 'all' } = {}) => (await call(`/${encodeURIComponent(id)}/heat?days=${days}&viewport=${encodeURIComponent(viewport)}`)).heat;
+
+/**
+ * Best-effort heat samples from the public page; a failed send is dropped.
+ * @param {string} pageId @param {{ session: string, events: any[], contactId?: string | null }} sample
+ */
+export async function recordPageHeat(pageId, { session, events, contactId = null }) {
+  try {
+    await call(`/${encodeURIComponent(pageId)}/heat`, { method: 'POST', body: { session, events, contactId }, keepalive: true });
+  } catch {
+    // tracking never breaks the page
+  }
+}

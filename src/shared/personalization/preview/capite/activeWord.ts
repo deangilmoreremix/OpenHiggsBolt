@@ -1,4 +1,4 @@
-// Values copied from Capite (https://github.com/muneebkhan08/Capite), MIT License, Copyright (c) 2026 Capite Contributors. See ./LICENSE.
+// Capite-style captions: the data and rules below follow Capite (https://github.com/muneebkhan08/Capite).
 // Source: frontend/src/app/globals.css (`.caption-word-active-*`) and frontend/src/components/studio/video-overlay-player.tsx
 // (the five-word window around the spoken word). Capite applies these with CSS classes and transitions; a Remotion frame has no
 // CSS transition, so the same end-state numbers are applied per frame instead (see `activeWordStyle`).

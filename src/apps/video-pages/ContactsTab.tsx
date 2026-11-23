@@ -11,7 +11,7 @@ import { ui } from './ui'
 type Contact = { id: string; fields: Record<string, string>; created_at: string }
 type Activity = { contactId: string; views: number; plays: number; maxProgress: number; ctaClicks: number; leads: number; lastSeen: string | null }
 
-const FIELD_LABELS: Record<string, string> = { firstname: 'First name', lastname: 'Last name', company: 'Company', companylogo: 'Company logo (https)', role: 'Role', city: 'City', custom1: 'Custom 1', custom2: 'Custom 2', custom3: 'Custom 3', email: 'Email' }
+const FIELD_LABELS: Record<string, string> = { firstname: 'First name', lastname: 'Last name', company: 'Company', companylogo: 'Company logo (https)', role: 'Role', city: 'City', custom1: 'Custom 1', custom2: 'Custom 2', custom3: 'Custom 3 (or a personal picture link)', email: 'Email' }
 
 /** Personal links: one link per contact (/p/<id>?c=<contact>), CSV import, export and who watched. */
 export default function ContactsTab({ pageId, published }: { pageId: string; published: boolean }) {

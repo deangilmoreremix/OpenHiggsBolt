@@ -6,15 +6,35 @@ import { fontStackById } from './presets'
 import { hexWithAlpha } from './effects'
 import { ACTIVE_WORD, visibleWordRange } from './capite/activeWord'
 import { displayScale, scriptFor, withScriptFonts } from '../captions/scripts'
+import { captionFontByName, captionFontStack } from '../captions/capiteFonts'
+import { StudioCaptionLine } from './StudioCaptionLine'
+import { CaptionFontGate } from '../captions/capiteFontLoader'
+import { resolveCasing, resolveWeight, textTransformOf } from '../captions/captionCustom'
 
 /**
  * The caption line on screen at this frame, with the spoken word highlighted. Plain text, a rounded box and a text shadow, which
  * the browser exporter draws (a box radius of half the line height, not 999px, as the exporter does not clamp it). The live Player,
  * the editor and the export all draw it with this one component.
  */
-export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; compH: number; fontFamily?: string }> = ({ captions, compH, fontFamily }) => {
+type LayerProps = { captions: CaptionSettings | undefined; compH: number; fontFamily?: string }
+
+/** The layer, with a gate that holds the preview and the export until a chosen font (or a Capite look's own) is embedded and loaded. */
+export const CaptionsLayer: React.FC<LayerProps> = (props) => {
+  const st = props.captions?.style
+  const gated = props.captions?.enabled && captionFontByName(st?.fontFamily)
+  return (
+    <>
+      {gated ? <CaptionFontGate name={st?.fontFamily} weight={resolveWeight(st?.weight, st?.bold ?? true)} italic={st?.italic} /> : null}
+      <CaptionsLayerLine {...props} />
+    </>
+  )
+}
+
+const CaptionsLayerLine: React.FC<LayerProps> = ({ captions, compH, fontFamily }) => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps, width } = useVideoConfig()
+  // Captions designed in the Caption Studio carry their own pages and style: drawn by the same layout the Studio uses.
+  if (captions?.enabled && captions.studio) return <StudioCaptionLine studio={captions.studio} ms={(frame / fps) * 1000} width={width} height={compH} fallbackStack={fontStackById(fontFamily)} zIndex={900} />
   if (!captions?.enabled || captions.cues.length === 0) return null
   const cue = activeCue(captions.cues, frame, fps)
   if (!cue) return null
@@ -35,16 +55,16 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
       : st.position === 'top' ? { top: edge } : st.position === 'middle' ? { top: '50%', marginTop: -fontSize } : { bottom: edge }
   return (
     <AbsoluteFill style={{ zIndex: 900, pointerEvents: 'none', opacity, transform: rise ? `translateY(${rise * compH}px)` : undefined }} data-testid="captions-layer">
-      <div style={{ position: 'absolute', left: '5%', right: '5%', display: 'flex', justifyContent: 'center', ...place }}>
+      <div style={{ position: 'absolute', left: '5%', right: '5%', display: 'flex', justifyContent: 'center', ...place, ...(st.offsetY ? { transform: `translateY(${Math.round(-st.offsetY * compH * 100) / 100}px)` } : {}) }}>
         <div
           data-testid="caption-line"
           style={{
             maxWidth: '100%',
             textAlign: 'center',
-            fontFamily: withScriptFonts(fontStackById(fontFamily), script),
+            fontFamily: withScriptFonts(captionFontStack(st.fontFamily, fontStackById(fontFamily)), script),
             ...(script.rtl ? { direction: 'rtl' as const } : {}),
             fontSize,
-            fontWeight: st.bold ? 800 : 500,
+            fontWeight: resolveWeight(st.weight, st.bold),
             lineHeight: 1.2,
             letterSpacing: st.letterSpacing !== undefined ? `${st.letterSpacing}em` : st.uppercase ? '0.02em' : '-0.005em',
             wordSpacing: st.wordSpacing ? `${st.wordSpacing}em` : undefined,
@@ -74,7 +94,7 @@ export const CaptionsLayer: React.FC<{ captions: CaptionSettings | undefined; co
                   data-active={w.active ? '1' : '0'}
                   style={{
                     color: karaoke ? 'transparent' : boxed ? st.color : w.active ? st.highlightColor : st.color,
-                    textTransform: st.uppercase ? 'uppercase' : undefined,
+                    textTransform: textTransformOf(resolveCasing(st.casing, st.uppercase)),
                     ...(scale !== 1 || rise ? { display: 'inline-block', transform: `translateY(${(rise * fontSize).toFixed(2)}px) scale(${scale.toFixed(3)})` } : {}),
                     ...(glow ? { display: 'inline-block', filter: `drop-shadow(0 0 ${glow[0]}em ${st.highlightColor}) drop-shadow(0 0 ${glow[1]}em ${st.highlightColor})` } : {}),
                     ...(boxed && look?.box ? { display: 'inline-block', background: st.highlightColor, borderRadius: `${look.box.radius}em`, padding: `${look.box.padY}em ${look.box.padX}em`, WebkitTextStroke: undefined } : {}),

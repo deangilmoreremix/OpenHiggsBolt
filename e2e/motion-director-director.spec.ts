@@ -71,7 +71,7 @@ async function mockDirector(page: Page) {
         logo: CAPTURE_LOGO,
         // Upstream-style capture: more routes of the site, and what it says about itself.
         pages: [
-          { name: 'home', path: '/', url: CAPTURE_PAGE, width: 3840, height: 3492, layout: { pageH: 1746, sections: [], cards: [] } },
+          { name: 'home', path: '/', url: CAPTURE_PAGE, width: 3840, height: 3492, layout: { pageH: 1746, sections: [], cards: [0, 1, 2, 3, 4, 5].map((i) => ({ x: 200 + (i % 3) * 520, y: 300 + Math.floor(i / 3) * 420, width: 480, height: 380 })) } },
           { name: 'pricing', path: '/pricing', url: CAPTURE_PRICING, width: 3840, height: 2400, layout: { pageH: 1200, sections: [], cards: [] } },
         ],
         cutouts: { nav: null, search: null, button: null },
@@ -123,7 +123,8 @@ async function mockDirector(page: Page) {
           scenes: [
             { kind: 'title', recipeId: '', durationSec: 2.5, headline: 'Meet *Acme*', caption: 'The new way to ship', transition: 'cut' },
             { kind: 'shot', recipeId: 'camera/crash-zoom-punch/CrashImpactReal', durationSec: 4.5, headline: 'Your real product', caption: 'LIVE PAGES', transition: 'flash', feature: 'Plan in minutes', action: 'cards deal in', asset: 'hero section of your page', sfx: 'impact on the flash' },
-            { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 5, headline: 'Every release counts', caption: '', transition: 'cut' },
+            // The scene carries the mapped feature, so the release check (lib/releaseCheck.ts) finds it covered and swaps nothing.
+            { kind: 'shot', recipeId: 'effects/impact-feedback/HitCounter', durationSec: 5, headline: 'Every release counts', caption: '', transition: 'cut', feature: 'Release with confidence' },
             { kind: 'title', recipeId: '', durationSec: 3, headline: 'Try *Acme* today', caption: 'acme.example.com', transition: 'cut' },
           ],
         },
@@ -156,8 +157,8 @@ test.describe('Motion Studio director', () => {
     // Each storyboard row says what the scene shows and does.
     await expect(plan).toContainText('shows: hero section of your page');
     await expect(plan).toContainText('sound: impact on the flash');
-    await expect(page.getByText('Captured Acme · 2 pages (/, /pricing) · 1 card crops · logo · 1 site image')).toBeVisible();
-    await expect(page.getByText('Read the site: "Ship faster with Acme" · 2 sections')).toBeVisible();
+    // What was captured is shown in the Capture step; the site's own words reach the director (checked below via planCapture).
+    await expect(page.getByTestId('film-steps').locator('[data-step="capture"]')).toContainText('2 pages (/, /pricing) · 1 card crops · logo · 1 site image');
     // The director is given the site's own words and every captured route.
     expect(calls.planCapture).toMatchObject({ pages: ['/', '/pricing'], content: { headline: 'Ship faster with Acme', ctas: ['Start free'] } });
     // The assets pulled from the site are shown in the chat.
@@ -177,13 +178,30 @@ test.describe('Motion Studio director', () => {
     const titles = all.filter((c: any) => c.cardId === 'inkpress-title-card');
     expect(titles.length).toBeGreaterThan(0);
     for (const t of titles) expect(t.props.logo).toBe(CAPTURE_LOGO);
-    expect(all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops[0]).toBe(CAPTURE_IMAGE);
+    // Each scene takes its own pictures from the catalogue (lib/assignPictures), so the card slots hold the
+    // site's own pictures (its card crop and image), not the sample ones.
+    const cardSlots: string[] = all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops ?? [];
+    expect(cardSlots.length).toBeGreaterThan(0);
+    for (const url of cardSlots) expect([CAPTURE_CROP, CAPTURE_IMAGE]).toContain(url);
     // Every captured route is a screen of the product shots, the page asked for first.
     expect(all.find((c: any) => Array.isArray(c.props?.screens))?.props.screens.slice(0, 2)).toEqual([CAPTURE_PAGE, CAPTURE_PRICING]);
-    // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
-    // + 1 flash cut + 3 sound effects (one per scene change) + background
-    // + 1 site inset (the Hit Counter shot draws its own UI, so it gets a picture of the site)
-    await expect(page.locator('.clip')).toHaveCount(12, { timeout: 30_000 });
+    // The film's clips, by kind: the opener title card, the two shots, the closing title turned into the
+    // site's logo reveal, 2 caption strips (one per shot), 1 connected seam (the flash), the site inset (the Hit
+    // Counter shot draws its own UI), the background, and 8 audio clips: 3 scene-change sounds, the title's
+    // stamp, the logo reveal's impact + riser + sparkle, and the library music track a film gets when none is attached.
+    const byCard = (await savedClips()).reduce((m: Record<string, number>, c: any) => ({ ...m, [c.cardId]: (m[c.cardId] ?? 0) + 1 }), {});
+    expect(byCard).toEqual({
+      'inkpress-title-card': 1,
+      'demo:CrashImpactReal': 1,
+      'demo:HitCounter': 1,
+      'brand-logo-reveal': 1,
+      'inkpress-caption': 2,
+      'connected-seam': 1,
+      'site-inset': 1,
+      'bg-paper': 1,
+      'audio-clip': 8,
+    });
+    await expect(page.locator('.clip')).toHaveCount(17, { timeout: 30_000 });
 
     // The product shot renders the captured page, not the sample texture.
     // Seek into the product shot (2.5s–7s) by clicking the ruler above it.
@@ -230,12 +248,15 @@ test.describe('Motion Studio director', () => {
     await expect(film).toBeVisible({ timeout: 120_000 });
     await expect(film).toContainText('1920×1080 · 30 fps');
     await expect(film.locator('.__remotion-player')).toBeVisible();
-    await expect(chat).toContainText('Your film is ready');
-    // The seven workflow steps, Product → Deliver, all ran.
+    await expect(chat).toContainText('The draft:');
+    // The first six workflow steps ran. Deliver waits for an MP4: a built film is not a delivered one.
     const steps = page.getByTestId('film-steps');
-    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa', 'deliver']) {
+    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat']) {
       await expect(steps.locator(`[data-step="${id}"]`)).toHaveAttribute('data-state', 'done');
     }
+    // This test's director has no reviewer (no key): the QA step is a warning (technical checks passed, film not independently reviewed), never done.
+    await expect(steps.locator('[data-step="qa"]')).toHaveAttribute('data-state', 'warning');
+    await expect(steps.locator('[data-step="deliver"]')).toHaveAttribute('data-state', 'todo');
     await expect(steps.locator('[data-step="capture"]')).toContainText('1 card crops · logo · 1 site image');
     await expect(page.getByTestId('film-render')).toBeVisible();
     await captureEvidence(page, `${OUT}/chat-film-desktop.png`, { minBytes: 10 * 1024 });
@@ -272,7 +293,8 @@ test.describe('Motion Studio director', () => {
   });
 
   test('chat: Render MP4 encodes the film in the browser with the Remotion web renderer', async ({ page }) => {
-    test.setTimeout(15 * 60 * 1000);
+    // Measured in this sandbox (Round 9): the in-browser render of this 22 s film takes 15.9 min, so the caps leave room for it.
+    test.setTimeout(40 * 60 * 1000);
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>
       route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
@@ -289,9 +311,11 @@ test.describe('Motion Studio director', () => {
     await page.getByTestId('film-render').click();
     await expect(page.getByTestId('film-render-status')).toContainText('keep it open');
     const link = page.getByTestId('film-download');
-    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(link).toBeVisible({ timeout: 35 * 60 * 1000 });
     const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
     expect(download.suggestedFilename()).toMatch(/\.mp4$/);
+    // The MP4 exists now, so the Deliver step is done.
+    await expect(page.getByTestId('film-steps').locator('[data-step="deliver"]')).toHaveAttribute('data-state', 'done');
     const bytes = await (await import('node:fs/promises')).readFile((await download.path())!);
     expect(bytes.length).toBeGreaterThan(20_000);
     // ISO-BMFF: an `ftyp` box at offset 4.
@@ -314,7 +338,7 @@ test.describe('Motion Studio director', () => {
     await agentInput.fill('render the MP4');
     await agentInput.press('Enter');
     await expect(page.getByText(/Rendering the MP4 with Remotion/)).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 35 * 60 * 1000 });
   });
 
   test('chat: an attached video is cut into the film, and Fast draft renders a 720p MP4', async ({ page }) => {
@@ -603,6 +627,13 @@ test.describe('Motion Studio director', () => {
     await expect(plan).not.toContainText('Crash Impact Real');
     expect(calls.planPrompt).toContain('Bold launch');
     expect(calls.planPrompt).toContain('Plan in minutes');
+    // The run records what happened: direction and mapping were done WITH the person (completed, theirs), not skipped.
+    const run = await page.evaluate(() => JSON.parse(localStorage.getItem('motion-director:run-v1') ?? 'null')?.run);
+    expect(run.mode).toBe('cocreate');
+    expect(run.stages.direction.status).toBe('completed');
+    expect(run.stages.mapping.status).toBe('completed');
+    expect(run.stages.direction.waiver).toBeUndefined();
+    expect(run.stages.mapping.waiver).toBeUndefined();
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {

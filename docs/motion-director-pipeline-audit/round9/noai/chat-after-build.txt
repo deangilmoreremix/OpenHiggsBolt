@@ -1,0 +1,94 @@
+01
+✓
+Product
+Your web page
+https://www.connections.com/
+02
+✓
+Capture
+Real page assets
+1 page (/) · 4 card crops · logo · 2 site images
+03
+✓
+Storyboard
+Shot recipe cards
+recorded with the storyboard
+04
+✓
+Animate
+Remotion code
+Personalised 3 of 3 shots: 0 adapted, 3 parameterised, 0 unmodified
+05
+✓
+Beat sync
+Sound design
+9 SFX hits · cuts on the beat of house-vibez
+06
+Frame QA
+Render + inspect
+the independent reviewer did not run
+07
+Deliver
+Editable outputs
+Render the MP4 to finish
+Create a cinematic 25-second promotional video for https://www.connections.com/ using its actual website, images, branding, and services.
+05:24 AM
+I can build this with the Ink Press template — a validated launch film: a bold paper-and-ink title card, your real pages in product shots (spotlight-hero-card → deck-deal-flyin → row-embed → crash-zoom → page-waterfall-wall), caption strips, flash cuts on the beat, whoosh and impact sound design, and a launch outro. It is the fastest path: your screenshots, copy and logo dropped into a template that is already tuned.
+
+Use Ink Press? Or I can let the director pick shots from the whole library — or name the shot cards you want (e.g. “use deck-deal-flyin and row-embed”). Or choose “Work it out together”: I read your site, propose the product check, a visual direction and a shot plan, and you confirm each step before I write the storyboard.
+05:24 AM
+Create without AI.
+05:24 AM
+I read South Florida’s Premier Managed IT | Connections for Business — it says “Finally, a Cure for Your IT Headaches”, with calls to action “FREE RISK ASSESSMENT”, “SCHEDULE YOUR FREE AUDIT”, “VIEW MORE TESTIMONIALS”. I captured 1 page, 4 card crops, 2 site images, the logo to use in the film.
+05:24 AM
+Product brief: Connections for Business · services (from: services, managed it) · aim: promote the business · for businesses that need the service · Features to show: Identify & Secure; Initiate & Relieve; Assess & Lead; Plan & Resolve; Align & Realign · Material: 1 site page, logo, 20 text lines
+
+Visual direction: services · Steady and trustworthy — A confident, clear, trustworthy film for businesses that need the service. Why: derived from the site, no model. Trade-off: no creative variation from a language model.
+
+Release check: 7/7 ✓
+05:24 AM
+Storyboard “Connections for Business — shot film” — 6 scenes, 25s, using your captured pages:
+1. 0:00–0:02 · Title card · on screen: “Meet Connections for Business.” · caption: Finally, a Cure for Your IT Headaches
+2. 0:02–0:05 · People & pictures · message: The people and pictures · on screen: “Identify & Secure” · motion: the site's own pictures, one after another · shows: your images · caption: Identify & Secure · bottom-push cut
+3. 0:05–0:11 · Multiplane · on screen: “Up close on the details.” · caption: Identify & Secure · bottom-push cut
+4. 0:11–0:17 · Freeze Annotate · on screen: “On the beat.” · caption: Initiate & Relieve · wipe cut
+5. 0:17–0:22 · Page Waterfall Wall · on screen: “Every page, live.” · caption: Assess & Lead
+6. 0:22–0:25 · Title card · on screen: “Try Connections for Business today.” · caption: FREE RISK ASSESSMENT
+
+Approve to build the film, ask me why I chose something, or tell me what to change.
+05:24 AM
+Draft passed the technical checks · independent review pending.
+The draft: 25s at 1920×1080, 30 fps, Transitions / Captions / Shots / Background / SFX / Music tracks.
+Personalised 3 of 3 shots: 0 adapted, 3 parameterised, 0 unmodified.
+Shot adaptation did not run: created without AI: the original recipes are personalised through their own supported inputs, no source is rewritten.
+Frame QA passed (20 frames rendered).
+Review against the shot cards' checklist: 15 passed.
+Play it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.
+05:25 AM
+AI creative review: not performed (this film was created without AI, no model was called). Draft passed the technical checks · independent review unavailable (AI creative review not performed (created without AI)) It can still be previewed, edited in the Workbench and exported as an MP4.
+05:25 AM
+↺ New film
+✓ Sorted the site's pictures: 3 pages · 10 photos
+✓ Each scene gets its own pictures: 13 different pictures across 4 scenes
+✓ Cuts snapped to the beat of house-vibez
+✓ Filled the shots with your site’s own words
+✓ Beat sync measured: 4 of 5 cuts within 3 frames of a beat (worst 6.2 frames), 5 on a kick or a downbeat
+✓ Shot adaptation skipped: created without AI: the original recipes are personalised through their own supported inputs, no source is rewritten
+✓ Film built · 6 tracks
+✓ Frame QA · 20 frames render cleanly
+From South Florida’s Premier Managed IT | Connections for Business:
+FINAL FILM
+Connections for Business — shot film
+1920×1080 · 30 fps · h264
+Meet
+Connections
+for
+Business.
+FINALLY, A CURE FOR YOUR IT HEADACHES
+0:00 / 0:26
+Render MP4
+Fast draft · 1280×720
+Render without music
+Faster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.
+~3 min to render
+Open in Motion Workbench

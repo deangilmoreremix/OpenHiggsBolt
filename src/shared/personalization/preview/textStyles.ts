@@ -151,6 +151,11 @@ function extraCaptionFields(raw: Record<string, unknown>): Partial<CaptionLook> 
   if (n.wordSpacing !== undefined) out.wordSpacing = n.wordSpacing
   if (n.windowed) out.windowed = true
   if (n.category) out.category = n.category
+  if (n.fontFamily) out.fontFamily = n.fontFamily
+  if (n.weight) out.weight = n.weight
+  if (n.casing) out.casing = n.casing
+  if (n.offsetY !== undefined) out.offsetY = n.offsetY
+  if (n.keepClear === false) out.keepClear = false
   return out
 }
 

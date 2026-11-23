@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import { planToProject } from '../lib/buildFilm';
 import type { DirectorPlan } from '../lib/directorPlan';
-import type { AdaptRequest } from '../lib/directorClient';
+import { DirectorError, type AdaptRequest } from '../lib/directorClient';
 import { adaptFilm, adaptShot, adaptTargets, stillFrames, type AdaptDeps } from '../lib/adaptLoop';
 
 const palette = { background: '#101018', text: '#ffffff', accent: '#8b6bff' };
@@ -100,5 +100,63 @@ describe('adapting shots', () => {
   it('adapts every recipe shot of the film, not just the first few', () => {
     const many: DirectorPlan = { ...plan, scenes: ['RowEmbed', 'SpotlightHeroCard', 'DeckDealFlyin', 'PageWaterfallWall', 'CardStack', 'ListReveal'].map((c) => ({ kind: 'shot' as const, recipeId: id(c), durationSec: 4, headline: 'a', caption: 'b', transition: 'cut' as const })) };
     expect(adaptTargets(planToProject(many, { aspectRatio: '16:9' })).length).toBe(6);
+  });
+
+  it('waits and tries a rate-limited shot again instead of giving up on every shot', async () => {
+    const limited = new DirectorError('Too many requests', 'rate_limited', 429);
+    const request = vi.fn(async (_b: AdaptRequest) => ({ code: GOOD, notes: '' })).mockRejectedValueOnce(limited);
+    const sleep = vi.fn(async () => undefined);
+    const logs: string[] = [];
+    const out = await adaptFilm(project(), ctx, deps({ request, sleep }), (l) => logs.push(l));
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(logs.some((l) => /Rate limited/.test(l))).toBe(true);
+    expect(adaptTargets(out).length).toBeLessThan(adaptTargets(project()).length);
+  });
+
+  it('says how many shots kept the plain recipe when the limit does not pass', async () => {
+    const request = vi.fn(async (_b: AdaptRequest): Promise<{ code: string; notes: string }> => { throw new DirectorError('Too many requests', 'rate_limited', 429); });
+    const logs: string[] = [];
+    await adaptFilm(project(), ctx, deps({ request, sleep: async () => undefined }), (l) => logs.push(l));
+    expect(logs.some((l) => /kept as the plain recipe/.test(l))).toBe(true);
+  });
+});
+
+describe('undeployed recipe sources', () => {
+  it('are named as a deployment problem and stop the run, not blamed on the model', async () => {
+    const { SourcesUnavailableError } = await import('../lib/directorClient');
+    const logs: string[] = [];
+    let outcome: unknown = null;
+    const source = vi.fn(async () => { throw new SourcesUnavailableError('RowEmbed'); });
+    await adaptFilm(project(), ctx, deps({ source }), (l) => logs.push(l), undefined, (o) => { outcome = o; });
+    expect(logs.join('\n')).toMatch(/recipe sources are not deployed/);
+    expect(logs.join('\n')).not.toMatch(/did not pass (?:its|their) checks/);
+    expect(outcome).toMatchObject({ kind: 'stopped', adapted: 0 });
+  });
+});
+
+describe('adaptation continues instead of silently leaving shots plain', () => {
+  const many = (): ReturnType<typeof project> => {
+    const stems = ['RowEmbed', 'SpotlightHeroCard', 'DeckDealFlyin', 'CrashZoomReal', 'CrashImpactReal', 'MultiplaneReal', 'TypeAndFilter', 'FreezeAnnotateReal', 'WhipBrakeReal', 'OutroGroupPhotoLaunch', 'ListStackPress', 'JumpCutPunchIn', 'PageWaterfallWall', 'CardStack'];
+    return planToProject({ ...plan, scenes: stems.map((s) => ({ kind: 'shot' as const, recipeId: id(s), durationSec: 5, headline: 'a', caption: 'b', transition: 'cut' as const })) }, { aspectRatio: '16:9' });
+  };
+  it('reports the shots beyond the per-pass limit as pending, and a continuation pass adapts exactly those', async () => {
+    const p = many();
+    const outcomes: unknown[] = [];
+    const total = adaptTargets(p, { all: true }).length;
+    expect(total).toBeGreaterThan(12);
+    const first = await adaptFilm(p, ctx, deps(), () => {}, undefined, (o) => outcomes.push(o));
+    const o1 = outcomes[0] as { kind: string; adapted: number; attempted: number; pending?: string[] };
+    expect(o1.attempted).toBe(12);
+    expect(o1.pending).toHaveLength(total - 12);
+    const second = await adaptFilm(first, ctx, deps(), () => {}, undefined, (o) => outcomes.push(o), { only: new Set(o1.pending) });
+    const o2 = outcomes[1] as { attempted: number; pending?: string[] };
+    expect(o2.attempted).toBe(total - 12);
+    expect(o2.pending).toBeUndefined();
+    expect(second.tracks.length).toBe(p.tracks.length);
+  });
+  it('an eligibility filter leaves shots whose own input is missing untouched', async () => {
+    const p = many();
+    const out = await adaptFilm(p, ctx, deps(), () => {}, undefined, undefined, { eligible: (c) => c.cardId === `demo:RowEmbed` });
+    expect(out.tracks.flatMap((t) => t.clips).filter((c) => c.props?.adaptedCode).map((c) => c.cardId)).toEqual(['demo:RowEmbed']);
   });
 });

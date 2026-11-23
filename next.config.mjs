@@ -142,6 +142,17 @@ const nextConfig = {
     return config;
   },
   // Motion Studio was removed; its old links open Motion Director.
+  // SmartWarmupAI studio: client-side routes of the embedded dashboard (public/smartwarmupai-app) serve its own index.html, and Help
+  // pages (public/smartwarmupai-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
+  async rewrites() {
+    return {
+      afterFiles: [
+        { source: '/smartwarmupai-app/:path*', destination: '/smartwarmupai-app/index.html' },
+        { source: '/smartwarmupai-help', destination: '/smartwarmupai-help/index.html' },
+        { source: '/smartwarmupai-help/:path*', destination: '/smartwarmupai-help/:path*/index.html' },
+      ],
+    };
+  },
   async redirects() {
     return [
       { source: '/studio/motion-studio', destination: '/studio/motion-director', permanent: false },

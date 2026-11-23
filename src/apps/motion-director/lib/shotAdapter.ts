@@ -9,6 +9,8 @@ import * as Remotion from 'remotion';
  */
 
 export const ADAPTED_FIXTURES = ['Brand', 'Fixtures', 'Look', 'Motion', 'PageCam2D', 'Polish', 'liveTexture', 'ExportMode'] as const
+/** Pure geometry helpers the repaired recipes read the customer's page through (no I/O): an adapted source may use them as the original does. */
+export const ADAPTED_TEXTURES = ['LiveLayoutContext', 'retarget', 'SlotPatches'] as const
 
 const FORBIDDEN_IDENTS = new Set([
   'fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'Worker', 'SharedWorker', 'ServiceWorker', 'importScripts',
@@ -28,7 +30,9 @@ export interface AdaptCheck {
 const allowedImport = (spec: string): boolean => {
   if (spec === 'react' || spec === 'remotion') return true
   const m = /^(?:\.\.?\/)+(?:demosrc\/)?_fixtures\/(\w+)$/.exec(spec)
-  return !!m && (ADAPTED_FIXTURES as readonly string[]).includes(m[1])
+  if (m) return (ADAPTED_FIXTURES as readonly string[]).includes(m[1])
+  const t = /^(?:\.\.?\/)+(?:demosrc\/)?_textures\/(\w+)$/.exec(spec)
+  return !!t && (ADAPTED_TEXTURES as readonly string[]).includes(t[1])
 }
 
 type TS = typeof import('typescript')
@@ -139,7 +143,7 @@ export async function checkAdaptedSource(code: string, stem?: string): Promise<A
 const moduleFor = (spec: string): unknown => {
   if (spec === 'react') return React
   if (spec === 'remotion') return Remotion
-  const m = /_fixtures\/(\w+)$/.exec(spec)
+  const m = /_(?:fixtures|textures)\/(\w+)$/.exec(spec)
   const name = m?.[1]
   const loaded = name ? FIXTURE_MODULES[name] : undefined
   if (!loaded) throw new Error(`module not available: ${spec}`)
