@@ -1,0 +1,16 @@
+{
+  "name": "smartvideo-go-mcp",
+  "version": "0.1.0",
+  "description": "SmartVideo GO for Claude, Cursor and other MCP apps: generate images, video, audio and more, and drive SmartVideo GO studios.",
+  "type": "module",
+  "bin": { "smartvideo-go-mcp": "dist/index.js" },
+  "files": ["dist/index.js", "README.md"],
+  "engines": { "node": ">=22" },
+  "keywords": ["mcp", "model-context-protocol", "smartvideo-go", "video", "ai"],
+  "license": "UNLICENSED",
+  "private": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "node scripts/build.mjs"
+  }
+}

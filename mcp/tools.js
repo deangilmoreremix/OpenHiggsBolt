@@ -1,20 +1,20 @@
 // SmartVideo GO tools beyond the catalog generation tools: skills (recipes), workflows and agents.
 // Skill steps are built with the app's own code (packages/studio/src/lib/promptRecipes.js buildParams), so a recipe
 // run through the MCP asks for the same models, prompts and references as the Skills panel does.
-import { readFileSync } from 'node:fs';
 import { z, createCatalog, extractOutputs, sanitizeDeep } from '../packages/studio-mcp-core/src/index.js';
 import { buildParams } from '../packages/studio/src/lib/promptRecipes.js';
 import { endpointFixes } from './brand.js';
 import { buildMedia } from '../lib/zackdFunction.js';
 import { EDIT_TOOLS, getEditToolBySlug, getEditToolModels, getDefaultEditToolModel } from '../packages/studio/src/editTools.js';
 
-const registry = JSON.parse(readFileSync(new URL('../packages/studio/src/skills/registry.json', import.meta.url), 'utf8'));
+import registry from '../packages/studio/src/skills/registry.json' with { type: 'json' };
 const skillList = Array.isArray(registry.skills) ? registry.skills : Object.values(registry.skills || {});
 // Recipes are published under brand-neutral slugs: the registry's "muapi-" prefix is dropped (names are unique without it).
 const publicSlug = (slug) => String(slug).replace(/^muapi-/i, '');
 const skills = Object.fromEntries(skillList.map((s) => [publicSlug(s.slug), s]));
 const BRAND = 'SmartVideo GO';
-const catalog = createCatalog(JSON.parse(readFileSync(new URL('./catalog.json', import.meta.url), 'utf8')), { endpointFixes });
+import catalogEntries from './catalog.json' with { type: 'json' };
+const catalog = createCatalog(catalogEntries, { endpointFixes });
 
 const SKIP_TYPES = new Set(['approval', 'script']); // the app pauses or only shows a note for these
 
