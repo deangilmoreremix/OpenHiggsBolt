@@ -186,6 +186,8 @@ export interface RemotionDesignComponentProps {
   color: string
   /** Optional font family stack chosen by the customer. */
   fontFamily?: string
+  /** The customer's logo is mostly very light (white / pale): designs must not put it on a white tile. */
+  logoIsLight?: boolean
 }
 
 /** The overlay component a design renders. */
