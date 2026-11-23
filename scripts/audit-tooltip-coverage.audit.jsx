@@ -142,7 +142,7 @@ function collect(within) {
     const key = `${target.tagName}|${label}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    records.push({ label, tag: target.tagName.toLowerCase(), id: target.id || '', status });
+    records.push({ label, tag: target.tagName.toLowerCase(), id: target.id || '', status, html: status === 'covered' ? '' : target.outerHTML.slice(0, 240) });
   }
   return records;
 }
@@ -195,7 +195,7 @@ describe('tooltip coverage audit', () => {
       ? `${name.padEnd(22)} NOT AUDITABLE  ${r.notAuditable}`
       : `${name.padEnd(22)} ${String(r.covered).padStart(3)}/${String(r.total).padEnd(3)} ${r.ratio == null ? '  -' : `${(r.ratio * 100).toFixed(0).padStart(3)}%`}${r.states ? `  (+${r.states} states)` : ''}`));
     process.stdout.write(`\nTOOLTIP COVERAGE (OpenHiggsBolt, jsdom)\n${lines.join('\n')}\n`);
-    if (process.env.AUDIT_VERBOSE) for (const [name, r] of Object.entries(report)) if (r.gaps?.length) process.stdout.write(`\n== ${name}\n${r.gaps.map((g) => `  ${g.status.padEnd(5)} ${g.tag.padEnd(8)} ${g.id ? `#${g.id} ` : ''}${g.label}`).join('\n')}\n`);
+    if (process.env.AUDIT_VERBOSE) for (const [name, r] of Object.entries(report)) if (r.gaps?.length) process.stdout.write(`\n== ${name}\n${r.gaps.map((g) => `  ${g.status.padEnd(5)} ${g.tag.padEnd(8)} ${g.id ? `#${g.id} ` : ''}${g.label}${g.label === g.tag ? `  ${g.html.replace(/\s+/g, ' ')}` : ''}`).join('\n')}\n`);
     if (process.env.AUDIT_OUT) writeFileSync(process.env.AUDIT_OUT, JSON.stringify(report, null, 2));
     const min = Number(process.env.AUDIT_MIN || 0);
     const below = min ? Object.entries(report).filter(([, r]) => !r.notAuditable && r.ratio != null && r.ratio < min).map(([n, r]) => `${n} ${(r.ratio * 100).toFixed(0)}%`) : [];

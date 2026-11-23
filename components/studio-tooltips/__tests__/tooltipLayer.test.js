@@ -258,3 +258,12 @@ describe('plain titles vs ancestor copy', () => {
     expect(findHelp(document.querySelector('span'))?.entry).toEqual({ name: 'Inner' });
   });
 });
+
+describe('Layers and shared control labels', () => {
+  it.each(['Zoom in', 'Zoom out', 'Brush size', 'Number of layers', 'Regional edit prompt', 'Upload image'])('%s has copy', (label) => {
+    expect(resolveStudioHelp(label)?.summary).toBeTruthy();
+  });
+  it('a single-key hint is ignored when looking up copy', () => {
+    expect(resolveStudioHelp('Shapes (R)')?.name).toBe('Shapes');
+  });
+});

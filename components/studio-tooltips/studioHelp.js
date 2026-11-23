@@ -128,6 +128,12 @@ export const STUDIO_HELP = {
   'marker': h('Marker', 'Mark up the image.'),
   'eraser': h('Eraser', 'Erase part of a stroke or mask.'),
   'shapes': h('Shapes', 'Add a shape to the canvas.'),
+  'number of layers': h('Number of layers', 'How many layers to split the image into.'),
+  'zoom out': h('Zoom out', 'Make the canvas smaller.'),
+  'zoom in': h('Zoom in', 'Make the canvas larger.'),
+  'brush size': h('Brush size', 'How thick the marker or eraser stroke is.'),
+  'regional edit prompt': h('Regional edit prompt', 'Describe the change to make inside the selected area, then press Enter.'),
+  'upload image': h('Upload image', 'Choose an image from your computer.'),
   'undo stroke': h('Undo Stroke', 'Step back one brush stroke.'),
   'redo stroke': h('Redo Stroke', 'Step forward one brush stroke.'),
   'reset zoom & pan': h('Reset Zoom & Pan', 'Return the canvas to fit the view.'),
@@ -319,6 +325,7 @@ export function helpKey(label) {
     .replace(/\s+/g, ' ').trim()
     .replace(SHORTCUT, '')
     .replace(/\s*\(\d+\)$/, '')
+    .replace(/\s*\([a-z]\)$/i, '') // single-key hint, e.g. "Shapes (R)"
     .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
     .toLowerCase();
 }
