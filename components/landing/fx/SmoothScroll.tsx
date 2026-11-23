@@ -46,10 +46,14 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
 
 /**
  * How long after landing a jump keeps the target aligned: until the layout
- * has been still for SETTLE_MS, but never longer than SETTLE_MAX_MS.
+ * has been still for SETTLE_MS, and again after any later height change,
+ * until SETTLE_MAX_MS.
  */
 const SETTLE_MS = 1500;
 const SETTLE_MAX_MS = 8000;
+/** Native (phone) jumps: how often a glide cut short is retried, and how long the glide may take in all. */
+const GLIDE_RETRIES = 3;
+const GLIDE_MAX_MS = 6000;
 
 // Jump state is module-level on purpose: there is one page scroll and one
 // SmoothScroll (the landing page's root), so jumps from anywhere (nav links,
@@ -75,13 +79,11 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
   const stopEvents = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const;
   const timers: number[] = [];
   let cancelled = false;
-  let onScrollEnd: (() => void) | null = null;
   const cancel = () => {
     if (cancelled) return;
     cancelled = true;
     stopEvents.forEach((ev) => window.removeEventListener(ev, cancel));
     timers.forEach((t) => window.clearTimeout(t));
-    if (onScrollEnd) window.removeEventListener('scrollend', onScrollEnd);
     if (cancelActiveJump === cancel) cancelActiveJump = null;
   };
   cancelActiveJump = cancel;
@@ -94,9 +96,12 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
     const check = () => {
       if (cancelled) return;
       const now = performance.now();
-      if (now > end || now > hardEnd) return cancel();
-      // Content still changing height (or a ScrollTrigger refresh moving the
-      // page): keep watching until it has been still for SETTLE_MS.
+      if (now > hardEnd) return cancel();
+      // Content changing height (or a ScrollTrigger refresh moving the page):
+      // align until it has been still for SETTLE_MS. After that, keep
+      // watching until SETTLE_MAX_MS, but only a later height change (a row
+      // that measures itself late) brings alignment back; with the layout
+      // still, nothing here moves the page.
       const height = document.body.scrollHeight;
       if (height !== lastHeight) {
         lastHeight = height;
@@ -104,7 +109,7 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
       }
       const top = targetTop(el, lenis, extraOffset);
       const current = lenis ? lenis.animatedScroll : window.scrollY;
-      if (Math.abs(top - current) > 4) {
+      if (now <= end && Math.abs(top - current) > 4) {
         end = now + SETTLE_MS;
         // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
         if (lenis) lenis.scrollTo(top, { immediate: true });
@@ -126,27 +131,51 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
       if (lenis) {
         lenis.scrollTo(targetTop(el, lenis, extraOffset), { onComplete: () => keepAligned(el) });
       } else {
-        const destination = targetTop(el, null, extraOffset);
-        window.scrollTo({ top: destination, behavior: reduced ? 'instant' : 'smooth' });
+        // Where the page can actually scroll to: a target near the bottom
+        // stops at the page end.
+        const reachable = () =>
+          Math.min(
+            Math.max(targetTop(el, null, extraOffset), 0),
+            document.documentElement.scrollHeight - window.innerHeight,
+          );
+        const glide = () =>
+          window.scrollTo({ top: targetTop(el, null, extraOffset), behavior: reduced ? 'instant' : 'smooth' });
         let started = false;
         const start = () => {
           if (started || cancelled) return;
           started = true;
           keepAligned(el);
         };
-        // Already there (or pinned against the page end): the browser doesn't
-        // scroll, so no scrollend would ever come; align right away.
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const noMove = Math.abs(Math.min(Math.max(destination, 0), maxScroll) - window.scrollY) < 1;
-        if (reduced || noMove) start();
-        else if ('onscrollend' in window) {
-          // Start once the glide has really finished, not on a guess.
-          onScrollEnd = start;
-          window.addEventListener('scrollend', start, { once: true });
-        } else {
-          // Where the browser doesn't report scrollend, start after a typical glide.
-          timers.push(window.setTimeout(start, 1200));
-        }
+        const alreadyThere = Math.abs(reachable() - window.scrollY) < 1;
+        glide();
+        if (reduced || alreadyThere) return start();
+
+        // Watch the glide instead of waiting for scrollend. Sections that
+        // mount for the jump grow the page, and the ScrollTrigger refresh
+        // that follows resets the scroll position, which cuts a native
+        // smooth scroll off mid-way without any scrollend. So: once the page
+        // is where it should be, align; if the glide has stopped short, glide
+        // again to the target's current position, up to GLIDE_RETRIES times.
+        const deadline = performance.now() + GLIDE_MAX_MS;
+        let retries = 0;
+        let still = 0;
+        let lastY = window.scrollY;
+        const watch = () => {
+          if (started || cancelled) return;
+          const y = window.scrollY;
+          if (Math.abs(reachable() - y) < 2 || performance.now() > deadline) return start();
+          still = Math.abs(y - lastY) < 1 ? still + 1 : 0;
+          lastY = y;
+          if (still >= 2) {
+            // keepAligned snaps the rest of the way if the glides keep failing.
+            if (retries >= GLIDE_RETRIES) return start();
+            retries += 1;
+            still = 0;
+            glide();
+          }
+          timers.push(window.setTimeout(watch, 150));
+        };
+        timers.push(window.setTimeout(watch, 150));
       }
     }),
   );
