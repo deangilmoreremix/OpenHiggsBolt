@@ -70,6 +70,7 @@ function fieldLabel(el) {
 /** Find the control under the pointer and the text it is known by. */
 export function findHelp(start) {
   let el = start instanceof HTMLElement ? start : start && start.parentElement;
+  let firstPlain = null; // a control's own title is only used when no ancestor has written copy
   for (let i = 0; el && i < 6; i++, el = el.parentElement) {
     if (el.closest(SKIP)) return null;
     // The shell's studio tabs carry data-tab=<studio id>: show that studio's own description.
@@ -93,9 +94,9 @@ export function findHelp(start) {
       const entry = c && c.length <= (c === placeholder ? 240 : 80) ? resolveStudioHelp(c) : null;
       if (entry) return { el, entry };
     }
-    if (plain && plain.length <= 160) return { el, entry: { name: plain } };
+    if (plain && plain.length <= 160 && !firstPlain) firstPlain = { el, entry: { name: plain } };
   }
-  return null;
+  return firstPlain;
 }
 
 /** Card position: beside small icon controls, otherwise below, then above, clamped to the viewport. */

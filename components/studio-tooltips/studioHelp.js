@@ -259,6 +259,28 @@ export const STUDIO_HELP = {
   'list view': h('List view', 'Show results as a list.'),
   'vibe edit mode': h('Edit', 'Edit a motion graphic you already generated.', 'Available once you have generated one.'),
   'highlight marker pen': h('Highlight marker pen', 'Mark up the image with a highlighter pen.'),
+  // Supported by the code: the summary shows lens, focal length and aperture and opens the camera overlay; the image button toggles upload/remove.
+  'camera setup': h('Camera setup', 'Shows your lens, focal length and aperture.', 'Click to change the camera, lens, focal length and aperture.'),
+  'cinema reference image': h('Reference image', 'Add a reference image, or remove the one you added.'),
+  'close preview': h('Close', 'Close the fullscreen preview.'),
+  // DesignAgent sends the chosen mode to the agent as "[Mode: ...]". "edit" is also set by the asset Edit action; "agent" and "generate" are
+  // read from their names only, so these two are flagged for the owner to confirm.
+  'design mode agent': h('Agent', 'Let the agent decide how to handle your message.'),
+  'design mode generate': h('Generate', 'Ask the agent to generate a new design.'),
+  'design mode edit': h('Edit', 'Ask the agent to edit an existing design.'),
+  'skill category': h('Category', 'Show only this kind of skill.'),
+  'lipsync video mode': h('Video', 'Use a video as the source instead of a portrait image.'),
+  'add scene': h('Add', 'Add the scene you typed to the storyboard.'),
+  'upload reference image': h('Upload', 'Upload a reference image from your device.', 'You can also paste an image URL.'),
+  // Motion Director's own title text for the button
+  'brand kit': h('Brand Kit', 'Business name, colors, logos, images and reference frames.'),
+  'brand kit \u00b7 on': h('Brand Kit', 'Business name, colors, logos, images and reference frames.'),
+  'design message': h('Message', 'Tell the design agent what you want.', 'Press Enter to send, Shift+Enter for a new line.'),
+  'api key set': h('API key', 'Your API key is set.', 'Click to change it.'),
+  'set api key': h('Set API key', 'Add your API key.'),
+  'add as image': h('Add as Image', 'Use this item as the character image.'),
+  'use as video': h('Use as Video', 'Use this item as the motion video.'),
+  'trait tag': h('Trait tag', 'A trait you picked.', 'Click it to jump to the tab that owns it.'),
   'batch count': h('Batch count', 'How many images to make at once.', 'From 1 to 4.'),
   'pointer tool': h('Pointer tool', 'Select and move things on the canvas.'),
   'run selection edit': h('Run Selection Edit', 'Apply your edit to the selected area.'),
@@ -318,6 +340,7 @@ export const ALIASES = {
   'change aspect ratio': 'aspect ratio',
   'ar': 'aspect ratio',
   'run layer decomposition': 'layer decomposition',
+  'select image generation model': 'model',
   'eraser tool': 'eraser',
   'shapes (r)': 'shapes',
   'apply relight': 'relight',
@@ -346,6 +369,7 @@ const VALUE_PATTERNS = [
 // Text fields that are labelled only by their placeholder, matched by prefix (the text is long and sometimes truncated).
 const PLACEHOLDERS = [
   [/^step-by-step guide for /, 'studio guide'],
+  [/^separate layers/, 'layer decomposition'],
   [/^type your prompt here/, 'prompt'],
   [/^open live demo for /, 'live demo'],
   [/^settings \u2014 /, 'settings'],

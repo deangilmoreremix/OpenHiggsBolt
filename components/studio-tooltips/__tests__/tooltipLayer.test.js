@@ -238,3 +238,23 @@ describe('render-time copy and long placeholders', () => {
     expect(findHelp(bare)).toBeNull();
   });
 });
+
+describe('tags added for the last unclear controls', () => {
+  it('dynamic design-mode keys, camera setup and the layers footer resolve', () => {
+    for (const mode of ['agent', 'generate', 'edit']) expect(resolveStudioHelp(`design mode ${mode}`), mode).toBeTruthy();
+    expect(resolveStudioHelp('Separate layers 12')?.name).toBe('Layer Decomposition');
+    expect(resolveStudioHelp('Brand Kit · On')?.name).toBe('Brand Kit');
+  });
+});
+
+describe('plain titles vs ancestor copy', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+  it('an inner element\'s own title does not hide copy that an ancestor has', () => {
+    document.body.innerHTML = '<a href="/x"><span title="View the code">Source Code</span></a>';
+    expect(findHelp(document.querySelector('span'))?.entry.name).toBe('Source Code');
+  });
+  it('with no copy anywhere, the nearest plain title still wins', () => {
+    document.body.innerHTML = '<div title="Outer"><span title="Inner">x</span></div>';
+    expect(findHelp(document.querySelector('span'))?.entry).toEqual({ name: 'Inner' });
+  });
+});
