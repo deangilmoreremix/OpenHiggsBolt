@@ -3,7 +3,19 @@
 // like "Generate (Ctrl+Enter)", "↻ Regenerate" or "Advanced…" still match. Controls can also opt in with data-help="<key>".
 // Labels below are the ones these studios actually render (from packages/studio/src/messages/en and the studio components).
 
+import { getStudioGuide } from '@/data/academyStudioGuides';
+
 const h = (name, summary, what, shortcut) => ({ name, summary, what, shortcut });
+
+/**
+ * Studio-level help for a shell tab (button[data-tab="<id>"]): the studio's own label and one-line description from the Academy
+ * guides (src/data/academyStudioGuides.ts), so the wording is the owner's and a studio cannot be added without one (an existing test
+ * requires every shell tab to have a guide).
+ */
+export function studioEntry(id) {
+  const g = getStudioGuide(id);
+  return g ? { name: g.label, summary: g.tagline } : null;
+}
 
 export const STUDIO_HELP = {
   // ── Shared controls ─────────────────────────────────────────────────────────
@@ -194,6 +206,59 @@ export const STUDIO_HELP = {
   'vfx effect': h('Effect', 'Pick this effect for your image.'),
   'vfx effect group': h('Effect group', 'Switch between groups of effects.'),
 
+  'studio guide': h('Studio guide', 'A step-by-step guide to this studio, in the Academy.'),
+  'settings': h('Settings', 'Your API key, local models and preferences.'),
+  'sign out of your account': h('Sign out', 'Sign out of your account.'),
+  'new brand': h('New Brand', 'Start a new brand from your website address.', 'Paste the address and Brand DNA is built from it.'),
+  'back to studios': h('SmartVideo GO', 'Back to all studios.'),
+  'photo category': h('Product category', 'Pick the kind of product.', 'The styles shown change to match the category.'),
+  'photo style': h('Photo style', 'Pick the look of the photo.'),
+  'photo brand': h('Brand', 'Choose a saved brand for this photo.', 'It is sent with the request, and the history below shows that brand\'s photos.'),
+  'product image url': h('Product image URL', 'Paste a link to your product image.', 'Optional.'),
+  'brand url': h('Website address', 'Paste your brand\'s website.', 'Brand DNA is built from it.'),
+  'analyze': h('Analyze', 'Analyze the website to build your Brand DNA.'),
+  // Layers tools (labels from messages/en/layersStudio.json)
+  'layers shape': h('Shape', 'Draw this shape on the image.'),
+  'pan tool': h('Pan tool', 'Drag to move around the canvas.'),
+  'custom color': h('Custom color', 'Pick a custom colour.'),
+  'clear drawings': h('Clear Drawings', 'Remove your drawings from the image.'),
+  'clear marked regions': h('Clear Marked Regions', 'Remove the regions you marked.'),
+  'upload or change image': h('Upload or Change Image', 'Choose the image to edit.'),
+  // Thumbnail, DesignAgent, Storyboard, Agents, Skills
+  'thumbnail quality': h('Quality', 'Faster drafts or slower, higher-quality results.'),
+  'brand kit settings': h('Brand Kit', 'Set your logo, colours and fonts.', 'When it is on, they are added to each request you send the agent.'),
+  'export json': h('Export JSON', 'Download the storyboard as a JSON file.'),
+  'export pdf': h('Export PDF', 'Download the storyboard as a PDF.'),
+  'switch project': h('Switch project', 'Open another storyboard project.'),
+  'delete current project': h('Delete project', 'Delete this project and its scenes.', 'This cannot be undone.'),
+  'send to': h('Send to', 'Send this shot to another studio.'),
+  'add character': h('Add Character', 'Add this character to your library.'),
+  'analysis': h('Analysis', 'Open the analysis for this scene.'),
+  'example prompt': h('Example prompt', 'Click to use this example.'),
+  'run workflow': h('Run workflow', 'Run this skill as a workflow.'),
+  'open in studio': h('Open in Studio', 'Open this recipe in its studio, ready to use.'),
+  'skills': h('Skills', 'Browse ready-made workflows and recipes.'),
+  'prompt library': h('Prompt Library', 'Browse the prompt library.'),
+  // Apps (wording from messages/en/appsStudio.json and the studio's own comments)
+  'upgrade to apps + training for $400': h('Upgrade', 'Upgrade from DIY App Builder to Apps + Training for a $400 difference.'),
+  'get all apps + training': h('Get All Apps + Training', 'Get the apps and learn how to build, customize and launch them.'),
+  'open the reseller deployment center': h('Reseller Deployment Center', 'Deployment documentation for the reseller apps.'),
+  'reseller setup walkthrough': h('Reseller Setup Walkthrough', 'Step-by-step setup lessons for resellers.'),
+  'deployment guide': h('Deployment Guide', 'Deployment documentation for this app.'),
+  'deploy on vercel': h('Deploy on Vercel', 'Import this app\'s public GitHub repository into Vercel.'),
+  'source code': h('Source Code', 'Open this app\'s source code.'),
+  'github': h('GitHub', 'Open this app on GitHub.'),
+  'learn how to launch this app': h('Learn how to launch this app', 'Lessons on launching this app.'),
+  'live demo': h('Live demo', 'Open a live demo of this app.'),
+  // GO-Viral filters and view toggles
+  'with video + prompt': h('With video + prompt', 'Show only prompts that come with a video and the prompt.'),
+  'with video only': h('With video only', 'Show only prompts that have a video.'),
+  'all prompts': h('All prompts', 'Show every prompt.'),
+  'all languages': h('All languages', 'Show prompts in every language.'),
+  'grid view': h('Grid view', 'Show results as a grid.'),
+  'list view': h('List view', 'Show results as a list.'),
+  'vibe edit mode': h('Edit', 'Edit a motion graphic you already generated.', 'Available once you have generated one.'),
+  'highlight marker pen': h('Highlight marker pen', 'Mark up the image with a highlighter pen.'),
   'batch count': h('Batch count', 'How many images to make at once.', 'From 1 to 4.'),
   'pointer tool': h('Pointer tool', 'Select and move things on the canvas.'),
   'run selection edit': h('Run Selection Edit', 'Apply your edit to the selected area.'),
@@ -253,6 +318,8 @@ export const ALIASES = {
   'change aspect ratio': 'aspect ratio',
   'ar': 'aspect ratio',
   'run layer decomposition': 'layer decomposition',
+  'eraser tool': 'eraser',
+  'shapes (r)': 'shapes',
   'apply relight': 'relight',
   'prompt textarea': 'prompt',
   'aspect': 'aspect ratio',
@@ -278,6 +345,12 @@ const VALUE_PATTERNS = [
 
 // Text fields that are labelled only by their placeholder, matched by prefix (the text is long and sometimes truncated).
 const PLACEHOLDERS = [
+  [/^step-by-step guide for /, 'studio guide'],
+  [/^type your prompt here/, 'prompt'],
+  [/^open live demo for /, 'live demo'],
+  [/^settings \u2014 /, 'settings'],
+  [/^https?:\/\/your-brand/, 'brand url'],
+  [/^product image url/, 'product image url'],
   [/^describe the (image|video) you want/, 'prompt'],
   [/^describe your cinema scene/, 'prompt'],
   [/^describe the motion graphic/, 'prompt'],

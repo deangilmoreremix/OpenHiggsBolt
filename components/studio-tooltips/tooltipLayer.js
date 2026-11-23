@@ -7,7 +7,7 @@
 // (--color-accent #a855f7) on the shortcut chip. They are read from the app's CSS variables with the same values as fallbacks.
 // This is NOT remix-new-editor's lime scheme: do not copy colors between the two repos.
 
-import { resolveStudioHelp, idLabels } from './studioHelp.js';
+import { resolveStudioHelp, idLabels, studioEntry } from './studioHelp.js';
 
 const SHOW_DELAY_MS = 350;
 const EXPAND_DELAY_MS = 900;
@@ -72,14 +72,25 @@ export function findHelp(start) {
   let el = start instanceof HTMLElement ? start : start && start.parentElement;
   for (let i = 0; el && i < 6; i++, el = el.parentElement) {
     if (el.closest(SKIP)) return null;
+    // The shell's studio tabs carry data-tab=<studio id>: show that studio's own description.
+    const studio = el.dataset.tab ? studioEntry(el.dataset.tab) : null;
+    if (studio) return { el, entry: studio };
+    // Copy supplied by the studio at render time (fields generated from a model schema have no fixed label to look up):
+    // data-help-text is the sentence, data-help-name an optional heading (otherwise the control's own label).
+    if (el.dataset.helpText) {
+      const name = el.dataset.helpName || el.getAttribute('aria-label') || el.getAttribute('placeholder') || fieldLabel(el) || el.textContent.trim().replace(/\s+/g, ' ').slice(0, 40);
+      return { el, entry: { name: name || 'Info', summary: el.dataset.helpText } };
+    }
     const plain = el.dataset.helpTitle || el.getAttribute('title') || '';
-    const text = (el.tagName === 'BUTTON' || el.tagName === 'SUMMARY' || el.getAttribute('role') === 'button')
+    const text = (el.tagName === 'BUTTON' || (el.tagName === 'A' && el.hasAttribute('href')) || el.tagName === 'SUMMARY' || el.getAttribute('role') === 'button')
       ? (el.textContent || '').trim().replace(/\s+/g, ' ') : '';
     // Try every label the control carries against the copy before settling for plain text: a long title sentence must not shadow
     // the visible name that has an entry.
-    const candidates = [el.dataset.help, text, el.getAttribute('aria-label'), ...idLabels(el.id), el.getAttribute('placeholder'), fieldLabel(el), plain];
+    // Placeholders are often long sentences; they are only matched by prefix, so allow them more room than a label.
+    const placeholder = el.getAttribute('placeholder');
+    const candidates = [el.dataset.help, text, el.getAttribute('aria-label'), ...idLabels(el.id), placeholder, fieldLabel(el), plain];
     for (const c of candidates) {
-      const entry = c && c.length <= 80 ? resolveStudioHelp(c) : null;
+      const entry = c && c.length <= (c === placeholder ? 240 : 80) ? resolveStudioHelp(c) : null;
       if (entry) return { el, entry };
     }
     if (plain && plain.length <= 160) return { el, entry: { name: plain } };
