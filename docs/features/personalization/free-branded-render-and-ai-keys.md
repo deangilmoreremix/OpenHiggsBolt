@@ -3,7 +3,7 @@ name: Free branded render for visitors, and AI generation on your own keys
 area: personalization
 status: live
 added: 2026-11-23
-pr: deangilmoreremix/OpenHiggsBolt#233
+pr: deangilmoreremix/OpenHiggsBolt#243
 route: Personalize a video > Step 4 (Preview and approve) > Render branded video / Generate with AI
 code:
   - src/shared/personalization/guided/StepPreviewApprove.tsx
