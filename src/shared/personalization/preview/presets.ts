@@ -1176,7 +1176,7 @@ export function normalizeImageHints(raw: unknown): Record<string, ImageHints> | 
     if (!url || url.startsWith('blob:') || !isRecord(h)) continue
     const hint: ImageHints = {}
     if (typeof h.aspect === 'number' && Number.isFinite(h.aspect) && h.aspect > 0) hint.aspect = h.aspect
-    for (const k of ['transparentCorners', 'alreadyFramed', 'hasTransparency', 'isHeadshot'] as const) {
+    for (const k of ['transparentCorners', 'alreadyFramed', 'hasTransparency', 'isHeadshot', 'lightLogo'] as const) {
       if (h[k] === true) hint[k] = true
     }
     if (['product', 'service', 'portrait', 'property', 'portfolio', 'logo', 'general'].includes(h.role as string)) hint.role = h.role as ImageHints['role']

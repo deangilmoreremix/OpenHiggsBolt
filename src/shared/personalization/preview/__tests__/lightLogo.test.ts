@@ -27,3 +27,13 @@ describe('lightLogo (a white / pale cut-out logo vanishes on a white tile)', () 
     expect(analyzeImagePixels(new Uint8ClampedArray(4), 1, 1).lightLogo).toBe(false)
   })
 })
+
+import { normalizeImageHints } from '../presets'
+
+describe('lightLogo survives save / restore', () => {
+  it('is kept by normalizeImageHints, and only when true', () => {
+    const out = normalizeImageHints({ 'https://x.com/l.png': { aspect: 2, lightLogo: true }, 'https://x.com/m.png': { aspect: 2, lightLogo: 'yes' } })
+    expect(out?.['https://x.com/l.png']?.lightLogo).toBe(true)
+    expect(out?.['https://x.com/m.png']?.lightLogo).toBeUndefined()
+  })
+})
