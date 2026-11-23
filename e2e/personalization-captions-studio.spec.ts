@@ -66,7 +66,10 @@ test('Caption Studio captions: embedded font, kept clear of the business name, i
   // In the Studio: import subtitles (no speech model needed), pick the font and a magenta background, apply.
   const srt = path.join(OUT, 'quote.srt');
   fs.writeFileSync(srt, '1\n00:00:00,600 --> 00:00:03,200\nCall us today for a free quote\n');
+  await expect(page.getByText('Import SRT / VTT')).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(500);
   await page.locator('[data-import]').setInputFiles(srt);
+  await expect(page.getByText(/Imported 1 captions/)).toBeVisible({ timeout: 10_000 });
   await page.getByRole('tab', { name: /Style/ }).click();
   await page.locator('select[data-style="fontFamily"]').selectOption('Bangers');
   await page.locator('input[data-style="background"]').check();
