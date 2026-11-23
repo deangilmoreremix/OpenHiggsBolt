@@ -7,6 +7,7 @@ import { hexWithAlpha } from './effects'
 import { ACTIVE_WORD, visibleWordRange } from './capite/activeWord'
 import { displayScale, scriptFor, withScriptFonts } from '../captions/scripts'
 import { captionFontByName, captionFontStack } from '../captions/capiteFonts'
+import { StudioCaptionLine } from './StudioCaptionLine'
 import { CaptionFontGate } from '../captions/capiteFontLoader'
 import { resolveCasing, resolveWeight, textTransformOf } from '../captions/captionCustom'
 
@@ -31,7 +32,9 @@ export const CaptionsLayer: React.FC<LayerProps> = (props) => {
 
 const CaptionsLayerLine: React.FC<LayerProps> = ({ captions, compH, fontFamily }) => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps, width } = useVideoConfig()
+  // Captions designed in the Caption Studio carry their own pages and style: drawn by the same layout the Studio uses.
+  if (captions?.enabled && captions.studio) return <StudioCaptionLine studio={captions.studio} ms={(frame / fps) * 1000} width={width} height={compH} fallbackStack={fontStackById(fontFamily)} zIndex={900} />
   if (!captions?.enabled || captions.cues.length === 0) return null
   const cue = activeCue(captions.cues, frame, fps)
   if (!cue) return null

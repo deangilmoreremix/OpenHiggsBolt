@@ -29,4 +29,14 @@ describe('layerBlockers', () => {
   it('copes with a frame it cannot measure', () => {
     expect(layerBlockers([name()], brand, 0, 1080)).toEqual([])
   })
+  it('uses the rotated extent of a turned layer, around its centre', () => {
+    const [flat] = layerBlockers([name({ rotation: 0 })], brand, 1920, 1080)
+    const [turned] = layerBlockers([name({ rotation: 90 })], brand, 1920, 1080)
+    const fw = flat.right - flat.left, fh = flat.bottom - flat.top
+    // a quarter turn swaps the width and height (in pixels), about the same centre
+    expect((turned.bottom - turned.top) * 1080).toBeCloseTo(fw * 1920, 0)
+    expect((turned.right - turned.left) * 1920).toBeCloseTo(fh * 1080, 0)
+    expect((turned.left + turned.right) / 2).toBeCloseTo((flat.left + flat.right) / 2, 3)
+    expect((turned.top + turned.bottom) / 2).toBeCloseTo((flat.top + flat.bottom) / 2, 3)
+  })
 })

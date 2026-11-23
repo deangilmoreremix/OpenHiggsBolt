@@ -4,6 +4,7 @@
  * frame is a pure function, so the live Player and the browser export agree.
  */
 import { CAPTION_STYLES, CAPTION_STYLE_CONFIGS } from './capite/captionStyles'
+import { cleanStudioCaptions, type StudioCaptions } from '../captions/studioCaptions'
 import { normalizeCustom, type CaptionCasing } from '../captions/captionCustom'
 import { captionFontByName, type CaptionWeight } from '../captions/capiteFonts'
 import type { CaptionStyleConfig } from './capite/types'
@@ -80,6 +81,8 @@ export interface CaptionSettings {
   style: CaptionStyle
   /** Language of the words (ISO code such as `es` or `pt-BR`), when known: sets the font fallback, size and reading direction. Absent = worked out from the text. */
   language?: string
+  /** Captions designed in the Caption Studio: its pages and full style, drawn natively. `cues` and `style` stay as the fallback for the list and the downloads. */
+  studio?: StudioCaptions
 }
 
 /** `es`, `haw`, `pt-BR`: a two or three letter code with an optional region. */
@@ -221,7 +224,8 @@ export function normalizeCaptions(raw: unknown): CaptionSettings | undefined {
   if (typeof s.category === 'string' && s.category.length <= 30) style.category = s.category
   if (finite(s.positionY)) style.positionY = clamp(s.positionY, 0.04, 0.96)
   Object.assign(style, normalizeCustom(s))
-  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
+  const studio = cleanStudioCaptions(raw.studio)
+  return { enabled: raw.enabled === true, cues: normalizeCues(raw.cues), style, ...(studio ? { studio } : {}), ...(typeof raw.language === 'string' && LANGUAGE_CODE.test(raw.language) ? { language: raw.language } : {}) }
 }
 
 // ── turning a script or subtitles into timed lines ──────────────────────────────────────────────────────────────

@@ -5,7 +5,8 @@
 import { layerBoxMetrics } from '../guided/overlayGeometry'
 import { resolveLayerText } from '../preview/layerContent'
 import type { PreviewInputProps, PreviewLayer } from '../preview/types'
-import type { Rect } from './captionClearance'
+import { rotatedExtent } from '../preview/rotation'
+import type { Rect } from './studioClearance'
 
 /** A stretch of frames in which a caption is on screen. */
 export interface FrameWindow { startFrame: number; endFrame: number }
@@ -20,7 +21,10 @@ export function layerBlockers(layers: readonly PreviewLayer[], brand: PreviewInp
     if (windows.length && !windows.some((w) => layer.startFrame <= w.endFrame && w.startFrame <= last)) continue
     const m = layerBoxMetrics(layer, compW, compH, resolveLayerText(layer, brand))
     if (!(m.widthPx > 0) || !(m.heightPx > 0)) continue
-    out.push({ left: m.leftPx / compW, top: m.topPx / compH, right: (m.leftPx + m.widthPx) / compW, bottom: (m.topPx + m.heightPx) / compH })
+    // A turned layer covers its rotated bounding box, turning about its centre.
+    const e = rotatedExtent(m.widthPx, m.heightPx, layer.rotation ?? 0)
+    const cx = m.leftPx + m.widthPx / 2, cy = m.topPx + m.heightPx / 2
+    out.push({ left: (cx - e.w / 2) / compW, top: (cy - e.h / 2) / compH, right: (cx + e.w / 2) / compW, bottom: (cy + e.h / 2) / compH })
   }
   return out
 }
