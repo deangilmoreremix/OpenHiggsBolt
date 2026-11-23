@@ -60,7 +60,7 @@ export default function SkillsBrowser({ apiKey }) {
         {CATEGORIES.map((cat) => {
           const active = activeCat === cat;
           return (
-            <button
+            <button data-help="skill category"
               key={cat}
               onClick={() => setActiveCat(cat)}
               className={`rounded-full border px-4 py-1.5 text-sm transition ${

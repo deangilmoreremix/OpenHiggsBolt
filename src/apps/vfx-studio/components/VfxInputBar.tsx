@@ -42,6 +42,7 @@ function Select<T extends string | number>({
       <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</span>
       <select
         aria-label={label}
+        data-help={label === 'Size' ? 'resolution' : undefined} // "Size" is the resolution control
         className={SELECT_CLASS}
         value={String(value)}
         onChange={(e) => {

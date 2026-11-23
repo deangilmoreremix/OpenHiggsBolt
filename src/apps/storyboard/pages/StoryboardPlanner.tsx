@@ -291,7 +291,7 @@ export default function StoryboardPlanner() {
                 className="flex-1 rounded-xl p-2 text-sm outline-none"
                 style={inputStyle}
               />
-              <button
+              <button data-help="add scene"
                 onClick={handleAddScene}
                 disabled={!sceneDraft.trim()}
                 className="flex items-center gap-1.5 py-2 px-4 rounded-xl text-sm transition-all disabled:opacity-50"

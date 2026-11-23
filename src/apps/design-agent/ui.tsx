@@ -86,7 +86,8 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(fun
         onChange={event => onChange(event.target.value)}
         onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSubmit() } }}
         placeholder={placeholder}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? 'Message the design agent'}
+        data-help="design message"
         disabled={disabled}
         rows={rows}
         className="w-full bg-transparent resize-none outline-none text-sm relative placeholder:text-transparent"

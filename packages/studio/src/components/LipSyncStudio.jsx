@@ -1167,7 +1167,7 @@ export default function LipSyncStudio({
               </svg>
               {copy.modes.portraitImage}
             </PromptSegmentOption>
-            <PromptSegmentOption
+            <PromptSegmentOption data-help="lipsync video mode"
               type="button"
               onClick={switchToVideo}
               selected={inputMode === "video"}

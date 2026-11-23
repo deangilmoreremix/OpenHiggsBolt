@@ -42,7 +42,7 @@ function ReferenceImageField({
           className={`flex-1 min-w-0 ${inputClassName}`}
           style={{ ...panels.card, color: 'white' }}
         />
-        <button
+        <button data-help="upload reference image"
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={progress !== null}
