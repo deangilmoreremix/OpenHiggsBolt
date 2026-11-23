@@ -5,6 +5,7 @@ import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess';
 import { createHandler } from '../../../../lib/mcpGateway.js';
 import { createStore, resolveMcpKey } from '../../../../lib/mcpKeys.js';
 import { gatewayStudios } from '../../../../lib/mcpStudios';
+import { createBridge, createSupabaseBridgeStore } from '../../../../packages/studio-mcp-core/src/bridge.js';
 import { createGovernor, createSupabaseGovernorStore } from '../../../../packages/studio-mcp-core/src/governor.js';
 import { handleText as zackdText } from '../../../../lib/zackdFunction.js';
 
@@ -31,6 +32,7 @@ async function authorize(principal: { userId: string }) {
 const handler = createHandler({
   resolve: (raw: string) => resolveMcpKey(createStore(getSupabaseAdmin()), loadUserKeys, raw),
   authorize,
+  bridge: createBridge({ store: createSupabaseBridgeStore(getSupabaseAdmin()), brandName: 'SmartVideo GO' } as any),
   governor: createGovernor({ store: createSupabaseGovernorStore(getSupabaseAdmin()), caps: { destructive: Number(process.env.MCP_CAP_DESTRUCTIVE) || 50, publish: Number(process.env.MCP_CAP_PUBLISH) || 20 } }),
   studios: {
     ...gatewayStudios(),
@@ -43,7 +45,8 @@ async function run(req: NextRequest) {
   const headers: Record<string, string> = {};
   req.headers.forEach((v, k) => { headers[k] = v; });
   const body = req.method === 'POST' ? await req.text() : undefined;
-  const out = await handler({ httpMethod: req.method, path: new URL(req.url).pathname, headers, body });
+  const u = new URL(req.url);
+  const out = await handler({ httpMethod: req.method, path: u.pathname + u.search, headers, body });
   return new Response(out.body, { status: out.statusCode, headers: out.headers });
 }
 
