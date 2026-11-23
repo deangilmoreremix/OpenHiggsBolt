@@ -3,7 +3,9 @@
 import { ShapeExportPanel } from './ShapeExportPanel'
 import { suggestGoal } from '../templates/recommendations'
 import { AddDesignsPanel } from './AddDesignsPanel'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAuthConfig } from '@/lib/authConfig'
+import type { FinalOutputPath } from '../finalOutput'
 import { DesignGallery } from './DesignGallery'
 import type { DesignSlot } from '../preview/types'
 import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
@@ -17,7 +19,7 @@ import { RemoveBrandingControl } from './RemoveBrandingControl'
 import { videoBeforeRecast } from '../DemoPersonalizeProvider'
 import { LayoutQualityPanel } from './LayoutQualityPanel'
 import { useLayoutQuality } from './useLayoutQuality'
-import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
+import { C, badgeStyle, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
 import { chooseFinalOutputPath } from '../finalOutput'
@@ -73,7 +75,6 @@ export function StepPreviewApprove(): React.JSX.Element {
     mode,
   } = ctx
 
-  const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
   const [sceneTab, setSceneTab] = useState<Exclude<DesignSlot, 'overlay'>>('intro')
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
@@ -87,20 +88,61 @@ export function StepPreviewApprove(): React.JSX.Element {
   // pipeline. The active path is the primary action; the other stays visible
   // (and disabled) so the two operations are never conflated.
   const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
-  const isBrandedPath = finalPath === 'branded-render'
+  // Two separate buttons, two separate operations: the free in-browser branded render, and AI generation on the visitor's own
+  // key. Both are always available; `runningPath` remembers which one was pressed, `finalPath` which one the mode suggests.
+  const [runningPath, setRunningPath] = useState<FinalOutputPath | null>(null)
+  const isBrandedPath = (runningPath ?? finalPath) === 'branded-render'
+  // Videos are generated on MuAPI, images on OpenAI: each with the visitor's own key for that service, kept in their browser.
+  const auth = useAuthConfig()
+  const isImageSource = source?.mediaType === 'image'
+  const aiKeyName = isImageSource ? 'OpenAI' : 'MuAPI'
+  const aiKey = isImageSource ? auth.openaiKey : auth.apiKey
+  const saveAiKey = isImageSource ? auth.setOpenAiKey : auth.setApiKey
+  const [showKeyForm, setShowKeyForm] = useState(false)
+  const [keyDraft, setKeyDraft] = useState('')
+  const [runAiAfterKey, setRunAiAfterKey] = useState(false)
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState(false)
 
-  const handleCreate = async () => {
+  const runPath = async (path: FinalOutputPath) => {
     if (generating) return
+    setRunningPath(path)
     try {
-      await createFinalVideo()
+      await createFinalVideo({ path })
     } catch {
       /* generation errors surface through the existing generation state */
     }
   }
+
+  const handleRender = () => runPath('branded-render')
+
+  const handleGenerateAi = () => {
+    // AI generation needs the visitor's own key: ask for it in place.
+    if (!aiKey) {
+      setShowKeyForm(true)
+      return
+    }
+    void runPath('ai-generation')
+  }
+
+  const saveKeyAndGenerate = () => {
+    const key = keyDraft.trim()
+    if (!key) return
+    saveAiKey(key)
+    setKeyDraft('')
+    setShowKeyForm(false)
+    // The provider sees the new key on its next render; generate then.
+    setRunAiAfterKey(true)
+  }
+
+  useEffect(() => {
+    if (!runAiAfterKey || !aiKey) return
+    setRunAiAfterKey(false)
+    void runPath('ai-generation')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runAiAfterKey, aiKey])
 
   const handleDownload = () => {
     if (!result?.url) return
@@ -285,19 +327,15 @@ export function StepPreviewApprove(): React.JSX.Element {
               Changed since you approved — approve again.
             </span>
           )}
-          {isAnonymous ? (
-            <span style={{ color: C.muted, fontSize: 12 }}>
-              Sign in to create your final video — the preview is always free.
-            </span>
-          ) : (
+          {(
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Tip id="renderBranded" side="top">
                 <button
                   type="button"
-                  onClick={handleCreate}
+                  onClick={handleRender}
                   // The render uses exactly what was approved.
-                  disabled={generating || !isBrandedPath || !previewApproved || exportBlocked || rightsGate}
+                  disabled={generating || !previewApproved || exportBlocked || rightsGate}
                   title={isBrandedPath && !previewApproved ? 'Approve the preview first' : exportBlocked ? 'Fix the critical layout problem first' : rightsGate ? 'Confirm you may use this clip' : undefined}
                   aria-pressed={isBrandedPath}
                   style={{
@@ -305,7 +343,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath && previewApproved ? 1 : 0.5,
+                    opacity: generating ? 0.6 : previewApproved ? 1 : 0.5,
                   }}
                 >
                   {generating && isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
@@ -317,15 +355,15 @@ export function StepPreviewApprove(): React.JSX.Element {
                 <Tip id="generateAi" side="top">
                 <button
                   type="button"
-                  onClick={handleCreate}
-                  disabled={generating || isBrandedPath || rightsGate}
+                  onClick={handleGenerateAi}
+                  disabled={generating || rightsGate}
                   aria-pressed={!isBrandedPath}
                   style={{
                     ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    opacity: generating ? 0.6 : isBrandedPath ? 0.5 : 1,
+                    opacity: generating ? 0.6 : 1,
                   }}
                 >
                   {generating && !isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -335,6 +373,33 @@ export function StepPreviewApprove(): React.JSX.Element {
                 </button>
                 </Tip>
               </div>
+              {showKeyForm && (
+                <div data-testid="ai-key-form" style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ ...labelStyle, margin: 0 }} htmlFor="ai-key-input">
+                    Your {aiKeyName} key
+                  </label>
+                  <p style={{ ...hintStyle, margin: 0 }}>
+                    {isImageSource ? 'Images are made on OpenAI' : 'Videos are made on MuAPI'}, with your own key. It is kept in this browser only.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      id="ai-key-input"
+                      type="password"
+                      autoComplete="off"
+                      value={keyDraft}
+                      onChange={(event) => setKeyDraft(event.target.value)}
+                      placeholder={`Paste your ${aiKeyName} key`}
+                      style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+                    />
+                    <button type="button" onClick={saveKeyAndGenerate} disabled={!keyDraft.trim()} style={primaryButtonStyle}>
+                      Save key and generate
+                    </button>
+                    <button type="button" onClick={() => setShowKeyForm(false)} style={secondaryButtonStyle}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               <RemoveBrandingControl
                 apiKey={apiKey}
                 videoUrl={inputProps.videoUrl}
@@ -384,8 +449,7 @@ export function StepPreviewApprove(): React.JSX.Element {
                 overlays (logo, text, CTA, end card) onto the selected video — no AI credits used.
               </p>
               <p style={{ ...hintStyle, color: isBrandedPath ? C.muted : C.cyan }}>
-                <strong style={{ fontWeight: 800 }}>Generate with AI</strong> uses your account&apos;s AI
-                generation for changes that need new imagery or footage.
+                <strong style={{ fontWeight: 800 }}>Generate with AI</strong> uses your own key for changes that need new imagery or footage.
               </p>
               {generating && isBrandedPath && (
                 <button

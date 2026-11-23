@@ -47,6 +47,50 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+describe('branded render evidence — free for visitors', () => {
+  it('lets a visitor who is not signed in render the branded video', async () => {
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref, { access: 'anonymous' })
+    await openSource(ref)
+    expect(getCtx(ref).access).toBe('anonymous')
+
+    await act(async () => {
+      getCtx(ref).approvePersonalization()
+    })
+    await act(async () => {})
+    renderMediaOnWeb.mockImplementation(async () => ({
+      getBlob: async () => new Blob(['fake-branded-video-bytes'], { type: 'video/mp4' }),
+    }))
+    await act(async () => {
+      await getCtx(ref).createFinalVideo()
+    })
+
+    expect(renderMediaOnWeb).toHaveBeenCalledTimes(1)
+    expect(getCtx(ref).generation.status).toBe('complete')
+    expect(getCtx(ref).result.url).toMatch(/^blob:/)
+  })
+
+  it('runs AI generation for a visitor with their own key, even with no AI mode chosen', async () => {
+    const { runGeneration } = await import('../generationRouter')
+    vi.mocked(runGeneration).mockResolvedValue({ type: 'video', url: 'https://cdn.example.com/ai.mp4' } as never)
+    const ref: HarnessRef = { current: null }
+    await renderProvider(ref, { access: 'anonymous' })
+    await openSource(ref)
+    expect(getCtx(ref).mode).toBeNull()
+
+    await act(async () => {
+      await getCtx(ref).createFinalVideo({ path: 'ai-generation' })
+    })
+    await act(async () => {})
+
+    expect(runGeneration).toHaveBeenCalledTimes(1)
+    const input = vi.mocked(runGeneration).mock.calls[0][0] as { prompt: string }
+    // Never an empty prompt.
+    expect(input.prompt.trim().length).toBeGreaterThan(0)
+    expect(renderMediaOnWeb).not.toHaveBeenCalled()
+  })
+})
+
 describe('branded render evidence — opening and closing scenes', () => {
   it('renders the opening scene, the whole video and the closing scene', async () => {
     const ref: HarnessRef = { current: null }
