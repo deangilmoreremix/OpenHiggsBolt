@@ -1,5 +1,7 @@
 # Deploy Smartvid Downloader on Beam (one container, scales to zero)
 
+> The Beam deployment is built from the **remix-new-editor** repository (`apps/vidbee`, settings named `VIDBEE_*`). This copy of the guide is kept for reference: in **this** repository the same app lives in `apps/smartvid`, its gate is mounted at `/vidbee/` (so one Beam deployment serves both apps) and its own environment uses `SMARTVID_*` names.
+
 `apps/smartvid/Dockerfile.beam` builds the whole web edition as **one container with one public port (3000)**: the web server serves the pages and proxies to the API running privately inside the same container. Data lives on one persistent disk.
 
 It is a **bring-your-own-key** app: every visitor enters their own OpenAI key in the app (AI summary tab, *OpenAI settings*). Nothing OpenAI-related is stored on the server, so there is **no OpenAI secret to create on Beam**.
@@ -50,11 +52,11 @@ beam deploy --dockerfile Dockerfile.beam --name smartvid-downloader --port 3000 
 The page picks its palette from the address: `?brand=remix` (neon green, this repo's palette), `?brand=higgs` (cyan, the OpenHiggsBolt palette), or nothing for upstream VidBee's own amber. The choice is remembered in the browser. Light and dark follow *Settings, Theme* (System, Light or Dark). Each app embeds the URL with its own `brand`.
 
 ## 3. Connect the apps (side menu)
-The app is built to live under `/smartvid/` and is reached through each host app's login gate (remix-new-editor: the Express backend; OpenHiggsBolt: the Next.js route with Clerk).
+The app is built to live under `/vidbee/` and is reached through each host app's login gate (remix-new-editor: the Express backend; OpenHiggsBolt: the Next.js route with Clerk).
 
 1. **Pick a shared secret** (a long random string, for example `openssl rand -hex 32`) and give the **same value** to all three places:
-   - the Beam deploy: add `--env SMARTVID_GATE_TOKEN=<secret>` to the deploy command above (or use a Beam secret);
-   - remix-new-editor's backend environment: `SMARTVID_GATE_TOKEN`;
+   - the Beam deploy: create a Beam secret named `VIDBEE_GATE_TOKEN` with that value and add `--secrets VIDBEE_GATE_TOKEN` to the deploy command above;
+   - remix-new-editor's backend environment: `VIDBEE_GATE_TOKEN`;
    - OpenHiggsBolt's environment: `SMARTVID_GATE_TOKEN`.
    With it set, the Beam URL answers only requests that carry the secret, so nobody can use it directly.
 2. **On each app's backend** also set `SMARTVID_WEB_URL` to the Beam URL (just the address, for example `https://<id>-3000.app.beam.cloud`) and `SMARTVID_ALLOWED_USERS` to the people allowed in (user ids or emails, comma separated).
