@@ -80,6 +80,7 @@ const sleep = (client, ms) => client.sleep(ms);
 export const customTools = [
   {
     name: 'skills_list',
+    risk: 'read',
     description: 'List ready-made recipes (skills): multi-step image and video workflows such as logo animation or product ads, with the inputs each one needs.',
     input: { query: z.string().optional().describe('Filter by name, description or trigger words'), studio: z.string().optional() },
     run: async (a) => {
@@ -100,12 +101,14 @@ export const customTools = [
   },
   {
     name: 'workflows_list',
+    risk: 'read',
     description: 'List workflows: your own, published ones, or templates.',
     input: { which: z.enum(['mine', 'published', 'templates']).optional() },
     run: (a, client) => client.raw('GET', { mine: '/workflow/get-workflow-defs', published: '/workflow/get-published-workflows', templates: '/workflow/get-template-workflows' }[a.which || 'mine']),
   },
   {
     name: 'workflow_inputs',
+    risk: 'read',
     description: 'Get the inputs a workflow expects before you run it.',
     input: { workflow_id: ID },
     run: (a, client) => client.raw('GET', `/workflow/${a.workflow_id}/api-inputs`),
@@ -123,12 +126,14 @@ export const customTools = [
   },
   {
     name: 'workflow_status',
+    risk: 'read',
     description: 'Check a workflow run started with workflow_run.',
     input: { run_id: ID },
     run: (a, client) => workflowWait(client, a.run_id, 0),
   },
   {
     name: 'agents_list',
+    risk: 'read',
     description: 'List agents: your own, featured, or templates.',
     input: { which: z.enum(['mine', 'featured', 'templates']).optional() },
     run: (a, client) => client.raw('GET', { mine: '/agents/user/agents', featured: '/agents/featured/agents', templates: '/agents/templates/agents' }[a.which || 'mine']),
@@ -173,12 +178,14 @@ customTools.push(
   // Visual prompt libraries (GO AI Viral): public data, read only.
   {
     name: 'viral_prompts_search',
+    risk: 'read',
     description: 'Search the visual prompt feed (ready-made image and video prompts with example media) by keyword, category, model or business niche.',
     input: { search: z.string().optional(), media_type: z.enum(['image', 'video', 'all']).optional(), category: z.string().optional(), model: z.string().optional(), niche: z.string().optional(), sort: z.enum(['newest', 'oldest']).optional(), page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
     run: (a, client) => studio(client, 'go-ai-viral', { route: 'prompts', query: { search: a.search, mediaType: a.media_type, category: a.category, model: a.model, niche: a.niche, sort: a.sort, page: a.page, pageSize: a.page_size } }),
   },
   {
     name: 'viral_seedance_search',
+    risk: 'read',
     description: 'Search the Seedance prompt collection by keyword or language.',
     input: { search: z.string().optional(), language: z.string().optional(), has_video: z.boolean().optional(), page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
     run: (a, client) => studio(client, 'go-ai-viral', { route: 'seedance', query: { search: a.search, language: a.language, hasVideo: a.has_video, page: a.page, pageSize: a.page_size } }),
@@ -207,6 +214,7 @@ customTools.push(
   },
   {
     name: 'design_agent_sessions',
+    risk: 'read',
     description: 'List your Design Agent sessions.',
     input: {},
     run: (a, client) => studio(client, 'design-agent', { route: 'sessions' }),
@@ -234,6 +242,7 @@ customTools.push(
   },
   {
     name: 'design_agent_assets',
+    risk: 'read',
     description: 'List the assets (images, designs) a Design Agent session has produced.',
     input: { session_id: SESSION },
     run: (a, client) => studio(client, 'design-agent', { route: 'assets', query: { sessionId: a.session_id } }),
@@ -254,12 +263,14 @@ customTools.push(
   // Brand Studio. Brands live in the app's in-memory store (per server instance), so a saved brand can be missing on a later call.
   {
     name: 'brand_analyze',
+    risk: 'read',
     description: 'Analyse a website\'s brand (name, voice, colours, audience) from its URL.',
     input: { url: z.string().url() },
     run: (a, client) => studio(client, 'brand', { route: 'analyze', method: 'POST', body: { url: a.url } }),
   },
   {
     name: 'brands_list',
+    risk: 'read',
     description: 'List your saved brands (the app keeps these in memory per server instance, so a brand can disappear between calls).',
     input: { page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() },
     run: (a, client) => studio(client, 'brand', { route: 'brands', query: { page: a.page, pageSize: a.page_size } }),
@@ -278,6 +289,7 @@ customTools.push(
   },
   {
     name: 'campaigns_list',
+    risk: 'read',
     description: 'List campaigns for your brands (only brands you own), optionally for one brand.',
     input: { brand_id: z.string().max(100).optional() },
     run: (a, client) => studio(client, 'campaigns', { route: 'list', query: { brand_id: a.brand_id } }),

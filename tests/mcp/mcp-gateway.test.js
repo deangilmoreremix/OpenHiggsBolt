@@ -122,7 +122,9 @@ describe('mcp-gateway with MCP keys', () => {
     }
     expect(f.mock.calls[0][0]).toBe('https://api.muapi.ai/workflow/get-workflow-defs');
     f.mockClear();
-    for (const [m, p] of [['DELETE', '/workflow/delete-workflow-def/x'], ['POST', '/workflow/create'], ['POST', '/agents'], ['GET', '/account/balance'], ['GET', '/workflow/../admin'], ['GET', '/workflow/a b/api-inputs'], ['GET', 'https://evil.test/x'], ['POST', '/workflow/x/api-inputs']]) {
+    // a DELETE is destructive: refused for want of confirm before the allow-list is consulted (and still refused with it, see governor.test.js)
+    expect((await raw('DELETE', '/workflow/delete-workflow-def/x', {})).statusCode).toBe(409);
+    for (const [m, p] of [['POST', '/workflow/create'], ['POST', '/agents'], ['GET', '/account/balance'], ['GET', '/workflow/../admin'], ['GET', '/workflow/a b/api-inputs'], ['GET', 'https://evil.test/x'], ['POST', '/workflow/x/api-inputs']]) {
       expect((await raw(m, p, {})).statusCode, `${m} ${p}`).toBe(400);
     }
     expect(f).not.toHaveBeenCalled();

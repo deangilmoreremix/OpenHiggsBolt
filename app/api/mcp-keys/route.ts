@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { createStore, createMcpKey } from '../../../lib/mcpKeys.js';
+import { createGovernor, createSupabaseGovernorStore } from '../../../packages/studio-mcp-core/src/governor.js';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
 
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
     if (body?.action === 'list') {
       const keys = (await store.listForUser(userId)).map((k: any) => ({ id: k.id, label: k.label, prefix: k.key_prefix, created_at: k.created_at, last_used_at: k.last_used_at }));
       return NextResponse.json({ ok: true, keys });
+    }
+    if (body?.action === 'audit') {
+      // The last 50 things this user's MCP keys did: tool, risk, outcome, time. Nothing about arguments or content.
+      const events = await createGovernor({ store: createSupabaseGovernorStore(getSupabaseAdmin()) }).recent(userId, 50);
+      return NextResponse.json({ ok: true, events });
     }
     if (body?.action === 'revoke') {
       if (!/^[0-9a-f-]{36}$/i.test(String(body.id || ''))) return fail(400, 'bad_request', 'Invalid id');

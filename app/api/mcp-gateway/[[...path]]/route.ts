@@ -5,6 +5,7 @@ import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess';
 import { createHandler } from '../../../../lib/mcpGateway.js';
 import { createStore, resolveMcpKey } from '../../../../lib/mcpKeys.js';
 import { gatewayStudios } from '../../../../lib/mcpStudios';
+import { createGovernor, createSupabaseGovernorStore } from '../../../../packages/studio-mcp-core/src/governor.js';
 import { handleText as zackdText } from '../../../../lib/zackdFunction.js';
 
 // Branded gateway for the SmartVideo GO MCP server (mcp/index.js). Auth is an MCP key (see app/api/mcp-keys); the
@@ -30,6 +31,7 @@ async function authorize(principal: { userId: string }) {
 const handler = createHandler({
   resolve: (raw: string) => resolveMcpKey(createStore(getSupabaseAdmin()), loadUserKeys, raw),
   authorize,
+  governor: createGovernor({ store: createSupabaseGovernorStore(getSupabaseAdmin()), caps: { destructive: Number(process.env.MCP_CAP_DESTRUCTIVE) || 50, publish: Number(process.env.MCP_CAP_PUBLISH) || 20 } }),
   studios: {
     ...gatewayStudios(),
     // Zack D text steps use the key owner's saved OpenAI key (the principal carries it).
