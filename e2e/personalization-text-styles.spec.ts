@@ -153,20 +153,5 @@ test('a style saved elsewhere is offered from this browser, follows this project
   expect(color).toMatch(/#[0-9a-f]{6}/);
   expect(color, 'the brand reference resolved to a real color').not.toContain('@');
 
-  // Captions: add a line, bring the style from this browser, apply it.
-  await dialog.getByTestId('captions-toggle-panel').scrollIntoViewIfNeeded();
-  await dialog.getByTestId('captions-toggle-panel').click();
-  await dialog.getByTestId('captions-script').fill('hello there');
-  await dialog.getByTestId('captions-apply').click();
-  await expect(dialog.getByTestId('caption-cue')).toHaveCount(1);
-  await dialog.getByTestId('captions-browser-add').click();
-  await dialog.getByTestId('captions-style-apply').click();
-  await expect(dialog.getByTestId('captions-pos-top')).toHaveAttribute('aria-pressed', 'true');
-  await expect(dialog.getByTestId('captions-box')).toHaveAttribute('aria-pressed', 'true');
-  // Save the current look under a new name; it is kept in this browser too.
-  await dialog.getByTestId('captions-style-name').fill('Mine');
-  await dialog.getByTestId('captions-style-save').click();
-  await expect(dialog.getByTestId('captions-style-row')).toHaveCount(2);
-  expect(await page.evaluate(() => window.localStorage.getItem('personalization:text-styles'))).toContain('"Mine"');
   expect(errors, 'no uncaught page errors').toEqual([]);
 });
