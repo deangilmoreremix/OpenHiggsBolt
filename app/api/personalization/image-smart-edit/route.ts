@@ -139,9 +139,9 @@ export async function POST(req: NextRequest) {
       action: body.action || 'edit',
       quality: body.quality || 'auto',
       background,
-      input_fidelity: body.inputFidelity || 'high',
       output_format: outputFormat,
     }
+    // gpt-image-2.5 models reject input_fidelity, so it is not forwarded.
     if (outputCompression !== undefined && outputFormat !== 'png') {
       tool.output_compression = outputCompression
     }

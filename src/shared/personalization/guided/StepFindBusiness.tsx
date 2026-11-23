@@ -1,9 +1,26 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { cutoutAssetIds } from '../backgroundRemoval/useAutoCutout'
 import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
+import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
+import { isOwnedWebsite, nonOwnedWebsiteMessage } from '../websiteClassification'
+import type { BusinessOwnership, DiscoveredAsset } from '../types'
+import { DiscoveredAssetGrid, type DiscoveredAssetDropZone } from '../DiscoveredAssetGrid'
+import { ResumeProjectBanner } from '../ResumeProjectBanner'
+import { SocialIcons } from '../SocialIcons'
+import { foundSocialLinks } from './foundSocialLinks'
+
+// Simple mode has no client-asset section cards on screen, so the grid shows
+// its own drop zones; dropping an asset imports it into that section.
+const SIMPLE_MODE_DROP_ZONES: DiscoveredAssetDropZone[] = [
+  { section: 'person', label: 'Person' },
+  { section: 'logo', label: 'Logo' },
+  { section: 'products', label: 'Products' },
+  { section: 'brand', label: 'Brand' },
+]
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -26,7 +43,12 @@ function businessLabel(business: {
  * search local businesses, enter a website (the single website input in the
  * whole guided flow), or pick a saved business profile.
  */
-export function StepFindBusiness(): React.JSX.Element {
+export function StepFindBusiness({
+  onEditAsset,
+}: {
+  /** Opens the AI image editor on a discovered asset; omitted for anonymous sessions. */
+  onEditAsset?: (asset: DiscoveredAsset) => void
+} = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     clientForm = {},
@@ -41,15 +63,27 @@ export function StepFindBusiness(): React.JSX.Element {
     businessSearchError,
     selectedBusiness,
     businessResearch,
+    contactSources,
     findBusinesses,
     selectBusiness,
     researchBusiness,
     runDiscoveryWorkflow,
-    discoverAssets,
     discoveryStatus,
+    discoveryError,
     discoveredAssets = [],
+    toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    revertDiscoveredAssetEdit,
+    autoCutout,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
+    setDiscoveredAssets,
+    importDiscoveredAssets,
+    importConfirmation,
     access,
     setViewMode,
+    websiteLookup,
   } = ctx
 
   const [searchNiche, setSearchNiche] = useState('')
@@ -63,9 +97,27 @@ export function StepFindBusiness(): React.JSX.Element {
 
   const businessName = clientForm.businessName || clientForm.name || ''
   const website = clientForm.website || ''
+  // A pasted Facebook/Instagram/Yelp URL is not the business's own website.
+  const websiteHint = website.trim() ? nonOwnedWebsiteMessage(website.trim()) : null
+  const lookupForSelected = websiteLookup && selectedBusiness && websiteLookup.businessId === selectedBusiness.id
+    ? websiteLookup
+    : null
   const research = businessResearch
+  const foundSocial = foundSocialLinks({ research: research?.status === 'done' ? research.result : null, clientForm, contactSources })
+  const hasFoundSocial = Object.keys(foundSocial.links).length > 0
   const discoveredCount = discoveredAssets.filter((asset) => !asset.rejected).length
-  const logoCount = assets?.logos?.length || 0
+  // "Logo found" must reflect the DISCOVERED assets: a discovery run that
+  // found logos reports them here, and this step is exactly where the
+  // customer is told about them. Reading the asset library instead made the
+  // line say "Not yet" right after a discovery that had found a logo.
+  const discoveredLogos = discoveredAssets.filter(
+    (asset) => !asset.rejected && asset.category === 'logo'
+  )
+  const logoCount = discoveredLogos.length
+  const cutoutIds = cutoutAssetIds(discoveredAssets)
+  const selectedDiscoveredCount = discoveredAssets.filter(
+    (asset) => asset.selected && !asset.rejected
+  ).length
 
   const researchSummary = useMemo(() => {
     if (!research || research.status !== 'done' || !research.result) return null
@@ -103,7 +155,9 @@ export function StepFindBusiness(): React.JSX.Element {
     if (!website.trim() || busy) return
     setBusy(true)
     try {
-      await discoverAssets(website.trim())
+      // The full workflow (as in Advanced Editing's Find My Brand): fills the
+      // business name and details, then finds and places the logo and photos.
+      await runDiscoveryWorkflow(website.trim())
     } catch {
       /* errors surface through discoveryError */
     } finally {
@@ -113,6 +167,7 @@ export function StepFindBusiness(): React.JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <ResumeProjectBanner />
       <div>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Find your business</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
@@ -212,7 +267,16 @@ export function StepFindBusiness(): React.JSX.Element {
                       {[business.category, [business.city, business.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                     </div>
                     {business.phone && <div style={{ color: C.muted2, fontSize: 11 }}>{business.phone}</div>}
-                  </div>
+                    {!isOwnedWebsite(business.website) && (business.facebook || business.instagram || business.website) && (
+                      <div style={{ color: C.muted2, fontSize: 11 }}>Social page only — we'll look for its website</div>
+                    )}
+                    {business.ownership && (
+                      <div style={{ marginTop: 4 }}>
+                        <span style={ownershipBadgeStyle(business.ownership)}>
+                          {ownershipLabel(business.ownership)}
+                        </span>
+                      </div>
+                    )}                  </div>
                   <button
                     type="button"
                     onClick={() => selectBusiness(business)}
@@ -242,6 +306,14 @@ export function StepFindBusiness(): React.JSX.Element {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto]" style={{ gap: 10, alignItems: 'end' }}>
           <div>
+            <label style={labelStyle} htmlFor="guided-business-name-step1">Business name</label>
+            <input
+              id="guided-business-name-step1"
+              value={clientForm.businessName || ''}
+              onChange={(event) => updateClientForm({ ...clientForm, businessName: event.target.value })}
+              placeholder="Your business name"
+              style={{ ...inputStyle, marginBottom: 10 }}
+            />
             <label style={labelStyle} htmlFor="guided-business-website">Website</label>
             <input
               id="guided-business-website"
@@ -256,6 +328,7 @@ export function StepFindBusiness(): React.JSX.Element {
               type="button"
               onClick={handleWebsiteDiscovery}
               disabled={!website.trim() || busy}
+              title={!website.trim() ? 'Enter your website first' : undefined}
               style={{ ...primaryButtonStyle, opacity: !website.trim() || busy ? 0.5 : 1 }}
             >
               {busy && discoveryStatus === 'discovering' ? 'Finding…' : 'Find my brand'}
@@ -265,6 +338,7 @@ export function StepFindBusiness(): React.JSX.Element {
               type="button"
               onClick={handleFindAssets}
               disabled={!website.trim() || busy}
+              title={!website.trim() ? 'Enter your website first' : undefined}
               style={{ ...primaryButtonStyle, opacity: !website.trim() || busy ? 0.5 : 1 }}
             >
               {busy && discoveryStatus === 'discovering' ? 'Finding…' : 'Find business assets'}
@@ -274,6 +348,20 @@ export function StepFindBusiness(): React.JSX.Element {
         <p style={hintStyle}>
           We read the public page for your logo, photos and business details. Nothing is generated and nothing is charged.
         </p>
+        {websiteHint && (
+          <p style={{ ...hintStyle, color: C.danger }}>{websiteHint}</p>
+        )}
+        {lookupForSelected?.status === 'searching' && (
+          <p style={{ ...hintStyle, color: C.cyan }}>Looking for {lookupForSelected.businessName}'s website…</p>
+        )}
+        {lookupForSelected?.status === 'found' && lookupForSelected.website && (
+          <p style={{ ...hintStyle, color: C.cyan }}>Found {lookupForSelected.businessName}'s website: {lookupForSelected.website}</p>
+        )}
+        {(lookupForSelected?.status === 'not_found' || lookupForSelected?.status === 'error') && !website.trim() && (
+          <p style={hintStyle}>
+            We couldn't find {lookupForSelected.businessName}'s own website{selectedBusiness?.facebook || selectedBusiness?.instagram ? ' — only a social media page is listed' : ''}. Enter it above to find its brand assets.
+          </p>
+        )}
         {research && research.status === 'researching' && (
           <p style={{ ...hintStyle, color: C.cyan }}>Reading your website…</p>
         )}
@@ -329,7 +417,11 @@ export function StepFindBusiness(): React.JSX.Element {
       )}
 
       {/* ── What we found ───────────────────────────────────────────────── */}
-      {businessName && (
+      {/* Shown whenever there is something to report. "Find business assets"
+          runs discovery from a typed website alone, with no business name, so
+          gating this panel on the name hid the found assets, the progress
+          badge and any error: the visitor saw nothing at all. */}
+      {(businessName || discoveredAssets.length > 0 || discoveryStatus === 'discovering' || discoveryError) && (
         <div style={{ ...panelStyle, border: `1px solid ${C.cyanBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Building2 size={15} color={C.cyan} />
@@ -338,11 +430,16 @@ export function StepFindBusiness(): React.JSX.Element {
             </h3>
             {discoveryStatus === 'discovering' && <span style={badgeStyle('cyan')}>Finding assets…</span>}
           </div>
+          {discoveryError && discoveredCount === 0 && (
+            <p role="alert" style={{ margin: '0 0 10px', color: C.danger, fontSize: 12 }}>{discoveryError}</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10 }}>
-            <div>
-              <div style={labelStyle}>Business</div>
-              <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
-            </div>
+            {businessName && (
+              <div>
+                <div style={labelStyle}>Business</div>
+                <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
+              </div>
+            )}
             {clientForm.industry && (
               <div>
                 <div style={labelStyle}>Industry</div>
@@ -389,6 +486,108 @@ export function StepFindBusiness(): React.JSX.Element {
               {researchSummary.description && (
                 <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>{researchSummary.description}</p>
               )}
+            </div>
+          )}
+
+          {hasFoundSocial && (
+            <div data-testid="pz-found-social" style={{ ...softPanelStyle, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={labelStyle}>Social media found</span>
+              <SocialIcons size={18} name={businessName} links={foundSocial.links} titles={foundSocial.titles} />
+            </div>
+          )}
+
+          {/* ── Inline discovery review ────────────────────────────────────
+              The customer reviews and imports the discovered assets HERE,
+              without being sent to Advanced Editing. This is the same
+              provider flow the advanced view uses (toggle selection +
+              importDiscoveredAssets); only the presentation is guided. */}
+          {(discoveredCount > 0 || discoveredAssets.some((a) => a.rejected)) && (
+            <div style={{ ...softPanelStyle, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <h4 style={{ margin: 0, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+                  Discovered assets
+                </h4>
+                <span style={badgeStyle('cyan')}>
+                  {selectedDiscoveredCount} of {discoveredCount} selected
+                </span>
+              </div>
+              {/* The same grid as Advanced Editing: every asset, grouped by
+                  category, with select, remove / restore, category, Edit with
+                  AI, full-screen viewer, and drag onto a section. */}
+              <DiscoveredAssetGrid
+                assets={discoveredAssets}
+                onToggle={toggleDiscoveredAssetSelection}
+                onRemove={rejectDiscoveredAsset}
+                onCategoryChange={updateDiscoveredAssetCategory}
+                onEdit={onEditAsset}
+                onRevert={revertDiscoveredAssetEdit}
+                cutout={autoCutout}
+                onSaveToAssets={isAnonymous ? undefined : (id) => importDiscoveredAssets({ ids: [id] })}
+                onRemoveFromSection={removeDiscoveredAssetFromSection}
+                onRestoreAll={() => setDiscoveredAssets(discoveredAssets.map((a) => ({ ...a, rejected: false })))}
+                dropZones={SIMPLE_MODE_DROP_ZONES}
+                onDropToSection={(id, section) => {
+                  moveDiscoveredAssetToSection(id, section)
+                  void importDiscoveredAssets({ ids: [id], section })
+                }}
+              />
+              {discoveryStatus === 'importing' && (
+                <p style={{ margin: '8px 0 0', color: C.cyan, fontSize: 11 }}>Importing assets…</p>
+              )}
+              {discoveryError && (
+                <p style={{ margin: '8px 0 0', color: C.danger, fontSize: 11, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{discoveryError}</span>
+                  <button type="button" onClick={() => importDiscoveredAssets()} style={{ ...secondaryButtonStyle, minHeight: 28 }}>
+                    Retry
+                  </button>
+                </p>
+              )}
+              {importConfirmation && (
+                <p style={{ margin: '8px 0 0', color: importConfirmation.count > 0 ? C.green : C.danger, fontSize: 11 }}>
+                  {importConfirmation.count > 0
+                    ? `${importConfirmation.count} asset${importConfirmation.count === 1 ? '' : 's'} added${importConfirmation.clientName ? ` to ${importConfirmation.clientName}` : ''}.`
+                    : 'The selected assets could not be added.'}
+                </p>
+              )}
+              {discoveryError && /failed to upload/i.test(discoveryError) && (
+                <p style={{ margin: '6px 0 0', color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
+                  The selected assets are in this session and can still be used to personalize the video. Retry to
+                  save them to your library.
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => importDiscoveredAssets()}
+                  disabled={selectedDiscoveredCount === 0 || discoveryStatus === 'importing'}
+                  style={{
+                    ...primaryButtonStyle,
+                    minHeight: 34,
+                    opacity: selectedDiscoveredCount === 0 || discoveryStatus === 'importing' ? 0.5 : 1,
+                  }}
+                >
+                  {discoveryStatus === 'importing' ? 'Importing…' : `Use ${selectedDiscoveredCount || 'selected'} asset${selectedDiscoveredCount === 1 ? '' : 's'}`}
+                </button>
+                {!isAnonymous && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const idSet = new Set(cutoutIds)
+                      setDiscoveredAssets((prev) => prev.map((a) => (idSet.has(a.id) ? { ...a, selected: true } : a)))
+                      void importDiscoveredAssets({ ids: cutoutIds })
+                    }}
+                    disabled={cutoutIds.length === 0 || discoveryStatus === 'importing'}
+                    title={cutoutIds.length === 0 ? 'No cutouts are ready yet' : 'Adds every cutout to your assets. The video uses your logo and first 2 products.'}
+                    style={{
+                      ...secondaryButtonStyle,
+                      minHeight: 34,
+                      opacity: cutoutIds.length === 0 || discoveryStatus === 'importing' ? 0.5 : 1,
+                    }}
+                  >
+                    {`Add all cutouts to assets (${cutoutIds.length})`}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

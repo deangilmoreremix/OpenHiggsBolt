@@ -57,6 +57,14 @@ vi.mock('@/server/businessDiscovery', async () => {
     deduplicateBusinesses: vi.fn((items: any) => items),
     enrichBusinessRecord: vi.fn((record: any) => record),
     scoreAndSort: vi.fn((items: any) => items),
+    // Ownership classification runs inside both the Overpass and the
+    // Nominatim fallback path, so the mock must supply it.
+    classifyRecords: vi.fn((items: any) => items),
+    excludeNationalChains: vi.fn((items: any) => ({
+      kept: items,
+      excluded: [],
+      unknownRetained: [],
+    })),
     createCacheKey: vi.fn(
       (niche: string, location: string, radiusMiles: number) => `${niche}|${location}|${radiusMiles}`,
     ),
@@ -124,7 +132,7 @@ function post(body: unknown, headers: Record<string, string> = {}) {
   const req = new NextRequest('http://localhost/api/personalization/find-businesses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ backfill: false, ...(body as object) }),
   })
   return POST(req)
 }

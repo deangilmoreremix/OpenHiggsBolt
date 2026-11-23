@@ -34,12 +34,16 @@ export default function StoryboardApp({ apiKey, templateData }: { apiKey?: strin
   return (
     <SocialPublishProvider apiKey={apiKey ?? null}>
       <StoryboardProvider>
-      <Routes>
-        <Route path="/" element={<StoryboardPlannerWithTemplate templateData={templateData} />} />
-        <Route path="/shots/:sceneId" element={<ShotEditor />} />
-        <Route path="/analysis/:sceneId" element={<SceneAnalysis />} />
-      </Routes>
-    </StoryboardProvider>
+        {/* Fill the shell's overflow-hidden content area; each page scrolls its own body. */}
+        <div className="h-full flex flex-col overflow-hidden text-white">
+          <Routes>
+            <Route path="/" element={<StoryboardPlannerWithTemplate templateData={templateData} />} />
+            <Route path="/shots/:sceneId" element={<ShotEditor />} />
+            <Route path="/analysis/:sceneId" element={<SceneAnalysis />} />
+            <Route path="*" element={<StoryboardPlannerWithTemplate templateData={templateData} />} />
+          </Routes>
+        </div>
+      </StoryboardProvider>
     </SocialPublishProvider>
   )
 }

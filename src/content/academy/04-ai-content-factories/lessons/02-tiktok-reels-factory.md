@@ -1,137 +1,99 @@
 # Building a TikTok/Reels Factory
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Attention is won in the first half-second, and kept with kinetic movement.
-
-**Track:** AI Content Factories  
-**Time:** ~45 minutes  
-**Prerequisites:** The Multi-Step Production Pipeline  
-
-## The Problem
-
-The swiping velocity on vertical feeds (TikTok, Instagram Reels, YouTube Shorts) is incredibly fast. Users make a decision to watch or swipe in under **0.5 seconds**. If your video starts with a slow fade-in, a corporate logo, or a narrator saying *"Hello guys"*, you have already lost. 
-
-Furthermore, many creators treat vertical video editing like widescreen editing. They leave still images static on the screen, use tiny, hard-to-read captions at the bottom, or place text where it is covered by the platform's user interface overlay (comments, like buttons, and channel names).
-
-To build a high-performance vertical content factory, you need to configure custom editor presets that optimize visual cuts, caption typography, and safe zones specifically for mobile-first swiping feeds.
-
-## The Concept
-
-Vertical feed retention is driven by three main visual elements:
-
-### 1. The Kinetic Cut:
-Never leave a still image static on the screen. Even during a single visual clip, you must apply a continuous **slow scale-up** (Ken Burns effect) of **100% to 108%** over 3 seconds. The brain registers this small movement as active video, preventing visual boredom.
-
-### 2. Micro-Word Captions:
-Viewers scrolling vertical feeds often watch with audio turned off, or scan the text to decide if the voice is worth listening to. Standard sentences are slow to read. Instead, configure captions to output **1 to 3 words at a time** in a bold, high-contrast, center-aligned font.
-
-### 3. Safe Zone Compliance:
-Every platform overlays user interface icons (like, share, comments) on the right side and bottom of the screen. Keep your primary subject and text captions within the **central safe zone** to prevent them from being hidden by platform buttons.
+> **Time:** about 18 minutes. **You will finish with:** a vertical 9:16 clip with moving visuals, micro-word captions inside the safe zone, and a pattern interrupt.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Set Up the Vertical Canvas
-In your editor (e.g. CapCut), set the project aspect ratio to `9:16` (1080 x 1920 pixels). Verify that your background assets cover the entire screen height without leaving black bars at the top or bottom.
+Viewers decide to watch or swipe in under **0.5 seconds**. Slow fades, logos, static images, tiny captions and text hidden under platform buttons all lose them. Three things drive retention: a kinetic cut (never leave a still static), micro-word captions (1 to 3 words at a time), and safe-zone placement.
 
-### Step 2: Auto-Caption Generation
-Run the auto-captioning utility. Once the text tracks are generated, select all captions and apply these visual styles:
+You will need a short voiceover or clip (about 30 seconds), a few background images, and an editor such as CapCut. In SmartVideo GO AI, make backgrounds in **Image Studio** and motion in **Video Studio**. Finish lesson 1 first.
+
+## Step by step
+
+### 1. Set up the vertical canvas
+
+In your editor, set the project to `9:16` (1080 x 1920 pixels). Place your background assets so they cover the full height.
+
+**You should see:** a tall canvas with no black bars at top or bottom.
+
+**If not:** scale or crop the asset until it fills the frame.
+
+### 2. Generate the captions
+
+Run the auto-captioning utility so text tracks appear. Then set captions to show 1 to 3 words at a time.
+
+**You should see:** short caption chunks following the voice.
+
+**If not:** if captions are full sentences, lower the words-per-line setting.
+
+### 3. Style the captions
+
+Select all captions and apply:
+
 * **Font:** Montserrat Bold or Impact.
 * **Color:** White (`#FFFFFF`) with a black outline/stroke (width: 8).
-* **Keywords:** Scan the timeline. Manually change the font color of action verbs or primary keywords (e.g. "WIN", "DANGER") to Yellow (`#FFD700`) or Green (`#00FF00`).
 
-### Step 3: Positioning within Safe Zones
-Position the caption track in the middle of the screen. In the position coordinate boxes, set the Y-axis value so the text sits slightly below center, but well above the account username area:
-* Target coordinate: **Y = -120 to -150 pixels** on a standard 1080x1920 grid.
+**You should see:** bold white text with a heavy black outline.
 
-### Step 4: Apply Visual Pacing Rules
-Cut your visuals to match the [`templates/tiktok-reels-editor-preset.md`](templates/tiktok-reels-editor-preset.md). Ensure the first visual cut happens at exactly **1.5 seconds**, and subsequent cuts happen every **2.5 to 3.0 seconds**.
+**If not:** if the stroke is missing, look for an outline or stroke toggle in the text panel.
 
-### Step 5: Add a Pattern Interrupt
-At the 15-second or 30-second mark, insert a sudden visual scale-up (e.g. zoom-in by 120%) combined with a subtle sound effect (a low "whoosh" or "swish"). This resets the user's attention span.
+### 4. Highlight the keywords
 
----
+Scan the timeline and change the color of action verbs or key words (for example "WIN", "DANGER") to Yellow (`#FFD700`) or Green (`#00FF00`).
 
-## Worked Example
+**You should see:** a few highlighted words, not whole lines.
 
-<p align="center">
-<img src="templates/examples/fitness-reel-preview.jpg" alt="TikTok/Reels Fitness Video Model" width="240">
-<img src="templates/examples/fitness-reel-clip.gif" alt="Fitness Reel Video Animation (I2V)" width="240">
-</p>
-<p align="center"><sub>TikTok/Reels Model Image (Left) ──► Image-to-Video Motion Loop (Right) · Video File: <a href="templates/examples/fitness-reel-clip.mp4">templates/examples/fitness-reel-clip.mp4</a></sub></p>
+**If not:** if everything is colored, undo most of it; highlights only work when rare.
 
-**Timeline Construction for "Peak Performance" (Fitness Niche)**
+### 5. Position inside the safe zone
 
+Center the caption track, then set the Y value so text sits slightly below center but well above the username area: **Y = -120 to -150 pixels** on a 1080x1920 grid.
 
+**You should see:** captions mid-screen, clear of the right-side icons and bottom account name.
 
-* **Visual Cut pacing:**
-  * **0.0 - 1.5s:** Still image of a runner at sunrise (100% to 105% scale-up).
-  * **1.5s:** Sharp cut to a close-up of running shoes hitting the asphalt.
-  * **3.5s:** Cut to a silhouette athlete doing pull-ups (with a slow zoom-in).
+**If not:** turn on your editor's safe-zone guide if it has one; menus move, so follow the current screen.
 
-* **Caption Sync:**
-  * Voiceover: *"If you want progress, stop looking for comfort."*
-  * Captions output sequence: `[If you want] (0.0-0.8s)` -> `[PROGRESS] (0.8-1.5s, highlighted in green)` -> `[stop looking] (1.5-2.5s)` -> `[for comfort] (2.5-3.5s)`.
+### 6. Apply pacing and motion
 
-* **Sound Design:**
-  * Background track: Fast-tempo atmospheric synth.
-  * 1.5s cut: Low sub-bass drop sound effect.
+Follow [`templates/tiktok-reels-editor-preset.md`](templates/tiktok-reels-editor-preset.md): first visual cut at exactly **1.5 seconds**, then a cut every **2.5 to 3.0 seconds**. Add a slow scale-up from **100% to 108%** over 3 seconds on every still.
 
-**The Result:** The video hooks the viewer instantly, the highlighted text draws the eye, and the visual cuts keep the pacing fast and engaging.
+**You should see:** a cut at 1.5s and constant gentle movement on every clip.
 
----
+**If not:** if a still looks frozen, check the scale animation has start and end keyframes.
 
-## Compare Tools
+### 7. Add a pattern interrupt
 
-| Editing Path | Speed | Caption Customization | Safe-Zone Guides |
-|---|---|---|---|
-| **CapCut (Desktop)** | Fast | Excellent (Massive library of text templates and styles) | Built-in (Shows vertical UI overlays) |
-| **Premiere Pro** | Medium | Good (Highly customizable, but requires setting up preset templates manually) | Manual setup required |
-| **In-App Editors** (TikTok/Reels) | Slow | Low (Basic font options, difficult to time exactly to audio) | Dynamic |
+At the 15-second or 30-second mark, add a sudden zoom-in to 120% with a subtle low "whoosh" or "swish" sound.
 
-CapCut is the best factory editor for vertical content because it generates auto-captions in seconds, has built-in safe zone lines, and supports rapid batch exports. Use native in-app uploaders only to add final trending audio files during posting.
+**You should see:** a noticeable but short jolt at that mark.
 
----
+**If not:** if the sound is loud, lower its volume so it supports rather than distracts.
 
-## Launch It
+## Check yourself
 
-**How to monetize this service:**
-* **Batch UGC Packs:** Pitch local gyms, cafes, or beauty brands. Offer to shoot or generate 15 vertical reels for them for **$500–$800**. 
-* **Creator Captain Services:** Manage vertical channels for established influencers. You download their long-form YouTube videos, cut them into 10 clips using your presets, and schedule them across TikTok/Reels for a **$1,000/month** retainer.
+* [ ] Canvas is 9:16 (1080 x 1920) with no black bars.
+* [ ] Captions are 1-3 words, bold, outlined, with a few highlighted keywords.
+* [ ] Text sits within the safe zone (Y = -120 to -150).
+* [ ] First cut at 1.5s, later cuts every 2.5-3.0s, 100% to 108% motion on stills.
 
----
+## Common mistakes
 
-## Exercises
+* Leaving still images static.
+* Tiny bottom captions, or text under platform buttons.
+* Starting with a slow fade, a logo, or "Hello guys".
 
-1. **Easy:** Import a widescreen image into a vertical project. Scale and crop it to fit `9:16`. Save it.
-2. **Medium:** Auto-generate captions for a 30-second audio track. Apply Montserrat Bold font, change the word group count to 2 words per screen, and color-highlight 3 keywords.
-3. **Hard:** Produce a 30-second vertical video that incorporates: (1) cuts every 2 seconds, (2) 100% to 108% scale animations on all background images, and (3) text positioned strictly inside safe zones.
+## Go further
 
----
+**Worked example, "Peak Performance" (fitness):** 0.0-1.5s runner at sunrise (100% to 105% scale-up); 1.5s sharp cut to running shoes on asphalt; 3.5s silhouette athlete doing pull-ups with slow zoom-in. Voiceover "If you want progress, stop looking for comfort." Captions: `[If you want]` (0.0-0.8s), `[PROGRESS]` (0.8-1.5s, green), `[stop looking]` (1.5-2.5s), `[for comfort]` (2.5-3.5s). Sound: fast-tempo atmospheric synth, plus a low sub-bass drop on the 1.5s cut. Result: instant hook, eye drawn to the highlight, fast pacing.
 
-## Templates
+**Compare tools:** CapCut Desktop is fast with excellent caption styles and built-in safe-zone guides. Premiere Pro is medium speed, needs manual preset and safe-zone setup. In-app editors (TikTok/Reels) are slow with basic fonts and are best used only to add trending audio at posting.
 
-* [`templates/tiktok-reels-editor-preset.md`](templates/tiktok-reels-editor-preset.md) — layout notes for cut rates, caption typography, and safe zones.
+**Monetize:** Batch UGC Packs (15 vertical reels for local gyms, cafes or beauty brands, **$500-$800**), or Creator Captain Services (cut a creator's long videos into 10 clips and schedule them for a **$1,000/month** retainer).
 
----
+**Exercises:** Easy: fit a widescreen image to 9:16. Medium: caption a 30-second audio with Montserrat Bold, 2 words per screen, and 3 highlighted keywords. Hard: a 30-second vertical video with cuts every 2 seconds, 100% to 108% scale on all backgrounds, and text strictly in safe zones.
 
-[← The Multi-Step Production Pipeline](01-production-pipeline.md) · Next: [Building a YouTube Shorts Factory →](03-youtube-shorts-factory.md)
+**Template:** [`templates/tiktok-reels-editor-preset.md`](templates/tiktok-reels-editor-preset.md).
 
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Building a YouTube Shorts Factory.

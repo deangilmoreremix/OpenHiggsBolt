@@ -1,0 +1,160 @@
+[dotenv@17.2.2] injecting env (22) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+Running 3 tests using 1 worker
+
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4","info":{"size":2047781,"type":"video/mp4"},"probe":{"exportRootCount":186,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":196},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: container + decode evidence: {
+  "container": {
+    "magic": "ftyp",
+    "majorBrand": "isom",
+    "hasAvc1": true,
+    "hasMp4a": true,
+    "byteLength": 2047781
+  },
+  "decoded": {
+    "duration": 5.077333,
+    "videoWidth": 1920,
+    "videoHeight": 1080
+  },
+  "size": 2047781,
+  "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4"
+}
+  ✓  1 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:524:7 › Phase 2 — Remotion designs survive the real browser export › the browser export produces a real encoded MP4 that contains the design (26.2s)
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-without-design.mp4","info":{"size":1994702,"type":"video/mp4"},"probe":{"exportRootCount":0,"designId":null,"creditPresent":false,"creditText":null,"designBox":null,"creditBox":null,"samples":172},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4","info":{"size":2046389,"type":"video/mp4"},"probe":{"exportRootCount":212,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":232},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: decoding both exported files and comparing pixels…
+A1: pixel evidence: {
+  "designBox": {
+    "left": 432,
+    "top": 157,
+    "width": 1056,
+    "height": 594
+  },
+  "creditBox": {
+    "left": 1277,
+    "top": 733,
+    "width": 203,
+    "height": 12
+  },
+  "personalizedSize": 2046389,
+  "controlSize": 1994702,
+  "withDesignWidth": 1920,
+  "withDesignHeight": 1080,
+  "withDesignDuration": 5.077333,
+  "withoutDesignWidth": 1920,
+  "withoutDesignHeight": 1080,
+  "withoutDesignDuration": 5.077333,
+  "brandInBox": 16179,
+  "brandInBoxControl": 0,
+  "changedInBox": 20844,
+  "changedOutsideBox": 0,
+  "changedTotal": 20844,
+  "creditChanged": 963,
+  "creditBrighter": 876,
+  "meanBrand": {
+    "r": 41,
+    "g": 211,
+    "b": 239
+  },
+  "personalizedFile": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4",
+  "controlFile": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-without-design.mp4"
+}
+  ✓  2 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:578:7 › Phase 2 — Remotion designs survive the real browser export › the design is in the encoded pixels, and the un-personalized render has none (1.2m)
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-animated-headline.mp4","info":{"size":2048182,"type":"video/mp4"},"probe":{"exportRootCount":215,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":228},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-logo-reveal.mp4","info":{"size":2023632,"type":"video/mp4"},"probe":{"exportRootCount":314,"designId":"logo-reveal","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":576,"top":270,"width":768,"height":432},"creditBox":{"left":1133,"top":684,"width":203,"height":12},"samples":337},"inspector":{"layerRows":["DesignLogo Reveal"],"textareas":["Business name"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-lower-third.mp4","info":{"size":2014412,"type":"video/mp4"},"probe":{"exportRootCount":263,"designId":"lower-third","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":-19,"top":313,"width":1190,"height":670},"creditBox":{"left":960,"top":965,"width":203,"height":12},"samples":271},"inspector":{"layerRows":["DesignLower Third"],"textareas":["Name","Title"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-promo-cta.mp4","info":{"size":1998323,"type":"video/mp4"},"probe":{"exportRootCount":340,"designId":"promo-cta","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":481,"width":1056,"height":594},"creditBox":{"left":1277,"top":1057,"width":203,"height":12},"samples":358},"inspector":{"layerRows":["DesignPromo CTA"],"textareas":["Headline","Subtitle","Call to action"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-visual-effect.mp4","info":{"size":1997359,"type":"video/mp4"},"probe":{"exportRootCount":219,"designId":"visual-effect","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":0,"top":0,"width":1920,"height":1080},"creditBox":{"left":1709,"top":1062,"width":203,"height":12},"samples":238},"inspector":{"layerRows":["DesignBokeh Particles"],"textareas":[],"inspectorSaysUnregistered":false}}
+A1: all-designs evidence: [
+  {
+    "id": "animated-headline",
+    "size": 2048182,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2048182
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-animated-headline.mp4"
+  },
+  {
+    "id": "logo-reveal",
+    "size": 2023632,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2023632
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-logo-reveal.mp4"
+  },
+  {
+    "id": "lower-third",
+    "size": 2014412,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2014412
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-lower-third.mp4"
+  },
+  {
+    "id": "promo-cta",
+    "size": 1998323,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 1998323
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-promo-cta.mp4"
+  },
+  {
+    "id": "visual-effect",
+    "size": 1997359,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 1997359
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-visual-effect.mp4"
+  }
+]
+  ✓  3 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:832:7 › Phase 2 — Remotion designs survive the real browser export › every registered design exports to a real encoded MP4 (3.6m)
+
+  Slow test file: [chromium] › e2e/personalization-step4-remotion-export.spec.ts (5.2m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  3 passed (5.3m)

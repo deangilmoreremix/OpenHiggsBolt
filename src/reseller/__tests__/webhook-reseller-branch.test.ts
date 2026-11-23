@@ -28,6 +28,11 @@ vi.mock('@/src/lib/supabaseServer', () => ({
           maybeSingle: async () => ({ data: null, error: null }),
         }),
       }),
+      // The checkout flow writes the idempotency claim and the purchase
+      // ledger; the mock only needs to acknowledge those writes.
+      insert: async () => ({ data: null, error: null }),
+      upsert: async () => ({ data: null, error: null }),
+      update: async () => ({ data: null, error: null }),
     }),
   }),
 }));
@@ -40,6 +45,9 @@ vi.mock('@/lib/supabaseServer', () => ({
           maybeSingle: async () => ({ data: null, error: null }),
         }),
       }),
+      insert: async () => ({ data: null, error: null }),
+      upsert: async () => ({ data: null, error: null }),
+      update: async () => ({ data: null, error: null }),
     }),
   }),
 }));

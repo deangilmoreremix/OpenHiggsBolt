@@ -32,6 +32,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createRequire } from 'node:module'
+import fs from 'node:fs'
+import path from 'node:path'
 
 const nodeRequire = createRequire(import.meta.url)
 
@@ -156,6 +158,11 @@ interface SupabaseCall {
   action: 'select' | 'update'
 }
 
+// The worker reads the destination from the job row, never from the request
+// body, so the fake row carries whatever URL the test posted. Without this
+// every "gate" test would crawl the same fixed URL and test nothing.
+let jobWebsiteUrl = 'https://example.com/'
+
 function fakeSupabaseClient(calls: SupabaseCall[], existingJobId: string | null = 'job-1') {
   return {
     from: (table: string) => ({
@@ -167,7 +174,7 @@ function fakeSupabaseClient(calls: SupabaseCall[], existingJobId: string | null 
         return {
           eq: (_column: string, value: unknown) => ({
             single: async () => ({
-              data: value === existingJobId ? { id: 'job-1', website_url: 'https://example.com/' } : null,
+              data: value === existingJobId ? { id: 'job-1', website_url: jobWebsiteUrl } : null,
               error: value === existingJobId ? null : { message: 'not found' },
             }),
           }),
@@ -212,6 +219,13 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
     },
   ]
 
+  // These suites exercise the browser phase, which is opt-in.
+  const savedBrowserFlag = process.env.ENABLE_BROWSER_DISCOVERY
+  process.env.ENABLE_BROWSER_DISCOVERY = 'true'
+  // The worker refuses every call until the dispatch secret is configured.
+  const savedSecret = process.env.INTERNAL_FUNCTION_SECRET
+  process.env.INTERNAL_FUNCTION_SECRET = TEST_INTERNAL_SECRET
+
   const saved: Array<[string, unknown]> = []
   for (const seam of seams) {
     const resolved = nodeRequire.resolve(seam.id, { paths: [NETLIFY_FN_DIR] })
@@ -226,10 +240,36 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
     } as unknown as NodeJS.Module
   }
 
+  // The compiled free layers exist only after a build. When they do, they are
+  // stubbed so this suite never touches the network; "found nothing, escalate"
+  // is what an unreachable site produces.
+  const fastDiscoveryPath = path.resolve(NETLIFY_FN_DIR, '../lib/fast-discovery.cjs')
+  if (fs.existsSync(fastDiscoveryPath)) {
+    saved.push([fastDiscoveryPath, nodeRequire.cache[fastDiscoveryPath]])
+    nodeRequire.cache[fastDiscoveryPath] = {
+      id: fastDiscoveryPath,
+      filename: fastDiscoveryPath,
+      loaded: true,
+      children: [],
+      paths: [],
+      exports: {
+        runFastDiscovery: async () => ({
+          fastAssets: [],
+          needsBrowser: true,
+          result: { providerUsed: 'NONE', providerAttempts: [], pagesCrawled: 0, rawCandidates: 0, duration: 0, candidates: [], socialProfiles: [] },
+        }),
+      },
+    } as unknown as NodeJS.Module
+  }
+
   return {
     browser,
     supabaseCalls,
     restored: () => {
+      if (savedBrowserFlag === undefined) delete process.env.ENABLE_BROWSER_DISCOVERY
+      else process.env.ENABLE_BROWSER_DISCOVERY = savedBrowserFlag
+      if (savedSecret === undefined) delete process.env.INTERNAL_FUNCTION_SECRET
+      else process.env.INTERNAL_FUNCTION_SECRET = savedSecret
       for (const [resolved, original] of saved) {
         if (original === undefined) delete nodeRequire.cache[resolved]
         else nodeRequire.cache[resolved] = original
@@ -243,10 +283,15 @@ async function loadNetlifyFunction() {
   return import(NETLIFY_FN)
 }
 
+const TEST_INTERNAL_SECRET = 'test-internal-secret'
+
 function netlifyEvent(body: unknown, headers: Record<string, string> = {}) {
+  const posted = (body as { websiteUrl?: unknown } | null)?.websiteUrl
+  jobWebsiteUrl = typeof posted === 'string' ? posted : 'https://example.com/'
   return {
     httpMethod: 'POST',
-    headers: { 'content-type': 'application/json', ...headers },
+    // Every call is a dispatch from the route, which carries the secret.
+    headers: { 'content-type': 'application/json', 'x-internal-service-token': TEST_INTERNAL_SECRET, ...headers },
     body: JSON.stringify(body),
   }
 }
@@ -854,20 +899,17 @@ describe('netlify personalization-browser-discovery: authentication', () => {
     seams?.restored()
   })
 
-  it('returns 401 when no Authorization header is present', async () => {
+  it('proceeds as anonymous when no Authorization header is present (free discovery)', async () => {
     seams = installNetlifySeams()
     const mod = await loadNetlifyFunction()
 
     const response = await mod.handler(netlifyEvent({ jobId: 'job-1', websiteUrl: 'https://example.com/' }))
 
-    expect(response.statusCode).toBe(401)
-    expect(JSON.parse(response.body).error).toMatch(/Authentication required/i)
-    // No browser was launched and no page was ever fetched.
-    expect(seams.browser.launchCalls).toEqual([])
-    expect(seams.browser.gotoCalls).toEqual([])
+    // No Clerk token means anonymous discovery — allowed because discovery is free.
+    expect(response.statusCode).not.toBe(401)
   })
 
-  it('returns 401 for a non-Bearer Authorization header', async () => {
+  it('proceeds as anonymous for a non-Bearer Authorization header', async () => {
     seams = installNetlifySeams()
     const mod = await loadNetlifyFunction()
 
@@ -877,7 +919,7 @@ describe('netlify personalization-browser-discovery: authentication', () => {
       }),
     )
 
-    expect(response.statusCode).toBe(401)
+    expect(response.statusCode).not.toBe(401)
   })
 
   it('returns 401 when server-side token verification fails', async () => {
@@ -956,7 +998,9 @@ describe('netlify personalization-browser-discovery: SSRF gate', () => {
     expect(JSON.parse(response.body).code).toBe('SSRF_BLOCKED')
     expect(seams.browser.launchCalls).toEqual([])
     expect(seams.browser.gotoCalls).toEqual([])
-    expect(seams.supabaseCalls).toEqual([])
+    // The destination comes from the job row, so the row is read, then the
+    // job is marked as failed. Nothing else touches the database.
+    expect(seams.supabaseCalls.map((c) => c.action)).toEqual(['select', 'update'])
   })
 
   it('rejects 169.254.169.254 explicitly, authenticated, without navigating', async () => {
@@ -976,7 +1020,9 @@ describe('netlify personalization-browser-discovery: SSRF gate', () => {
     expect(payload.error).toMatch(/169\.254\.169\.254/)
     expect(seams.browser.launchCalls).toEqual([])
     expect(seams.browser.gotoCalls).toEqual([])
-    expect(seams.supabaseCalls).toEqual([])
+    // The destination comes from the job row, so the row is read, then the
+    // job is marked as failed. Nothing else touches the database.
+    expect(seams.supabaseCalls.map((c) => c.action)).toEqual(['select', 'update'])
   })
 
   it('rejects a host name that resolves to a private address', async () => {

@@ -40,6 +40,7 @@ const TRACK_TITLES: Record<string, string> = {
   '13-ai-tools-mastery': 'AI Tools Mastery',
   '14-ai-freelancing-and-agency-business': 'AI Freelancing & Agency Business',
   '15-ai-agents-and-vibe-coding': 'AI Agents & Vibe Coding',
+  '16-build-and-launch-apps-with-ai-assistants': 'Build & Launch Apps with AI Assistants',
 };
 
 /* Track order: 01 (content folder "ugc") first, then the rest by number. */
@@ -58,12 +59,46 @@ function titleFromFilename(file: string): string {
     .trim();
 }
 
+/**
+ * A lesson's display title: its own heading (for example "Screenplay & Story Generation"),
+ * "Overview" for the 00- file of a track, and the cleaned-up file name as a last resort.
+ */
+/** The lesson's own `# ` heading, skipping fenced code (same rule as the step parser); null when none. */
+export function lessonTitleFromMarkdown(md: string): string | null {
+  let fenced = false;
+  for (const line of md.slice(0, 800).split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    const m = !fenced ? line.match(/^#\s+(.+)$/) : null;
+    if (m) {
+      const clean = m[1].replace(/[*_`]/g, '').replace(/^(Track|Lesson)\s+\d+\s*[:—-]\s*/i, '').trim();
+      return clean || null;
+    }
+  }
+  return null;
+}
+
+function lessonTitle(dir: string, file: string): string {
+  if (/^00-/.test(file)) return 'Overview';
+  try {
+    const clean = lessonTitleFromMarkdown(fs.readFileSync(path.join(dir, file), 'utf8'));
+    if (clean) return clean;
+  } catch {
+    /* fall through to the file name */
+  }
+  return titleFromFilename(file);
+}
+
 function listMarkdown(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
-    .sort();
+    // Sort on the slug (without ".md"): "01-foo" must come before "01-foo-part-2".
+    .sort((a, b) => {
+      const x = a.replace(/\.md$/, '');
+      const y = b.replace(/\.md$/, '');
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
 }
 
 let cache: AcademyTrack[] | null = null;
@@ -75,9 +110,10 @@ export function getAllTracks(): AcademyTrack[] {
     if (!entry.isDirectory()) continue;
     const trackSlug = entry.name;
     const trackDir = path.join(ACADEMY_DIR, trackSlug);
-    const lessons = listMarkdown(path.join(trackDir, 'lessons')).map((f, i) => ({
+    const lessonsDir = path.join(trackDir, 'lessons');
+    const lessons = listMarkdown(lessonsDir).map((f, i) => ({
       slug: f.replace(/\.md$/, ''),
-      title: titleFromFilename(f),
+      title: lessonTitle(lessonsDir, f),
       order: i,
     }));
     const templates = listMarkdown(path.join(trackDir, 'templates')).map((f, i) => ({

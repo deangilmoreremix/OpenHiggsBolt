@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -64,11 +64,12 @@ import { resolveCopy } from "../i18nUtils";
 // ── SmartVideo app integrations (local-only; upstream has no equivalent) ──
 import { setCharacterSheet } from "../lib/characterStore";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { readStoryboardHandoff } from "../storyboardHandoff.js";
 import registry from "../skills/registry.json";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
-import { fillTemplate } from "../lib/promptRecipes";
+import { fillTemplate, recipePromptValues } from "../lib/promptRecipes";
 import { useTemplateData } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { useRouter } from "next/navigation";
@@ -94,7 +95,7 @@ async function downloadImage(url, filename) {
 
 // ─── UploadButton (inline picker) ───────────────────────────────────────────
 
-function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null, copy }) {
+export function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null, copy }) {
   const t = copy.uploadButton;
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -102,6 +103,9 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
   const [uploadHistory, setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Always-current selection, so async upload callbacks never see a stale list.
+  const selectedRef = useRef([]);
+  selectedRef.current = selectedEntries;
 
   // Notify parent whenever uploadHistory changes (for localStorage persistence)
   const onHistoryChangeRef = useRef(onHistoryChange);
@@ -245,15 +249,15 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
               }),
             );
 
-            // Auto-select if there's room
-            if (selectedEntries.length < maxImages) {
-              const newEntry = { url: uploadedUrl };
-              setSelectedEntries((prev) => [...prev, newEntry]);
-
-              if (maxImages === 1) {
-                fireOnSelect([newEntry]);
-                setPanelOpen(false);
-              }
+            // Auto-select if there's room, and tell the parent right away so the
+            // uploaded image shows in the prompt bar without reopening the picker.
+            if (maxImages === 1 || selectedRef.current.length < maxImages) {
+              // Single-image mode: the new upload replaces the current pick instead of being ignored.
+              const next = maxImages === 1 ? [{ url: uploadedUrl }] : [...selectedRef.current, { url: uploadedUrl }];
+              selectedRef.current = next;
+              setSelectedEntries(next);
+              fireOnSelect(next);
+              if (maxImages === 1) setPanelOpen(false);
             }
           } catch (err) {
             console.error("[UploadButton] Upload failed for", file.name, err);
@@ -331,6 +335,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
         ];
       }
       setSelectedEntries(next);
+      if (next.length > 0) fireOnSelect(next);
     }
   };
 
@@ -343,6 +348,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
     if (next.length !== selectedEntries.length) {
       setSelectedEntries(next);
       if (next.length === 0) onClear?.();
+      else fireOnSelect(next); // the prompt bar must not keep using the image that was just removed
     }
   };
 
@@ -990,6 +996,19 @@ export default function ImageStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_image_studio_persistent";
@@ -1291,6 +1310,37 @@ export default function ImageStudio({
   const selectedFamily = imageModelCatalog.familyById.get(selectedFamilyId) || initialFamily;
   const selectedPickerEntry = imageModelPickerEntryByVariantId.get(selectedModelId);
   const selectedModelDisplayName = selectedPickerEntry?.name || selectedFamily.name;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the first uploaded image plus
+  // the generation configuration — a new upload (or a different model / aspect
+  // ratio) is a different project. Declared after `selectedModelDisplayName`,
+  // which it reads during render.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "image",
+      studioProjectId: [
+        selectedModelId,
+        selectedAr,
+        uploadedImageUrls[0] ? uploadedImageUrls[0].split("/").pop() : "no-image",
+      ].join(":"),
+      title: "Image Studio image",
+      media: {
+        mediaType: "image",
+        url: uploadedImageUrls[0] ?? null,
+        poster: null,
+        aspectRatio: selectedAr,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModelDisplayName,
+      },
+    }),
+    [selectedModelId, selectedModelDisplayName, selectedAr, uploadedImageUrls, prompt],
+  );
   const currentMode = imageMode ? "i2i" : "t2i";
   const selectedVariant = imageModelCatalog.variantById.get(selectedModelId);
   const supplementalInputs = getSupplementalModelInputs(selectedVariant?.model);
@@ -1457,11 +1507,7 @@ export default function ImageStudio({
     }
     if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
 
-    const vals = {};
-    (skill.inputs || []).forEach((i) => {
-      vals[i.name] = "";
-    });
-    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", recipePromptValues(skill)));
 
     // Resolution: prefer mapping onto the quality enum, else a custom field.
     if (step0.resolution) {
@@ -1818,6 +1864,12 @@ export default function ImageStudio({
                 </div>
               ))}
               
+              {/* Personalize this image in the shared Personalization Modal.
+                  Renders nothing without an uploaded source image. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
+
               {/* Main Upload Trigger */}
               {referenceVariant && uploadedImageUrls.length < referenceImageLimit && (
                 <UploadButton
@@ -1882,7 +1934,7 @@ export default function ImageStudio({
             <PromptControls ref={dropdownRef}>
               {/* Model button */}
               <div className="relative">
-                <button
+                <button data-help="model"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -2024,6 +2076,7 @@ export default function ImageStudio({
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
+
                 </div>
               )}
 
@@ -2080,7 +2133,7 @@ export default function ImageStudio({
 
               {/* Batch size stepper */}
               <div className={promptControlClassName({ compact: true, className: "select-none" })}>
-                <button
+                <button data-help="batch count"
                   type="button"
                   onClick={() => setBatchSize(prev => Math.max(1, prev - 1))}
                   className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
@@ -2090,7 +2143,7 @@ export default function ImageStudio({
                 <span className="text-xs font-semibold text-white/70 min-w-[24px] text-center">
                   {batchSize}/4
                 </span>
-                <button
+                <button data-help="batch count"
                   type="button"
                   onClick={() => setBatchSize(prev => Math.min(4, prev + 1))}
                   className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
@@ -2130,6 +2183,21 @@ export default function ImageStudio({
                   Recipes
                 </span>
               </button>
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={["image"]}
+                onSelect={(asset) =>
+                  handleUploadSelect({
+                    url: asset.url,
+                    // One-reference models: the chosen image replaces the current one; otherwise it is added.
+                    urls:
+                      referenceImageLimit <= 1
+                        ? [asset.url]
+                        : [...new Set([...(uploadedImageUrls || []), asset.url])],
+                  })
+                }
+              />
             </PromptControls>
 
             {/* Generate button */}

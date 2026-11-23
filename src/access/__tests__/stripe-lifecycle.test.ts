@@ -361,7 +361,11 @@ describe('stripe webhook lifecycle', () => {
     const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
     const access = await resolveSmartVideoAccessForUser('user_real');
     expect(access).not.toBeNull();
-    expect(access!.hasSmartVideoGo).toBe(false);
+    // Base access is open to every signed-in user, but the placeholder's
+    // purchase is not attached to them and grants no paid app.
+    expect(access!.hasSmartVideoGo).toBe(true);
+    expect(access!.entitlements).toEqual({});
+    expect(access!.hasSmartVideoViral).toBe(false);
 
     // ...and the email-keyed row is not readable as a paid row via status alone
     const { isQualifyingStatus, QUALIFYING_STATUSES } = await import('@/access/entitlements');
@@ -428,8 +432,10 @@ describe('stripe webhook lifecycle', () => {
     expect(res.status).toBe(200);
 
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('refunded');
+    // Canonical revocation status (revokeEntitlement): the row is kept for
+    // history with a non-qualifying status, so hasSmartVideoGo() is false.
     expect(h.supabase.current.tables.user_entitlements[0]).toMatchObject({
-      status: 'revoked',
+      status: 'inactive',
       entitlements: { smartvideo_go: true },
     });
     expect(String(h.supabase.current.tables.user_entitlements[0].revoked_reason)).toContain('charge.refunded');
@@ -437,12 +443,16 @@ describe('stripe webhook lifecycle', () => {
     // Idempotent: a duplicate refund event changes nothing further.
     const res2 = await POST(makeRequest(event));
     expect(res2.status).toBe(200);
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
 
-    // Revoked rows no longer qualify for access.
+    // A revoked row no longer qualifies for a paid app; base access stays
+    // open because it is not gated.
     const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
     const access = await resolveSmartVideoAccessForUser('user_buyer');
-    expect(access!.hasSmartVideoGo).toBe(false);
+    expect(access!.status).toBe('inactive');
+    expect(access!.hasSmartVideoGo).toBe(true);
+    const { hasSmartVideoViral } = await import('@/access/entitlements');
+    expect(hasSmartVideoViral({ smartvideo_go: true, go_viral_ai: true }, access!.status)).toBe(false);
   });
 
   it('(d2) a dispute marks the purchase disputed and revokes', async () => {
@@ -481,7 +491,7 @@ describe('stripe webhook lifecycle', () => {
     const res = await POST(makeRequest(event));
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('disputed');
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
   });
 
   it('(d3) refund.created also revokes', async () => {
@@ -516,10 +526,10 @@ describe('stripe webhook lifecycle', () => {
     const res = await POST(makeRequest(event));
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('refunded');
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
   });
 
-  it('(e) subscription.deleted expires the entitlement; subscription.created activates it', async () => {
+  it('(e) subscription.deleted revokes the entitlement; subscription.created activates it', async () => {
     h.supabase.current = createFakeSupabase({
       user_entitlements: [
         {
@@ -540,7 +550,7 @@ describe('stripe webhook lifecycle', () => {
     seedWebhook(deleted);
     let res = await POST(makeRequest(deleted));
     expect(res.status).toBe(200);
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('expired');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
 
     const created = stripeEvent('customer.subscription.created', subscription({ status: 'trialing' }));
     seedWebhook(created);
@@ -581,7 +591,7 @@ describe('stripe webhook lifecycle', () => {
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_entitlements[0]).toMatchObject({
       clerk_user_id: 'email:buyer@example.com',
-      status: 'expired',
+      status: 'inactive',
     });
   });
 
@@ -697,26 +707,31 @@ describe('stripe webhook lifecycle', () => {
     expect(h.supabase.current.tables.user_purchases).toHaveLength(0);
   });
 
-  it('(h) only qualifying statuses grant access; legacy rows without a status keep it', async () => {
+  it('(h) only qualifying statuses grant GO-Viral; base access is open to everyone', async () => {
     h.supabase.current = createFakeSupabase({
       user_entitlements: [
-        { id: 'ent_legacy', clerk_user_id: 'user_legacy', email: 'legacy@example.com', entitlements: { smartvideo_go: true }, source: 'manual' },
-        { id: 'ent_preview', clerk_user_id: 'user_preview', email: 'preview@example.com', entitlements: { smartvideo_go: true }, status: 'preview' },
-        { id: 'ent_pending', clerk_user_id: 'user_pending', email: 'pending@example.com', entitlements: { smartvideo_go: true }, status: 'pending' },
-        { id: 'ent_expired', clerk_user_id: 'user_expired', email: 'expired@example.com', entitlements: { smartvideo_go: true }, status: 'expired' },
-        { id: 'ent_lifetime', clerk_user_id: 'user_lifetime', email: 'lifetime@example.com', entitlements: { smartvideo_go: true }, status: 'lifetime' },
+        { id: 'ent_legacy', clerk_user_id: 'user_legacy', email: 'legacy@example.com', entitlements: { smartvideo_go: true, go_viral_ai: true }, source: 'manual' },
+        { id: 'ent_preview', clerk_user_id: 'user_preview', email: 'preview@example.com', entitlements: { smartvideo_go: true, go_viral_ai: true }, status: 'preview' },
+        { id: 'ent_pending', clerk_user_id: 'user_pending', email: 'pending@example.com', entitlements: { smartvideo_go: true, go_viral_ai: true }, status: 'pending' },
+        { id: 'ent_expired', clerk_user_id: 'user_expired', email: 'expired@example.com', entitlements: { smartvideo_go: true, go_viral_ai: true }, status: 'expired' },
+        { id: 'ent_lifetime', clerk_user_id: 'user_lifetime', email: 'lifetime@example.com', entitlements: { smartvideo_go: true, go_viral_ai: true }, status: 'lifetime' },
       ],
     });
 
     const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
 
-    // Pre-existing rows created before the status column keep access.
-    expect((await resolveSmartVideoAccessForUser('user_legacy'))!.hasSmartVideoGo).toBe(true);
-    expect((await resolveSmartVideoAccessForUser('user_lifetime'))!.hasSmartVideoGo).toBe(true);
-    // Non-qualifying statuses never grant paid functionality.
-    expect((await resolveSmartVideoAccessForUser('user_preview'))!.hasSmartVideoGo).toBe(false);
-    expect((await resolveSmartVideoAccessForUser('user_pending'))!.hasSmartVideoGo).toBe(false);
-    expect((await resolveSmartVideoAccessForUser('user_expired'))!.hasSmartVideoGo).toBe(false);
+    // Base access does not depend on any status.
+    for (const id of ['user_legacy', 'user_lifetime', 'user_preview', 'user_pending', 'user_expired', 'user_none']) {
+      expect((await resolveSmartVideoAccessForUser(id))!.hasSmartVideoGo).toBe(true);
+    }
+    // Pre-existing rows created before the status column keep GO-Viral.
+    expect((await resolveSmartVideoAccessForUser('user_legacy'))!.hasSmartVideoViral).toBe(true);
+    expect((await resolveSmartVideoAccessForUser('user_lifetime'))!.hasSmartVideoViral).toBe(true);
+    // Non-qualifying statuses never grant the paid app.
+    expect((await resolveSmartVideoAccessForUser('user_preview'))!.hasSmartVideoViral).toBe(false);
+    expect((await resolveSmartVideoAccessForUser('user_pending'))!.hasSmartVideoViral).toBe(false);
+    expect((await resolveSmartVideoAccessForUser('user_expired'))!.hasSmartVideoViral).toBe(false);
+    expect((await resolveSmartVideoAccessForUser('user_none'))!.hasSmartVideoViral).toBe(false);
   });
 
   it('(g2) unmapped subscription prices and unknown events are no-ops', async () => {

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { callOpenAIResponses } from '@/shared/api/openai'
 
 const OPENAI_MODEL = 'gpt-4o'
@@ -52,9 +53,10 @@ Optional direction: ${direction || 'none'}
 
 Make the concepts distinct, specific to this brand, and ready for visual execution. Do not include markdown fences.`
 
+  const openaiKey = await getOpenAiKeyForUser()
   const text = await callOpenAIResponses([
     { role: 'user', content: prompt },
-  ])
+  ], openaiKey || undefined)
 
   const jsonMatch = text.match(/\[[\s\S]*\]/)?.[0] || '[]'
   const concepts = JSON.parse(jsonMatch).slice(0, 4)

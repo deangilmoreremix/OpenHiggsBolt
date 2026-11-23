@@ -1,0 +1,241 @@
+/**
+ * 本地素材（图片 / 视频 / 音频）接入工作台。
+ *
+ * 素材先用浏览器本地的 object URL（`blob:`）即时预览，同时在后台存进存储（`storeFile`），存好后换成长期地址。
+ * 落进工程的方式是工程自己的媒体卡（`image-clip` / `video-clip` / `audio-clip`）：
+ * `addClip(cardId, track, at, { props: { file: <objectURL> } })`，
+ * Remotion 合成读同一个 `file` prop 渲染（见 `cards/media-cards.tsx`）。
+ */
+import { CARD_FPS } from "../cards/types";
+import { findClip, useStore } from "../store";
+import { uid } from "../types";
+
+export type MediaKind = "image" | "video" | "audio";
+
+export interface MediaAttachment {
+  id: string;
+  kind: MediaKind;
+  name: string;
+  /** 先是本地 object URL（`blob:`，只在当前标签页有效），存进存储后换成长期地址 */
+  url: string;
+  size: number;
+  /** 媒体自身时长（秒）；图片没有时长 */
+  durationSec?: number;
+  /** 落进工程后的 clip id（attach 之后才有） */
+  clipId?: string;
+}
+
+/** 素材类型 → 媒体卡 id（`cards/media-cards.tsx`） */
+export const MEDIA_CARD_IDS: Record<MediaKind, string> = {
+  image: "image-clip",
+  video: "video-clip",
+  audio: "audio-clip",
+};
+
+/** 探测不到媒体时长时的兜底长度（秒） */
+const FALLBACK_SEC: Record<MediaKind, number> = { image: 3, video: 5, audio: 5 };
+
+/** 扩展名兜底：某些系统不给 MIME type（或只给 application/octet-stream） */
+const EXT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  svg: "image/svg+xml",
+  bmp: "image/bmp",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  ogv: "video/ogg",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/x-m4a",
+  aac: "audio/aac",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+};
+
+/** The file's media type: its own when it names one, otherwise from the extension; "" when neither. */
+export const mediaTypeOf = (file: File): string => {
+  const type = (file?.type || "").toLowerCase();
+  if (/^(image|video|audio)\//.test(type)) return type;
+  return EXT_TYPES[(file?.name || "").toLowerCase().split(".").pop() ?? ""] ?? "";
+};
+
+/** 文件 → 素材类型（认不出来就返回 null，调用方跳过） */
+export const mediaKindForFile = (file: File): MediaKind | null =>
+  (mediaTypeOf(file).split("/")[0] as MediaKind) || null;
+
+/** 读媒体自身时长（秒）：视频 / 音频读 metadata，图片没有时长 */
+const probeDuration = (url: string, kind: MediaKind): Promise<number | null> =>
+  new Promise((resolve) => {
+    if (kind === "image") {
+      resolve(null);
+      return;
+    }
+    const el = document.createElement(kind === "video" ? "video" : "audio");
+    el.preload = "metadata";
+    const done = (value: number | null) => {
+      el.removeAttribute("src");
+      resolve(value);
+    };
+    el.onloadedmetadata = () => {
+      const d = el.duration;
+      done(Number.isFinite(d) && d > 0 ? d : null);
+    };
+    el.onerror = () => done(null);
+    el.src = url;
+  });
+
+/** 目标轨道：选中 clip 所在的轨，否则最下面一条 */
+const targetTrackId = (): string | undefined => {
+  const state = useStore.getState();
+  const selected = state.selectedClipId
+    ? findClip(state.project, state.selectedClipId)?.track.id
+    : undefined;
+  return selected ?? state.project.tracks[state.project.tracks.length - 1]?.id;
+};
+
+/**
+ * 把一份已准备好的素材加进当前工程：走工程自己的媒体卡，素材地址存 `file` prop。
+ * 返回新建 clip 的 id（没有可用轨道时返回 undefined）。
+ */
+export const attachAttachment = (
+  attachment: MediaAttachment,
+  opts?: { trackId?: string; at?: number },
+): string | undefined => {
+  const state = useStore.getState();
+  const trackId = opts?.trackId ?? targetTrackId();
+  if (!trackId) return undefined;
+  const seconds = attachment.durationSec ?? FALLBACK_SEC[attachment.kind];
+  state.addClip(MEDIA_CARD_IDS[attachment.kind], trackId, opts?.at ?? state.playhead, {
+    props: { file: attachment.url, fit: "contain" },
+    label: attachment.name,
+    // addClip 的 duration 与卡片原始时长同口径（30fps），工程 fps 由 store 换算
+    duration: Math.max(2, Math.round(seconds * CARD_FPS)),
+  });
+  const clipId = useStore.getState().selectedClipId ?? undefined;
+  attachment.clipId = clipId;
+  return clipId;
+};
+
+/**
+ * Put a file in storage so a saved film still has it after a reload (a `blob:` address dies with the tab).
+ * The server hands out a one-time signed address and the file goes straight to storage. Null when storage
+ * is not available (local development without credentials): the file then stays tab-only.
+ */
+export const storeFile = async (file: File): Promise<string | null> => {
+  const type = mediaTypeOf(file);
+  holdTabWhileUploading(+1);
+  try {
+    const res = await fetch("/api/motion-studio/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: file.name, type, size: file.size }),
+    });
+    if (!res.ok) return null;
+    const { uploadUrl, url } = (await res.json()) as { uploadUrl?: string; url?: string };
+    if (!uploadUrl || !url) return null;
+    const put = await fetch(uploadUrl, { method: "PUT", headers: { "content-type": type }, body: file });
+    return put.ok ? url : null;
+  } catch {
+    return null;
+  } finally {
+    holdTabWhileUploading(-1);
+  }
+};
+
+let uploadsRunning = 0;
+const askBeforeUnload = (e: BeforeUnloadEvent) => {
+  e.preventDefault();
+  e.returnValue = "";
+};
+/** Closing or reloading the tab mid-upload would save the film with a tab-only address: the browser asks first. */
+const holdTabWhileUploading = (delta: 1 | -1) => {
+  if (typeof window === "undefined") return;
+  const before = uploadsRunning;
+  uploadsRunning = Math.max(0, uploadsRunning + delta);
+  if (before === 0 && uploadsRunning > 0) window.addEventListener("beforeunload", askBeforeUnload);
+  if (before > 0 && uploadsRunning === 0) window.removeEventListener("beforeunload", askBeforeUnload);
+};
+
+/** `blob:` address → its stored address, for every file stored in this tab. */
+const lastingUrls = new Map<string, string>();
+
+/** Points every clip of the open project that uses a stored file's `blob:` address at the lasting one. */
+export const applyLastingUrls = () => {
+  const { project, updateClipProps } = useStore.getState();
+  for (const track of project.tracks) {
+    for (const clip of track.clips) {
+      const url = lastingUrls.get(String(clip.props?.file ?? ""));
+      if (url) updateClipProps(clip.id, { file: url });
+    }
+  }
+};
+
+/** Once the file is stored, the attachment and the open project point at the lasting address. */
+export const switchToLastingUrl = (attachment: MediaAttachment, url: string) => {
+  lastingUrls.set(attachment.url, url);
+  attachment.url = url;
+  applyLastingUrls();
+};
+
+/** 选中文件 → 准备素材（object URL + 异步探测时长 + 后台存储），不碰工程 */
+export const prepareMedia = (files: File[]): MediaAttachment[] => {
+  const out: MediaAttachment[] = [];
+  for (const file of files ?? []) {
+    const kind = mediaKindForFile(file);
+    if (!kind) continue;
+    const attachment: MediaAttachment = {
+      id: uid("media"),
+      kind,
+      name: file.name || `media.${kind}`,
+      url: URL.createObjectURL(file),
+      size: file.size ?? 0,
+    };
+    out.push(attachment);
+    void probeDuration(attachment.url, kind).then((sec) => {
+      if (sec) attachment.durationSec = sec;
+    });
+    void storeFile(file).then((url) => {
+      if (url) switchToLastingUrl(attachment, url);
+    });
+  }
+  return out;
+};
+
+/**
+ * 选中文件 → 准备素材并直接落进当前工程。
+ * 多份素材按顺序排在时间轴上（第二份接在第一份结尾），不叠在一起。
+ */
+export const attachMediaFiles = (
+  files: File[],
+  opts?: { trackId?: string; at?: number },
+): MediaAttachment[] => {
+  const attachments = prepareMedia(files);
+  let at = opts?.at ?? useStore.getState().playhead;
+  for (const attachment of attachments) {
+    const clipId = attachAttachment(attachment, { ...opts, at });
+    if (!clipId) continue;
+    const hit = findClip(useStore.getState().project, clipId);
+    if (hit) at = hit.clip.start + hit.clip.duration;
+  }
+  return attachments;
+};
+
+/** 已准备好的素材（object URL 就绪）落进当前工程 */
+export const attachMediaAttachments = (
+  attachments: MediaAttachment[],
+  opts?: { trackId?: string; at?: number },
+): void => {
+  let at = opts?.at ?? useStore.getState().playhead;
+  for (const attachment of attachments) {
+    const clipId = attachAttachment(attachment, { ...opts, at });
+    if (!clipId) continue;
+    const hit = findClip(useStore.getState().project, clipId);
+    if (hit) at = hit.clip.start + hit.clip.duration;
+  }
+};

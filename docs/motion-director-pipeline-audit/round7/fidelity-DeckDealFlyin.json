@@ -1,0 +1,42 @@
+{
+ "identity": [
+  {
+   "frame": "entry",
+   "diff": 0
+  },
+  {
+   "frame": "deal",
+   "diff": 0
+  },
+  {
+   "frame": "peak",
+   "diff": 0
+  },
+  {
+   "frame": "settled",
+   "diff": 0
+  }
+ ],
+ "visible": [
+  {
+   "frame": "entry",
+   "twin": "7/10",
+   "customer": "8/8"
+  },
+  {
+   "frame": "deal",
+   "twin": "10/10",
+   "customer": "8/8"
+  },
+  {
+   "frame": "peak",
+   "twin": "10/10",
+   "customer": "8/8"
+  },
+  {
+   "frame": "settled",
+   "twin": "10/10",
+   "customer": "8/8"
+  }
+ ]
+}

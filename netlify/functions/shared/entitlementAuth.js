@@ -13,9 +13,9 @@
  *      using the same service-role pattern the functions already use and the
  *      same logic as `resolveSmartVideoAccessForUser` in
  *      src/access/resolveAccess.ts.
- *   3. Allow only when `hasSmartVideoGo` — i.e. entitlements.smartvideo_go OR
- *      entitlements.founders, with an active (or unset) status. Founders keep
- *      passing, exactly like the Next.js guard.
+ *   3. Allow when `hasSmartVideoGo` — base access, which every signed-in user
+ *      has (only GO-Viral and the reseller apps are paid), exactly like the
+ *      Next.js guard.
  *
  * Failure shapes (mirroring requireApiEntitlement + entitlementForbiddenResponse):
  *   401 -> { error: 'AUTH_REQUIRED' }
@@ -198,29 +198,86 @@ async function verifyClerkSessionToken(token, options = {}) {
   return { userId: payload.sub, payload };
 }
 
+/** Clerk email that receives full access to every feature (super user). */
+const SUPER_USER_EMAIL = 'deanvideoremix.io@gmail.com';
+
+function isSuperUserEmail(email) {
+  return typeof email === 'string' && email.toLowerCase().trim() === SUPER_USER_EMAIL.toLowerCase();
+}
+
 /**
- * Same entitlement logic as hasSmartVideoGo() in src/access/resolveAccess.ts:
- * active (or unset) status AND (smartvideo_go OR founders).
+ * Base SmartVideo GO access: every app except the two paid ones (GO-Viral
+ * studio and the reseller apps). Every signed-in Clerk user has it — no
+ * purchase and no particular entitlement status is required.
+ * Mirrors src/access/entitlements.ts.
  */
-function hasSmartVideoGo(entitlements, status) {
-  const isActive = status === 'active' || status === undefined || status === '';
+function hasSmartVideoGo(_entitlements, _status) {
+  return true;
+}
+
+/**
+ * GO-Viral studio is one of the two paid apps. It needs a paid GO-Viral
+ * entitlement (recorded as `go_viral_ai`; `smartvideo_viral` and `founders`
+ * also grant it) with a qualifying status (active, lifetime, or unset).
+ */
+function hasSmartVideoViral(entitlements, status) {
+  if (status !== 'active' && status !== 'lifetime' && status !== undefined && status !== null && status !== '') {
+    return false;
+  }
   const ents = entitlements || {};
-  return isActive && (ents.smartvideo_go === true || ents.founders === true);
+  return ents.go_viral_ai === true || ents.smartvideo_viral === true || ents.founders === true;
 }
 
 /**
  * Replicates resolveSmartVideoAccessForUser() from src/access/resolveAccess.ts
  * against the Supabase user_entitlements table via the service-role client.
+ *
+ * Falls back to email-only placeholder rows (`clerk_user_id = 'email:<email>'`)
+ * created when a buyer paid without a Clerk account. If a matching placeholder
+ * is found for the user's email, it is adopted (clerk_user_id repointed
+ * to the real Clerk userId) so paid status becomes visible.
+ *
+ * Returns { hasSmartVideoGo, hasSmartVideoViral, isSuperUser }.
  */
-async function resolveHasSmartVideoGo(supabase, userId) {
+async function resolveHasSmartVideoGo(supabase, userId, email) {
+  // Super user bypass via Clerk email.
+  const isSuperUser = isSuperUserEmail(email);
+
   const { data } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('clerk_user_id', userId)
     .maybeSingle();
 
-  if (!data) return false;
-  return hasSmartVideoGo(data.entitlements || {}, data.status);
+  // If no clerk_user_id row, check for an email-only placeholder row recorded
+  // by Stripe webhooks for this user's email.
+  let row = data;
+  if (!row && email && typeof email === 'string') {
+    const normalizedEmail = email.toLowerCase().trim();
+    const { data: emailRow } = await supabase
+      .from('user_entitlements')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (emailRow && emailRow.clerk_user_id && String(emailRow.clerk_user_id).startsWith('email:')) {
+      // Adopt the placeholder: repoint clerk_user_id to the real Clerk userId.
+      await supabase
+        .from('user_entitlements')
+        .update({ clerk_user_id: userId, status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', emailRow.id);
+      row = { ...emailRow, clerk_user_id: userId, status: 'active' };
+    }
+  }
+
+  const entitlements = row?.entitlements || {};
+  const status = row?.status;
+
+  // Every signed-in Clerk user gets base SmartVideo GO access by default.
+  const baseAccess = isSuperUser || hasSmartVideoGo(entitlements, status);
+  const viralAccess = isSuperUser || hasSmartVideoViral(entitlements, status);
+
+  return { hasSmartVideoGo: baseAccess, hasSmartVideoViral: viralAccess, isSuperUser };
 }
 
 function unauthorized() {
@@ -249,8 +306,8 @@ async function requirePaidEntitlement(event, options = {}) {
   });
   if (!verified) return unauthorized();
 
-  const entitled = await resolveHasSmartVideoGo(options.supabase, verified.userId);
-  if (!entitled) {
+  const access = await resolveHasSmartVideoGo(options.supabase, verified.userId, verified.payload?.email);
+  if (!access || !access.hasSmartVideoGo) {
     return { ok: false, status: 403, body: { error: 'PAYMENT_REQUIRED', upgradeRequired: true } };
   }
 

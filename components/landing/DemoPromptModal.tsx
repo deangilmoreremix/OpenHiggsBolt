@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
-import type { VideoDemo } from '@/data/types';
+import { getModelLabel, type VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from './VideoCreateTargetPicker';
 
 type PromptContextValue = {
@@ -181,7 +181,7 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
 
               <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  ['Model', 'SmartVideo GO AI'],
+                  ['Model', getModelLabel(demo)],
                   ['Duration', demo.durationLabel || '—'],
                   ['Aspect', demo.aspectRatio || '—'],
                   ['Studio', STUDIO_LABELS[demo.studioTab] || 'Video Studio'],

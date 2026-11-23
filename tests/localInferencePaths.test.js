@@ -1,11 +1,11 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import path from 'node:path';
 
-const {
+import {
     LOCAL_AI_DIR_ENV,
     resolveLocalAiPaths,
-} = require('../electron/lib/localInferencePaths');
+} from '../electron/lib/localInferencePaths';
 
 test('resolveLocalAiPaths defaults under the Electron user data directory', () => {
     const userDataPath = path.join(process.cwd(), 'fixtures', 'user-data');

@@ -24,7 +24,8 @@ function loadEnv(file) {
 const envProduction = loadEnv('.env.production');
 const envLocal = loadEnv('.env.local');
 
-Object.assign(process.env, envProduction, envLocal);
+Object.assign(process.env, envProduction);
+Object.assign(process.env, envLocal);
 
 const args = process.argv.slice(2);
 const child = spawn('npx', ['next', 'dev', '--turbopack', ...args], {

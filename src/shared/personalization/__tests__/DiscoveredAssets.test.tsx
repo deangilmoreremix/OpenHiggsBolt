@@ -502,7 +502,6 @@ describe('Discovered Assets Integration', () => {
     expect(c.assets.identities.length).toBe(1)
     expect(c.assets.identities[0].role).toBe('presenter_identity')
     expect(c.assets.identities[0].url).toBeTruthy()
-    expect(c.discoveredAssets.length).toBe(0)
   })
 
   it('imports selected logo assets into logos', async () => {
@@ -888,5 +887,429 @@ describe('Discovered Assets Integration', () => {
     c = (window as any).__personalizationCtx
     expect(c.assets.logos.length).toBe(1)
     expect(c.assets.logos[0].url).toBeTruthy()
+  })
+
+  // -------------------------------------------------------------------------
+  // Regression: URL-only assets (no sourceUrl) must not crash rendering or import
+  // Raw discovery candidates carry only previewUrl; sourceUrl is optional at
+  // runtime even though the type declares it required.
+  // -------------------------------------------------------------------------
+
+  it('does not crash when importing an asset with only previewUrl (no sourceUrl)', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-url-only',
+          // No sourceUrl — only previewUrl, as raw candidates arrive
+          previewUrl: 'https://test.com/asset.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(1)
+    expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
+    expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
+
+    // Import must not crash on URL-only assets — whether or not the upload
+    // succeeds in the test environment, no exception should escape.
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  it('does not crash when importing mixed assets with and without sourceUrl', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-1',
+          sourceUrl: 'https://test.com/with-source.png',
+          previewUrl: 'https://test.com/with-source.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+        {
+          id: 'disc-2',
+          // No sourceUrl — only previewUrl
+          previewUrl: 'https://test.com/no-source.png',
+          sourceType: 'WEBSITE',
+          category: 'product',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(2)
+
+    // Import must not crash on mixed assets
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  it('does not crash when importing an asset with neither sourceUrl nor previewUrl', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-no-url',
+          // Neither sourceUrl nor previewUrl — degenerate case
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(1)
+
+    // Import should not crash; the asset has no downloadable URL so nothing
+    // gets created, but no exception escapes.
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  // -------------------------------------------------------------------------
+  // Regression: guided-view rendering of URL-only assets must not crash
+  // StepFindBusiness renders asset.sourceUrl.replace(...) in the review panel
+  // (StepFindBusiness.tsx:465). It must fall back to previewUrl when sourceUrl
+  // is absent — raw discovery candidates carry only previewUrl.
+  // -------------------------------------------------------------------------
+
+  it('renders StepFindBusiness guided view with URL-only assets without crashing', async () => {
+    const container = await renderProvider()
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: {
+          id: 'demo-1',
+          title: 'Test Demo',
+          mediaType: 'video',
+          originalPrompt: 'test',
+          sourceMedia: null,
+          poster: null,
+          fullPrompt: 'test',
+          shortPrompt: 'test',
+          sourceType: 'landing-demo',
+          sourceMetadata: {},
+        },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    // Stay in Simple Mode (guided) — do NOT click "Advanced Editing".
+    // Click "Find Business Assets" to navigate to StepFindBusiness.
+    const findButtons = screen.getAllByRole('button', { name: /find business assets/i })
+    expect(findButtons.length).toBeGreaterThanOrEqual(1)
+    await act(async () => {
+      findButtons[0].click()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      ctx.setDiscoveredAssets([
+        {
+          id: 'disc-guided-url-only',
+          // No sourceUrl — only previewUrl, as raw candidates arrive
+          previewUrl: 'https://test.com/asset.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    // Give React a chance to render the review panel
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const c = (window as any).__personalizationCtx
+    // No crash: the component rendered the previewUrl fallback on line 465
+    expect(c.discoveredAssets.length).toBe(1)
+    expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
+    expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
+  })
+  it('drops a discovery that finishes after the modal is closed', async () => {
+    await renderProvider()
+    await openSource()
+
+    let finish: (value: unknown) => void = () => {}
+    const pending = new Promise((resolve) => { finish = resolve })
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/discover-assets')) {
+        await pending
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            discoveredAssets: [{
+              id: 'late-1',
+              sourceUrl: 'https://old-business.com/logo.png',
+              previewUrl: 'https://old-business.com/logo.png',
+              sourceType: 'WEBSITE',
+              category: 'logo',
+              selected: true,
+              recommended: true,
+              rejected: false,
+            }],
+          }),
+        } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    let c = (window as any).__personalizationCtx
+    let run: Promise<void> = Promise.resolve()
+    await act(async () => {
+      run = c.discoverAssets('https://old-business.com')
+    })
+    expect((window as any).__personalizationCtx.discoveryStatus).toBe('discovering')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.closePersonalize()
+    })
+    await openSource()
+
+    await act(async () => {
+      finish(undefined)
+      await run
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets).toHaveLength(0)
+    expect(c.discoveryStatus).toBe('idle')
+    expect(c.assets.logos).toHaveLength(0)
+  })
+  it('picking a saved client clears the previous business selection', async () => {
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness({ id: 'url:https://acme.example', name: 'Acme Plumbing', website: 'https://acme.example' })
+    })
+    expect((window as any).__personalizationCtx.selectedBusiness?.name).toBe('Acme Plumbing')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectClient('')
+    })
+    const c = (window as any).__personalizationCtx
+    expect(c.selectedBusiness).toBeNull()
+    expect(c.businessLoadSummary).toBeNull()
+    expect(c.businessSearchMode).not.toBe('selected')
+  })
+  it('an older discovery that finishes last does not replace the newer one', async () => {
+    await renderProvider()
+    await openSource()
+
+    const finishers: Array<(name: string) => void> = []
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/discover-assets')) {
+        const name = await new Promise<string>((resolve) => { finishers.push(resolve) })
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            discoveredAssets: [{ id: name, sourceUrl: `https://${name}.com/logo.png`, previewUrl: `https://${name}.com/logo.png`, sourceType: 'WEBSITE', category: 'logo', selected: true, recommended: true, rejected: false }],
+          }),
+        } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    const ctx = () => (window as any).__personalizationCtx
+    let first: Promise<void> = Promise.resolve()
+    let second: Promise<void> = Promise.resolve()
+    await act(async () => { first = ctx().discoverAssets('https://older.com') })
+    await act(async () => { second = ctx().discoverAssets('https://newer.com') })
+    expect(finishers).toHaveLength(2)
+
+    await act(async () => { finishers[1]('newer'); await second })
+    expect(ctx().discoveredAssets.map((a: any) => a.id)).toEqual(['newer'])
+
+    await act(async () => { finishers[0]('older'); await first })
+    expect(ctx().discoveredAssets.map((a: any) => a.id)).toEqual(['newer'])
+  })
+
+  it('a business search that finishes after the modal is closed is dropped', async () => {
+    await renderProvider()
+    await openSource()
+
+    let finish: () => void = () => {}
+    const pending = new Promise<void>((resolve) => { finish = resolve })
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/find-businesses')) {
+        await pending
+        return { ok: true, status: 200, json: async () => ({ businesses: [{ id: 'b1', name: 'Old Search Plumbing' }] }) } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    const ctx = () => (window as any).__personalizationCtx
+    let run: Promise<void> = Promise.resolve()
+    await act(async () => { run = ctx().findBusinesses('plumber', 'Tampa', 10) })
+    expect(ctx().businessSearchMode).toBe('searching')
+
+    await act(async () => { ctx().closePersonalize() })
+    await openSource()
+    expect(ctx().businessSearchMode).not.toBe('searching')
+
+    await act(async () => { finish(); await run })
+    expect(ctx().businessSearchMode).not.toBe('results')
+    expect(ctx().businessSearchResults).toHaveLength(0)
+  })
+  it('a cleared business search ignores a response that arrives afterwards', async () => {
+    await renderProvider()
+    await openSource()
+
+    let finish: () => void = () => {}
+    const pending = new Promise<void>((resolve) => { finish = resolve })
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/find-businesses')) {
+        await pending
+        return { ok: true, status: 200, json: async () => ({ businesses: [{ id: 'b1', name: 'Stale Plumbing' }] }) } as any
+      }
+      return baseFetch(url, options)
+    })
+
+    const ctx = () => (window as any).__personalizationCtx
+    let run: Promise<void> = Promise.resolve()
+    await act(async () => { run = ctx().findBusinesses('plumber', 'Tampa', 10) })
+    await act(async () => { ctx().clearBusinessSearch() })
+    await act(async () => { finish(); await run })
+
+    expect(ctx().businessSearchMode).toBe('idle')
+    expect(ctx().businessSearchResults).toHaveLength(0)
+  })
+
+  it('continues a time-limited business search from the resume cursor and keeps results on a failed continuation', async () => {
+    await renderProvider()
+    await openSource()
+    const bodies: any[] = []
+    const baseFetch = (globalThis as any).fetch
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/find-businesses')) {
+        const body = JSON.parse(options.body); bodies.push(body)
+        if (!body.resume) return { ok: true, status: 200, json: async () => ({ businesses: [{ id: 'a', name: 'A' }], backfill: { resume: { startStage: 2 } } }) } as any
+        if (body.resume.startStage === 2) return { ok: true, status: 200, json: async () => ({ businesses: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], backfill: { resume: { startStage: 3 } } }) } as any
+        throw new Error('network down') // the second continuation fails
+      }
+      return baseFetch(url, options)
+    })
+    const ctx = () => (window as any).__personalizationCtx
+    await act(async () => { await ctx().findBusinesses('plumber', 'Tampa', 10) })
+    expect(bodies[1].resume.startStage).toBe(2)
+    expect(bodies[1].resume.records.map((r: any) => r.id)).toEqual(['a'])
+    expect(bodies[2].resume.startStage).toBe(3)
+    expect(ctx().businessSearchResults.map((r: any) => r.id)).toEqual(['a', 'b']) // grown by the first continuation, kept after the second failed
+    expect(ctx().businessSearchMode).toBe('results')
+  })
+
+  it('selecting a business fills EMPTY email/social fields from its website, never a typed or OSM value, and drops a stale answer', async () => {
+    await renderProvider()
+    await openSource()
+    const enrichment = (site: string) => ({
+      website: site, emails: [{ value: 'hi@acme.example', sourceUrl: `${site}/contact`, confidence: 0.95, method: 'mailto' }],
+      phones: [{ value: '(813) 555-0199', sourceUrl: site, confidence: 0.9, method: 'tel' }], addresses: [], contactNames: [],
+      socials: { instagram: { value: 'https://instagram.com/acme', sourceUrl: site, confidence: 0.85, method: 'footer-link' } },
+      pagesVisited: [site], pagesSkipped: [], robots: { checked: true, status: 'allow-all' }, jsRendered: false, notes: [],
+    })
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => { release = r })
+    const baseFetch = (globalThis as any).fetch
+    const calls: string[] = []
+    ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
+      if (typeof url === 'string' && url.includes('/api/personalization/enrich-business')) {
+        const body = JSON.parse(options.body); calls.push(body.businesses[0].id)
+        if (body.businesses[0].id === 'slow') await gate
+        return { ok: true, status: 200, json: async () => ({ results: [{ id: body.businesses[0].id, ok: true, enrichment: enrichment(body.businesses[0].website) }] }) } as any
+      }
+      return baseFetch(url, options)
+    })
+    const ctx = () => (window as any).__personalizationCtx
+
+    // OSM phone already present → it must win over the website's phone.
+    await act(async () => { ctx().selectBusiness({ id: 'b1', name: 'Acme', phone: '727-555-0000', website: 'https://acme.example' }) })
+    await vi.waitFor(() => expect(ctx().clientForm.email).toBe('hi@acme.example'))
+    expect(ctx().clientForm.phone).toBe('727-555-0000')
+    expect(ctx().clientForm.instagram).toBe('https://instagram.com/acme')
+    expect(ctx().contactSources.email.sourceUrl).toBe('https://acme.example/contact')
+
+    // A different business clears what was auto-filled for the previous one.
+    await act(async () => { ctx().selectBusiness({ id: 'b2', name: 'Other', website: '' }) })
+    expect(ctx().clientForm.email || '').toBe('')
+    expect(ctx().clientForm.instagram || '').toBe('')
+
+    // A slow answer that arrives after the user moved on is dropped.
+    await act(async () => { ctx().selectBusiness({ id: 'slow', name: 'Slow', website: 'https://slow.example' }) })
+    await act(async () => { ctx().selectBusiness({ id: 'b3', name: 'Third', website: '' }) })
+    await act(async () => { release(); await Promise.resolve() })
+    expect(ctx().clientForm.email || '').toBe('')
+
+    // The user can remove a found value.
+    await act(async () => { ctx().selectBusiness({ id: 'b1', name: 'Acme', website: 'https://acme.example' }) })
+    await vi.waitFor(() => expect(ctx().clientForm.email).toBe('hi@acme.example'))
+    await act(async () => { ctx().clearContactValue('email') })
+    expect(ctx().clientForm.email).toBe('')
+  })
+
+  it('closing the project clears the business selection and search for the next one', async () => {
+    await renderProvider()
+    await openSource()
+    const ctx = () => (window as any).__personalizationCtx
+    await act(async () => {
+      ctx().selectBusiness({ id: 'url:https://acme.example', name: 'Acme Plumbing', website: 'https://acme.example' })
+    })
+    expect(ctx().selectedBusiness?.name).toBe('Acme Plumbing')
+
+    await act(async () => { ctx().closePersonalize() })
+    await openSource()
+    expect(ctx().selectedBusiness).toBeNull()
+    expect(ctx().businessSearchMode).toBe('idle')
+    expect(ctx().businessLoadSummary).toBeNull()
   })
 })

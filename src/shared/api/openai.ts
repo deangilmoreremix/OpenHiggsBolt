@@ -58,20 +58,29 @@ export async function callOpenAIChat(
 }
 
 /**
- * Call the OpenAI Responses API directly using the server-side API key.
- * The client never receives or persists raw API keys.
+ * Call the OpenAI Responses API with the AUTHENTICATED USER'S OWN key (BYOK).
+ * A server-side env key is never used as a fallback; a missing user key
+ * produces a clear Settings error instead of an operator-billed upstream call.
+ * Server-side callers resolve the user key via getOpenAiKeyForUser().
  */
-export async function callOpenAIResponses(input: any[]): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured on the server')
+export class MissingOpenAiKeyError extends Error {
+  constructor() {
+    super('No OpenAI API key provided. Add your OpenAI key in Settings and try again.')
+    this.name = 'MissingOpenAiKeyError'
+  }
+}
+
+export async function callOpenAIResponses(input: any[], apiKey?: string): Promise<string> {
+  const key = apiKey && String(apiKey).trim()
+  if (!key) {
+    throw new MissingOpenAiKeyError()
   }
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${key}`,
     },
     body: JSON.stringify({
       model: 'gpt-4o',

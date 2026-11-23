@@ -8,6 +8,12 @@ export type PersonalizationSourceType =
   | 'go-ai-viral-video'
   | 'image-demo'
   | 'future-demo'
+  /**
+   * A studio-originated project handed to the modal by the shared studio
+   * entry point (`src/shared/personalization/studioEntry.ts`). Added as a
+   * widening — every pre-existing member keeps its exact meaning.
+   */
+  | 'studio-project'
 
 export interface PersonalizationSource {
   sourceType: PersonalizationSourceType
@@ -70,17 +76,43 @@ export interface BusinessDiscoveryRecord {
   whatsapp?: string
   youtube?: string
   linkedin?: string
+  tiktok?: string
   openingHours?: string
   operator?: string
+  brand?: string
+  network?: string
   activityScore?: number
   leadScore?: number
+  contactabilityScore?: number
+  videoOpportunityScore?: number
+  ownership?: BusinessOwnership
+  /** Human-readable evidence for the ownership verdict. */
+  ownershipEvidence?: string[]
+  scoreBreakdown?: {
+    contactability: number
+    activity: number
+    videoOpportunity: number
+    ownership: BusinessOwnership
+    rationale: string[]
+  }
+  videoOpportunity?: { hasPromoVideo: boolean | 'unknown'; signals: string[] }
   websiteStatus: 'confirmed' | 'unknown' | 'not_found_after_research'
   verificationStatus: 'unverified' | 'researching' | 'verified'
   rawSource?: Record<string, unknown>
 }
 
-export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
+/**
+ * Ownership classification for a discovered business. Mirrors the server-side
+ * contract in `src/server/businessDiscovery/types.ts` (`OwnershipType`).
+ */
+export type BusinessOwnership =
+  | 'independent'
+  | 'local_multi_location'
+  | 'franchise_chain'
+  | 'national_bigbox'
+  | 'unknown'
 
+export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
 export interface BusinessSearchState {
   mode: BusinessSearchMode
   results: BusinessDiscoveryRecord[]
@@ -106,6 +138,16 @@ export interface ClientProfile {
   callToAction: string
   phone: string
   website: string
+  /**
+   * Contact details found on the business's OWN website by the finder's enrichment (never invented, never
+   * verified). Optional so older saved projects and every existing consumer keep working.
+   */
+  email?: string
+  facebook?: string
+  instagram?: string
+  linkedin?: string
+  youtube?: string
+  tiktok?: string
   brandDescription: string
   createdAt: string
   updatedAt: string
@@ -142,6 +184,8 @@ export type AssetRole =
   | 'background_reference'
   | 'audio_reference'
   | 'saved_reference'
+  /** A Full Body Recast result: the client's person performing in a source clip. */
+  | 'presenter_video'
 
 export interface PersonalizationAsset {
   id: string
@@ -173,6 +217,8 @@ export interface PersonalizationAsset {
     outputFormat?: 'png' | 'jpeg' | 'webp'
     outputCompression?: number | null
     inputFidelity?: 'high' | 'low'
+    /** Full Body Recast: the performance clip it was made from (its sound). */
+    sourceUrl?: string
   }
   visionAnalysis?: PersonalizationVisionAnalysis
   visionValidation?: PersonalizationVisionValidation
@@ -193,6 +239,8 @@ export interface AssetLibrary {
   ctaGraphic: PersonalizationAsset | null
   audio: PersonalizationAsset[]
   savedReferences: PersonalizationAsset[]
+  /** Full Body Recast videos made in Advanced Editing (newest last). */
+  presenterVideos?: PersonalizationAsset[]
 }
 
 export const EMPTY_ASSET_LIBRARY: AssetLibrary = {
@@ -301,6 +349,26 @@ export interface GenerationResult {
   metadata?: Record<string, unknown>
 }
 
+/**
+ * The final outcome of a personalization run, handed back to whoever opened
+ * the modal (see `StudioPersonalizeOptions.onComplete`).
+ *
+ * Produced by the provider when a run finishes — through the AI generation
+ * path or the in-browser branded render — and delivered at most once per open.
+ */
+export interface PersonalizationCompletion {
+  /** The produced media, grouped by kind. */
+  outputs: { prompts: string[]; images: string[]; videos: string[] }
+  /** The prompt that produced the outputs. */
+  personalizedPrompt: string
+  /** The persisted project id, when the run restored or wrote one. */
+  projectId?: string
+  /** Which studio opened the modal, when the run was a studio hand-off. */
+  originStudio?: string
+  /** The source id the run was keyed on. */
+  sourceId?: string
+}
+
 export interface ImageStudioHandoff {
   source: 'demo-personalization'
   sourceType: string
@@ -336,7 +404,14 @@ export interface PersonalizationEligibility {
 
 export interface SharedMediaEntry {
   id: string
-  originStudio: 'demo-personalization'
+  /**
+   * Which surface produced this entry. `demo-personalization` is the original
+   * literal (the Personalization demo flow); studio hand-offs record their own
+   * studio slug (see `PersonalizationOriginStudio`). Widened from the literal
+   * so a studio run can be told apart from a demo run — the only reader
+   * (`guided/StepChooseVideo.tsx`) renders it as free text.
+   */
+  originStudio: string
   sourceType: string
   sourceDemoId?: string
   sourceDemoSlug?: string
@@ -356,6 +431,9 @@ export interface SharedMediaEntry {
   outputUrls: string[]
   outputType: string
   clientId?: string
+  /** The saved video is the generated clip without the on-video layers
+   *  (the layered version could not be stored). */
+  layersMissing?: boolean
   createdAt: string
 }
 
@@ -455,6 +533,24 @@ export interface BusinessResearchResult {
     emails: string[]
     addresses: string[]
   }
+  // Video-marketing evidence from the research route: a tri-state promo-video
+  // verdict plus the raw detection signals (mirrors researchProvider.ts).
+  videoMarketing?: {
+    hasPromoVideo: boolean | 'unknown'
+    signals: string[]
+  }
+  brandingAssets?: {
+    logoUrl?: string
+    imageUrls: string[]
+  }
+  /** The site's brand palette (`#rrggbb`), mirrors researchProvider.ts. */
+  brandColors?: {
+    primary?: string
+    accent?: string
+    palette?: string[]
+  }
+  /** The homepage's readable content as Markdown (≤ 8,000 chars). */
+  pageMarkdown?: string
 }
 
 export interface DiscoveredAsset {
@@ -482,12 +578,33 @@ export interface DiscoveredAsset {
     prompt?: string
     model?: string
     quality?: string
+    /** Set by on-device background removal (BG0). */
+    engine?: string
+    provider?: string
+    durationMs?: number
   }
+  /** On-device background removal state (auto cutout queue). */
+  bgRemoval?: DiscoveredAssetBgRemoval
+  /** The user restored the original: never auto-process this asset again. */
+  bgOptOut?: boolean
+  /** Show the original instead of the cutout (per-tile toggle). */
+  showOriginal?: boolean
   visionAnalysis?: PersonalizationVisionAnalysis
   visionValidation?: PersonalizationVisionValidation
 }
 
-// ── AI Assist Types (Phases 15-19) ─────────────────────────────────────────────
+export interface DiscoveredAssetBgRemoval {
+  /** `skipped` = nothing to do (already transparent / unsupported); `error` can be retried. */
+  status: 'idle' | 'queued' | 'running' | 'done' | 'skipped' | 'error'
+  /** 0..1 while running (model download, then inference). */
+  progress?: number
+  /** Short human note shown on the tile (why skipped / what failed). */
+  message?: string
+  /** True when the user asked for this asset explicitly (runs even with auto mode off). */
+  manual?: boolean
+}
+
+// ── AI Assist Types (Phases 15-19)─────────────────────────────────────────────
 
 export interface AIAssistReadiness {
   canGenerate: boolean
@@ -547,8 +664,37 @@ export type {
   PreviewBrandColors,
   PreviewVideoRef,
   PersonalizationPreviewSettings,
+  DesignSlot,
 } from './preview/types'
+
+// ── Shared Remotion design registry ──────────────────────────────────────────
+
+export type {
+  RemotionDesignRole,
+  RemotionDesignCategory,
+  RemotionDesignColorBinding,
+  RemotionDesignColorRole,
+  RemotionDesignColors,
+  RemotionDesignComponent,
+  RemotionDesignComponentProps,
+  RemotionDesignMediaBinding,
+  RemotionDesignMediaRole,
+  RemotionDesignPlacement,
+  RemotionDesignAnimation,
+  RemotionDesignSource,
+  RemotionDesignSupportCheck,
+  RemotionDesignTemplate,
+  RemotionDesignTemplateRegistry,
+  RemotionDesignTextField,
+  RemotionDesignTextSlot,
+} from './templates/types'
 
 export type GuidedStep = 1 | 2 | 3 | 4
 
 export type PersonalizationViewMode = 'simple' | 'advanced'
+
+/** The four tabs of the modal's Advanced Editing workspace. */
+export type AdvancedEditingTab = 'client' | 'assets' | 'recast' | 'create'
+
+/** The section (pill) shown inside each Advanced Editing tab. */
+export type AdvancedEditingSections = Record<AdvancedEditingTab, string>

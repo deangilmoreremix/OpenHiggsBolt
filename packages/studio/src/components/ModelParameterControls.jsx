@@ -280,3 +280,28 @@ export default function ModelParameterControls({
     </div>
   );
 }
+
+/** The same parameter inputs, rendered inline (no popover) for playground panels. */
+export function ModelParameterFields({ inputs, values, onChange }) {
+  if (!inputs?.length) return null;
+  return (
+    <div className="flex flex-col gap-4">
+      {inputs.map(({ key, schema }) => {
+        const label = schema.title || key.replaceAll("_", " ");
+        return (
+          <div
+            key={key}
+            className={schema.type === "boolean" ? "flex items-center justify-between gap-4" : "flex flex-col gap-2"}
+          >
+            <FieldLabel schema={schema} inputKey={key} />
+            {schema.type === "array" ? (
+              <ArrayInput schema={schema} label={label} value={values[key]} onChange={(next) => onChange(key, next)} />
+            ) : (
+              <ScalarInput schema={schema} label={label} value={values[key]} onChange={(next) => onChange(key, next)} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

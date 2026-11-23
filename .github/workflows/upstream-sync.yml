@@ -132,6 +132,15 @@ jobs:
             packages/studio/src/messages/zh/McpCliStudio.json \
             packages/studio/src/i18nUtils.js \
             components/StandaloneShell.scope.test.js \
+            packages/studio/src/components/SkillsBrowser.jsx \
+            packages/studio/src/components/SkillRunner.jsx \
+            packages/studio/src/components/__tests__/recipesFlow.test.jsx \
+            packages/studio/src/skills/registry.json \
+            packages/studio/src/lib/promptRecipes.js \
+            packages/studio/src/lib/skillStore.js \
+            packages/studio/src/lib/__tests__/promptRecipes.test.js \
+            scripts/audit-recipes.mjs \
+            scripts/live-recipe-check.mjs \
             app/studio/apps \
             app/studio/mcp-cli \
             app/sign-in \

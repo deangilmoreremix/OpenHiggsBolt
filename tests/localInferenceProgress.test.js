@@ -1,13 +1,13 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
 
-const {
+import {
     formatStartupProgressMessage,
     parseGenerationProgressChunk,
     resolveGenerationSteps,
     resolveGuidanceScale,
     stripAnsiSequences,
-} = require('../electron/lib/localInferenceRuntime');
+} from '../electron/lib/localInferenceRuntime';
 
 test('resolveGenerationSteps prefers explicit request over model defaults', () => {
     const steps = resolveGenerationSteps({ steps: 3 }, { defaultSteps: 20 });

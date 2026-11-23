@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { processMotionControl, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -297,6 +299,31 @@ function CharacterImagesMediaButton({
         )}
       </button>
 
+      {/* Always-visible thumbnails, so uploaded images can be seen and removed without opening the popover */}
+      {images.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap max-w-[11rem] max-h-[5.5rem] overflow-y-auto custom-scrollbar">
+          {images.map((img, idx) => (
+          <div
+            key={`${img.url}-${idx}`}
+            className="relative w-10 h-10 shrink-0 rounded-full overflow-hidden border border-white/10 bg-black/50"
+          >
+            <img src={img.url} alt={img.name || ""} className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveImage(idx);
+              }}
+              title={copy.titles.removeImage}
+              className="absolute top-0 right-0 w-4 h-4 bg-black/70 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] leading-none border border-white/20"
+            >
+              ×
+            </button>
+          </div>
+          ))}
+        </div>
+      )}
+
       {/* Quick Add Button if images already exist */}
       {images.length > 0 && images.length < maxImages && (
         <button
@@ -554,6 +581,19 @@ export default function MotionControlStudio({
   droppedFiles,
   onFilesHandled,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_motion_control_studio_persistent";
@@ -602,6 +642,41 @@ export default function MotionControlStudio({
   const [characterImages, setCharacterImages] = useState([]); // [{ url, name }]
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Motion Control composes several assets (a reference video plus up to 30
+  // character images), but the shared Personalization Modal takes ONE source
+  // media — the reference video is the primary asset, so it is the one handed
+  // over. The character images are deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded video name plus the generation configuration.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "motion-control",
+      studioProjectId: [
+        videoName || (videoUrl ? videoUrl.split("/").pop() : "no-video"),
+        selectedModelId,
+        aspectRatio,
+        String(duration),
+      ].join(":"),
+      title: "Motion Control reference video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio,
+        duration,
+        durationLabel: `${duration}s`,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModel?.name,
+      },
+    }),
+    [videoUrl, videoName, selectedModelId, selectedModel, aspectRatio, duration, prompt],
+  );
 
   // ── Popovers & UI Refs ──────────────────────────────────────────────────────
   const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | 'duration' | 'options' | 'assets'
@@ -919,6 +994,14 @@ export default function MotionControlStudio({
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                     </svg>
                   </button>
+                  <span onClick={(e) => e.stopPropagation()} className="contents">
+                    <PublishStep
+                      mediaUrl={entry.url}
+                      mediaType="video"
+                      title={entry.prompt?.substring(0, 50) || "Motion control video"}
+                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-[#22d3ee] hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                    />
+                  </span>
                   <button
                     type="button"
                     title={copy.buttons.useAsVideo}
@@ -1075,6 +1158,12 @@ export default function MotionControlStudio({
               copy={copy}
             />
 
+            {/* Personalize the reference video in the shared Personalization
+                Modal. Renders nothing without an uploaded source video. */}
+            {studioPersonalizeOptions.media.url
+              ? renderPersonalizeAction?.(studioPersonalizeOptions)
+              : null}
+
             {/* Character / Performer Multi-Image Button */}
             <CharacterImagesMediaButton
               images={characterImages}
@@ -1103,7 +1192,7 @@ export default function MotionControlStudio({
           <PromptControls>
             {/* Model Selector */}
             <div className="relative">
-              <button
+              <button data-help="model"
                 ref={modelBtnRef}
                 type="button"
                 onClick={(e) => {
@@ -1391,6 +1480,21 @@ export default function MotionControlStudio({
                 />
               )}
             </div>
+
+            {/* Everything you've uploaded or generated in any studio (kept on your account) */}
+            <AssetLibraryButton
+              kinds={["image", "video"]}
+              label="Saved"
+              onSelect={(asset) => {
+                if (asset.kind === "video") {
+                  setVideoUrl(asset.url);
+                  setVideoName(asset.name || copy.defaults.selectedVideo);
+                  setVideoState(UPLOAD_STATE.READY);
+                } else if (characterImages.length < maxImagesAllowed) {
+                  setCharacterImages((prev) => [...prev, { url: asset.url, name: asset.name || copy.defaults.selectedImage }]);
+                }
+              }}
+            />
           </PromptControls>
 
           {/* Action Generate Button */}
@@ -1410,7 +1514,7 @@ export default function MotionControlStudio({
       {/* ── FULLSCREEN MEDIA MODAL ── */}
       {fullscreenUrl && (
         <div
-          className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[240] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setFullscreenUrl(null)}
         >
           <div

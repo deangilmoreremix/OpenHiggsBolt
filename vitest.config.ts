@@ -22,7 +22,7 @@ export default defineConfig({
       { find: /^@\/src\/(.*)$/, replacement: `${repoRoot}src/$1` },
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
       { find: /^studio\/(.*)$/, replacement: `${repoRoot}packages/studio/$1` },
-      { find: /^workflow-builder\/(.*)$/, replacement: `${repoRoot}packages/Vibe-Workflow/packages/workflow-builder/$1` },
+      { find: /^workflow-builder\/(.*)$/, replacement: `${repoRoot}packages/workflow-builder/$1` },
       { find: /^ai-agent\/(.*)$/, replacement: `${repoRoot}packages/Open-Poe-AI/packages/agents/$1` },
     ],
   },
@@ -52,6 +52,20 @@ export default defineConfig({
       'packages/*/dist/**',
       'packages/**/dist/**',
       'tests/authConfig.test.ts',
+      // node:test runner files with their own script (`npm run test:muapi`);
+      // vitest collects them via the tests/**/*.test.js glob but cannot run
+      // their node:test suites ("No test suite found").
+      'tests/muapi-key-route.test.js',
+      'tests/muapiKeyCrypto.test.js',
+      // Upstream-synced node:test suites; run with `npm run test:local-ai`.
+      'tests/historyDom.test.js',
+      'tests/localInferenceDownload.test.js',
+      'tests/localInferenceWindows.test.js',
+      'tests/stageLocalAiBinary.test.js',
+      'tests/wan2gpCatalog.test.js',
+      'tests/wan2gpLocal.test.js',
+      'tests/wan2gpMcp.test.js',
+      'tests/wan2gpOutput.test.js',
     ],
     setupFiles: ['vitest.setup.ts'],
   },

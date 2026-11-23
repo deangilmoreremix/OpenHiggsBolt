@@ -1,7 +1,70 @@
-import { useState } from 'react'
-import { Plus, Trash2, User, Pencil, Check, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, Trash2, User, Pencil, Check, X, Upload, Loader2 } from 'lucide-react'
 import { useStoryboard, type StoryboardCharacter } from './StoryboardContext'
 import { panels, buttons, semantic } from '@/shared/styles/designTokens'
+import { uploadReferenceImage } from '@/api/storyboard'
+
+/** Reference image URL input with an upload button; pasting a URL still works. */
+function ReferenceImageField({
+  value,
+  onChange,
+  inputClassName,
+}: {
+  value: string
+  onChange: (url: string) => void
+  inputClassName: string
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [progress, setProgress] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+    setError(null)
+    setProgress(0)
+    try {
+      onChange(await uploadReferenceImage(file, setProgress))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setProgress(null)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex gap-1">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Reference image (upload or paste URL)"
+          className={`flex-1 min-w-0 ${inputClassName}`}
+          style={{ ...panels.card, color: 'white' }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={progress !== null}
+          className="flex items-center gap-1 px-2 rounded-lg text-xs transition-all disabled:opacity-50"
+          style={buttons.ghost}
+          title="Upload a reference image"
+        >
+          {progress !== null ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+          {progress !== null ? `${progress}%` : 'Upload'}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
+      </div>
+      {error && <p className="text-[11px]" style={{ color: '#f87171' }}>{error}</p>}
+    </div>
+  )
+}
 
 export default function CharacterLibrary() {
   const { characters, addCharacterObject, updateCharacter, removeCharacter } = useStoryboard()
@@ -67,14 +130,16 @@ export default function CharacterLibrary() {
           className="rounded-xl p-2 text-sm outline-none"
           style={inputStyle}
         />
-        <input
+        <ReferenceImageField
           value={referenceImageUrl}
-          onChange={(e) => setReferenceImageUrl(e.target.value)}
-          placeholder="Reference image URL (optional)"
-          className="rounded-xl p-2 text-sm outline-none"
-          style={inputStyle}
+          onChange={setReferenceImageUrl}
+          inputClassName="rounded-xl p-2 text-sm outline-none"
         />
       </div>
+      {referenceImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={referenceImageUrl} alt="Reference preview" className="w-16 h-16 rounded-lg object-cover" />
+      )}
       <button
         onClick={handleAdd}
         disabled={!name.trim()}
@@ -116,12 +181,10 @@ export default function CharacterLibrary() {
                     className="w-full rounded-lg p-1.5 text-sm outline-none"
                     style={inputStyle}
                   />
-                  <input
+                  <ReferenceImageField
                     value={draft.referenceImageUrl || ''}
-                    onChange={(e) => setDraft((d) => ({ ...d, referenceImageUrl: e.target.value }))}
-                    placeholder="Reference image URL"
-                    className="w-full rounded-lg p-1.5 text-sm outline-none"
-                    style={inputStyle}
+                    onChange={(url) => setDraft((d) => ({ ...d, referenceImageUrl: url }))}
+                    inputClassName="rounded-lg p-1.5 text-sm outline-none"
                   />
                 </div>
               ) : (

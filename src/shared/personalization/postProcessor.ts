@@ -127,9 +127,31 @@ async function compositeImageOverlay(
 
 // ── Canvas End Card Generation ───────────────────────────────────────────────
 
+/**
+ * A logo linked by its website address is read through the same-origin
+ * download route: drawing the remote image directly would taint the canvas
+ * and make the end card impossible to export.
+ */
+async function logoDataUrl(url: string): Promise<string> {
+  if (url.startsWith('data:')) return url
+  const res = await fetch('/api/personalization/download-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ urls: [url] }),
+    // A hung download must not stall generation: the caller draws the end
+    // card without the logo instead.
+    signal: AbortSignal.timeout(10_000),
+  })
+  const data = await res.json().catch(() => ({}))
+  const result = data?.results?.[0]
+  if (!res.ok || !result?.ok || typeof result.dataUrl !== 'string') throw new Error('Logo could not be downloaded')
+  return result.dataUrl
+}
+
 export async function generateEndCardImage(
   client: Record<string, unknown> | undefined,
-  logoFile?: File | null,
+  logo?: File | string | null,
   apiKey?: string,
 ): Promise<string | null> {
   if (!isBrowser()) return null
@@ -158,9 +180,10 @@ export async function generateEndCardImage(
   ctx.fillRect(0, canvas.height - 4, canvas.width, 4)
 
   // Logo (top-right, max 100px height)
-  if (logoFile) {
+  if (logo) {
     try {
-      const logoUrl = URL.createObjectURL(logoFile)
+      const objectUrl = typeof logo === 'string' ? null : URL.createObjectURL(logo)
+      const logoUrl = objectUrl ?? (await logoDataUrl(logo as string))
       const img = new Image()
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve()
@@ -172,7 +195,7 @@ export async function generateEndCardImage(
       const w = img.width * scale
       const h = img.height * scale
       ctx.drawImage(img, canvas.width - w - 40, 40, w, h)
-      URL.revokeObjectURL(logoUrl)
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
     } catch {
       // Logo load failed — continue without it
     }

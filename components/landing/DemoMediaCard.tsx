@@ -1,6 +1,7 @@
 'use client';
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
@@ -38,15 +39,25 @@ export default function DemoMediaCard({
     router.push(`/demo/${demo.slug}`)
   }, [demo.slug, router])
 
+  // Feeds the cursor position to the hover spotlight (CSS vars, no re-render).
+  const trackSpotlight = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse') return
+    const el = event.currentTarget
+    const r = el.getBoundingClientRect()
+    el.style.setProperty('--fx-x', `${event.clientX - r.left}px`)
+    el.style.setProperty('--fx-y', `${event.clientY - r.top}px`)
+  }, [])
+
   return (
     <Reveal
       as="article"
       delay={Math.min(index, 8) * 60}
-      className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
+      className="fx-card-glow group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
       onClick={openDetail}
     >
+      <div className="fx-card flex flex-1 flex-col" onPointerMove={trackSpotlight}>
       {/* Media */}
-      <div className="relative">
+      <div className="fx-card-media relative">
         <LazyVideo
           src={demo.videoSrc}
           poster={demo.posterSrc}
@@ -56,6 +67,7 @@ export default function DemoMediaCard({
           className={`${aspectClassName} w-full`}
           objectFit={objectFit}
         />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
         <span className="glass-panel absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90">
           {badge ?? demo.category}
         </span>
@@ -63,7 +75,17 @@ export default function DemoMediaCard({
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-lg font-bold leading-snug text-white">{demo.title}</h3>
+        <h3 className="text-lg font-bold leading-snug text-white">
+          {/* A real link so keyboard, middle-click and "open in new tab" work;
+              the rest of the card opens the same page on click. */}
+          <Link
+            href={`/demo/${demo.slug}`}
+            onClick={(event) => event.stopPropagation()}
+            className="rounded-sm hover:text-cyan-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+          >
+            {demo.title}
+          </Link>
+        </h3>
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">{demo.useCase}</p>
 
         <div className="mt-auto pt-5" onClick={(event) => event.stopPropagation()}>
@@ -92,6 +114,7 @@ export default function DemoMediaCard({
             />
           )}
         </div>
+      </div>
       </div>
     </Reveal>
   );

@@ -1,139 +1,122 @@
 # Voice Cloning & TTS Basics
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> **Time:** about 18 minutes. **You will finish with:** a cleaned mono `.wav` sample, a cloned voice profile, and a saved stability and clarity setting in your cloning log.
 
+---
 
+## Before you start
 
-> A computer reads text; a clone reads the room.
+Default text-to-speech sounds robotic: static pitch curves, no emotional context, no breathing. Viewers of faceless videos, courses and ads notice and swipe away. A **cloned voice profile** captures a real speaker's timbre, accent and breaths, so you can generate hours of narration from text. There are two kinds: **Instant Voice Cloning (IVC)** needs only 1 to 5 minutes of sample audio and is fast and cheap, while **Professional Voice Cloning (PVC)** needs 30+ minutes of studio-quality speech and is nearly indistinguishable from the speaker. This lesson uses IVC.
 
-**Track:** AI Audio & Music  
-**Time:** ~40 minutes  
-**Prerequisites:** None  
+You will need: a cardioid condenser microphone, a room with soft furnishings (carpet, curtains), Audacity (free), an ElevenLabs account, and the spec sheet [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md). No prerequisites. The studios in SmartVideo GO AI that use a finished voice are Lip-Sync Studio and AI Influencer Studio (see Go further).
 
-## The Problem
+## Step by step
 
-Traditional Text-to-Speech (TTS) systems sound robotic. They read sentences with static, predictable pitch curves, ignore the emotional context of the text, and generate zero breathing sounds. If you use these cheap default voices for your faceless videos, courses, or ads, viewers will immediately recognize the mechanical audio track and swipe away.
+### 1. Set up your recording space
 
-Simply recording your voice on a laptop microphone is not a scalable alternative for high-volume content factories. It takes too much time, and if you get sick or lose your voice, your production pipeline grinds to a halt.
+Open [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md). Place the cardioid condenser microphone 6 inches from your mouth, in a room with carpets or curtains to stop echo.
 
-To run a professional content agency, you must build high-fidelity, custom **cloned voice profiles** that capture the unique timbre, accent, and breathing elements of a real speaker, allowing you to generate hours of realistic narration from simple text scripts.
+**You should see:** a quiet room where a test clap does not ring or echo.
 
-## The Concept
+**If not:** move to a smaller, softer room, or hang blankets on bare walls.
 
-Vocal synthesis divides into two major technical categories:
+### 2. Record at least 6 minutes of varied speech
 
-### 1. Instant Voice Cloning (IVC):
-Requires only **1 to 5 minutes** of sample audio. The cloning engine extracts the basic frequency signature (timbre) of the speaker. It is fast and cheap but can struggle with complex emotional ranges or unique pronunciations of technical terms.
+Read a mix of texts with different emotional tones: news paragraphs, technical explainers and conversational stories. Keep a consistent volume and do not rush.
 
-### 2. Professional Voice Cloning (PVC):
-Requires **30+ minutes** of high-fidelity, studio-quality speech samples. The model trains deep neural network weights specifically for that voice, capturing subtle throat dynamics, mouth clicks, laughing inflections, and accent parameters. The result is virtually indistinguishable from the original speaker.
+**You should see:** a recording at least 6 minutes long with no long gaps or clipping.
 
+**If not:** record more passages until you reach 6 minutes. Clip warnings mean you should move back slightly or lower the input gain.
+
+### 3. Clean the audio in Audacity
+
+Import the file into Audacity, then run these in order:
+
+1. **Noise Reduction:** sample the silent room noise, then apply noise reduction at level 12dB.
+2. **Noise Gate:** set the threshold to **-48dB** to silence gaps between breaths.
+3. **Normalize:** set peak amplitude to **-3.0dB**.
+
+**You should see:** quiet gaps between phrases and a loud, undistorted voice that peaks near -3.0dB.
+
+**If not:** if word starts are chopped, raise the gate threshold slightly (for example to -50dB, as in the worked example) and rerun on the original file. Menus move; follow the current screen.
+
+### 4. Export as mono WAV
+
+Export the cleaned file as a mono `.wav` file. Keep your raw originals in a separate local master folder.
+
+**You should see:** a `.wav` file that plays as one channel.
+
+**If not:** set the track to mono (Tracks menu in Audacity) before exporting.
+
+### 5. Upload to the cloning engine
+
+Open ElevenLabs. Go to VoiceLab, then Add Instant Voice. Upload the cleaned `.wav` files and write the label specification, for example:
+
+```text
+energetic male, American accent, clear presentation tone
 ```
-Studio Capture (Dry/Mono)  ──►  ElevenLabs PVC Training  ──►  Deep Voice Lock (Accents/Breaths)
-```
 
-To ensure a clean training run, your raw samples must pass the target specifications defined in the [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md).
+Submit the files for synthesis.
 
----
+**You should see:** your new voice listed in your voice library.
 
-## Do It
+**If not:** the menu names may have moved; follow the current ElevenLabs screen for adding an instant voice clone.
 
-### Step 1: Configure Your Recording Hardware
-Follow the [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md). Use a cardioid condenser microphone. Position it 6 inches from your mouth. Record in a room with soft furnishings (carpets, curtains) to prevent room echo.
+### 6. Generate a 20-second test paragraph
 
-### Step 2: Record the Sample Reading Script
-Read a diverse set of texts containing varied emotional tones (news paragraphs, technical explainers, conversational stories). Speak at a consistent volume. Do not rush. Collect at least 6 minutes of clean audio.
+Type or paste a short paragraph of about 20 seconds in your cloned voice and generate it with the default settings.
 
-### Step 3: Run Audio Cleaning
-Import the audio file into Audacity. Run these processes:
-* **Noise Reduction:** Sample the silent room noise and apply noise reduction (level: 12dB).
-* **Noise Gate:** Set a gate threshold at **-48dB** to completely silence gaps between breaths.
-* **Normalize:** Peak amplitude set to **-3.0dB** to maximize volume without clipping.
-Export the file as a mono `.wav` file.
+**You should see:** audio in a voice recognisably like yours.
 
-### Step 4: Submit to the Cloning Engine
-Open ElevenLabs. Go to VoiceLab -> Add Instant Voice. Upload your cleaned `.wav` files. Write down the label specifications (e.g. *"energetic male, American accent, clear presentation tone"*). Submit the files for synthesis.
+**If not:** if it sounds off, check your sample for noise or too-short length and re-upload more clean audio.
 
-### Step 5: Conduct the Stability Audit
-Generate a 20-second test paragraph. Experiment with the configuration sliders:
-* **Stability (Target: 40% - 45%):** Lower values allow the voice to sound more expressive and dynamic; higher values lock in a consistent reading style.
-* **Clarity / Similarity (Target: 75% - 80%):** Higher values enforce the speaker's exact timbre, but setting it too high can introduce digital crackles.
-Save your ideal configurations in the cloning log.
+### 7. Tune the sliders and log them
 
----
+Regenerate the same paragraph while adjusting the two sliders:
 
-## Worked Example
+1. **Stability (target 40% to 45%):** lower is more expressive; higher locks a consistent style.
+2. **Clarity / Similarity (target 75% to 80%):** higher enforces exact timbre, but too high can add digital crackles.
 
-<p align="center">
-<img src="templates/examples/voice-studio-setup.jpg" alt="Voice Studio" width="280">
-<img src="templates/examples/voice-studio-clip.gif" alt="Voice Recording Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Voice Recording Booth Image (Left) ──► Image-to-Video Studio Motion (Right) · Audio File: <a href="templates/examples/rachel-vocal-cloned.mp3">templates/examples/rachel-vocal-cloned.mp3</a> · Video File: <a href="templates/examples/voice-studio-clip.mp4">templates/examples/voice-studio-clip.mp4</a></sub></p>
+Write your best settings in the cloning log from the spec template.
 
-**Creating "Arthur" (B2B SaaS Spokesperson)**
+**You should see:** a version that is expressive, with soft breaths, and no crackle.
 
+**If not:** monotone means lower Stability; crackle means lower Clarity.
 
+## Check yourself
 
-* **Training Inputs:** 7 minutes of clean, dry wav recording of an instructional SaaS guide. Normalized to -3dB peak, gate set to -50dB.
-* **Cloning Interface:** ElevenLabs IVC portal. Cloned as `Arthur_B2B_V1`.
-* **Testing & Tuning Runs:**
-  * Run 1: Stability 60%, Clarity 90%. Output sound: clean timbre, but voice is monotone and lacks natural breath pauses.
-  * Run 2: Stability 40%, Clarity 75%. Output sound: voice is expressive, includes soft inhalation sounds at the start of sentences, and changes tone during question marks.
+* [ ] My recording is at least 6 minutes, cleaned, and exported as mono `.wav`.
+* [ ] The gate is at -48dB (or a documented nearby value) and the peak at -3.0dB.
+* [ ] My cloned voice reads a test paragraph without sounding robotic.
+* [ ] My best Stability and Clarity settings are saved in the cloning log.
 
-**The Result:** "Arthur" is ready for bulk voice synthesis. The output reads complex software documentation with the tone of a professional tech founder.
+## Common mistakes
 
-> [!NOTE]
-> You can listen to a demo of a high-fidelity cloned vocal generated with this workflow here: [rachel-vocal-cloned.mp3](templates/examples/rachel-vocal-cloned.mp3).
+* Recording in an echoey room or with a laptop microphone.
+* Setting Stability and Clarity too high (60% and 90% gave a monotone voice in the worked example).
+* Deleting the raw training files; keep them in a master folder so you can retrain.
+* Sharing your cloned Voice ID publicly; others could generate audio against your API limits.
 
----
+## Go further
 
-## Compare Tools
+**Worked example, "Arthur" (B2B SaaS spokesperson):** 7 minutes of clean, dry wav of a SaaS guide, normalized to -3dB peak, gate at -50dB, cloned in ElevenLabs IVC as `Arthur_B2B_V1`. Run 1 (Stability 60%, Clarity 90%): clean timbre but monotone, no breath pauses. Run 2 (Stability 40%, Clarity 75%): expressive, soft inhalations at sentence starts, tone shifts on question marks. Result: ready for bulk narration. Demo audio: [rachel-vocal-cloned.mp3](templates/examples/rachel-vocal-cloned.mp3).
 
-| Platform / Tool | Synthesis Realism | Customization Settings | Best for |
+**Compare tools:**
+
+| Tool | Realism | Settings | Best for |
 |---|---|---|---|
-| **ElevenLabs IVC / PVC** | Ultra-High (Includes breathing elements, emotional pacing) | Stability, Clarity, Exaggeration sliders | Professional narrations, ads, and spokesperson clones. |
-| **Play.ht (v2.0)** | High | Speed and pitch controls | Conversational customer service avatars and explainers. |
-| **Coqui TTS (Local)** | Medium | Python code integration | Programmatic bulk rendering with zero API credit costs. |
+| ElevenLabs IVC / PVC | Ultra-high (breaths, emotional pacing) | Stability, Clarity, Exaggeration | Narrations, ads, spokesperson clones |
+| Play.ht (v2.0) | High | Speed and pitch | Customer service avatars, explainers |
+| Coqui TTS (local) | Medium | Python integration | Bulk rendering with zero API credits (XTTS v2 also works locally) |
 
-ElevenLabs is the benchmark for high-quality commercial voice cloning. For high-volume networks, use their Instant Voice Cloning API. If you need to scale up local systems with zero operational credit costs, implement local open-source voice generators like XTTS v2 or Coqui.
+**Exercises:**
 
----
+1. Easy: record a 1-minute sample and check the peak level of the silences in a free editor.
+2. Medium: upload a 3-minute sample, generate a test script, and find the slider settings where the voice stops sounding robotic.
+3. Hard: record 6 minutes, apply noise reduction and a gate below -48dB, export mono wav, and train a profile that passes the similarity test.
 
-## Launch It
+**Templates:** [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md) has hardware guidelines, gate parameters and stability logs.
 
-**How to manage voice assets:**
-* **Keep training files isolated:** Store all raw training audio clips in a secure, local master folder. If the voice model ever suffers drift or updates, you can re-upload and re-train the model instantly.
-* **Protect voice security:** Never share your cloned Voice ID string publicly. Malicious users can use the ID to generate unauthorized voice scripts using your API limits.
+**Produce this in SmartVideo GO AI:** use your voice with **Lip-Sync Studio** (voice plus mouth-sync for avatar performances), **AI Influencer Studio** (consistent recurring characters) and **Video Studio** (talking-head clips).
 
----
-
-## Exercises
-
-1. **Easy:** Record a 1-minute speaking sample. Import it into a free editor and check the decibel peak level of the silences.
-2. **Medium:** Upload a 3-minute sample to a cloning engine. Generate a test script and find the slider settings where the voice stops sounding robotic.
-3. **Hard:** Perform a full vocal preparation run: record 6 minutes of audio, run noise reduction, apply a noise gate below -48dB, export as mono wav, and train a cloned profile that passes the similarity test.
-
----
-
-## Templates
-
-* [`templates/voice-cloning-spec.md`](templates/voice-cloning-spec.md) — hardware guidelines, noise gate parameters, and stability logs.
-
----
-
-[← Track overview](README.md) · Next: [AI Dubbing & Translation →](02-dubbing-translation.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: AI Dubbing & Translation.

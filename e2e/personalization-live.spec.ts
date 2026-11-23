@@ -1,11 +1,12 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
+import { artifactDir } from './helpers/artifactDir';
 
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+const OUTPUT_DIR = artifactDir('visual-assets', 'marketing-current', 'personalization');
 
 async function ensureDir(filePath: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -95,7 +96,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     expect(bodyText).toContain('CTA & BUSINESS CONTENT');
     expect(bodyText).toContain('Original Prompt');
     expect(bodyText).toContain('Personalized Prompt');
-    expect(bodyText).toContain('STEP 4 — CREATE');
+    expect(bodyText).toContain('OUTPUT & ENGINE');
     expect(bodyText).toContain('SMARTVIDEO ENGINE');
     expect(bodyText).toContain('SmartVideo Recommended');
   });

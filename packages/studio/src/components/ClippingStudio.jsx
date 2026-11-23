@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runClipping, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -85,6 +86,13 @@ const ClockIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" />
     <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const CaptionsIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="3" />
+    <path d="M7 11h4M13 11h4M7 15h7" />
   </svg>
 );
 
@@ -226,6 +234,24 @@ export default function ClippingStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
+  /**
+   * Optional render prop for the free, on-device Caption Studio on a generated clip. The app root injects it (the studio package never imports
+   * the app's modules). Called with `{ videoUrl, className, children }`: render the returned element in the clip's action row.
+   */
+  renderCaptionAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_clipping_studio_persistent";
@@ -268,6 +294,34 @@ export default function ClippingStudio({
 
   // ── History State ────────────────────────────────────────────────────────
   const [history, setHistory] = useState([]);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the uploaded source video
+  // plus the clipping configuration — a new upload (or a different aspect
+  // ratio / highlight count) is a different project.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "clipping",
+      studioProjectId: [
+        videoUrl ? videoUrl.split("/").pop() : "no-video",
+        aspectRatio,
+        String(numHighlights),
+      ].join(":"),
+      title: "AI Clipping source video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio,
+      },
+      prompt: {
+        text: prompt,
+      },
+    }),
+    [videoUrl, aspectRatio, numHighlights, prompt],
+  );
 
   const ASPECT_RATIOS = [
     { label: copy.aspectRatioLabels["9:16"], value: "9:16" },
@@ -956,6 +1010,14 @@ export default function ClippingStudio({
                             >
                               <DownloadIcon />
                             </button>
+                            {/* Free captions on this clip. The wrapper keeps the click from also opening the clip fullscreen. */}
+                            <span className="contents" onClick={(e) => e.stopPropagation()}>
+                              {renderCaptionAction?.({
+                                videoUrl: clipUrl,
+                                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
+                                children: <CaptionsIcon />,
+                              })}
+                            </span>
                             <PublishStep
                               mediaUrl={clipUrl}
                               mediaType="video"
@@ -1044,6 +1106,12 @@ export default function ClippingStudio({
                   ×
                 </button>
               </div>
+
+              {/* Personalize this clip in the shared Personalization Modal.
+                  Renders nothing without an uploaded source video. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
             </div>
           )}
 
@@ -1100,6 +1168,9 @@ export default function ClippingStudio({
                 </svg>
               </button>
             )}
+
+            {/* Saved uploads and generations, shared by every studio */}
+            {!videoUrl && <AssetLibraryButton kinds={["video"]} label="Saved" onSelect={(asset) => setVideoUrl(asset.url)} />}
 
             {/* Prompt textarea (supports direct URL pasting too) */}
             <div className="flex-1 flex flex-col gap-1">

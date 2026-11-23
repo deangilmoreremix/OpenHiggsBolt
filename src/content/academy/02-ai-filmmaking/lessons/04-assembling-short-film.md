@@ -1,162 +1,72 @@
 # Assembling a Short Film
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> The film isn't made in the generator; it's made in the editor.
-
-**Track:** AI Filmmaking  
-**Time:** ~50 minutes  
-**Prerequisites:** Screenplay & Story Generation, Storyboarding & Shot Planning, Camera Movement & Cinematography Prompts  
-
-## The Problem
-
-If you take raw, silent clips directly from a video generator and play them back-to-back, the result is jarring. One clip might have a slight green tint, the next is warm yellow. The camera motion speeds don't match. And most of all, the complete silence makes the video feel dead, revealing the artificial nature of the footage immediately.
-
-Most tutorials focus purely on the generation phase, leaving you with a folder of silent, disconnected files. 
-
-An AI film only becomes a real movie when it enters the editor. You must stitch the clips together, establish narrative pacing, match the color palette across different generation runs, and build a rich, multi-layered audio track.
-
-## The Concept
-
-Post-production assembly bridges the gap between silent AI clips and a finished cinematic piece. This workflow consists of two main pillars: **Audio Layering** and **Color Grading**.
-
-### The Sound Design Hierarchy:
-Because AI video clips are generated silent, you must build the audio track from scratch. We layer audio in a precise hierarchy:
-1. **Dialogue / Narration:** The vocal performance (voiceover or synced speech).
-2. **Ambience / Room Tone:** Continuous background noise that sets the space (e.g., spaceship engine hum, rain).
-3. **Foley / Sound Effects (SFX):** Discrete sounds synchronized with visual events (e.g., switches clicking, heavy footsteps).
-4. **Music / Soundtrack:** The emotional underscore of the scene.
-
-```
-Silent Visual Cuts  →  Narration  →  Ambience Track  →  Foley Sync  →  Music Score
-```
-
-### Visual Unification:
-To fix slight shifts in color grading between different generations, you apply a **LUT (Look-Up Table)** to the entire editing timeline. This overlays a uniform color grade across all clips, blending them into a single visual style.
+> **Time:** about 15 minutes. **You will finish with:** your clips cut together on a timeline, with a narration track and a continuous ambience track.
 
 ---
 
-## Do It
+## Before you start
 
-### Step 1: Organize Your Project Timeline
-Import your generated clips into an NLE (Non-Linear Editor — a video editing program that lets you arrange and cut clips on a timeline) such as DaVinci Resolve, Premiere Pro, or CapCut. Lay them out in order on your main video track (V1). Trim any visual glitches that occur at the very beginning or end of a clip (video models often dissolve or warp in the final half-second).
+Raw silent clips played back to back feel jarring: one has a green tint, the next a warm yellow, motion speeds differ, and the silence reveals the artificial footage. The film is made in the editor. Because AI clips are silent, you build sound from scratch in a hierarchy: **dialogue/narration**, **ambience/room tone**, **Foley/SFX** and **music**. This part covers the cuts, narration and ambience; part 2 adds Foley, music, the color grade and export. You will need your clips from lesson 3 (Camera Movement & Cinematography Prompts), your script from lesson 1, an NLE (non-linear editor, a program that arranges and cuts clips on a timeline) such as DaVinci Resolve, Premiere Pro or CapCut, a text-to-speech or voice tool such as ElevenLabs, and the checklist [`templates/sound-design-checklist.md`](templates/sound-design-checklist.md). SmartVideo GO AI's **Audio** and **Lip-Sync Studio** can also produce voice; follow the current screen.
 
-### Step 2: Generate the Voiceover Narration
-Use a high-quality TTS or voice-cloning API (like ElevenLabs).
-* Paste your script from Module 1.
-* Add artificial line breaks or punctuation (commas, ellipses) to force the voice model to pause naturally.
-* Import the audio file into the editor on audio track A1. Sync the start of dialogue lines with your character's visual entrance.
+## Step by step
 
-### Step 3: Layer the Ambient Soundscape
-Find or generate a continuous background noise track matching your film brief (e.g. static room tone or city rain). Place this on track A2. Fade it in at the opening frame and let it run continuously under all edits to unify the cuts.
+### 1. Lay out the clips on V1
 
-### Step 4: Synchronize Foley SFX
-Scroll through the video frame by frame. Wherever a physical action occurs (a screen flickers, a head turns, boots hit pavement), place a matching sound effect on track A3. Align the audio peak exactly with the visual moment of impact.
+Import your generated clips into your editor and place them in order on the main video track (V1). Trim glitches at the very start or end of a clip, because models often dissolve or warp in the final half-second.
 
-### Step 5: Score the Scene
-Place your background music on track A4. Set the general music volume low (around -18dB to -24dB). Enable **Audio Ducking** so that the music automatically drops by an additional 6dB whenever the voice track (A1) is active.
+**You should see:** your shots in order on V1, with clean first and last frames.
 
-### Step 6: Apply a Unified Color Grade
-Select all video clips on V1. Add an adjustment layer over the entire timeline and apply a film emulation LUT (e.g. Kodak 2383 style). This unifies the highlights and shadow colors across all separate generations, hiding minor color discrepancies. Export the finished project at 24fps.
+**If not:** if a clip warps at the end, trim a few frames more or re-render that shot.
 
----
+### 2. Generate the voiceover
 
-## Worked Example
+In ElevenLabs or another high-quality TTS or voice tool, paste your script lines from lesson 1. Add line breaks or punctuation (commas, ellipses) to force natural pauses. Download the audio.
 
-<p align="center">
-<img src="templates/examples/the-last-signal-poster.jpg" alt="Key Art Poster" width="280">
-<img src="templates/examples/last-signal-assembly-clip.gif" alt="Scene Assembly Video Motion (I2V)" width="280">
-</p>
-<p align="center"><sub>Film Key Art (Left) ──► Image-to-Video Film Assembly Motion (Right) · Video File: <a href="templates/examples/last-signal-assembly-clip.mp4">templates/examples/last-signal-assembly-clip.mp4</a></sub></p>
+**You should see:** an audio file where the pauses sound natural.
 
-**Timeline Assembly for "The Last Signal" Scene 1**
+**If not:** if the voice rushes, add more commas or ellipses, or shorten the line.
 
+### 3. Place the narration on A1
 
+Import the audio onto track A1 and sync the start of each line with the character's visual entrance (in the worked example, the voice line begins at 0:05). Settings used there: centered mono channel, volume -3dB.
 
-Here is the track layout inside the editing timeline for the first 12 seconds:
+**You should see:** narration lined up with the right shots.
 
-* **V1 (Video Track):**
-  * 0:00 - 0:04: Shot 1.1 (Establishing Wide Shot of cockpit)
-  * 0:04 - 0:08: Shot 1.2 (Astronaut portrait, slow dolly-in)
-  * 0:08 - 0:12: Shot 1.3 (Close-up of static screen)
-  * *Effect:* Adjustment layer over V1 with a "Teal & Orange" LUT at 70% opacity.
+**If not:** if it drifts, nudge the audio clip, or trim the picture length to match the line.
 
-* **A1 (Dialogue Track):**
-  * 0:05 - 0:08: JOHN (V.O.): *"No one has answered in six months."*
-  * *Settings:* Centered mono channel, volume set to -3dB.
+### 4. Add the ambient soundscape on A2
 
-* **A2 (Ambience Track):**
-  * 0:00 - 0:12: Continuous loop of `"Low spaceship drone hum with computer static"`
-  * *Settings:* Volume set to -18dB.
+Find or generate a continuous background track that matches your brief (for example a spaceship drone or rain). Place it on A2, fade it in at the first frame and let it run continuously under all the cuts, which unifies them. The worked example used volume -18dB.
 
-* **A3 (SFX/Foley Track):**
-  * 0:08 - 0:09: Synchronized `"Electric spark & CRT monitor flicker hum"` as Shot 1.3 cuts in.
-  * *Settings:* Volume set to -6dB.
+**You should see:** a sound bed that never drops out between shots.
 
-* **A4 (Music Track):**
-  * 0:00 - 0:12: Slow, tense ambient synthesizer pad.
-  * *Settings:* Volume set to -20dB, ducking to -26dB during John's voice line.
+**If not:** if you hear a gap at a cut, extend the ambience clip across the whole timeline.
 
-**The Result:** The sequence feels like a unified piece. The screen flicker sound hides the hard visual cut to the static screen, and the continuous spaceship hum holds the atmosphere together across the cuts.
+## Check yourself
 
-*Existing Automation Reference:* If you want to automate this timeline assembly and audio synchronization, you can reference the [`Open-AI-Micro-Drama-Generator`](https://github.com/Anil-matcha/awesome-generative-ai-apps/tree/main/video_generation/Open-AI-Micro-Drama-Generator) app, which maps dialogue transcripts directly to video durations and builds the combined assets programmatically.
+* [ ] My clips are ordered and trimmed on V1.
+* [ ] The narration is on A1 and starts at the right moment.
+* [ ] One ambience track runs under the whole timeline.
+* [ ] I know what Foley, music and grade come next.
 
----
+## Common mistakes
 
-## Compare Tools
+* Judging clips in silence and skipping sound.
+* Keeping the warped last half-second of generated clips.
+* Cutting the ambience track at each shot instead of letting it run continuously.
 
-| Editing / Sound Tool | Capabilities | Setup Effort | Best for |
-|---|---|---|---|
-| **DaVinci Resolve / Premiere Pro** | Professional NLE. Multi-track editing, advanced audio ducking, professional LUT color grading. | High (Needs local installation and learning curve) | Widescreen films, commercial ads, and high-end festival entries. |
-| **CapCut Desktop** | Lightweight editor. Auto-captions, built-in sound effects library, and easy timeline cutting. | Low | Vertical micro-dramas, TikToks, and fast social media formats. |
-| **ElevenLabs (Audio-Native)** | Best voice cloning, natural emotional inflection, and built-in Foley SFX generation from text prompts. | Low (API/Web interface) | High-fidelity narration, character voiceovers, and custom sound effects. |
+## Go further
 
-For fast, high-volume production (like vertical drama series), CapCut is the most efficient choice because of its built-in assets and captions engine. For narrative short films, DaVinci Resolve is preferred for its superior color grading engine.
+**Worked example, first 12 seconds of "The Last Signal" Scene 1:** V1 holds Shot 1.1 (wide cockpit, 0:00-0:04), Shot 1.2 (astronaut slow dolly-in, 0:04-0:08) and Shot 1.3 (close-up of static screen, 0:08-0:12). A1: JOHN (V.O.) "No one has answered in six months." from 0:05 to 0:08. A2: continuous loop of "Low spaceship drone hum with computer static" for 0:00-0:12. Part 2 completes the A3, A4 and grade layers.
 
----
+**Exercise.** Easy: import 3 random silent clips, add a continuous ambience and a simple music track. Medium: take a silent 4-second clip of a character speaking, generate a line in ElevenLabs, import it and edit the clip's visual duration to match the audio exactly.
 
-## Launch It
+**Compare tools.** DaVinci Resolve / Premiere Pro: professional multi-track editing, ducking and LUT grading, high setup effort, for widescreen films and festival entries. CapCut Desktop: lightweight, auto-captions, built-in sound effects, low effort, best for vertical micro-dramas and fast social formats. ElevenLabs: best voice cloning and natural emotional inflection, plus text-prompted SFX; low setup. Use CapCut for high-volume vertical series and DaVinci Resolve for narrative shorts.
 
-**How to monetize this skill:**
-* **AI Film Editor & Sound Designer:** Many AI creators can generate pretty pictures but do not know how to edit or design sound. Offer "Assembly and Sound Design Packages" for AI filmmakers, charging **$100–$300** per finished minute of film.
-* **Vertical Drama Production:** Produce and edit 1-minute drama episodes for creators building mobile mini-series. Agencies and platforms pay **$150–$350** per edited vertical episode.
+**Automation reference.** The [`Open-AI-Micro-Drama-Generator`](https://github.com/Anil-matcha/awesome-generative-ai-apps/tree/main/video_generation/Open-AI-Micro-Drama-Generator) app maps dialogue transcripts to video durations and builds combined assets programmatically.
 
-**Where to find clients:**
-Cold pitch AI influencers on YouTube/Instagram who post silent loops or slideshows. Show them a 10-second sample of their own footage edit with voiceover and sound effects to prove the value.
+**Launch it.** Offer "Assembly and Sound Design Packages" at **$100-$300** per finished minute, or edit 1-minute vertical drama episodes at **$150-$350** per episode. Cold pitch AI influencers who post silent loops, with a 10-second sample of their footage edited with voiceover and effects.
 
----
+**Templates:** [`templates/sound-design-checklist.md`](templates/sound-design-checklist.md).
 
-## Exercises
-
-1. **Easy:** Import 3 random silent video clips into your editor. Synchronize a continuous ambient background sound and a simple background music track.
-2. **Medium:** Take a silent 4-second clip of a character speaking. Generate a dialogue line in ElevenLabs, import it, and edit the clip's visual duration to match the audio line length exactly.
-3. **Hard:** Perform a color-matching challenge: import 3 video clips generated from different video models (with different lighting). Color grade them using color match wheels or a shared LUT to make them look like they were filmed in the same room on the same camera.
-
----
-
-## Templates
-
-Reusable template(s) this module produces:
-
-* [`templates/sound-design-checklist.md`](templates/sound-design-checklist.md) — a master list for dialogue, ambience, SFX, and music leveling.
-
----
-
-[← Camera Movement & Cinematography Prompts](03-camera-movement.md) · Next: [Selling Short-Form Films →](05-selling-short-films.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Assembling a Short Film, part 2.

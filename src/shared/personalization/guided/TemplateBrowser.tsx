@@ -46,6 +46,7 @@ import {
   MOTION_TEMPLATE_CARDS,
   getMotionTemplateCardShot,
   getMotionTemplateCardsByCategory,
+  motionTemplateTitle,
   normalizeCardCounts,
   searchMotionTemplateCards,
   type MotionCategoryKey,
@@ -53,6 +54,7 @@ import {
 } from '@/data/motionRecipeCatalog'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { CardPreviewVideo } from './CardPreviewVideo'
 
 /** Map a category key to a small lucide icon so the tab bar reads at a glance. */
 const CATEGORY_ICONS: Record<MotionCategoryKey, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -426,9 +428,14 @@ function TemplateCard({
   const clip = previewVideoUrl(template)
   const supportedAssets = ASSET_ICONS.filter((entry) => template.assets[entry.key])
   const durationLabel = template.durationSec > 0 ? `${template.durationSec.toFixed(1)}s` : null
-  // The SELECTED card hosts the real, playing clip. Unselected cards keep the
-  // still poster so the grid stays cheap — only one clip is ever fetched.
+  // The SELECTED card hosts the real, playing clip with controls. Every other
+  // card autoplays its own silent clip while on screen, over its poster.
   const showPlayer = active && Boolean(clip)
+  const still = poster ? (
+    <TemplatePosterImage template={template} poster={poster} />
+  ) : (
+    <TemplatePosterPlaceholder template={template} />
+  )
 
   return (
     <div
@@ -438,10 +445,10 @@ function TemplateCard({
     >
       {showPlayer ? (
         <MotionTemplatePlayer template={template} src={clip!} poster={poster} />
-      ) : poster ? (
-        <TemplatePosterImage template={template} poster={poster} />
+      ) : clip ? (
+        <CardPreviewVideo src={clip} poster={poster} fallback={still} />
       ) : (
-        <TemplatePosterPlaceholder template={template} />
+        still
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -458,10 +465,8 @@ function TemplateCard({
         )}
       </div>
 
-      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{template.nameEn}</div>
-      {template.nameEn !== template.name && (
-        <div style={{ color: C.muted2, fontSize: 10 }}>{template.name}</div>
-      )}
+      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{motionTemplateTitle(template)}</div>
+      <div style={{ color: C.muted2, fontSize: 10 }}>{template.nameEn}</div>
       {template.summaryEn && (
         <p style={{ ...hintStyle, margin: 0 }}>{template.summaryEn}</p>
       )}
@@ -503,10 +508,13 @@ function TemplateCard({
           type="button"
           data-testid="motion-template-use"
           onClick={() => onSelect(template)}
-          style={{ ...primaryButtonStyle, flex: 1, minHeight: 36, fontSize: 11, padding: '0 12px' }}
+          // Without a clip there is nothing to put in the preview.
+          disabled={!template.preview || !template.componentName}
+          title={!template.preview || !template.componentName ? 'Preview clip not available yet' : undefined}
+          style={{ ...primaryButtonStyle, flex: 1, minHeight: 36, fontSize: 11, padding: '0 12px', opacity: !template.preview || !template.componentName ? 0.5 : 1 }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            Use this template <ChevronRight size={12} />
+            {!template.preview || !template.componentName ? 'Clip coming soon' : <>Use this template <ChevronRight size={12} /></>}
           </span>
         </button>
         <button

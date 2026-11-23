@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server'
 import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
 import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
@@ -20,9 +22,18 @@ function meta(name: string, html: string): string | undefined {
  * writing a module-level store shared by every user of the instance.
  */
 async function requireUserId(): Promise<{ userId: string } | { response: NextResponse }> {
+  // H4: same gate as the analyze route — 401 UNAUTHENTICATED when signed out,
+  // 403 PAYMENT_REQUIRED when signed in without the smartvideo_go entitlement.
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
+    }
+    return { response: entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO) }
+  }
   const { userId } = await auth()
   if (!userId) {
-    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
   }
   return { userId }
 }

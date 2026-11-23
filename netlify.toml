@@ -1,11 +1,26 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
+  # pnpm, not npm: the repo's packageManager is pnpm, the dependency tree is
+  # pnpm-lock.yaml, and only pnpm applies the patchedDependencies in
+  # pnpm-workspace.yaml. Under npm that patch is never applied and the prebuild
+  # guard exits 1, which is why every Netlify-side build failed with a bare
+  # "Build script returned non-zero exit code". Commit 4d6631bee fixed this and
+  # 7e8a436b3 reverted it; this restores the fix.
+  # The Vibe-Workflow submodule was removed (the workflow editor now lives in
+  # packages/workflow-builder), but Netlify's build area can still hold the old
+  # folder from earlier builds, and its secret scan then finds a real key in
+  # packages/Vibe-Workflow/server/.env.example. Delete it before anything else;
+  # this is a no-op on a clean checkout.
+  command = "rm -rf packages/Vibe-Workflow && pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
   [build.environment]
+    # `next build` of this app peaks at ~4.7 GB RSS (measured locally, 3 min). Node's default heap limit (~2 GB)
+    # makes webpack die with "JavaScript heap out of memory" (exit 134) once the dependency graph is this large,
+    # which Netlify reports only as "Build script returned non-zero exit code". Give it headroom.
+    NODE_OPTIONS = "--max-old-space-size=6144"
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
     # are installed even if the build image sets NODE_ENV=production.
     NPM_CONFIG_PRODUCTION = "false"
@@ -21,6 +36,17 @@
     # Use shallow submodule clones (depth=1) to avoid fetching historical commits
     # that reference invalid submodule commits (e.g., 36bdba26ae36a5cc73e6c2cb8e5ec5759d98f741)
     GIT_SUBMODULE_DEPTH = "1"
+    # Netlify's secrets scan fails the build with the bare "Build script returned non-zero exit code: 2" when any
+    # environment-variable value appears in a scanned file. PR #206 added a 17,000-line GENERATED catalogue of 539
+    # clips (titles, tags, topics, URLs): common words in it can equal a short env-var value, and every build containing
+    # it has failed since 2026-11-17 17:41 UTC (reverting it makes the build pass; a local `next build` passes either way).
+    # The file holds only public clip metadata, so it is excluded from the scan, not the whole scan.
+    SECRETS_SCAN_OMIT_PATHS = "src/data/templateVideoLibrary.js"
+    # Netlify's secrets scan fails the build if the *value* of any env var appears in the
+    # build output or repo files. CLERK_ISSUER_URL (https://clerk.go.smartvid.app) is a public
+    # URL that is intentionally present in netlify.toml's CSP and in the client bundle, so it is
+    # not a secret. Omit only these known-public keys; real secrets stay scanned.
+    SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,NEXT_PUBLIC_SUPABASE_URL,CLERK_ISSUER_URL,CLERK_JWT_ISSUER,NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,NEXT_PUBLIC_CLERK_FRONTEND_API_URL"
 
 [site]
   site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
@@ -32,10 +58,11 @@
     # and Google Fonts. Without this the Netlify Essential Next.js plugin's default
     # CSP blocks Clerk's JS/CSS/API and leaves /sign-in, /sign-up and the password-reset
     # pages blank.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; worker-src 'self' blob:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro https://huggingface.co https://*.hf.co https://cdn.jsdelivr.net; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
 
 [[redirects]]
   from = "/api/brands"

@@ -1,39 +1,33 @@
 /**
  * Contract tests for the demo library registry.
  *
- * The registry replaced a hardcoded 12-slug allowlist that was the reason
- * only 12 of the shipped demo videos ever reached the UI. These tests lock
- * the guarantees that make the full library safe to render:
+ * The registry offers the template library (clips hosted in the public
+ * demo-template-videos bucket) plus this repo's own local PromptFeed and
+ * Seedance 1 clips. These tests lock the guarantees that make it safe to render:
  *
- *  1. Every registered entry points at a video file that REALLY exists on
- *     disk under `public/` and is non-empty.
- *  2. Every registered entry's poster REALLY exists on disk.
- *  3. Every id is unique, and the id is source-qualified (no bare slug, no
- *     numeric index), so no two collections can collide.
+ *  1. Every LOCAL entry points at a video file that REALLY exists on disk under
+ *     `public/` (a real media container, non-empty), and its poster exists.
+ *  2. Every entry is playable media: a repo file or the demo-template-videos
+ *     bucket, never a blob handle or a raw CDN URL.
+ *  3. Every id is unique and source-qualified, so no two collections collide.
  *  4. The registry is strictly larger than the old 12-entry allowlist.
- *  5. Every registered video has probed media facts (the verification
- *     allowlist), so an unverified file can never be registered.
- *  6. The registry is RECONCILED against the disk: every video file under
- *     `public/media/<collection>/videos` that has a real media container is registered,
- *     and every file that does NOT is excluded. This is the test that fails
- *     when a new collection lands on disk but is never wired up.
+ *  5. The broken `seedance-prompts` collection stays excluded.
+ *
+ * The library merge, the three logo states and the lookup are covered in
+ * `templateVideoLibraryRegistry.test.ts`.
  */
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, statSync, readFileSync, readdirSync } from 'fs'
+import { closeSync, existsSync, openSync, readSync, statSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { getCreateUrl } from '../types'
-import { findDemoById } from '../demoLookup'
+import { findDemoById, findDemoBySlug } from '../demoLookup'
 import {
   DEMO_LIBRARY_REGISTRY,
-  DEMO_MEDIA_FACTS,
   DEMO_COLLECTION_IDS,
   DEMO_CATEGORIES,
-  demoCollections,
   getDemoById,
-  getDemosByCollection,
   getDemosByCategory,
-  getMediaFacts,
   toVideoDemo,
   deriveAspectRatio,
   EXCLUDED_DEMO_COLLECTIONS,
@@ -52,14 +46,6 @@ const OLD_CURATED_COUNT = 12
  * `seedance-prompts` collection — are 9-byte "Not Found" error bodies with no
  * media container, so 123 videos are eligible and all 123 are registered.
  */
-const EXPECTED_COLLECTION_COUNTS: Record<string, number> = {
-  'minimax-h3': 30,
-  promptfeed: 29,
-  'seedance-1': 14,
-  'seedance-25': 50,
-}
-const EXPECTED_TOTAL = 123
-const ON_DISK_TOTAL = 137
 const INVALID_ON_DISK = 14
 
 /** WebM magic `1a 45 df a3`; MP4 magic is the `ftyp` box at offset 4. */
@@ -68,8 +54,8 @@ const WEBM_MAGIC = Buffer.from([0x1a, 0x45, 0xdf, 0xa3])
 /** A real media container is never this small; a 9-byte error body is. */
 const MIN_MEDIA_BYTES = 1024
 
-/** Every video path the registry actually serves. */
-const registeredVideoSrcs = new Set(DEMO_LIBRARY_REGISTRY.map((entry) => entry.videoSrc))
+/** Clips served from this repo's public/ folder; the template-library clips are hosted in the Supabase bucket instead. */
+const LOCAL_ENTRIES = DEMO_LIBRARY_REGISTRY.filter((entry) => entry.videoSrc.startsWith('/media/'))
 
 function publicPath(sitePath: string): string {
   return join(PUBLIC_DIR, sitePath.replace(/^\//, ''))
@@ -77,24 +63,18 @@ function publicPath(sitePath: string): string {
 
 /** True when the file starts with a real WebM or MP4 container magic. */
 function hasMediaMagic(absPath: string): boolean {
-  const head = readFileSync(absPath).subarray(0, 12)
+  // Read only the 12-byte header: loading every whole video (~450 MB) made
+  // this test time out under full-suite CPU contention.
+  const head = Buffer.alloc(12)
+  const fd = openSync(absPath, 'r')
+  try {
+    readSync(fd, head, 0, 12, 0)
+  } finally {
+    closeSync(fd)
+  }
   return (
     head.subarray(0, 4).equals(WEBM_MAGIC) || head.subarray(4, 8).toString('latin1') === 'ftyp'
   )
-}
-
-/** Every video file under `public/media/<collection>/videos/`. */
-function mediaCollectionsOnDisk(): Array<{ collection: string; files: string[] }> {
-  if (!existsSync(MEDIA_DIR)) return []
-  return readdirSync(MEDIA_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => ({
-      collection: entry.name,
-      files: readdirSync(join(MEDIA_DIR, entry.name, 'videos')).filter((file) =>
-        /\.(mp4|webm|mov|m4v)$/i.test(file),
-      ),
-    }))
-    .filter((entry) => entry.files.length > 0)
 }
 
 describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
@@ -105,7 +85,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
   it('points every entry at a video file that exists on disk and is non-empty', () => {
     const missing: string[] = []
     const empty: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const abs = publicPath(entry.videoSrc)
       if (!existsSync(abs)) {
         missing.push(entry.videoSrc)
@@ -119,7 +99,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
 
   it('points every entry at a poster file that exists on disk', () => {
     const missing: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       if (!entry.posterSrc) {
         missing.push(`<empty> ${entry.id}`)
         continue
@@ -129,17 +109,24 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
     expect(missing).toEqual([])
   })
 
-  it('registers only local media paths (never remote URLs or blob handles)', () => {
+  it('registers only playable media: repo files or the demo-template-videos bucket (never blob handles or raw CDN URLs)', () => {
+    const playable = /^(https:\/\/bzxohkrxcwodllketcpz\.supabase\.co\/storage\/v1\/object\/public\/demo-template-videos\/|\/media\/)/
     for (const entry of DEMO_LIBRARY_REGISTRY) {
-      expect(entry.videoSrc.startsWith('/media/')).toBe(true)
-      expect(entry.videoSrc.startsWith('http')).toBe(false)
+      expect(playable.test(entry.videoSrc), entry.videoSrc).toBe(true)
       expect(entry.videoSrc.startsWith('blob:')).toBe(false)
     }
   })
 
+  it('keeps OpenHiggsBolt\'s 43 local PromptFeed and Seedance 1 clips, marked Not reviewed', () => {
+    const local = LOCAL_ENTRIES.filter((entry) => entry.collectionId === 'promptfeed' || entry.collectionId === 'seedance-1')
+    expect(local.filter((entry) => entry.collectionId === 'promptfeed')).toHaveLength(29)
+    expect(local.filter((entry) => entry.collectionId === 'seedance-1')).toHaveLength(14)
+    for (const entry of local) expect(entry.branding, entry.id).toBe('unreviewed')
+  })
+
   it('never registers a video whose file lacks a real media magic number', () => {
     const withoutMagic: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const abs = publicPath(entry.videoSrc)
       if (!hasMediaMagic(abs)) withoutMagic.push(`${entry.id} -> ${entry.videoSrc}`)
     }
@@ -150,7 +137,7 @@ describe('DEMO_LIBRARY_REGISTRY — media existence', () => {
     // Guards against a 9-byte "Not Found" HTTP body being registered as if
     // it were a video: it has no magic number, but it also has no size.
     const tooSmall: string[] = []
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
+    for (const entry of LOCAL_ENTRIES) {
       const size = statSync(publicPath(entry.videoSrc)).size
       if (size < MIN_MEDIA_BYTES) tooSmall.push(`${entry.id} -> ${entry.videoSrc} (${size} bytes)`)
     }
@@ -197,39 +184,6 @@ describe('DEMO_LIBRARY_REGISTRY — completeness', () => {
     expect(DEMO_LIBRARY_REGISTRY.length).toBeGreaterThan(OLD_CURATED_COUNT)
   })
 
-  it('registers every verified video of every registered collection', () => {
-    for (const collectionId of DEMO_COLLECTION_IDS) {
-      const registered = getDemosByCollection(collectionId)
-      expect(registered.length).toBeGreaterThan(0)
-      // Every registered video of the collection has a probed fact row, and
-      // every probed fact row of the collection is registered.
-      const probed = Object.keys(DEMO_MEDIA_FACTS).filter((path) =>
-        path.startsWith(`/media/${collectionId}/videos/`),
-      )
-      expect(registered.length).toBe(probed.length)
-    }
-  })
-
-  it('keeps every collection listed in demoCollections with a non-zero count', () => {
-    expect(demoCollections.map((c) => c.id).sort()).toEqual([...DEMO_COLLECTION_IDS].sort())
-    for (const collection of demoCollections) {
-      expect(collection.count).toBeGreaterThan(0)
-      expect(collection.label.length).toBeGreaterThan(0)
-      expect(collection.sourceUrl).toMatch(/^https:\/\//)
-    }
-  })
-
-  it('exposes probed media facts for every registered video', () => {
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
-      const facts = getMediaFacts(entry.videoSrc)
-      expect(facts, `no media facts for ${entry.id}`).toBeDefined()
-      expect(facts!.width).toBeGreaterThan(0)
-      expect(facts!.height).toBeGreaterThan(0)
-      expect(facts!.durationSeconds).toBeGreaterThan(0)
-      expect(entry.media).toEqual(facts)
-    }
-  })
-
   it('registers no video that failed verification (the seedance-prompts collection)', () => {
     // All 14 seedance-prompts files are 9-byte "Not Found" bodies. They must
     // not appear in the registry in any form.
@@ -251,65 +205,6 @@ describe('DEMO_LIBRARY_REGISTRY — completeness', () => {
       expect(typeof excluded.entitlementGated).toBe('boolean')
     }
     expect(EXCLUDED_DEMO_COLLECTIONS.map((e) => e.id)).toContain('seedance-prompts')
-  })
-})
-
-describe('DEMO_LIBRARY_REGISTRY — reconciled totals', () => {
-  it('registers exactly the reconciled number of eligible demos', () => {
-    expect(DEMO_LIBRARY_REGISTRY.length).toBe(EXPECTED_TOTAL)
-  })
-
-  it('registers exactly the reconciled number of demos per collection', () => {
-    const actual: Record<string, number> = {}
-    for (const entry of DEMO_LIBRARY_REGISTRY) {
-      actual[entry.collectionId] = (actual[entry.collectionId] ?? 0) + 1
-    }
-    expect(actual).toEqual(EXPECTED_COLLECTION_COUNTS)
-    for (const [collectionId, expected] of Object.entries(EXPECTED_COLLECTION_COUNTS)) {
-      expect(getDemosByCollection(collectionId as never).length).toBe(expected)
-    }
-  })
-
-  it('publishes the reconciled counts in demoCollections', () => {
-    const published: Record<string, number> = {}
-    for (const collection of demoCollections) published[collection.id] = collection.count
-    expect(published).toEqual(EXPECTED_COLLECTION_COUNTS)
-    const total = demoCollections.reduce((sum, collection) => sum + collection.count, 0)
-    expect(total).toBe(EXPECTED_TOTAL)
-  })
-
-  it('has one probed media fact row per registered demo, and no orphans', () => {
-    expect(Object.keys(DEMO_MEDIA_FACTS).length).toBe(EXPECTED_TOTAL)
-    const registeredSrcs = new Set(DEMO_LIBRARY_REGISTRY.map((entry) => entry.videoSrc))
-    const orphanFacts = Object.keys(DEMO_MEDIA_FACTS).filter((src) => !registeredSrcs.has(src))
-    expect(orphanFacts).toEqual([])
-  })
-
-  it('registers every eligible video found on disk and no ineligible one', () => {
-    // Walk every local demo collection on disk. A file with a real media
-    // container MUST be registered; a file without one MUST NOT be.
-    const eligibleButUnregistered: string[] = []
-    const ineligibleButRegistered: string[] = []
-    let onDisk = 0
-    let eligible = 0
-
-    for (const { collection, files } of mediaCollectionsOnDisk()) {
-      for (const file of files) {
-        onDisk += 1
-        const sitePath = `/media/${collection}/videos/${file}`
-        const abs = join(MEDIA_DIR, collection, 'videos', file)
-        const isRegistered = registeredVideoSrcs.has(sitePath)
-        const isEligible = existsSync(abs) && statSync(abs).size > 0 && hasMediaMagic(abs)
-        if (isEligible) eligible += 1
-        if (isEligible && !isRegistered) eligibleButUnregistered.push(sitePath)
-        if (!isEligible && isRegistered) ineligibleButRegistered.push(sitePath)
-      }
-    }
-
-    expect(onDisk).toBe(ON_DISK_TOTAL)
-    expect(eligible).toBe(EXPECTED_TOTAL)
-    expect(eligibleButUnregistered).toEqual([])
-    expect(ineligibleButRegistered).toEqual([])
   })
 })
 
@@ -394,5 +289,14 @@ describe('DEMO_LIBRARY_REGISTRY — metadata', () => {
       expect(() => getCreateUrl(demo)).not.toThrow()
       expect(getCreateUrl(demo)).toContain(encodeURIComponent(templateId))
     }
+  })
+})
+
+describe('lookups prefer the library clip over the catalog entry for the same key', () => {
+  it('opens the hosted clip (with its logo label) for a legacy slug, by slug and by template id', () => {
+    const bySlug = findDemoBySlug('luxury-perfume-commercial')
+    expect(bySlug?.videoSrc, 'hosted media').toMatch(/^https:\/\//)
+    const byId = findDemoById(`${bySlug!.sourceRepo}|${bySlug!.slug}`)
+    expect(byId?.videoSrc).toBe(bySlug!.videoSrc)
   })
 })

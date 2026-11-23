@@ -133,6 +133,17 @@ async function mountAndOpen(opts: { loadResult: unknown; userScope?: string }) {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 120))
   })
+
+  // The modal opens fresh and offers the saved project; continue with it.
+  const opened = (window as any).__personalizationCtx
+  if (opened.resumableProject) {
+    await act(async () => {
+      await opened.resumeLastProject()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120))
+    })
+  }
 }
 
 describe('DemoPersonalizeProvider durable-restore fall-through (Fix I-4)', () => {

@@ -1,14 +1,24 @@
 import './globals.css';
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { ClerkProvider } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
 import GlobalModalDropBridge from '@/components/GlobalModalDropBridge';
 import { SmartVideoAccessProvider, NoClerkSmartVideoAccessProvider } from '@/access/SmartVideoAccessProvider';
 
-const inter = Inter({
+// Inter, served from the repo instead of downloaded from Google Fonts at build time.
+// `next/font/google` made every build depend on fonts.googleapis.com; when Netlify could
+// not reach it the whole build failed ("Failed to fetch `Inter` from Google Fonts").
+// This is the same Inter 4.001 variable Latin file that the personalization templates already
+// bundle (public/fonts/personalization-sans-latin.woff2, SIL OFL 1.1, public/fonts/OFL.txt).
+// Like the previous `subsets: ["latin"]`, it covers Latin text only; other scripts use the
+// system fallback fonts, as before.
+const inter = localFont({
+  src: "../public/fonts/personalization-sans-latin.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
 });
 
 export const metadata = {

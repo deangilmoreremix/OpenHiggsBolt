@@ -1,0 +1,124 @@
+{
+ "built": {
+  "chatText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 24s · Ink Press\n04\n✓\nAnimate\nRemotion code\n23 clips on 7 tracks\n05\n✓\nBeat sync\nSound design\n7 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish\nUse the deck-deal-flyin, spotlight-hero-card, list-stack-press and hit-counter shot cards for Acme\n03:55 PM\nBuilding the film around Deck Deal Flyin, Spotlight Hero Card, List Stack Press, Hit Counter.\n03:55 PM\nNo key. I used the Ink Press template instead.\n\nStoryboard “Acme — shot film” — 6 scenes, 24s:\n1. 0:00–0:02 · Title card · on screen: “Meet Acme.”\n2. 0:02–0:07 · Deck Deal Flyin · on screen: “Every page, live.” · caption: Real screens, not mock-ups · dip cut\n3. 0:07–0:12 · Spotlight Hero Card · on screen: “Front and centre.” · caption: Your product, the way customers see it · bottom-push cut\n4. 0:12–0:15 · List Stack Press · on screen: “Real screens, not mock-ups” · bottom-push cut\n5. 0:15–0:21 · Hit Counter · on screen: “A little magic.” · caption: Polish where it counts\n6. 0:21–0:23 · Title card · on screen: “Try Acme today.”\n\nApprove to build the film, ask me why I chose something, or tell me what to change.\n03:55 PM\nYour film is ready: 24s at 1920×1080, 30 fps, Transitions / Captions / Site / Shots / Background / SFX / Music tracks.\nFrame QA passed (20 frames rendered).\nReview against the shot cards' checklist: 14 passed, 1 to fix.\n- F2 ✗ The same line is said again: \"Real screens, not mock-ups\" at 12.9s.\nPlay it here, render the MP4, or open it in the Motion Workbench to edit shots, copy, timing and sound.\n03:55 PM\n↺ New film\n✓ Read 4 shot cards in full: Deck Deal Flyin, Spotlight Hero Card, List Stack Press, Hit Counter\n✓ Storyboard ready from the Ink Press template · 6 scenes\n✓ Cuts snapped to the beat of house-vibez\n✓ Filled the shots with your site’s own words\n✓ Beat sync measured: 5 of 5 cuts within 3 frames of a beat (worst 1.2 frames), 5 on a kick or a downbeat\n✓ Film built · 7 tracks\n✓ Frame QA · 20 frames render cleanly\nFINAL FILM\nAcme — shot film\n1920×1080 · 30 fps · h264\nMeet\nAcme.\n0:00 / 0:24\nRender MP4\nFast draft · 1280×720\nRender without music\nFaster export: in Chrome, search “canvas draw element” in chrome://flags, enable it and restart.\n~4 min to render\nOpen in Motion Workbench",
+  "stepsText": "01\n✓\nProduct\nYour web page\nFrom your message\n02\n✓\nCapture\nReal page assets\n4 attached screenshots\n03\n✓\nStoryboard\nShot recipe cards\n6 scenes · 24s · Ink Press\n04\n✓\nAnimate\nRemotion code\n23 clips on 7 tracks\n05\n✓\nBeat sync\nSound design\n7 SFX hits · cuts on the beat of house-vibez\n06\n✓\nFrame QA\nRender + inspect\n20 frames render cleanly\n07\nDeliver\nEditable outputs\nRender the MP4 to finish"
+ },
+ "ev": [
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 128,
+   "suppliedShare": {
+    "magenta": 0.0484,
+    "lime": 0.1383,
+    "orange": 0.0402,
+    "cyan": 0.0729
+   },
+   "forbidden": [
+    "in motion.",
+    "REAL PAGE CAPTURES"
+   ],
+   "variance": 4565
+  },
+  {
+   "card": "demo:DeckDealFlyin",
+   "frame": 187,
+   "suppliedShare": {
+    "magenta": 0.0293,
+    "lime": 0.024,
+    "orange": 0.0274,
+    "cyan": 0.0234
+   },
+   "forbidden": [
+    "in motion.",
+    "REAL PAGE CAPTURES"
+   ],
+   "variance": 3497.7
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 289,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0.0035,
+    "cyan": 0
+   },
+   "forbidden": [
+    "in motion."
+   ],
+   "variance": 501.3
+  },
+  {
+   "card": "demo:SpotlightHeroCard",
+   "frame": 359,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0.0044,
+    "cyan": 0
+   },
+   "forbidden": [
+    "in motion."
+   ],
+   "variance": 502.5
+  },
+  {
+   "card": "demo:ListStackPress",
+   "frame": 426,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0.4096,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 2552.9
+  },
+  {
+   "card": "demo:ListStackPress",
+   "frame": 462,
+   "suppliedShare": {
+    "magenta": 0,
+    "lime": 0,
+    "orange": 0.3949,
+    "cyan": 0
+   },
+   "forbidden": [],
+   "variance": 2569.6
+  },
+  {
+   "card": "demo:HitCounter",
+   "frame": 555,
+   "suppliedShare": {
+    "magenta": 0.1094,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [
+    "SmartVideo GO",
+    "Shot recipes",
+    "Beat-synced",
+    "2.5D camera"
+   ],
+   "variance": 5586.5
+  },
+  {
+   "card": "demo:HitCounter",
+   "frame": 625,
+   "suppliedShare": {
+    "magenta": 0.1094,
+    "lime": 0,
+    "orange": 0,
+    "cyan": 0
+   },
+   "forbidden": [
+    "SmartVideo GO",
+    "Shot recipes",
+    "Beat-synced",
+    "2.5D camera"
+   ],
+   "variance": 5616
+  }
+ ]
+}

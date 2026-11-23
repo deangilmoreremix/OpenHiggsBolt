@@ -1,0 +1,1 @@
+export default { resolve: { alias: [{ find: /^@\/apps\/(.*)/, replacement: '/home/user/OpenHiggsBolt/src/apps/$1' }, { find: /^@\/(.*)/, replacement: '/home/user/OpenHiggsBolt/src/$1' }] }, server: { fs: { strict: false } }, define: { 'process.env': {} } }

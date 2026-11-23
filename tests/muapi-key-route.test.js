@@ -16,31 +16,39 @@ const store = {
 
 function makeBuilder() {
   // Track the last requested clerk_user_id so we can verify the filter is used.
-  let lastEqClause: string | null = null;
+  let lastEqClause = null;
+  // Supabase applies `.update(payload)` only once the `.eq()` filter is known,
+  // and an awaited `.update().eq().select()` resolves to the updated rows.
+  let pendingUpdate = null;
+  let updatedRows = null;
   const builder = {
     eq: (column, value) => {
       if (column === 'clerk_user_id') {
         lastEqClause = String(value);
       }
+      if (pendingUpdate) {
+        const existing = store.app_users.get(lastEqClause);
+        updatedRows = existing ? [{ clerk_user_id: lastEqClause }] : [];
+        if (existing) store.app_users.set(lastEqClause, { ...existing, ...pendingUpdate });
+        pendingUpdate = null;
+      }
       return builder;
     },
     update: (payload) => {
-      const existing = store.app_users.get(lastEqClause) || {};
-      store.app_users.set(lastEqClause, {
-        ...existing,
-        ...payload,
-      });
+      pendingUpdate = payload;
       return builder;
     },
     insert: (payload) => {
       store.app_users.set(payload.clerk_user_id || store.userId, payload);
       return builder;
     },
-    select: () => builder, // chain continues to maybeSingle()
+    select: () => builder, // chain continues to maybeSingle() or is awaited
     maybeSingle: () => {
       const row = store.app_users.get(lastEqClause || store.userId) || null;
       return Promise.resolve({ data: row || null, error: null });
     },
+    then: (resolve, reject) =>
+      Promise.resolve({ data: updatedRows, error: null }).then(resolve, reject),
   };
   return builder;
 }

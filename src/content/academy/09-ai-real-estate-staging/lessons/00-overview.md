@@ -1,45 +1,24 @@
-# Track 9: AI Real Estate (Virtual Staging)
+# AI Real Estate (Virtual Staging)
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Stage a listing in minutes, not days. Transform vacant properties into high-converting luxury homes using AI inpainting, perspective locking, and targeted realtor sales pipelines.
+> Stage a vacant listing in minutes, price it against physical staging, and sell it to realtors and agencies. Everything is produced in SmartVideo GO AI with **Image Studio** and **Video Studio**, plus **AI Influencer Studio**, **Storyboard / Campaign Planner** and **Lip-Sync Studio** where useful.
 
 ---
 
-## 🗺️ Curriculum Overview
+## Lessons
 
-| # | Module | Core Concept | Output / Deliverable |
+| # | Lesson | Minutes | You will finish with |
 |---|---|---|---|
-| 1 | [Empty Room → Staged Room Pipeline](01-empty-room-to-staged-room.md) | Perspective locking, depth masking, and furniture inpainting | High-res staged room photos & walkthrough GIF/MP4 motion clips |
-| 2 | [Pricing Against Traditional Staging](02-pricing-against-traditional-staging.md) | Value-based anchor pricing vs. physical staging | Package pricing sheet & ROI sales deck |
-| 3 | [Selling to Realtors & Agencies](03-selling-to-realtors-and-agencies.md) | Active vacant listing prospecting & before/after audits | Cold outreach emails, Loom pitch scripts & agency retainers |
+| 1 | [Empty Room → Staged Room Pipeline](01-empty-room-to-staged-room.md) | 18 | One staged room photo |
+| 2 | [Pricing Against Traditional Staging](02-pricing-against-traditional-staging.md) | 16 | Packages, margin and comparison deck |
+| 3 | [Selling to Realtors & Agencies](03-selling-to-realtors-and-agencies.md) | 18 | Prospect list, sample and outreach email |
+| 4 | [Selling to Realtors & Agencies, part 2](03-selling-to-realtors-and-agencies-part-2.md) | 10 | Video audit, retainer and partner plan |
 
----
+Work in order: lesson 2 builds on the staged photo from lesson 1, and lesson 3 uses both.
 
-## 🛠️ Reusable Templates & Examples
+## Templates
 
-* [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md) — Interior design style guides, prompt frameworks, and quality control checklists.
-* [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md) — Package structures, margin calculators, and service agreement terms.
-* [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md) — Cold email templates, Loom video scripts, and real estate photographer partnership agreements.
-* [`templates/examples/staged-living-room.jpg`](templates/examples/staged-living-room.jpg) — AI staged modern luxury living room photograph.
-* [`templates/examples/staged-bedroom-luxury.jpg`](templates/examples/staged-bedroom-luxury.jpg) — AI staged master bedroom interior photograph.
-* [`templates/examples/empty-to-staged-before-after.jpg`](templates/examples/empty-to-staged-before-after.jpg) — Vacant property vs. AI virtual staging comparison graphic.
-* [`templates/examples/living-room-staging-motion.gif`](templates/examples/living-room-staging-motion.gif) — Image-to-Video walkthrough clip ([living-room-staging-motion.mp4](templates/examples/living-room-staging-motion.mp4)).
-* [`templates/examples/bedroom-staging-motion.gif`](templates/examples/bedroom-staging-motion.gif) — Image-to-Video bedroom walkthrough clip ([bedroom-staging-motion.mp4](templates/examples/bedroom-staging-motion.mp4)).
+* [`templates/virtual-staging-brief.md`](templates/virtual-staging-brief.md): style guides, prompt frameworks and quality checklists.
+* [`templates/realtor-pricing-sheet.md`](templates/realtor-pricing-sheet.md): packages, margin calculators and service terms.
+* [`templates/agency-outreach-template.md`](templates/agency-outreach-template.md): cold emails, Loom scripts and photographer partnership terms.
 
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Next: Empty Room → Staged Room Pipeline.

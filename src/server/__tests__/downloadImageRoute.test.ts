@@ -313,6 +313,15 @@ describe('downloadImageAsDataUrl guards', () => {
     expect(dataUrl).toBe('data:image/png;base64,ZmFrZS1wbmc=')
   })
 
+  it('caps the body while it streams in (maxContentLength) and maps the abort to a friendly size error', async () => {
+    axiosGet.mockResolvedValue(imageResponse())
+    await downloadImageAsDataUrl('https://example.com/image.png', 1024)
+    expect(axiosGet.mock.calls[0][1]).toMatchObject({ maxContentLength: 1024, maxBodyLength: 1024 })
+
+    axiosGet.mockRejectedValue(new Error('maxContentLength size of 1024 exceeded'))
+    await expect(downloadImageAsDataUrl('https://example.com/huge.png', 1024)).rejects.toThrow(/larger than/)
+  })
+
   it('rejects a non-image content type', async () => {
     axiosGet.mockResolvedValue({
       status: 200,

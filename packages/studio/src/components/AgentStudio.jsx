@@ -33,16 +33,20 @@ function timeAgo(dateStr, copy) {
 
 // ─── Agent Card (grid) ───────────────────────────────────────────────────────
 function AgentCard({ agent, onClick, onEdit, copy }) {
+  const [iconFailed, setIconFailed] = useState(false);
+  useEffect(() => setIconFailed(false), [agent.icon_url]);
+
   return (
     <div className="group relative aspect-[4/5] rounded-xl cursor-pointer">
       <div
         onClick={() => onClick(agent)}
         className="absolute inset-0 rounded-xl overflow-hidden border border-white/5 bg-[#0a0a0a] transition-all group-hover:border-[#22d3ee]/30 group-hover:scale-[1.02] shadow-2xl"
       >
-        {agent.icon_url ? (
+        {agent.icon_url && !iconFailed ? (
           <img
             src={agent.icon_url}
             alt={agent.name}
+            onError={() => setIconFailed(true)}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (

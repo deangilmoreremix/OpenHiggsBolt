@@ -1,0 +1,101 @@
+[
+  {
+    "scene": 1,
+    "cardId": "inkpress-title-card",
+    "label": "Meet Connections for Bus",
+    "startSec": 0,
+    "durationSec": 2.53,
+    "props": [
+      "text",
+      "sub",
+      "bg",
+      "ink",
+      "accent",
+      "logo"
+    ],
+    "adapted": false
+  },
+  {
+    "scene": 2,
+    "cardId": "brand-gallery",
+    "label": "People & pictures",
+    "startSec": 2.53,
+    "durationSec": 2.93,
+    "props": [
+      "bg",
+      "ink",
+      "accent",
+      "font",
+      "images",
+      "captions",
+      "text"
+    ],
+    "adapted": false
+  },
+  {
+    "scene": 3,
+    "cardId": "demo:MultiplaneReal",
+    "startSec": 5.47,
+    "durationSec": 5.9,
+    "props": [
+      "accent",
+      "liveLayout",
+      "cardCrops",
+      "screens",
+      "crops",
+      "texts"
+    ],
+    "screens": 3,
+    "crops": 3,
+    "adapted": false
+  },
+  {
+    "scene": 4,
+    "cardId": "demo:FreezeAnnotateReal",
+    "startSec": 11.37,
+    "durationSec": 5.93,
+    "props": [
+      "accent",
+      "liveLayout",
+      "cardCrops",
+      "screens",
+      "crops",
+      "texts"
+    ],
+    "screens": 3,
+    "crops": 3,
+    "adapted": false
+  },
+  {
+    "scene": 5,
+    "cardId": "demo:PageWaterfallWall",
+    "startSec": 17.3,
+    "durationSec": 4.6,
+    "props": [
+      "accent",
+      "screens",
+      "crops"
+    ],
+    "screens": 3,
+    "crops": 10,
+    "adapted": false
+  },
+  {
+    "scene": 6,
+    "cardId": "brand-logo-reveal",
+    "label": "Logo reveal",
+    "startSec": 21.9,
+    "durationSec": 3.1,
+    "props": [
+      "bg",
+      "ink",
+      "accent",
+      "font",
+      "logo",
+      "name",
+      "cta",
+      "url"
+    ],
+    "adapted": false
+  }
+]

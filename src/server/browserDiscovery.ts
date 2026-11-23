@@ -16,6 +16,8 @@
  * that cannot start its proxy fails closed instead of running with one layer.
  */
 
+import { SITE_USER_AGENT } from '../lib/siteRequestHeaders'
+import { isThirdPartyAdUrl } from './adDomains'
 import { isIPv6 } from 'node:net'
 
 import {
@@ -34,10 +36,10 @@ import {
 
 export const BROWSER_FALLBACK_MAX_PAGES = 4
 export const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5_000
+export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 9_000
 export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2_000
-export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
-export const BROWSER_FALLBACK_SCROLL_DELAY = 100
+export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 3
+export const BROWSER_FALLBACK_SCROLL_DELAY = 300
 export const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 // ---------------------------------------------------------------------------
@@ -645,6 +647,19 @@ export function redirectHopCount(
   return hops
 }
 
+/** True for the page's own top-level navigation (not an iframe, not a subresource). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isMainFrameNavigation(request: any): boolean {
+  try {
+    if (typeof request?.isNavigationRequest !== 'function' || !request.isNavigationRequest()) return false
+    const frame = typeof request.frame === 'function' ? request.frame() : null
+    return !frame || typeof frame.parentFrame !== 'function' || frame.parentFrame() === null
+  } catch {
+    // Playwright throws from frame() for some service-worker requests: treat as a subresource.
+    return false
+  }
+}
+
 /** True when a request has already been redirected at (or past) the cap. */
 export function exceedsRedirectHopLimit(
   request:
@@ -769,7 +784,32 @@ export function isBrowserDiscoveryAvailable(): boolean {
   }
 }
 
+let serverlessChromiumEnvironmentReady = false
+
+/**
+ * Points the serverless Chromium at its bundled system libraries. Without it
+ * the binary cannot start on Netlify's runtime (same bootstrap as
+ * netlify/functions/personalization-browser-discovery.js).
+ */
+async function ensureServerlessChromiumEnvironment(): Promise<void> {
+  if (serverlessChromiumEnvironmentReady) return
+  try {
+    const mod = await import('@sparticuz/chromium')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const setupLambdaEnvironment = (mod as any).setupLambdaEnvironment
+    if (typeof setupLambdaEnvironment === 'function') {
+      const { tmpdir } = await import('node:os')
+      const { join } = await import('node:path')
+      setupLambdaEnvironment(join(tmpdir(), 'al2023', 'lib'))
+    }
+  } catch {
+    // Not a serverless runtime (or the package is absent): nothing to set up.
+  }
+  serverlessChromiumEnvironmentReady = true
+}
+
 async function getChromiumExecutablePath(): Promise<string | undefined> {
+  await ensureServerlessChromiumEnvironment()
   try {
     // @sparticuz/chromium provides a Linux serverless-compatible Chromium.
     // Use it only when the local platform is not macOS, because the downloaded
@@ -782,6 +822,29 @@ async function getChromiumExecutablePath(): Promise<string | undefined> {
     // Fall back to Playwright-managed Chromium below.
   }
   return undefined
+}
+
+/**
+ * Launch flags. With the serverless Chromium, use its own flag set (it needs
+ * e.g. single-process on Lambda-style runtimes) minus site isolation, which
+ * crashes the page target there — the fix from the Netlify discovery function.
+ */
+async function getChromiumArgs(executablePath: string | undefined): Promise<string[]> {
+  const base = ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  if (!executablePath) return base
+  try {
+    const { default: chromium } = await import('@sparticuz/chromium')
+    const args: string[] = Array.isArray(chromium.args) ? chromium.args : []
+    // Untrusted pages: keep the same-origin policy and mixed-content blocking.
+    const unsafe = new Set(['--disable-web-security', '--allow-running-insecure-content'])
+    const filtered = args.filter(
+      (arg) => !arg.startsWith('--disable-features=') && !arg.startsWith('--headless') && !unsafe.has(arg),
+    )
+    filtered.push('--disable-features=site-per-process')
+    return filtered.length > 1 ? filtered : base
+  } catch {
+    return base
+  }
 }
 
 async function getChromium() {
@@ -999,7 +1062,7 @@ function browserPinKey(pins: BrowserPin[]): string {
 async function launchChromium(pins: BrowserPin[], proxyUrl?: string): Promise<any> {
   const chromium = await getChromium()
   const executablePath = await getChromiumExecutablePath()
-  const args = ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  const args = await getChromiumArgs(executablePath)
 
   const resolverRules = buildHostResolverRules(pins)
   if (resolverRules) {
@@ -1319,6 +1382,160 @@ interface CollectBrowserCandidatesOptions {
   onSubrequestsBlocked?: (count: number) => void
 }
 
+interface GuardedContextOptions {
+  guard: BrowserSsrfGuard
+  /** The validated base URL; the browser's resolver is pinned to its addresses. */
+  baseTarget: ValidatedBrowserUrl
+  /** Playwright context options (user agent, viewport, scale factor…). */
+  contextOptions: Record<string, unknown>
+  /** Resource types aborted before the SSRF gate is consulted. */
+  blockedResourceTypes: readonly string[]
+}
+
+/**
+ * Runs `fn` with a browser context behind the full SSRF guard: the allowlist
+ * proxy (network level), the pinned resolver, the per-request interceptor, and
+ * blocked service workers. Owns the context, browser and proxy lifetimes.
+ * Shared by asset discovery and Motion Studio page capture so both stay behind
+ * exactly the same protections.
+ */
+async function withGuardedContext<T>(
+  options: GuardedContextOptions,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fn: (context: any, counters: { readonly blockedSubrequests: number }) => Promise<T>,
+  /** When set, teardown waits at most this long for each close (default: wait for it). */
+  closeTimeoutMs?: number,
+): Promise<T> {
+  const closing = <R,>(p: Promise<R>): Promise<R | void> =>
+    closeTimeoutMs ? Promise.race([p, new Promise<void>((resolve) => setTimeout(resolve, closeTimeoutMs))]) : p
+  let browser: any = null
+  let ownedBrowser = false
+  let context: any = null
+  let allowlistProxy: AllowlistProxy | null = null
+
+  try {
+    // Network-level half of the guard: every socket the browser opens is forced
+    // through a local proxy that re-validates the destination. This layer is
+    // mandatory, because `context.route()` is not called for redirect targets
+    // or service-worker fetches, so it cannot be the only thing that stands
+    // between a page and an internal address. If the proxy cannot be started
+    // the run is aborted (fail closed) rather than continued with the weaker
+    // request-level interceptor plus the `--host-resolver-rules` pin.
+    if (shouldUseAllowlistProxy()) {
+      allowlistProxy = await startAllowlistProxy(options.guard)
+    }
+
+    const { browser: launched, owned } = await acquireBrowser(
+      [
+        { hostname: options.baseTarget.hostname, addresses: options.baseTarget.addresses },
+      ],
+      allowlistProxy ? allowlistProxy.url : undefined,
+    )
+    browser = launched
+    ownedBrowser = owned
+
+    context = await browser.newContext({
+      ...options.contextOptions,
+      // A registered service worker issues its own `fetch`es in a worker scope
+      // that `context.route()` never sees. Blocking them closes the bypass: the
+      // first page can no longer cache a worker that keeps talking to an
+      // internal address after the run's checks are over.
+      serviceWorkers: 'block',
+    })
+
+    let inflightRequests = 0
+    const counters = { blockedSubrequests: 0 }
+
+    // One interceptor for every request the context makes. This is the layer
+    // that stops a *public* page from pulling images or scripts out of an
+    // internal address: `context.route` sees subresources, and `page.goto`'s
+    // own validation never would.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await context.route('**/*', async (route: any, request: any) => {
+      const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : ''
+      const url = typeof request.url === 'function' ? request.url() : ''
+
+      // Cheap synchronous filters first, so the DNS gate is not consulted for
+      // every tracker pixel on the page.
+      if (isBlockedUrl(url) || options.blockedResourceTypes.includes(resourceType)) {
+        return route.abort()
+      }
+
+      // Ad / tracker requests (Scrapling's `block_ads`): they slow the page and
+      // put ad banners in the DOM. The page's own top-level navigation and the
+      // site's own host are never blocked.
+      if (!isMainFrameNavigation(request) && isThirdPartyAdUrl(url, `https://${options.baseTarget.hostname}/`)) {
+        return route.abort()
+      }
+
+      // Redirect hops are counted here as a cheap budget, not as a guarantee:
+      // Playwright does not invoke this interceptor for every hop of every
+      // navigation (and not at all for service-worker fetches), so this counter
+      // cannot be the thing that stops a public page 30x-ing into an internal
+      // host. That is exactly why the allowlist proxy is mandatory — it is the
+      // only layer that sees every socket the browser opens. The counter is
+      // cycle-safe, so a chain that never terminates is refused as well.
+      if (exceedsRedirectHopLimit(request)) {
+        counters.blockedSubrequests++
+        return route.abort()
+      }
+
+      // The full destination gate for this request. `currentUrl` is where the
+      // browser is coming from, which is what makes this a redirect-aware check
+      // rather than a plain URL check. Treat it as the best-effort layer; the
+      // proxy re-runs the same gate per socket.
+      if (!(await options.guard.isResourceRequestAllowed(url, redirectedFromUrl(request)))) {
+        counters.blockedSubrequests++
+        return route.abort()
+      }
+
+      if (inflightRequests >= BROWSER_SSRF_MAX_INFLIGHT_REQUESTS) {
+        return route.abort()
+      }
+
+      inflightRequests++
+      try {
+        return await route.continue()
+      } finally {
+        inflightRequests--
+      }
+    })
+
+
+    return await fn(context, counters)
+  } finally {
+    // Close the browser context after each discovery run so businesses do not
+    // share cookies, cache, or storage between runs. The cached browser
+    // process itself is kept for warm-server reuse.
+    try {
+      if (context) {
+        await closing(context.close())
+      }
+    } catch {
+      // ignore context close errors
+    }
+    if (ownedBrowser && browser) {
+      try {
+        await closing(browser.close())
+      } catch {
+        // ignore
+      }
+    }
+    // The allowlist proxy is torn down with the run that created it: it exists
+    // only to serve this browser, and leaving a listener bound to a stale guard
+    // would keep rejected hosts memoised for the next business.
+    if (allowlistProxy) {
+      try {
+        await closing(allowlistProxy.close())
+      } catch {
+        // ignore proxy close errors
+      }
+      allowlistProxy = null
+    }
+  }
+
+}
+
 async function collectBrowserCandidates(
   baseUrl: string,
   pages: string[],
@@ -1352,93 +1569,17 @@ async function collectBrowserCandidates(
     )
   }
 
-  let browser: any = null
-  let ownedBrowser = false
-  let context: any = null
-  let allowlistProxy: AllowlistProxy | null = null
-
-  try {
-    // Network-level half of the guard: every socket the browser opens is forced
-    // through a local proxy that re-validates the destination. This layer is
-    // mandatory, because `context.route()` is not called for redirect targets
-    // or service-worker fetches, so it cannot be the only thing that stands
-    // between a page and an internal address. If the proxy cannot be started
-    // the run is aborted (fail closed) rather than continued with the weaker
-    // request-level interceptor plus the `--host-resolver-rules` pin.
-    if (shouldUseAllowlistProxy()) {
-      allowlistProxy = await startAllowlistProxy(guard)
-    }
-
-    const { browser: launched, owned } = await acquireBrowser(
-      [
-        { hostname: baseTarget.hostname, addresses: baseTarget.addresses },
-      ],
-      allowlistProxy ? allowlistProxy.url : undefined,
-    )
-    browser = launched
-    ownedBrowser = owned
-
-    context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-      viewport: { width: 1280, height: 900 },
-      // A registered service worker issues its own `fetch`es in a worker scope
-      // that `context.route()` never sees. Blocking them closes the bypass: the
-      // first page can no longer cache a worker that keeps talking to an
-      // internal address after the run's checks are over.
-      serviceWorkers: 'block',
-    })
-
-    let inflightRequests = 0
-    let blockedSubrequests = 0
-
-    // One interceptor for every request the context makes. This is the layer
-    // that stops a *public* page from pulling images or scripts out of an
-    // internal address: `context.route` sees subresources, and `page.goto`'s
-    // own validation never would.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await context.route('**/*', async (route: any, request: any) => {
-      const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : ''
-      const url = typeof request.url === 'function' ? request.url() : ''
-
-      // Cheap synchronous filters first, so the DNS gate is not consulted for
-      // every tracker pixel on the page.
-      if (isBlockedUrl(url) || BLOCKED_RESOURCE_TYPES.includes(resourceType)) {
-        return route.abort()
-      }
-
-      // Redirect hops are counted here as a cheap budget, not as a guarantee:
-      // Playwright does not invoke this interceptor for every hop of every
-      // navigation (and not at all for service-worker fetches), so this counter
-      // cannot be the thing that stops a public page 30x-ing into an internal
-      // host. That is exactly why the allowlist proxy is mandatory — it is the
-      // only layer that sees every socket the browser opens. The counter is
-      // cycle-safe, so a chain that never terminates is refused as well.
-      if (exceedsRedirectHopLimit(request)) {
-        blockedSubrequests++
-        return route.abort()
-      }
-
-      // The full destination gate for this request. `currentUrl` is where the
-      // browser is coming from, which is what makes this a redirect-aware check
-      // rather than a plain URL check. Treat it as the best-effort layer; the
-      // proxy re-runs the same gate per socket.
-      if (!(await guard.isResourceRequestAllowed(url, redirectedFromUrl(request)))) {
-        blockedSubrequests++
-        return route.abort()
-      }
-
-      if (inflightRequests >= BROWSER_SSRF_MAX_INFLIGHT_REQUESTS) {
-        return route.abort()
-      }
-
-      inflightRequests++
-      try {
-        return await route.continue()
-      } finally {
-        inflightRequests--
-      }
-    })
-
+  return withGuardedContext(
+    {
+      guard,
+      baseTarget,
+      contextOptions: {
+        userAgent: SITE_USER_AGENT,
+        viewport: { width: 1280, height: 900 },
+      },
+      blockedResourceTypes: BLOCKED_RESOURCE_TYPES,
+    },
+    async (context, counters) => {
     const tasks = safePages.map((pageUrl) => async (): Promise<PageTelemetry> => {
       const navStartedAt = new Date().toISOString()
       let navCompletedAt: string | null = null
@@ -1514,48 +1655,20 @@ async function collectBrowserCandidates(
     for (const entry of telemetry) {
       options.onPageTelemetry?.(entry)
     }
-    options.onSubrequestsBlocked?.(blockedSubrequests)
-  } finally {
-    // Close the browser context after each discovery run so businesses do not
-    // share cookies, cache, or storage between runs. The cached browser
-    // process itself is kept for warm-server reuse.
-    try {
-      if (context) {
-        await context.close()
-      }
-    } catch {
-      // ignore context close errors
-    }
-    if (ownedBrowser && browser) {
-      try {
-        await browser.close()
-      } catch {
-        // ignore
-      }
-    }
-    // The allowlist proxy is torn down with the run that created it: it exists
-    // only to serve this browser, and leaving a listener bound to a stale guard
-    // would keep rejected hosts memoised for the next business.
-    if (allowlistProxy) {
-      try {
-        await allowlistProxy.close()
-      } catch {
-        // ignore proxy close errors
-      }
-      allowlistProxy = null
-    }
-  }
+    options.onSubrequestsBlocked?.(counters.blockedSubrequests)
 
-  const staticCount = allCandidates.length
-  const browserCount = allCandidates.length
+      const staticCount = allCandidates.length
+      const browserCount = allCandidates.length
 
-  return {
-    candidates: allCandidates.slice(0, BROWSER_FALLBACK_MAX_CANDIDATES),
-    staticCandidates: staticCount,
-    browserCandidates: browserCount,
-    pagesCrawled,
-    fallbackUsed: true,
-  }
+      return {
+        candidates: allCandidates.slice(0, BROWSER_FALLBACK_MAX_CANDIDATES),
+        staticCandidates: staticCount,
+        browserCandidates: browserCount,
+        pagesCrawled,
+        fallbackUsed: true,
+      }
+    },
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1579,4 +1692,924 @@ export async function discoverRenderedAssets(
 
   const limitedPages = pages.slice(0, BROWSER_FALLBACK_MAX_PAGES)
   return collectBrowserCandidates(baseUrl, limitedPages, options)
+}
+
+// ---------------------------------------------------------------------------
+// Motion Studio page capture
+// ---------------------------------------------------------------------------
+
+/**
+ * Capture geometry matches the textures Motion Studio's screenshot-based shots
+ * were tuned on (upstream ShotCraft's capture step): pages 1920 CSS px wide at
+ * a 2x device scale, cut at the sample page's height, plus element crops of
+ * card-sized blocks.
+ */
+export const CAPTURE_VIEWPORT = { width: 1920, height: 1080 } as const
+export const CAPTURE_DEVICE_SCALE = 2
+export const CAPTURE_MAX_PAGE_HEIGHT = 1746
+export const CAPTURE_MAX_CROPS = 6
+/** Site images (product shots, hero art) pulled from the page as stills. */
+export const CAPTURE_MAX_IMAGES = 6
+/** How far down the page site images are looked for (CSS px). */
+export const CAPTURE_MAX_IMAGE_Y = 4200
+export const CAPTURE_NAVIGATION_TIMEOUT = 12_000
+/** Optional capture work (cutouts, images, extra routes) stops being started after this. */
+export const CAPTURE_DEADLINE_MS = 15_000
+/** The capture returns what it has by now: the host ends a function at ~30 s with nothing, and the images still have to be stored. */
+export const CAPTURE_HARD_MS = 20_000
+/** Upstream's settle: after `document.fonts.ready`, wait this long before shooting (no FOUT / skeletons). */
+export const CAPTURE_SETTLE_MS = 600
+/** Longest wait for web fonts before shooting anyway. */
+export const CAPTURE_FONT_WAIT_MS = 2_000
+/** Longest the browser teardown may delay the reply (the host cuts a request off at about 30 s). */
+const CAPTURE_CLOSE_MS = 1_500
+/** Longest the first picture of the page may take before the capture goes on with the site's words alone. */
+const CAPTURE_FIRST_SHOT_MS = 7_000
+/** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
+export const CAPTURE_MAX_EXTRA_ROUTES = 2
+/** A deep capture (the background worker has minutes, not seconds) takes more routes, more cards and the whole length of the page. */
+/** Deep captures stop on time, not on a count: these are only guards against runaway pages. */
+export const DEEP_MAX_ROUTES = 40
+export const DEEP_MAX_CROPS = 80
+export const DEEP_MAX_Y = 40_000
+export const DEEP_MAX_BANDS = 120
+export const DEEP_MAX_IMAGES = 200
+/** Card cutouts across every captured route. */
+export const CAPTURE_MAX_TOTAL_CROPS = 12
+/** A film wants this many distinct pictures of the site; page slices make up the difference. */
+export const CAPTURE_MIN_PICTURES = 8
+/** Extra routes are only started while the run is younger than this. */
+export const CAPTURE_ROUTE_BUDGET_MS = 9_000
+export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 8_000
+// Media is never needed for a still capture; fonts and stylesheets are, so
+// unlike discovery they are allowed (each still passes the SSRF gate).
+const CAPTURE_BLOCKED_RESOURCE_TYPES = ['media'] as const
+
+export interface CaptureRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** What one card shot / page slice shows, read off the page when it was cut (for the film's picture catalogue). */
+export interface CropInfo {
+  /** The route it was cut from ('home' for the page asked for). */
+  route: string
+  /** 'card' = an element of the page, 'band' = a full-width slice. */
+  cut: 'card' | 'band'
+  width: number
+  height: number
+  /** The words inside it (first 200 characters). */
+  text: string
+  /** Share of its area covered by pictures (img / picture / video / background images), 0–1. */
+  imageShare: number
+  /** Portrait-like photos inside (people). */
+  portraits: number
+  /** A map is in it (map iframe / map tiles). */
+  map: boolean
+}
+
+export interface PageCaptureBrand {
+  background: string | null
+  text: string | null
+  accent: string | null
+  fontFamily: string | null
+  /** The rest of the product's tokens (upstream THEMES.md's seven colours, body font, corner radius). */
+  surface?: string | null
+  field?: string | null
+  muted?: string | null
+  border?: string | null
+  bodyFont?: string | null
+  radius?: number | null
+}
+
+const brandFrom = (styles: Record<string, string | null> | undefined): PageCaptureBrand => {
+  const font = (v: unknown) => (typeof v === 'string' && v ? v.slice(0, 120) : null)
+  const r = Number.parseFloat(String(styles?.radius ?? ''))
+  return {
+    background: cssColorToHex(styles?.background),
+    text: cssColorToHex(styles?.text),
+    accent: cssColorToHex(styles?.accent),
+    fontFamily: font(styles?.fontFamily),
+    surface: cssColorToHex(styles?.surface),
+    field: cssColorToHex(styles?.field),
+    muted: cssColorToHex(styles?.muted),
+    border: cssColorToHex(styles?.border),
+    bodyFont: font(styles?.bodyFont),
+    radius: Number.isFinite(r) && r >= 0 && r <= 64 ? Math.round(r) : null,
+  }
+}
+
+export interface PageCapture {
+  url: string
+  title: string
+  /** JPEG of the page, CAPTURE_VIEWPORT.width CSS px wide at CAPTURE_DEVICE_SCALE. Null when the host ran out of time before a picture was taken: the words and colours are still returned. */
+  page: Buffer | null
+  pageHeight: number
+  /** JPEG element crops (card-sized blocks), largest first. */
+  crops: Buffer[]
+  /** What each crop shows, same order as `crops` (missing for captures made before it existed). */
+  cropInfo?: CropInfo[]
+  brand: PageCaptureBrand
+  /** The site's logo as a transparent PNG (header / nav logo), when one was found. */
+  logo: Buffer | null
+  /** The site's own images (product shots, hero art) as JPEGs, largest first. */
+  images: Buffer[]
+  /** What the site says about itself (upstream's product check). */
+  content: PageContent
+  /** Layout of the captured page: section headings and card cutouts, in page CSS px (upstream's layout.json). */
+  layout: RouteLayout
+  /** Floating UI cutouts, upstream's `nav` / `float-search` / `float-filter`: the nav bar, and transparent PNGs of the search pill and main button. */
+  cutouts: { nav: Buffer | null; search: Buffer | null; button: Buffer | null }
+  /** The page again with the card cutouts hidden: the empty plate for fly-in shots (null when no cards were found). */
+  emptyPlate: Buffer | null
+  /** More routes of the same site (features, pricing…), each captured the same way. */
+  routes: CapturedRoute[]
+  /** The site's pages found in its links (captured or not), for a later targeted capture. */
+  links?: Array<{ name: string; path: string; url: string }>
+}
+
+/** True when a capture read anything the page says (title, headline, sections, calls to action). */
+export function captureHasWords(c: Pick<PageCapture, 'title' | 'content'>): boolean {
+  return Boolean(c.title || c.content?.headline || c.content?.description || c.content?.headings?.length || c.content?.ctas?.length)
+}
+
+export interface PageContent {
+  description: string
+  headline: string
+  /** Section headings, in page order. */
+  headings: string[]
+  /** Button / call-to-action labels. */
+  ctas: string[]
+  /** Nav link labels. */
+  nav: string[]
+}
+
+export interface RouteLayout {
+  pageH: number
+  sections: CaptureRect[]
+  cards: CaptureRect[]
+}
+
+export interface CapturedRoute {
+  name: string
+  path: string
+  url: string
+  page: Buffer
+  pageHeight: number
+  layout: RouteLayout
+  /** Card cutouts of this route (also appended to `PageCapture.crops`). */
+  crops: Buffer[]
+}
+
+const EMPTY_CONTENT: PageContent = { description: '', headline: '', headings: [], ctas: [], nav: [] }
+
+/** `rgb()/rgba()` → `#rrggbb`; null for transparent or unparseable colours. */
+export function cssColorToHex(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const m = value.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\s*\)/i)
+  if (!m) return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null
+  if (m[4] !== undefined && Number(m[4]) === 0) return null
+  return `#${[m[1], m[2], m[3]].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * Card-sized, visible, non-overlapping blocks near the top of the page, largest
+ * first. Runs in the page; kept free of closures so it serialises cleanly.
+ */
+function findCropRects(limits: { maxY: number; max: number }): CaptureRect[] {
+  const picked: CaptureRect[] = []
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+  const nodes = Array.from(document.querySelectorAll('article, section, li, a, div')) as HTMLElement[]
+  const candidates = nodes
+    .map((el) => {
+      const r = el.getBoundingClientRect()
+      return { el, rect: { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height } }
+    })
+    .filter(({ el, rect }) => {
+      if (rect.width < 280 || rect.width > 760 || rect.height < 200 || rect.height > 700) return false
+      const aspect = rect.width / rect.height
+      if (aspect < 0.8 || aspect > 1.9) return false
+      if (rect.y < 0 || rect.y + rect.height > limits.maxY) return false
+      const style = getComputedStyle(el)
+      if (style.visibility === 'hidden' || Number(style.opacity) === 0) return false
+      return (el.textContent ?? '').trim().length > 20 || el.querySelector('img, svg, canvas') !== null
+    })
+    .sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+  for (const { rect } of candidates) {
+    if (picked.length >= limits.max) break
+    if (picked.some((p) => overlaps(p, rect))) continue
+    picked.push({ x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) })
+  }
+  return picked
+}
+
+/**
+ * The site's logo and its largest content images, as page rects. Runs in the
+ * page; kept free of closures so it serialises cleanly.
+ *
+ * Logo: an <img>/<svg> near the top that says "logo" (class, id, alt, src),
+ * sits in the header/nav, or is the home link — scored, best first.
+ * Images: loaded, visible <img> elements at least 240×160, largest first,
+ * not overlapping each other or the logo.
+ */
+function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: CaptureRect | null; images: CaptureRect[] } {
+  const toRect = (el: Element): CaptureRect => {
+    const r = el.getBoundingClientRect()
+    return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) }
+  }
+  const visible = (el: Element) => {
+    const style = getComputedStyle(el)
+    return style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) > 0.05
+  }
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+  const says = (el: Element, word: RegExp) => {
+    let node: Element | null = el
+    for (let depth = 0; node && depth < 3; depth++, node = node.parentElement) {
+      const attrs = [node.getAttribute('class'), node.id, node.getAttribute('alt'), node.getAttribute('src'), node.getAttribute('aria-label')]
+      if (attrs.some((a) => typeof a === 'string' && word.test(a))) return true
+    }
+    return false
+  }
+
+  let logo: CaptureRect | null = null
+  let best = 0
+  for (const el of Array.from(document.querySelectorAll('img, svg'))) {
+    if (el.closest('svg') !== el && el.tagName.toLowerCase() === 'svg') continue
+    const rect = toRect(el)
+    if (rect.y > 260 || rect.width < 24 || rect.width > 520 || rect.height < 14 || rect.height > 220 || !visible(el)) continue
+    let score = 0
+    if (says(el, /logo|brand/i)) score += 4
+    if (el.closest('header, nav, [role="banner"]')) score += 2
+    const link = el.closest('a')
+    if (link) {
+      try {
+        const href = new URL(link.href, location.href)
+        if (href.origin === location.origin && (href.pathname === '/' || href.pathname === '')) score += 3
+      } catch { /* ignore */ }
+    }
+    if (rect.x < window.innerWidth / 3) score += 1
+    if (score > best) {
+      best = score
+      logo = rect
+    }
+  }
+  if (best < 3) logo = null
+
+  const images: CaptureRect[] = []
+  const candidates: CaptureRect[] = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
+    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img) && !notAPicture(img, img.currentSrc || img.src))
+    .map((img) => toRect(img))
+    .filter((r) => r.width >= 240 && r.height >= 160 && r.y >= 0 && r.y + r.height <= limits.maxY)
+    .sort((a, b) => b.width * b.height - a.width * a.height)
+  // Maps, video posters and players are not pictures of the business.
+  function notAPicture(el: Element, src: string): boolean {
+    if (/maps\.(?:googleapis|gstatic)\.com|google\.[a-z.]+\/maps|staticmap|api\.mapbox|openstreetmap|ytimg\.com|vimeocdn\.com|\/vi\/[^/]+\/(?:max|hq|sd|mq)?default/i.test(src)) return true
+    return Boolean(el.closest('[class*="map" i], [id*="map" i], [class*="video" i], [class*="player" i], [class*="lightbox" i], iframe'))
+  }
+  // Pictures set as CSS backgrounds (hero art, people, product shots on many sites) are not <img> elements.
+  const backgrounds: CaptureRect[] = []
+  for (const el of Array.from(document.querySelectorAll('div, section, header, figure, a, span')).slice(0, 4000)) {
+    const bg = getComputedStyle(el).backgroundImage
+    if (!bg || bg === 'none' || !/url\(/.test(bg) || /gradient/.test(bg) && !/url\(/.test(bg)) continue
+    const r = toRect(el)
+    if (r.width >= 300 && r.height >= 200 && r.width <= 1920 && r.y >= 0 && r.y + r.height <= limits.maxY && visible(el) && !notAPicture(el, bg)) backgrounds.push(r)
+  }
+  backgrounds.sort((a, b) => b.width * b.height - a.width * a.height)
+  candidates.push(...backgrounds)
+  for (const rect of candidates) {
+    if (images.length >= limits.maxImages) break
+    if (logo && overlaps(rect, logo)) continue
+    if (images.some((p) => overlaps(p, rect))) continue
+    images.push(rect)
+  }
+  return { logo, images }
+}
+
+/**
+ * Upstream's product check: what the page says about itself, plus its links
+ * (for finding more routes). Runs in the page; kept free of closures so it
+ * serialises cleanly.
+ */
+function readPageContent(): PageContent & { links: Array<{ href: string; text: string }> } {
+  const clean = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim()
+  // innerText follows the rendering (line breaks and blocks become spaces); textContent glues "for" + "Your" into "forYour".
+  const read = (el: Element | null | undefined) => clean(el ? ((el as HTMLElement).innerText ?? el.textContent) : '')
+  const visible = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+  }
+  const texts = (selector: string, max: number, len: number, minLen = 1) => {
+    const out: string[] = []
+    for (const el of Array.from(document.querySelectorAll(selector))) {
+      if (out.length >= max) break
+      if (!visible(el)) continue
+      const text = read(el)
+      if (text.length < minLen || text.length > len || out.includes(text)) continue
+      out.push(text)
+    }
+    return out
+  }
+  const meta = document.querySelector('meta[name="description"]') ?? document.querySelector('meta[property="og:description"]')
+  const h1 = Array.from(document.querySelectorAll('h1')).find(visible)
+  return {
+    description: clean(meta?.getAttribute('content')).slice(0, 300),
+    headline: read(h1).slice(0, 160),
+    headings: texts('h2, h3', 8, 120, 3),
+    ctas: texts('main a[class*="btn" i], main a[class*="button" i], main button, a[class*="btn" i], a[class*="button" i], button', 4, 32, 2),
+    nav: texts('header a, nav a', 10, 40, 2),
+    links: (Array.from(document.querySelectorAll('header a[href], nav a[href], main a[href], footer a[href]')) as HTMLAnchorElement[])
+      .slice(0, 300)
+      .map((a) => ({ href: a.href, text: read(a).slice(0, 60) })),
+  }
+}
+
+/**
+ * Upstream's semantic cutouts (capture-template.mjs CONFIG): the header / nav
+ * bar, the page's cards (`article`, `*card*`), the search pill (an input's
+ * rounded parent) and the main button, plus section headings for the layout.
+ * Cards are tagged `data-sv-card` so the empty plate can hide exactly them.
+ * Runs in the page; kept free of closures so it serialises cleanly.
+ */
+function findCutoutRects(limits: { maxY: number; maxCards: number }): {
+  nav: CaptureRect | null
+  cards: CaptureRect[]
+  search: CaptureRect | null
+  button: CaptureRect | null
+  sections: CaptureRect[]
+} {
+  const toRect = (el: Element): CaptureRect => {
+    const r = el.getBoundingClientRect()
+    return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) }
+  }
+  const visible = (el: Element) => {
+    const style = getComputedStyle(el)
+    return style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) > 0.05
+  }
+  const inBand = (r: CaptureRect) => r.width > 0 && r.height > 0 && r.y >= 0 && r.y + r.height <= limits.maxY
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
+  const navEl = Array.from(document.querySelectorAll('header, [role="banner"], nav')).find((el) => {
+    const r = toRect(el)
+    return visible(el) && r.y < 200 && r.height >= 32 && r.height <= 220 && r.width >= 600
+  })
+
+  document.querySelectorAll('[data-sv-card]').forEach((el) => el.removeAttribute('data-sv-card'))
+  const cards: CaptureRect[] = []
+  const cardCandidates = Array.from(document.querySelectorAll('article, [class*="card" i]'))
+    .filter(visible)
+    .map((el) => ({ el, rect: toRect(el) }))
+    .filter(({ rect }) => inBand(rect) && rect.width >= 200 && rect.width <= 900 && rect.height >= 120 && rect.height <= 800)
+    .sort((a, b) => a.rect.y - b.rect.y || b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+  for (const { el, rect } of cardCandidates) {
+    if (cards.length >= limits.maxCards) break
+    if (cards.some((c) => overlaps(c, rect))) continue
+    cards.push(rect)
+    el.setAttribute('data-sv-card', '')
+  }
+
+  const input = Array.from(document.querySelectorAll('input[type="search"], input[type="text"], input[type="email"], input:not([type])')).find(
+    (el) => visible(el) && inBand(toRect(el)),
+  )
+  const shell = input?.parentElement ?? null
+  const shellRect = shell ? toRect(shell) : null
+  const search = shellRect && inBand(shellRect) && shellRect.width <= 900 && shellRect.height <= 160 ? shellRect : null
+
+  const buttonEl = Array.from(
+    document.querySelectorAll('main button, main a[class*="btn" i], main a[class*="button" i], button, a[class*="btn" i], a[class*="button" i]'),
+  ).find((el) => {
+    const r = toRect(el)
+    return visible(el) && inBand(r) && r.y > 120 && r.width >= 60 && r.width <= 480 && r.height >= 28 && r.height <= 120
+  })
+
+  const sections = Array.from(document.querySelectorAll('h2'))
+    .filter(visible)
+    .map(toRect)
+    .filter(inBand)
+    .slice(0, 12)
+
+  return { nav: navEl ? toRect(navEl) : null, cards, search, button: buttonEl ? toRect(buttonEl) : null, sections }
+}
+
+/** Hide (or show again) the cards `findCutoutRects` tagged, for the empty plate. Runs in the page. */
+function setCardsHidden(hidden: boolean): number {
+  const cards = Array.from(document.querySelectorAll('[data-sv-card]')) as HTMLElement[]
+  for (const el of cards) el.style.visibility = hidden ? 'hidden' : ''
+  return cards.length
+}
+
+/**
+ * Upstream's settle: wait for web fonts (at most `maxMs`; a stalled font
+ * request must not hold up the capture). Runs in the page.
+ */
+async function waitForFonts(maxMs: number): Promise<boolean> {
+  return Promise.race([document.fonts.ready.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxMs))])
+}
+
+const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?|team|people|leadership|staff|case-stud|stories|testimonial|reviews?|work|portfolio|projects?|industr|locations?|contact|company/i
+const ROUTE_SKIP_RE =
+  /log-?in|sign-?in|sign-?up|register|account|auth|cart|checkout|privacy|terms|legal|cookie|gdpr|careers|jobs|status|wp-|cdn-cgi|\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|txt|json)$/i
+
+/**
+ * Which more routes of the site to capture — upstream's CONFIG.PAGES, found
+ * from the page's own same-host links: product routes (features, pricing,
+ * solutions…) first, in link order, then other short routes. Never login,
+ * legal, cart or file links, nothing past two path segments, no repeats.
+ */
+export function pickCaptureRoutes(
+  links: ReadonlyArray<{ href: string; text: string }>,
+  baseUrl: string,
+  max = CAPTURE_MAX_EXTRA_ROUTES,
+): Array<{ name: string; path: string; url: string }> {
+  let base: URL
+  try {
+    base = new URL(baseUrl)
+  } catch {
+    return []
+  }
+  const norm = (p: string) => (p.replace(/\/+$/, '') || '/').toLowerCase()
+  const seen = new Set<string>([norm(base.pathname)])
+  const picked: Array<{ path: string; url: string; hint: boolean; order: number }> = []
+  links.forEach((link, order) => {
+    let u: URL
+    try {
+      u = new URL(link.href, base)
+    } catch {
+      return
+    }
+    if (!/^https?:$/.test(u.protocol) || u.hostname !== base.hostname) return
+    const path = norm(u.pathname)
+    if (seen.has(path) || ROUTE_SKIP_RE.test(path) || path.split('/').filter(Boolean).length > 2) return
+    seen.add(path)
+    picked.push({ path, url: `${u.origin}${u.pathname}`, hint: ROUTE_HINT_RE.test(path) || ROUTE_HINT_RE.test(link.text), order })
+  })
+  const names = new Set<string>(['home'])
+  return picked
+    .sort((a, b) => Number(b.hint) - Number(a.hint) || a.order - b.order)
+    .slice(0, Math.max(0, max))
+    .map(({ path, url }) => {
+      const slug = (path.split('/').filter(Boolean).pop() ?? 'page').replace(/[^a-z0-9-]/g, '-').slice(0, 32) || 'page'
+      let name = slug
+      for (let i = 2; names.has(name); i++) name = `${slug}-${i}`
+      names.add(name)
+      return { name, path, url }
+    })
+}
+
+/**
+ * The page the browser landed on belongs to the same site as the one asked for: the same host, `www.` added or
+ * dropped, or a sub-domain of it. (shopify.com -> www.shopify.com is the usual case.) The SSRF gate has already
+ * validated the landing address; this only decides it is still "the site" and not somewhere else.
+ */
+export function sameSiteHost(asked: string, landed: string): boolean {
+  const bare = (h: string) => h.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
+  const a = bare(asked)
+  const b = bare(landed)
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)
+}
+
+/** Clip rects for 16:9 slices of the page from `fromY` down to `toY` (a short last slice is kept when it is at least half a slice). */
+export function bandRects(fromY: number, toY: number, width: number, bandH: number, max: number): Array<{ x: number; y: number; width: number; height: number }> {
+  const out: Array<{ x: number; y: number; width: number; height: number }> = []
+  for (let y = Math.max(0, Math.round(fromY)); out.length < max && toY - y >= bandH / 2; y += bandH) {
+    out.push({ x: 0, y, width, height: Math.min(bandH, Math.round(toY - y)) })
+  }
+  return out
+}
+
+/** Computed brand colours/fonts from the rendered page. Runs in the page. */
+function describeRect(rect: { x: number; y: number; width: number; height: number }): { text: string; imageShare: number; portraits: number; map: boolean } {
+  const sx = window.scrollX
+  const sy = window.scrollY
+  const area = Math.max(1, rect.width * rect.height)
+  const inside = (r: DOMRect, need: number) => {
+    const x0 = Math.max(rect.x, r.left + sx)
+    const y0 = Math.max(rect.y, r.top + sy)
+    const x1 = Math.min(rect.x + rect.width, r.right + sx)
+    const y1 = Math.min(rect.y + rect.height, r.bottom + sy)
+    const overlap = Math.max(0, x1 - x0) * Math.max(0, y1 - y0)
+    return r.width * r.height > 0 && overlap / (r.width * r.height) >= need ? overlap : 0
+  }
+  const words: string[] = []
+  for (const el of Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, p, li, blockquote, figcaption, button, a, label, td'))) {
+    if (words.join(' ').length > 200) break
+    if (el.querySelector('h1, h2, h3, h4, h5, p, li, blockquote')) continue
+    const r = el.getBoundingClientRect()
+    if (!inside(r, 0.6)) continue
+    const t = ((el as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim()
+    if (t && !words.includes(t)) words.push(t)
+  }
+  let pictures = 0
+  let portraits = 0
+  for (const el of Array.from(document.querySelectorAll('img, picture, video, svg image, [style*="background-image"]'))) {
+    const r = el.getBoundingClientRect()
+    const overlap = inside(r, 0.5)
+    if (!overlap) continue
+    pictures += overlap
+    const ratio = r.width / Math.max(1, r.height)
+    if (r.width >= 70 && r.height >= 70 && ratio > 0.6 && ratio < 1.25 && el.tagName === 'IMG') portraits++
+  }
+  const map = Array.from(document.querySelectorAll('iframe[src*="map"], img[src*="maps"], img[src*="staticmap"], [class*="map" i] canvas, .gm-style')).some((el) => inside(el.getBoundingClientRect(), 0.3) > 0)
+  return { text: words.join(' · ').slice(0, 200), imageShare: Math.min(1, pictures / area), portraits, map }
+}
+
+function readBrandStyles(): Record<string, string | null> {
+  const body = getComputedStyle(document.body)
+  const heading = document.querySelector('h1, h2')
+  // Saturation of a computed rgb() colour (0 grey … 1 pure): an accent is a colour, not white/black/grey.
+  const sat = (c: string | null | undefined) => {
+    const m = /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(c ?? '')
+    if (!m || (m[4] !== undefined && Number(m[4]) < 0.5)) return 0
+    const v = [m[1], m[2], m[3]].map(Number)
+    const hi = Math.max(...v)
+    const lo = Math.min(...v)
+    return hi === 0 ? 0 : (hi - lo) / hi
+  }
+  const colourful = (sel: string, prop: 'backgroundColor' | 'color') =>
+    Array.from(document.querySelectorAll(sel)).slice(0, 60).map((el) => getComputedStyle(el)[prop]).find((c) => sat(c) > 0.25) ?? null
+  const action =
+    colourful('button, a[class*="btn"], a[class*="button"], [role="button"], [class*="cta"]', 'backgroundColor') ??
+    colourful('a', 'color') ??
+    (heading && sat(getComputedStyle(heading).color) > 0.25 ? getComputedStyle(heading).color : null)
+  const html = getComputedStyle(document.documentElement)
+  const clear = (c: string | null | undefined) => !c || /rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c)
+  const first = <T,>(sel: string, pick: (st: CSSStyleDeclaration, el: Element) => T | null): T | null => {
+    for (const el of Array.from(document.querySelectorAll(sel)).slice(0, 40)) {
+      const r = el.getBoundingClientRect()
+      if (r.width < 40 || r.height < 16) continue
+      const v = pick(getComputedStyle(el), el)
+      if (v !== null && v !== undefined) return v
+    }
+    return null
+  }
+  // Card-like blocks: their fill is the surface, their edge the border, their corners the radius.
+  const cardSel = '[class*="card"], [class*="Card"], article, [class*="tile"], [class*="panel"]'
+  const surface = first(cardSel, (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  const border = first(cardSel + ', hr, input', (st) => (parseFloat(st.borderTopWidth) > 0 && !clear(st.borderTopColor) ? st.borderTopColor : null))
+  const radius = first(cardSel + ', button, a[class*="btn"]', (st) => (parseFloat(st.borderTopLeftRadius) > 0 ? st.borderTopLeftRadius : null))
+  const field = first('input:not([type=hidden]), textarea, select', (st) => (clear(st.backgroundColor) ? null : st.backgroundColor))
+  // Muted text: a paragraph whose colour differs from the main text.
+  const mainText = body.color
+  const muted = first('p, small, figcaption, [class*="subtitle"], [class*="description"]', (st) => (st.color && st.color !== mainText ? st.color : null))
+  const para = document.querySelector('p')
+  return {
+    // A transparent page is the browser's white.
+    background: !clear(body.backgroundColor) ? body.backgroundColor : !clear(html.backgroundColor) ? html.backgroundColor : 'rgb(255, 255, 255)',
+    // The text colour is the body's; a heading is often decorated (gradient, brand colour).
+    text: !clear(body.color) ? body.color : heading ? getComputedStyle(heading).color : null,
+    accent: action ?? null,
+    fontFamily: (heading ? getComputedStyle(heading).fontFamily : body.fontFamily) || null,
+    surface,
+    field,
+    muted,
+    border,
+    radius,
+    bodyFont: (para ? getComputedStyle(para).fontFamily : body.fontFamily) || null,
+  }
+}
+
+/**
+ * Captures a public site for Motion Studio the way upstream ShotCraft's
+ * capture step does (assets/scripts/capture-template.mjs), behind the same
+ * SSRF guard as discovery: the URL, every redirect hop and every subresource
+ * must pass the gate, and every route ends on the validated host.
+ *
+ * For the page asked for: a product check (headline, sections, calls to
+ * action), a 1920-wide 2x page shot after the fonts load and the page
+ * settles, semantic cutouts (nav bar, cards, transparent search pill and
+ * button), the layout of those elements, an empty plate with the cards
+ * hidden, the brand colours, the logo and the site's own images. Then up to
+ * CAPTURE_MAX_EXTRA_ROUTES more routes of the same site (features, pricing…
+ * from its own links), each shot and cut out the same way, while the run
+ * stays inside CAPTURE_ROUTE_BUDGET_MS.
+ */
+export async function capturePageScreenshots(
+  rawUrl: string,
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number; hardMs?: number; firstShotMs?: number; budgetMs?: number; navigationMs?: number; deep?: boolean } = {},
+): Promise<PageCapture> {
+  const started = Date.now()
+  const guard = options.guard ?? createSsrfGuard()
+  const baseTarget = await guard.validateNavigationTarget(rawUrl)
+  const deep = Boolean(options.deep)
+  const cropCap = deep ? DEEP_MAX_CROPS : CAPTURE_MAX_CROPS
+  const routeCap = deep ? DEEP_MAX_ROUTES : CAPTURE_MAX_EXTRA_ROUTES
+  const maxCrops = Math.max(0, Math.min(cropCap, options.maxCrops ?? cropCap))
+  const maxRoutes = Math.max(0, Math.min(routeCap, options.maxRoutes ?? routeCap))
+  const settleMs = Math.max(0, options.settleMs ?? CAPTURE_SETTLE_MS)
+
+  return withGuardedContext(
+    {
+      guard,
+      baseTarget,
+      contextOptions: {
+        userAgent: 'Mozilla/5.0 (compatible; SmartVideoMotionStudio/1.0)',
+        viewport: { ...CAPTURE_VIEWPORT },
+        deviceScaleFactor: CAPTURE_DEVICE_SCALE,
+      },
+      blockedResourceTypes: CAPTURE_BLOCKED_RESOURCE_TYPES,
+    },
+    async (context) => {
+      const page = await context.newPage()
+      const elapsed = () => Date.now() - started
+      /** Time left before optional work (cutouts, images, extra routes) is skipped. */
+      const budgetMs = options.budgetMs ?? CAPTURE_DEADLINE_MS
+      const left = () => budgetMs - elapsed()
+      const timing: Record<string, number> = {}
+      const mark = (phase: string) => {
+        timing[phase] = elapsed()
+      }
+      /** A step that failed: say why in the host's logs (host only, no address) and carry on. */
+      const warnStep = (step: string, error: unknown): undefined => {
+        console.warn(`[motion-studio/capture] ${baseTarget.hostname} ${step} failed after ${elapsed()}ms: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`)
+        return undefined
+      }
+      /** Reject when `promise` has not settled in `ms` (the promise itself keeps running). */
+      const withinMs = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+        new Promise<T>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(`took longer than ${ms} ms`)), ms)
+          promise.then(
+            (v) => {
+              clearTimeout(timer)
+              resolve(v)
+            },
+            (e) => {
+              clearTimeout(timer)
+              reject(e)
+            },
+          )
+        })
+      const clipShot = (rect: CaptureRect, png = false): Promise<Buffer | null> =>
+        page
+          .screenshot(png ? { type: 'png', omitBackground: true, fullPage: true, clip: rect } : { type: 'jpeg', quality: 88, fullPage: true, clip: rect })
+          .catch(() => null)
+
+      /** Load lazy content, settle, shoot the page band and cut out its cards. */
+      const shootRoute = async (maxCards: number, onShot?: (shot: Buffer, pageHeight: number) => void, acc?: { crops: Buffer[]; cards: CaptureRect[]; info?: Omit<CropInfo, 'route'>[] }) => {
+        await page.waitForLoadState('networkidle', { timeout: 1_500 }).catch(() => undefined)
+        // Nudge lazy-loaded content inside the captured band, then return to the top.
+        await page.evaluate(async (maxY: number) => {
+          const end = Math.min(maxY, document.documentElement.scrollHeight)
+          for (let y = 0; y < end; y += 600) {
+            window.scrollTo(0, y)
+            await new Promise((resolve) => setTimeout(resolve, 80))
+          }
+          window.scrollTo(0, 0)
+        }, deep ? DEEP_MAX_Y : CAPTURE_MAX_PAGE_HEIGHT)
+        await page.waitForLoadState('networkidle', { timeout: 1_000 }).catch(() => undefined)
+        await page.evaluate(waitForFonts, CAPTURE_FONT_WAIT_MS).catch(() => undefined)
+        if (settleMs) await new Promise((resolve) => setTimeout(resolve, settleMs))
+
+        const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)
+        const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
+        const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
+        // A heavy page may not give a tall picture in time: fall back to what is on screen rather than lose the page.
+        // The height the picture really has: the tall shot, or only the viewport when that is all there was time for.
+        let shotHeight = pageHeight
+        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip, timeout: 25_000 }).catch(() => {
+          shotHeight = Math.min(pageHeight, CAPTURE_VIEWPORT.height)
+          return page.screenshot({ type: 'jpeg', quality: 80, animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: shotHeight }, timeout: 15_000 })
+        })
+        // The page is usable from here: a stalled crop below must not lose it.
+        onShot?.(shot, shotHeight)
+
+        // A deep capture looks for cards down the whole page, not only in the band that is photographed whole.
+        const searchY = deep ? Math.max(pageHeight, Math.min(DEEP_MAX_Y, docHeight || 0)) : pageHeight
+        const found = (await page.evaluate(findCutoutRects, { maxY: searchY, maxCards }).catch(() => null)) ?? null
+        // The page's own cards when it marks them up as cards; otherwise card-sized blocks.
+        const semantic = (found?.cards.length ?? 0) >= 2
+        const rects: CaptureRect[] = semantic
+          ? found!.cards
+          : maxCards
+            ? ((await page.evaluate(findCropRects, { maxY: searchY, max: maxCards }).catch(() => null)) ?? [])
+            : []
+        const crops: Buffer[] = acc?.crops ?? []
+        const cards: CaptureRect[] = acc?.cards ?? []
+        const info: Omit<CropInfo, 'route'>[] = acc?.info ?? []
+        const blank = { text: '', imageShare: 0, portraits: 0, map: false }
+        /** What a cut shows (read off the page; a failed read is a blank, never a lost crop). */
+        const describe = async (rect: CaptureRect, cut: 'card' | 'band') => {
+          const seen = (await page.evaluate(describeRect, rect).catch(() => null)) ?? blank
+          info.push({ cut, width: Math.round(rect.width), height: Math.round(rect.height), ...seen })
+        }
+        for (const rect of rects) {
+          if (left() < 5_000 && crops.length >= 2) break
+          const crop = await page.screenshot({ type: 'jpeg', quality: deep ? 76 : 85, fullPage: true, clip: rect }).catch(() => null)
+          if (!crop) continue
+          crops.push(crop)
+          cards.push(rect)
+          await describe(rect, 'card')
+        }
+        // Few card-like blocks (many sites have 1-2): fill up to CAPTURE_MIN_PICTURES with
+        // full-width slices of the page, so a film shows distinct parts of it instead of the
+        // same two pictures. Appended after the cards, which keeps `cards[i]` <-> `crops[i]`.
+        if (maxCards && crops.length < CAPTURE_MIN_PICTURES && left() > 6_000) {
+          const bandH = Math.round(CAPTURE_VIEWPORT.width * (9 / 16))
+          for (let y = 0; y + bandH <= pageHeight + 1 && crops.length < CAPTURE_MIN_PICTURES; y += bandH) {
+            if (left() < 4_000) break
+            const clip = { x: 0, y, width: CAPTURE_VIEWPORT.width, height: bandH }
+            const band = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip }).catch(() => null)
+            if (band) {
+              crops.push(band)
+              await describe(clip, 'band')
+            }
+          }
+        }
+        // Deep: the rest of the page, below the photographed band, as 16:9 slices — the film's pictures of the parts nobody saw.
+        if (deep && maxCards) {
+          const bottom = Math.min(DEEP_MAX_Y, docHeight || 0)
+          for (const clip of bandRects(pageHeight, bottom, CAPTURE_VIEWPORT.width, Math.round(CAPTURE_VIEWPORT.width * (9 / 16)), DEEP_MAX_BANDS)) {
+            if (left() < 6_000) break
+            const band = await page.screenshot({ type: 'jpeg', quality: 72, fullPage: true, clip }).catch(() => null)
+            if (band) {
+              crops.push(band)
+              await describe(clip, 'band')
+            }
+          }
+        }
+        // The layout describes the picture: sections and cards below what was photographed are left out.
+        const inShot = (r: CaptureRect) => r.y < shotHeight
+        const layout: RouteLayout = { pageH: shotHeight, sections: (found?.sections ?? []).filter(inShot), cards: shotHeight < pageHeight ? cards.filter(inShot) : cards }
+        return { shot, pageHeight: shotHeight, pageClip: shotHeight < pageHeight ? { ...pageClip, height: shotHeight } : pageClip, found, semantic, crops, layout, info }
+      }
+
+      /** What has been captured so far: the capture can end at any step and still return this. */
+      let out: PageCapture | null = null
+
+      const work = async (): Promise<PageCapture> => {
+        await page.goto(baseTarget.url, { waitUntil: 'domcontentloaded', timeout: options.navigationMs ?? CAPTURE_NAVIGATION_TIMEOUT })
+        const finalTarget = await guard.validateNavigationTarget(page.url())
+        if (!sameSiteHost(baseTarget.hostname, finalTarget.hostname)) {
+          throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
+        }
+        mark('loaded')
+
+        const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[], info: [] as Omit<CropInfo, 'route'>[] }
+        // The words and colours first: reading the page text needs no rendering, so even a page too heavy to
+        // photograph in time still gives the film the site's own headline, sections and calls to action.
+        await page.waitForLoadState('load', { timeout: 1_500 }).catch(() => undefined)
+        const read0 = await page.evaluate(readPageContent).catch((e) => warnStep('content', e))
+        const styles0 = await page.evaluate(readBrandStyles).catch((e) => warnStep('brand', e) ?? ({} as Record<string, string | null>))
+        const snapshot: PageCapture = {
+          url: page.url(),
+          title: String((await page.title().catch(() => '')) ?? '').slice(0, 200),
+          page: null,
+          pageHeight: CAPTURE_VIEWPORT.height,
+          crops: homeAcc.crops,
+          logo: null,
+          images: [],
+          content: read0
+            ? { description: read0.description, headline: read0.headline, headings: read0.headings, ctas: read0.ctas, nav: read0.nav }
+            : { ...EMPTY_CONTENT },
+          layout: { pageH: CAPTURE_VIEWPORT.height, sections: [], cards: homeAcc.cards },
+          cutouts: { nav: null, search: null, button: null },
+          emptyPlate: null,
+          routes: [],
+          brand: brandFrom(styles0 ?? undefined),
+        }
+        out = snapshot
+        mark('content')
+        // A first, cheap picture of what is on screen (CSS pixels: a quarter of the work of the 2x shots),
+        // with its own time limit: a page that cannot be rendered in time must not use up the whole capture.
+        const first: Buffer | undefined = await withinMs<Buffer>(
+          page.screenshot({ type: 'jpeg', quality: 82, scale: 'css', animations: 'disabled', clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: CAPTURE_VIEWPORT.height } }),
+          options.firstShotMs ?? CAPTURE_FIRST_SHOT_MS,
+        ).catch((e) => warnStep('first picture', e) as unknown as Buffer | undefined)
+        if (!first) {
+          // The page cannot be rendered in time (a very heavy page on a small host): hand back what the page says.
+          mark('words-only')
+          return snapshot
+        }
+        snapshot.page = first
+        mark('first')
+        let home: Awaited<ReturnType<typeof shootRoute>>
+        try {
+          home = await shootRoute(
+          maxCrops,
+          (shot, pageHeight) => {
+            // The full-height shot replaces the first one.
+            if (out) {
+              out.page = shot
+              out.pageHeight = pageHeight
+              out.layout = { pageH: pageHeight, sections: [], cards: homeAcc.cards }
+            }
+          },
+          homeAcc,
+          )
+        } catch (error) {
+          // The first picture and the page's words are already in the snapshot: hand those back instead of failing.
+          warnStep('home', error)
+          mark('home-failed')
+          return snapshot
+        }
+        mark('home')
+        const read = await page.evaluate(readPageContent).catch(() => null)
+        const content: PageContent = read
+          ? { description: read.description, headline: read.headline, headings: read.headings, ctas: read.ctas, nav: read.nav }
+          : { ...EMPTY_CONTENT }
+        const styles = await page.evaluate(readBrandStyles).catch(() => ({}) as Record<string, string | null>)
+        const url = page.url()
+        const title = String((await page.title().catch(() => '')) ?? '').slice(0, 200)
+
+        // From here a capture is usable: the page, its cards, its words and colours.
+        const result: PageCapture = {
+          url,
+          title,
+          page: home.shot,
+          pageHeight: home.pageHeight,
+          crops: [...home.crops],
+          cropInfo: home.info.map((i) => ({ ...i, route: 'home' })),
+          logo: null,
+          images: [],
+          content,
+          layout: home.layout,
+          cutouts: { nav: null, search: null, button: null },
+          emptyPlate: null,
+          routes: [],
+          brand: brandFrom(styles),
+        }
+        out = result
+
+        // The site's own assets first (what the film shows): its logo (transparent PNG) and largest images.
+        const assets = (await page.evaluate(findAssetRects, { maxY: deep ? DEEP_MAX_Y : CAPTURE_MAX_IMAGE_Y, maxImages: deep ? DEEP_MAX_IMAGES : CAPTURE_MAX_IMAGES }).catch(() => null)) ?? { logo: null, images: [] }
+        result.logo = assets.logo ? await clipShot(assets.logo, true) : null
+        for (const rect of assets.images) {
+          if (left() < 4_000) break
+          const image = await clipShot(rect)
+          if (image) result.images.push(image)
+        }
+        mark('assets')
+
+        // Optional pieces, only while there is time: floating UI cutouts and the empty plate.
+        if (left() > 6_000) {
+          result.cutouts = {
+            nav: home.found?.nav ? await clipShot(home.found.nav) : null,
+            search: home.found?.search ? await clipShot(home.found.search, true) : null,
+            button: home.found?.button ? await clipShot(home.found.button, true) : null,
+          }
+        }
+        if (home.semantic && left() > 5_000) {
+          const hidden = await page.evaluate(setCardsHidden, true).catch(() => 0)
+          if (hidden) result.emptyPlate = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: home.pageClip }).catch(() => null)
+          await page.evaluate(setCardsHidden, false).catch(() => undefined)
+        }
+        mark('extras')
+
+        // More routes of the same site, captured the same way, while time allows.
+        let cropBudget = (deep ? 400 : CAPTURE_MAX_TOTAL_CROPS) - home.crops.length
+        // The site's other pages (name, path, address), captured or not: a storyboard row that needs a page
+        // the capture did not reach can have it captured on its own afterwards (pipeline stage 4).
+        result.links = pickCaptureRoutes(read?.links ?? [], url, 80)
+        for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
+          if (deep ? left() < 12_000 : elapsed() > (options.budgetMs ? options.budgetMs * 0.6 : CAPTURE_ROUTE_BUDGET_MS) || left() < 6_000) break
+          try {
+            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
+            const landed = await guard.validateNavigationTarget(page.url())
+            if (landed.hostname !== finalTarget.hostname) continue
+            const shot = await shootRoute(Math.max(0, Math.min(deep ? DEEP_MAX_CROPS : 2, cropBudget)))
+            cropBudget -= shot.crops.length
+            result.routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
+            result.crops.push(...shot.crops)
+            result.cropInfo?.push(...shot.info.map((i) => ({ ...i, route: route.name })))
+            mark(`route:${route.name}`)
+          } catch {
+            // A route that will not load (or leaves the site) is skipped; the capture stands without it.
+          }
+        }
+        return result
+      }
+
+      let hardTimer: ReturnType<typeof setTimeout> | undefined
+      try {
+        const running = work()
+        running.catch(() => undefined)
+        // The host cuts a function off at ~30 s with nothing returned: at the hard deadline hand back what was captured.
+        const deadline = new Promise<PageCapture>((resolve, reject) => {
+          hardTimer = setTimeout(() => {
+            mark('deadline')
+            const snapshot = out as PageCapture | null
+            // A snapshot with neither a picture nor any words is nothing to hand back.
+            if (!snapshot || (!snapshot.page && !captureHasWords(snapshot))) return reject(new Error('The page took too long to load'))
+            resolve({ ...snapshot, crops: [...snapshot.crops], images: [...snapshot.images], routes: [...snapshot.routes] })
+          }, Math.max(options.hardMs === undefined ? 2_000 : 0, (options.hardMs ?? CAPTURE_HARD_MS) - elapsed()))
+        })
+        return await Promise.race([running, deadline])
+      } catch (error) {
+        // The background worker records how far the capture got next to why it failed.
+        if (error instanceof Error) Object.assign(error, { timing: { ...timing } })
+        throw error
+      } finally {
+        if (hardTimer) clearTimeout(hardTimer)
+        // Which step took the time (host only, no address) — visible in the host's function logs.
+        console.warn(`[motion-studio/capture] ${baseTarget.hostname} total=${elapsed()}ms ${JSON.stringify(timing)}`)
+        // A page stuck mid-screenshot can take a long time to close: the reply must not wait for it.
+        void page.close().catch(() => undefined)
+      }
+    },
+    CAPTURE_CLOSE_MS,
+  )
 }

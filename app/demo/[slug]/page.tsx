@@ -1,8 +1,8 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { findDemoBySlug } from '@/data/demoLookup';
-import type { VideoDemo } from '@/data/types';
+import { findDemoBySlug, resolveDemoBySlug } from '@/data/demoLookup';
+import { getModelLabel, type VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from '@/components/landing/VideoCreateTargetPicker';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization';
 import { buildDemoPersonalizeSource } from '@/shared/personalization/demoSources';
@@ -24,7 +24,30 @@ function DemoDetailPageInner() {
   const router = useRouter();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
 
-  const demo = slug ? findDemoBySlug(slug) : null;
+  // Core catalogs resolve immediately; the industry sections' extra demos
+  // load on demand (undefined = still looking, null = not found).
+  const coreDemo = slug ? findDemoBySlug(slug) : undefined;
+  const [extraDemo, setExtraDemo] = useState<VideoDemo | null | undefined>(undefined);
+  const [lookupFailed, setLookupFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (coreDemo || !slug) return;
+    let live = true;
+    setLookupFailed(false);
+    resolveDemoBySlug(slug).then(
+      (d) => {
+        if (live) setExtraDemo(d ?? null);
+      },
+      () => {
+        if (live) setLookupFailed(true);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [slug, coreDemo, attempt]);
+  const demo = coreDemo ?? extraDemo ?? null;
+  const resolving = !coreDemo && !!slug && extraDemo === undefined && !lookupFailed;
 
   const [showCreatePicker, setShowCreatePicker] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -83,6 +106,32 @@ function DemoDetailPageInner() {
       document.body.style.overflow = prevOverflow;
     };
   }, [demo]);
+
+  if (lookupFailed && !demo) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6">
+        <div className="max-w-md text-center" role="alert">
+          <h1 className="text-2xl font-black text-white">Couldn&apos;t load this demo</h1>
+          <p className="mt-2 text-sm text-white/60">Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => setAttempt((n) => n + 1)}
+            className="mt-6 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-5 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.01]"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (resolving) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505]" aria-busy="true">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
+      </div>
+    );
+  }
 
   if (!demo) {
     return (
@@ -152,7 +201,7 @@ function DemoDetailPageInner() {
 
                 <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
-                    ['Model', demo.modelName || demo.model || 'SmartVideo GO AI'],
+                    ['Model', getModelLabel(demo)],
                     ['Duration', demo.durationLabel || '—'],
                     ['Aspect', demo.aspectRatio || '—'],
                     ['Source', demo.sourceRepo],

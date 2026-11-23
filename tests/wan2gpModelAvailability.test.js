@@ -1,7 +1,7 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
 
-const { withWan2gpAvailability } = require('../electron/lib/wan2gpModelAvailability');
+import { withWan2gpAvailability } from '../electron/lib/wan2gpModelAvailability';
 
 const fluxModel = {
     id: 'wan2gp:flux-dev',

@@ -10,8 +10,13 @@
 import type {
   AssetLibrary,
   ClientProfile,
+  PersonalizationAsset,
   PersonalizationSource,
 } from '../types'
+import type { ImageHints } from '../preview/imageStyle'
+import { endCardExtraLine } from '../preview/ctaSuggestions'
+import { imageRoleFromCategory } from '../preview/imagePresets'
+import { getCachedSamples } from '../preview/placement/frameSampler'
 import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
@@ -48,22 +53,61 @@ export function buildPreviewInput(
     clientForm.callToAction ||
     (website ? `Visit ${website}` : clientForm.phone ? `Call ${clientForm.phone}` : '')
 
+  // What the assets themselves say about each image (the measured hints saved with the
+  // settings take precedence). `isHeadshot` is set ONLY for an asset the discovery
+  // explicitly identified as a person photo with a portrait-like shape; a photo that merely
+  // contains a person is not a headshot.
+  const assetHints: Record<string, ImageHints> = {}
+  const addHint = (asset: PersonalizationAsset | null | undefined) => {
+    if (!asset) return
+    const url = firstUrl(asset.uploadedUrl, asset.url)
+    if (!url) return
+    const aspect = asset.width && asset.height ? asset.width / asset.height : undefined
+    const hint: ImageHints = {}
+    if (aspect && aspect > 0) hint.aspect = aspect
+    if (asset.hasTransparency) hint.hasTransparency = true
+    if (asset.sourceCategory === 'person' && aspect && aspect >= 0.7 && aspect <= 1.4) hint.isHeadshot = true
+    // The explicit role: logo slot → logo; otherwise the discovery category. Never a filename or discovery order.
+    if (asset.role === 'logo') hint.role = 'logo'
+    else if (asset.sourceCategory) hint.role = imageRoleFromCategory(asset.sourceCategory)
+    if (Object.keys(hint).length) assetHints[url] = hint
+  }
+  addHint(assets.primaryLogo)
+  assets.products?.slice(0, 2).forEach(addHint)
+  const imageHints: Record<string, ImageHints> = { ...assetHints }
+  for (const [url, measured] of Object.entries(previewSettings.imageHints ?? {})) {
+    imageHints[url] = { ...assetHints[url], ...measured }
+  }
+
+  // A transparent logo's padding-trimmed copy (made once in the browser) replaces the original URL here, so every
+  // consumer — gallery, editor, preview and export — draws the same cropped logo.
+  const originalLogoUrl = firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url)
+  const logoUrl = (originalLogoUrl && imageHints[originalLogoUrl]?.trimmedUrl) || originalLogoUrl
+
+  const videoUrl = previewVideo?.url || source?.sourceMedia || null
+  const lumaSamples = source?.mediaType === 'image' ? null : getCachedSamples(videoUrl)
+
   return {
-    videoUrl: previewVideo?.url || source?.sourceMedia || null,
+    videoUrl,
+    ...(lumaSamples && lumaSamples.length ? { lumaSamples } : {}),
     posterUrl: previewVideo?.poster || source?.poster || null,
     isImageSource: source?.mediaType === 'image',
-    audioUrl: previewSettings.audio?.url ?? null,
-    settings: previewSettings,
+    audioUrl: previewSettings.audio?.url ?? previewVideo?.audioUrl ?? null,
+    settings: Object.keys(imageHints).length ? { ...previewSettings, imageHints } : previewSettings,
     brand: {
       // The headline text itself lives on the layers; this is only the fallback
       // the composition uses when a text layer has no explicit text.
       businessName,
-      headline: businessName,
+      // Prefer real copy over repeating the business name.
+      headline: clientForm.ctaHeadline?.trim() || clientForm.productService?.trim() || businessName,
       offer: clientForm.offer || '',
       cta: callToAction,
       phone: clientForm.phone || '',
       website,
-      logoUrl: firstUrl(assets.primaryLogo?.uploadedUrl, assets.primaryLogo?.url),
+      ...(endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction })
+        ? { contactExtra: endCardExtraLine({ email: clientForm.email, instagram: clientForm.instagram, cta: callToAction }) }
+        : {}),
+      logoUrl,
       productUrl: firstUrl(assets.products?.[0]?.uploadedUrl, assets.products?.[0]?.url),
       serviceUrl: firstUrl(
         assets.products?.[1]?.uploadedUrl,

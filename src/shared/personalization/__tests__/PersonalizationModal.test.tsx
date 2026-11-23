@@ -153,6 +153,39 @@ function installFastStyleAccessors(): void {
 
 installFastStyleAccessors()
 
+/**
+ * Deterministic wait for an async UI state to settle.
+ *
+ * Replaces the previous fixed `setTimeout(r, 50–100)` sleeps before assertions
+ * on an async-settled DOM. A fixed sleep is a race: under host load the
+ * settled state can land AFTER the sleep expires, so an otherwise-correct
+ * feature fails its assertion — which is exactly the flake recorded as
+ * Phase 3 item 9 for this file's business-research retry test. The helper
+ * polls inside `act` until the element appears or a bounded deadline passes,
+ * so every assertion keeps its original form and the wait is only as long as
+ * the state actually needs (typically a single 10 ms tick).
+ *
+ * The query receives the SAME text/role arguments the assertion uses, so the
+ * wait and the assertion can never drift apart.
+ */
+async function waitForElement(
+  query: () => HTMLElement | null,
+  description: string,
+  timeoutMs = 5000,
+): Promise<HTMLElement> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = query()
+    if (found) return found
+    if (Date.now() > deadline) {
+      throw new Error(`waitForElement: "${description}" never appeared within ${timeoutMs}ms`)
+    }
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+  }
+}
+
 function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opts: any) => void) => void }) {
   const { openPersonalize, isOpen } = useDemoPersonalize();
   onMounted(openPersonalize);
@@ -259,15 +292,28 @@ describe('PersonalizationModal', () => {
       expect(screen.getByText(title)).toBeTruthy();
     });
 
-    // Verify the full-width design sections are present.
-    // Scoped to headings: the sticky section nav also renders short link
-    // labels (e.g. "Client Assets"), so unscoped text queries would be
-    // ambiguous.
-    expect(screen.getByRole('heading', { name: 'Source Demo' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: /CLIENT ASSETS/i })).toBeTruthy();
+    // Verify the full-width design sections are present. Advanced Editing
+    // groups them into tabs (all mounted, inactive ones hidden), so each
+    // heading is checked on the tab that shows it.
+    const show = async (tab: string, pill?: string) => {
+      await act(async () => {
+        (document.querySelector(`[data-testid="pz-tab-${tab}"]`) as HTMLElement | null)?.click();
+      });
+      if (!pill) return;
+      await act(async () => {
+        (document.querySelector(`[data-testid="pz-pill-${tab}-${pill}"]`) as HTMLElement | null)?.click();
+      });
+    };
+    expect(document.querySelector('#pz-overview')).toBeTruthy();
+    await show('assets', 'yours');
+    expect(screen.getByRole('heading', { name: /^YOUR ASSETS$/i })).toBeTruthy();
+    await show('assets', 'content');
     expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy();
+    await show('create', 'prompt');
     expect(screen.getByRole('heading', { name: /Personalize The Prompt/i })).toBeTruthy();
+    await show('create', 'output');
     expect(screen.getByRole('heading', { name: /SmartVideo Engine/i })).toBeTruthy();
+    await show('assets', 'yours');
 
     // Verify SmartVideo Recommended is prominently visible (check container text)
     expect(container.textContent).toMatch(/SmartVideo/)
@@ -482,9 +528,10 @@ describe('PersonalizationModal', () => {
       ;(window as any).__personalizationCtx.researchBusiness()
     })
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
-    })
+    await waitForElement(
+      () => screen.queryByText('Research failed: Server error'),
+      'Research failed: Server error',
+    )
 
     expect(screen.getByText('Research failed: Server error')).toBeTruthy()
     expect(screen.getByText('Retry')).toBeTruthy()
@@ -727,9 +774,11 @@ describe('PersonalizationModal', () => {
     })
 
     // Results render the lead list with the match score.
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50))
-    })
+    // Await the settled results instead of a fixed sleep (Phase 3 item 9).
+    await waitForElement(
+      () => screen.queryByText('Sunset Realty'),
+      'Sunset Realty lead row',
+    )
     expect(screen.getByText('Sunset Realty')).toBeTruthy()
     expect(screen.getByText('80% match')).toBeTruthy()
     expect(screen.getByText('1 businesses found for Real Estate near Tampa, FL')).toBeTruthy()

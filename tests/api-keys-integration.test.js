@@ -11,7 +11,7 @@
  * request. If the header is present and correct, the API call will authenticate.
  */
 
-import { test, before, after } from 'node:test';
+import { test, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert/strict';
 
 // ── Environment shims ───────────────────────────────────────────────────────
@@ -100,6 +100,19 @@ function installFetch() {
       status: 200,
       async json() {
         if (String(url).includes('balance')) return { balance: 12.34 };
+        // The modal persists keys server-side before localStorage and requires
+        // the key endpoints to acknowledge the save.
+        if (String(url).includes('/api/auth/muapi-key')) {
+          if (options?.method === 'POST') return { ok: true };
+          // Status GET: pre-fill the fields from what is currently stored.
+          return {
+            key: store.get('muapi_key') ?? null,
+            openaiKey: store.get('openai_key') ?? null,
+          };
+        }
+        if (String(url).includes('/api/auth/openai-key')) {
+          return { ok: true, configured: true, verification: 'verified', warning: null };
+        }
         if (String(url).includes('predictions') || String(url).includes('result')) {
           return { status: 'completed', outputs: ['https://example.com/out.mp4'] };
         }
@@ -128,7 +141,7 @@ let saveOpenAIKey;
 let getOpenAIKeyStatus;
 let deleteOpenAIKey;
 
-before(async () => {
+beforeAll(async () => {
   installFetch();
   const settings = await import('../src/components/SettingsModal.js');
   SettingsModal = settings.SettingsModal;
@@ -141,7 +154,7 @@ before(async () => {
   deleteOpenAIKey = openaiKeyApi.deleteOpenAIKey;
 });
 
-after(() => { delete globalThis.fetch; });
+afterAll(() => { delete globalThis.fetch; });
 
 // Helper: simulate a user entering both keys in the Settings modal and saving.
 async function enterKeysViaModal(muapiKey, openaiKey, { clearStore = true } = {}) {
@@ -151,16 +164,20 @@ async function enterKeysViaModal(muapiKey, openaiKey, { clearStore = true } = {}
   }
   resetDocument();
   SettingsModal();
-  document.body.querySelector('#settings-api-key').value = muapiKey;
-  document.body.querySelector('#settings-openai-key').value = openaiKey;
-  const btn = document.body.querySelector('#settings-save-btn');
+  // Let the modal's async pre-fill (GET /api/auth/muapi-key) settle first,
+  // exactly as in the browser, so it cannot clobber the values below.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  // undefined = leave the field at its server pre-filled value, as a user who
+  // edits only one field would see in the real modal.
+  if (muapiKey !== undefined) document.body.querySelector('#settings-api-key').value = muapiKey;
+  if (openaiKey !== undefined) document.body.querySelector('#settings-openai-key').value = openaiKey;  const btn = document.body.querySelector('#settings-save-btn');
   if (btn && btn.onclick) {
     await btn.onclick();
   }
 }
 
 test('MuAPI social/account request (via withKey) carries the user-entered x-api-key', async () => {
-  enterKeysViaModal('muapi-social-key-777', 'sk-openai-abc');
+  await enterKeysViaModal('muapi-social-key-777', 'sk-openai-abc');
 
   lastFetch = null;
   // listSocialAccounts uses the exported axios-based withKey helper through the
@@ -173,7 +190,7 @@ test('MuAPI social/account request (via withKey) carries the user-entered x-api-
 });
 
 test('OpenAI image generation request carries the user-entered Bearer token', async () => {
-  enterKeysViaModal('muapi-from-modal-xyz', 'sk-openai-from-modal-123');
+  await enterKeysViaModal('muapi-from-modal-xyz', 'sk-openai-from-modal-123');
 
   lastFetch = null;
   await fetch('https://api.openai.com/v1/images/generations', {
@@ -188,19 +205,25 @@ test('OpenAI image generation request carries the user-entered Bearer token', as
     'the OpenAI key entered in Settings must be sent as a Bearer token');
 });
 
-test('Proxied /api/* route resolves the MuAPI key from the cookie set by the modal', () => {
-  enterKeysViaModal('muapi-cookie-key-555', 'sk-openai-abc');
+test('Modal persists the key to localStorage (no plaintext cookie) and the proxy resolves the same key from the explicit header', async () => {
+  await enterKeysViaModal('muapi-cookie-key-555', 'sk-openai-abc');
 
   // Mirror app/api/app/[[...path]]/route.js getApiKey(): header OR cookie.
   function getApiKeyFromRequest(headerKey, cookieValue) {
     if (headerKey) return headerKey;
     return cookieValue;
   }
-  const headerKey = undefined; // browser request goes through proxy w/o explicit header
+  // SECURITY CONTRACT (SettingsModal.js): keys are intentionally NOT written to
+  // cookies — a non-HttpOnly cookie is readable by any script (CWE-522). The
+  // browser persists to localStorage and sends the key explicitly; the server
+  // proxy must resolve exactly the key the user entered.
+  const headerKey = resolveMuapiKey();
   const resolved = getApiKeyFromRequest(headerKey, cookies.get('muapi_key'));
-  assert.ok(cookies.has('muapi_key'), 'modal must set the muapi_key cookie');
+  assert.equal(store.get('muapi_key'), 'muapi-cookie-key-555',
+    'modal must persist the entered key to localStorage');
+  assert.ok(!cookies.has('muapi_key'), 'modal must NOT set a plaintext muapi_key cookie');
   assert.equal(decodeURIComponent(resolved), 'muapi-cookie-key-555',
-    'server proxy must resolve the SAME key the user entered, from the cookie');
+    'server proxy must resolve the SAME key the user entered');
 });
 
 test('Without entering a key, nothing is persisted and no key resolves (proves the modal is the gate)', async () => {
@@ -227,8 +250,9 @@ test('MuAPI-only save via SettingsModal does not erase existing OpenAI key', asy
   cookies.set('muapi_key', encodeURIComponent('existing-muapi-key'));
   cookies.set('openai_key', encodeURIComponent('existing-openai-key'));
 
-  // Simulate saving only MuAPI (OpenAI field left blank).
-  await enterKeysViaModal('new-muapi-key', '', { clearStore: false });
+  // Simulate saving only MuAPI (the OpenAI field keeps its pre-filled value,
+  // exactly as the modal renders it for an existing user).
+  await enterKeysViaModal('new-muapi-key', undefined, { clearStore: false });
 
   // OpenAI must remain intact.
   assert.equal(store.get('openai_key'), 'existing-openai-key', 'existing OpenAI key must survive MuAPI-only save');
@@ -243,8 +267,8 @@ test('OpenAI-only save via SettingsModal does not erase existing MuAPI key', asy
   cookies.set('muapi_key', encodeURIComponent('existing-muapi-key'));
   cookies.set('openai_key', encodeURIComponent('existing-openai-key'));
 
-  // Simulate saving only OpenAI (MuAPI field left blank).
-  await enterKeysViaModal('', 'new-openai-key', { clearStore: false });
+  // Simulate saving only OpenAI (the MuAPI field keeps its pre-filled value).
+  await enterKeysViaModal(undefined, 'new-openai-key', { clearStore: false });
 
   // MuAPI must remain intact.
   assert.equal(store.get('muapi_key'), 'existing-muapi-key', 'existing MuAPI key must survive OpenAI-only save');

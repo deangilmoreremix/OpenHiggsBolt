@@ -1,0 +1,34 @@
+# Build lock
+
+**Status:** FREE
+**Holder:** — (released by V2)
+**Granted at:** 2026-10-21 04:06 EDT
+**Released at:** 2026-10-21 04:56 EDT
+
+> V2 completed Phase 2 verification matrix **rows 7-10** (the four Playwright e2e specs) and
+> released the lock at 04:56 EDT.
+> Results: `docs/phase2/E2E_EVIDENCE.md` and `docs/phase2/handoffs/V2.md`.
+> Rows 7-10 all passed: `4 passed` / `3 passed` / `4 passed` / `3 passed`, and all four specs
+> together in one invocation: `14 passed (7.0m)`.
+> V2 started its own `npx next start --port 3111` against V1's production build and **stopped it**
+> again before releasing the lock — port 3111 is free.
+
+## How to use
+
+1. Ask the orchestrator for the build lock (post `REQUEST` on the board).
+2. Write your agent id and the current time into the `Holder` / `Granted at` fields below.
+3. Run your build / test / e2e commands.
+4. Paste the **raw output** into `docs/phase2/handoffs/<ID>.md`.
+5. Reset the fields to `FREE` and release.
+
+Only one agent may hold this lock at a time. `npm run build`, `npm run build:packages`,
+`npm run build:studio`, `npm run test:unit` and `npx playwright test` all require it.
+`npx tsc --noEmit` and single-file `npx vitest run <file>` do not.
+
+## Why it exists
+
+During Phase 1 the host reached load average **161–189** with ~16 MB free RAM. Under that load
+vitest workers timed out, whole test files failed to collect with **no assertion**, and the
+failing set **changed on every run** (2 → 4 → 3 failures). Freeing the host restored the stable
+result. A suite run that disagrees with the previous run is a **load symptom, not a code
+symptom**, until proven otherwise.

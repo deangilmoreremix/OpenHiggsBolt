@@ -53,6 +53,8 @@ export const ALL_KNOWN_STUDIO_TABS = [
   'go-ai-viral',
   // additional tabs in StandaloneShell not in landingData FEATURES
   'music-studio',
+  'motion-studio',
+  'motion-director',
   'scene-planner',
   'apps',
 ];

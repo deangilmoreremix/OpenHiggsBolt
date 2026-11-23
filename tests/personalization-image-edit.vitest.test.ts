@@ -53,7 +53,8 @@ beforeEach(() => {
     expect(form.get('operation')).toBeNull()
     expect(form.get('model')).toBe('gpt-image-2.5-sunburst')
     expect(form.get('n')).toBe('1')
-    expect(form.get('input_fidelity')).toBe('high')
+    // gpt-image-2.5 models reject input_fidelity, so it is never forwarded.
+    expect(form.get('input_fidelity')).toBeNull()
     expect(form.get('image[]')).toBeInstanceOf(File)
 
     return {
@@ -143,5 +144,23 @@ describe('POST /api/personalization/image-edit', () => {
       model: 'gpt-image-2.5-sunburst',
       rateLimitRemaining: 11,
     })
+  })
+
+  it('accepts Images 2.6 and forwards complexity only to 2.6 models', async () => {
+    const { POST } = await import('@/app/api/personalization/image-edit/route')
+    const forms: FormData[] = []
+    fetchMock.mockImplementation(async (_i: RequestInfo | URL, init?: RequestInit) => {
+      forms.push(init?.body as FormData)
+      return { ok: true, status: 200, async json() { return { data: [{ b64_json: 'ZmFrZQ==' }] } } } as Response
+    })
+    const make = (model: string, complexity?: string) => {
+      const req = createRequest({ model })
+      return req.formData().then((f) => { if (complexity) f.append('complexity', complexity); return new NextRequest('http://localhost/api/personalization/image-edit', { method: 'POST', body: f }) })
+    }
+    expect((await POST(await make('gpt-image-2.6-sunburst', 'low'))).status).toBe(200)
+    expect(forms[0].get('complexity')).toBe('low')
+    expect((await POST(await make('gpt-image-2.5-flare', 'low'))).status).toBe(200)
+    expect(forms[1].get('complexity')).toBeNull()
+    expect((await POST(await make('gpt-image-2.6-flare', 'extreme'))).status).toBe(400)
   })
 })

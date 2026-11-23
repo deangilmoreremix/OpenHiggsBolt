@@ -7,6 +7,18 @@ import { fileURLToPath } from 'node:url'
 // parent monorepo (this worktree has its own pnpm-lock.yaml).
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
+// Serverless Chromium (src/server/browserDiscovery.ts) decompresses its browser
+// from @sparticuz/chromium/bin at launch. Nothing require()s those files, so
+// the file tracer leaves them out of the server bundle, and on Netlify every
+// capture failed with 'The input directory ".../@sparticuz/chromium/bin" does
+// not exist'. List them explicitly for Motion Director's capture route. Both
+// spellings: the hoisted symlink and pnpm's real path, which is where the
+// package resolves from inside the bundle.
+const CHROMIUM_BIN = [
+  './node_modules/@sparticuz/chromium/bin/**',
+  './node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**',
+]
+
 const nextConfig = {
   experimental: {
     cacheComponents: false,
@@ -14,6 +26,8 @@ const nextConfig = {
   turbopack: {
     root: rootDir,
     resolveAlias: {
+      // Same reason as the webpack alias below: never resolve onnxruntime-node's native binaries.
+      'onnxruntime-node': { browser: './scripts/empty-module.js', default: './scripts/empty-module.js' },
       '@': ['./src', './'],
       '@/components': ['./components', './src/shared/components'],
       '@/components/*': ['./components/*', './src/shared/components/*'],
@@ -54,6 +68,9 @@ const nextConfig = {
   // Same root as turbopack.root: tracing must resolve against this worktree,
   // not the parent monorepo whose lockfile Next.js otherwise prefers.
   outputFileTracingRoot: rootDir,
+  outputFileTracingIncludes: {
+    '/api/motion-studio/capture': CHROMIUM_BIN,
+  },
   outputFileTracingExcludes: {
     '*': [
       'node_modules/playwright/**',
@@ -63,10 +80,84 @@ const nextConfig = {
       'node_modules/app-builder-bin/**',
       'node_modules/7zip-bin/**',
       'node_modules/**/*.map',
+      // --- Function bundle size control (Netlify 250 MB limit) ---
+      //
+      // The traced server bundle used to be ~773 MB, which is far over the
+      // Netlify function size limit. The function then fails to boot and every
+      // SSR route answers 502. The two dominant contributors were a webpack
+      // filesystem cache and Next.js' own build-time toolchain; neither is
+      // reachable from the production server, so both are excluded here.
+      //
+      // 1. Webpack filesystem cache. Remotion writes its bundler cache to
+      //    node_modules/.cache/webpack/remotion-production-<version>/ while
+      //    `next build` prerenders the studio compositions. The three .pack
+      //    files are 622 MB of build cache and have zero runtime value; the
+      //    file tracer picks them up only because they sit inside node_modules.
+      'node_modules/.cache/**',
+      // 2. Next.js' build toolchain. These are dependencies of the `next`
+      //    package, so the file tracer pulls them in, but the production
+      //    server never requires them: `next/dist/server/**` has no
+      //    require() of webpack/esbuild/rspack/typescript/postcss outside
+      //    next/dist/{build,compiled,dev}/** (Next uses its own inlined
+      //    copies of webpack, postcss and styled-jsx at runtime). Removing
+      //    them from a packaged bundle and booting it was verified to leave
+      //    every SSR route working.
+      'node_modules/webpack/**',
+      'node_modules/esbuild/**',
+      'node_modules/@esbuild/**',
+      'node_modules/@rspack/**',
+      'node_modules/typescript/**',
+      'node_modules/postcss/**',
+      'node_modules/lightningcss/**',
+      'node_modules/caniuse-lite/**',
+      'node_modules/terser/**',
+      // NOT excluded on purpose: playwright-core, chromium-bidi, @sparticuz/
+      // chromium and @crawlee/* ARE imported at runtime by the
+      // app/api/personalization/discover-assets route (src/server/
+      // browserDiscovery.ts and src/server/crawleeProvider.ts). They add only
+      // ~8 MB to the bundle, and the separate netlify/functions/browser-probe.js
+      // and netlify/functions/personalization-browser-discovery.js functions
+      // resolve them from the repository's node_modules, not from this
+      // traced bundle.
     ],
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // On-device background removal (@bg0/browser → @huggingface/transformers) imports `onnxruntime-node` for Node
+  // use. The app only runs it in the browser (a Web Worker uses onnxruntime-web), but webpack still resolves the
+  // import and then fails trying to parse onnxruntime-node's native `.node` binaries ("Module parse failed:
+  // Unexpected character" on bin/napi-v3/*/onnxruntime_binding.node) — which broke every Netlify build after the
+  // BG0 merge. Aliasing it to nothing is the documented Transformers.js + Next.js setup; nothing server-side
+  // uses onnxruntime-node.
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = { ...config.resolve.alias, 'onnxruntime-node$': false };
+    if (isServer) {
+      // Background removal only ever runs in the browser. The server (SSR) pass still walks the dynamic import,
+      // which pulled @huggingface/transformers' whole Node build (and sharp) into the server compile: extra
+      // memory, "Module not found" noise from sharp's optional native packages, and a bigger function bundle.
+      // Nothing on the server executes it, so resolve it to nothing there.
+      config.resolve.alias['@bg0/browser$'] = false;
+    }
+    return config;
+  },
+  // Motion Studio was removed; its old links open Motion Director.
+  // SmartWarmupAI studio: client-side routes of the embedded dashboard (public/smartwarmupai-app) serve its own index.html, and Help
+  // pages (public/smartwarmupai-help/**/index.html) resolve their directory URLs. Real files always win (afterFiles).
+  async rewrites() {
+    return {
+      afterFiles: [
+        { source: '/smartwarmupai-app/:path*', destination: '/smartwarmupai-app/index.html' },
+        { source: '/smartwarmupai-help', destination: '/smartwarmupai-help/index.html' },
+        { source: '/smartwarmupai-help/:path*', destination: '/smartwarmupai-help/:path*/index.html' },
+      ],
+    };
+  },
+  async redirects() {
+    return [
+      { source: '/studio/motion-studio', destination: '/studio/motion-director', permanent: false },
+      { source: '/studio/motion-studio/:path*', destination: '/studio/motion-director', permanent: false },
+    ];
   },
   allowedDevOrigins: [
     'http://localhost:3000',

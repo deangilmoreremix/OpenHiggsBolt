@@ -1,0 +1,6177 @@
+{
+  "meta": {
+    "description": "Facts extracted from the real source of each reseller app (variable NAMES only, never values). Used by the Reseller Academy app workshops. Do not hand-edit; regenerate with scripts/build-reseller-app-facts.mjs.",
+    "generatedBy": "scripts/build-reseller-app-facts.mjs",
+    "generatedAt": "2026-11-11",
+    "appCount": 38,
+    "issues": [
+      "ai-youtube-shorts-generator: python-cli — standard Stripe/Vercel path does not apply"
+    ]
+  },
+  "apps": {
+    "ai-headshot-studio": {
+      "id": "ai-headshot-studio",
+      "name": "AI Headshot Studio",
+      "category": "Image",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-headshot-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-headshot-generator",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "HEADSHOT_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_APP_URL",
+          "role": "other",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          "role": "database",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_SUPABASE_URL",
+          "role": "database",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "SUPABASE_SERVICE_ROLE_KEY",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "supabase-client-keys-used"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "default",
+            "name": null,
+            "credits": 50,
+            "amountCents": 900
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": []
+    },
+    "nano-banana-studio": {
+      "id": "nano-banana-studio",
+      "name": "Nano Banana Studio",
+      "category": "Image",
+      "destinationRepo": "https://github.com/deangilmoreremix/nano-banana-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/nano-banana-generator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NANO_BANANA_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "default",
+            "name": null,
+            "credits": 50,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/nano-banana-generator",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "seedance-v2-studio": {
+      "id": "seedance-v2-studio",
+      "name": "Seedance V2 Studio",
+      "category": "Video",
+      "destinationRepo": "https://github.com/deangilmoreremix/seedance-2-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/seedance-2-generator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "SEEDANCE_V2_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "default",
+            "name": null,
+            "credits": 50,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-clipping-studio": {
+      "id": "ai-clipping-studio",
+      "name": "AI Clipping Studio",
+      "category": "Video",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-clipping-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-clipping-generator",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "AICLIPS_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "default",
+            "name": null,
+            "credits": 50,
+            "amountCents": 900
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path."
+      ]
+    },
+    "ai-youtube-shorts-generator": {
+      "id": "ai-youtube-shorts-generator",
+      "name": "AI YouTube Shorts Generator",
+      "category": "Video",
+      "destinationRepo": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
+      "destinationStatus": "verified",
+      "appKind": "python-cli",
+      "factSource": "none",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
+      "licensePresent": true,
+      "stack": {},
+      "envVars": [],
+      "database": {
+        "prisma": false,
+        "host": null
+      },
+      "payment": {
+        "model": "not-found-in-source",
+        "plans": [],
+        "checkoutRoutes": [],
+        "webhookRoutes": [],
+        "eventsHandled": [],
+        "configFile": null
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": false
+      },
+      "buildCommand": null,
+      "notes": [
+        "Python command-line tool (requirements.txt + main.py). No Next.js app, no Stripe Checkout, no webhook route and no one-click Vercel deployment exist in the source."
+      ]
+    },
+    "easyveo-studio": {
+      "id": "easyveo-studio",
+      "name": "EasyVeo Studio",
+      "category": "Video",
+      "destinationRepo": "https://github.com/deangilmoreremix/veo4-video-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/veo4-video-generator",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "VEO31_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 100,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 250,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 600,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 2000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/webhook/stripe"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": []
+    },
+    "pet-product-studio": {
+      "id": "pet-product-studio",
+      "name": "Pet Product Studio",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/pet-product-studio",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/pet-product-studio",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "HEADSHOT_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path."
+      ]
+    },
+    "resale-photo-enhancer": {
+      "id": "resale-photo-enhancer",
+      "name": "Resale Photo Enhancer",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/resale-photo-enhancer",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/resale-photo-enhancer",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "HEADSHOT_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path."
+      ]
+    },
+    "blogger-cms": {
+      "id": "blogger-cms",
+      "name": "Blogger CMS",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/blogger-cms",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/blogger-cms",
+      "licensePresent": true,
+      "stack": {
+        "next": "16.2.3",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "starter",
+            "name": "Starter Pack",
+            "credits": 100,
+            "amountCents": 1000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path."
+      ]
+    },
+    "amazon-product-studio": {
+      "id": "amazon-product-studio",
+      "name": "Amazon Product Studio",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/amazon-product-studio",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/amazon-product-studio",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/amazon-product-studio",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-business-card": {
+      "id": "ai-business-card",
+      "name": "AI Business Card",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-business-card",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-business-card",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "starter",
+            "name": "Starter Pack",
+            "credits": 100,
+            "amountCents": 1000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "mailwise": {
+      "id": "mailwise",
+      "name": "MailWise",
+      "category": "Productivity",
+      "destinationRepo": "https://github.com/deangilmoreremix/mail-wise",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/mail-wise",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/billing/checkout",
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/billing/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/mail-wise",
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "my-podcast": {
+      "id": "my-podcast",
+      "name": "My Podcast",
+      "category": "Audio",
+      "destinationRepo": "https://github.com/deangilmoreremix/my-podcast",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/my-podcast",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/my-podcast",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-knowledge-base": {
+      "id": "ai-knowledge-base",
+      "name": "AI Knowledge Base",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-knowledge-base",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-knowledge-base",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-knowledge-base",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-royal-portrait": {
+      "id": "ai-royal-portrait",
+      "name": "AI Royal Portrait",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-royal-portrait",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-royal-portrait",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/billing/checkout",
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/billing/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-royal-portrait",
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-meme": {
+      "id": "ai-meme",
+      "name": "AI MEME",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-meme-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-meme-generator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "starter",
+            "name": "Starter Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-meme",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-real-estate-stager": {
+      "id": "ai-real-estate-stager",
+      "name": "AI Real Estate Stager",
+      "category": "Real Estate",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-real-estate-stager",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-real-estate-stager",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "starter",
+            "name": "Starter Pack",
+            "credits": 100,
+            "amountCents": 1000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-real-estate-stager",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "npx prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-logo": {
+      "id": "ai-logo",
+      "name": "AI Logo",
+      "category": "Design",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-logo-studio",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-logo-studio",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-logo-studio",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "oldphoto": {
+      "id": "oldphoto",
+      "name": "OldPhoto",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/old-photo-restore",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/old-photo-restore",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "HEADSHOT_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_THEME",
+          "role": "branding",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": null,
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "aitryon": {
+      "id": "aitryon",
+      "name": "AITryOn",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-tryon",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-tryon",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-tryon",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-professional-makeup-generator": {
+      "id": "ai-professional-makeup-generator",
+      "name": "AI Professional Makeup Generator",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-professional-makeup-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-professional-makeup-generator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-professional-makeup-generator",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-group-photo": {
+      "id": "ai-group-photo",
+      "name": "AI Group Photo",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-group-photo",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-group-photo",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GITHUB_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "VERCEL_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 100,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 250,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 600,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 2000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/webhook/stripe"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-group-photo",
+        "stripeWebhookPath": "/api/webhook/stripe",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-tattoo-try-on": {
+      "id": "ai-tattoo-try-on",
+      "name": "AI Tattoo Try-On",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-tattoo-try-on",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-tattoo-try-on",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-tattoo-try-on",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-hair-style-simulator": {
+      "id": "ai-hair-style-simulator",
+      "name": "AI Hair Style Simulator",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-hair-style-simulator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-hair-style-simulator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-hair-style-simulator",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-kids-to-adult-prediction": {
+      "id": "ai-kids-to-adult-prediction",
+      "name": "AI Kids-to-Adult Prediction",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-kid-to-adult-prediction",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-kid-to-adult-prediction",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-kid-to-adult-prediction",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-room-declutter": {
+      "id": "ai-room-declutter",
+      "name": "AI Room Declutter",
+      "category": "Real Estate",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-room-declutter",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-room-declutter",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-room-declutter",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-fitness-body-simulator": {
+      "id": "ai-fitness-body-simulator",
+      "name": "AI Fitness Body Simulator",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-fitness-body-simulator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-fitness-body-simulator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GITHUB_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "VERCEL_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 100,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 250,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 600,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 2000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-fitness-body-simulator",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-pet-portrait": {
+      "id": "ai-pet-portrait",
+      "name": "AI Pet Portrait",
+      "category": "Lifestyle",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-pet-portrait",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-pet-portrait",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-pet-portrait",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-kissing-video-generator": {
+      "id": "ai-kissing-video-generator",
+      "name": "AI Kissing Video Generator",
+      "category": "Video",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Kiss Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-kissing-video-generator",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "npx prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-travel-studio": {
+      "id": "ai-travel-studio",
+      "name": "AI Travel Studio",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-travel-studio",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-travel-studio",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-travel-studio",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "prompt-architect": {
+      "id": "prompt-architect",
+      "name": "Prompt Architect",
+      "category": "Productivity",
+      "destinationRepo": "https://github.com/deangilmoreremix/prompt-architect",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/prompt-architect",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/billing/checkout",
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/billing/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/prompt-architect",
+        "stripeWebhookPath": null,
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "clearmark-ai": {
+      "id": "clearmark-ai",
+      "name": "ClearMark AI",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/clearmark-ai",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/clearmark-ai",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/clearmark-ai",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-wedding-photo": {
+      "id": "ai-wedding-photo",
+      "name": "AI Wedding Photo",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-wedding-photo",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-wedding-photo",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/webhook/stripe"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-wedding-photo",
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "social-post": {
+      "id": "social-post",
+      "name": "Social Post",
+      "category": "Marketing",
+      "destinationRepo": "https://github.com/deangilmoreremix/social-post",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "destination",
+      "sourceRepoForFacts": "https://github.com/deangilmoreremix/social-post",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MU_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/billing/checkout",
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/billing/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/social-post",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "magicself-ai": {
+      "id": "magicself-ai",
+      "name": "MagicSelf AI",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/magicself-ai",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/magicself-ai",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/magicself-ai",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-resume-builder": {
+      "id": "ai-resume-builder",
+      "name": "AI Resume Builder",
+      "category": "Productivity",
+      "destinationRepo": null,
+      "destinationStatus": "unconfigured",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-resume-builder",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/webhook/stripe"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-resume-builder",
+        "stripeWebhookPath": "/api/webhook/stripe",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "geo-checker": {
+      "id": "geo-checker",
+      "name": "GEO Checker",
+      "category": "Business",
+      "destinationRepo": "https://github.com/deangilmoreremix/geo-checker",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/geo-checker",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 1000,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 2000,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 4000,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 10000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/checkout",
+          "/api/stripe/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/stripe/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/stripe/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/geo-checker",
+        "stripeWebhookPath": "/api/stripe/webhook",
+        "googleCallbackPath": "/api/auth/callback/google",
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    },
+    "ai-character-studio": {
+      "id": "ai-character-studio",
+      "name": "AI Character Studio",
+      "category": "Creative",
+      "destinationRepo": "https://github.com/deangilmoreremix/ai-character-studio",
+      "destinationStatus": "verified",
+      "appKind": "nextjs-saas",
+      "factSource": "upstream",
+      "sourceRepoForFacts": "https://github.com/SamurAIGPT/ai-character-studio",
+      "licensePresent": false,
+      "stack": {
+        "next": "16.2.6",
+        "nextAuth": true,
+        "prisma": true,
+        "stripe": true,
+        "supabaseJs": false
+      },
+      "envVars": [
+        {
+          "name": "DATABASE_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "DIRECT_URL",
+          "role": "database",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": false
+        },
+        {
+          "name": "GITHUB_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "MUAPIAPP_API_KEY",
+          "role": "ai",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "role": "auth",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "role": "auth",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+          "role": "stripe",
+          "secret": false,
+          "clientVisible": true,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "role": "stripe",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        },
+        {
+          "name": "VERCEL_TOKEN",
+          "role": "cloud-export",
+          "secret": true,
+          "clientVisible": false,
+          "inEnvExample": false,
+          "referencedInCode": true
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "role": "webhook",
+          "secret": false,
+          "clientVisible": false,
+          "inEnvExample": true,
+          "referencedInCode": true
+        }
+      ],
+      "database": {
+        "prisma": true,
+        "prismaMigrationsPresent": false,
+        "supabaseMigrationsPresent": false,
+        "host": "any-postgres-via-DATABASE_URL"
+      },
+      "payment": {
+        "model": "credit-packs-one-time",
+        "plans": [
+          {
+            "key": "basic",
+            "name": "Basic Pack",
+            "credits": 100,
+            "amountCents": 500
+          },
+          {
+            "key": "standard",
+            "name": "Standard Pack",
+            "credits": 250,
+            "amountCents": 1000
+          },
+          {
+            "key": "pro",
+            "name": "Professional Pack",
+            "credits": 600,
+            "amountCents": 2000
+          },
+          {
+            "key": "business",
+            "name": "Business Pack",
+            "credits": 2000,
+            "amountCents": 5000
+          }
+        ],
+        "checkoutRoutes": [
+          "/api/billing/checkout",
+          "/api/checkout"
+        ],
+        "webhookRoutes": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "eventsHandled": [
+          "checkout.session.completed"
+        ],
+        "configFile": "src/lib/config.js",
+        "webhookRoutesWithSignatureCheck": [
+          "/api/billing/webhook",
+          "/api/webhook/stripe"
+        ],
+        "recommendedWebhookPath": "/api/billing/webhook"
+      },
+      "readme": {
+        "oneClickDeployUrl": "https://vercel.com/new/clone?repository-url=https://github.com/SamurAIGPT/ai-character-studio",
+        "stripeWebhookPath": null,
+        "googleCallbackPath": null,
+        "dbPushMentioned": true
+      },
+      "buildCommand": "prisma generate && next build",
+      "notes": [
+        "More than one webhook-style route exists in the source; register only the recommended path.",
+        "Destination repo is attribution-only; facts were read from the upstream source and must be re-checked once source is published.",
+        "No LICENSE file in the source repo used for these facts — redistribution rights pending owner confirmation."
+      ]
+    }
+  }
+}

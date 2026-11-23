@@ -2,6 +2,7 @@ import type { AssetRole, DiscoveredAsset, PersonalizationVisionAnalysis, Persona
 import { editSmartVideoGoImage } from './imageEditApi'
 import { IMAGE_EDIT_OPERATIONS, getAssetRecipe, getSourceAssetRecipe, getOperation, resolveEditorAssetKind, type EditorOperationId } from './imageEditRegistry'
 import { analyzePersonalizationImages, validatePersonalizationImageEdit } from './responsesVisionApi'
+import { normalizeImageDataUrl } from './normalizeImage'
 
 export type BatchVideoReadyContext = {
   businessName?: string
@@ -30,6 +31,10 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 async function prepareDataUrl(url: string): Promise<string> {
+  return normalizeImageDataUrl(await readDataUrl(url))
+}
+
+async function readDataUrl(url: string): Promise<string> {
   if (url.startsWith('data:')) return url
   if (url.startsWith('blob:')) {
     const response = await fetch(url)

@@ -1,71 +1,96 @@
 # Licensing Models & Realistic Passive-Income Expectations
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
-
-
-
-> Understand royalty tiers, extended licensing, and long-term passive income projections for stock catalogs.
-
-**Track:** AI Stock Content & Licensing  
-**Time:** ~35 minutes  
-**Prerequisites:** [01: What Sells on Stock Marketplaces](01-what-actually-sells-on-stock-marketplaces.md), [02: Batch-Generating a Catalog](02-batch-generating-a-licensable-catalog.md)  
-
-## The Problem
-
-New stock contributors often have unrealistic expectations: they expect to upload 10 images and immediately earn $1,000/month. When earnings start at $0.33 per download, they get discouraged and abandon their catalog.
-
-Conversely, some creators don't understand **Licensing Types** (Standard Royalty Free vs. Extended Commercial Licensing) and accidentally miss out on high-value **$80 to $250+ single-license payouts** when ad agencies use their images for billboard or broadcast campaigns.
-
-Understanding realistic passive-income math and licensing structures is essential for long-term catalog growth.
+> **Time:** about 15 minutes. **You will finish with:** non-exclusive contributor accounts, extended licensing enabled, and a written earnings projection for your catalog.
 
 ---
 
-## The Concept
+## Before you start
 
-Stock marketplaces operate on two distinct licensing models:
+New contributors expect to upload 10 images and earn $1,000/month. When earnings start at $0.33 per download they get discouraged and quit. Others misunderstand licensing types and miss **$80 to $250+ single-license payouts** when an ad agency uses an image on a billboard or in a broadcast campaign.
 
-```
-Standard Subscription License ($0.33 - $0.99 per download) vs. Extended Commercial License ($25.00 - $250.00+ per download)
-```
+Two models exist: **Standard Royalty-Free (RF)** for digital use (websites, social, blogs, internal slides) at about **$0.33 to $1.20** per download, and **Extended / Enhanced** for physical resale products (book covers, billboards, TV ads, retail packaging) at **$25 to $250+** per download. Uploading the same non-exclusive portfolio to several platforms (Adobe Stock, Freepik, Wirestock) is called multi-platform syndication and multiplies one asset pool's reach.
 
-### Royalty Structures:
+You will need: lessons 1 and 2 finished, a few images ready to upload, and [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md). Studios are only needed if you generate more assets: **Image Studio** and **Video Studio** in SmartVideo GO AI.
 
-1. **Standard Royalty-Free (RF) License:** Allows digital use (websites, social media, blogs, internal slides). Generates small, high-frequency recurring payouts (**$0.33 to $1.20** per download).
-2. **Extended / Enhanced License:** Required when a client uses the asset on physical resale products (book covers, billboards, TV ads, retail packaging). Generates large, high-margin payouts (**$25 to $250+** per download).
-3. **Multi-Platform Syndication:** Uploading the same non-exclusive stock portfolio across multiple platforms (Adobe Stock + Freepik + Wirestock) multiplies your earning potential from a single asset pool.
+## Step by step
 
----
+### 1. Register non-exclusive accounts
 
-## Do It
+Register non-exclusive contributor profiles on Adobe Stock and Freepik. Non-exclusive status lets you syndicate the exact same portfolio across several portals.
 
-### Step 1: Set Up Non-Exclusive Contributor Accounts
-Register non-exclusive contributor profiles on Adobe Stock and Freepik. Non-exclusive status allows you to syndicate the exact same portfolio across multiple portals.
+**You should see:** two contributor dashboards, both showing non-exclusive status.
 
-### Step 2: Enable Extended Licensing Options
-Check the **"Allow Extended / Commercial Licensing"** box in your contributor settings to ensure your assets are eligible for high-ticket commercial downloads.
+**If not:** menus move; follow the current screen, and read each portal's contributor terms before choosing a status.
 
-### Step 3: Run the Catalog Earning Projection
-Calculate monthly earnings based on portfolio scale and average downloads per asset per month (RPA = Revenue Per Asset):
+### 2. Enable extended licensing
 
-* **RPA Benchmark:** ~$0.50 to $1.50 per image per year.
-* **Portfolio of 500 Images:** ~50–100 downloads/month = **$150 – $350/month**.
-* **Portfolio of 2,000 Images:** ~200–400 downloads/month = **$600 – $1,400/month** true passive income.
+In your contributor settings, check the **"Allow Extended / Commercial Licensing"** box so your assets qualify for high-ticket commercial downloads.
 
----
+**You should see:** the option saved as enabled.
 
-## Worked Example
+**If not:** look through the account or portfolio settings; the option may sit under a differently named heading.
 
-**12-Month Financial Performance of "Apex Commercial Stock Portfolio"**
+### 3. Open the calculator
 
-* **Catalog Size:** 1,200 non-exclusive commercial stock photos & motion clips.
-* **Total Annual Downloads:** 2,450 downloads.
-* **Standard RF Downloads:** 2,410 downloads @ $0.42 avg = **$1,012.20**.
-* **Extended Licenses (Billboards & Book Covers):** 40 Extended Licenses @ $45.00 avg = **$1,800.00**.
-* **Total Annual Passive Earnings:** **$2,812.20** (100% passive recurring income after initial upload).
+Open [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md), which holds royalty calculators, syndication trackers and portfolio growth models.
 
----
+**You should see:** the calculator ready to take your numbers.
 
-## Compare Tools
+**If not:** check the link path as written, then use any spreadsheet if needed.
+
+### 4. Project your earnings
+
+Use RPA (Revenue Per Asset), benchmarked at about $0.50 to $1.50 per image per year, and these portfolio benchmarks:
+
+1. **500 images:** about 50 to 100 downloads/month = **$150 to $350/month**.
+2. **2,000 images:** about 200 to 400 downloads/month = **$600 to $1,400/month**.
+
+Enter your own catalog size and write down a low and a high monthly figure.
+
+**You should see:** a low and a high monthly estimate for your catalog.
+
+**If not:** if the numbers look far above the benchmarks, recheck your downloads per asset assumption.
+
+### 5. Compare Standard against Extended
+
+Calculate the revenue gap between 100 Standard RF downloads and 5 Extended Commercial downloads, using the ranges above ($0.33 to $1.20 per RF download, $25 to $250+ per Extended).
+
+**You should see:** a few Extended licenses can rival or beat many standard downloads.
+
+**If not:** multiply each count by the matching per-download range and compare low to low, high to high.
+
+### 6. Syndicate a batch
+
+Upload a 20-image commercial batch to both portals (optionally through a distributor such as Wirestock). Then write a reinvestment plan: put early earnings into API compute credits to grow the catalog from 100 to 1,000+ assets over 6 months.
+
+**You should see:** the batch pending or live on two portals, and a written growth plan.
+
+**If not:** check each portal's rejection notes, and fix and resubmit the flagged images.
+
+## Check yourself
+
+* [ ] I have non-exclusive profiles on two portals.
+* [ ] Extended licensing is enabled in my settings.
+* [ ] I can explain Standard RF against Extended in one sentence.
+* [ ] I have a low and high monthly projection that matches the benchmarks.
+
+## Common mistakes
+
+* Expecting $1,000/month from 10 images.
+* Leaving Extended licensing switched off and missing $25 to $250+ payouts.
+* Going exclusive to one portal and giving up syndication.
+* Spending earnings elsewhere instead of expanding the catalog.
+
+## Go further
+
+**Worked example, "Apex Commercial Stock Portfolio", 12 months:**
+
+* 1,200 non-exclusive stock photos and motion clips, 2,450 total downloads.
+* Standard RF: 2,410 downloads at $0.42 average = **$1,012.20**.
+* Extended: 40 licenses (billboards, book covers) at $45.00 average = **$1,800.00**.
+* Total: **$2,812.20** annual passive earnings after initial upload (an example, not a promise).
+
+**Compare platforms:**
 
 | Platform / Syndicator | Licensing Model | Average Monthly RPA | Best For |
 |---|---|---|---|
@@ -73,41 +98,12 @@ Calculate monthly earnings based on portfolio scale and average downloads per as
 | **Freepik Premium** | Non-Exclusive Subscriber Pool | $0.30 - $0.70 / image / yr | High-volume download velocity |
 | **Wirestock** | Multi-Platform Automated Distributor | Takes 15% split | Single-click syndication to 6+ stock sites |
 
----
+**Exercises:**
 
-## Launch It
+1. Easy: open [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md) and model passive earnings for a 500-asset portfolio.
+2. Medium: calculate the difference in revenue between 100 Standard RF downloads and 5 Extended Commercial downloads.
+3. Hard: set up non-exclusive contributor accounts on 2 major portals and syndicate a 20-image commercial batch across both.
 
-* **Re-invest Earnings into Catalog Expansion:** Re-invest early stock earnings into automated API compute credits to expand your catalog from 100 to 1,000+ assets over 6 months.
+**Template:** [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md) for royalty calculators, multi-platform syndication trackers and portfolio growth models.
 
----
-
-## Exercises
-
-1. **Easy:** Open [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md) and model passive earnings for a 500-asset portfolio.
-2. **Medium:** Calculate the difference in revenue between 100 Standard RF downloads vs. 5 Extended Commercial downloads.
-3. **Hard:** Set up non-exclusive contributor accounts on 2 major portals and syndicate a 20-image commercial batch across both.
-
----
-
-## Templates
-
-* [`templates/stock-licensing-calculator.md`](templates/stock-licensing-calculator.md) — Royalty calculators, multi-platform syndication trackers, and portfolio growth models.
-
----
-
-[← Batch-Generating a Catalog](02-batch-generating-a-licensable-catalog.md) · [Track Overview](README.md)
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+**Produce this in SmartVideo GO AI:** Image Studio (anchors, character sheets, product and brand shots), Video Studio (image-to-video motion), AI Influencer Studio (consistent recurring characters), Storyboard / Campaign Planner (batch matrices and briefs), Lip-Sync Studio (voice and mouth-sync). Workflow: Learn, See Example, Use Template, Generate.

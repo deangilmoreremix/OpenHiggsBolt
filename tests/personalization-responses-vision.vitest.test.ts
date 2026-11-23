@@ -141,7 +141,8 @@ describe('POST /api/personalization/image-smart-edit', () => {
       const body = JSON.parse(String(init?.body || '{}'))
       expect(body.tools?.[0]?.type).toBe('image_generation')
       expect(body.tools?.[0]?.model).toBe('gpt-image-2.5-sunburst')
-      expect(body.tools?.[0]?.input_fidelity).toBe('high')
+      // gpt-image-2.5 models reject input_fidelity, so it is never forwarded.
+      expect(body.tools?.[0]).not.toHaveProperty('input_fidelity')
       return {
         ok: true,
         status: 200,

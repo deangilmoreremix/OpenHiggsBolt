@@ -29,4 +29,8 @@ export const BUSINESS_NICHES: BusinessNiche[] = [
   { key: 'sports-outdoors', label: 'Sports / Outdoors' },
   { key: 'general-business', label: 'General Business' },
   { key: 'healthcare-medical', label: 'Healthcare / Medical' },
+  { key: 'home-contractors', label: 'Home Contractors' },
+  { key: 'auto-detailing', label: 'Auto Detailing' },
+  { key: 'pet-services', label: 'Pet Services' },
+  { key: 'professional-services', label: 'Professional Services' },
 ]

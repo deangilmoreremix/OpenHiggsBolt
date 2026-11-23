@@ -93,31 +93,34 @@ describe('discover-assets — the browser escalation switch', () => {
     })
   }
 
-  it('escalates to the browser phase when the free layers were not enough', async () => {
+  it('always dispatches to the background worker for full discovery', async () => {
     delete process.env.ENABLE_BROWSER_DISCOVERY
     freeLayersWereNotEnough()
 
     const res = await post()
     const body = await res.json()
-    expect(body.status).toBe('processing')
-    expect(body.browserQueued).toBe(true)
-    // The worker was actually asked to do the browser work.
+    // The HTTP handler never runs the crawl synchronously. It accepts the job
+    // and returns pending immediately; the worker completes out of band and
+    // decides internally whether to escalate to the browser phase.
+    expect(body.status).toBe('pending')
+    expect(body.browserQueued).toBe(false)
     expect(fetchMock).toHaveBeenCalled()
     expect(String((fetchMock.mock.calls[0] as any[])[0])).toContain(
       'personalization-browser-discovery',
     )
   })
 
-  it('does NOT escalate to the browser phase when ENABLE_BROWSER_DISCOVERY=false', async () => {
+  it('always dispatches to the background worker even when browser escalation is off', async () => {
     process.env.ENABLE_BROWSER_DISCOVERY = 'false'
     freeLayersWereNotEnough()
 
     const res = await post()
     const body = await res.json()
+    // The worker is always dispatched: it runs the free layers and only
+    // skips the browser phase when the flag is off.
+    expect(body.status).toBe('pending')
     expect(body.browserQueued).toBe(false)
-    expect(body.status).not.toBe('processing')
-    // The worker was never called: the escalation is switched off.
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalled()
   })
 
   it('derives the worker URL from the request origin when NEXT_PUBLIC_SITE_URL is unset', async () => {
@@ -130,7 +133,8 @@ describe('discover-assets — the browser escalation switch', () => {
 
     const res = await post()
     const body = await res.json()
-    expect(body.browserQueued).toBe(true)
+    expect(body.status).toBe('pending')
+    expect(body.browserQueued).toBe(false)
     expect(fetchMock).toHaveBeenCalled()
     const workerUrl = String((fetchMock.mock.calls[0] as any[])[0])
     expect(workerUrl).toContain('personalization-browser-discovery')
@@ -146,7 +150,7 @@ describe('discover-assets — the browser escalation switch', () => {
     expect(workerUrl.startsWith('https://configured.example/')).toBe(true)
   })
 
-  it('completes from the free layers when they were enough', async () => {
+  it('always dispatches to the background worker, even when free layers were enough', async () => {
     delete process.env.ENABLE_BROWSER_DISCOVERY
     runFastDiscoveryMock.mockResolvedValue({
       result: {
@@ -166,9 +170,12 @@ describe('discover-assets — the browser escalation switch', () => {
 
     const res = await post()
     const body = await res.json()
-    expect(body.status).toBe('complete')
+    // The HTTP handler never runs the crawl synchronously. It accepts the job
+    // and returns pending immediately; the worker completes out of band.
+    expect(body.status).toBe('pending')
     expect(body.browserQueued).toBe(false)
-    expect(body.count).toBe(1)
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(body.discoveredAssets).toEqual([])
+    expect(body.count).toBe(0)
+    expect(fetchMock).toHaveBeenCalled() // background dispatch always fires
   })
 })

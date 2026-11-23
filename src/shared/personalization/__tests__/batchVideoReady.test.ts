@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { makeDiscoveredAssetVideoReady } from '../image-editor/batchVideoReady'
 
+// jsdom cannot decode images; the PNG re-encode is covered in normalizeImage.test.ts.
+vi.mock('../image-editor/normalizeImage', () => ({ normalizeImageDataUrl: async (dataUrl: string) => dataUrl }))
+
 describe('makeDiscoveredAssetVideoReady', () => {
   it('uses a fallback message when validation returns empty issues and empty summary', async () => {
     const originalFetch = globalThis.fetch

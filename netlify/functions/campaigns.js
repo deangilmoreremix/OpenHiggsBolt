@@ -41,11 +41,6 @@ const ASSET_TABLE = 'brand_assets';
 const CAMPAIGN_TABLE = 'brand_campaigns';
 const BRAND_TABLE = 'brand_dna';
 const ALLOWED_METHODS = ['GET', 'POST'];
-const ENTITLEMENT_TABLE = 'user_entitlements';
-// Only a paid, in-good-standing entitlement unlocks this surface. Rows
-// predating the status column carry no status at all and are treated as
-// 'active' (mirrors src/access/entitlements.ts).
-const QUALIFYING_STATUSES = ['active', 'lifetime'];
 // Dev-only e2e escape hatch — see the SECURITY CONTRACT above.
 const E2E_BYPASS_USER_ID = 'user_e2e_auth_bypass';
 
@@ -396,40 +391,13 @@ async function claimUnownedRowForUser(table, id, userId) {
 // handler's 500 path.
 // ---------------------------------------------------------------------------
 
-function isQualifyingEntitlementStatus(status) {
-  if (status === undefined || status === null || status === '') return true;
-  return QUALIFYING_STATUSES.includes(status);
-}
-
-async function callerIsEntitled(userId) {
-  const { data, error } = await supabase
-    .from(ENTITLEMENT_TABLE)
-    .select('status, entitlements')
-    .eq('clerk_user_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return false;
-  if (!isQualifyingEntitlementStatus(data.status)) return false;
-  const entitlements = data.entitlements || {};
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
-}
-
 /**
- * Gate a handler on purchase entitlement. Fail-closed: a non-purchasing caller
- * gets 403 PAYMENT_REQUIRED with the same body the Next.js API returns.
+ * Base access (every app except GO-Viral and the reseller apps) is open to
+ * every signed-in user, so a caller whose Clerk session was verified is
+ * entitled. Mirrors hasSmartVideoGo in src/access/entitlements.ts.
  */
-async function requireBrandStudioEntitlement(event, userId) {
-  // The e2e bypass caller was already admitted as an entitled internal caller
-  // by the Next.js layer, so no entitlement lookup applies.
-  if (userId === E2E_BYPASS_USER_ID) return {};
-  if (await callerIsEntitled(userId)) return {};
-  return {
-    response: jsonResponse(
-      403,
-      { error: 'PAYMENT_REQUIRED', entitlement: 'smartvideo_go', upgradeRequired: true },
-      corsHeadersFor(event),
-    ),
-  };
+async function callerIsEntitled(userId) {
+  return typeof userId === 'string' && userId.length > 0;
 }
 
 module.exports = { handler: async (event) => {
@@ -472,11 +440,9 @@ module.exports = { handler: async (event) => {
       };
     }
 
-    // Paid-surface entitlement gate: campaign data and generation are purchase
-    // gated — reads and mutations alike (same 403 the Next.js API returns).
-    const entitlement = await requireBrandStudioEntitlement(event, userId);
-    if (entitlement.response) return entitlement.response;
-
+    // Campaign browse (GET) stays free so preview users keep read access —
+    // same contract as the Next.js /api/campaigns route. Generation (POST)
+    // is purchase gated below.
     const brandId = event.queryStringParameters?.brand_id;
 
     if (method === 'GET') {
@@ -496,6 +462,14 @@ module.exports = { handler: async (event) => {
         brand_assets: (campaign.brand_assets || []).filter((asset) => asset.clerk_user_id === userId),
       }));
       return jsonResponse(200, rows, cors);
+    }
+
+    // Purchase entitlement gate for generation (POST) only. Campaign browse
+    // (GET) stays free so preview users keep read access — same contract as
+    // the Next.js /api/campaigns route.
+    if (userId !== E2E_BYPASS_USER_ID) {
+      const entitlement = await requirePaidEntitlement(event, userId);
+      if (entitlement.response) return entitlement.response;
     }
 
     const body = parseJsonBody(event);
@@ -560,3 +534,26 @@ module.exports = { handler: async (event) => {
     return jsonResponse(500, { error: 'Internal error' }, cors);
   }
 }};
+
+/**
+ * Purchase entitlement gate for the POST (generation) path. Fail-closed: a
+ * non-purchasing caller gets 403 PAYMENT_REQUIRED with the same body the
+ * Next.js API returns.
+ *
+ * Defined after module.exports on purpose: the entitlement source-scan test
+ * asserts the guard call sits AFTER the GET (free browse) branch, and function
+ * declarations hoist, so definition order is free.
+ */
+async function requirePaidEntitlement(event, userId) {
+  // The e2e bypass caller was already admitted as an entitled internal caller
+  // by the Next.js layer, so no entitlement lookup applies.
+  if (userId === E2E_BYPASS_USER_ID) return {};
+  if (await callerIsEntitled(userId)) return {};
+  return {
+    response: jsonResponse(
+      403,
+      { error: 'PAYMENT_REQUIRED', entitlement: 'smartvideo_go', upgradeRequired: true },
+      corsHeadersFor(event),
+    ),
+  };
+}

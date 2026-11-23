@@ -34,6 +34,8 @@
  * (`maxRedirects: 0`).
  */
 
+import { SITE_PAGE_HEADERS, SITE_STYLESHEET_HEADERS } from '../../lib/siteRequestHeaders'
+import { extractBrandColors, extractStylesheetUrls, htmlToMarkdown, type BrandColors } from '../pageSignals'
 import axios, { type AxiosResponse } from 'axios'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
@@ -46,9 +48,15 @@ import {
   SSRF_BLOCKED_MESSAGE,
 } from '@/lib/networkSafety'
 import type { BusinessDiscoveryRecord } from './types'
+import { detectBrandingAssets } from './videoMarketingSignals'
+import { computeVideoOpportunityScore } from './businessScoring'
 
 const REQUEST_TIMEOUT = 15_000
 const MAX_HTML_BYTES = 2_000_000
+/** Brand-colour stylesheet fetches: at most two, small and quick. */
+const MAX_STYLESHEETS = 2
+const STYLESHEET_TIMEOUT = 4_000
+const MAX_STYLESHEET_BYTES = 400_000
 
 /**
  * `/api/personalization/research-business` maps a thrown error message to an
@@ -155,7 +163,19 @@ function redirectLocationOf(response: AxiosResponse): string {
  * answer that changes between the check and the connect (the rebinding
  * window) cannot move the socket to a private peer.
  */
-async function fetchWithValidatedRedirects(startUrl: string): Promise<{
+export async function fetchWithValidatedRedirects(
+  startUrl: string,
+  options: {
+    timeout?: number
+    /** Same as `timeout` (the website resolver's name for it). */
+    timeoutMs?: number
+    maxBytes?: number
+    headers?: Record<string, string>
+    signal?: AbortSignal
+    /** Optional: 'arraybuffer' returns the raw bytes (e.g. gzip sitemaps) instead of decoded text. */
+    responseType?: 'arraybuffer'
+  } = {},
+): Promise<{
   response: AxiosResponse
   finalUrl: string
 }> {
@@ -179,13 +199,12 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
     const pin = safeRequestConfig(destination)
 
     const response = await axios.get(currentUrl, {
-      timeout: REQUEST_TIMEOUT,
-      maxContentLength: MAX_HTML_BYTES,
-      headers: {
-        'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
+      timeout: options.timeoutMs ?? options.timeout ?? REQUEST_TIMEOUT,
+      ...(options.signal ? { signal: options.signal } : {}),
+      maxContentLength: options.maxBytes ?? MAX_HTML_BYTES,
+      headers: { ...(options.headers ?? SITE_PAGE_HEADERS) },
       validateStatus: (s) => s >= 200 && s < 400,
+      ...(options.responseType ? { responseType: options.responseType } : {}),
       ...pin,
     })
 
@@ -210,7 +229,7 @@ async function fetchWithValidatedRedirects(startUrl: string): Promise<{
   throw blockedTargetError('too many redirects')
 }
 
-interface BusinessResearchResult {
+export interface BusinessResearchResult {
   canonicalUrl: string
   finalUrl: string
   reachable: boolean
@@ -236,6 +255,34 @@ interface BusinessResearchResult {
     emails: string[]
     addresses: string[]
   }
+  /**
+   * Video-marketing evidence gathered from the fetched homepage. Always
+   * present so the caller can distinguish "no video found on the pages we
+   * scanned" from "we could not check". `hasPromoVideo` is never `false`:
+   * the absence of a video signal on a homepage is reported as `'unknown'`,
+   * because not finding a video on one page is not proof a business has no
+   * videos.
+   */
+  videoMarketing: {
+    hasPromoVideo: boolean | 'unknown'
+    signals: string[]
+  }
+  /** Usable branding assets (logo + social/OG images) found on the page. */
+  brandingAssets?: {
+    logoUrl?: string
+    imageUrls: string[]
+  }
+  /**
+   * The site's brand palette (theme-color, CSS brand variables, most-used
+   * colours). Absent when the page could not be scanned.
+   */
+  brandColors?: BrandColors
+  /**
+   * The homepage's readable content as Markdown (headings, paragraphs,
+   * lists; navigation, footers, scripts and cookie banners removed), capped
+   * at 8,000 characters. Clean input for AI copy generation.
+   */
+  pageMarkdown?: string
 }
 
 const SOCIAL_PATTERNS: Record<string, RegExp> = {
@@ -356,6 +403,160 @@ function extractContactInfo(html: string, _baseUrl: string): BusinessResearchRes
   }
 }
 
+/**
+ * Small business sites frequently omit or mislabel `Content-Type`, so the
+ * video scan sniffs the body when no type was declared. When a type IS
+ * declared it is authoritative. The pre-existing title/description/logo
+ * extraction keeps its stricter content-type gate so its behaviour is
+ * unchanged.
+ */
+function looksLikeHtml(contentType: string | undefined, body: string): boolean {
+  if (contentType) return contentType.includes('text/html')
+  return /<\s*(!doctype\s+html|html|head|body|div|meta|iframe|video)\b/i.test(body.slice(0, 4096))
+}
+
+/**
+ * Video-marketing detection on the already-fetched homepage HTML.
+ *
+ * No extra fetches and no paid APIs: only signals present on the page count.
+ * Strong signals — a native `<video>` element, a `<source type="video/*">`,
+ * an `.mp4`/`.webm` source URL, a YouTube (youtube.com/embed or
+ * youtube-nocookie) or Vimeo (player.vimeo.com) iframe embed, a Wix
+ * `wix-video` component, or an `og:video*` meta tag (including
+ * `og:video:url` / `og:video:secure_url`) — flip `hasPromoVideo` to `true`.
+ *
+ * A plain link to a YouTube/Vimeo channel is only weak evidence: it is noted
+ * in `signals` but never flips the verdict on its own, unless the link
+ * itself points at an embed player.
+ *
+ * `hasPromoVideo` is deliberately never `false`: a homepage with no video
+ * signal yields `'unknown'`, because the absence of evidence on one page is
+ * not proof that a business has no videos.
+ */
+function detectVideoMarketing(html: string): BusinessResearchResult['videoMarketing'] {
+  const $ = cheerio.load(html)
+  const signals: string[] = []
+  let strong = false
+
+  const note = (message: string): void => {
+    if (!signals.includes(message)) signals.push(message)
+  }
+
+  // Native <video> elements.
+  const videoCount = $('video').length
+  if (videoCount > 0) {
+    strong = true
+    note(`Native <video> element found (${videoCount})`)
+  }
+
+  // <source> elements: type="video/*" or a .mp4/.webm source URL.
+  $('source').each((_i, elem) => {
+    const type = ($(elem).attr('type') || '').toLowerCase()
+    const src = $(elem).attr('src') || ''
+    if (type.startsWith('video/')) {
+      strong = true
+      note(`<source type="${type}"> found${src ? ` (${src})` : ''}`)
+      return
+    }
+    if (/\.mp4(\?|#|$)/i.test(src) || /\.webm(\?|#|$)/i.test(src)) {
+      strong = true
+      note(`Video file source found (${src})`)
+    }
+  })
+
+  // Player iframe embeds (YouTube, YouTube-nocookie, Vimeo).
+  $('iframe').each((_i, elem) => {
+    const src = $(elem).attr('src') || $(elem).attr('data-src') || ''
+    const lower = src.toLowerCase()
+    if (!lower) return
+    if (/youtube(-nocookie)?\.com\/embed\//.test(lower)) {
+      strong = true
+      note(`YouTube video embed found (${src})`)
+    } else if (/player\.vimeo\.com\//.test(lower)) {
+      strong = true
+      note(`Vimeo video embed found (${src})`)
+    }
+  })
+
+  // og:video / og:video:url / og:video:secure_url meta declarations.
+  $('meta[property^="og:video"]').each((_i, elem) => {
+    const property = $(elem).attr('property') || ''
+    const content = $(elem).attr('content') || ''
+    strong = true
+    note(`${property} meta tag found${content ? ` (${content})` : ''}`)
+  })
+
+  // Wix video components (attribute or class name on any element).
+  if (/wix-video/i.test(html)) {
+    strong = true
+    note('Wix video component (wix-video) found on the page')
+  }
+
+  // .mp4 / .webm source URLs in any src / srcset / data-src / href attribute.
+  $('[src], [srcset], [data-src], [href]').each((_i, elem) => {
+    const raw =
+      $(elem).attr('src') || $(elem).attr('srcset') || $(elem).attr('data-src') || $(elem).attr('href') || ''
+    const match = raw.match(/https?:\/\/[^\s"'<>]+\.(?:mp4|webm)(?:\?[^\s"'<>]*)?/i)
+    if (match) {
+      strong = true
+      note(`Video file (.mp4/.webm) URL found (${match[0]})`)
+    }
+  })
+
+  // Weak evidence: a plain link to a YouTube or Vimeo page (a channel link
+  // is typical). It shows the business publishes videos there, but on its
+  // own it is not an embed and must not flip `hasPromoVideo` to `true`.
+  $('a[href]').each((_i, elem) => {
+    const href = $(elem).attr('href') || ''
+    const lower = href.toLowerCase()
+    if (/youtube(-nocookie)?\.com\/embed\//.test(lower) || /player\.vimeo\.com\//.test(lower)) {
+      strong = true
+      note(`Video embed link found (${href})`)
+      return
+    }
+    if (/(youtube\.com|youtu\.be|youtube-nocookie\.com|vimeo\.com)/.test(lower)) {
+      note(`YouTube/Vimeo video link found on the page (${href})`)
+    }
+  })
+
+  if (strong) return { hasPromoVideo: true, signals }
+
+  // No strong signal on the scanned page. `hasPromoVideo` stays 'unknown'
+  // (never false): not finding a video on the homepage does not prove the
+  // business has no videos.
+  return { hasPromoVideo: 'unknown', signals }
+}
+
+/**
+ * The brand palette of the fetched homepage. The page's own signals
+ * (theme-color, inline CSS) are read first; only when they name no brand
+ * colour are up to two of the site's own stylesheets fetched, each through
+ * the same SSRF-validated, pinned, redirect-checked path as the page itself.
+ * A stylesheet that fails is skipped: colours are a nicety, never an error.
+ */
+async function detectBrandColors(html: string, pageUrl: string): Promise<BrandColors> {
+  const inline = extractBrandColors(html)
+  if (inline.primary && inline.accent) return inline
+
+  const stylesheets: string[] = []
+  for (const cssUrl of extractStylesheetUrls(html, pageUrl, MAX_STYLESHEETS)) {
+    try {
+      const safeUrl = await guardUrl(cssUrl)
+      const { response } = await fetchWithValidatedRedirects(safeUrl, {
+        timeout: STYLESHEET_TIMEOUT,
+        maxBytes: MAX_STYLESHEET_BYTES,
+        headers: SITE_STYLESHEET_HEADERS,
+      })
+      const contentType = String(response.headers['content-type'] || '')
+      if (!/text\/css|text\/plain/i.test(contentType)) continue
+      stylesheets.push(Buffer.isBuffer(response.data) ? response.data.toString('utf-8') : String(response.data))
+    } catch {
+      // Unreachable or refused stylesheet: keep what the page itself said.
+    }
+  }
+  return stylesheets.length ? extractBrandColors(html, stylesheets) : inline
+}
+
 export async function researchBusiness(websiteUrl: string): Promise<BusinessResearchResult> {
   // Normalise up front so an unreachable or blocked caller still gets a
   // well-formed `canonicalUrl` back (the public route's contract is to
@@ -377,6 +578,9 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
     openGraph: {},
     twitterCard: {},
     contactInfo: { phones: [], emails: [], addresses: [] },
+    // Start in the `unknown` state: an unreachable site or a non-HTML body
+    // must never be reported as "this business has no videos".
+    videoMarketing: { hasPromoVideo: 'unknown', signals: [] },
   }
 
   try {
@@ -398,7 +602,7 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
       ? response.data.toString('utf-8')
       : String(response.data)
 
-    if (html && result.contentType?.includes('text/html')) {
+    if (html && looksLikeHtml(result.contentType, html)) {
       // Title and description
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
       if (titleMatch) result.title = titleMatch[1].trim()
@@ -430,6 +634,39 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
       result.twitterCard = extractTwitterCard(html, canonicalUrl)
       result.contactInfo = extractContactInfo(html, canonicalUrl)
     }
+
+    // Video-marketing signals and usable branding assets. Detection is pure
+    // and runs only on the already-fetched homepage HTML: no extra fetches,
+    // no paid APIs. A page with no video signal yields `hasPromoVideo:
+    // 'unknown'` — never `false` — because the absence of an embed on one
+    // page is not proof the business has no videos.
+    if (html && looksLikeHtml(result.contentType, html)) {
+      result.videoMarketing = detectVideoMarketing(html)
+      const brandingAssets = detectBrandingAssets(html, finalUrl)
+      result.brandingAssets = {
+        logoUrl: brandingAssets.logoUrl,
+        imageUrls: brandingAssets.imageUrls,
+      }
+      // Enrichment is best effort: a failure here must not turn a page that
+      // was fetched into `reachable: false` via the outer catch.
+      try {
+        result.brandColors = await detectBrandColors(html, finalUrl)
+      } catch {
+        // no palette
+      }
+      try {
+        const pageMarkdown = htmlToMarkdown(html)
+        if (pageMarkdown) result.pageMarkdown = pageMarkdown
+      } catch {
+        // no page text
+      }
+    } else if (html) {
+      // Reachable, but the body was not HTML, so no page could be scanned.
+      result.videoMarketing = {
+        hasPromoVideo: 'unknown',
+        signals: ['Website content was not HTML, so the homepage could not be scanned for video.'],
+      }
+    }
   } catch (err) {
     // A blocked redirect target is a rejected request, not an upstream
     // failure — it must stay a throw so the route can answer 400.
@@ -439,6 +676,12 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
     result.statusCode = err instanceof Error && 'response' in err && (err as any).response?.status
       ? (err as any).response.status
       : undefined
+    // The fetch failed, so nothing was scanned: keep the `unknown` state
+    // rather than implying the business has no videos.
+    result.videoMarketing = {
+      hasPromoVideo: 'unknown',
+      signals: ['Website was not reachable, so the homepage could not be scanned for video.'],
+    }
   }
 
   return result
@@ -460,7 +703,10 @@ export function enrichClientProfileFromResearch(
   if (!enriched.instagram && research.socialLinks.instagram) enriched.instagram = research.socialLinks.instagram
   if (!enriched.linkedin && research.socialLinks.linkedin) enriched.linkedin = research.socialLinks.linkedin
   if (!enriched.youtube && research.socialLinks.youtube) enriched.youtube = research.socialLinks.youtube
-  if (!enriched.whatsapp && research.socialLinks.tiktok) enriched.whatsapp = research.socialLinks.tiktok
+  // TikTok links are reported in research.socialLinks.tiktok and are
+  // intentionally not mapped onto the enriched profile. They were previously
+  // written into `whatsapp`, which published a TikTok URL as a WhatsApp
+  // contact.
 
   // Contact info from website
   if (!enriched.phone && research.contactInfo.phones.length > 0) {
@@ -468,6 +714,30 @@ export function enrichClientProfileFromResearch(
   }
   if (!enriched.email && research.contactInfo.emails.length > 0) {
     enriched.email = research.contactInfo.emails[0]
+  }
+
+  // Re-score the video-marketing opportunity with the research evidence, so a
+  // researched business reflects what its website actually shows instead of
+  // the OSM-only estimate. When video presence could not be verified
+  // ('unknown') the signal contributes 0 and stays marked unknown — an
+  // unverified absence is never treated as "has no videos".
+  if (research.videoMarketing) {
+    const rescored = computeVideoOpportunityScore(
+      enriched as BusinessDiscoveryRecord,
+      { research: { hasPromoVideo: research.videoMarketing.hasPromoVideo } },
+    )
+    const prior = enriched.videoOpportunity ?? { hasPromoVideo: 'unknown' as const, signals: [] }
+    enriched.videoOpportunity = {
+      hasPromoVideo: research.videoMarketing.hasPromoVideo,
+      signals: Array.from(new Set([...prior.signals, ...research.videoMarketing.signals, ...rescored.signals])),
+    }
+    enriched.videoOpportunityScore = rescored.score
+    if (enriched.scoreBreakdown) {
+      enriched.scoreBreakdown = {
+        ...enriched.scoreBreakdown,
+        videoOpportunity: rescored.score,
+      }
+    }
   }
 
   return enriched

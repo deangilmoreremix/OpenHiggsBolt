@@ -1,0 +1,79 @@
+{
+  "status": "DRY-RUN (not live evidence)",
+  "generatedAt": "2026-11-11T01:13:52.986Z",
+  "note": "Stubbed route: proves the harness only.",
+  "operations": [
+    {
+      "operation": "1. product brief",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "3 brief rows about a real-estate business",
+      "ms": 8,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    },
+    {
+      "operation": "2. visual direction",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "1 directions, recommended 0",
+      "ms": 10,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    },
+    {
+      "operation": "3. feature-to-shot mapping",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "1 features mapped to catalog recipes only",
+      "ms": 23,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    },
+    {
+      "operation": "4. storyboard (plan)",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "4 scenes, 30s, all recipes in the catalog",
+      "ms": 7,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    },
+    {
+      "operation": "5. model-assisted frame review",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "0 findings returned",
+      "ms": 7,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    },
+    {
+      "operation": "6. independent final review",
+      "status": "passed",
+      "model": "dry-run-stub",
+      "httpStatus": 200,
+      "schemaValid": true,
+      "behaviour": "7 checklist answers (PFVSBDQ)",
+      "ms": 21,
+      "live": false,
+      "dryRun": true,
+      "keyHint": null
+    }
+  ]
+}

@@ -8,6 +8,7 @@
 
 import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType } from './discoveryProvider'
 import * as cheerio from 'cheerio'
+import { isCrawlablePageUrl } from './pageSignals'
 
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2'
 const FIRECRAWL_SCRAPE_LIMIT = 5
@@ -377,6 +378,7 @@ function extractInternalLinks(html: string, baseUrl: string): string[] {
     const host = new URL(canonical).host
     if (host !== new URL(baseUrl).host) return
     if (LOW_VALUE_PATH_FRAGMENTS.some((frag) => canonical.toLowerCase().includes(frag))) return
+    if (!isCrawlablePageUrl(canonical)) return
 
     results.push(canonical)
   })

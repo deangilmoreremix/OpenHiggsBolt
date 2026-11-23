@@ -1,0 +1,50 @@
+{
+  "stem": "DeckDealFlyin",
+  "source": "reference",
+  "modelUsed": false,
+  "requests": 1,
+  "notes": "reference source (not a model)",
+  "adaptedCodeBytes": 21151,
+  "gateProblemsSeen": [],
+  "checks": {
+    "assetIdentity": {
+      "adaptedHeroShare": [
+        0,
+        0.0226,
+        0.0099
+      ],
+      "parameterisedHeroShare": [
+        0,
+        0.0226,
+        0.0099
+      ]
+    },
+    "cardsOnBoard": {
+      "adapted": 8,
+      "parameterised": 8
+    },
+    "motionProfile": {
+      "adapted": [
+        0.65,
+        0.585,
+        0.683
+      ],
+      "originalSample": [
+        0.65,
+        0.56,
+        0.676
+      ],
+      "parameterised": [
+        0.65,
+        0.585,
+        0.683
+      ]
+    },
+    "reopenDiff": 0
+  },
+  "frames": [
+    30,
+    75,
+    147
+  ]
+}

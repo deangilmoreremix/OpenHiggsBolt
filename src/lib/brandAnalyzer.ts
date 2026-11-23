@@ -1,5 +1,6 @@
 import { scrapeUrl } from './scraper'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { callOpenAIResponses } from '@/shared/api/openai'
 
 const OPENAI_MODEL = 'gpt-4o'
@@ -56,6 +57,7 @@ Fonts found: ${scraped.fonts.join(', ')}
 Mirrored og:image for vision: ${screenshotUrl || 'none'}
 HTML text excerpt: ${scraped.bodyText}`
 
+  const openaiKey = await getOpenAiKeyForUser()
   const text = await callOpenAIResponses([
     {
       role: 'system',
@@ -68,7 +70,7 @@ HTML text excerpt: ${scraped.bodyText}`
         ...(screenshotUrl ? [{ type: 'input_image', image_url: screenshotUrl }] : []),
       ],
     },
-  ])
+  ], openaiKey || undefined)
 
   const jsonMatch = text.match(/\{[\s\S]*\}/)?.[0] || '{}'
   const parsed = JSON.parse(jsonMatch)

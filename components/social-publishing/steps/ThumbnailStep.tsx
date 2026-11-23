@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Wand2, Loader2, ChevronDown, ChevronUp, RefreshCw, Check, AlertCircle } from 'lucide-react';
+import { Image, Wand2, Loader2, ChevronDown, ChevronUp, RefreshCw, Check, AlertCircle, Paintbrush } from 'lucide-react';
 import type { ThumbnailStepProps, CopyState, ThumbnailState } from '../types';
 import { generateThumbnail, type ThumbnailGenerateResult } from '@/shared/api/thumbnailService';
 import { enhancePrompt } from '@/shared/api/openai';
@@ -10,6 +10,10 @@ import ExploreIdeas from '../thumbnail/ExploreIdeas';
 import ReferenceUploadZone from '../thumbnail/ReferenceUploadZone';
 import ThumbnailGenerationResults from '../thumbnail/ThumbnailGenerationResults';
 import ThumbnailRefinement from '../thumbnail/ThumbnailRefinement';
+import ThumbnailPlatformPreview from '../thumbnail/ThumbnailPlatformPreview';
+import ThumbnailConceptPanel from '../thumbnail/ThumbnailConceptPanel';
+import ThumbnailDesigner, { type DesignerResult } from '../thumbnail/designer/ThumbnailDesigner';
+import type { CanvasAdjustments } from '../thumbnail/thumbnailPrompt';
 
 const ASPECT_PRESETS = [
   { value: '16:9', label: 'YouTube 16:9', platforms: ['YouTube'] },
@@ -20,10 +24,82 @@ const ASPECT_PRESETS = [
 
 const MODEL_OPTIONS = [
   { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Best quality, recommended' },
+  { value: 'gpt-image-2.6-sunburst', label: 'Images 2.6 (Sunburst)', description: 'Newest OpenAI image model; falls back to GPT Image 2 if your key cannot use it yet' },
+  { value: 'gpt-image-2.6-flare', label: 'Images 2.6 (Flare)', description: 'Smaller and faster 2.6 model' },
   { value: 'gpt-image-1', label: 'GPT Image 1', description: 'Faster, good quality' },
-  { value: 'dall-e-3', label: 'DALL·E 3', description: 'Classic prompt-following' },
-  { value: 'flux-dev', label: 'Flux Dev', description: 'MuAPI model' },
+  { value: 'dall-e-3', label: 'DALL·E 3', description: 'Text only — no reference images' },
 ] as const;
+
+const FRAME_TIMEOUT_MS = 8000;
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Grabs one frame of a studio video as a JPEG data URL (null if the browser can't read it). */
+function captureVideoFrame(src: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') return resolve(null);
+    const video = document.createElement('video');
+    let settled = false;
+    const done = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      video.removeAttribute('src');
+      video.load();
+      resolve(value);
+    };
+    const timer = setTimeout(() => done(null), FRAME_TIMEOUT_MS);
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      video.currentTime = duration > 0 ? Math.min(1, duration / 3) : 0;
+    };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx || !canvas.width || !canvas.height) return done(null);
+        ctx.drawImage(video, 0, 0);
+        done(canvas.toDataURL('image/jpeg', 0.9));
+      } catch {
+        // Cross-origin video without CORS headers taints the canvas.
+        done(null);
+      }
+    };
+    video.onerror = () => done(null);
+    video.src = src;
+  });
+}
+
+/**
+ * The studio's own output as a reference the server can read: https URLs pass
+ * through, blob:/video sources are turned into data URLs here in the browser.
+ */
+async function resolveAssetReference(asset: ThumbnailStepProps['asset']): Promise<string | null> {
+  const source = asset.type === 'image' ? asset.url : asset.thumbnailUrl;
+  if (source) {
+    if (source.startsWith('data:image/') || source.startsWith('https://')) return source;
+    try {
+      const res = await fetch(source);
+      const blob = await res.blob();
+      if (blob.type.startsWith('image/')) return await blobToDataUrl(blob);
+    } catch { /* fall through */ }
+  }
+  if (asset.type === 'video' && asset.url) return captureVideoFrame(asset.url);
+  return null;
+}
 
 type GenerationCount = 1 | 2 | 3 | 4;
 
@@ -32,6 +108,7 @@ export default function ThumbnailStep({
   thumbnail,
   onUpdateThumbnail,
   copy,
+  onRequestApiKey,
 }: ThumbnailStepProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(thumbnail.templateId)
   const [viewMode, setViewMode] = useState<'recommended' | 'explore'>('recommended')
@@ -51,7 +128,15 @@ export default function ThumbnailStep({
   const [error, setError] = useState<string | null>(null)
 
   const [references, setReferences] = useState<string[]>(thumbnail.references || [])
+  const [useAssetReference, setUseAssetReference] = useState(true)
+  const [assetReference, setAssetReference] = useState<string | null>(null)
+  const [assetReferenceState, setAssetReferenceState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showConcepts, setShowConcepts] = useState(false)
+  const [designing, setDesigning] = useState(false)
+  /** Open the designer straight on its "Edit a region" panel. */
+  const [designerEditRegion, setDesignerEditRegion] = useState(false)
+  const [canvasAdjustments, setCanvasAdjustments] = useState<CanvasAdjustments | null>(null)
 
   const [headline, setHeadline] = useState(copy.headline || '')
   const [subheadline, setSubheadline] = useState(copy.subheadline || '')
@@ -79,6 +164,25 @@ export default function ThumbnailStep({
     return () => { abortControllerRef.current?.abort() }
   }, [])
 
+  // Every studio opens this modal with its output (image or video). Use that
+  // output as the visual reference so the thumbnail shows what was made.
+  useEffect(() => {
+    let cancelled = false
+    setAssetReference(null)
+    setAssetReferenceState('loading')
+    resolveAssetReference(asset).then((ref) => {
+      if (cancelled) return
+      setAssetReference(ref)
+      setAssetReferenceState(ref ? 'ready' : 'unavailable')
+    }).catch(() => { if (!cancelled) setAssetReferenceState('unavailable') })
+    return () => { cancelled = true }
+  }, [asset.url, asset.type, asset.thumbnailUrl])
+
+  const effectiveReferences = useMemo(() => {
+    const list = useAssetReference && assetReference ? [assetReference, ...references] : references
+    return Array.from(new Set(list))
+  }, [useAssetReference, assetReference, references])
+
   const buildFullPrompt = useCallback(() => {
     let base = enhancedPrompt || prompt
     if (!base && selectedTemplateId) {
@@ -98,6 +202,9 @@ export default function ThumbnailStep({
       }
       base = templatePrompts[selectedTemplateId] || ''
     }
+    if (!base && useAssetReference && assetReference) {
+      base = 'Eye-catching, high-click-through thumbnail built from the reference image: bold focal point, strong contrast, clean composition'
+    }
 
     const textParts: string[] = []
     if (headline) textParts.push(`HEADLINE TEXT: "${headline}"`)
@@ -105,7 +212,9 @@ export default function ThumbnailStep({
     if (textParts.length > 0) {
       base += '. ' + textParts.join('. ') + '. Leave clear space for text overlay at ' + textPosition + '.'
     }
-    if (references.length > 0) {
+    if (useAssetReference && assetReference) {
+      base += ' The first reference image is the actual ' + (asset.type === 'video' ? 'video frame' : 'image') + ' this thumbnail is for — keep its subject, product and look recognisable.'
+    } else if (references.length > 0) {
       base += ' Reference images provided for style/content guidance.'
     }
     const stylePrompts: Record<string, string> = {
@@ -122,7 +231,7 @@ export default function ThumbnailStep({
       base += ' ' + stylePrompts[style]
     }
     return base
-  }, [prompt, enhancedPrompt, selectedTemplateId, headline, subheadline, textPosition, references, style])
+  }, [prompt, enhancedPrompt, selectedTemplateId, headline, subheadline, textPosition, references, style, useAssetReference, assetReference, asset.type])
 
   const handleEnhance = useCallback(async () => {
     if (!prompt.trim() || isEnhancing) return
@@ -136,7 +245,7 @@ export default function ThumbnailStep({
 
   const handleGenerate = useCallback(async () => {
     const fullPrompt = buildFullPrompt()
-    if (!fullPrompt.trim() && !selectedTemplateId) return
+    if (!fullPrompt.trim()) return
 
     setError(null)
     setGenerating(true)
@@ -157,7 +266,7 @@ export default function ThumbnailStep({
         headline,
         subheadline,
         templateId: selectedTemplateId,
-        referenceUrls: references.length > 0 ? references : undefined,
+        referenceUrls: effectiveReferences.length > 0 ? effectiveReferences : undefined,
         style,
         quality: 'medium',
       })
@@ -169,6 +278,7 @@ export default function ThumbnailStep({
         onUpdateThumbnail({
           imageUrl: genResults[0].url,
           responseId: genResults[0].responseId,
+          design: undefined,
           templateId: selectedTemplateId,
           aspectRatio,
           references: references.length > 0 ? references : undefined,
@@ -184,7 +294,7 @@ export default function ThumbnailStep({
         setGeneratingCount(0)
       }
     }
-  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, generationCount, headline, subheadline, references, style, onUpdateThumbnail])
+  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, generationCount, headline, subheadline, references, effectiveReferences, style, onUpdateThumbnail])
 
   const handleSelectResult = useCallback((index: number) => {
     setSelectedIndex(index)
@@ -192,6 +302,7 @@ export default function ThumbnailStep({
       onUpdateThumbnail({
         imageUrl: results[index].url,
         responseId: results[index].responseId,
+        design: undefined,
       })
     }
   }, [results, onUpdateThumbnail])
@@ -219,9 +330,48 @@ export default function ThumbnailStep({
       onUpdateThumbnail({
         imageUrl: refined[0].url,
         responseId: refined[0].responseId,
+        design: undefined,
       })
     }
   }, [onUpdateThumbnail])
+
+  // The picture being edited: the selected result, or (after Back/Next remounts this step) the retained thumbnail.
+  const activeImageUrl: string | null = selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : thumbnail.imageUrl ?? null
+
+  /** With a saved design, refinement must start from the exported picture (the layers), not the original. */
+  const refineSourceUrl = thumbnail.design && thumbnail.imageUrl ? thumbnail.imageUrl : activeImageUrl
+  /** The designer can only edit a region of a picture background. */
+  const canEditRegion = thumbnail.design ? thumbnail.design.background.mode === 'image' && !!thumbnail.design.background.imageSrc : !!activeImageUrl
+
+  /** Concepts made by the concept panel replace the current results, like a normal generation. */
+  const handleConceptResults = useCallback((conceptResults: ThumbnailGenerateResult[], context: { aspectRatio: string }) => {
+    setError(null)
+    setResults(conceptResults)
+    setSelectedIndex(conceptResults.length > 0 ? 0 : null)
+    if (conceptResults.length > 0) {
+      setAspectRatio(context.aspectRatio)
+      onUpdateThumbnail({ imageUrl: conceptResults[0].url, responseId: conceptResults[0].responseId, aspectRatio: context.aspectRatio, design: undefined })
+    }
+  }, [onUpdateThumbnail])
+
+  const handleConceptGenerating = useCallback((pending: number) => {
+    setGenerating(pending > 0)
+    setGeneratingCount(pending)
+    if (pending > 0) { setResults([]); setSelectedIndex(null) }
+  }, [])
+
+  /** The designer exported a finished thumbnail: it becomes the one attached to the post (uploaded at publish time). */
+  const handleDesignDone = useCallback((result: DesignerResult) => {
+    onUpdateThumbnail({ imageUrl: result.dataUrl, responseId: undefined, design: result.project })
+    setDesigning(false)
+    setDesignerEditRegion(false)
+  }, [onUpdateThumbnail])
+
+  /** Back to the concept picture the design was built on. */
+  const handleRemoveDesign = useCallback(() => {
+    const original = (selectedIndex !== null && results[selectedIndex]?.url) || thumbnail.design?.background.imageSrc
+    onUpdateThumbnail({ imageUrl: original, design: undefined })
+  }, [selectedIndex, results, thumbnail.design, onUpdateThumbnail])
 
   const handleAutoFillFromWrite = useCallback(() => {
     const sourceHeadline = copy.headline || copy.title || ''
@@ -232,10 +382,26 @@ export default function ThumbnailStep({
     if (parts.length > 0) setPrompt(parts.join(' — '))
   }, [copy])
 
+  const canGenerate = !!(prompt.trim() || selectedTemplateId || (useAssetReference && assetReference))
+
   const hasWriteContent = useMemo(() => !!(copy.headline || copy.title || copy.subject || copy.visualIdea), [copy])
 
   return (
     <div className="space-y-4" role="region" aria-label="Thumbnail creation step">
+      {designing && (
+        <ThumbnailDesigner
+          initialProject={thumbnail.design}
+          backgroundImageUrl={activeImageUrl}
+          aspectRatio={aspectRatio}
+          headline={headline || copy.headline || ''}
+          adjustments={canvasAdjustments}
+          model={selectedModel}
+          openEditRegion={designerEditRegion}
+          onDone={handleDesignDone}
+          onCancel={() => { setDesigning(false); setDesignerEditRegion(false) }}
+        />
+      )}
+      <div className="space-y-4" hidden={designing}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'var(--color-primary, #22d3ee)' }}>
@@ -286,6 +452,45 @@ export default function ThumbnailStep({
         <ReferenceUploadZone templateId={selectedTemplateId} references={references} onUpdate={(updates) => { setReferences(updates.references || references); onUpdateThumbnail({ references: updates.references || references }) }} disabled={generating} />
       )}
 
+      <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+          {assetReferenceState === 'loading' && <Loader2 size={13} className="animate-spin text-white/40" />}
+          {assetReferenceState === 'ready' && assetReference && <img src={assetReference} alt="Studio output used as reference" className="w-full h-full object-cover" />}
+          {assetReferenceState === 'unavailable' && <AlertCircle size={13} className="text-white/30" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-white/80">Build from this {asset.type === 'video' ? 'video' : 'image'}{asset.studio ? ` (${asset.studio})` : ''}</p>
+          <p className="text-[10px] text-white/40">
+            {assetReferenceState === 'loading' && 'Reading your studio output…'}
+            {assetReferenceState === 'ready' && (selectedModel === 'dall-e-3' ? 'Uses GPT Image 2 — DALL·E 3 cannot take reference images.' : 'Your output is sent as the reference so the thumbnail matches it.')}
+            {assetReferenceState === 'unavailable' && (asset.type === 'video' ? "Couldn't read a frame from this video — upload a reference instead." : "Couldn't read this image — upload a reference instead.")}
+          </p>
+        </div>
+        <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+          <input type="checkbox" checked={useAssetReference} onChange={(e) => setUseAssetReference(e.target.checked)} disabled={generating || assetReferenceState !== 'ready'} className="accent-[#22d3ee] disabled:opacity-50" aria-label="Use studio output as thumbnail reference" />
+          <span className="text-[10px] text-white/50">Use</span>
+        </label>
+      </div>
+
+      <button type="button" onClick={() => setShowConcepts(!showConcepts)} aria-expanded={showConcepts} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold transition-all hover:bg-white/[0.04]" style={{ border: '1px solid rgba(34,211,238,0.25)', background: 'rgba(34,211,238,0.04)', color: '#22d3ee' }}>
+        <span className="flex items-center gap-2"><Wand2 size={13} />Generate concepts</span>
+        {showConcepts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {/* Kept mounted while collapsed: unmounting during a run would drop its results and leave generation locked. */}
+      <div hidden={!showConcepts}>
+        <ThumbnailConceptPanel
+          assetType={asset.type === 'video' ? 'video' : 'image'}
+          frameUrl={assetReferenceState === 'ready' ? assetReference : null}
+          existingThumbnailUrl={thumbnail.imageUrl}
+          defaults={{ title: copy.title || copy.headline || '', topic: copy.subject || '' }}
+          disabled={generating}
+          onGeneratingChange={handleConceptGenerating}
+          onResults={handleConceptResults}
+          onError={setError}
+          onCanvasAdjustmentsChange={setCanvasAdjustments}
+        />
+      </div>
+
       <div className="space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Aspect Ratio</p>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Aspect ratio options">
@@ -326,7 +531,7 @@ export default function ThumbnailStep({
             </button>
           ))}
         </div>
-        <button type="button" onClick={handleGenerate} disabled={generating || (!prompt.trim() && !selectedTemplateId)} className="flex-1 min-w-[120px] h-10 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }} aria-label={`Generate ${generationCount} thumbnail${generationCount > 1 ? 's' : ''}`}>
+        <button type="button" onClick={handleGenerate} disabled={generating || !canGenerate} className="flex-1 min-w-[120px] h-10 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }} aria-label={`Generate ${generationCount} thumbnail${generationCount > 1 ? 's' : ''}`}>
           {generating ? <><Loader2 size={14} className="animate-spin" />Generating…</> : <><Image size={14} />Generate {generationCount > 1 ? `${generationCount}` : ''}</>}
         </button>
       </div>
@@ -418,9 +623,42 @@ export default function ThumbnailStep({
         </div>
       )}
 
+      {error && /openai api key/i.test(error) && onRequestApiKey && (
+        <div data-testid="thumbnail-needs-openai-key" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200" role="alert">
+          Add your OpenAI key to create thumbnails with AI.
+          <button type="button" onClick={onRequestApiKey} className="ml-2 rounded-lg bg-[#22d3ee] px-3 py-1 font-bold text-black">Add OpenAI key</button>
+        </div>
+      )}
+      {results[0]?.fallbackFrom && (
+        <p className="text-[11px] text-amber-300/80" role="status">
+          {results[0].fallbackFrom} is not available to your OpenAI key yet, so GPT Image 2 made these.
+        </p>
+      )}
+
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
-      <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'rgba(34,211,238,0.04)', border: '1px solid rgba(34,211,238,0.2)' }} data-testid="thumbnail-design-entry">
+        {thumbnail.design && thumbnail.imageUrl && <img src={thumbnail.imageUrl} alt="Designed thumbnail" className="h-12 w-20 shrink-0 rounded-md object-cover" />}
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold text-white/80">{thumbnail.design ? 'Designed thumbnail attached to your post' : 'Customize the design'}</p>
+          <p className="text-[10px] text-white/40">{thumbnail.design ? 'Edit the text and layers again, or go back to the picture.' : activeImageUrl ? 'Add your headline, logo, subject and arrows on top of this picture.' : 'Generate or pick a thumbnail first, then design it here.'}</p>
+        </div>
+        {thumbnail.design && <button type="button" onClick={handleRemoveDesign} disabled={generating} className="shrink-0 text-[10px] text-white/40 transition-colors hover:text-red-400 disabled:opacity-50">Remove design</button>}
+        <button type="button" onClick={() => { setDesignerEditRegion(true); setDesigning(true) }} disabled={generating || !canEditRegion} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50" style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+          <Wand2 size={13} />Edit a region
+        </button>
+        <button type="button" onClick={() => { setDesignerEditRegion(false); setDesigning(true) }} disabled={generating || (!activeImageUrl && !thumbnail.design)} className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-all disabled:opacity-50" style={{ background: 'var(--color-primary, #22d3ee)', color: 'black' }}>
+          <Paintbrush size={13} />{thumbnail.design ? 'Edit design' : 'Design this thumbnail'}
+        </button>
+      </div>
+
+      <ThumbnailRefinement sourceImageUrl={refineSourceUrl} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      {(thumbnail.design || activeImageUrl) && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30">How it will look</p>
+          <ThumbnailPlatformPreview imageUrl={thumbnail.imageUrl ?? activeImageUrl} project={thumbnail.design ?? null} />
+        </div>
+      )}
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -428,6 +666,7 @@ export default function ThumbnailStep({
           <button type="button" onClick={() => { setSelectedTemplateId(undefined); onUpdateThumbnail({ templateId: undefined }) }} disabled={generating} className="text-[10px] text-white/30 hover:text-red-400 transition-colors disabled:opacity-50" aria-label="Clear template selection">Clear</button>
         </div>
       )}
+      </div>
     </div>
   )
 }

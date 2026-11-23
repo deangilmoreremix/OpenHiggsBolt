@@ -1,12 +1,10 @@
 /**
  * Shared VFX request validation used by API routes and tests.
  */
+import { EFFECT_NAMES } from '@/apps/vfx-studio/effectCatalog'
 
-export const ALLOWED_EFFECTS = new Set([
-  'Kiss Me AI','Kiss','Venom','Hulk','Muscle Surge','The Tiger Touch','Anything Robot','Warmth of Jesus','Holy Wings','Microwave','Iron Man','Spiderman','Dragon Ball','Freeze','Invisibility','Zombie','Mermaid','Werewolf','Vampire','Witch','Angel','Demon','Phoenix','Crystal','Gold Transform','Age Regression','Age Progression','Gender Swap',
-  '360 Orbit','Hero Run','Arc Shot','Matrix Shot','Car Chase','Crane Down','Crane Up','Crash Zoom In','Crash Zoom Out','Dolly In','Dolly Out','Drone Flight','Dutch Angle','FPV Dive','Handheld','Jib Arm','Ken Burns','Low Angle','Overhead Crane','Pan Left','Pan Right','Parallax','Pedestal Down','Pedestal Up','Pull Focus','Push In','Roll','Shake','Tilt Down','Tilt Up','Tracking Shot','Truck Left','Truck Right','Vertigo Effect','Whip Pan','Zoom In','Zoom Out',
-  'Building Explosion','Car Explosion','Decay Time-Lapse','Disintegration','Electricity','Flying','Huge Explosion','Levitate','Tornado','Fire Effect','Tsunami','Meteor Strike','Black Hole','Portal Open','Time Freeze','Gravity Flip','Glass Shatter','Laser Beam','Smoke Bomb','Snow Storm','Rain Storm','Earthquake','Volcanic Eruption','Nuclear Blast','Acid Rain',
-])
+// One list for the gallery and the server: see src/apps/vfx-studio/effectCatalog.ts.
+export const ALLOWED_EFFECTS = EFFECT_NAMES
 
 export const ALLOWED_ASPECT_RATIOS = new Set(['16:9', '9:16', '1:1'])
 export const ALLOWED_RESOLUTIONS = new Set(['480p', '720p'])

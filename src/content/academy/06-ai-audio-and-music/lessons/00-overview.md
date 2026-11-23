@@ -1,90 +1,27 @@
-# Track 6 — AI Audio & Music
+# AI Audio & Music: start here
 
-> **SmartVideo GO AI Academy** — Part of the SmartVideo GO AI course library. Everything in this lesson can be produced end-to-end inside SmartVideo GO AI using its Image, Video, Audio, Cinema, Lip-Sync, Storyboard, VFX, Thumbnail and AI Influencer studios, plus the Create-With-AI recipe system.
+> Voice cloning, translation, dubbing, podcast cleanup and AI music: the audio every video quietly depends on.
 
+## What you will do
 
+Five short guided lessons, each 15 to 18 minutes, each ending with a concrete result and a reusable template saved in [`templates/`](templates/). You can do them in order, or skip to the ones with no prerequisites.
 
-> Voice cloning, translation, dubbing, podcast production, and AI music — the track every video track quietly depends on.
-
-Five modules, in order. Each is one markdown file — click straight in, no subfolders. Every module follows the same structure: Problem → Concept → Do It → Compare Tools → Launch It → Exercises.
-
-**"Templates" below** = the reusable template(s) each module produces (specs sheets, checklists, libraries) — actual files you fill in and reuse, saved in [`templates/`](templates/).
-
-| # | Module | Time | Requires |
+| # | Lesson | Time | Requires |
 |:---:|---|:---:|---|
-| 1 | [Voice Cloning & TTS Basics](01-voice-cloning-tts.md) | ~40 min | — |
-| 2 | [AI Dubbing & Translation](02-dubbing-translation.md) | ~45 min | Module 1 |
-| 3 | [Podcast Production & Audio Cleaning](03-podcast-production.md) | ~35 min | — |
-| 4 | [AI Music & Sound Effects](04-music-sfx-generation.md) | ~35 min | — |
-| 5 | [Singing Voice Conversion & Vocal Synthesis](05-singing-vocal-synthesis.md) | ~30 min | Module 1 |
+| 1 | [Voice Cloning & TTS Basics](01-voice-cloning-tts.md) | ~18 min | None |
+| 2 | [AI Dubbing & Translation](02-dubbing-translation.md) | ~16 min | Lesson 1 |
+| 3 | [Podcast Production & Audio Cleaning](03-podcast-production.md) | ~15 min | None |
+| 4 | [AI Music & Sound Effects](04-music-sfx-generation.md) | ~16 min | None |
+| 5 | [Singing Voice Conversion & Vocal Synthesis](05-singing-vocal-synthesis.md) | ~16 min | Lesson 1 |
 
----
+## Outcomes
 
-### 1. [Voice Cloning & TTS Basics](01-voice-cloning-tts.md)
+* **Lesson 1:** train a custom voice profile on ElevenLabs from clean, dry samples and tune stability and clarity sliders. Template: [`voice-cloning-spec.md`](templates/voice-cloning-spec.md).
+* **Lesson 2:** dub a video into another language while keeping the speaker's timbre, and fit translated speech to strict time boundaries. Template: [`dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md).
+* **Lesson 3:** cut rumble below 80Hz, gate noise at -48dB, compress at 3:1 and master to -16 LUFS. Template: [`podcast-production-sheet.md`](templates/podcast-production-sheet.md).
+* **Lesson 4:** write structured music prompts with BPM, instruments and vocal exclusions, duck music under narration, and generate isolated SFX. Template: [`audio-prompt-library.md`](templates/audio-prompt-library.md).
+* **Lesson 5:** convert a guide vocal into another singing voice with RVC, fixing pitch first and transposing by octaves. Template: [`vocal-conversion-brief.md`](templates/vocal-conversion-brief.md).
 
-> A computer reads text; a clone reads the room.
+## Produce it in SmartVideo GO AI
 
-- Train custom high-fidelity voice profiles on ElevenLabs using clean, dry speech samples.
-- Configure stability and clarity sliders to enable natural expression without digital distortion.
-- Record training audio in isolated environments using cardioid condenser microphones.
-
-**Templates:** [`voice-cloning-spec.md`](templates/voice-cloning-spec.md)
-
-### 2. [AI Dubbing & Translation](02-dubbing-translation.md)
-
-> A video that speaks only one language reaches only a fraction of the world.
-
-- Dub and translate narratives into multiple target languages while keeping original speaker voice timber.
-- Compress speech speed programmatically to fit foreign phrases into strict visual time boundaries.
-- Localize video text descriptions and channel titles using translation checklists.
-
-**Templates:** [`dubbing-translation-checklist.md`](templates/dubbing-translation-checklist.md)
-
-### 3. [Podcast Production & Audio Cleaning](03-podcast-production.md)
-
-> Bad audio is turned off; good audio is listened to for hours.
-
-- Clean voice recordings by cutting rumble below 80Hz and gating noise floor below -48dB.
-- Smooth volume peaks and compress dynamic range using standardized 3:1 compressor thresholds.
-- Limit and normalize completed mono and stereo mixes to spotify loudness standards.
-
-**Templates:** [`podcast-production-sheet.md`](templates/podcast-production-sheet.md)
-
-### 4. [AI Music & Sound Effects](04-music-sfx-generation.md)
-
-> The right sound turns b-roll into a movie.
-
-- Write structured musical prompts specifying tempo (BPM), instruments, and vocal exclusions.
-- Automatically lower background music levels using auto-ducking limits when narration is speaking.
-- Generate clean transition swooshes and button taps in isolation.
-
-**Templates:** [`audio-prompt-library.md`](templates/audio-prompt-library.md)
-
-### 5. [Singing Voice Conversion & Vocal Synthesis](05-singing-vocal-synthesis.md)
-
-> Synthesize the melody, clone the artist.
-
-- Convert voice timbres using retrieval-based voice conversion (RVC) models.
-- Correct pitch variations in guide vocal recordings using pitch snap filters before conversion.
-- Adjust pitch shifting values by octaves to convert guide tracks across male and female vocal ranges.
-
-**Templates:** [`vocal-conversion-brief.md`](templates/vocal-conversion-brief.md)
-
----
-
-All templates live in [`templates/`](templates/). For status across the other 9 tracks, see [ROADMAP.md](../../ROADMAP.md).
-
-
----
-
-## Produce this in SmartVideo GO AI
-
-Apply this lesson directly inside SmartVideo GO AI:
-
-- **Image Studio** — anchors, character sheets, product and brand shots
-- **Video Studio** — UGC ads, talking-head clips, image-to-video motion
-- **AI Influencer Studio** — consistent recurring on-brand characters
-- **Storyboard / Campaign Planner** — batch matrices, ad briefs and test plans
-- **Lip-Sync Studio** — voice + mouth-sync for avatar performances
-
-The workflow is the same everywhere in SmartVideo GO AI: **Learn → See Example → Use Template → Generate.**
+Use these studios with your finished audio: **Lip-Sync Studio** (voice plus mouth-sync), **AI Influencer Studio** (recurring characters), **Video Studio** (talking-head and motion clips), **Image Studio** (anchors and brand shots) and **Storyboard / Campaign Planner** (ad briefs and test plans). The workflow is the same everywhere: Learn, See Example, Use Template, Generate.

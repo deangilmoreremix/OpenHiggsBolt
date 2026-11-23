@@ -22,6 +22,12 @@ import {
   getEffectsForI2VModel,
   getDefaultEffectForI2VModel,
 } from "../models.js";
+// NOTE: the shared Personalization Modal hand-off is NOT imported here. This
+// package is published standalone (`main`/`module` = `src/index.js`, `files` =
+// ["src", "dist"]), so an import of `src/shared/personalization/studioEntry`
+// would ship into the published tarball pointing at a repo-only path. The app
+// root owns that module and injects the trigger through the
+// `renderPersonalizeAction` render prop instead.
 import {
   getFamilyVariant,
   videoModelCatalog,
@@ -109,6 +115,7 @@ import { setCharacterSheet } from "../lib/characterStore";
 import { fillTemplate } from "../lib/promptRecipes";
 import registry from "../skills/registry.json";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import AssetLibraryButton from "./AssetLibraryButton.jsx";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 async function downloadFile(url, filename) {
@@ -793,6 +800,19 @@ export default function VideoStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = useMemo(() => resolveCopy(en, zh, locale), [locale]);
   const LEGACY_PERSIST_KEY = "hg_video_studio_persistent";
@@ -1104,6 +1124,49 @@ export default function VideoStudio({
     ? seedanceToolLabel(selectedTool, copy, true)
     : selectedVeoTool ? copy.veo.toolNames[selectedVeoTool.key]
     : selectedPickerEntry?.name || selectedFamily.name;
+
+  // ── Personalization hand-off (Phase 1) ────────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the uploaded source clip plus
+  // the generation configuration — a new upload (or a different model /
+  // aspect ratio / duration) is a different project. Declared after
+  // `selectedPickerLabel`, which it reads during render.
+  const uploadedVideoName = uploadedVideoUrl ? uploadedVideoUrl.split("/").pop() : null;
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "video",
+      studioProjectId: [
+        uploadedVideoName || "clip",
+        selectedModel,
+        selectedAr,
+        String(selectedDuration),
+      ].join(":"),
+      title: uploadedVideoName || "Video Studio clip",
+      media: {
+        mediaType: "video",
+        url: uploadedVideoUrl,
+        poster: null,
+        aspectRatio: selectedAr,
+        duration: selectedDuration,
+        durationLabel: `${selectedDuration}s`,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModel,
+        modelName: selectedPickerLabel,
+      },
+    }),
+    [
+      uploadedVideoUrl,
+      uploadedVideoName,
+      selectedModel,
+      selectedPickerLabel,
+      selectedAr,
+      selectedDuration,
+      prompt,
+    ],
+  );
   const getSelectionPlan = useCallback((options = {}) => planGroupedVideoSelection({
     familyId: selectedFamilyId,
     workflowId: selectedWorkflowId,
@@ -2946,6 +3009,11 @@ export default function VideoStudio({
                 />
               ))}
 
+              {/* Personalize this clip in the shared Personalization Modal.
+                  The app root injects the trigger; it renders nothing without
+                  an uploaded source video. */}
+              {renderPersonalizeAction?.(studioPersonalizeOptions)}
+
               {uploadedAudioUrls.map((url, index) => (
                 <ReferencePreview
                         copy={copy}
@@ -3026,6 +3094,17 @@ export default function VideoStudio({
                   type="audio"
                 />
               )}
+
+              {/* Saved uploads and generations, shared by every studio */}
+              <AssetLibraryButton
+                kinds={[
+                  "image",
+                  ...(videoUploadLimit > 0 ? ["video"] : []),
+                  ...(audioUploadLimit > 0 ? ["audio"] : []),
+                ]}
+                // Same path as an upload: it picks a model that takes this media type and respects its limit.
+                onSelect={(asset) => applyReferenceUrls(asset.kind, [asset.url])}
+              />
                 </>
               )}
             </div>
@@ -3097,7 +3176,7 @@ export default function VideoStudio({
             <PromptControls ref={dropdownRef}>
               {/* Model btn */}
               <div className="relative">
-                <button
+                <button data-help="model"
                   type="button"
                   onClick={toggleDropdown("model")}
                   className={promptControlClassName({

@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert/strict';
 
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-secret';
@@ -44,7 +44,7 @@ const mockSb = () => ({ from: () => makeBuilder() });
 describe('design-agent auth helper', () => {
   let getDesignAgentApiKey;
 
-  before(async () => {
+  beforeAll(async () => {
     store.app_users.clear();
     const mod = await import('../app/api/design-agent/lib/auth.ts');
     getDesignAgentApiKey = (req, deps) => mod.getDesignAgentApiKey(req, {
@@ -62,7 +62,7 @@ describe('design-agent auth helper', () => {
     });
   });
 
-  after(() => { store.app_users.clear(); });
+  afterAll(() => { store.app_users.clear(); });
 
   it('accepts Bearer token directly without Clerk', async () => {
     const key = await getDesignAgentApiKey(mockReq({ authorization: 'Bearer direct-key-123' }));
