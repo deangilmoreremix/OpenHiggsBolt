@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { setBridgeTools } from '../lib/mcpBridge/index.js';
+import { appShellTools } from '../lib/mcpAdapters/appShell.js';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -257,6 +259,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
   const apiKeyRef = useRef(apiKey);
   useEffect(() => { apiKeyRef.current = apiKey; }, [apiKey]);
+  // Tab tools for a connected MCP client (only announced after the user switches tab control on): which studio is open, and moving between studios.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const layersMcpTools = useCallback((tools) => setBridgeTools('layers', tools || []), []);
 
   useEffect(() => {
     if (embedded) return;
@@ -417,6 +423,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   useEffect(() => {
     handleTabChangeRef.current = handleTabChange
   })
+  useEffect(() => {
+    setBridgeTools('app', appShellTools({ tabs: TABS, getActive: () => activeTabRef.current, navigate: (id) => handleTabChangeRef.current(id) }))
+    return () => setBridgeTools('app', [])
+  }, [])
   useEffect(() => {
     const handler = (e) => {
       const { target } = e.detail || {}
@@ -975,7 +985,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'motion-director' && <MotionDirectorEntry apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {persistentStudio('recast', (active) => <RecastStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['recast']} />)}
          {persistentStudio('edit', (active) => <EditStudio apiKey={apiKey} active={active} {...generationCallbacks['edit']} />)}
-         {persistentStudio('layers', (active) => <LayersStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['layers']} />)}
+         {persistentStudio('layers', (active) => <LayersStudio onMcpTools={layersMcpTools} apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['layers']} />)}
          {persistentStudio('workflows', (active) => <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} {...generationCallbacks['workflows']} />)}
          {persistentStudio('agents', (active) => <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} locale={locale} />)}
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}

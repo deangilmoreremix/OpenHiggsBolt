@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useSocialPublish } from "../../../../components/SocialPublishProvider";
 import AssetLibraryButton from "./AssetLibraryButton.jsx";
+import { layersTools } from "../lib/layersMcpTools.js";
 import {
   decomposeLayers,
   uploadFile,
@@ -97,6 +98,7 @@ export default function LayersStudio({
   onGenerationEnd,
   onGenerationComplete,
   onGenerationError,
+  onMcpTools,
   locale = "en",
 }) {
   const copy = resolveCopy(en, zh, locale);
@@ -1339,6 +1341,23 @@ export default function LayersStudio({
         .join(" ") + " Z"
     );
   };
+
+  // Offer this studio's small tab-tool set to a connected MCP client while it is mounted. The host decides whether anything is announced.
+  const mcpLatest = useRef(null);
+  mcpLatest.current = {
+    state: { currentImageUrl, prompt, resolution, layerCount, outputFormat, isProcessing, decomposedLayers, visibleLayers },
+    actions: {
+      setCurrentImageUrl, setPrompt, setResolution, setOutputFormat, setLayerCount,
+      decompose: handleDecompose, upscale: handleRunUpscale, removeBackground: handleRunRemoveBg,
+      setLayerVisible: (idx, visible) => setVisibleLayers((prev) => ({ ...prev, [idx]: visible })),
+    },
+  };
+  useEffect(() => {
+    if (!onMcpTools) return undefined;
+    onMcpTools(layersTools(() => mcpLatest.current));
+    return () => onMcpTools([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onMcpTools]);
 
   return (
     <div className="relative w-full h-full bg-[#121318] text-white flex overflow-hidden font-sans select-none">

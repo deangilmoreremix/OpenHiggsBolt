@@ -7,6 +7,10 @@ import { MemoryRouter, Routes, Route, Navigate, useNavigate, useParams, useLocat
 import { applyLocaleToDocument, localeTitle, useLocale } from './i18n';
 import { applySession } from './lib/sessionAdapter';
 import { useStore } from './store';
+import { interpretAgentCommand } from './lib/agentCommands';
+import { applyAgentOps } from './lib/agentApply';
+import { useBridgeTools } from '../../../lib/mcpBridge/useBridgeTools.js';
+import { motionDirectorTools } from '../../../lib/mcpAdapters/motionDirector.js';
 import './styles.css';
 
 /**
@@ -95,6 +99,8 @@ const MotionStudioSession = () => {
 
 export default function MotionStudio() {
   const locale = useLocale((s) => s.locale);
+  // Tab tools for a connected MCP client (offered only after the user switches tab control on). They drive this store and the Motion Agent's own code.
+  useBridgeTools('motion-director', null, () => motionDirectorTools({ store: useStore, interpret: interpretAgentCommand, apply: applyAgentOps }));
 
   useEffect(() => {
     const desired = localeTitle(locale);

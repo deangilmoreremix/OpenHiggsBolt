@@ -1,0 +1,419 @@
+{
+  "generatedBy": "tests/mcp/bridge-manifest.test.js",
+  "studios": {
+    "storyboard": {
+      "tools": [
+        {
+          "name": "storyboard_get_state",
+          "description": "The open storyboard project: name, brief, aspect ratio, duration, model, characters, shots and the project list.",
+          "risk": "read",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "storyboard_export_json",
+          "description": "The open project as the storyboard's JSON export (shots, characters, aspect ratio, duration). Returned as data; nothing is downloaded.",
+          "risk": "read",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "storyboard_set_brief",
+          "description": "Set the project brief (the story idea).",
+          "risk": "write",
+          "parameters": [
+            "brief"
+          ],
+          "required": [
+            "brief"
+          ]
+        },
+        {
+          "name": "storyboard_set_project_name",
+          "description": "Rename the open project.",
+          "risk": "write",
+          "parameters": [
+            "name"
+          ],
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "name": "storyboard_set_aspect_ratio",
+          "description": "Set the aspect ratio.",
+          "risk": "write",
+          "parameters": [
+            "aspect_ratio"
+          ],
+          "required": [
+            "aspect_ratio"
+          ]
+        },
+        {
+          "name": "storyboard_set_episode_duration",
+          "description": "Set the total episode length in seconds.",
+          "risk": "write",
+          "parameters": [
+            "seconds"
+          ],
+          "required": [
+            "seconds"
+          ]
+        },
+        {
+          "name": "storyboard_set_model",
+          "description": "Choose the image model the storyboard uses for shots.",
+          "risk": "write",
+          "parameters": [
+            "model"
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "name": "storyboard_add_shot",
+          "description": "Add a shot (scene description and length in seconds).",
+          "risk": "write",
+          "parameters": [
+            "scene",
+            "duration",
+            "character_ids"
+          ],
+          "required": [
+            "scene"
+          ]
+        },
+        {
+          "name": "storyboard_update_shot",
+          "description": "Change a shot's scene, duration or characters.",
+          "risk": "write",
+          "parameters": [
+            "id",
+            "scene",
+            "duration",
+            "character_ids"
+          ],
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "name": "storyboard_move_shot",
+          "description": "Move a shot from one position to another (0-based).",
+          "risk": "write",
+          "parameters": [
+            "from",
+            "to"
+          ],
+          "required": [
+            "from",
+            "to"
+          ]
+        },
+        {
+          "name": "storyboard_remove_shot",
+          "description": "Remove a shot.",
+          "risk": "destructive",
+          "parameters": [
+            "id"
+          ],
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "name": "storyboard_add_character",
+          "description": "Add a character (name, optional description, optional reference image https URL).",
+          "risk": "write",
+          "parameters": [
+            "name",
+            "description",
+            "reference_image_url"
+          ],
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "name": "storyboard_update_character",
+          "description": "Change a character.",
+          "risk": "write",
+          "parameters": [
+            "id",
+            "name",
+            "description",
+            "reference_image_url"
+          ],
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "name": "storyboard_remove_character",
+          "description": "Remove a character.",
+          "risk": "destructive",
+          "parameters": [
+            "id"
+          ],
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "name": "storyboard_create_project",
+          "description": "Start a new storyboard project (the current one stays in the project list).",
+          "risk": "write",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "storyboard_switch_project",
+          "description": "Open another saved storyboard project.",
+          "risk": "write",
+          "parameters": [
+            "id"
+          ],
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "name": "storyboard_delete_project",
+          "description": "Delete a saved storyboard project.",
+          "risk": "destructive",
+          "parameters": [
+            "id"
+          ],
+          "required": [
+            "id"
+          ]
+        }
+      ],
+      "notExposed": "Shot image/video generation (covered by the generation tools), and the PDF/GIF downloads (need the browser file dialog)."
+    },
+    "motion-director": {
+      "tools": [
+        {
+          "name": "motion_director_get_project",
+          "description": "The Motion Director project: tracks, clips (card, timing, position, props), selection, playhead and undo depth.",
+          "risk": "read",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "motion_director_command",
+          "description": "Say what to change in plain English (\"make the title red\", \"add a lower third\"); the studio's own Motion Agent turns it into real edits. Returns what it did.",
+          "risk": "write",
+          "parameters": [
+            "text"
+          ],
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "name": "motion_director_add_clip",
+          "description": "Add a card to the timeline.",
+          "risk": "write",
+          "parameters": [
+            "card_id",
+            "track_id",
+            "at_frame",
+            "props"
+          ],
+          "required": [
+            "card_id"
+          ]
+        },
+        {
+          "name": "motion_director_update_clip_props",
+          "description": "Change a clip's card properties (text, colours…).",
+          "risk": "write",
+          "parameters": [
+            "clip_id",
+            "props"
+          ],
+          "required": [
+            "clip_id",
+            "props"
+          ]
+        },
+        {
+          "name": "motion_director_update_clip",
+          "description": "Change a clip's timing or layer (start, duration, opacity, scale, x, y).",
+          "risk": "write",
+          "parameters": [
+            "clip_id",
+            "start",
+            "duration",
+            "opacity",
+            "scale",
+            "x",
+            "y"
+          ],
+          "required": [
+            "clip_id"
+          ]
+        },
+        {
+          "name": "motion_director_remove_clip",
+          "description": "Remove a clip from the timeline (undo brings it back).",
+          "risk": "destructive",
+          "parameters": [
+            "clip_id"
+          ],
+          "required": [
+            "clip_id"
+          ]
+        },
+        {
+          "name": "motion_director_set_background",
+          "description": "Set the stage background colour (hex).",
+          "risk": "write",
+          "parameters": [
+            "color"
+          ],
+          "required": [
+            "color"
+          ]
+        },
+        {
+          "name": "motion_director_select_clip",
+          "description": "Select a clip (the next command acts on it first).",
+          "risk": "write",
+          "parameters": [
+            "clip_id"
+          ],
+          "required": [
+            "clip_id"
+          ]
+        },
+        {
+          "name": "motion_director_set_playhead",
+          "description": "Move the playhead to a frame.",
+          "risk": "write",
+          "parameters": [
+            "frame"
+          ],
+          "required": [
+            "frame"
+          ]
+        },
+        {
+          "name": "motion_director_undo",
+          "description": "Undo the last change.",
+          "risk": "write",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "motion_director_redo",
+          "description": "Redo the last undone change.",
+          "risk": "write",
+          "parameters": [],
+          "required": []
+        }
+      ],
+      "notExposed": "Dragging on the timeline, player scrubbing beyond the playhead, and rendering/export to a file (needs the browser renderer and a download)."
+    },
+    "layers": {
+      "tools": [
+        {
+          "name": "layers_get_state",
+          "description": "Layers Studio: the source image, options and the decomposed layers (with visibility).",
+          "risk": "read",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "layers_set_image",
+          "description": "Use an image (public https URL) as the source.",
+          "risk": "write",
+          "parameters": [
+            "image_url"
+          ],
+          "required": [
+            "image_url"
+          ]
+        },
+        {
+          "name": "layers_set_options",
+          "description": "Set decomposition options: prompt, resolution (1K, 1.5K, 2K), output format and layer count.",
+          "risk": "write",
+          "parameters": [
+            "prompt",
+            "resolution",
+            "output_format",
+            "layer_count"
+          ],
+          "required": []
+        },
+        {
+          "name": "layers_decompose",
+          "description": "Split the source image into layers (paid generation). Optionally pass a prompt to describe the layers.",
+          "risk": "write",
+          "parameters": [
+            "prompt"
+          ],
+          "required": []
+        },
+        {
+          "name": "layers_upscale",
+          "description": "Upscale the source image with the studio's upscaler settings (paid generation).",
+          "risk": "write",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "layers_remove_background",
+          "description": "Remove the source image background (paid generation).",
+          "risk": "write",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "layers_set_layer_visibility",
+          "description": "Show or hide one decomposed layer.",
+          "risk": "write",
+          "parameters": [
+            "index",
+            "visible"
+          ],
+          "required": [
+            "index",
+            "visible"
+          ]
+        }
+      ],
+      "notExposed": "Freehand drawing, lasso/region/shape/brush tools, drag and zoom, text and colour-grade sliders and the canvas undo/redo work on pointer events over a canvas and have no programmatic surface."
+    },
+    "app": {
+      "tools": [
+        {
+          "name": "app_state",
+          "description": "Which studio is open in this tab and which studios exist.",
+          "risk": "read",
+          "parameters": [],
+          "required": []
+        },
+        {
+          "name": "app_navigate",
+          "description": "Open a studio in this tab (ids from app_state). Studios with tab tools (storyboard, motion-director, layers) offer them while open.",
+          "risk": "write",
+          "parameters": [
+            "studio"
+          ],
+          "required": [
+            "studio"
+          ]
+        }
+      ],
+      "notExposed": "Opening modals, settings and saving API keys: only a person may do those."
+    }
+  },
+  "notExposed": {
+    "edit": "The Edit playground form (tool, model and upload slots) is not driven from a tab: the same tools run server-side through edit_tool_run, no tab needed."
+  }
+}

@@ -7,6 +7,15 @@ import { SocialPublishProvider } from '@/components/SocialPublishProvider'
 import StoryboardPlanner from './pages/StoryboardPlanner'
 import ShotEditor from './pages/ShotEditor'
 import SceneAnalysis from './pages/SceneAnalysis'
+import { useBridgeTools } from '../../../lib/mcpBridge/useBridgeTools.js'
+import { storyboardTools } from '../../../lib/mcpAdapters/storyboard.js'
+
+/** Offers the storyboard's tab tools to a connected MCP client while this studio is open (only after the user switches tab control on). */
+function StoryboardBridge() {
+  const ctx = useStoryboard()
+  useBridgeTools('storyboard', ctx, storyboardTools)
+  return null
+}
 
 function StoryboardPlannerWithTemplate({ templateData }: { templateData?: { prompt?: string; [key: string]: any } }) {
   const { brief, setBrief } = useStoryboard()
@@ -34,6 +43,7 @@ export default function StoryboardApp({ apiKey, templateData }: { apiKey?: strin
   return (
     <SocialPublishProvider apiKey={apiKey ?? null}>
       <StoryboardProvider>
+        <StoryboardBridge />
         {/* Fill the shell's overflow-hidden content area; each page scrolls its own body. */}
         <div className="h-full flex flex-col overflow-hidden text-white">
           <Routes>
