@@ -8,7 +8,7 @@ export default function MediaHub() {
   return (
     <iframe
       title="Smartvid Downloader"
-      src="/smartvid"
+      src="/smartvid?brand=higgs"
       allow="clipboard-write; fullscreen"
       style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block' }}
     />
