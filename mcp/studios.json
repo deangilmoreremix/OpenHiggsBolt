@@ -190,7 +190,7 @@
     "campaigns_list"
    ],
    "kinds": [],
-   "note": "brands are kept in the app's in-memory store per server instance, so a saved brand can be missing on a later call; assets and Photo Studio are not exposed"
+   "note": "Brands are kept in the database per owner (brand_studio_brands) and survive restarts; campaigns come from the app's owner-scoped routes. Photo Studio has its own tools; campaign assets are not exposed"
   },
   "zackd": {
    "tools": [
@@ -543,7 +543,7 @@
   ],
   "brand-studio": [
    {
-    "name": "Analyze a site, save brands, campaigns",
+    "name": "Analyze a site, save brands (kept in the database, per owner), campaigns",
     "tools": [
      "brand_analyze",
      "brands_list",
@@ -559,10 +559,6 @@
      "photo_studio_status",
      "photo_studio_history"
     ]
-   },
-   {
-    "name": "Brands that survive a server restart",
-    "notExposed": "Brand Studio keeps brands in server memory (documented in src/shared/brandStore.ts); the MCP reads and writes the same store, so brands saved through it are lost on restart just like the app's own. A persistence change in the app is a separate piece of work."
    }
   ],
   "zackd": [
@@ -659,8 +655,8 @@
     "notExposed": "Tab tools work only while the tab is open, signed in and switched on with \"Let MCP control this tab\"."
    },
    {
-    "name": "Listing GET /api/assets and GET /api/campaigns app routes",
-    "notExposed": "Those app routes have no sign-in check and return other users' rows; the MCP never calls them (it uses owner-scoped routes). Left unchanged by decision; reported."
+    "name": "Listing campaign assets (GET /api/assets)",
+    "notExposed": "The app routes GET /api/assets and GET /api/campaigns now refuse signed-out callers and return only the caller's own rows. The MCP lists campaigns through the app route (campaigns_list); it has no tool for campaign assets, because generating them is an app flow. Rows saved before owners were recorded have no owner and are no longer listed by the app."
    },
    {
     "name": "Model training",

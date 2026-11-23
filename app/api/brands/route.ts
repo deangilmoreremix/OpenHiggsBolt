@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authOrPrincipal } from '../../../lib/principal'
-import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
+import type { Brand } from '@/shared/brandStore'
+import { getBrandRepo } from '@/shared/brandRepo'
 import { ok, apiError } from '@/lib/apiError'
 import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, rawPageSize))
 
   // H4: only the caller's own brands are listed.
-  const all = getBrandsForUser(session.userId).map((b) => ({
+  const all = (await getBrandRepo().list(session.userId)).map((b) => ({
     id: b.id,
     url: b.url,
     brand_name: b.brand_name || '',
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
     brand_name = url
   }
 
-  const id = `br_${Date.now()}`
+  const id = `br_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   const brand: Brand = {
     id,
     url,
@@ -133,6 +134,6 @@ export async function POST(req: NextRequest) {
     tagline,
     created_at: new Date().toISOString(),
   }
-  brands.set(id, brand)
+  await getBrandRepo().save(brand)
   return NextResponse.json({ id, brand_name, url })
 }

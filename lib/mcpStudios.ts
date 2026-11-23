@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { runAs } from './principal';
 import { getSupabaseAdmin } from '../src/lib/supabaseServer';
-import { getBrandsForUser } from '../src/shared/brandStore';
 
 import * as designSessions from '../app/api/design-agent/sessions/route';
 import * as designChat from '../app/api/design-agent/chat/route';
@@ -163,27 +162,16 @@ export function social(deps: { fetchImpl?: typeof fetch } = {}) {
   };
 }
 
-export type CampaignDeps = { listBrandIds?: (userId: string) => string[]; campaignsFor?: (brandIds: string[]) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
-
 /**
- * Campaigns. The app's GET /api/campaigns has no sign-in check and returns every user's campaigns; the MCP never calls it.
- * Listing is limited to campaigns of brands the caller owns, and generating needs a brand the caller owns.
+ * Campaigns. The app's own routes: GET /api/campaigns lists only the caller's campaigns (owner-scoped, signed-out refused) and
+ * generation refuses a brand that records a different owner. The MCP adds no filtering of its own, so it cannot drift from the app.
  */
-export function campaigns(deps: CampaignDeps = {}) {
-  const listBrandIds = deps.listBrandIds || ((u: string) => getBrandsForUser(u).map((b) => b.id));
-  const campaignsFor = deps.campaignsFor || ((ids: string[]) => getSupabaseAdmin().from('brand_campaigns').select('*').in('brand_id', ids).order('created_at', { ascending: false }) as never);
+export function campaigns() {
   return async (call: Call, who: Who): Promise<Out> => {
-    const owned = listBrandIds(who.userId);
-    if (String(call?.route) === 'list') {
-      const wanted = typeof call?.query?.brand_id === 'string' ? [call.query.brand_id as string] : owned;
-      const ids = wanted.filter((id) => owned.includes(id));
-      if (!ids.length) return reply(200, { data: [] });
-      const { data, error } = await campaignsFor(ids);
-      return error ? reply(500, { error: 'Could not load campaigns.' }) : reply(200, { data: data || [] });
-    }
+    if (String(call?.route) === 'list') return invoke(campaignsRoute.GET as Handler, who, 'GET', '/api/campaigns', call?.query);
     if (String(call?.route) === 'generate') {
       const b = (call?.body || {}) as { brand_id?: unknown };
-      if (typeof b.brand_id !== 'string' || !owned.includes(b.brand_id)) return reply(403, { error: 'That brand does not belong to you.' });
+      if (typeof b.brand_id !== 'string' || !b.brand_id) return reply(400, { error: 'brand_id is required.' });
       return invoke(campaignsRoute.POST as Handler, who, 'POST', '/api/campaigns', undefined, call.body);
     }
     return reply(404, { error: 'Unknown route.' });

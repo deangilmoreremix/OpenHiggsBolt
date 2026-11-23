@@ -31,7 +31,7 @@ Flow: `search_models` → `get_model` (see the exact fields) → a generation to
 
 Studios: `_viral_prompts_search`, `_viral_seedance_search`; `_thumbnail_generate`, `_thumbnail_refine` (need your OpenAI key saved in Settings); Design Agent `_design_agent_session`, `_design_agent_sessions`, `_design_agent_chat`, `_design_agent_job`, `_design_agent_assets`, `_design_agent_decide`, `_design_agent_run_skill`; Brand Studio `_brand_analyze`, `_brands_list`, `_brand_save`, `_campaign_generate`, `_campaigns_list`; Zack D `_zackd_trends`, `_zackd_script`, `_zackd_submit`.
 
-Notes: these run the app's own route handlers as you (entitlement, ownership and validation are the app's). Brand Studio keeps brands in an in-memory store per server instance, so a saved brand can be missing on a later call. Campaign listing is limited to your own brands. Zack D's script and topic ideas use your OpenAI key and are an MCP addition: the app itself drafts its script offline.
+Notes: these run the app's own route handlers as you (entitlement, ownership and validation are the app's). Brand Studio brands are kept in the database per owner (they survive restarts). Campaign listing uses the app's own route, which returns only your campaigns. Zack D's script and topic ideas use your OpenAI key and are an MCP addition: the app itself drafts its script offline.
 
 Recipes and agents: `_skills_list`, `_skill_run` (the 65 ready-made recipes), `_workflows_list`, `_workflow_inputs`, `_workflow_run`, `_workflow_status`, `_agents_list`, `_agent_chat`.
 

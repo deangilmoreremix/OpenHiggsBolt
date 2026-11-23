@@ -3,6 +3,7 @@ import { analyzeBrand } from '@/lib/brandAnalyzer'
 import { ok, apiError } from '@/lib/apiError'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
+import { authOrPrincipal } from '../../../../lib/principal'
 
 export async function POST(req: NextRequest) {
   const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const brand = await analyzeBrand(url)
+    const { userId } = await authOrPrincipal()
+    const brand = await analyzeBrand(url, userId || undefined)
     return ok(brand)
   } catch (err: any) {
     return apiError('analysis_failed', err.message || 'Brand analysis failed', 500)

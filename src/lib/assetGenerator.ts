@@ -80,7 +80,7 @@ function extractFirstJson(text: string): any {
   return {}
 }
 
-export async function generateAsset(campaignId: string, platformId: string, conceptIndex: number): Promise<Asset> {
+export async function generateAsset(campaignId: string, platformId: string, conceptIndex: number, userId?: string): Promise<Asset> {
   const supabase = getSupabaseAdmin()
   const platform = PLATFORMS.find((p) => p.id === platformId) || PLATFORMS[0]
 
@@ -92,6 +92,7 @@ export async function generateAsset(campaignId: string, platformId: string, conc
 
   if (campaignError) throw campaignError
   if (!campaignWithBrand) throw new Error('Campaign not found')
+  if (userId && campaignWithBrand.clerk_user_id && campaignWithBrand.clerk_user_id !== userId) throw new Error('Campaign not found')
 
   let brand = campaignWithBrand.brand_dna
   if (!brand) {
@@ -183,6 +184,7 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
     .from('brand_assets')
     .insert({
       campaign_id: campaignId,
+      ...(userId ? { clerk_user_id: userId } : {}),
       brand_id: brand.id,
       platform: platform.id,
       concept_index: Number.isInteger(conceptIndex) ? conceptIndex : 0,

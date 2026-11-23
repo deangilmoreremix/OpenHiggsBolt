@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authOrPrincipal as auth } from '../../../lib/principal'
-import { brands, getBrandForUser, type Brand } from '@/shared/brandStore'
+import type { Brand } from '@/shared/brandStore'
+import { getBrandRepo } from '@/shared/brandRepo'
 import { apiError } from '@/lib/apiError'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   if (!id) return apiError('bad_request', 'id required', 400)
   // Ownership-scoped lookup; a non-owned id is indistinguishable from a
   // missing one and reported as 404.
-  const brand = getBrandForUser(id, session.userId)
+  const brand = await getBrandRepo().get(id, session.userId)
   if (!brand) return apiError('not_found', 'Brand not found', 404)
   return NextResponse.json(brand)
 }
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest) {
 
   const id = new URL(req.url).searchParams.get('id')
   if (!id) return apiError('bad_request', 'id required', 400)
-  const brand = getBrandForUser(id, session.userId)
+  const brand = await getBrandRepo().get(id, session.userId)
   if (!brand) return apiError('not_found', 'Brand not found', 404)
 
   let body: Partial<Brand> = {}
@@ -61,6 +62,6 @@ export async function PATCH(req: NextRequest) {
     url: brand.url,
     created_at: brand.created_at,
   }
-  brands.set(id, updated)
+  await getBrandRepo().save(updated)
   return NextResponse.json(updated)
 }

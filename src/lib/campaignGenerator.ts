@@ -10,12 +10,14 @@ function csvToArray(value: unknown): string[] {
   return []
 }
 
-export async function generateCampaign(brandId: string, goal: string, direction?: string): Promise<any> {
+export async function generateCampaign(brandId: string, goal: string, direction?: string, userId?: string): Promise<any> {
   const supabase = getSupabaseAdmin()
 
   const { data: brand, error: brandError } = await supabase.from('brand_dna').select('*').eq('id', brandId).single()
   if (brandError) throw brandError
   if (!brand) throw new Error('Brand not found')
+  // A brand that records an owner is only usable by that owner (older rows have none and keep working as before).
+  if (userId && brand.clerk_user_id && brand.clerk_user_id !== userId) throw new Error('Brand not found')
 
   const prompt = `You are a senior campaign strategist. Use every brand field below to generate exactly 4 distinct campaign concepts.
 
@@ -67,7 +69,7 @@ Make the concepts distinct, specific to this brand, and ready for visual executi
 
   const { data: campaign, error: campaignError } = await supabase
     .from('brand_campaigns')
-    .insert({ brand_id: brandId, goal, direction, concepts })
+    .insert({ brand_id: brandId, goal, direction, concepts, ...(userId ? { clerk_user_id: userId } : {}) })
     .select('*')
     .single()
 

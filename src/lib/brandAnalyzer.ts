@@ -11,7 +11,7 @@ function toCsv(value: unknown): string {
   return ''
 }
 
-export async function analyzeBrand(url: string): Promise<any> {
+export async function analyzeBrand(url: string, userId?: string): Promise<any> {
   const scraped = await scrapeUrl(url)
   const supabase = getSupabaseAdmin()
 
@@ -105,7 +105,8 @@ HTML text excerpt: ${scraped.bodyText}`
     },
   }
 
-  const { data, error } = await supabase.from('brand_dna').insert(row).select().single()
+  const insertRow: Record<string, unknown> = userId ? { ...row, clerk_user_id: userId } : { ...row }
+  const { data, error } = await supabase.from('brand_dna').insert(insertRow).select().single()
   if (error) throw error
   return data
 }

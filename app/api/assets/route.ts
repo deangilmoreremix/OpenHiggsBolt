@@ -4,13 +4,22 @@ import { generateAsset } from '@/src/lib/assetGenerator'
 import { ok, apiError } from '@/src/lib/apiError'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
+import { authOrPrincipal } from '../../../lib/principal'
 
 export async function GET(req: NextRequest) {
+  // Signed-out callers are refused and signed-in callers only ever see their own campaign assets (clerk_user_id).
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
+  const { userId } = await authOrPrincipal()
+  if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
   const { searchParams } = new URL(req.url)
   const campaignId = searchParams.get('campaign_id')
 
   const supabase = getSupabaseAdmin()
-  let query = supabase.from('brand_assets').select('*').order('created_at', { ascending: false })
+  let query = supabase.from('brand_assets').select('*').eq('clerk_user_id', userId).order('created_at', { ascending: false })
 
   if (campaignId) {
     query = query.eq('campaign_id', campaignId)
@@ -40,7 +49,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const asset = await generateAsset(campaign_id, platform, Number(concept_index) || 0)
+    const { userId } = await authOrPrincipal()
+    const asset = await generateAsset(campaign_id, platform, Number(concept_index) || 0, userId || undefined)
     return ok(asset)
   } catch (err: any) {
     return apiError('generation_failed', err.message || 'Asset generation failed', 500)

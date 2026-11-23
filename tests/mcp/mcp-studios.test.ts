@@ -14,15 +14,16 @@ vi.mock('@/access/resolveAccess', () => ({ resolveSmartVideoAccessForUser: (...a
 // design_agent_ownership + app_users, in memory
 const own = new Map<string, string>();
 const appUsers = new Map<string, { muapi_key?: string; openai_key?: string }>();
-const campaignsDb: { brand_id: string; id: string }[] = [];
+const campaignsDb: { id: string; clerk_user_id?: string }[] = [];
+const assetsDb: { id: string; clerk_user_id?: string; campaign_id?: string }[] = [];
 vi.mock('@/src/lib/supabaseServer', () => makeSupabase());
 vi.mock('../../src/lib/supabaseServer', () => makeSupabase());
 function makeSupabase() {
   const from = (table: string) => {
-    const state: { col?: string; val?: string; ids?: string[] } = {};
+    const state: { col?: string; val?: string; ids?: string[]; eqs: Record<string, string> } = { eqs: {} };
     const q: any = {
       select: () => q, order: () => q,
-      eq: (c: string, v: string) => { state.col = c; state.val = v; return q; },
+      eq: (c: string, v: string) => { state.col = c; state.val = v; state.eqs[c] = v; return q; },
       in: (_c: string, ids: string[]) => { state.ids = ids; return q; },
       maybeSingle: async () => {
         if (table === 'design_agent_ownership') { const key = state.val as string; const owner = own.get(key); return { data: owner ? { clerk_user_id: owner } : null }; }
@@ -30,7 +31,7 @@ function makeSupabase() {
         return { data: null };
       },
       upsert: async (row: any) => { own.set(row.session_id || row.job_id, row.clerk_user_id); if (row.job_id && row.session_id) own.set(row.job_id, row.clerk_user_id); return { error: null }; },
-      then: (res: any) => res({ data: table === 'brand_campaigns' ? campaignsDb.filter((c) => (state.ids || []).includes(c.brand_id)) : [], error: null }),
+      then: (res: any) => res({ data: table === 'brand_campaigns' ? campaignsDb.filter((c) => c.clerk_user_id === state.eqs.clerk_user_id) : table === 'brand_assets' ? assetsDb.filter((a) => a.clerk_user_id === state.eqs.clerk_user_id && (!state.eqs.campaign_id || a.campaign_id === state.eqs.campaign_id)) : [], error: null }),
     };
     return q;
   };
@@ -44,7 +45,7 @@ const { brands } = await import('../../src/shared/brandStore');
 
 const fetchMock = vi.fn();
 beforeEach(() => {
-  clerkAuth.mockReset(); access.mockReset(); fetchMock.mockReset(); own.clear(); appUsers.clear(); campaignsDb.length = 0; brands.clear();
+  clerkAuth.mockReset(); access.mockReset(); fetchMock.mockReset(); own.clear(); appUsers.clear(); campaignsDb.length = 0; assetsDb.length = 0; brands.clear();
   access.mockResolvedValue({ isSuperUser: false, hasSmartVideoGo: true, entitlements: {} });
   appUsers.set('owner_1', { muapi_key: 'owner1_upstream_key_0123456789', openai_key: 'sk-owner1-openai-0123456789' });
   appUsers.set('owner_2', { muapi_key: 'owner2_upstream_key_0123456789' });
@@ -115,25 +116,48 @@ describe('thumbnail through the MCP', () => {
   });
 });
 
-describe('campaigns are owner-scoped (the app\'s GET /api/campaigns is not)', () => {
-  const mine = { id: 'br_mine', url: 'https://a.example', owner: 'owner_1', created_at: 'x' } as any;
-  const theirs = { id: 'br_theirs', url: 'https://b.example', owner: 'owner_2', created_at: 'x' } as any;
-  beforeEach(() => { brands.set('br_mine', mine); brands.set('br_theirs', theirs); campaignsDb.push({ id: 'c1', brand_id: 'br_mine' }, { id: 'c2', brand_id: 'br_theirs' }); });
-
-  it('lists only campaigns of brands the caller owns, even when asked for someone else\'s brand', async () => {
-    const run = campaigns();
-    const all = JSON.parse((await run({ route: 'list' }, { userId: 'owner_1' })).body);
-    expect(all.data.map((c: any) => c.id)).toEqual(['c1']);
-    const other = JSON.parse((await run({ route: 'list', query: { brand_id: 'br_theirs' } }, { userId: 'owner_1' })).body);
-    expect(other.data).toEqual([]);
-    expect(JSON.parse((await run({ route: 'list' }, { userId: 'nobody' })).body).data).toEqual([]);
+describe('campaigns and campaign assets are owner-scoped (app routes and MCP)', () => {
+  beforeEach(() => {
+    campaignsDb.push({ id: 'c1', clerk_user_id: 'owner_1' }, { id: 'c2', clerk_user_id: 'owner_2' }, { id: 'c0' });
+    assetsDb.push({ id: 'a1', clerk_user_id: 'owner_1', campaign_id: 'c1' }, { id: 'a2', clerk_user_id: 'owner_2', campaign_id: 'c2' });
   });
+  const get = async (mod: string, path: string) => {
+    const route = await import(mod);
+    return route.GET(new Request(`https://x.test${path}`) as never);
+  };
 
-  it('refuses to generate for a brand the caller does not own', async () => {
+  it('the app routes refuse a signed-out caller', async () => {
+    clerkAuth.mockResolvedValue({ userId: null });
+    expect((await get('../../app/api/campaigns/route', '/api/campaigns')).status).toBe(401);
+    expect((await get('../../app/api/assets/route', '/api/assets')).status).toBe(401);
+  });
+  it('a signed-in caller sees only their own rows; unowned legacy rows are out of reach', async () => {
+    clerkAuth.mockResolvedValue({ userId: 'owner_1' });
+    const c = await (await get('../../app/api/campaigns/route', '/api/campaigns')).json();
+    expect((c.data ?? c).map((x: any) => x.id)).toEqual(['c1']);
+    const a = await (await get('../../app/api/assets/route', '/api/assets')).json();
+    expect((a.data ?? a).map((x: any) => x.id)).toEqual(['a1']);
+    const other = await (await get('../../app/api/assets/route', '/api/assets?campaign_id=c2')).json();
+    expect(other.data ?? other).toEqual([]);
+  });
+  it('without the entitlement a signed-in caller gets 403', async () => {
+    clerkAuth.mockResolvedValue({ userId: 'owner_1' });
+    access.mockResolvedValue({ isSuperUser: false, hasSmartVideoGo: false, entitlements: {} });
+    expect((await get('../../app/api/campaigns/route', '/api/campaigns')).status).toBe(403);
+  });
+  it('the MCP lists exactly what the app route lists for that owner (principal accepted, no Clerk session)', async () => {
     const run = campaigns();
-    const r = await run({ route: 'generate', body: { brand_id: 'br_theirs', goal: 'sell' } }, { userId: 'owner_1' });
-    expect(r.statusCode).toBe(403);
-    expect((await run({ route: 'generate', body: { goal: 'sell' } }, { userId: 'owner_1' })).statusCode).toBe(403);
+    const mine = JSON.parse((await run({ route: 'list' }, { userId: 'owner_1' })).body);
+    expect((mine.data ?? mine).map((x: any) => x.id)).toEqual(['c1']);
+    const theirs = JSON.parse((await run({ route: 'list' }, { userId: 'owner_2' })).body);
+    expect((theirs.data ?? theirs).map((x: any) => x.id)).toEqual(['c2']);
+    expect((JSON.parse((await run({ route: 'list' }, { userId: 'nobody' })).body).data ?? [])).toEqual([]);
+    expect(clerkAuth).not.toHaveBeenCalled();
+  });
+  it('generation needs a brand id and an unknown route is refused', async () => {
+    const run = campaigns();
+    expect((await run({ route: 'generate', body: { goal: 'sell' } }, { userId: 'owner_1' })).statusCode).toBe(400);
+    expect((await run({ route: 'nope' }, { userId: 'owner_1' })).statusCode).toBe(404);
   });
 });
 

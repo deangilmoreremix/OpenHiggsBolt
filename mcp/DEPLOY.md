@@ -54,7 +54,7 @@ The run stops before any call that would push the running estimate past the cap 
 
 ## 7. Checks the script cannot do
 - **Cross-user isolation:** with two accounts, create a Design Agent session with account A's key and try to read its assets with account B's key: expect 403. List campaigns with B: A's must not appear.
-- **App route exposure (not part of the MCP):** `GET /api/campaigns` in the app has no sign-in check and returns every user's campaigns. The MCP never calls it, but anyone can. Worth fixing separately.
+- **Campaign and asset routes:** `GET /api/campaigns` and `GET /api/assets` now refuse signed-out callers and return only the caller's own rows. Check it: signed out, both answer 401; with two accounts, each sees only its own. Campaigns and assets saved before owners were recorded have no owner and are no longer listed by the app (they are still in the database).
 - **Revoked key:** revoke the key at `/studio/mcp-cli`, call a tool again: expect "Missing, invalid or revoked SmartVideo GO MCP key".
 - **No saved API key:** remove the key in Settings; the MCP key stops working (401) until one is saved again.
 - **No entitlement:** an account without `SMARTVIDEO_GO` access gets 403 from the gateway.
