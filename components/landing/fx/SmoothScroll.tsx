@@ -46,7 +46,8 @@ function targetTop(el: HTMLElement, lenis: Lenis | null, extraOffset: number) {
 
 /**
  * How long after landing a jump keeps the target aligned: until the layout
- * has been still for SETTLE_MS, but never longer than SETTLE_MAX_MS.
+ * has been still for SETTLE_MS, and again after any later height change,
+ * until SETTLE_MAX_MS.
  */
 const SETTLE_MS = 1500;
 const SETTLE_MAX_MS = 8000;
@@ -95,9 +96,12 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
     const check = () => {
       if (cancelled) return;
       const now = performance.now();
-      if (now > end || now > hardEnd) return cancel();
-      // Content still changing height (or a ScrollTrigger refresh moving the
-      // page): keep watching until it has been still for SETTLE_MS.
+      if (now > hardEnd) return cancel();
+      // Content changing height (or a ScrollTrigger refresh moving the page):
+      // align until it has been still for SETTLE_MS. After that, keep
+      // watching until SETTLE_MAX_MS, but only a later height change (a row
+      // that measures itself late) brings alignment back; with the layout
+      // still, nothing here moves the page.
       const height = document.body.scrollHeight;
       if (height !== lastHeight) {
         lastHeight = height;
@@ -105,7 +109,7 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
       }
       const top = targetTop(el, lenis, extraOffset);
       const current = lenis ? lenis.animatedScroll : window.scrollY;
-      if (Math.abs(top - current) > 4) {
+      if (now <= end && Math.abs(top - current) > 4) {
         end = now + SETTLE_MS;
         // 'instant', not 'auto': phones have CSS smooth scrolling, which 'auto' would follow.
         if (lenis) lenis.scrollTo(top, { immediate: true });
