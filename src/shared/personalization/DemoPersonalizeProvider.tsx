@@ -112,7 +112,7 @@ import { buildPreviewInput } from './guided/buildPreviewInput'
 import { reorderLayers } from './preview/layerOrder'
 import { normalizeAngle } from './preview/rotation'
 import { fitSettingsToClip, readClipMetadata } from './preview/fitSettingsToClip'
-import { chooseFinalOutputPath } from './finalOutput'
+import { chooseFinalOutputPath, type FinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
@@ -1098,7 +1098,7 @@ export type DemoPersonalizeContextValue = {
     * Creates the final video. `approveNow` is the customer pressing the create button in Advanced Editing, where the live
     * preview sits beside the controls and there is no separate approve step: that click approves what is on screen.
     */
-   createFinalVideo: (options?: { approveNow?: boolean }) => Promise<void>
+   createFinalVideo: (options?: { approveNow?: boolean; path?: FinalOutputPath }) => Promise<void>
    cancelExport: () => void
    apiKey: string
    setPreviewAudio: (file: File) => Promise<void>
@@ -1506,7 +1506,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
-  const { apiKey } = useAuthConfig()
+  const { apiKey, openaiKey } = useAuthConfig()
   // Modal
   const [isOpen, setIsOpen] = useState(false)
   const [source, setSource] = useState<PersonalizationSource | null>(null)
@@ -1966,7 +1966,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const lastRunWasFinalVideoRef = useRef(false)
   /** Object URL of the last layered video, revoked when a newer one replaces it. */
   const lastLayeredVideoUrlRef = useRef<string | null>(null)
-  const createFinalVideoRef = useRef<((options?: { approveNow?: boolean }) => Promise<void>) | null>(null)
+  const createFinalVideoRef = useRef<((options?: { approveNow?: boolean; path?: FinalOutputPath }) => Promise<void>) | null>(null)
 
   // Guards async uploads against writing state (and revoking blobs) after the
   // provider has unmounted, which would double-revoke blobs released on unmount.
@@ -5377,12 +5377,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       return
     }
     if (!source) return
-    if (!apiKey) {
-      // Say why nothing happens instead of silently doing nothing.
+    // Videos are made on MuAPI and images on OpenAI: each needs the visitor's own key for that service. Say why nothing
+    // happens instead of silently doing nothing.
+    const imageSource = source.mediaType === 'image'
+    if (imageSource ? !openaiKey : !apiKey) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
         status: 'error',
-        errorMessage: 'Connect your SmartVideo (MuAPI) API key in Settings to create videos and images.',
+        errorMessage: imageSource
+          ? 'Add your OpenAI key to personalize images with AI.'
+          : 'Connect your SmartVideo (MuAPI) API key in Settings to create videos and images.',
       })
       return
     }
@@ -5503,6 +5507,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         mode,
         options,
         apiKey,
+        openaiKey,
         // Only the final-video render puts the source audio back on.
         restoresSourceAudio: burnInLayers,
         onProgress: (percent, message) => {
@@ -5735,7 +5740,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         failedStage: 'generation',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun, previewVideo, previewSettings])
+  }, [source, apiKey, openaiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, completeRun, previewVideo, previewSettings])
 
   const generate = useCallback(() => {
     lastRunWasFinalVideoRef.current = false
@@ -6190,15 +6195,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [previewApproved, source, previewSettings, previewVideo, clientForm, assets])
 
-  const createFinalVideo = useCallback(async (options?: { approveNow?: boolean }) => {
+  const createFinalVideo = useCallback(async (options?: { approveNow?: boolean; path?: FinalOutputPath }) => {
     lastRunWasFinalVideoRef.current = true
     const approved = previewApproved || options?.approveNow === true
     // Overlay-only personalizations (branding on the EXISTING selected video)
     // export through the local Remotion render pipeline — never through MuAPI
     // generation. Personalizations that genuinely need AI-generated imagery or
     // video keep the existing generate() flow exactly.
-    if (access !== 'authenticated' || !source) return
-    const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
+    //
+    // The branded render runs entirely in the visitor's browser (no server, no storage, no paid request), so it needs
+    // no account. AI generation runs on the visitor's own key (kept in their browser), so it needs none either.
+    if (!source) return
+    const finalPath = options?.path ?? chooseFinalOutputPath({ personalizationMode: mode || null })
 
     if (finalPath === 'ai-generation') {
       const hasLogo = previewSettings.layers.some(
