@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { authOrPrincipal as auth } from '../../../../lib/principal'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 
 export const dynamic = 'force-dynamic'

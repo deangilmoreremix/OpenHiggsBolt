@@ -40,11 +40,11 @@ describe('gateway enforcement (SmartVideo GO)', () => {
     const run = vi.fn(async () => ({ statusCode: 200, body: '{}' }));
     const { call, store } = setup({ demo: run });
     // the raw route only passes allow-listed calls; a DELETE is classified destructive and stopped before the allow-list is even consulted
-    const refused = await call('/raw', { method: 'DELETE', path: '/workflow/delete-workflow-def/x' });
+    const refused = await call('/raw', { method: 'DELETE', path: '/account/delete-everything' });
     expect(refused.statusCode).toBe(409);
-    const confirmed = await call('/raw', { method: 'DELETE', path: '/workflow/delete-workflow-def/x', confirm: true });
+    const confirmed = await call('/raw', { method: 'DELETE', path: '/account/delete-everything', confirm: true });
     expect(confirmed.statusCode).toBe(400); // confirmed, counted, then the allow-list still says no
-    const capped = await call('/raw', { method: 'DELETE', path: '/workflow/delete-workflow-def/y', confirm: true });
+    const capped = await call('/raw', { method: 'DELETE', path: '/account/delete-more', confirm: true });
     expect(capped.statusCode).toBe(429);
     await call('/studio/demo', { secret: 'prompt text' });
     expect(store.rows.map((r) => [r.risk, r.ok])).toEqual([['destructive', false], ['write', true]]);

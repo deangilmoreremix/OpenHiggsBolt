@@ -124,11 +124,13 @@ describe('mcp-gateway with MCP keys', () => {
     f.mockClear();
     // a DELETE is destructive: refused for want of confirm before the allow-list is consulted (and still refused with it, see governor.test.js)
     expect((await raw('DELETE', '/workflow/delete-workflow-def/x', {})).statusCode).toBe(409);
-    for (const [m, p] of [['POST', '/workflow/create'], ['POST', '/agents'], ['GET', '/account/balance'], ['GET', '/workflow/../admin'], ['GET', '/workflow/a b/api-inputs'], ['GET', 'https://evil.test/x'], ['POST', '/workflow/x/api-inputs']]) {
+    for (const [m, p] of [['POST', '/workflow/publish'], ['POST', '/agents/x'], ['GET', '/account/balance'], ['GET', '/workflow/../admin'], ['GET', '/workflow/a b/api-inputs'], ['GET', 'https://evil.test/x'], ['POST', '/workflow/x/api-inputs']]) {
       expect((await raw(m, p, {})).statusCode, `${m} ${p}`).toBe(400);
     }
     expect(f).not.toHaveBeenCalled();
-    expect(RAW_ALLOWLIST.every(([m]) => m === 'GET' || m === 'POST')).toBe(true);
+    // DELETE is allowed only for the two deletes the app itself makes (a workflow definition, a generation's media); both are destructive and need confirm.
+    expect(RAW_ALLOWLIST.filter(([m]) => m === 'DELETE').length).toBe(2);
+    expect(RAW_ALLOWLIST.every(([m]) => ['GET', 'POST', 'DELETE'].includes(m))).toBe(true);
   });
 
   it('studio routes run as the key owner and scrub provider names', async () => {

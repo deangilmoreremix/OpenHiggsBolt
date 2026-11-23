@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { auth } from '@clerk/nextjs/server'
+import { authOrPrincipal as auth } from '../../../../../lib/principal'
 import { sanitizeName } from '@/src/server/motionCapture'
 import { rateLimit, rateLimit429 } from '../../../../../lib/rateLimit'
 

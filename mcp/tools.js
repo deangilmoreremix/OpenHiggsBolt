@@ -6,6 +6,7 @@ import { z, createCatalog, extractOutputs, sanitizeDeep } from '../packages/stud
 import { buildParams } from '../packages/studio/src/lib/promptRecipes.js';
 import { endpointFixes } from './brand.js';
 import { buildMedia } from '../lib/zackdFunction.js';
+import { EDIT_TOOLS, getEditToolBySlug, getEditToolModels, getDefaultEditToolModel } from '../packages/studio/src/editTools.js';
 
 const registry = JSON.parse(readFileSync(new URL('../packages/studio/src/skills/registry.json', import.meta.url), 'utf8'));
 const skillList = Array.isArray(registry.skills) ? registry.skills : Object.values(registry.skills || {});
@@ -344,3 +345,102 @@ customTools.push(
     },
   },
 );
+
+// ── Video Pages (the app's own owner-scoped page code, run as the key's owner) ──────────────────────
+const PAGE_ID = z.string().regex(/^[A-Za-z0-9_-]{8,32}$/).describe('Page id from video_pages_list');
+const pg = (client, body) => studio(client, 'pages', body);
+customTools.push(
+  { name: 'video_pages_list', risk: 'read', description: 'List your Video Pages.', input: {}, run: (a, client) => pg(client, { action: 'list' }) },
+  { name: 'video_pages_get', risk: 'read', description: 'One Video Page.', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'get', id: a.id }) },
+  {
+    name: 'video_pages_create',
+    description: 'Create a draft Video Page around a video (permanent https link). It is not public until video_pages_publish.',
+    input: { title: z.string().max(200).optional(), video_url: z.string().url(), poster_url: z.string().url().optional(), duration: z.number().optional(), config: z.record(z.any()).optional().describe('Page settings (sanitized by the app)') },
+    run: (a, client) => pg(client, { action: 'create', ...a }),
+  },
+  { name: 'video_pages_update', description: 'Change a page title, poster or settings.', input: { id: PAGE_ID, title: z.string().max(200).optional(), poster_url: z.string().url().optional(), config: z.record(z.any()).optional() }, run: (a, client) => pg(client, { action: 'update', ...a }) },
+  { name: 'video_pages_publish', risk: 'publish', description: 'Make a Video Page public at its link.', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'publish', id: a.id }) },
+  { name: 'video_pages_unpublish', description: 'Take a Video Page offline (it stays saved).', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'unpublish', id: a.id }) },
+  { name: 'video_pages_delete', risk: 'destructive', description: 'Delete a Video Page and its stats.', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'delete', id: a.id }) },
+  { name: 'video_pages_stats', risk: 'read', description: 'Views, plays, completions, clicks and leads for a page, plus per-contact activity.', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'stats', id: a.id }) },
+  { name: 'video_pages_contacts', risk: 'read', description: 'Recipients of personalized links for a page.', input: { id: PAGE_ID }, run: (a, client) => pg(client, { action: 'contacts', id: a.id }) },
+  { name: 'video_pages_add_contacts', description: 'Add recipients (up to 500 per call). Each contact is an object like { firstname, company, city }.', input: { id: PAGE_ID, contacts: z.array(z.record(z.string())).min(1).max(500) }, run: (a, client) => pg(client, { action: 'add_contacts', id: a.id, contacts: a.contacts.map((fields) => ({ fields })) }) },
+  { name: 'video_pages_remove_contact', risk: 'destructive', description: 'Remove a recipient.', input: { id: PAGE_ID, contact_id: z.string().min(6).max(40) }, run: (a, client) => pg(client, { action: 'remove_contact', id: a.id, contact_id: a.contact_id }) },
+);
+
+// ── Asset library (uploads and generated results, per user) ─────────────────────────────────────────
+const lib = (client, method, extra) => studio(client, 'assets', { route: 'library', method, ...extra });
+customTools.push(
+  { name: 'assets_library_list', risk: 'read', description: 'List your asset library (uploads and saved results).', input: { kind: z.enum(['image', 'video', 'audio']).optional(), limit: z.number().int().min(1).max(200).optional() }, run: (a, client) => lib(client, 'GET', { query: { kind: a.kind, limit: a.limit } }) },
+  { name: 'assets_library_add', description: 'Save a public https media URL to your asset library.', input: { url: z.string().url(), kind: z.enum(['image', 'video', 'audio']), name: z.string().max(200).optional() }, run: (a, client) => lib(client, 'POST', { body: { url: a.url, kind: a.kind, name: a.name, source: 'result' } }) },
+  { name: 'assets_library_delete', risk: 'destructive', description: 'Remove an item from your asset library.', input: { id: z.string().uuid() }, run: (a, client) => lib(client, 'DELETE', { query: { id: a.id } }) },
+);
+
+// ── Generation history ──────────────────────────────────────────────────────────────────────────────
+customTools.push(
+  { name: 'history_list', risk: 'read', description: 'Your past generations, newest first (pass the returned cursor for the next page).', input: { limit: z.number().int().min(1).max(100).optional(), cursor: z.string().max(200).optional() }, run: (a, client) => client.raw('GET', `/api/v1/history?${new URLSearchParams({ limit: String(a.limit || 50), ...(a.cursor ? { cursor: a.cursor } : {}) })}`) },
+  { name: 'history_delete_media', risk: 'destructive', description: 'Delete the stored media of one past generation (the files are removed; this cannot be undone).', input: { request_id: ID }, run: (a, client) => client.raw('DELETE', `/api/v1/predictions/${a.request_id}/media`) },
+);
+
+// ── Social publishing (accounts must already be connected in the app; connecting is a person's job) ─
+customTools.push(
+  { name: 'social_accounts_list', risk: 'read', description: 'Social accounts you connected in the app (use account ids in social_publish).', input: {}, run: (a, client) => studio(client, 'social', { action: 'accounts' }) },
+  {
+    name: 'social_publish', risk: 'publish',
+    description: 'Post a video or image to one of your connected accounts (youtube, instagram, tiktok, facebook, linkedin, pinterest, threads, x). Checked against that platform\'s limits first. Needs confirm: true; costs a small fee.',
+    input: { platform: z.enum(['youtube', 'instagram', 'tiktok', 'facebook', 'linkedin', 'pinterest', 'threads', 'x']), account_id: z.union([z.string(), z.number()]), media_url: z.string().url(), media_type: z.enum(['video', 'image']).optional(), title: z.string().max(200).optional(), caption: z.string().max(5000).optional(), tags: z.string().max(500).optional().describe('Comma separated'), settings: z.record(z.any()).optional().describe('Platform settings, e.g. { privacy: "public" }') },
+    run: (a, client) => studio(client, 'social', { action: 'publish', platform: a.platform, account_id: a.account_id, media_url: a.media_url, media_type: a.media_type, title: a.title, caption: a.caption, tags: a.tags, settings: a.settings }),
+  },
+  { name: 'social_publish_status', risk: 'read', description: 'Check a post started with social_publish.', input: { request_id: ID }, run: (a, client) => studio(client, 'social', { action: 'status', request_id: a.request_id }) },
+);
+
+// ── Edit tools (the Edit studio's tool cards, run through the catalog) ──────────────────────────────
+customTools.push(
+  {
+    name: 'edit_tools_list', risk: 'read',
+    description: 'The Edit studio\'s tools (slug, name, what it does) and the models each uses.',
+    input: { query: z.string().max(80).optional() },
+    run: async (a) => ({ tools: EDIT_TOOLS.filter((t) => !a.query || `${t.slug} ${t.name} ${t.description}`.toLowerCase().includes(a.query.toLowerCase())).map((t) => ({ slug: t.slug, name: t.name, description: t.description, default_model: getDefaultEditToolModel(t)?.model.id, models: getEditToolModels(t).map((m) => ({ id: m.model.id, kind: m.catalog })) })) }),
+  },
+  {
+    name: 'edit_tool_run', timeoutMs: 900_000,
+    description: 'Run one of the Edit studio\'s tools by slug (see edit_tools_list) with the model\'s inputs (prompt, image_url / images_list, video_url…). Uses the tool\'s default model unless you name another from its list.',
+    input: { tool: z.string().min(1).max(80), model: z.string().max(120).optional(), inputs: z.record(z.any()) },
+    run: async (a, client) => {
+      const tool = getEditToolBySlug(a.tool);
+      if (!tool) throw Object.assign(new Error(`Unknown edit tool "${String(a.tool).slice(0, 40)}". Use edit_tools_list.`), { code: 'BAD_INPUT' });
+      const models = getEditToolModels(tool);
+      const picked = a.model ? models.find((m) => m.model.id === a.model) : getDefaultEditToolModel(tool);
+      if (!picked) throw Object.assign(new Error(`That tool does not use "${String(a.model).slice(0, 60)}". Models: ${models.map((m) => m.model.id).join(', ')}`), { code: 'BAD_INPUT' });
+      const { endpoint, payload } = catalog.buildRequest(picked.model.id, a.inputs || {});
+      const submitted = await client.submit(endpoint, payload);
+      const id = submitted.request_id || submitted.id;
+      if (!id) return { status: 'completed', outputs: extractOutputs(submitted) };
+      return { model: picked.model.id, ...(await client.wait(id, { timeoutMs: 900_000 })) };
+    },
+  },
+);
+
+// ── Workflows and agents: the calls the Workflows and Agents screens make ───────────────────────────
+customTools.push(
+  { name: 'workflow_get', risk: 'read', description: 'A workflow\'s definition (nodes and edges).', input: { workflow_id: ID }, run: (a, client) => client.raw('GET', `/workflow/get-workflow-def/${a.workflow_id}`) },
+  { name: 'workflow_create', description: 'Create an empty workflow (open it in the Workflows studio to build it out).', input: { name: z.string().min(1).max(120).optional() }, run: (a, client) => client.raw('POST', '/workflow/create', { workflow_id: null, name: a.name || 'Untitled Workflow', edges: [], data: { nodes: [] } }) },
+  { name: 'workflow_rename', description: 'Rename a workflow.', input: { workflow_id: ID, name: z.string().min(1).max(120) }, run: (a, client) => client.raw('POST', `/workflow/update-name/${a.workflow_id}`, { name: a.name }) },
+  { name: 'workflow_delete', risk: 'destructive', description: 'Delete a workflow definition.', input: { workflow_id: ID }, run: (a, client) => client.raw('DELETE', `/workflow/delete-workflow-def/${a.workflow_id}`) },
+  { name: 'agent_create', description: 'Create a persona agent (a system-prompt-driven assistant, no extra skills attached).', input: { name: z.string().min(1).max(120), system_prompt: z.string().min(1).max(8000), description: z.string().max(500).optional(), welcome_message: z.string().max(500).optional() }, run: (a, client) => client.raw('POST', '/agents', { name: a.name, description: a.description || null, system_prompt: a.system_prompt, welcome_message: a.welcome_message || null, skill_ids: [] }) },
+);
+
+// ── Photo Studio (the app's own route, with your saved generation key) ──────────────────────────────
+const ps = (client, method, extra) => studio(client, 'photo-studio', { route: 'studio', method, ...extra });
+customTools.push(
+  { name: 'photo_studio_generate', description: 'Make a product photo in a style (starts a job; check it with photo_studio_status).', input: { style: z.string().min(1).max(200), brand_id: z.string().max(80).optional(), product_url: z.string().url().optional(), category: z.string().max(120).optional() }, run: (a, client) => ps(client, 'POST', { body: { style: a.style, brand_id: a.brand_id, product_url: a.product_url, category: a.category } }) },
+  { name: 'photo_studio_status', risk: 'read', description: 'Check a Photo Studio job.', input: { request_id: ID }, run: (a, client) => ps(client, 'GET', { query: { requestId: a.request_id } }) },
+  { name: 'photo_studio_history', risk: 'read', description: 'Your Photo Studio results.', input: { brand_id: z.string().max(80).optional(), page: z.number().int().min(1).optional(), page_size: z.number().int().min(1).max(100).optional() }, run: (a, client) => ps(client, 'GET', { query: { brand_id: a.brand_id, page: a.page, pageSize: a.page_size } }) },
+);
+
+customTools.push({
+  name: 'usage_info', risk: 'read',
+  description: 'Your SmartVideo GO account at a glance: generation credit balance.',
+  input: {},
+  run: async (a, client) => ({ balance: await client.balance() }),
+});
