@@ -9,7 +9,8 @@ Method: for each sampled time the per-pixel MEDIAN over all designs is a near-cl
 Output: <out>/analysis.json and contact sheets <out>/sheets/<category>-<n>.png (id label under each 16:9 tile, t = 2.5 s).
 Usage : python3 scripts/design-sweep-analyze.py [out_dir] [categories.json]
         categories.json maps design id -> category (optional; written by the ledger step).
-Numbers are a screen, not a verdict: the contact sheets must still be looked at.
+Numbers are a screen, not a verdict, and a weak one: it called every design 'drew something', including ones that visibly draw
+nothing, and transitions act before the 1/2.5/4 s samples. The contact sheets must be looked at (and were).
 """
 import json
 import os
@@ -20,7 +21,7 @@ from PIL import Image, ImageDraw
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'test-results/design-sweep'
 CATS = json.load(open(sys.argv[2])) if len(sys.argv) > 2 else {}
-TIMES = ['1.0', '2.5', '4.0']
+TIMES = ['1', '2.5', '4']
 SMALL = (96, 54)
 BLOCK_DIFF = 14        # mean abs channel difference that counts a block as changed
 DREW_MIN = 0.004       # fraction of blocks changed at some time => "drew something"

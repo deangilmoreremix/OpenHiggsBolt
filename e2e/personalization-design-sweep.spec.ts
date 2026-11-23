@@ -69,12 +69,13 @@ async function seed(page: Page) {
   await dialog.getByRole('button', { name: /Next: Profile/ }).click();
   await page.fill('input[placeholder="ABC Roofing"]', 'Sweep Studio');
   await dialog.getByRole('button', { name: /Next: Your assets/ }).click();
-  const logo = await page.evaluate(() => {
+  // White wordmark by default; SWEEP_LOGO_COLOR re-runs designs that put the logo on a white tile (a white logo vanishes there).
+  const logo = await page.evaluate((color) => {
     const c = document.createElement('canvas'); c.width = 600; c.height = 200;
-    const g = c.getContext('2d')!; g.fillStyle = '#ffffff'; g.font = 'bold 90px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const g = c.getContext('2d')!; g.fillStyle = color; g.font = 'bold 90px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText('SWEEP', 300, 100);
     return c.toDataURL('image/png');
-  });
+  }, process.env.SWEEP_LOGO_COLOR ?? '#ffffff');
   const pics = await page.evaluate(() => [['#a33b6b', '#ffd400'], ['#1f5fae', '#ffffff']].map(([bg, fg]) => {
     const c = document.createElement('canvas'); c.width = 900; c.height = 600;
     const g = c.getContext('2d')!; g.fillStyle = bg; g.fillRect(0, 0, 900, 600); g.fillStyle = fg; g.beginPath(); g.arc(450, 300, 230, 0, Math.PI * 2); g.fill();
@@ -110,7 +111,7 @@ async function listDesigns(page: Page, dialog: ReturnType<Page['getByRole']>) {
   const browse = dialog.getByTestId('design-browse-all');
   if ((await browse.getAttribute('aria-expanded')) !== 'true') await browse.click();
   const more = dialog.getByTestId('personalization-template-show-more');
-  for (let i = 0; i < 40 && (await more.count()); i++) { await more.first().click(); await page.waitForTimeout(150); }
+  for (let i = 0; i < 80; i++) { if (!(await more.count())) { await page.waitForTimeout(500); if (!(await more.count())) break; } await more.first().click(); await page.waitForTimeout(250); }
   return page.evaluate(() => Array.from(document.querySelectorAll('[data-testid="personalization-template-card"][data-template-kind="design"]'))
     .map((el) => ({ id: el.getAttribute('data-template-id') || '', name: (el.getAttribute('aria-label') || '').replace(/^Select |\s*template$/g, '') })));
 }
