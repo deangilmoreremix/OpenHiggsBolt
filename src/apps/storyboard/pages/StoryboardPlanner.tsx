@@ -152,7 +152,7 @@ export default function StoryboardPlanner() {
         <span className="text-sm font-semibold tracking-tight">Storyboard</span>
         {projectName && <span className="text-xs truncate" style={{ color: semantic.textMuted }}>— {projectName}</span>}
         <div className="ml-auto flex items-center gap-1">
-          <button
+          <button data-help="export json"
             onClick={() => exportJson({ project: exportProject })}
             disabled={shots.length === 0}
             className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
@@ -161,7 +161,7 @@ export default function StoryboardPlanner() {
           >
             <FileJson size={14} /> JSON
           </button>
-          <button
+          <button data-help="export pdf"
             onClick={() => exportPdf({ id: 'current', ...exportProject })}
             disabled={shots.length === 0}
             className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"

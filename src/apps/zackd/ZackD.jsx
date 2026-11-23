@@ -605,7 +605,7 @@ export default function ZackD({
             </p>
             <div className="flex flex-wrap gap-2 justify-center mt-6 px-4">
               {TEMPLATES.map((t) => (
-                <button key={t.id} type="button" className={promptControlClassName({ compact: true })} onClick={() => loadTemplate(t)}>
+                <button key={t.id} data-help-name={t.title} data-help-text={t.kind === 'finished' ? 'Script + keyframes + clips' : 'Script only'} type="button" className={promptControlClassName({ compact: true })} onClick={() => loadTemplate(t)}>
                   <span className={PROMPT_CONTROL_LABEL_CLASS}>{t.kind === 'finished' ? 'Try the demo project' : t.title}</span>
                 </button>
               ))}

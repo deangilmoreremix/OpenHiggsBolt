@@ -297,7 +297,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
             <p className="max-w-md text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{AGENT_HELP}</p>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
-                <button
+                <button data-help="example prompt"
                   key={s}
                   type="button"
                   onClick={() => send(s)}

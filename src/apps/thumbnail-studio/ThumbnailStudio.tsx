@@ -733,7 +733,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
                     Available models
                   </div>
 
-                  <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1" role="listbox" aria-label="Image generation models">
+                  <div data-help="model" className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1" role="listbox" aria-label="Image generation models">
                     {MODELS.filter(m => m.label.toLowerCase().includes(modelSearch.toLowerCase()) || m.value.toLowerCase().includes(modelSearch.toLowerCase())).map(m => {
                       const active = selectedModel === m.value
                       return (
@@ -794,7 +794,7 @@ export default function ThumbnailStudio({ apiKey, templateData, renderPersonaliz
               <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>QUALITY</p>
               <div className="grid grid-cols-3 gap-2">
                 {QUALITY_PRESETS.map(q => (
-                  <button key={q.value} onClick={() => setQuality(q.value as 'low' | 'medium' | 'high')}
+                  <button data-help="thumbnail quality" key={q.value} onClick={() => setQuality(q.value as 'low' | 'medium' | 'high')}
                     className="py-2.5 rounded-lg text-center transition-all"
                     style={optionStyle(quality === q.value)}
                   >

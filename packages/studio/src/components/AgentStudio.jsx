@@ -562,7 +562,7 @@ export default function AgentStudio({ apiKey, locale = "en" }) {
           </div>
         </div>
 
-        <button
+        <button data-help="create agent"
           onClick={handleCreateAgent}
           className="px-6 py-2 bg-[#22d3ee] text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#ebff66] transition-all active:scale-95 flex items-center gap-2"
         >

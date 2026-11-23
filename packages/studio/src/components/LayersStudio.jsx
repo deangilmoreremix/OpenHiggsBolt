@@ -1711,7 +1711,7 @@ export default function LayersStudio({
                       ? "bg-[#84cc16] text-black border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
-                  title={copy.tools.line}
+                  title={copy.tools.line} data-help="layers shape"
                 >
                   <svg
                     width="15"
@@ -1732,7 +1732,7 @@ export default function LayersStudio({
                       ? "bg-[#84cc16] text-black border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
-                  title={copy.tools.arrow}
+                  title={copy.tools.arrow} data-help="layers shape"
                 >
                   <svg
                     width="15"
@@ -1754,7 +1754,7 @@ export default function LayersStudio({
                       ? "bg-[#84cc16] text-black border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
-                  title={copy.tools.rectangle}
+                  title={copy.tools.rectangle} data-help="layers shape"
                 >
                   <svg
                     width="15"
@@ -1775,7 +1775,7 @@ export default function LayersStudio({
                       ? "bg-[#84cc16] text-black border-[#84cc16]"
                       : "text-white/70 hover:text-white border-transparent"
                   }`}
-                  title={copy.tools.circle}
+                  title={copy.tools.circle} data-help="layers shape"
                 >
                   <svg
                     width="15"
