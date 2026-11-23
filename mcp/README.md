@@ -52,5 +52,20 @@ Storyboard, Motion Director and Layers keep their working state in the page. Wit
 ## Which studios are covered
 `mcp/studios.json` classifies every studio tab: the tools that serve it, or why it is not exposed, and lists each studio's features with the tool that does it or the reason it has none (`features`). `tests/mcp/bridge-manifest.test.js` fails if a tab tool changes without `mcp/bridge-tools.json` being rebuilt (`UPDATE_BRIDGE_MANIFEST=1 npx vitest run tests/mcp/bridge-manifest.test.js`). `tests/mcp/studio-coverage.test.js` fails when a tab is added without being classified; `tests/mcp/skills-parity.test.js` runs every recipe through both the Skills panel code and the MCP and compares the requests.
 
+## Hosted endpoint and npx
+Hosted (nothing to install; needs the `/api/mcp` route deployed, see DEPLOY.md):
+```bash
+claude mcp add --transport http smartvideo-go https://<your-site>/api/mcp --header "Authorization: Bearer sv_live_..."
+```
+Via npx (once `smartvideo-go-mcp` is published; build and check it locally with `npm --prefix packages/smartvideo-go-mcp run build`):
+```bash
+claude mcp add smartvideo-go -e SMARTVIDEO_GO_API_KEY=sv_live_... -- npx -y smartvideo-go-mcp
+```
+
+## Limits and key hygiene
+- Each key is limited to 120 requests a minute (`MCP_RATE_PER_MIN`, `0` turns it off). Past it the answer is 429 with `Retry-After`. Checking on a finished job is not counted.
+- Keys can expire (`MCP_KEY_MAX_DAYS` sets the default and the longest life; with it unset, keys do not expire). **Rotate** at /studio/mcp-cli makes a new key and revokes the old one in one step.
+- /studio/mcp-cli shows when each key was last used and the last 50 things your keys did (tool, kind of action, outcome, time; never arguments or content).
+
 ## How it works
 `mcp/index.js` (brand: `mcp/brand.js`) uses `packages/studio-mcp-core`, which calls the gateway `app/api/mcp-gateway/[[...path]]/route.ts` (`/api/mcp-gateway`, logic in `lib/mcpGateway.js`). The key is bring-your-own and used per request only. Regenerate the catalog after model changes: `npm run mcp:catalog`. Tests: `npm run test:mcp`.

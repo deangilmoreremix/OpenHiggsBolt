@@ -9,9 +9,12 @@ Also apply, in this order:
 - `supabase/migrations/20261123000000_mcp_governor.sql`: per-key daily counters and the audit log (`mcp_usage_daily`, `mcp_audit`).
 - `supabase/migrations/20261123010000_mcp_bridge.sql`: the live-tab bridge (`mcp_bridge_sessions`, `mcp_bridge_commands`). Commands expire after 60 seconds and hold no secrets.
 
+- `supabase/migrations/20261124000000_mcp_rate_expiry.sql`: `mcp_keys.expires_at` (optional key expiry) and `public.mcp_rate_window` with the `mcp_rate_hit` function (the per-key request limit). **Apply this before deploying this version**: the key list now reads `expires_at`, so it fails on a database without the column. Without the rate function the limiter quietly falls back to a per-instance counter.
+- `supabase/migrations/20261124010000_brand_studio_brands.sql`: `public.brand_studio_brands`, the durable owner-scoped home for Brand Studio brands (`/api/brands`, `/api/brand`). **Apply this before deploying this version**: without the table those routes fail when Supabase is configured. Nothing is migrated: brands that only existed in the old in-memory store are gone.
+
 All of these have row-level security on and no client grants (service role only).
 
-Check: `select count(*) from public.mcp_keys;` works with the service role and fails for the `anon` role. Do the same for the other four tables.
+Check: `select count(*) from public.mcp_keys;` works with the service role and fails for the `anon` role. Do the same for the other tables.
 
 ## 2. Environment
 Nothing new is required. These must already be set for the app (they are read by the new routes):
@@ -22,11 +25,18 @@ Nothing new is required. These must already be set for the app (they are read by
 | Clerk keys | `@clerk/nextjs` (`auth()`), entitlement lookup in `src/access/resolveAccess.ts` |
 | `MUAPI_KEY_SECRET` (or the service-role fallback) | `src/lib/muapiKeyCrypto.ts`, to read each user's saved key |
 | `MCP_CAP_DESTRUCTIVE`, `MCP_CAP_PUBLISH` (optional) | `app/api/mcp-gateway`: per-key daily limits for confirmed delete / publish calls (defaults 50 and 20) |
+| `MCP_RATE_PER_MIN` (optional) | `lib/mcpRateLimit.js`: requests per key per minute (default 120; `0` turns the limit off). Counted in Supabase, so it holds across instances. |
+| `MCP_KEY_MAX_DAYS` (optional) | `lib/mcpKeys.js` via `app/api/mcp-keys`: new keys expire after this many days (default for new keys and the cap on what a user may ask for). Unset: keys do not expire. |
+| `BRAND_STORE` (optional) | Set to `memory` to force the old in-memory brand store (tests, local development without Supabase). |
 | `MCP_ALLOW_BYOK` | **leave unset in any deployed environment.** Local development only. |
 
 Thumbnails, Zack D script/topic steps and Brand Studio text need the user's own **OpenAI key saved in Settings** (`app_users.openai_key`); without it those tools answer with a clear "save your key" message.
 
 The gateway checks the `SMARTVIDEO_GO` entitlement for the key's owner on every request (same rule as the app's proxy routes) and refuses if it cannot be confirmed.
+
+## Hosted endpoint and the npx package
+- **`/api/mcp`** (`app/api/mcp/route.ts`, logic in `lib/mcpHttp.js`): the MCP over streamable HTTP, stateless, POST only, `Authorization: Bearer sv_live_...`. It runs the gateway in the same process (no extra network hop), so the confirm rule, daily caps, entitlement check and audit log apply as they do for a local MCP. Long generations return a request id to check with `get_result`.
+- **`smartvideo-go-mcp`** (`packages/smartvideo-go-mcp`): `npm --prefix packages/smartvideo-go-mcp run build` writes one bundled file; `npm pack --dry-run` in that folder lists exactly `dist/index.js`, `README.md` and `package.json`. **Publishing is yours**: it needs your npm account, a free package name and `npm publish`. Before publishing, set the real address in `mcp/brand.js` (`gatewayUrl` is still a guess).
 
 ## 3. Deploy a preview
 Push the branch and let the host build a preview. New routes: `/api/mcp-keys` (create, list, revoke; needs a signed-in session), `/api/mcp-gateway/*` (the MCP's address), `/api/mcp-bridge` (the tab half of tab control; signed-in session) and the page `/studio/mcp-cli`.
@@ -74,7 +84,7 @@ The smoke run covers read-only tools and the confirm checks. Tools that create, 
 ## Rollback
 1. Revoke keys: `update public.mcp_keys set revoked_at = now() where revoked_at is null;` (the gateway then answers 401 to everything).
 2. Switch tab control off: `update public.mcp_bridge_sessions set closed_at = now() where closed_at is null;`.
-3. Remove completely: `drop table public.mcp_keys, public.mcp_usage_daily, public.mcp_audit, public.mcp_bridge_commands, public.mcp_bridge_sessions;` and delete `app/api/mcp-keys`, `app/api/mcp-gateway`, `app/api/mcp-bridge`, `lib/mcpKeys.js`, `lib/mcpGateway.js`.
+3. Remove completely: `drop table public.mcp_keys, public.mcp_usage_daily, public.mcp_audit, public.mcp_bridge_commands, public.mcp_bridge_sessions, public.mcp_rate_window;` (and `drop function public.mcp_rate_hit(uuid, timestamptz);`; `public.brand_studio_brands` holds app data and is not part of the MCP, so keep it), and delete `app/api/mcp`, `app/api/mcp-keys`, `app/api/mcp-gateway`, `app/api/mcp-bridge`, `lib/mcpKeys.js`, `lib/mcpGateway.js`, `lib/mcpHttp.js`.
 
 ## What a pass does and does not show
 A ✔ means the tool returned a finished result for one cheap input through the real gateway. It does not mean every model of that kind works, that a recipe's output is good, or that the 9 recipes listed in `tests/mcp/skills-parity.test.js` (registry data problems) run.

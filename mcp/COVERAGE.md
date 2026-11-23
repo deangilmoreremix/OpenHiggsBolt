@@ -29,7 +29,7 @@ No live run recorded yet.
 | `thumbnail-studio` | supported | `thumbnail_generate`, `thumbnail_refine` (needs your saved OpenAI key; the studio's prompt-enhance step is not exposed) | not run |
 | `go-ai-viral` | supported | `viral_prompts_search`, `viral_seedance_search` | not run |
 | `design-agent` | supported | `design_agent_session`, `design_agent_sessions`, `design_agent_chat`, `design_agent_job`, `design_agent_assets`, `design_agent_decide`, `design_agent_run_skill` | not run |
-| `brand-studio` | supported | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` (brands are kept in the app's in-memory store per server instance, so a saved brand can be missing on a later call; assets and Photo Studio are not exposed) | not run |
+| `brand-studio` | supported | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` (Brands are kept in the database per owner (brand_studio_brands) and survive restarts; campaigns come from the app's owner-scoped routes. Photo Studio has its own tools; campaign assets are not exposed) | not run |
 | `zackd` | supported | `zackd_trends`, `zackd_script`, `zackd_submit` (script and topic ideas use your saved OpenAI key and are an MCP addition (the app drafts its script offline)) | not run |
 | `video-pages` | supported | `video_pages_list`, `video_pages_get`, `video_pages_create`, `video_pages_update`, `video_pages_publish`, `video_pages_unpublish`, `video_pages_delete`, `video_pages_stats`, `video_pages_contacts`, `video_pages_add_contacts`, `video_pages_remove_contact` (Runs the app's own owner-scoped page code on the server. Publishing and deleting need confirm: true.) | not run |
 | `motion-director` | supported |  (Controlled through the open tab only (the editor and Remotion renderer live in the browser). Needs the tab open, signed in and switched on.) | not run |
@@ -78,9 +78,8 @@ No live run recorded yet.
 | `thumbnail-studio` | Generate and refine thumbnails | `thumbnail_generate`, `thumbnail_refine` |
 | `go-ai-viral` | Search viral prompt libraries | `viral_prompts_search`, `viral_seedance_search` |
 | `design-agent` | Sessions, chat, jobs, assets, approve/reject, skills | `design_agent_session`, `design_agent_sessions`, `design_agent_chat`, `design_agent_job`, `design_agent_assets`, `design_agent_decide`, `design_agent_run_skill` |
-| `brand-studio` | Analyze a site, save brands, campaigns | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` |
+| `brand-studio` | Analyze a site, save brands (kept in the database, per owner), campaigns | `brand_analyze`, `brands_list`, `brand_save`, `campaign_generate`, `campaigns_list` |
 | `brand-studio` | Photo Studio | `photo_studio_generate`, `photo_studio_status`, `photo_studio_history` |
-| `brand-studio` | Brands that survive a server restart | not exposed: Brand Studio keeps brands in server memory (documented in src/shared/brandStore.ts); the MCP reads and writes the same store, so brands saved through it are lost on restart just like the app's own. A persistence change in the app is a separate piece of work. |
 | `zackd` | Trends, script, media steps | `zackd_trends`, `zackd_script`, `zackd_submit` |
 | `video-pages` | List, read, create, edit, publish, unpublish and delete pages; stats; recipients | `video_pages_list`, `video_pages_get`, `video_pages_create`, `video_pages_update`, `video_pages_publish`, `video_pages_unpublish`, `video_pages_delete`, `video_pages_stats`, `video_pages_contacts`, `video_pages_add_contacts`, `video_pages_remove_contact` |
 | `video-pages` | The visual page editor | not exposed: Dragging blocks in the page editor has no programmatic surface; pages are edited by their settings (title, poster, config). |
@@ -92,7 +91,7 @@ No live run recorded yet.
 | `shared` | Which studio is open, and moving between studios | `app_state` (open tab), `app_navigate` (open tab) |
 | `shared` | Connecting or disconnecting a social account; saving API keys; checkout | not exposed: Only a person may do these (they involve sign-in with another service, secrets, or payment). |
 | `shared` | Opening a tab tool from the MCP when no tab is open | not exposed: Tab tools work only while the tab is open, signed in and switched on with "Let MCP control this tab". |
-| `shared` | Listing GET /api/assets and GET /api/campaigns app routes | not exposed: Those app routes have no sign-in check and return other users' rows; the MCP never calls them (it uses owner-scoped routes). Left unchanged by decision; reported. |
+| `shared` | Listing campaign assets (GET /api/assets) | not exposed: The app routes GET /api/assets and GET /api/campaigns now refuse signed-out callers and return only the caller's own rows. The MCP lists campaigns through the app route (campaigns_list); it has no tool for campaign assets, because generating them is an app flow. Rows saved before owners were recorded have no owner and are no longer listed by the app. |
 | `shared` | Model training | `model_train` |
 
 "(open tab)" tools only work while that studio is open in a signed-in tab with "Let MCP control this tab" switched on. They are listed in `mcp/bridge-tools.json` (37 tools). Live: not run.
