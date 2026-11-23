@@ -63,9 +63,14 @@
       const c = glob[i];
       if (c === '*') {
         if (glob[i + 1] === '*') {
-          re += '.*';
           i += 2;
-          if (glob[i] === '/') i += 1;
+          // `**/` is zero or more whole directory segments; a bare `**` is anything.
+          if (glob[i] === '/') {
+            re += '(?:[^/]+/)*';
+            i += 1;
+          } else {
+            re += '.*';
+          }
         } else {
           re += '[^/]*';
           i += 1;
