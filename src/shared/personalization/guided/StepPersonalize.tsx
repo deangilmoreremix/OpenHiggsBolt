@@ -11,6 +11,8 @@ import { designPrimarySlotUpdates } from '../preview/designSlots'
 import { C, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
 import { ColorField } from './editor/ColorField'
 import { LayoutThumbnails } from './LayoutThumbnails'
+import { CaptionsPanel } from './CaptionsPanel'
+import { buildPreviewInput } from './buildPreviewInput'
 import type { ClientProfile } from '../types'
 import type { PreviewLayerKind, PreviewLayoutId } from '../preview/types'
 
@@ -67,6 +69,8 @@ export function StepPersonalize({
 }: StepPersonalizeProps = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
+    source,
+    previewVideo,
     clientForm = {},
     selectedBusiness = null,
     updateClientForm,
@@ -335,6 +339,18 @@ export function StepPersonalize({
             setPreviewLayout(layoutId)
           }}
         />
+      </div>
+
+      {/* ── Captions (optional): the free on-device Caption Studio, the same one as in the Step 4 editor ── */}
+      <div style={softPanelStyle} data-testid="step3-captions">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>Captions (optional)</span>
+          <span style={{ marginLeft: 'auto', color: C.green, fontSize: 10 }}>Free · no credits</span>
+        </div>
+        <p style={{ ...hintStyle, marginTop: 6, marginBottom: 0 }}>
+          Add animated captions to your video now. They are made on this device from the video&apos;s speech, or from your own subtitles, and you can keep editing them in the next step.
+        </p>
+        <CaptionsPanel inputProps={buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })} />
       </div>
 
       {/* ── What will be placed ─────────────────────────────────────────── */}
