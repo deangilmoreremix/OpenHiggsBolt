@@ -622,9 +622,11 @@ export default function ZackD({
                 return (
                   <div key={t.id} className="rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] flex flex-col text-left">
                     {t.demo ? (
-                      <video src={t.demo} poster={t.poster} muted loop playsInline preload="none" className="w-full aspect-[9/16] max-h-80 object-cover bg-black cursor-pointer hover:opacity-90"
+                      <video src={t.demo} poster={t.poster} muted loop playsInline preload="none" tabIndex={0} aria-label={`Play or pause demo: ${t.title}`}
+                        className="w-full aspect-[9/16] max-h-80 object-cover bg-black cursor-pointer hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#22d3ee]"
                         onMouseEnter={(e) => e.currentTarget.play().catch(() => {})} onMouseLeave={(e) => e.currentTarget.pause()}
-                        onClick={(e) => { const v = e.currentTarget; if (v.paused) v.play().catch(() => {}); else v.pause(); }} />
+                        onClick={(e) => { const v = e.currentTarget; if (v.paused) v.play().catch(() => {}); else v.pause(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const v = e.currentTarget; if (v.paused) v.play().catch(() => {}); else v.pause(); } }} />
                     ) : poster ? (
                       <img src={poster} alt={t.title} loading="lazy" className="w-full aspect-[9/16] max-h-80 object-cover" style={{ objectPosition: '50% 25%' }} />
                     ) : (
