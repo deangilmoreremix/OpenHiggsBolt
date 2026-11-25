@@ -26,7 +26,7 @@ import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
 import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
-import { LandingPagePickerProvider, LandingPageAction } from '../src/apps/video-pages/LandingPagePicker';
+import { LandingPagePickerProvider, LandingPageAction, OPEN_VIDEO_PAGES_EVENT } from '../src/apps/video-pages/LandingPagePicker';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -60,7 +60,6 @@ const MotionDirectorEntry = dynamic(() => import('../src/apps/motion-director/Mo
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ZackDStudio = dynamic(() => import('../src/apps/zackd/ZackD'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const VideoPagesStudio = dynamic(() => import('../src/apps/video-pages/VideoPagesStudio'), { ssr: false });
 const MediaHubStudio = dynamic(() => import('../src/apps/media-hub/MediaHub'), { ssr: false });
 
 // ── Shared Personalization Modal trigger ─────────────────────────────────────
@@ -142,7 +141,6 @@ const TABS = [
   { id: 'video',   label: 'Video Studio' },
   { id: 'muapi-studio', label: 'Studio' },
   { id: 'edit',    label: 'Edit' },
-  { id: 'video-pages', label: 'Video Pages' }, // near the front: the tab bar scrolls sideways and a tab at the far end is easy to miss
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
@@ -191,9 +189,8 @@ const SLUG_TO_TAB = {
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   smartwarmupai: 'smartwarmupai',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages', 'media-hub': 'media-hub',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'image', 'media-hub': 'media-hub', // Video Pages is a window now (see LandingPagePickerProvider): an old link lands in Image Studio and opens it
   'muapi-studio': 'muapi-studio',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio', 'video-pages': 'video-pages',
   'ai-influencer': 'ai-influencer',
   // Publishing is a modal opened from each image/video studio now; old links land in Image Studio.
   'social-publishing': 'image',
@@ -962,6 +959,17 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
               </div>
             </div>
 
+            <button
+              type="button"
+              data-video-pages-button
+              onClick={() => window.dispatchEvent(new CustomEvent(OPEN_VIDEO_PAGES_EVENT, { detail: { my: false } }))}
+              title="Put a video or picture on a landing page: pick a design, edit it, personalize it"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[#22d3ee]/60 bg-transparent text-[13px] font-bold text-[#22d3ee] hover:bg-[#22d3ee]/10 hover:border-[#22d3ee] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 8h18" /><path d="M10 12.5l4 2.5-4 2.5z" fill="currentColor" /></svg>
+              <span>Video Pages</span>
+            </button>
+
             <PreviewModeBadge />
 
             {!demoMode && (
@@ -987,7 +995,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey} onRequestApiKey={() => (apiKey ? setShowSettings(true) : setShowApiKeyPopup(true))}>
       <DemoPersonalizeProvider apiKey={apiKey}>
-      <LandingPagePickerProvider openStudio={() => handleTabChange('video-pages')}>
+      <LandingPagePickerProvider>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeAction} {...generationCallbacks['image']} />)}
          {persistentStudio('video', (active) => <VideoStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} renderPersonalizeAction={renderPersonalizeActionVideo} {...generationCallbacks['video']} />)}
@@ -1009,7 +1017,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'smartwarmupai' && <div className="absolute inset-0"><SmartWarmupAIStudio /></div>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {persistentStudio('zackd', (active) => <ZackDStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['zackd']} />)}
-         {activeTab === 'video-pages' && <VideoPagesStudio />}
          {activeTab === 'media-hub' && <MediaHubStudio />}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
@@ -1121,7 +1128,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                         <button
                           type="button"
                           data-action="create-landing-page"
-                          onClick={() => { if (openVideoPageFor({ url: notif.resultUrl, studio: notif.tabId }, { navigate: () => handleTabChange('video-pages') })) dismissNotification(notif.id); }}
+                          onClick={() => { if (openVideoPageFor({ url: notif.resultUrl, studio: notif.tabId }, { navigate: () => window.dispatchEvent(new CustomEvent(OPEN_VIDEO_PAGES_EVENT, { detail: { my: true } })) })) dismissNotification(notif.id); }}
                           className="ml-3 mt-1.5 text-[11px] font-bold text-cyan-600 transition-colors hover:text-cyan-700"
                         >
                           Create landing page

@@ -9,7 +9,7 @@ vi.hoisted(() => {
   ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 })
 vi.mock('next/dynamic', () => ({ default: () => (props: any) => <div data-testid="modal" data-video={props.video?.url || ''} /> }))
-import { LandingPagePickerProvider, LandingPageAction, useLandingPagePicker } from '../LandingPagePicker'
+import { LandingPagePickerProvider, LandingPageAction, useLandingPagePicker, OPEN_VIDEO_PAGES_EVENT } from '../LandingPagePicker'
 
 const mount = (el: React.ReactElement) => {
   const host = document.createElement('div'); document.body.appendChild(host)
@@ -35,5 +35,23 @@ describe('LandingPageAction', () => {
     const Grab = () => { api = useLandingPagePicker(); return null }
     mount(<LandingPagePickerProvider><Grab /></LandingPagePickerProvider>)
     expect(typeof api.open).toBe('function')
+  })
+})
+
+describe('Video Pages is windows, not a studio', () => {
+  beforeEach(() => { document.body.innerHTML = ''; window.history.replaceState(null, '', '/') })
+  it('the header event opens the picker, or My pages', () => {
+    const { host } = mount(<LandingPagePickerProvider><span /></LandingPagePickerProvider>)
+    expect(host.querySelectorAll('[data-testid=modal]').length).toBe(0)
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_VIDEO_PAGES_EVENT, { detail: { my: false } })) })
+    expect(host.querySelectorAll('[data-testid=modal]').length).toBe(1)   // the picker (the dynamic mock renders both windows the same way)
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_VIDEO_PAGES_EVENT, { detail: { my: true } })) })
+    expect(host.querySelectorAll('[data-testid=modal]').length).toBe(2)   // the picker and My pages
+  })
+  it('an old /studio/video-pages link opens My pages over the image studio', () => {
+    window.history.replaceState(null, '', '/studio/video-pages')
+    const { host } = mount(<LandingPagePickerProvider><span /></LandingPagePickerProvider>)
+    expect(host.querySelectorAll('[data-testid=modal]').length).toBe(1)
+    expect(window.location.pathname).toBe('/studio/image')
   })
 })

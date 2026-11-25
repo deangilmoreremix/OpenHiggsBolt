@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { normalizeVideo } from '@/src/lib/landingPages/handoff.js'
 
@@ -17,21 +17,35 @@ export type PickerRequest = {
 }
 
 const Modal = dynamic(() => import('./LandingPagePickerModal'), { ssr: false })
+const MyPagesModal = dynamic(() => import('./MyPagesModal'), { ssr: false })
 
-type Ctx = { open: (req: PickerRequest) => void }
-const PickerContext = createContext<Ctx>({ open: () => {} })
+/** Any button anywhere can open these windows with window.dispatchEvent(new CustomEvent(OPEN_VIDEO_PAGES_EVENT, { detail: { my: true } })). */
+export const OPEN_VIDEO_PAGES_EVENT = 'video-pages:open'
 
-/** Mount once near the app root. `openStudio` navigates to the Video Pages studio. */
-export function LandingPagePickerProvider({ children, openStudio }: { children: ReactNode; openStudio?: () => void }) {
+type Ctx = { open: (req: PickerRequest) => void; openMyPages: () => void }
+const PickerContext = createContext<Ctx>({ open: () => {}, openMyPages: () => {} })
+
+/** Mount once near the app root. Video Pages is two windows, not a studio: the page picker + editor, and "My pages". */
+export function LandingPagePickerProvider({ children }: { children: ReactNode }) {
   const [req, setReq] = useState<PickerRequest | null>(null)
+  const [myPages, setMyPages] = useState(false)
   const reqRef = useRef<PickerRequest | null>(null)
   const open = useCallback((r: PickerRequest) => { reqRef.current = r; setReq(r) }, [])
   const close = useCallback(() => { reqRef.current?.onClose?.(); reqRef.current = null; setReq(null) }, [])
-  const value = useMemo(() => ({ open }), [open])
+  const openMyPages = useCallback(() => setMyPages(true), [])
+  const value = useMemo(() => ({ open, openMyPages }), [open, openMyPages])
+  useEffect(() => {
+    const onOpen = (e: Event) => { if ((e as CustomEvent).detail?.my) setMyPages(true); else open({}) }
+    window.addEventListener(OPEN_VIDEO_PAGES_EVENT, onOpen)
+    // an old /studio/video-pages link or bookmark: land on the studio the page sits in and open My pages
+    if (window.location.pathname.replace(/\/+$/, '').endsWith('/studio/video-pages')) { window.history.replaceState(null, '', '/studio/image'); setMyPages(true) }
+    return () => window.removeEventListener(OPEN_VIDEO_PAGES_EVENT, onOpen)
+  }, [open])
   return (
     <PickerContext.Provider value={value}>
       {children}
-      {req ? <Modal video={normalizeVideo({ kind: 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={openStudio} /> : null}
+      {req ? <Modal video={normalizeVideo({ kind: 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
+      {myPages ? <MyPagesModal onClose={() => setMyPages(false)} /> : null}
     </PickerContext.Provider>
   )
 }

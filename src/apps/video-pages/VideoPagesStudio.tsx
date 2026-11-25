@@ -5,8 +5,8 @@ import { Plus, Link2, Eye } from 'lucide-react'
 import { listPages, getPage } from '@/src/lib/landingPages/api.js'
 import { takeQueuedVideo } from '@/src/lib/landingPages/handoff.js'
 import { pageUrl } from '@/src/lib/landingPages/ids.js'
-import NewPageFlow from './NewPageFlow'
 import PageEditor from './PageEditor'
+import { useLandingPagePicker } from './LandingPagePicker'
 import { ui } from './ui'
 
 export type PageRow = {
@@ -23,10 +23,11 @@ export type PageRow = {
   updated_at: string
 }
 
-type View = { kind: 'list' } | { kind: 'new'; queued?: any } | { kind: 'edit'; page: PageRow }
+type View = { kind: 'list' } | { kind: 'edit'; page: PageRow }
 
 /** Video Pages: turn any video into an editable, shareable landing page. */
-export default function VideoPagesStudio() {
+export default function VideoPagesStudio({ embedded = false }: { embedded?: boolean } = {}) {
+  const picker = useLandingPagePicker()
   const [view, setView] = useState<View>({ kind: 'list' })
   const [pages, setPages] = useState<PageRow[] | null>(null)
   const [error, setError] = useState('')
@@ -45,8 +46,8 @@ export default function VideoPagesStudio() {
     void refresh()
     // "Create landing page" from another studio queues a video; start the new-page flow with it.
     const queued = takeQueuedVideo()
-    if (queued) setView({ kind: 'new', queued })
-  }, [refresh])
+    if (queued) picker.open({ video: queued, onClose: () => void refresh() })
+  }, [refresh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = async (id: string) => {
     try {
@@ -56,17 +57,6 @@ export default function VideoPagesStudio() {
     }
   }
 
-  if (view.kind === 'new') {
-    return (
-      <div className={ui.root}>
-        <NewPageFlow
-          queued={view.queued}
-          onCancel={() => setView({ kind: 'list' })}
-          onCreated={(page: PageRow) => { void refresh(); setView({ kind: 'edit', page }) }}
-        />
-      </div>
-    )
-  }
   if (view.kind === 'edit') {
     return (
       <div className={ui.root}>
@@ -80,14 +70,14 @@ export default function VideoPagesStudio() {
   }
 
   return (
-    <div className={ui.root}>
+    <div className={ui.root} data-embedded={embedded || undefined}>
       <div className={ui.body}>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-black text-white">Video Pages</h1>
             <p className="text-sm text-white/50 mt-1">Turn any video into a branded landing page with a call to action, lead form and analytics. Every word, image and section is editable.</p>
           </div>
-          <button type="button" className={ui.primary} onClick={() => setView({ kind: 'new' })}>
+          <button type="button" className={ui.primary} onClick={() => picker.open({ onClose: () => void refresh() })}>
             <Plus size={14} /> New page
           </button>
         </div>
@@ -96,7 +86,7 @@ export default function VideoPagesStudio() {
         {pages && !pages.length && !error ? (
           <div className={`${ui.panel} text-center py-16`}>
             <p className="text-white/70 font-bold">No pages yet</p>
-            <p className="text-xs text-white/40 mt-1">Pick a video from your library, upload one or paste a link, then choose one of the 34 designs.</p>
+            <p className="text-xs text-white/40 mt-1">Click New page, choose a design, edit every word, image and section, then save it.</p>
           </div>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
