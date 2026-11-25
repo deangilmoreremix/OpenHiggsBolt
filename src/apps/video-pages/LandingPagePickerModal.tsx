@@ -148,6 +148,7 @@ export default function LandingPagePickerModal({ video: initialVideo, onPick, on
           {view === 'edit' ? <button type="button" className={ui.ghost} onClick={() => setView('grid')} disabled={!!busy}><ArrowLeft size={14} /> All pages</button> : null}
           <h2 className="text-sm font-black text-white uppercase tracking-widest">{view === 'done' ? 'Page saved' : view === 'edit' ? template?.name : 'Choose a landing page'}</h2>
           <div className="flex-1" />
+          {view === 'grid' && openStudio ? <button type="button" data-my-pages-button className={ui.ghost} onClick={() => { onClose(); openStudio() }}>My pages</button> : null}
           {view === 'edit' ? <button type="button" className={ui.primary} disabled={!!busy || !video} onClick={() => void save()}>{busy || 'Save as my page'}</button> : null}
           <button type="button" aria-label="Close" className={ui.ghost} onClick={onClose}><X size={14} /></button>
         </div>

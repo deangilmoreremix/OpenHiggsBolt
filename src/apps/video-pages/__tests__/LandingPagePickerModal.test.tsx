@@ -53,6 +53,13 @@ describe('LandingPagePickerModal', () => {
     expect(document.body.textContent).toContain('Saved to Video Pages')
   })
 
+  it('the design picker has a My pages button that closes it and opens My pages', () => {
+    const onClose = vi.fn(); const openStudio = vi.fn()
+    mount(<Modal video={video} onClose={onClose} openStudio={openStudio} />)
+    click(q('[data-my-pages-button]'))
+    expect(onClose).toHaveBeenCalled(); expect(openStudio).toHaveBeenCalled()
+  })
+
   it('without a video it offers to choose one, and a design waits for it', () => {
     mount(<Modal video={null} onClose={() => {}} />)
     expect(q('[data-media-chooser]')).not.toBeNull()
