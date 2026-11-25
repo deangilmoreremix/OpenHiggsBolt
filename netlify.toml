@@ -64,6 +64,19 @@
   package = "@netlify/plugin-nextjs"
 
 
+# SmartWarmupAI studio: Netlify serves these static folders itself, so Next's rewrites (next.config.mjs) never see them.
+# The dashboard's client-side routes (/smartwarmupai-app/app/emails) need the SPA fallback, and Help directory URLs need
+# their index.html (they otherwise redirect to themselves). Non-forced rules: real files always win.
+[[redirects]]
+  from = "/smartwarmupai-app/*"
+  to = "/smartwarmupai-app/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/smartwarmupai-help/*"
+  to = "/smartwarmupai-help/:splat/index.html"
+  status = 200
+
 [[redirects]]
   from = "/api/brands"
   to = "/.netlify/functions/brands"
