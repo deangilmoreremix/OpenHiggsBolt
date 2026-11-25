@@ -1129,14 +1129,33 @@ describe('netlify personalization-browser-discovery: SSRF gate', () => {
     expect(seams.browser.gotoCalls).toEqual([])
   })
 
-  it('400s for a missing websiteUrl after authentication', async () => {
+  // The website URL is loaded from the verified job row, never from the request body (the route validated it when it
+  // created the job). So a body without a websiteUrl is fine, and a URL in the body must not steer navigation.
+  it('uses the stored job URL when the body has no websiteUrl', async () => {
     seams = installNetlifySeams()
     const mod = await loadNetlifyFunction()
+    seams.browser.finalUrl = 'https://93.184.216.34/'
+    const event = authenticatedEvent({ jobId: 'job-1' }, 'session-token-valid')
+    jobWebsiteUrl = 'https://93.184.216.34/' // what the job row holds
 
-    const response = await mod.handler(authenticatedEvent({ jobId: 'job-1' }, 'session-token-valid'))
+    const response = await mod.handler(event)
 
-    expect(response.statusCode).toBe(400)
-    expect(seams.browser.gotoCalls).toEqual([])
+    expect(response.statusCode).not.toBe(400)
+    expect(seams.browser.gotoCalls.length).toBeGreaterThan(0)
+    expect(seams.browser.gotoCalls.every((c) => c.url.startsWith('https://93.184.216.34'))).toBe(true)
+  })
+
+  it('ignores a websiteUrl in the body: only the stored job URL is validated and navigated to', async () => {
+    seams = installNetlifySeams()
+    const mod = await loadNetlifyFunction()
+    seams.browser.finalUrl = 'https://93.184.216.34/'
+    const event = authenticatedEvent({ jobId: 'job-1', websiteUrl: 'http://169.254.169.254/latest/meta-data/' }, 'session-token-valid')
+    jobWebsiteUrl = 'https://93.184.216.34/' // the row was created from a validated URL; the body disagrees
+
+    await mod.handler(event)
+
+    expect(seams.browser.gotoCalls.length).toBeGreaterThan(0)
+    expect(seams.browser.gotoCalls.some((c) => c.url.includes('169.254'))).toBe(false)
   })
 })
 
