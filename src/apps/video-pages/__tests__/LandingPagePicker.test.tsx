@@ -55,3 +55,17 @@ describe('Video Pages is windows, not a studio', () => {
     expect(window.location.pathname).toBe('/studio/image')
   })
 })
+
+describe('a new picker request starts fresh', () => {
+  beforeEach(() => { document.body.innerHTML = '' })
+  it('opening the picker for another video remounts it with that video', () => {
+    let api: any
+    const Grab = () => { api = useLandingPagePicker(); return null }
+    const { host } = mount(<LandingPagePickerProvider><Grab /></LandingPagePickerProvider>)
+    act(() => { api.open({ video: { url: 'https://cdn.test/a.mp4' } }) })
+    expect(host.querySelector('[data-testid=modal]')?.getAttribute('data-video')).toBe('https://cdn.test/a.mp4')
+    act(() => { api.open({ video: { url: 'https://cdn.test/b.mp4' } }) })
+    expect(host.querySelectorAll('[data-testid=modal]').length).toBe(1)
+    expect(host.querySelector('[data-testid=modal]')?.getAttribute('data-video')).toBe('https://cdn.test/b.mp4')
+  })
+})

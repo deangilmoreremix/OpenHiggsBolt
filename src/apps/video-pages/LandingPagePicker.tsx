@@ -29,8 +29,9 @@ const PickerContext = createContext<Ctx>({ open: () => {}, openMyPages: () => {}
 export function LandingPagePickerProvider({ children }: { children: ReactNode }) {
   const [req, setReq] = useState<PickerRequest | null>(null)
   const [myPages, setMyPages] = useState(false)
+  const [session, setSession] = useState(0)   // a new picker request gets a fresh picker (its own video, not the previous request's)
   const reqRef = useRef<PickerRequest | null>(null)
-  const open = useCallback((r: PickerRequest) => { reqRef.current = r; setReq(r) }, [])
+  const open = useCallback((r: PickerRequest) => { reqRef.current = r; setSession((n) => n + 1); setReq(r) }, [])
   const close = useCallback(() => { reqRef.current?.onClose?.(); reqRef.current = null; setReq(null) }, [])
   const openMyPages = useCallback(() => setMyPages(true), [])
   const value = useMemo(() => ({ open, openMyPages }), [open, openMyPages])
@@ -44,7 +45,7 @@ export function LandingPagePickerProvider({ children }: { children: ReactNode })
   return (
     <PickerContext.Provider value={value}>
       {children}
-      {req ? <Modal video={normalizeVideo({ kind: 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
+      {req ? <Modal key={session} video={normalizeVideo({ kind: 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
       {myPages ? <MyPagesModal onClose={() => setMyPages(false)} /> : null}
     </PickerContext.Provider>
   )

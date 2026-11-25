@@ -13,6 +13,7 @@ export default function MediaChooser({ onPick }: { onPick: (v: Video) => void })
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const choice = useRef(0)   // advances on every pick, so an upload that finishes after a newer pick does not replace it
 
   useEffect(() => {
     let live = true
@@ -32,18 +33,19 @@ export default function MediaChooser({ onPick }: { onPick: (v: Video) => void })
   const useLink = () => {
     const v = normalizeVideo({ url: link.trim(), kind: 'video' }, { allowImage: true })
     if (!v) { setError('Paste a permanent https link to a video file (.mp4, .webm, .mov) or a picture (.png, .jpg, .webp).'); return }
-    setError(''); onPick(v)
+    setError(''); choice.current += 1; onPick(v)
   }
 
   const upload = async (file?: File | null) => {
     if (!file) return
+    const ticket = choice.current
     setBusy('Uploading…'); setError('')
     try {
       const { saveUploadedFile } = await import('studio/src/lib/assetStore.js')
       const asset = await saveUploadedFile(file)
       const v = asset ? normalizeVideo(asset, { allowImage: true }) : null
       if (!v) throw new Error('Could not upload that file. Videos up to 100MB (mp4, webm, mov) or pictures (png, jpg, webp) work best.')
-      onPick(v)
+      if (ticket === choice.current) onPick(v)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally { setBusy('') }
@@ -57,7 +59,7 @@ export default function MediaChooser({ onPick }: { onPick: (v: Video) => void })
         {library && !library.length ? <div className="text-xs text-white/40">Nothing yet. Make a video or picture in any studio, or upload or paste a link.</div> : null}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
           {(library || []).map((a) => (
-            <button key={a.id} type="button" onClick={() => { const v = normalizeVideo(a, { allowImage: true }); if (v) onPick(v) }} className="rounded-lg overflow-hidden border border-white/10 hover:border-primary/50 bg-black">
+            <button key={a.id} type="button" onClick={() => { const v = normalizeVideo(a, { allowImage: true }); if (v) { choice.current += 1; onPick(v) } }} className="rounded-lg overflow-hidden border border-white/10 hover:border-primary/50 bg-black">
               {a.kind === 'image'
                 ? <img src={a.url} alt={a.name || ''} className="h-20 w-full object-cover" loading="lazy" />
                 : <video src={a.url} className="h-20 w-full object-cover" muted preload="metadata" />}

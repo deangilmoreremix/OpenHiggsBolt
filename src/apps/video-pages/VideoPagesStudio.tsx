@@ -6,7 +6,7 @@ import { listPages, getPage } from '@/src/lib/landingPages/api.js'
 import { takeQueuedVideo } from '@/src/lib/landingPages/handoff.js'
 import { pageUrl } from '@/src/lib/landingPages/ids.js'
 import PageEditor from './PageEditor'
-import { useLandingPagePicker } from './LandingPagePicker'
+import { useLandingPagePicker, OPEN_VIDEO_PAGES_EVENT } from './LandingPagePicker'
 import { ui } from './ui'
 
 export type PageRow = {
@@ -48,6 +48,13 @@ export default function VideoPagesStudio({ embedded = false }: { embedded?: bool
     const queued = takeQueuedVideo()
     if (queued) picker.open({ video: queued, onClose: () => void refresh() })
   }, [refresh]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Create landing page" from a notification while My pages is already open: take the queued video then too.
+  useEffect(() => {
+    const onOpen = () => { const queued = takeQueuedVideo(); if (queued) picker.open({ video: queued, onClose: () => void refresh() }) }
+    window.addEventListener(OPEN_VIDEO_PAGES_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_VIDEO_PAGES_EVENT, onOpen)
+  }, [picker, refresh])
 
   const open = async (id: string) => {
     try {
