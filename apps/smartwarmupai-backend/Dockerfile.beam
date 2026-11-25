@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+# SmartWarmupAI backend for Beam: the all-in-one pod (Postgres + Redis + NATS + API) plus the mail worker and the event consumer.
+# Build context is this folder with the upstream sources in ./src (apps/warmbly-server of remix-new-editor, commit in src/UPSTREAM.md;
+# see README.md). Deploy: see README.md. Everything is CGO-free, as upstream builds it.
+
+FROM golang:1.26-bookworm AS builder
+ARG VERSION="" COMMIT="" BUILT_AT=""
+WORKDIR /app
+COPY src/go.mod src/go.sum ./
+RUN go mod download
+COPY src/ .
+RUN \
+    set -eux; \
+    LD="-s -w -X github.com/warmbly/warmbly/internal/version.Version=$VERSION -X github.com/warmbly/warmbly/internal/version.Commit=$COMMIT -X github.com/warmbly/warmbly/internal/version.BuiltAt=$BUILT_AT"; \
+    for c in backend migrate warmblyctl worker consumer; do \
+      CGO_ENABLED=0 go build -ldflags="$LD" -o /out/$c ./cmd/$c; \
+    done
+
+FROM nats:2.15.3 AS nats
+
+FROM debian:bookworm-slim
+ENV DEBIAN_FRONTEND=noninteractive LANG=en_US.utf8
+# Same uid/gid as the image this replaces, so the Postgres data on the /data disk stays readable.
+RUN groupadd -g 999 postgres && useradd -u 999 -g 999 -d /var/lib/postgresql -s /bin/bash postgres
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg less locales tini redis-server xz-utils zstd libnss-wrapper \
+ && install -d /usr/local/share/keyrings \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/local/share/keyrings/postgres.gpg.asc \
+ && echo "deb [signed-by=/usr/local/share/keyrings/postgres.gpg.asc] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main 16" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update && apt-get install -y --no-install-recommends postgresql-16 postgresql-common \
+ && sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen && update-locale LANG=en_US.utf8 \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=nats /nats-server /usr/local/bin/nats-server
+COPY --from=builder /out/ /app/bin/
+COPY src/ /app/src/
+COPY env.sh entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["tini", "--", "/app/entrypoint.sh"]

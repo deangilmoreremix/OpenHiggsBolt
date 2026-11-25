@@ -20,3 +20,4 @@ Edit `name` (and `slug` / `paths` if you rename the routes) in `brand.json`, the
 ## Verifying we use upstream's true code
 
 `npm run verify:upstream -- <path to a clone of the upstream repo at the commit in brand.json>` compares the vendored dashboard, docs and agent originals byte for byte and fails on any undocumented difference.
+- Root-absolute public files (`/logos/...`, `/favicon-96x96.png`) and the font preload tag are prefixed with the build base (`/smartwarmupai-app/`) at build time, since upstream serves from the site root.
