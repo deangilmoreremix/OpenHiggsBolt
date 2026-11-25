@@ -11,3 +11,7 @@ export const useThanks = () => useContext(ThanksContext);
 /** What happens after a form is sent: the thank-you message (default) or a redirect to an https page. Set on the page settings. */
 export const FormSettingsContext = createContext({ action: 'message', url: '' });
 export const useFormSettings = () => useContext(FormSettingsContext);
+
+/** Options of the video viewer (start/stop times, subtitles, text and a button on the video...), handed down by the component that holds the video slot. */
+export const ViewerContext = createContext(/** @type {any} */ ({}));
+export const useViewer = () => useContext(ViewerContext);
