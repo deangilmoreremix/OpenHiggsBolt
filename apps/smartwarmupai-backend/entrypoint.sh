@@ -18,7 +18,7 @@ trap 'stop; exit 0' TERM INT
 
 [ -f "$DATA/pg/PG_VERSION" ] || as_pg "$PGBIN/initdb" -D "$DATA/pg" -A trust >/dev/null
 rm -f "$DATA/pg/postmaster.pid"
-as_pg "$PGBIN/pg_ctl" -D "$DATA/pg" -o "-p 15432 -c max_locks_per_transaction=256 -c listen_addresses=127.0.0.1 -k /tmp" -l "$DATA/pg/log" -w start >/dev/null
+as_pg "$PGBIN/pg_ctl" -D "$DATA/pg" -o "-p 15432 -c max_locks_per_transaction=256 -c listen_addresses=127.0.0.1 -k /tmp" -l "$DATA/pg/log" -w start >/dev/null || { echo "postgres failed to start; its log:" >&2; tail -n 40 "$DATA/pg/log" >&2; exit 1; }
 psql -h 127.0.0.1 -p 15432 -U postgres -tAc "select 1 from pg_roles where rolname='warmbly'" | grep -q 1 \
   || psql -h 127.0.0.1 -p 15432 -U postgres -qc "CREATE ROLE warmbly LOGIN SUPERUSER PASSWORD 'warmbly'" -c "CREATE DATABASE warmbly_dev OWNER warmbly"
 redis-server --port 16379 --bind 127.0.0.1 --daemonize yes --dir "$DATA/redis" >/dev/null

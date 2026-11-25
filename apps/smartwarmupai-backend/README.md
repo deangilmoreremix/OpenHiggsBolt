@@ -23,6 +23,11 @@ beam deploy --dockerfile Dockerfile.beam --name smartwarmupai-backend --port 808
 
 Roll back with `beam deployment start <previous version id>`; data on the `/data` disk is untouched by a new version.
 
+## Notes from the first deploy
+- Beam's builder rejects `RUN --mount=type=cache`, so the Dockerfile has none.
+- The image must have the `en_US.UTF-8` locale and a `postgres` user with uid/gid 999, or Postgres cannot open the existing cluster on `/data`.
+- Each deploy gets a new stub id, so the public URL (`https://<stub id>-8080.app.beam.cloud`) changes. Update `APP_URL`/studio config after a deploy.
+
 ## Limit
 Scale-to-zero wakes the pod on an HTTP request only. The worker does outbound work (IMAP, scheduled sends, warmup), so it runs only while
 the pod is awake (`--keep-warm-seconds`). Fine for testing; for real warmup the pod must stay up.
