@@ -590,10 +590,10 @@ export default function ZackD({
         ) : (
           <div className="flex flex-col items-center min-h-full animate-fade-in-up">
             {/* First screen = same compact hero as the other studios; the template cards sit below it. */}
-            <div className="flex flex-col items-center justify-center w-full min-h-full pt-6 pb-36 lg:pb-32 shrink-0">
+            <div className="flex flex-col items-center justify-center w-full min-h-full pt-6 pb-72 sm:pb-52 lg:pb-32 shrink-0">
             <div className="flex items-center justify-center gap-1.5 md:gap-3 mb-8 select-none">
               {SAMPLES.map((src, i) => (
-                <div key={src} className={`w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden ${['-rotate-[12deg]', '-rotate-[4deg] -ml-3', 'rotate-[4deg] -ml-3', 'rotate-[12deg] -ml-3'][i]}`}>
+                <div key={src} className={`w-[4.5rem] h-[5.5rem] sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden ${['-rotate-[12deg]', '-rotate-[4deg] -ml-3', 'rotate-[4deg] -ml-3', 'rotate-[12deg] -ml-3'][i]}`}>
                   <img src={src} alt="" className="w-full h-full object-cover" />
                 </div>
               ))}
@@ -615,7 +615,7 @@ export default function ZackD({
             <p className="text-[11px] text-white/30 mt-3">{TEMPLATE_ATTRIBUTION}</p>
             <div className="mt-6 text-[11px] text-white/30 uppercase tracking-wider animate-bounce select-none" aria-hidden="true">Templates ↓</div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 pb-24 w-full max-w-4xl px-4" data-zackd-templates>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 pb-72 sm:pb-52 lg:pb-24 w-full max-w-4xl px-4" data-zackd-templates>
               {TEMPLATES.map((t) => {
                 const sameTopic = TEMPLATES.find((x) => x.demo && x.topic === t.topic);
                 const poster = t.poster || sameTopic?.poster;
