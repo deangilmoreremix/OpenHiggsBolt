@@ -85,7 +85,12 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
   const ctaAt = secs(viewer.ctaAt);
   const ctaOn = ctaAt > 0 && !!fill(viewer.ctaLabel) && !!(safeUrl(viewer.ctaUrl) || anchor(viewer.ctaUrl));
   const overlay = viewer.overlay ? fill(viewer.overlay) : '';
-  const play = () => { const v = ref.current; if (v && src) { if (startAt && v.currentTime < startAt) v.currentTime = startAt; void v.play?.(); } };
+  // Before the first play the video may sit on the chosen frame: playback starts at the start time (0 included). After it reached the stop time, playing again starts over.
+  const seekToStart = (v) => {
+    if (!started && (frameAt || v.currentTime < startAt)) v.currentTime = startAt;
+    if (endAt && v.currentTime >= endAt - 0.05) v.currentTime = startAt;
+  };
+  const play = () => { const v = ref.current; if (v && src) { seekToStart(v); void v.play?.(); } };
   return (
     <div className={`pk-video${mock ? ' pk-video--mock' : ''}${still ? ' pk-video--still' : ''}`}>
       <video
@@ -97,7 +102,7 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
         {...(subtitles ? { crossOrigin: 'anonymous' } : {})}
         poster={posterUrl || undefined}
         aria-label={still || mock ? (page?.title ? `Picture for ${page.title}` : 'Video placeholder') : (page?.title || 'Video')}
-        onPlay={(e) => { if (!started && startAt && e.currentTarget.currentTime < startAt) e.currentTarget.currentTime = startAt; setStarted(true); once('play', () => handlers.onPlay?.()); }}
+        onPlay={(e) => { seekToStart(e.currentTarget); setStarted(true); once('play', () => handlers.onPlay?.()); }}
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
           if (ctaOn && v.currentTime >= ctaAt) setCtaShown(true);
