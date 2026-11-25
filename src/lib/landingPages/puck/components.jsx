@@ -106,9 +106,11 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
           if (ctaOn && v.currentTime >= ctaAt) setCtaShown(true);
+          // Progress (25/50/75%) counts over the part that plays: from the start time to the stop time (or the end).
+          const known = !!v.duration && Number.isFinite(v.duration);
+          const end = endAt || (known ? v.duration : 0);
+          if (end > startAt) { const frac = (v.currentTime - startAt) / (end - startAt); MARKS.forEach((m) => { if (frac >= m.at) once(m.kind, handlers.onProgress); }); }
           if (endAt && v.currentTime >= endAt) { v.pause(); once('complete', () => handlers.onComplete?.()); return; }
-          if (!v.duration || !Number.isFinite(v.duration)) return;
-          MARKS.forEach((m) => { if (v.currentTime / v.duration >= m.at) once(m.kind, handlers.onProgress); });
         }}
         onEnded={() => { if (ctaOn) setCtaShown(true); once('complete', () => handlers.onComplete?.()); }}
       >
