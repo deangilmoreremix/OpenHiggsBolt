@@ -167,6 +167,9 @@ const TABS = [
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
+// Shown in the tab bar as a link (see the nav below): Video Outreach is part of the main SmartVideo app.
+const VIDEO_OUTREACH_URL = 'https://smartvid.app/#/outreach';
+
 function SignOutButton() {
   const { signOut } = useClerk();
   return (
@@ -923,6 +926,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                    )}
                  </button>
                ))}
+               {/* Video Outreach lives in the main SmartVideo app (smartvid.app), not in this one: a link, not a studio tab. */}
+               <a
+                 href={VIDEO_OUTREACH_URL}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 data-tab-link="video-outreach"
+                 title="Send personalized video outreach campaigns. Opens Video Outreach on smartvid.app in a new tab."
+                 className="relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full gap-1 text-white/50 hover:text-white"
+               >
+                 <span className="relative z-10">Video Outreach</span>
+                 <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+                 <span className="sr-only">(opens smartvid.app in a new tab)</span>
+               </a>
                 <Link
                   href="/academy"
                   className={`relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full ${
