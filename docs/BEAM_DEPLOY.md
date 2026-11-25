@@ -59,7 +59,7 @@ The app is built to live under `/vidbee/` and is reached through each host app's
    - remix-new-editor's backend environment: `VIDBEE_GATE_TOKEN`;
    - OpenHiggsBolt's environment: `SMARTVID_GATE_TOKEN`.
    With it set, the Beam URL answers only requests that carry the secret, so nobody can use it directly.
-2. **On each app's backend** also set `SMARTVID_WEB_URL` to the Beam URL (just the address, for example `https://<id>-3000.app.beam.cloud`). Leave `SMARTVID_ALLOWED_USERS` unset so everyone can use it, signed in or not. Set it (user ids or emails, comma separated) only to restrict it.
+2. **On each app's backend** also set `SMARTVID_WEB_URL` to the Beam URL (just the address, for example `https://<id>-3000.app.beam.cloud`). Leave `SMARTVID_ALLOWED_USERS` unset so every signed-in user can use it. Set it (user ids or emails, comma separated) only to narrow that to certain people.
 3. **After every Beam deploy the URL changes.** Update `SMARTVID_WEB_URL` on both apps.
 4. Each app opens the page with its own palette (`?brand=remix` or `?brand=higgs`), light or dark.
 
