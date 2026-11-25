@@ -96,6 +96,10 @@ function mediaCollectionsOnDisk(): Array<{ collection: string; files: string[] }
   if (!existsSync(MEDIA_DIR)) return []
   return readdirSync(MEDIA_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    // Only collections laid out as public/media/<collection>/videos are demo collections. Other folders (e.g.
+    // personalization-templates, whose preview .mp4/.jpg files sit flat in the folder and are served by the
+    // personalization flow, not the demo library) are not part of the registry's layout.
+    .filter((entry) => existsSync(join(MEDIA_DIR, entry.name, 'videos')))
     .map((entry) => ({
       collection: entry.name,
       files: readdirSync(join(MEDIA_DIR, entry.name, 'videos')).filter((file) =>
