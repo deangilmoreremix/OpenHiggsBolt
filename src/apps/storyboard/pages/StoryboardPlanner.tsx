@@ -157,7 +157,7 @@ export default function StoryboardPlanner() {
         <span className="text-sm font-semibold tracking-tight">Storyboard</span>
         {projectName && <span className="text-xs truncate" style={{ color: semantic.textMuted }}>— {projectName}</span>}
         <div className="ml-auto flex items-center gap-1">
-          <button
+          <button data-help="export json"
             onClick={() => exportJson({ project: exportProject })}
             disabled={shots.length === 0}
             className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
@@ -166,7 +166,7 @@ export default function StoryboardPlanner() {
           >
             <FileJson size={14} /> JSON
           </button>
-          <button
+          <button data-help="export pdf"
             onClick={() => exportPdf({ id: 'current', ...exportProject })}
             disabled={shots.length === 0}
             className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
@@ -230,6 +230,8 @@ export default function StoryboardPlanner() {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="My Animated Series"
+                data-help-name="Project name"
+                data-help-text="The name of this storyboard project."
                 className="w-full rounded-xl p-2 text-sm outline-none"
                 style={inputStyle}
               />
@@ -324,7 +326,7 @@ export default function StoryboardPlanner() {
                 className="flex-1 rounded-xl p-2 text-sm outline-none"
                 style={inputStyle}
               />
-              <button
+              <button data-help="add scene"
                 onClick={handleAddScene}
                 disabled={!sceneDraft.trim()}
                 className="flex items-center gap-1.5 py-2 px-4 rounded-xl text-sm transition-all disabled:opacity-50"

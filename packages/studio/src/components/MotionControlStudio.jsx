@@ -363,6 +363,8 @@ function CharacterImagesMediaButton({
                     onRemoveImage(idx);
                   }}
                   title={copy.titles.removeImage}
+                  data-help-name="Remove image"
+                  data-help-text="Remove this image from the list."
                   className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-red-400 font-bold text-base transition-opacity"
                 >
                   ×
@@ -1336,6 +1338,8 @@ export default function MotionControlStudio({
               <button
                 ref={optionsBtnRef}
                 type="button"
+                data-help-name="Advanced settings"
+                data-help-text="Quality, bitrate and seed options."
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpenDropdown(openDropdown === "options" ? null : "options");

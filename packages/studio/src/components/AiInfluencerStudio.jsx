@@ -318,6 +318,7 @@ function HoverPill({ label, img, onClick }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
+      data-help="trait tag"
       className="relative shrink-0"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

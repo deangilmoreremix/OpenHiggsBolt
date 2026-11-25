@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import AcademyCourse from '@/components/academy/AcademyCourse';
 import HelpAgent from '@/components/help/HelpAgent';
+import StudioTooltips from '@/components/studio-tooltips/StudioTooltips';
 import { getAllTracks } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
@@ -65,6 +66,7 @@ export default async function AcademyPage({ searchParams }: { searchParams?: Pro
   return (
     <DemoPersonalizeProvider>
       <AcademyCourse tracks={tracks} initial={initial} userId={userId} />
+      <StudioTooltips />
       <HelpAgent />
       {studioPersonalizeOptions && (
         <div className="fixed bottom-4 left-4 z-40">

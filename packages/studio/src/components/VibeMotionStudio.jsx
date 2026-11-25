@@ -591,7 +591,7 @@ export default function VibeMotionStudio({
               >
                 {copy.modeToggle.generate}
               </PromptSegmentOption>
-              <PromptSegmentOption
+              <PromptSegmentOption data-help="vibe edit mode"
                 type="button"
                 onClick={() => setEditMode(true)}
                 disabled={editSources.length === 0}

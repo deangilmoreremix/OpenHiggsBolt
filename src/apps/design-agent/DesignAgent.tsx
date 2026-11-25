@@ -287,9 +287,9 @@ function ModeControls({ mode, setMode, brandEnabled, openBrandKit }: { mode: Age
   return (
     <div className="flex flex-wrap items-center gap-2">
       {(['agent', 'generate', 'edit'] as const).map(value => (
-        <button key={value} onClick={() => setMode(value)} className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all" style={{ background: mode === value ? 'rgba(59,130,246,0.2)' : 'var(--bg-card)', border: '1px solid var(--border-color)', color: mode === value ? '#60a5fa' : semantic.textSecondary }}>{value}</button>
+        <button key={value} data-help={`design mode ${value}`} onClick={() => setMode(value)} className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all" style={{ background: mode === value ? 'rgba(59,130,246,0.2)' : 'var(--bg-card)', border: '1px solid var(--border-color)', color: mode === value ? '#60a5fa' : semantic.textSecondary }}>{value}</button>
       ))}
-      <button onClick={openBrandKit} className="px-3 py-1.5 rounded-full text-xs font-medium transition-all" style={{ background: brandEnabled ? 'rgba(34,197,94,0.12)' : 'var(--bg-card)', border: '1px solid var(--border-color)', color: brandEnabled ? '#86efac' : semantic.textSecondary }}>Brand Kit</button>
+      <button data-help="brand kit settings" onClick={openBrandKit} className="px-3 py-1.5 rounded-full text-xs font-medium transition-all" style={{ background: brandEnabled ? 'rgba(34,197,94,0.12)' : 'var(--bg-card)', border: '1px solid var(--border-color)', color: brandEnabled ? '#86efac' : semantic.textSecondary }}>Brand Kit</button>
     </div>
   )
 }

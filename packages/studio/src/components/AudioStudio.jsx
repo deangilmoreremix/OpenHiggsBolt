@@ -493,7 +493,7 @@ function PremiumAudioPlayer({ url, title, copy = en }) {
             >
               {isMuted ? <VolumeMuteIcon /> : <VolumeIcon />}
             </button>
-            <input
+            <input data-help-name={schema.title || key} data-help-text={schema.description || undefined}
               type="range"
               min="0"
               max="1"
@@ -783,7 +783,7 @@ export default function AudioStudio({
             <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
               {copy.sidebar.modelLabel}
             </label>
-            <button
+            <button data-help="model"
               ref={modelBtnRef}
               type="button"
               onClick={() => setOpenDropdown(!openDropdown)}
@@ -875,7 +875,7 @@ export default function AudioStudio({
                         </span>
                       )}
                     </div>
-                    <button
+                    <button data-help-name={schema.title || key} data-help-text={schema.description || undefined} aria-label={schema.title || key}
                       type="button"
                       onClick={() => setParams(prev => ({ ...prev, [key]: !prev[key] }))}
                       className={`w-11 h-6 rounded-full p-1 transition-all duration-300 relative shrink-0 ${
@@ -897,7 +897,7 @@ export default function AudioStudio({
                     <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider">
                       {schema.title || key}
                     </label>
-                    <button
+                    <button data-help-name={schema.title || key} data-help-text={schema.description || undefined}
                       type="button"
                       onClick={() => {
                         setOpenDropdown(false);
@@ -958,7 +958,7 @@ export default function AudioStudio({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-zinc-300 font-medium w-6 text-right">{schema.minValue}</span>
-                      <input
+                      <input data-help-name={schema.title || key} data-help-text={schema.description || undefined}
                         type="range"
                         min={schema.minValue}
                         max={schema.maxValue}
@@ -986,7 +986,7 @@ export default function AudioStudio({
                       {schema.title || copy.sidebar.lyricsPromptLabel}
                     </label>
                     <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
-                    <textarea
+                    <textarea data-help={schema.description ? undefined : "prompt"} data-help-name={schema.title || "Prompt"} data-help-text={schema.description || undefined}
                       value={params[key] || ""}
                       onChange={(e) => setParams(prev => ({ ...prev, [key]: e.target.value }))}
                       className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary/85 rounded p-3 text-xs text-white placeholder:text-zinc-400 focus:outline-none transition-all min-h-[100px] resize-none leading-relaxed shadow-inner"
@@ -995,7 +995,7 @@ export default function AudioStudio({
                     {schema.examples && Array.isArray(schema.examples) && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {schema.examples.map((ex, idx) => (
-                          <button
+                          <button data-help="example prompt"
                             key={idx}
                             type="button"
                             onClick={() => setParams(prev => ({ ...prev, [key]: ex }))}
@@ -1016,7 +1016,7 @@ export default function AudioStudio({
                   <label className="block text-xs font-bold text-zinc-200 uppercase tracking-wider">
                     {schema.title || key}
                   </label>
-                  <input
+                  <input data-help-name={schema.title || key} data-help-text={schema.description || undefined}
                     type={isNumber ? "number" : "text"}
                     value={params[key] !== undefined ? params[key] : ""}
                     placeholder={schema.placeholder || schema.description || copy.sidebar.fieldPlaceholder.replace('{field}', key)}

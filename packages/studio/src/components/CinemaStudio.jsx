@@ -1259,7 +1259,7 @@ export default function CinemaStudio({
                 onChange={handleImageUpload}
               />
 
-              <button
+              <button data-help="cinema reference image"
                 onClick={() =>
                   uploadedImage
                     ? removeImage()
@@ -1400,7 +1400,7 @@ export default function CinemaStudio({
               </div>
 
               {/* Summary Card (triggers overlay) */}
-              <button
+              <button data-help="camera setup"
                 className={promptControlClassName({
                   className: "text-left overflow-hidden text-xs font-semibold text-white/70 hover:text-white",
                 })}
@@ -1436,7 +1436,7 @@ export default function CinemaStudio({
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in"
           onClick={() => setFullscreenUrl(null)}
         >
-          <button
+          <button data-help="close preview"
             type="button"
             className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors border border-white/10"
             onClick={(e) => {

@@ -128,7 +128,7 @@ export default function PhotoStudioPage() {
             <h1 className="text-2xl font-bold">Photo Studio</h1>
             <p className="text-sm mt-1" style={{ color: semantic.textSecondary }}>Generate product photography with AI</p>
           </div>
-          <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="rounded-lg px-3 py-2 outline-none" style={panels.card}>
+          <select data-help="photo brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="rounded-lg px-3 py-2 outline-none" style={panels.card}>
             <option value="">No brand</option>
             {brands.map((b) => (
               <option key={b.id} value={b.id}>{b.brand_name || b.url}</option>
@@ -143,7 +143,7 @@ export default function PhotoStudioPage() {
 
         <div className="flex flex-wrap gap-2 mb-6">
           {CATEGORIES.map((c) => (
-            <button key={c} onClick={() => { setCategory(c); setStyle(''); }} className="px-4 py-2 rounded-lg text-sm font-medium transition" style={optionStyle(category === c)}>
+            <button data-help="photo category" key={c} onClick={() => { setCategory(c); setStyle(''); }} className="px-4 py-2 rounded-lg text-sm font-medium transition" style={optionStyle(category === c)}>
               {c}
             </button>
           ))}
@@ -151,7 +151,7 @@ export default function PhotoStudioPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
           {currentStyles.map((s) => (
-            <button key={s} onClick={() => setStyle(s)} className="px-3 py-2 rounded-lg text-sm font-medium transition" style={optionStyle(style === s)}>
+            <button data-help="photo style" key={s} onClick={() => setStyle(s)} className="px-3 py-2 rounded-lg text-sm font-medium transition" style={optionStyle(style === s)}>
               {s}
             </button>
           ))}

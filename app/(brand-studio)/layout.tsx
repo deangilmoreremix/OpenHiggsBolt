@@ -7,6 +7,7 @@ import { Palette, Camera, Plus, ArrowLeft, ChevronRight, Globe } from 'lucide-re
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 import HelpAgent from '@/components/help/HelpAgent';
+import StudioTooltips from '@/components/studio-tooltips/StudioTooltips';
 
 /**
  * Brand Studio — one application, one shell.
@@ -108,7 +109,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
   const menu = (
     <div className="flex flex-col gap-6 p-4">
       {/* New brand — the app's entry flow */}
-      <Link
+      <Link data-help="new brand"
         href="/brand-studio"
         className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition"
         style={
@@ -190,7 +191,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
         <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest" style={{ color: semantic.textMuted }}>
           Tools
         </p>
-        <Link
+        <Link data-tab="photo-studio"
           href="/photo-studio"
           className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition"
           style={isPhotoStudio ? { background: 'rgba(34,211,238,0.12)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
@@ -217,7 +218,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
             </span>
           </div>
         </div>
-        <Link
+        <Link data-help="back to studios"
           href="/studio"
           className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[13px] font-medium transition hover:bg-white/10"
           style={{ borderColor: 'var(--border-color)', color: 'rgba(255,255,255,0.6)' }}
@@ -236,7 +237,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
         <main className="min-w-0 flex-1 overflow-y-auto">
           {/* Compact app menu (mobile) */}
           <div className="flex gap-2 overflow-x-auto border-b p-3 md:hidden" style={{ borderColor: 'var(--border-color)' }}>
-            <Link
+            <Link data-help="new brand"
               href="/brand-studio"
               className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
               style={isNewBrand ? { background: 'rgba(34,211,238,0.15)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
@@ -253,7 +254,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
                 <Globe size={12} /> {brandLabel(b)}
               </Link>
             ))}
-            <Link
+            <Link data-tab="photo-studio"
               href="/photo-studio"
               className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
               style={isPhotoStudio ? { background: 'rgba(34,211,238,0.15)', color: 'var(--color-primary)' } : { color: 'rgba(255,255,255,0.6)' }}
@@ -264,6 +265,8 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
           <DemoPersonalizeProvider>{children}</DemoPersonalizeProvider>
         </main>
       </div>
+      {/* Hover help for every control (cyan/purple scheme of this app); the studio shell mounts the same layer. */}
+      <StudioTooltips />
       {/* "Ask SmartVideo" help assistant, same launcher as the other studios */}
       <HelpAgent studioId={isPhotoStudio ? 'photo-studio' : 'brand-studio'} studioLabel={isPhotoStudio ? 'Photo Studio' : 'Brand Studio'} />
     </div>

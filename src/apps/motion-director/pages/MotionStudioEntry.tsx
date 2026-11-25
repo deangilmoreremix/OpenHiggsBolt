@@ -536,7 +536,7 @@ export default function MotionStudioEntry() {
           </PromptCard>
           {!conversing && <div className="flex flex-wrap gap-2 pt-1">
             {EXAMPLE_PROMPTS.map((example) => (
-              <button
+              <button data-help="example prompt"
                 key={example}
                 type="button"
                 onClick={() => { setDescription(example); promptRef.current?.focus(); }}

@@ -234,7 +234,7 @@ function Dropdown({ isOpen, title, items, selectedId, onSelect, onClose, isVideo
       className="w-[420px] max-w-[calc(100vw-2rem)]"
     >
       <PromptPopoverHeader className="mb-3">{title}</PromptPopoverHeader>
-      <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+      <div data-help={title} className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
         {items.map(item => (
           <div 
             key={item.id}
@@ -771,6 +771,8 @@ export default function MarketingStudio({
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setDropdown(dropdown === 'format' ? null : 'format'); }}
+                  data-help-name="Video format"
+                  data-help-text="Pick a ready-made ad style such as UGC, Tutorial or Unboxing."
                   className={promptControlClassName({
                     active: dropdown === "format",
                   })}

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findHelp, place, mountStudioTooltips, TIP_CSS } from '../tooltipLayer.js';
-import { STUDIO_HELP, ALIASES, helpKey, idLabels, resolveStudioHelp } from '../studioHelp.js';
+import { STUDIO_HELP, ALIASES, helpKey, idLabels, resolveStudioHelp, studioEntry } from '../studioHelp.js';
 
 describe('studioHelp', () => {
   it('normalizes labels (case, shortcut suffix, icons, counts, ellipsis)', () => {
@@ -175,5 +175,95 @@ describe('data-help keys written in the studio source', () => {
     }
     expect(found).toBeGreaterThan(15);   // the tags exist; this is not vacuously true
     expect(bad).toEqual([]);
+  });
+});
+
+describe('studio-level tooltips (shell tabs, chrome, mounts)', () => {
+  const { readFileSync: read } = require('node:fs');
+  const shell = read(join(process.cwd(), 'components/StandaloneShell.js'), 'utf8');
+  const tabIds = [...shell.slice(shell.indexOf('const TABS = ['), shell.indexOf('];', shell.indexOf('const TABS = [')))
+    .matchAll(/id:\s*'([^']+)'/g)].map((m) => m[1]);
+
+  it('found the shell tabs (so the checks below are not vacuous)', () => { expect(tabIds.length).toBeGreaterThan(20); });
+  it('every shell tab has studio-level copy: the owner\'s label and tagline from the Academy guides', () => {
+    for (const id of tabIds) {
+      const entry = studioEntry(id);
+      expect(entry, `tab "${id}" has no studio guide`).toBeTruthy();
+      expect(entry.summary.length, id).toBeGreaterThan(10);
+    }
+  });
+  it('a tab button resolves to its studio, ahead of any plain text', () => {
+    document.body.innerHTML = '<nav><button data-tab="image">Image Studio</button><button data-tab="lipsync">Lip Sync</button></nav>';
+    const [img, lip] = document.querySelectorAll('button');
+    expect(findHelp(img)?.entry).toEqual({ name: 'Image Studio', summary: expect.stringMatching(/image/i) });
+    expect(findHelp(lip)?.entry.name).toBe('Lip Sync');
+  });
+  it('an unknown tab id falls back to the normal label lookup instead of failing', () => {
+    document.body.innerHTML = '<button data-tab="nope" title="Hello">x</button>';
+    expect(findHelp(document.querySelector('button'))?.entry).toEqual({ name: 'Hello' });
+  });
+  it('shell chrome has written copy', () => {
+    expect(resolveStudioHelp('Settings — API key, local models, preferences')?.name).toBe('Settings');
+    expect(resolveStudioHelp('Sign out of your account')?.name).toBe('Sign out');
+    expect(resolveStudioHelp('Step-by-step guide for Image Studio')?.name).toBe('Studio guide');
+    expect(resolveStudioHelp('Academy')?.name).toBe('Academy');
+  });
+  it('every layout or page that renders studio UI outside the shell mounts the tooltip layer', () => {
+    for (const file of ['app/(brand-studio)/layout.tsx', 'app/academy/page.tsx', 'components/StandaloneShell.js']) {
+      expect(read(join(process.cwd(), file), 'utf8'), file).toContain('<StudioTooltips />');
+    }
+  });
+});
+
+describe('render-time copy and long placeholders', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+  it('data-help-text carries copy supplied by the studio (schema-driven fields)', () => {
+    document.body.innerHTML = '<input placeholder="Persona ID" data-help-text="The voice to apply to the generated music.">';
+    expect(findHelp(document.querySelector('input'))?.entry).toEqual({ name: 'Persona ID', summary: 'The voice to apply to the generated music.' });
+  });
+  it('data-help-name overrides the heading, and the text counts as written copy (has a summary)', () => {
+    document.body.innerHTML = '<select data-help-name="Voice" data-help-text="Pick one."><option>a</option></select>';
+    expect(findHelp(document.querySelector('select'))?.entry).toEqual({ name: 'Voice', summary: 'Pick one.' });
+  });
+  it('a long placeholder is still matched by its prefix', () => {
+    const long = "Describe the motion graphic — 'Animated sales dashboard with glowing bar charts and rising numbers, neon cyan on black'";
+    expect(long.length).toBeGreaterThan(80);
+    document.body.innerHTML = `<textarea placeholder="${long}"></textarea>`;
+    expect(findHelp(document.querySelector('textarea'))?.entry.name).toBe('Prompt');
+  });
+  it('anchors with an href read their text, so nav links resolve', () => {
+    document.body.innerHTML = '<a href="/academy">Academy</a><a>Academy</a>';
+    const [link, bare] = document.querySelectorAll('a');
+    expect(findHelp(link)?.entry.name).toBe('Academy');
+    expect(findHelp(bare)).toBeNull();
+  });
+});
+
+describe('tags added for the last unclear controls', () => {
+  it('dynamic design-mode keys, camera setup and the layers footer resolve', () => {
+    for (const mode of ['agent', 'generate', 'edit']) expect(resolveStudioHelp(`design mode ${mode}`), mode).toBeTruthy();
+    expect(resolveStudioHelp('Separate layers 12')?.name).toBe('Layer Decomposition');
+    expect(resolveStudioHelp('Brand Kit · On')?.name).toBe('Brand Kit');
+  });
+});
+
+describe('plain titles vs ancestor copy', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+  it('an inner element\'s own title does not hide copy that an ancestor has', () => {
+    document.body.innerHTML = '<a href="/x"><span title="View the code">Source Code</span></a>';
+    expect(findHelp(document.querySelector('span'))?.entry.name).toBe('Source Code');
+  });
+  it('with no copy anywhere, the nearest plain title still wins', () => {
+    document.body.innerHTML = '<div title="Outer"><span title="Inner">x</span></div>';
+    expect(findHelp(document.querySelector('span'))?.entry).toEqual({ name: 'Inner' });
+  });
+});
+
+describe('Layers and shared control labels', () => {
+  it.each(['Zoom in', 'Zoom out', 'Brush size', 'Number of layers', 'Regional edit prompt', 'Upload image'])('%s has copy', (label) => {
+    expect(resolveStudioHelp(label)?.summary).toBeTruthy();
+  });
+  it('a single-key hint is ignored when looking up copy', () => {
+    expect(resolveStudioHelp('Shapes (R)')?.name).toBe('Shapes');
   });
 });
