@@ -122,6 +122,16 @@ interface RecordingServer {
   close: () => Promise<void>
 }
 
+/** True when this machine can actually listen on the IPv6 loopback (some sandboxes and CI containers cannot). */
+async function canListenOnIPv6Loopback(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = http.createServer()
+    probe.once('error', () => resolve(false))
+    probe.listen(0, '::1', () => probe.close(() => resolve(true)))
+  })
+}
+const IPV6_LOOPBACK = await canListenOnIPv6Loopback()
+
 /** Starts a real HTTP listener on 127.0.0.1 (or ::1) that records every request. */
 async function startRecordingServer(
   host: '127.0.0.1' | '::1' = '127.0.0.1',
@@ -157,7 +167,11 @@ async function startRecordingServer(
     })
   })
 
-  await new Promise<void>((resolve) => server.listen(0, host, () => resolve()))
+  // Reject on a listen error (e.g. EAFNOSUPPORT for ::1) instead of waiting forever.
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, host, () => resolve())
+  })
   const address = server.address()
   const port = typeof address === 'object' && address ? address.port : 0
   recorder.port = port
@@ -332,7 +346,8 @@ describe('networkSafety.createPinnedFetch: the connection goes only to the valid
     }
   })
 
-  it('pins an IPv6 destination to the validated IPv6 address', async () => {
+  // Skipped (not proven) where the host has no IPv6 loopback; it still runs on machines that do.
+  it.skipIf(!IPV6_LOOPBACK)('pins an IPv6 destination to the validated IPv6 address', async () => {
     const server = await startRecordingServer('::1')
     try {
       const destination = {
