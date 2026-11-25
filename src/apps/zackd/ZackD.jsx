@@ -588,7 +588,7 @@ export default function ZackD({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] animate-fade-in-up">
+          <div className="flex flex-col items-center justify-center min-h-full py-6 animate-fade-in-up">
             <div className="flex items-center justify-center gap-1.5 md:gap-3 mb-8 select-none">
               {SAMPLES.map((src, i) => (
                 <div key={src} className={`w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden ${['-rotate-[12deg]', '-rotate-[4deg] -ml-3', 'rotate-[4deg] -ml-3', 'rotate-[12deg] -ml-3'][i]}`}>
