@@ -16,3 +16,4 @@ Use `--check` in CI or before committing to catch bad status values and dead cod
 | Caption Studio | studio | live | Clipping Studio > clip > Captions; Personalization > Captions > Studio | 2026-11-20 | [page](studio/caption-studio.md) |
 | Saved assets library | studio | live | Any image or video studio > Library / Saved button in the prompt bar | 2026-11-07 | [page](studio/saved-assets-library.md) |
 | Social Publishing | studio | live | Studio result > Publish | TBD | [page](studio/social-publishing.md) |
+| Zack D Studio | studio | live | Studio > Zack D Studio | 2026-11-11 | [page](studio/zack-d-studio.md) |
