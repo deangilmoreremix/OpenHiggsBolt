@@ -12698,19 +12698,20 @@
       "id": "zackd",
       "name": "Zack D Studio",
       "route": "/studio/zackd",
-      "description": "A step-by-step builder for a vertical (9:16) animated explainer short: start from a topic, edit a starter script, generate character sheets and keyframe images, animate them into clips, add narration and optional music, then render the final video in your browser.",
+      "description": "A pipeline-style builder for a vertical (9:16) animated explainer short: type a topic, edit a starter script, approve it, then one action button walks you through character sheets, keyframe images, animated clips, optional narration and music, and a final cut rendered in your browser.",
       "keyFeatures": [
-        "Six-step guided flow with numbered step buttons: Topic, Script, Characters & keyframes, Motion clips, Voice & music, Final cut",
-        "Starter script from your topic that you edit by hand (narration and scene text for each beat and shot)",
-        "Templates: one finished demo and two script-only templates that need no paid generation to load",
+        "One action button in the prompt bar that always runs the next step: Write script, Approve script, Generate character sheets, Generate keyframes, Animate clips, then Render final cut",
+        "Starter script from your topic that you edit by hand (a narration box per beat and a scene box per shot)",
+        "Templates: one finished demo (Try the demo project) and two script-only templates that need no paid generation to load",
+        "Four example ideas in the Templates menu that fill the topic box",
         "Three looks: Plasticine clay, Translucent glass, Bright toy studio",
-        "Character sheets and 9:16 keyframes generated as images; keyframes animated into clips",
-        "Narration with a choice of preset voices, and optional background music",
-        "Final cut rendered in your browser, with the option to keep the clips' own sound",
-        "Downloads: video, free .srt captions file; paid burned-in animated captions; post to social",
-        "Confirmation prompt before paid steps and a Redo button to retry any item"
+        "Character sheets and 9:16 keyframes generated as images; each keyframe is animated into a clip",
+        "Voice and music section (narration with a choice of preset voices, and optional music) once every shot has a clip",
+        "Final cut rendered in your browser, with Advanced options such as Keep the clips' own sound (Veo audio)",
+        "Downloads: video, free .srt captions file; paid burned-in animated captions; Post to social",
+        "Confirmation prompt before paid batches and a Redo button on any single card"
       ],
-      "howToUse": "Open Zack D Studio at /studio/zackd. Type a topic and click Write starter script (or load a template), edit the script and click Approve script, then work through the steps: generate character sheets and keyframes, approve keyframes, generate clips, generate narration, and render the video in Final cut.",
+      "howToUse": "Open Zack D Studio at /studio/zackd. Type a topic in the prompt bar (or pick a template under Templates) and click Write script, edit the script and click Approve script, then keep clicking the action button as its label changes: it generates the character sheets, the keyframes and the clips, and finally reads Render final cut. Narration and music are optional and appear under Voice and music once every shot has a clip.",
       "inputs": [
         "topic",
         "script text",
@@ -12754,7 +12755,7 @@
       ],
       "troubleshooting": [
         "Images, clips or audio fail",
-        "Render video fails or says the browser cannot encode video",
+        "Render final cut fails or says the browser cannot encode video",
         "Project is not what I expected after loading a template"
       ],
       "relatedStudios": [
@@ -12774,15 +12775,15 @@
       ],
       "verification": {
         "status": "verified",
-        "evidence": "ZackD.jsx, zackdPrompts.js, jobs.js, templates.js, finalCut.js and finalCutPlan.js read directly on 2026-11-11",
-        "verifiedAt": "2026-11-11",
-        "verifiedBy": "Code review 2026-11-11"
+        "evidence": "ZackD.jsx, zackdPrompts.js and templates.js re-read directly on 2026-11-25 after the pipeline-style prompt-bar rework; jobs.js, finalCut.js and finalCutPlan.js were not re-read in this pass",
+        "verifiedAt": "2026-11-25",
+        "verifiedBy": "Code review 2026-11-25"
       },
-      "shortDescription": "A step-by-step builder for a vertical (9:16) animated explainer short: start from a topic, edit a starter script, generate character sheets and keyframe images, animate them into clips, add narration and optional music, then render the final video in your browser.",
-      "fullDescription": "Zack D Studio guides you through six numbered steps: Topic, Script, Characters & keyframes, Motion clips, Voice & music and Final cut. You start with one topic (or a template). The studio writes a fixed starter script of three beats that you edit by hand. After you approve the script, you pick a look, generate character sheets and one keyframe image per shot, animate each keyframe into a clip, generate narration (and optionally music), and finally render a 720x1280 video in your browser with transitions between shots. You can download the video or an .srt caption file, post it to social media, or pay to burn animated captions into it. Every paid generation asks for confirmation first, and your project is saved in this browser. The studio is adapted from the open-source Zack D Films project.",
+      "shortDescription": "A pipeline-style builder for a vertical (9:16) animated explainer short: type a topic, edit a starter script, approve it, then one action button walks you through character sheets, keyframe images, animated clips, optional narration and music, and a final cut rendered in your browser.",
+      "fullDescription": "Zack D Studio is built around one prompt bar at the bottom: a Topic box, a Look menu, a narration Voice menu, a fixed 9:16 label, a Templates menu, an Advanced menu and one action button whose label always names the next step. You start with one topic (or a template). Write script builds a fixed starter script of three beats that you edit by hand in the Script section. After you click Approve script the studio shows Character sheets and Shots; the action button then generates the missing character sheets, then the keyframe images, then animates each keyframe into a clip, and finally renders a 720x1280 video in your browser. Once every shot has a clip, a Voice and music section lets you generate narration and optional music. Every paid batch asks for confirmation first, and your project is saved in this browser. The studio is adapted from the open-source Zack D Films project.",
       "whenToUse": [
         "You want a complete vertical animated short built step by step from a topic",
-        "You want to review and approve each stage before paying for the next"
+        "You want to review the script and the images before paying for the clips"
       ],
       "whenToUseAnother": [
         "Use Storyboard Studio to plan scenes more freely",
@@ -12793,145 +12794,152 @@
       "featureExplanations": [
         {
           "feature": "Starter script",
-          "explanation": "Builds a three-beat script from your topic with a hook, a reaction beat and a resolution beat. The Script step then shows a count of beats and shots and the approximate length.",
+          "explanation": "Write script builds a fixed three-beat script from your topic (a hook, a reaction beat and a resolution beat). The Script section shows a card per beat with a narration box and a scene box per shot, and after approval a count of beats, shots and the planned length.",
           "whyToUse": "Gives you a structure to edit.",
           "inputRequired": "topic",
-          "restrictions": "It is a generic skeleton, not an AI-written script. You edit the text."
+          "restrictions": "It is a generic skeleton, not an AI-written script. You edit the text. Until you approve, Rewrite script (next to the Script heading) replaces your edits with a fresh skeleton after a confirmation."
         },
         {
           "feature": "Templates",
-          "explanation": "Three templates: Swallow gum: finished demo (Use as template), Swallow gum: script only (Use script) and Mosquito bite: script only (Use script).",
+          "explanation": "Three templates: Swallow gum: finished demo (also offered as Try the demo project on the start screen), Swallow gum: script only and Mosquito bite: script only. Open them from the start screen or the Templates menu in the prompt bar, which also lists four example ideas.",
           "whyToUse": "See a full example or reuse a ready script.",
           "inputRequired": "none",
-          "restrictions": "Loading asks to confirm if you already have a script. Your chosen look and voice are kept."
+          "restrictions": "Loading asks to confirm if you already have a script (Replace the current project with this template?). Your chosen look and voice are kept."
         },
         {
           "feature": "Character sheets and keyframes",
-          "explanation": "Generate all character sheet(s) and keyframe(s) in batches (up to three at a time), or one at a time with Generate or Redo on each card.",
+          "explanation": "After you approve the script, the Character sheets and Shots sections appear. The action button generates all missing character sheets, then all missing keyframes, in batches of up to three at a time; each card also has its own Generate or Redo button.",
           "whyToUse": "Get the images that will be animated.",
           "inputRequired": "approved script",
-          "restrictions": "Each image is a paid call on your MuAPI key; a confirmation asks first for the batch buttons."
+          "restrictions": "Each image is a paid call on your MuAPI key; a confirmation asks first for each batch. A project that already has its keyframes (such as the finished demo) skips the sheets."
         },
         {
-          "feature": "Motion clips",
-          "explanation": "Animates each keyframe into a clip.",
+          "feature": "Animated clips",
+          "explanation": "Once every keyframe exists the action button reads Animate N clip(s) and animates each keyframe into a clip with Veo 3.1. A clip card also offers Redo keyframe.",
           "whyToUse": "Turn still images into video.",
           "inputRequired": "all keyframes",
-          "restrictions": "The batch button is disabled until every keyframe exists. Most expensive step."
+          "restrictions": "The confirmation calls this the most expensive step. Redo keyframe discards the current clip, which must then be animated again (paid)."
         },
         {
-          "feature": "Voice & music",
-          "explanation": "Generates narration from all beat narration text, and optional background music.",
+          "feature": "Voice and music",
+          "explanation": "Appears once every shot has a clip. Generate narration speaks the narration text of all beats in the voice you chose; Generate music (optional) makes a music track. Each button reads Regenerate once that item exists.",
           "whyToUse": "Add sound.",
-          "inputRequired": "script",
-          "restrictions": "Music is optional."
+          "inputRequired": "a clip for every shot",
+          "restrictions": "Optional. Narration and music reach the final video only if you turn on Mix in the narration and music I generated in Advanced (it switches on by itself once you generate them)."
         },
         {
           "feature": "Final cut",
-          "explanation": "Renders in your browser at 720x1280: transitions between shots, impact zooms on marked shots, narration with music ducked underneath. Can take a minute or two.",
+          "explanation": "Render final cut renders in your browser at 720x1280 with transitions between shots and impact zooms on marked shots. After a render the button reads Render again. The result appears in the Final cut section.",
           "whyToUse": "Get the finished short.",
           "inputRequired": "a clip for every shot",
-          "restrictions": "Needs a browser that can encode video; a Cancel button stops a render in progress."
+          "restrictions": "Needs a browser that can encode video. By default each clip keeps its real length and its own sound."
         },
         {
           "feature": "Captions",
           "explanation": "Captions (.srt) downloads a free caption file. Burn captions into the video uploads your cut and adds animated word-by-word captions for a fee.",
           "whyToUse": "Subtitles or viral-style captions.",
-          "inputRequired": "a rendered video; narration for burned-in captions",
-          "restrictions": "Burned-in captions: about $0.20 minimum ($0.005 per second), 2-3 minutes."
+          "inputRequired": "a rendered video; narration in the cut for burned-in captions",
+          "restrictions": "Burned-in captions: about $0.20 minimum ($0.005 per second), a few minutes."
         }
       ],
       "inputDetails": [
         {
           "name": "topic",
-          "description": "Text field labelled TOPIC (placeholder e.g. What happens when you swallow gum?). Four example topic cards under the Templates section fill it in when clicked.",
+          "description": "The Topic box in the prompt bar (placeholder: Ask one curiosity question, e.g. What happens when you swallow gum?). The four example ideas in the Templates menu fill it in when clicked.",
           "required": true,
           "whenToUse": "To start a new project from your own idea.",
-          "restrictions": "Up to 200 characters. Write starter script is disabled while the field is empty."
+          "restrictions": "Up to 200 characters. The Write script button is disabled while the box is empty."
         },
         {
           "name": "script text",
-          "description": "On the Script step, a narration box for each beat and a scene box for each shot.",
+          "description": "In the Script section, a narration box for each beat and a scene box for each shot.",
           "required": false,
           "whenToUse": "Always worth editing: the starter script is a generic skeleton built from your topic.",
-          "restrictions": "Up to 400 characters per box. You can edit text only; beats and shots cannot be added or removed in the screen."
+          "restrictions": "Up to 400 characters per box. You can edit text only; beats and shots cannot be added or removed in the screen. Editing a beat clears narration you already generated, because it no longer matches."
         },
         {
           "name": "look",
-          "description": "Three buttons on the Characters & keyframes step: Plasticine clay, Translucent glass and Bright toy studio.",
+          "description": "The Look menu in the prompt bar: Plasticine clay, Translucent glass and Bright toy studio.",
           "required": false,
           "whenToUse": "Before generating character sheets and keyframes, since it changes their prompts.",
           "restrictions": "Default is Plasticine clay."
         },
         {
           "name": "voice",
-          "description": "A dropdown (Voice) on the Voice & music step with twelve preset voice names such as Casual Guy and Wise Woman.",
+          "description": "The voice menu in the prompt bar (Narration voice), with thirteen preset voice names such as Casual Guy and Wise Woman.",
           "required": false,
           "whenToUse": "Before generating narration.",
-          "restrictions": "Preset voices only; the step notes that cloning from a voice sample is not supported yet. Default is Casual Guy."
+          "restrictions": "Preset voices only. Default is Casual Guy. One listed voice is the original project's default and is marked as not verified on MuAPI."
         },
         {
           "name": "Keep the clips' own sound",
-          "description": "A checkbox in Final cut, on by default.",
+          "description": "A checkbox in the Advanced menu, labelled Keep the clips' own sound (Veo audio), on by default.",
           "required": false,
-          "whenToUse": "Leave on to keep the sound of the generated clips, quieter under narration; turn off for a silent or narration-only mix.",
-          "restrictions": "With no narration and the box off, the video will be silent."
+          "whenToUse": "Leave on to keep the sound of the generated clips; turn off for a silent or narration-only mix.",
+          "restrictions": "With no narration mixed in and the box off, the video will be silent."
+        },
+        {
+          "name": "other Advanced options",
+          "description": "Also in Advanced: Mix in the narration and music I generated, Trim each clip to its planned 2-4 s shot length, and Add character descriptions to the image prompts.",
+          "required": false,
+          "whenToUse": "Mix in the narration if you want the voice in the cut; the other two are optional extras.",
+          "restrictions": "These are additions to the original project; the defaults reproduce it."
         },
         {
           "name": "caption language and theme",
           "description": "In Burn captions into the video: a Caption language dropdown (default English) and theme buttons (default Hormozi 1).",
           "required": false,
           "whenToUse": "Only if you want paid, burned-in animated captions.",
-          "restrictions": "Needs narration. Paid: about $0.20 minimum ($0.005 per second)."
+          "restrictions": "Needs narration in the rendered cut. Paid: about $0.20 minimum ($0.005 per second)."
         }
       ],
       "modeExplanations": [
         {
           "mode": "Start from a topic",
-          "description": "Type a topic and click Write starter script. The studio builds a fixed three-beat script skeleton from your topic; it does not write a custom script, so edit it.",
+          "description": "Type a topic and click Write script. The studio builds a fixed three-beat script skeleton from your topic; it does not write a custom script, so edit it.",
           "acronymExpanded": "N/A",
           "useCase": "Making your own short"
         },
         {
           "mode": "Start from a template",
-          "description": "Use as template loads the finished demo with its keyframes and clips; Use script loads only the script. Loading a template never calls a paid service.",
+          "description": "Try the demo project (Swallow gum: finished demo) loads a ready script with its keyframes and clips; Swallow gum: script only and Mosquito bite: script only load just a script. Loading a template never calls a paid service.",
           "acronymExpanded": "N/A",
           "useCase": "Trying the studio at no cost or starting from a ready script"
         }
       ],
-      "modelExplanations": "You do not choose models. If the first image or clip model fails or returns a placeholder, the studio tries the fallback automatically. The clips step text states that clips are animated with Veo 3.1 (fast, with the standard model as fallback), take a few minutes each and are the most expensive step. Narration uses preset MiniMax voices at a fixed speed. Music is optional.",
+      "modelExplanations": "You do not choose models. If the first image or clip model fails or returns a placeholder, the studio tries the fallback automatically. The Shots section states that keyframes come first and each one is then animated with Veo 3.1 (fast, with the standard model as fallback); the clip confirmation calls this the most expensive step. Narration uses preset MiniMax voices at a fixed speed. Music is optional.",
       "howToSteps": [
-        "Open Zack D Studio: choose Zack D Studio in the studio list, or go to /studio/zackd. Six step buttons (1. Topic to 6. Final cut) show where you are.",
-        "On the Topic step, type a question or idea in the TOPIC field (up to 200 characters), or click one of the example topic cards to fill it in. To start from a template instead, scroll to Templates and click Use as template (finished demo) or Use script.",
-        "Click Write starter script (it reads Rewrite starter script if a script already exists, and Continue current project takes you back to it). This builds a fixed three-beat script from your topic. No paid generation happens yet.",
-        "On the Script step, read the beats and edit the narration box of each beat and the scene box of each shot to fit your idea. When it reads right, click Approve script.",
-        "On the Characters & keyframes step, pick a look: Plasticine clay, Translucent glass or Bright toy studio.",
-        "In Character sheets, click Generate all character sheet(s) and confirm the prompt, or use Generate on each card. Then in Keyframes click Generate all keyframe(s) and confirm. These are paid image calls on your MuAPI key. If a card looks wrong, click Redo on it.",
-        "When every keyframe is done, click Approve keyframes to go to Motion clips.",
-        "On Motion clips click Generate all clip(s) and confirm the prompt (the most expensive step; each clip takes a few minutes). Use Redo on any single clip you do not like. When all clips exist, click Continue to audio.",
-        "On Voice & music choose a voice in the Voice dropdown, then click Generate narration (Regenerate narration if you already have one) and confirm. Optionally click Generate music under Background music (optional). Click Continue to final cut.",
-        "On Final cut leave Keep the clips' own sound (Veo audio), quieter under narration on or off as you prefer, then click Render video. Wait while it shows Rendering and a percentage; click Cancel to stop.",
-        "When the video appears, click Download video to save it. Optionally click Captions (.srt) for a free caption file, Post to social to publish it, or use Burn captions into the video (pick a Caption language and theme, then click Burn captions; the button reads Burn again once a captioned copy exists) for paid animated captions.",
+        "Open Zack D Studio: choose Zack D Studio in the studio list, or go to /studio/zackd. The prompt bar at the bottom holds the Topic box, the Look and voice menus, Templates, Advanced and the action button.",
+        "Type a question or idea in the Topic box (up to 200 characters), or open Templates and click one of the four example ideas to fill it in. To start from a template instead, click Try the demo project or choose a template in the Templates menu.",
+        "Click Write script. This builds a fixed three-beat script from your topic. No paid generation happens yet.",
+        "In the Script section read the beats and edit the narration box of each beat and the scene box of each shot to fit your idea. If you want a fresh skeleton, click Rewrite script (before approving). When it reads right, click Approve script.",
+        "Before generating images, pick a look in the Look menu: Plasticine clay, Translucent glass or Bright toy studio.",
+        "Click the action button again: it now reads Generate N character sheet(s). Confirm the prompt. Each card has its own Generate or Redo button if you want to retry one. Then the button reads Generate N keyframe(s); confirm again. These are paid image calls on your MuAPI key.",
+        "When every keyframe exists the button reads Animate N clip(s). Confirm the prompt (the most expensive step; each clip takes a few minutes). Use Redo on a clip you do not like, or Redo keyframe to redo its image.",
+        "Optional: once every shot has a clip, the Voice and music section appears. Choose a voice in the prompt bar, then click Generate narration and confirm, and optionally Generate music (optional).",
+        "Optional: open Advanced to choose whether the clips keep their own sound (Keep the clips' own sound (Veo audio)) and whether your generated narration and music are mixed in (Mix in the narration and music I generated).",
+        "Click Render final cut. Wait while the bar shows Rendering and a percentage.",
+        "When the video appears in the Final cut section, click Download video to save it. Optionally click Captions (.srt) for a free caption file, Post to social to publish it, or use Burn captions into the video (pick a Caption language and theme, then click Burn captions; the button reads Burn again once a captioned copy exists) for paid animated captions.",
         "To start over click New project and confirm. Your current project is saved in this browser until you do."
       ],
       "advancedFeatureExplanations": [
         {
           "feature": "Redo and per-item Generate",
-          "explanation": "Each character sheet, keyframe and clip card has its own Generate or Redo button.",
+          "explanation": "Each character sheet, keyframe and clip card has its own Generate or Redo button, and a clip card also has Redo keyframe.",
           "useCase": "Fixing one item without regenerating everything",
           "restrictions": "Disabled while another job is running or without a key"
         },
         {
-          "feature": "Keep the clips' own sound",
-          "explanation": "Mixes the Veo clip audio quietly under the narration.",
-          "useCase": "Natural ambient sound",
-          "restrictions": "none"
+          "feature": "Advanced menu",
+          "explanation": "Keep the clips' own sound (Veo audio), Mix in the narration and music I generated, Trim each clip to its planned 2-4 s shot length and Add character descriptions to the image prompts.",
+          "useCase": "Natural ambient sound, or putting your generated voice in the cut",
+          "restrictions": "The last three are additions to the original project and are off unless you turn them on (mixing switches on by itself once narration or music exists)."
         },
         {
           "feature": "Burn captions into the video",
           "explanation": "Paid animated captions with a chosen language and theme.",
           "useCase": "Viral-style captions",
-          "restrictions": "Needs narration"
+          "restrictions": "Needs narration in the cut"
         }
       ],
       "outputDetails": [
@@ -12941,12 +12949,12 @@
           "postGenerationActions": [
             "Download video",
             "Post to social (needs MP4; the button reads Post (needs MP4) for WebM)",
-            "Re-render"
+            "Render again"
           ]
         },
         {
           "outputType": "caption file",
-          "description": "A free .srt file with six words per caption.",
+          "description": "A free .srt file.",
           "postGenerationActions": [
             "Captions (.srt)"
           ]
@@ -12956,7 +12964,7 @@
           "description": "A video with burned-in animated captions, shown after Burn captions.",
           "postGenerationActions": [
             "Open / download captioned video",
-            "Post to social modal"
+            "Post to social"
           ]
         }
       ],
@@ -12964,28 +12972,27 @@
         {
           "title": "Try it with the finished demo",
           "steps": [
-            "On Topic click Use as template under Swallow gum: finished demo.",
-            "On Script click Approve script, then Approve keyframes and Continue to audio.",
-            "On Voice & music click Continue to final cut.",
-            "Click Render video, then Download video."
+            "Click Try the demo project (or choose Swallow gum: finished demo in the Templates menu).",
+            "The demo already has its script, keyframes and clips, so the action button reads Render final cut.",
+            "Click Render final cut, then Download video."
           ]
         },
         {
           "title": "Make your own short from a topic",
           "steps": [
-            "Type a topic and click Write starter script.",
+            "Type a topic and click Write script.",
             "Edit the narration and scene text, then click Approve script.",
-            "Pick a look, generate character sheets and keyframes, then click Approve keyframes.",
-            "Generate clips, generate narration, then render and download."
+            "Pick a look, then keep clicking the action button to generate character sheets, keyframes and clips (confirm each batch).",
+            "Optionally generate narration and music, then click Render final cut and download."
           ]
         },
         {
           "title": "Add burned-in captions",
           "steps": [
-            "Render the video on Final cut.",
+            "Generate narration and turn on Mix in the narration and music I generated in Advanced.",
+            "Click Render final cut (or Render again).",
             "Under Burn captions into the video pick a Caption language and a theme.",
-            "Click Burn captions and confirm the price prompt.",
-            "Click Open / download captioned video when it appears."
+            "Click Burn captions and confirm the price prompt, then Open / download captioned video when it appears."
           ]
         }
       ],
@@ -12999,34 +13006,34 @@
       ],
       "commonProblems": [
         {
-          "problem": "Generate buttons are disabled",
-          "whyItHappens": "No MuAPI key is set, or another job is running.",
+          "problem": "The action button or Generate buttons are disabled",
+          "whyItHappens": "No MuAPI key is set (the bar says Add your MuAPI key in Settings to generate media), or another job is running.",
           "howToFix": "Wait for the running job to finish. If generation is blocked, open the API keys settings and check your MuAPI key."
         },
         {
-          "problem": "Generate all clip(s) is disabled",
-          "whyItHappens": "Not every keyframe has been generated yet.",
-          "howToFix": "Go back to Characters & keyframes and generate the missing keyframes."
+          "problem": "The action button does not offer to animate clips yet",
+          "whyItHappens": "Not every keyframe has been generated yet, so it still reads Generate N keyframe(s).",
+          "howToFix": "Click the button to generate the missing keyframes, or click Generate on the missing cards."
         },
         {
-          "problem": "Approve keyframes is disabled",
-          "whyItHappens": "At least one keyframe is missing.",
-          "howToFix": "Generate all keyframe(s) or click Generate on the missing cards."
+          "problem": "The Voice and music section is not showing",
+          "whyItHappens": "It appears only after every shot has a clip.",
+          "howToFix": "Animate the remaining clips first."
         },
         {
           "problem": "A message says some items failed",
           "whyItHappens": "One or more jobs in the batch failed.",
-          "howToFix": "Read the message, which ends with Use Redo to retry them., then click Redo on the failed items."
+          "howToFix": "Read the message, which ends with Use Redo to retry them., then click Redo on the failed items (or click the action button again)."
         },
         {
           "problem": "A message says shots have no clip yet",
-          "whyItHappens": "Render video was clicked before every shot had a clip.",
-          "howToFix": "Go to Motion clips and generate the missing clips."
+          "whyItHappens": "Render final cut was clicked before every shot had a clip.",
+          "howToFix": "Click the action button to animate the missing clips first."
         },
         {
           "problem": "Burn captions is disabled",
-          "whyItHappens": "No narration has been generated, or no video has been rendered.",
-          "howToFix": "Generate narration on Voice & music, render again, then click Burn captions."
+          "whyItHappens": "No narration has been generated, or the rendered cut does not contain the narration, or no video has been rendered.",
+          "howToFix": "Generate narration, turn on Mix in the narration and music I generated in Advanced, click Render again, then click Burn captions."
         },
         {
           "problem": "Post to social reads Post (needs MP4)",
@@ -13038,15 +13045,15 @@
         {
           "issue": "Images, clips or audio fail",
           "steps": [
-            "Read the red message at the top of the studio; it says how many items failed.",
+            "Read the message under the prompt bar; it says how many items failed.",
             "If generation is blocked, open the API keys settings and check your MuAPI key.",
             "Click Redo on the failed items."
           ]
         },
         {
-          "issue": "Render video fails or says the browser cannot encode video",
+          "issue": "Render final cut fails or says the browser cannot encode video",
           "steps": [
-            "Read the red message.",
+            "Read the message.",
             "Try again in Chrome or Edge.",
             "Make sure every shot has a clip."
           ]
@@ -13078,7 +13085,7 @@
         },
         {
           "limitation": "The rendered video is not saved across page loads",
-          "impact": "After a refresh you must click Render video again.",
+          "impact": "After a refresh you must click Render final cut again.",
           "workaround": "Download it right after rendering."
         },
         {
@@ -13125,7 +13132,7 @@
         },
         {
           "question": "Does it write the script for me?",
-          "answer": "It builds a fixed three-beat starter script from your topic. It is a skeleton, so edit the narration and scene text on the Script step before you approve it."
+          "answer": "It builds a fixed three-beat starter script from your topic. It is a skeleton, so edit the narration and scene text in the Script section before you approve it."
         },
         {
           "question": "What costs credits?",
@@ -13133,7 +13140,7 @@
         },
         {
           "question": "How long does the final video render take?",
-          "answer": "It renders in your browser and can take a minute or two. You can click Cancel to stop."
+          "answer": "It renders in your browser; the bar shows Rendering and a percentage while it works."
         },
         {
           "question": "What shape is the video?",
@@ -13141,7 +13148,7 @@
         },
         {
           "question": "Can I keep the sound from the generated clips?",
-          "answer": "Yes. Keep the clips' own sound (Veo audio), quieter under narration is on by default in Final cut."
+          "answer": "Yes. Keep the clips' own sound (Veo audio) is on by default in the Advanced menu."
         },
         {
           "question": "Can I clone my voice?",
@@ -13149,15 +13156,15 @@
         },
         {
           "question": "How much do burned-in captions cost?",
-          "answer": "The studio says about $0.20 minimum ($0.005 per second) and 2-3 minutes. They need narration. The .srt file is free."
+          "answer": "The studio says about $0.20 minimum ($0.005 per second). They need narration in the cut. The .srt file is free."
         },
         {
           "question": "Is my work saved?",
           "answer": "The project (script, images, clips, narration, music) is saved in this browser. The rendered video is not; download it after rendering."
         },
         {
-          "question": "What is the difference between Use as template and Use script?",
-          "answer": "Use as template loads the finished demo with its keyframes and clips. Use script loads just a script, and you generate the media yourself."
+          "question": "What is the difference between the demo project and the script-only templates?",
+          "answer": "Try the demo project (Swallow gum: finished demo) loads the script with its keyframes and clips. The script-only templates (Swallow gum and Mosquito bite) load just a script, and you generate the media yourself."
         }
       ],
       "targetCustomers": [
@@ -13175,15 +13182,14 @@
       "competitivePositioning": "Zack D Studio is a fixed, vertical-only pipeline for one short format. It is not a free-form editor; use other studios or an editor for custom layouts.",
       "gettingStarted": [
         "Open Zack D Studio from the studio list (/studio/zackd).",
-        "To try it with no paid generation, click Use as template on Swallow gum: finished demo in the Templates section.",
-        "On the Script step, edit any text and click Approve script, then step through Approve keyframes and Continue to audio (a finished demo already has its keyframes and clips).",
-        "On Final cut click Render video and then Download video.",
-        "To make your own, start from a topic with Write starter script and follow the steps; every paid step asks for confirmation first."
+        "To try it with no paid generation, click Try the demo project (Swallow gum: finished demo).",
+        "The demo already has its keyframes and clips, so click Render final cut and then Download video.",
+        "To make your own, type a topic and click Write script, edit it, click Approve script and keep clicking the action button; every paid batch asks for confirmation first."
       ],
       "bestPractices": [
         "Finish and approve the script before spending on images.",
-        "Check keyframes before generating clips, because clips are the most expensive step.",
-        "Generate narration before rendering if you want narration in the video.",
+        "Check keyframes before animating clips, because clips are the most expensive step.",
+        "Generate narration, and turn on Mix in the narration and music I generated, before rendering if you want narration in the video.",
         "Download the final video right after rendering: the rendered video is not kept if you leave or refresh the page, although the rest of the project is saved."
       ],
       "useCases": [
@@ -13193,7 +13199,7 @@
           "steps": [
             "Choose a topic.",
             "Edit the starter script.",
-            "Generate images, clips and narration.",
+            "Generate images and clips, then optional narration.",
             "Render and download."
           ],
           "expectedOutput": "A vertical animated short.",
@@ -13204,8 +13210,8 @@
           "description": "Walk the whole flow at no generation cost.",
           "steps": [
             "Load the finished demo.",
-            "Edit the script.",
-            "Render the cut."
+            "Click Render final cut.",
+            "Download the video."
           ],
           "expectedOutput": "A rendered video from the demo assets.",
           "businessImpact": "Understand the process before spending credits."
