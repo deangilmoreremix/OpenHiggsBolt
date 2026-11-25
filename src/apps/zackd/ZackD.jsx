@@ -588,7 +588,9 @@ export default function ZackD({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center min-h-full py-6 animate-fade-in-up">
+          <div className="flex flex-col items-center min-h-full animate-fade-in-up">
+            {/* First screen = same compact hero as the other studios; the template cards sit below it. */}
+            <div className="flex flex-col items-center justify-center w-full min-h-full pt-6 pb-36 lg:pb-32 shrink-0">
             <div className="flex items-center justify-center gap-1.5 md:gap-3 mb-8 select-none">
               {SAMPLES.map((src, i) => (
                 <div key={src} className={`w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden ${['-rotate-[12deg]', '-rotate-[4deg] -ml-3', 'rotate-[4deg] -ml-3', 'rotate-[12deg] -ml-3'][i]}`}>
@@ -611,14 +613,18 @@ export default function ZackD({
               ))}
             </div>
             <p className="text-[11px] text-white/30 mt-3">{TEMPLATE_ATTRIBUTION}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 w-full max-w-4xl px-4" data-zackd-templates>
+            <div className="mt-6 text-[11px] text-white/30 uppercase tracking-wider animate-bounce select-none" aria-hidden="true">Templates ↓</div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 pb-24 w-full max-w-4xl px-4" data-zackd-templates>
               {TEMPLATES.map((t) => {
                 const sameTopic = TEMPLATES.find((x) => x.demo && x.topic === t.topic);
                 const poster = t.poster || sameTopic?.poster;
                 return (
                   <div key={t.id} className="rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] flex flex-col text-left">
                     {t.demo ? (
-                      <video src={t.demo} poster={t.poster} controls playsInline preload="none" className="w-full aspect-[9/16] max-h-80 object-cover bg-black" />
+                      <video src={t.demo} poster={t.poster} muted loop playsInline preload="none" className="w-full aspect-[9/16] max-h-80 object-cover bg-black cursor-pointer hover:opacity-90"
+                        onMouseEnter={(e) => e.currentTarget.play().catch(() => {})} onMouseLeave={(e) => e.currentTarget.pause()}
+                        onClick={(e) => { const v = e.currentTarget; if (v.paused) v.play().catch(() => {}); else v.pause(); }} />
                     ) : poster ? (
                       <img src={poster} alt={t.title} loading="lazy" className="w-full aspect-[9/16] max-h-80 object-cover" style={{ objectPosition: '50% 25%' }} />
                     ) : (
