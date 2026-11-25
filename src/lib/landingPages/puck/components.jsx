@@ -56,6 +56,18 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
   const fired = useRef(new Set());
   const ref = useRef(null);
   const [started, setStarted] = useState(false);
+  // Subtitles are fetched with CORS here and played from a same-origin copy. The video itself is never put in CORS mode, so videos on any https host keep playing.
+  const subtitlesLink = safeUrl(viewer.subtitles) && /^https:/i.test(safeUrl(viewer.subtitles)) ? safeUrl(viewer.subtitles) : '';
+  const [subtitles, setSubtitles] = useState('');
+  useEffect(() => {
+    if (!subtitlesLink || typeof fetch !== 'function') { setSubtitles(''); return undefined; }
+    let live = true; let made = '';
+    fetch(subtitlesLink, { mode: 'cors' })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('subtitles'))))
+      .then((b) => { if (!live) return; made = URL.createObjectURL(new Blob([b], { type: 'text/vtt' })); setSubtitles(made); })
+      .catch(() => { if (live) setSubtitles(''); });
+    return () => { live = false; if (made) URL.revokeObjectURL(made); };
+  }, [subtitlesLink]);
   const [ctaShown, setCtaShown] = useState(false);
   const once = (kind, fn) => {
     if (preview || fired.current.has(kind)) return;
@@ -82,7 +94,6 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
   const frameAt = !ownPicture && !designPoster ? secs(viewer.posterAt) : 0;
   // A chosen start frame is a start-only fragment (an end before it would make the range invalid); the stop time is enforced while playing.
   const fragment = src && (startAt || endAt || frameAt) ? (frameAt ? `#t=${frameAt}` : `#t=${startAt}${endAt ? `,${endAt}` : ''}`) : '';
-  const subtitles = safeUrl(viewer.subtitles) && /^https:/i.test(safeUrl(viewer.subtitles)) ? safeUrl(viewer.subtitles) : '';
   const ctaAt = secs(viewer.ctaAt);
   const ctaOn = ctaAt > 0 && !!fill(viewer.ctaLabel) && !!(safeUrl(viewer.ctaUrl) || anchor(viewer.ctaUrl));
   const overlay = viewer.overlay ? fill(viewer.overlay) : '';
