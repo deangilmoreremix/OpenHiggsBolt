@@ -39,10 +39,11 @@ function brandFixtures(text) {
 
 export default function rebrand() {
   let outDir = "dist";
+  let base = "/";
   return {
     name: "brand:rebrand",
     enforce: "pre",
-    configResolved(c) { outDir = path.resolve(c.root, c.build.outDir); },
+    configResolved(c) { outDir = path.resolve(c.root, c.build.outDir); base = c.base.replace(/\/?$/, "/"); },
     transform(code, id) {
       const file = id.split("?")[0];
       if (!file.includes("/src/") || /\.test\.|node_modules|\/lib\/demo\/server\./.test(file)) return null;
@@ -50,6 +51,8 @@ export default function rebrand() {
       let out = code;
       if (file.endsWith("/components/svg.tsx")) out = out.replace(LOGO_PATH, `<path fillRule="evenodd" clipRule="evenodd" d="${MARK}" fill="currentColor" />`);
       if (file.endsWith("/lib/demo/fixtures.json")) out = brandFixtures(out);
+      // Upstream serves from the site root; the studio serves from a sub-path, so root-absolute public files need the base.
+      if (base !== "/") out = out.replace(/(["'`])\/(logos\/|favicon-96x96\.png)/g, `$1${base}$2`);
       out = out.replace(docsUrl, `${HELP}`).replace(serviceUrl, `${HELP}/about/`).replace(word, NAME);
       return out === code ? null : { code: out, map: null };
     },
@@ -57,6 +60,9 @@ export default function rebrand() {
     closeBundle() {
       // Icons and the web manifest.
       for (const f of fs.readdirSync(path.join(here, "icons"))) if (/\.(png|ico)$/.test(f) && fs.existsSync(outDir)) fs.copyFileSync(path.join(here, "icons", f), path.join(outDir, f));
+      // The font preload tag (vite.config.ts) is injected with a root-absolute href; point it at the sub-path.
+      const idx = path.join(outDir, "index.html");
+      if (base !== "/" && fs.existsSync(idx)) fs.writeFileSync(idx, fs.readFileSync(idx, "utf8").replace(/(<link[^>]*rel="preload"[^>]*href=")\/(?!\/)/g, (m, a) => (m.includes(`href="${base}`) ? m : `${a}${base}`)));
       const mf = path.join(outDir, "site.webmanifest");
       if (fs.existsSync(mf)) fs.writeFileSync(mf, fs.readFileSync(mf, "utf8").replace(word, NAME));
     },
