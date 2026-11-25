@@ -17,3 +17,4 @@ Use `--check` in CI or before committing to catch bad status values and dead cod
 | Saved assets library | studio | live | Any image or video studio > Library / Saved button in the prompt bar | 2026-11-07 | [page](studio/saved-assets-library.md) |
 | Social Publishing | studio | live | Studio result > Publish | TBD | [page](studio/social-publishing.md) |
 | Video Outreach link | studio | live | Studio tab bar > Video Outreach | 2026-11-25 | [page](studio/video-outreach-link.md) |
+| Zack D Studio | studio | live | Studio > Zack D Studio | 2026-11-11 | [page](studio/zack-d-studio.md) |
