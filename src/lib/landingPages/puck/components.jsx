@@ -10,7 +10,7 @@ import { tokenAnswers, leadKindFor } from '../leadPipeline.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fillTokens, splitAccent, prefillFor, safeUrl, safeImageUrl } from '../templates.js';
-import { usePage, useThanks, useFormSettings } from './context.js';
+import { usePage, useThanks, useFormSettings, useViewer } from './context.js';
 import { ICON_PATHS } from '../siteIcons.js';
 
 const MARKS = [{ at: 0.25, kind: 'progress_25' }, { at: 0.5, kind: 'progress_50' }, { at: 0.75, kind: 'progress_75' }];
@@ -52,9 +52,26 @@ export const isPlayableVideo = (u) => !!httpsMedia(u) && !IMAGE_PATH.test(pathOf
  */
 export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', bakedPlay = '' }) {
   const { page, handlers, preview } = usePage();
+  const viewer = useViewer();
   const fired = useRef(new Set());
   const ref = useRef(null);
   const [started, setStarted] = useState(false);
+  // Subtitles are fetched with CORS here and played from a same-origin copy. The video itself is never put in CORS mode, so videos on any https host keep playing.
+  const subtitlesUrl = safeUrl(viewer.subtitles);
+  const subtitlesLink = subtitlesUrl && /^https:/i.test(subtitlesUrl) ? subtitlesUrl : '';
+  const [subtitles, setSubtitles] = useState('');
+  useEffect(() => {
+    if (!subtitlesLink || typeof fetch !== 'function') { setSubtitles(''); return undefined; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);   // a slow or unreachable captions host does not hold the request open
+    let live = true; let made = '';
+    fetch(subtitlesLink, { mode: 'cors', signal: controller.signal })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('subtitles'))))
+      .then((b) => { if (!live) return; made = URL.createObjectURL(new Blob([b], { type: 'text/vtt' })); setSubtitles(made); })
+      .catch(() => { if (live) setSubtitles(''); });
+    return () => { live = false; clearTimeout(timer); controller.abort(); if (made) URL.revokeObjectURL(made); };
+  }, [subtitlesLink]);
+  const [ctaShown, setCtaShown] = useState(false);
   const once = (kind, fn) => {
     if (preview || fired.current.has(kind)) return;
     fired.current.add(kind);
@@ -73,7 +90,22 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
   const baked = bakedPlay === true || bakedPlay === 'yes';
   const showPlay = !started && !still && (!baked || ownPicture);
   const mock = !src && !userImage;
-  const play = () => { const v = ref.current; if (v && src) { void v.play?.(); } };
+  // Trim, start frame, subtitles, a button at a moment, and text on the video.
+  const secs = (n) => { const x = Number(n); return Number.isFinite(x) && x > 0 ? Math.min(x, 86400) : 0; };
+  const startAt = secs(viewer.start);
+  const endAt = secs(viewer.end) > startAt ? secs(viewer.end) : 0;
+  const frameAt = !ownPicture && !designPoster ? secs(viewer.posterAt) : 0;
+  // A chosen start frame is a start-only fragment (an end before it would make the range invalid); the stop time is enforced while playing.
+  const fragment = src && (startAt || endAt || frameAt) ? (frameAt ? `#t=${frameAt}` : `#t=${startAt}${endAt ? `,${endAt}` : ''}`) : '';
+  const ctaAt = secs(viewer.ctaAt);
+  const ctaOn = ctaAt > 0 && !!fill(viewer.ctaLabel) && !!(safeUrl(viewer.ctaUrl) || anchor(viewer.ctaUrl));
+  const overlay = viewer.overlay ? fill(viewer.overlay) : '';
+  // Before the first play the video may sit on the chosen frame: playback starts at the start time (0 included). After it reached the stop time, playing again starts over.
+  const seekToStart = (v) => {
+    if ((!started && frameAt) || v.currentTime < startAt) v.currentTime = startAt;   // every play stays inside the range, replays and seeks before the start too
+    if (endAt && v.currentTime >= endAt - 0.05) v.currentTime = startAt;
+  };
+  const play = () => { const v = ref.current; if (v && src) { seekToStart(v); void v.play?.(); } };
   return (
     <div className={`pk-video${mock ? ' pk-video--mock' : ''}${still ? ' pk-video--still' : ''}`}>
       <video
@@ -81,17 +113,26 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
         controls={!!src}
         playsInline
         preload="metadata"
-        src={src || undefined}
+        src={src ? `${fragment ? src.replace(/#t=[^#]*$/, '') : src}${fragment}` : undefined}
         poster={posterUrl || undefined}
         aria-label={still || mock ? (page?.title ? `Picture for ${page.title}` : 'Video placeholder') : (page?.title || 'Video')}
-        onPlay={() => { setStarted(true); once('play', () => handlers.onPlay?.()); }}
+        onPlay={(e) => { seekToStart(e.currentTarget); setStarted(true); once('play', () => handlers.onPlay?.()); }}
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
-          if (!v.duration || !Number.isFinite(v.duration)) return;
-          MARKS.forEach((m) => { if (v.currentTime / v.duration >= m.at) once(m.kind, handlers.onProgress); });
+          if (!started) return;   // a start-frame seek before play is not watching: no progress, no timed button
+          if (ctaOn && v.currentTime >= ctaAt) setCtaShown(true);
+          // Progress (25/50/75%) counts over the part that plays: from the start time to the stop time (or the end).
+          const known = !!v.duration && Number.isFinite(v.duration);
+          const end = known ? Math.min(endAt || v.duration, v.duration) : endAt;   // a stop time past the video's real end counts to the real end
+          if (end > startAt) { const frac = (v.currentTime - startAt) / (end - startAt); MARKS.forEach((m) => { if (frac >= m.at) once(m.kind, handlers.onProgress); }); }
+          if (endAt && v.currentTime >= endAt) { v.pause(); once('complete', () => handlers.onComplete?.()); return; }
         }}
-        onEnded={() => once('complete', () => handlers.onComplete?.())}
-      />
+        onEnded={() => { if (ctaOn) setCtaShown(true); once('complete', () => handlers.onComplete?.()); }}
+      >
+        {subtitles ? <track kind="subtitles" src={subtitles} srcLang="en" label="Captions" default /> : null}
+      </video>
+      {overlay ? <span className="pk-video-overlay">{overlay}</span> : null}
+      {ctaOn && (preview || ctaShown) ? <SafeLink className="pk-btn pk-btn--primary pk-video-cta" href={viewer.ctaUrl} onClick={() => { if (!preview) handlers.onCta?.(); }}>{fill(viewer.ctaLabel)}</SafeLink> : null}
       {showPlay ? <button type="button" className="pk-video-play" aria-label={src ? 'Play video' : 'Video placeholder: your video goes here'} onClick={play} tabIndex={src ? 0 : -1} /> : null}
       {mock && preview ? <span className="pk-video-label">Your video goes here</span> : null}
     </div>
@@ -209,11 +250,11 @@ export function LeadForm({ options, ...props }) {
 // In-page anchors (#lead, #contact...) are safe and let buttons scroll to a section.
 const anchor = (v) => (/^#[a-z0-9_-]{1,40}$/i.test(String(v || '').trim()) ? String(v).trim() : '');
 
-export function SafeLink({ href, children, className }) {
+export function SafeLink({ href, children, className, onClick }) {
   const url = safeUrl(href) || anchor(href);
   if (!url) return null;
   const external = /^https?:/i.test(url);
-  return <a className={className} href={url} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{children}</a>;
+  return <a className={className} href={url} onClick={onClick} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{children}</a>;
 }
 
 export function Icon({ name, className = 'pk-ico' }) {

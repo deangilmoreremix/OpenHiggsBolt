@@ -4,6 +4,7 @@
  */
 import * as C from './components.jsx';
 import { withImagePickers } from './ImageField.jsx';
+import { withViewerOptions } from './viewerScope.jsx';
 import { FONT_OPTIONS, fontStack } from './fontChoices.js';
 import { ICON_KEYS } from '../siteIcons.js';
 import { PUCK_TEMPLATES } from './designs.js';
@@ -196,4 +197,5 @@ export const puckConfig = {
 };
 
 // Every image-link field also offers "Choose from my library" (images made in any studio).
+withViewerOptions(puckConfig.components);
 withImagePickers(puckConfig.components);

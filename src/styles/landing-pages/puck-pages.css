@@ -188,3 +188,7 @@
 @media (prefers-reduced-motion: reduce) { .pk-pointer-arrow { animation: none; } }
 .pk-privacy a { color: inherit; text-decoration: underline; }
 .pk-gate-card .pk-form { margin: 0; }
+
+/* Video viewer extras: text on the video, and a button that appears at a chosen moment */
+.pk-video-overlay { position: absolute; left: 12px; top: 12px; max-width: 70%; z-index: 2; padding: 6px 12px; border-radius: 999px; background: rgba(8,12,24,.62); color: #fff; font-size: 13px; font-weight: 700; pointer-events: none; }
+.pk-video-cta { position: absolute; right: 12px; bottom: 52px; z-index: 2; box-shadow: 0 8px 24px rgba(0,0,0,.35); }

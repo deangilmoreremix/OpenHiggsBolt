@@ -53,9 +53,19 @@ describe('LandingPagePickerModal', () => {
     expect(document.body.textContent).toContain('Saved to Video Pages')
   })
 
-  it('refuses to save without a usable video', () => {
+  it('the design picker has a My pages button that closes it and opens My pages', () => {
+    const onClose = vi.fn(); const openStudio = vi.fn()
+    mount(<Modal video={video} onClose={onClose} openStudio={openStudio} />)
+    click(q('[data-my-pages-button]'))
+    expect(onClose).toHaveBeenCalled(); expect(openStudio).toHaveBeenCalled()
+  })
+
+  it('without a video it offers to choose one, and a design waits for it', () => {
     mount(<Modal video={null} onClose={() => {}} />)
-    expect(document.body.textContent).toContain("can't be used on a page")
+    expect(q('[data-media-chooser]')).not.toBeNull()
+    click(Array.from(document.body.querySelectorAll('div.grid button')).find((b) => b.textContent?.includes((TEMPLATES[1] as any).name)) || null)
+    expect(q('[data-testid=puck]')).toBeNull()
+    expect(document.body.textContent).toContain('Choose a video or picture first')
   })
 
   it('Escape closes the dialog and Esc in the editor goes back first', () => {

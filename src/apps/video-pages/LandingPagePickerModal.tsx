@@ -18,10 +18,11 @@ import { applyCustomerToPuck, brandForConfig, customerTokens, toContactFields } 
 import CustomerPanel, { useCustomerChoice } from './CustomerPanel'
 import { useCustomers } from './useCustomers'
 import DesignPreview from './DesignPreview'
+import MediaChooser from './MediaChooser'
 import { ui } from './ui'
 import type { PickedPage } from './LandingPagePicker'
 
-type Video = { url: string; posterUrl: string | null; title: string; source: Record<string, unknown> }
+import type { Video } from './MediaChooser'
 const SAMPLE_TOKENS = { firstname: 'Alex', lastname: 'Rivera', company: 'Brightline', role: 'Head of Growth' }
 const CHIPS: { id: string; label: string; match: (id: string) => boolean }[] = [
   { id: 'all', label: 'All', match: () => true },
@@ -34,7 +35,7 @@ const CHIPS: { id: string; label: string; match: (id: string) => boolean }[] = [
 ]
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])'
 
-export default function LandingPagePickerModal({ video, onPick, onClose, openStudio, customers: given, preselect }: {
+export default function LandingPagePickerModal({ video: initialVideo, onPick, onClose, openStudio, customers: given, preselect }: {
   video: Video | null
   customers?: any[]
   preselect?: 'active' | 'all'
@@ -42,6 +43,8 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
   onClose: () => void
   openStudio?: () => void
 }) {
+  // The video or picture going on the page: given by the studio, or chosen here (library, upload or link).
+  const [video, setVideo] = useState<Video | null>(initialVideo)
   const [view, setView] = useState<'grid' | 'edit' | 'done'>('grid')
   const [templateId, setTemplateId] = useState('')
   const [q, setQ] = useState('')
@@ -88,6 +91,7 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
   }, [view, busy, onClose])
 
   const choose = (id: string, plain = false) => {
+    if (!video) { setError('Choose a video or picture first (above the designs).'); return }
     const t = (TEMPLATES as any[]).find((x) => x.id === id)
     const withBrand = !!one && choice.brand && !plain
     const withImage = !!one && choice.image && !plain // the picture option works even with the brand option off
@@ -138,20 +142,32 @@ export default function LandingPagePickerModal({ video, onPick, onClose, openStu
   }, [saved])
 
   const body = (
-    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xl flex items-center justify-center p-2 md:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget && view !== 'edit') onClose() }}>
+    <div data-landing-picker className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xl flex items-center justify-center p-2 md:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget && view !== 'edit') onClose() }}>
       <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Landing pages" className="w-full max-w-7xl h-full max-h-[94vh] flex flex-col rounded-2xl border border-white/10 bg-panel-bg overflow-hidden focus:outline-none">
         <div className="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-white/5">
           {view === 'edit' ? <button type="button" className={ui.ghost} onClick={() => setView('grid')} disabled={!!busy}><ArrowLeft size={14} /> All pages</button> : null}
           <h2 className="text-sm font-black text-white uppercase tracking-widest">{view === 'done' ? 'Page saved' : view === 'edit' ? template?.name : 'Choose a landing page'}</h2>
           <div className="flex-1" />
+          {view === 'grid' && openStudio ? <button type="button" data-my-pages-button className={ui.ghost} onClick={() => { onClose(); openStudio() }}>My pages</button> : null}
           {view === 'edit' ? <button type="button" className={ui.primary} disabled={!!busy || !video} onClick={() => void save()}>{busy || 'Save as my page'}</button> : null}
           <button type="button" aria-label="Close" className={ui.ghost} onClick={onClose}><X size={14} /></button>
         </div>
         {error ? <div className="px-4 md:px-6 pt-3"><div className={ui.error}>{error}</div></div> : null}
-        {!video ? <div className="px-4 md:px-6 pt-3"><div className={ui.error}>This video can't be used on a page (it needs a permanent https link).</div></div> : null}
 
         {view === 'grid' ? (
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 md:p-6">
+            {video ? (
+              <div data-picked-media className={`${ui.panel} flex items-center gap-4 mb-4`}>
+                {/\.(png|jpe?g|webp|gif|avif)$/i.test(video.url.split('?')[0])
+                  ? <img src={video.url} alt="" className="h-14 w-24 rounded-lg bg-black object-cover" />
+                  : <video src={video.url} className="h-14 w-24 rounded-lg bg-black object-cover" muted preload="metadata" />}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] text-white/40">On the page</div>
+                  <div className="text-sm font-bold text-white truncate">{video.title}</div>
+                </div>
+                <button type="button" className={ui.ghost} onClick={() => setVideo(null)}>Change</button>
+              </div>
+            ) : <MediaChooser onPick={(v) => { setVideo(v); setError('') }} />}
             <CustomerPanel customers={customers} loading={loading} choice={choice} />
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <label className="relative flex-1 min-w-[12rem] max-w-sm">
