@@ -8,7 +8,7 @@ vi.hoisted(() => {
   globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as any
   ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 })
-vi.mock('next/dynamic', () => ({ default: () => (props: any) => <div data-testid="modal" data-video={props.video?.url || ''} /> }))
+vi.mock('next/dynamic', () => ({ default: () => (props: any) => { const [first] = React.useState(props.video); return <div data-testid="modal" data-video={first?.url || ''} data-kind={first?.source?.kind || ''} /> } }))
 import { LandingPagePickerProvider, LandingPageAction, useLandingPagePicker, OPEN_VIDEO_PAGES_EVENT } from '../LandingPagePicker'
 
 const mount = (el: React.ReactElement) => {
@@ -67,5 +67,12 @@ describe('a new picker request starts fresh', () => {
     act(() => { api.open({ video: { url: 'https://cdn.test/b.mp4' } }) })
     expect(host.querySelectorAll('[data-testid=modal]').length).toBe(1)
     expect(host.querySelector('[data-testid=modal]')?.getAttribute('data-video')).toBe('https://cdn.test/b.mp4')
+  })
+  it('keeps a queued picture as an image', () => {
+    let api: any
+    const Grab = () => { api = useLandingPagePicker(); return null }
+    const { host } = mount(<LandingPagePickerProvider><Grab /></LandingPagePickerProvider>)
+    act(() => { api.open({ video: { url: 'https://cdn.test/photo', source: { kind: 'image' } } }) })
+    expect(host.querySelector('[data-testid=modal]')?.getAttribute('data-kind')).toBe('image')
   })
 })

@@ -113,7 +113,7 @@ export function VideoPlayer({ poster = '', slotImage = '', slotVideo = '', baked
         controls={!!src}
         playsInline
         preload="metadata"
-        src={src ? `${src}${fragment}` : undefined}
+        src={src ? `${fragment ? src.replace(/#t=[^#]*$/, '') : src}${fragment}` : undefined}
         poster={posterUrl || undefined}
         aria-label={still || mock ? (page?.title ? `Picture for ${page.title}` : 'Video placeholder') : (page?.title || 'Video')}
         onPlay={(e) => { seekToStart(e.currentTarget); setStarted(true); once('play', () => handlers.onPlay?.()); }}

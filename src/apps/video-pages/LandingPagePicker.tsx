@@ -34,6 +34,7 @@ export function LandingPagePickerProvider({ children }: { children: ReactNode })
   const open = useCallback((r: PickerRequest) => { reqRef.current = r; setSession((n) => n + 1); setReq(r) }, [])
   const close = useCallback(() => { reqRef.current?.onClose?.(); reqRef.current = null; setReq(null) }, [])
   const openMyPages = useCallback(() => setMyPages(true), [])
+  const closeMyPages = useCallback(() => setMyPages(false), [])
   const value = useMemo(() => ({ open, openMyPages }), [open, openMyPages])
   useEffect(() => {
     const onOpen = (e: Event) => { if ((e as CustomEvent).detail?.my) setMyPages(true); else open({}) }
@@ -42,11 +43,13 @@ export function LandingPagePickerProvider({ children }: { children: ReactNode })
     if (window.location.pathname.replace(/\/+$/, '').endsWith('/studio/video-pages')) { window.history.replaceState(null, '', '/studio/image'); setMyPages(true) }
     return () => window.removeEventListener(OPEN_VIDEO_PAGES_EVENT, onOpen)
   }, [open])
+  // the picker closed while My pages stays open: its focused element is gone, so hand focus back to the My pages dialog
+  useEffect(() => { if (!req && myPages) document.querySelector<HTMLElement>('[data-my-pages] [role="dialog"]')?.focus() }, [req, myPages])
   return (
     <PickerContext.Provider value={value}>
       {children}
-      {req ? <Modal key={session} video={normalizeVideo({ kind: 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
-      {myPages ? <MyPagesModal onClose={() => setMyPages(false)} /> : null}
+      {req ? <Modal key={session} video={normalizeVideo({ kind: (req.video as any)?.source?.kind === 'image' ? 'image' : 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
+      {myPages ? <MyPagesModal onClose={closeMyPages} /> : null}
     </PickerContext.Provider>
   )
 }

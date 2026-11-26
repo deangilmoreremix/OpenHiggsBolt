@@ -106,6 +106,11 @@ describe('viewer extras: trim, subtitles, start frame, overlay, a button at a mo
     expect(attr(withViewer({ start: 0, end: 0 }), 'src')).toBe(VIDEO);
     expect(attr(withViewer({ start: 30, end: 10 }), 'src')).toBe(`${VIDEO}#t=30`);   // a stop before the start is ignored
   });
+  it('replaces a time fragment already on the link instead of adding a second', () => {
+    const ctxWith = (u) => renderToString(<PageContext.Provider value={ctx({ video_url: u })}><ViewerContext.Provider value={{ posterAt: 30 }}><VideoPlayer /></ViewerContext.Provider></PageContext.Provider>);
+    expect(attr(ctxWith(`${VIDEO}#t=5`), 'src')).toBe(`${VIDEO}#t=30`);
+    expect(attr(renderToString(<PageContext.Provider value={ctx({ video_url: `${VIDEO}#t=5` })}><VideoPlayer /></PageContext.Provider>), 'src')).toBe(`${VIDEO}#t=5`);   // settings off: the link is left as it was
+  });
   it('shows the chosen frame as the picture only when no picture is set', () => {
     expect(attr(withViewer({ posterAt: 7 }), 'src')).toBe(`${VIDEO}#t=7`);
     expect(attr(withViewer({ posterAt: 7 }, { poster: '/landing-art/x/p.webp' }), 'src')).toBe(VIDEO);
