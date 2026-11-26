@@ -48,7 +48,7 @@ export function LandingPagePickerProvider({ children }: { children: ReactNode })
   return (
     <PickerContext.Provider value={value}>
       {children}
-      {req ? <Modal key={session} video={normalizeVideo({ kind: (req.video as any)?.source?.kind === 'image' ? 'image' : 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
+      {req ? <Modal key={session} video={normalizeVideo({ kind: (req.video as { source?: { kind?: string } } | null | undefined)?.source?.kind === 'image' ? 'image' : 'video', ...(req.video || {}) }, { allowImage: true })} customers={req.customers} preselect={req.preselect} onPick={req.onPick} onClose={close} openStudio={() => setMyPages(true)} /> : null}
       {myPages ? <MyPagesModal onClose={closeMyPages} /> : null}
     </PickerContext.Provider>
   )
