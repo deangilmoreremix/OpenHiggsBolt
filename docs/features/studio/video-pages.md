@@ -18,7 +18,7 @@ code:
 ---
 
 ## What it does
-Turns a video or picture into a branded, editable landing page with a call to action, a lead form and analytics. Video Pages is two windows, not a studio: the page picker (choose a design, then the full page editor opens; pick or upload the video or picture if none was handed over) and "My pages" (open, edit, publish, share and see analytics for saved pages). Every design with a video offers viewer options: start and stop time, a start frame shown as the picture, a subtitles file (.vtt), text on the video (fills `{{tokens}}`), and a button that appears at a chosen second.
+Turns a video or picture into a branded, editable landing page with a call to action, a lead form and analytics. Video Pages is two windows, not a studio: the page picker (choose a design, then the full page editor opens; pick or upload the video or picture if none was handed over) and "My pages" (open, edit, publish, share and see analytics for saved pages). Every design with a video offers viewer options: start and stop time, a start frame shown as the picture, a subtitles file (.vtt, loaded by fetch, so it must be on the app origin or Supabase storage; other hosts are blocked by the CSP `connect-src`), text on the video (fills `{{tokens}}`), and a button that appears at a chosen second.
 
 ## Where in the app
 Top bar: Video Pages opens the picker, whose header has a My pages button. Each studio's result has a Landing page button. An old `/studio/video-pages` link opens My pages over Image Studio.
