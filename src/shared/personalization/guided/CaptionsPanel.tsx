@@ -46,6 +46,9 @@ export function CaptionsPanel({ inputProps }: { inputProps: PreviewInputProps })
         captions: start.words.map((w, i) => ({ text: (i ? ' ' : '') + w.text, startMs: w.startMs, endMs: w.endMs })),
         style: start.style,
         accentColor: C.cyan,
+        // The modal wears this app's own surfaces, so it looks like the Personalization modal it opens from.
+        theme: { bg: C.modal, card: C.panel, field: C.field, bezel: C.panel, line: C.border, ink: C.text, mute: C.muted },
+        lookImage: (key: string) => `/caption-looks/${key}.webp`,
         applyLabel: 'Use these captions in the video',
         onApply: ({ captions, captionStyle }: { captions: unknown[]; captionStyle: Record<string, unknown> }) => {
           const payload = studioPayload(captions, captionStyle)
