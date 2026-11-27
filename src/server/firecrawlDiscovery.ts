@@ -8,6 +8,7 @@
 
 import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType } from './discoveryProvider'
 import * as cheerio from 'cheerio'
+import type { AnyNode } from 'domhandler'
 import { isCrawlablePageUrl } from './pageSignals'
 
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2'
@@ -248,7 +249,7 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   return candidates
 }
 
-function getNearbyTextCheerio($: ReturnType<typeof cheerio.load>, elem: cheerio.Element): string | null {
+function getNearbyTextCheerio($: ReturnType<typeof cheerio.load>, elem: AnyNode): string | null {
   const maxLength = 120
   const text = $(elem).text() || ''
   const trimmed = text.trim().replace(/\s+/g, ' ')
