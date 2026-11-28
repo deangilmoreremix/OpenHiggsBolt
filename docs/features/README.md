@@ -14,6 +14,7 @@ Use `--check` in CI or before committing to catch bad status values and dead cod
 | Free branded render for visitors, and AI generation on your own keys | personalization | live | Personalize a video > Step 4 (Preview and approve) > Render branded video / Generate with AI | 2026-11-23 | [page](personalization/free-branded-render-and-ai-keys.md) |
 | Opening and closing scenes (Personalization Step 4) | personalization | live | Personalize a video > Step 4 (Preview and approve) > Opening and closing scenes | 2026-11-20 | [page](personalization/opening-and-closing-scenes.md) |
 | Caption Studio | studio | live | Clipping Studio > clip > Captions; Personalization > Captions > Studio | 2026-11-20 | [page](studio/caption-studio.md) |
+| First-login API key pop-up | studio | live | Any studio, on first visit after sign-up | 2026-11-28 | [page](studio/first-login-key-popup.md) |
 | Saved assets library | studio | live | Any image or video studio > Library / Saved button in the prompt bar | 2026-11-07 | [page](studio/saved-assets-library.md) |
 | Social Publishing | studio | live | Studio result > Publish | TBD | [page](studio/social-publishing.md) |
 | Video Outreach link | studio | live | Studio tab bar > Video Outreach | 2026-11-25 | [page](studio/video-outreach-link.md) |

@@ -25,6 +25,7 @@ import PreviewModeBadge from '@/access/PreviewModeBadge';
 import GoViralGate from '@/access/GoViralGate';
 import { getCommonCopy } from '../lib/locales';
 import { muapiAuthMessage, isMuapiKeyAuthMessage } from '../lib/muapiAuthMessage';
+import { shouldPromptForKeys } from '../lib/firstLoginKeyPrompt';
 import { openVideoPageFor, normalizeVideo } from '@/src/lib/landingPages/handoff.js';
 import { LandingPagePickerProvider, LandingPageAction, OPEN_VIDEO_PAGES_EVENT } from '../src/apps/video-pages/LandingPagePicker';
 
@@ -244,7 +245,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const isSignedIn = useAuth().isSignedIn;
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { openUpgradeModal } = useSmartVideoAccess();
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
@@ -562,15 +563,21 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     // old MuAPI key (e.g. one later regenerated at muapi.ai and re-saved from
     // another device), which MuAPI then rejects on every call. So we always ask
     // the account once, and only fall back to the local keys if it has none.
-    if (hasApiKey && hasOpenAiKey && accountKeysChecked.current) return;
-    accountKeysChecked.current = true;
+    // Wait for sign-in to load: asked earlier, the account answers "not signed in" and the
+    // key saved at sign-up looks missing. Check again when the visitor signs in or out.
+    if (!authLoaded) return;
+    const checkedAs = isSignedIn ? 'signed-in' : 'signed-out';
+    if (hasApiKey && hasOpenAiKey && accountKeysChecked.current === checkedAs) return;
+    accountKeysChecked.current = checkedAs;
     let cancelled = false;
     (async () => {
       let restored = '';
       let restoredOpenai = '';
+      let status = null;
       try {
-        const res = await fetch('/api/auth/muapi-key', { credentials: 'same-origin' });
-        if (res.ok) {
+        const res = isSignedIn ? await fetch('/api/auth/muapi-key', { credentials: 'same-origin' }) : null;
+        status = res ? res.status : null;
+        if (res?.ok) {
           const data = await res.json();
           restored = data?.key ? String(data.key).trim() : '';
           restoredOpenai = data?.openaiKey ? String(data.openaiKey).trim() : '';
@@ -588,15 +595,14 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       if (restoredOpenai && restoredOpenai !== localOpenai) {
         setOpenAiKey(restoredOpenai);
       }
-      // Still missing at least one key after restore → prompt via the
-      // dedicated first-login popup (both keys required to proceed).
-      if ((restored || localKey) && (restoredOpenai || localOpenai)) return;
-      if (!embedded) {
+      // First-login pop-up only when a signed-in account truly has no MuAPI key (the OpenAI key is
+      // optional, as the pop-up says). Never on "not signed in" or a failed lookup.
+      if (!embedded && shouldPromptForKeys({ signedIn: !!isSignedIn, status, accountKey: restored, localKey })) {
         setShowApiKeyPopup(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchBalance, embedded, demoMode, hasApiKey, hasOpenAiKey, setApiKey, setOpenAiKey]);
+  }, [fetchBalance, embedded, demoMode, authLoaded, isSignedIn, hasApiKey, hasOpenAiKey, setApiKey, setOpenAiKey]);
 
   const [isSavingKey, setIsSavingKey] = useState(false);
 
