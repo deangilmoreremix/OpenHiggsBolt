@@ -576,12 +576,13 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       let status = null;
       try {
         const res = isSignedIn ? await fetch('/api/auth/muapi-key', { credentials: 'same-origin' }) : null;
-        status = res ? res.status : null;
         if (res?.ok) {
           const data = await res.json();
           restored = data?.key ? String(data.key).trim() : '';
           restoredOpenai = data?.openaiKey ? String(data.openaiKey).trim() : '';
         }
+        // Only a response that was read counts; one that fails to parse stays "unknown" (null).
+        status = res ? res.status : null;
       } catch {
         // Offline or not signed in — the user can still enter keys manually.
       }

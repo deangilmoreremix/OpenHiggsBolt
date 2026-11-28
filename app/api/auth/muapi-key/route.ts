@@ -58,17 +58,22 @@ export function buildHandlers(deps: {
       if (!userId) return NextResponse.json({ key: null }, { status: 401 });
       try {
         const sb = getSupabaseAdmin();
-        const { data } = await sb
+        const { data, error } = await sb
           .from('app_users')
           .select('muapi_key, openai_key')
           .eq('clerk_user_id', userId)
           .maybeSingle();
+        if (error) throw error;
         const key = data?.muapi_key ? decryptMuapiKey(data.muapi_key) : null;
+        // decryptMuapiKey answers null when it cannot decrypt: a saved key that cannot be read
+        // is a failed lookup, not "no key".
+        if (data?.muapi_key && !key) throw new Error('stored MuAPI key could not be decrypted');
         const openaiKey = data?.openai_key ? decryptMuapiKey(data.openai_key) : null;
         return NextResponse.json({ key, openaiKey });
       } catch {
-        // Never leak details; treat as "no key" so the UI just prompts for one.
-        return NextResponse.json({ key: null });
+        // Never leak details. A failed read is not "no key": answer 500 so the studio does not
+        // ask a user who already saved a key to enter it again.
+        return NextResponse.json({ key: null, error: 'lookup_failed' }, { status: 500 });
       }
     },
 
