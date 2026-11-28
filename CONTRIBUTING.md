@@ -71,6 +71,18 @@ or the Next.js proxy routes. If your change touches one of those areas,
 explain in your PR how you verified it manually (steps + what you saw),
 since `npm test` will not cover it.
 
+## Documenting studios and features
+
+`README.md` lists every studio, every documented feature, every page route and every bundled app. Parts of it are generated, so after adding or changing one of those:
+
+```bash
+node scripts/build-feature-index.mjs   # refresh docs/features/README.md after adding a feature page
+npm run docs:readme                    # rewrite the generated blocks of README.md
+npm run check:readme                   # verify (also run by `npm run lint`)
+```
+
+Studios come from `src/data/studioKnowledgeBase.json`, features from `docs/features/`. A new page route (`app/<name>`) or app (`apps/<name>`) needs a row in the README's "Beyond the Studio Shell" section; the check tells you if it is missing. See `AGENTS.md`.
+
 ## Lint
 
 ```bash
