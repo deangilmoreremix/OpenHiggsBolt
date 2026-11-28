@@ -44,6 +44,7 @@ function makeBuilder() {
     },
     select: () => builder, // chain continues to maybeSingle() or is awaited
     maybeSingle: () => {
+      if (store.failRead) return Promise.resolve({ data: null, error: new Error('read failed') });
       const row = store.app_users.get(lastEqClause || store.userId) || null;
       return Promise.resolve({ data: row || null, error: null });
     },
@@ -121,8 +122,32 @@ describe('muapi-key route (integration)', () => {
 
   it('GET returns null when the user has no stored key', async () => {
     store.app_users.clear();
-    const json = await (await route.GET()).json();
+    const res = await route.GET();
+    assert.equal(res.status, 200);
+    const json = await res.json();
     assert.equal(json.key, null);
+  });
+
+  it('GET answers 500 (not "no key") when the stored key cannot be read', async () => {
+    // A stored value that does not decrypt: the studio must not take this as "no key saved".
+    store.app_users.set(store.userId, { muapi_key: 'v1:abc:def:ghi' });
+    const res = await route.GET();
+    assert.equal(res.status, 500);
+    const json = await res.json();
+    assert.equal(json.key, null);
+    assert.equal(json.error, 'lookup_failed');
+    store.app_users.clear();
+  });
+
+  it('GET answers 500 (not "no key") when the database read fails', async () => {
+    store.failRead = true;
+    try {
+      const res = await route.GET();
+      assert.equal(res.status, 500);
+      assert.equal((await res.json()).key, null);
+    } finally {
+      store.failRead = false;
+    }
   });
 
   it('DELETE clears the stored key', async () => {
